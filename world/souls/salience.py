@@ -240,38 +240,54 @@ def _work_courier(soul):
     mechanic's racking live in (#2236) -- one more entry rather than a
     new scheduler. So a run only ever starts on shift, at the depot,
     with nothing else in hand.
+
+    And it starts with a PERSON. The parcel is consigned to the depot
+    keeper and collected from them, so custody is a chain rather than
+    an item appearing in her hands (#2295). No clerk on duty means no
+    consignment and no run -- which is correct, and gates her shift on
+    somebody else's without either of them knowing about the other.
     """
     if soul.db.soul_job:
         return                      # already out
     from world.director import courier
+    post = soul.db.soul_post
+    depot = post if getattr(post, "contents", None) is not None \
+        else getattr(post, "location", None)
+    if depot is None:
+        return
+    clerk = courier._keeper_in(depot, exclude=soul)
+    if clerk is None:
+        return                      # nobody to sign it out
     dests = courier.runnable_destinations(soul)
     if not dests:
         return                      # nobody on a counter anywhere: wait
-    # Vary the run without randomness (which the workflow layer forbids
-    # and which would make a fault unreproducible): walk the list by a
-    # counter she keeps herself.
+    # Vary the run without randomness (which would make a fault
+    # unreproducible): walk the list by a counter she keeps herself.
     n = int(soul.db.soul_runs_made or 0)
     room, counter, keeper = dests[n % len(dests)]
-    package = _spawn_package(soul, room)
+    package = _spawn_package(clerk, room)
+    if package is None:
+        return
     soul.db.soul_run_to = room.id
     soul.db.soul_run_counter = counter.id
+    soul.db.soul_run_clerk = clerk.id
     from world.souls import actions
     job = actions.plan_for(soul, "run")
     if job is None:
-        if package is not None and package.pk:
-            package.delete()
+        package.delete()
         return
     soul.db.soul_job = job
     soul.db.soul_runs_made = n + 1
     try:
         from world.director.security import _cmd
-        _cmd(soul, f"emote shoulders a package for {room.key}.")
+        _cmd(clerk, f"emote sets a bonded parcel on the counter, "
+                    f"stencilled for {room.key}.")
     except Exception:  # noqa: BLE001 — flavour never blocks the run
         pass
 
 
-def _spawn_package(soul, room):
-    """A real parcel in her hands, addressed to where it's going."""
+def _spawn_package(holder, room):
+    """A real parcel in the CONSIGNOR's hands, addressed onward."""
     try:
         from evennia.prototypes.spawner import spawn
         from world import prototypes
@@ -281,7 +297,7 @@ def _spawn_package(soul, room):
             f"consignment slip is stamped for {room.key} and countersigned "
             f"in a hand that clearly signs a great many of these."
         )
-        package.move_to(soul, quiet=True, move_hooks=False)
+        package.move_to(holder, quiet=True, move_hooks=False)
         return package
     except Exception:  # noqa: BLE001 — a run without a parcel is still a run
         return None
