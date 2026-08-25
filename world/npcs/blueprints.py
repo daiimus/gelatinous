@@ -1020,7 +1020,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                                   'weight': 0.4}],
                     'carried_prototypes': ['blood_bag'],
                     'home_room': '#3137',
-                    'post': {'fixture': '#3143',
+                    'post': {'fixture': '#3137',
                              'policy': 'resleave',
                              'delay_hours': 8}},
  'doctor_marta': {'name': 'Marta Okoye',
@@ -1226,7 +1226,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                                 'category': 'clothing'}],
                   'carried_prototypes': [],
                   'home_room': '#5130',
-                  'post': {'fixture': '#5133',
+                  'post': {'fixture': '#5130',
                            'policy': 'resleave',
                            'delay_hours': 8}},
  'bartender_del': {'name': 'Delphine Marchetti',
@@ -1926,7 +1926,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                              'about their secrets staying theirs.'},
              'db_attrs': {'ambient_broadcaster': True,
                           'broadcast_interval': 1800},
-             'post': {'fixture': '#6027',
+             'post': {'fixture': '#6035',
                       'policy': 'resleave',
                       'delay_hours': 8}},
  'tobacconist_bellows': {'name': 'Bellows',
@@ -2183,7 +2183,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                     'wardrobe': [],
                     'carried_prototypes': [],
                     'home_room': '#4963',
-                    'post': {'fixture': '#4931',
+                    'post': {'fixture': '#4963',
                              'policy': 'resleave',
                              'delay_hours': 8}}}
 
@@ -2617,7 +2617,7 @@ BLUEPRINTS["dispatch_kiro"] = {
     "wardrobe": [],
     "carried_prototypes": [],
     "home_room": "#4963",
-    "post": {"fixture": "#4931", "policy": "resleave", "delay_hours": 8},
+    "post": {"fixture": "#4963", "policy": "resleave", "delay_hours": 8},
 }
 
 BLUEPRINTS["dispatch_ines"] = {
@@ -2671,7 +2671,7 @@ BLUEPRINTS["dispatch_ines"] = {
     "wardrobe": [],
     "carried_prototypes": [],
     "home_room": "#4963",
-    "post": {"fixture": "#4931", "policy": "resleave", "delay_hours": 8},
+    "post": {"fixture": "#4963", "policy": "resleave", "delay_hours": 8},
 }
 
 # The uniform is the post's, not the person's — all three keepers draw
