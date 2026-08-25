@@ -215,23 +215,56 @@ world/
 
 ### Zone Definition
 
-Zones are **named districts, hand-authored** (owner ruling
-2026-08-24). Southside, Pessoa Street, the Boot, the Brackett Arms,
-the Midden, the Constabulary — the names the map already uses and that
-people already say out loud.
+### Corridors, not districts — corrected 2026-08-24
 
-Rejected: deriving zones from the map graph by connectivity. It needs
-no authoring and adapts as the city grows, but it would produce
-clusters nobody has a name for — and a district you cannot NAME is a
-district the Rook cannot mention on air. Circulation is the product;
-zones have to be sayable.
+An earlier draft of this section said "named districts, hand-authored".
+**That was wrong, and BUILDING_PLAYBOOK §1.5 already said so** — a
+section explicitly marked owner-set, which builds "do not argue with":
 
-Each room belongs to exactly one zone, declared by the builder. Zones
-are the unit at which the simulation computes scores.
+> **The plan: corridors, not zones.** The city organizes the way
+> cities organically form — along the routes work travels.
+> **Industrial corridors**: the freight run from the Landing Pad
+> toward the Processor's skirt; power down Volta; fab-labor along
+> Riveter's Way. **Cultural corridors**: each quarter's life
+> concentrates on a main street.
 
-**Today the bus keys on room names**, which is why it reports
-"Escallier Snailery" rather than a district. Authoring the zone map is
-the next real brick.
+So the aggregation unit is the **corridor** — the street work travels
+along — with **Northside / Southside** as the coarse gradient above it.
+Not invented districts. The playbook already names them: Maxwell,
+Pessoa, the Spillane, Riveter's Way, Volta.
+
+**This is better for circulation, not just more consistent.** A street
+is more sayable than a district, and it is how people actually give
+directions. "Stay off Volta tonight" and "Pessoa's gone quiet since
+the shrine went up" are things the Rook can say on air and a bartender
+can repeat. "Sector 7 is at 78" is not.
+
+It also matches how convergence already works in this city: the
+playbook engineers venues to cluster on a spine, so a loud corridor is
+a real thing that a loud rectangle is not.
+
+### It is cheaper than expected
+
+Measured against the live world, 2026-08-24: **1070 rooms, of which
+424 already carry a corridor name in the room key** — Brackett 242,
+Kaspar 31, Marlowe 29, Maxwell 29, Pessoa 25, Hammett 25, Bhavani 17,
+Volta 17, the Spillane 17, Riveter's 5.
+
+The remaining 646 are interiors, which inherit from the building they
+sit in rather than needing their own authoring. So the zone map is
+mostly derivable from names that already exist, with hand-authoring
+reserved for the cases that need judgement.
+
+**Today the bus keys on the room name itself**, which is why it
+reports "Escallier Snailery" rather than a corridor. That is the
+change: aggregate at the corridor and keep the room as the note.
+
+### Status: analysis only
+
+Not being built (owner, 2026-08-24). WSIS is a large undertaking and
+**rounding out NPC management stays the priority**. This section is
+recorded so the next person starts from the corrected unit rather than
+re-deriving districts.
 
 ```python
 # New AttributeProperty fields on Room typeclass
