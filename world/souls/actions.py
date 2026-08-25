@@ -355,6 +355,24 @@ def plan_for(soul, goal_need):
     real by jobs.py. The planner checks preconditions HERE (cash,
     stock, home) so jobs fault rarely and legibly.
     """
+    if goal_need == "run":
+        # A courier run: cross the city, hand it over, come home. The
+        # package is spawned by the work handler before the job starts,
+        # so a run that faults leaves her holding it -- which reads
+        # correctly and gets handed over on the next attempt (#2258).
+        dest = _obj_by_id(soul.db.soul_run_to)
+        counter = _obj_by_id(soul.db.soul_run_counter)
+        post = soul.db.soul_post
+        home = post if getattr(post, "contents", None) is not None \
+            else getattr(post, "location", None)
+        if dest is None or counter is None or home is None:
+            return None
+        return {"goal": "run", "at": 0, "steps": [
+            {"do": "travel", "room": dest.id},
+            {"do": "handoff", "counter": counter.id},
+            {"do": "travel", "room": home.id},
+        ]}
+
     if goal_need == "recover":
         # The force recovers its own (owner ruling 2026-08-24). A
         # second unit leaves its patrol, takes hold of the casualty and

@@ -2789,6 +2789,19 @@ SURGICAL_SEALANT = {
 }
 
 
+# Courier Package - what a rabbit runs (#2258)
+COURIER_PACKAGE = {
+    "key": "a wrapped package",
+    "typeclass": "typeclasses.items.Item",
+    "aliases": ["package", "parcel", "wrap"],
+    "desc": "A flat parcel in grey wrap, corners taped twice over. The consignment slip is stamped and countersigned in a hand that clearly signs a great many of these.",
+    "tags": [("courier", "item_type")],
+    "attrs": [
+        ("courier_package", True),
+    ],
+}
+
+
 # ---------------------------------------------------------------------
 # The machine kit (#2262)
 #
