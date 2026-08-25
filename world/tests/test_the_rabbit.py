@@ -527,3 +527,44 @@ class TestWhatAFallCosts(EvenniaCommandTest):
         import inspect
         from world.director import courier
         self.assertNotIn("at_death", inspect.getsource(courier))
+
+
+class TestRoleWorkJobsSurviveTheirOwnShift(EvenniaCommandTest):
+    """A run is not something she does INSTEAD of working (#2305).
+
+    `do_post_work` hands out role-work jobs from inside the duty job.
+    They landed at the default band 4, so duty at band 2 outranked them
+    the instant they were set: the engine discarded the job on the very
+    next think, and `do_post_work` then saw a job and returned early.
+
+    One run started, nothing delivered, no fault raised, and a parcel
+    stranded in the clerk's hands forever. Silent success — the worst
+    failure shape there is, and the second one this week.
+    """
+
+    def test_a_run_is_shift_work_not_an_errand(self):
+        from world.souls.engine import _goal_band
+        self.assertEqual(_goal_band("run"), _goal_band("duty"))
+
+    def test_so_is_a_recovery(self):
+        """Same flaw, same fix: the security recovery job (#2282) was
+        preempted by duty exactly the same way."""
+        from world.souls.engine import _goal_band
+        self.assertEqual(_goal_band("recover"), _goal_band("duty"))
+
+    def test_duty_cannot_interrupt_them(self):
+        """Interrupting requires a STRICTLY lower band."""
+        from world.souls.engine import _goal_band
+        self.assertFalse(_goal_band("duty") < _goal_band("run"))
+        self.assertFalse(_goal_band("duty") < _goal_band("recover"))
+
+    def test_but_survival_still_can(self):
+        """She drops the parcel to flee — just not to go back to
+        standing at the counter."""
+        from world.souls.engine import _goal_band
+        for urgent in ("safety", "hunger"):
+            self.assertLess(_goal_band(urgent), _goal_band("run"))
+
+    def test_an_unknown_goal_still_defaults_low(self):
+        from world.souls.engine import _goal_band
+        self.assertEqual(_goal_band("nonsense"), 4)

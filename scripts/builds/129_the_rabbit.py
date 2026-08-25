@@ -51,15 +51,29 @@ else:
         raise SystemExit
     print(f"BUILD 129: {wren.key} #{wren.id} hired at {depot.key}")
 
-wren.db.soul_role = "courier"
-wren.db.soul_post = depot
-wren.db.soul_home = wren.db.soul_home or depot
-wren.db.soul_schedule = "day"
+# ENSOUL her, do not hand-set the attributes.
+#
+# The first version of this build wrote soul_role, soul_post and the
+# rest directly -- and left her without the `soul` tag, which is how
+# the heartbeat ENUMERATES souls. So she stood at the depot with a
+# role, a schedule, a post and a perch, and never thought once. Every
+# behaviour written for her was correct code that could not run.
+#
+# Which is precisely the bug this whole NPC exists to fix: something
+# built and never wired. `ensoul` is the seam; use the seam (#2305).
+from world.souls.engine import ensoul
+
+ensoul(wren, role="courier", home=wren.db.soul_home or depot, post=depot,
+       schedule="day", wage_rate=0.0)   # paid per delivery, not per hour
 wren.db.route_taste = 0.2
-wren.db.soul_wage_rate = 0.0      # she is paid per delivery, not by the hour
 
 print(f"BUILD 129: role={wren.db.soul_role} post={wren.db.soul_post.key} "
       f"taste={wren.db.route_taste} shift={wren.db.soul_schedule}")
+from world.souls.engine import SOUL_TAG, get_souls
+print(f"BUILD 129: ensouled="
+      f"{bool(wren.tags.get(SOUL_TAG[0], category=SOUL_TAG[1]))} "
+      f"| in the heartbeat roster={wren in get_souls()} "
+      f"(without this she never thinks at all)")
 
 # Prove the two things that decide whether she can work at all.
 from world.director import courier
