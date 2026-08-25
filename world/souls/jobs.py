@@ -24,6 +24,10 @@ def _signal(kind, soul, note=""):
 
 
 def fault(soul, msg):
+    # a faulted recovery must release its claim, or the unit can never
+    # take another errand (#2282)
+    if soul.db.soul_recovering:
+        soul.db.soul_recovering = None
     log = soul.db.soul_faults or []
     log.append((time.time(), msg))
     soul.db.soul_faults = log[-FAULT_KEEP:]
@@ -448,6 +452,48 @@ def step_job(soul):
         # a failed contest means a FIGHT owns the mugger now — the job
         # holds this step and retries when combat releases the body
         return True
+
+    if do == "hold":
+        # TAKE HOLD of a body that cannot resist.
+        #
+        # Not the mugger's `grapple` step, which guards on
+        # can_contest() -- conscious AND unrestrained. A wreck is
+        # neither, so that step reads an unresisting body as ALREADY
+        # HELD, advances without issuing the command, and the detail
+        # walks home dragging nothing, successfully, with no fault
+        # raised (#2282). Silent success is the worst failure shape
+        # there is, so recovery gets its own step.
+        from world.combat.grappling import is_grappled
+        from world.director.security import _target_token
+        wreck = _obj(step["wreck"])
+        if wreck is None:
+            fault(soul, "the casualty was gone before it could be lifted")
+            return False
+        if wreck.location != soul.location:
+            fault(soul, "the casualty moved before it could be lifted")
+            return False
+        if not is_grappled(wreck):
+            soul.execute_cmd(f"grapple {_target_token(wreck)}")
+        if is_grappled(wreck):
+            job["at"] = at + 1
+            soul.db.soul_job = job
+            return True
+        # somebody else has it, or the grab did not take -- try again
+        # next beat rather than abandoning a casualty in the street
+        return True
+
+    if do == "deliver":
+        # Home with it. Let go, and say so.
+        from world.director.security import _cmd
+        wreck = _obj(step["wreck"])
+        soul.execute_cmd("release")
+        if wreck is not None:
+            _cmd(soul, f"xmit Unit {getattr(soul, 'id', 0) or 0} — "
+                       f"{getattr(soul.location, 'key', 'the precinct')}. "
+                       f"Unit {getattr(wreck, 'id', 0) or 0} recovered.")
+        soul.db.soul_recovering = None
+        soul.db.soul_job = None
+        return False
 
     if do == "rob":
         from world.consent import can_contest
