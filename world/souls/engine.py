@@ -231,8 +231,24 @@ def _desired_goal(soul, hour, exclude=()):
 
 
 def _goal_band(goal):
+    # ROLE-WORK JOBS SIT AT THE SCHEDULE'S BAND, not the default 4.
+    #
+    # A courier's run and a unit's recovery are not errands a soul does
+    # INSTEAD of its shift -- they ARE the shift, handed out by
+    # do_post_work inside the duty job. Landing them at the default
+    # meant duty (band 2) outranked them the instant they were set, so
+    # the engine discarded the job on the very next think and
+    # do_post_work then saw a job and returned early. One run started,
+    # nothing delivered, no fault raised, a parcel stranded in the
+    # clerk's hands forever (#2305).
+    #
+    # At band 2 the schedule cannot preempt them, because interrupting
+    # requires a STRICTLY lower band -- while survival and critical
+    # needs still can, which is what we want: she drops the parcel run
+    # to flee, not to go back to standing at the counter.
     return {"safety": 0, "hunger": 1, "rest": 2, "duty": 2, "claim": 2,
-            "wardrobe": 2, "craving": 3, "social": 3,
+            "wardrobe": 2, "run": 2, "recover": 2,
+            "craving": 3, "social": 3,
             "off_duty": 4}.get(goal, 4)
 
 
