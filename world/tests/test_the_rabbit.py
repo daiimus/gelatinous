@@ -317,3 +317,110 @@ class TestWhereSheGoesWhenSheIsDone(EvenniaCommandTest):
         roof.delete()
         job = actions.plan_for(self.rabbit, "off_duty")
         self.assertEqual(job["steps"][0]["room"], self.room1.id)
+
+
+class TestSheAsksForTheCrane(EvenniaCommandTest):
+    """An NPC changing the world so it can path through it (#2301).
+
+    The Longhaul container is a moving room: it docks level with the
+    Kaspar Urgent Care roof at level 2 and reaches the Queen of Cups
+    rack roof at level 12. BOTH ENDS ARE ROOFTOPS, so the only souls it
+    is any use to are the ones who walk roofs — currently one person.
+
+    She does not operate it. She asks, on band 27.0, through the same
+    radio a player would key, and the console answers in Ossie's voice
+    or doesn't. No back door: the operator can refuse, be absent, or
+    ask her to confirm.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.rabbit = self.char1
+
+    def _handset(self, on=True, freq=None):
+        from evennia.prototypes.spawner import spawn
+        from world import prototypes
+        radio = spawn(prototypes.WALKIE_TALKIE)[0]
+        radio.db.radio_on = on
+        radio.db.frequency = freq
+        radio.move_to(self.rabbit, quiet=True, move_hooks=False)
+        return radio
+
+    def test_no_handset_no_call(self):
+        """She can't shout at a crane."""
+        self.assertFalse(courier.call_the_crane(self.rabbit, 2))
+
+    def test_she_keys_the_real_verb(self):
+        self._handset(on=True, freq="27.0")
+        with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:
+            self.assertTrue(courier.call_the_crane(self.rabbit, 12))
+        said = " ".join(c.args[0] for c in cmd.call_args_list)
+        self.assertIn("xmit", said)
+        self.assertIn("12", said)
+
+    def test_she_switches_it_on_first(self):
+        self._handset(on=False, freq="27.0")
+        with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:
+            courier.call_the_crane(self.rabbit, 2)
+        self.assertIn("toggle", " ".join(c.args[0] for c in cmd.call_args_list))
+
+    def test_she_tunes_to_the_crane_band(self):
+        self._handset(on=True, freq="911")
+        with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:
+            courier.call_the_crane(self.rabbit, 2)
+        said = " ".join(c.args[0] for c in cmd.call_args_list)
+        self.assertIn("tune", said)
+        self.assertIn(courier.CRANE_BAND, said)
+
+    def test_already_tuned_means_no_fiddling(self):
+        self._handset(on=True, freq="27.0")
+        with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:
+            courier.call_the_crane(self.rabbit, 2)
+        said = " ".join(c.args[0] for c in cmd.call_args_list)
+        self.assertNotIn("tune", said)
+        self.assertNotIn("toggle", said)
+
+
+class TestWhichLevelSheAsksFor(EvenniaCommandTest):
+    """Inferred from where she's standing, not from route introspection.
+    Nobody stands on that roof for the view, and the only reason to
+    board is to cross at the top."""
+
+    def test_somewhere_ordinary_wants_nothing(self):
+        self.assertIsNone(courier.crane_level_wanted(self.char1))
+
+    def test_aboard_and_low_means_up(self):
+        from typeclasses.rooms import CraneContainer
+        car = mock.MagicMock(spec=CraneContainer)
+        car.MIN_Z, car.QOC_Z = 2, 12
+        car.db.level = 2
+        with mock.patch.object(courier, "_crane_car",
+                               return_value=(car, "aboard")):
+            self.assertEqual(courier.crane_level_wanted(self.char1), 12)
+
+    def test_aboard_and_level_wants_nothing(self):
+        from typeclasses.rooms import CraneContainer
+        car = mock.MagicMock(spec=CraneContainer)
+        car.MIN_Z, car.QOC_Z = 2, 12
+        car.db.level = 12
+        with mock.patch.object(courier, "_crane_car",
+                               return_value=(car, "aboard")):
+            self.assertIsNone(courier.crane_level_wanted(self.char1))
+
+    def test_at_the_dock_with_the_box_up_top_means_down(self):
+        from typeclasses.rooms import CraneContainer
+        car = mock.MagicMock(spec=CraneContainer)
+        car.MIN_Z, car.QOC_Z = 2, 12
+        car.db.level = 12
+        with mock.patch.object(courier, "_crane_car",
+                               return_value=(car, "dock")):
+            self.assertEqual(courier.crane_level_wanted(self.char1), 2)
+
+    def test_the_walk_is_never_blocked_by_the_crane(self):
+        """A broken crane must not strand a courier mid-route."""
+        import inspect
+        from world.souls import jobs
+        src = inspect.getsource(jobs.step_job)
+        travel = src[src.index('if do == "travel":'):src.index('if do == "buy":')]
+        self.assertIn("crane_level_wanted", travel)
+        self.assertIn("except Exception", travel)

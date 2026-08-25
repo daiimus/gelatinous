@@ -162,6 +162,21 @@ def step_job(soul):
         if room is None:
             fault(soul, "travel target vanished")
             return False
+        # Standing at a crane dock, or aboard the box, with the thing
+        # parked at the wrong level? Ask for it. Costs one attribute
+        # read for everybody else, and is the only way a soul currently
+        # changes the world so that it can path through it (#2301).
+        try:
+            from world.director import courier
+            want = courier.crane_level_wanted(soul)
+            if want is not None and not soul.ndb.crane_asked:
+                if courier.call_the_crane(soul, want):
+                    soul.ndb.crane_asked = True
+                    return True          # wait a beat for the answer
+            elif want is None:
+                soul.ndb.crane_asked = False
+        except Exception:  # noqa: BLE001 — the crane never blocks a walk
+            pass
         if soul.location == room:
             job["at"] = at + 1
             soul.db.soul_job = job
