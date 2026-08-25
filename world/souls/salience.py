@@ -233,6 +233,63 @@ def _work_medic(soul):
 ROLE_WORK["medic"] = _work_medic
 
 
+def _work_courier(soul):
+    """A rabbit on shift: if she's idle at the depot, take a run.
+
+    Runs are post work, the same registry the medic's restock and the
+    mechanic's racking live in (#2236) -- one more entry rather than a
+    new scheduler. So a run only ever starts on shift, at the depot,
+    with nothing else in hand.
+    """
+    if soul.db.soul_job:
+        return                      # already out
+    from world.director import courier
+    dests = courier.runnable_destinations(soul)
+    if not dests:
+        return                      # nobody on a counter anywhere: wait
+    # Vary the run without randomness (which the workflow layer forbids
+    # and which would make a fault unreproducible): walk the list by a
+    # counter she keeps herself.
+    n = int(soul.db.soul_runs_made or 0)
+    room, counter, keeper = dests[n % len(dests)]
+    package = _spawn_package(soul, room)
+    soul.db.soul_run_to = room.id
+    soul.db.soul_run_counter = counter.id
+    from world.souls import actions
+    job = actions.plan_for(soul, "run")
+    if job is None:
+        if package is not None and package.pk:
+            package.delete()
+        return
+    soul.db.soul_job = job
+    soul.db.soul_runs_made = n + 1
+    try:
+        from world.director.security import _cmd
+        _cmd(soul, f"emote shoulders a package for {room.key}.")
+    except Exception:  # noqa: BLE001 — flavour never blocks the run
+        pass
+
+
+def _spawn_package(soul, room):
+    """A real parcel in her hands, addressed to where it's going."""
+    try:
+        from evennia.prototypes.spawner import spawn
+        from world import prototypes
+        package = spawn(prototypes.COURIER_PACKAGE)[0]
+        package.db.desc = (
+            f"A flat parcel in grey wrap, corners taped twice over. The "
+            f"consignment slip is stamped for {room.key} and countersigned "
+            f"in a hand that clearly signs a great many of these."
+        )
+        package.move_to(soul, quiet=True, move_hooks=False)
+        return package
+    except Exception:  # noqa: BLE001 — a run without a parcel is still a run
+        return None
+
+
+ROLE_WORK["courier"] = _work_courier
+
+
 def _work_mechanic(soul):
     """Service the units that came to the bench.
 

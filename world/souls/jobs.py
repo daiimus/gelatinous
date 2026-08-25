@@ -514,6 +514,24 @@ def step_job(soul):
         soul.db.soul_job = None
         return False
 
+    if do == "handoff":
+        # The far end of a run. `deliver` is the RECOVERY step's name
+        # (#2282) and means something else entirely, so the courier's
+        # is `handoff`.
+        from world.director import courier
+        counter = _obj(step["counter"])
+        if counter is None or counter.location is not soul.location:
+            fault(soul, "the counter wasn't there to hand it to")
+            return False
+        package = next((o for o in soul.contents
+                        if o.attributes.has("courier_package")), None)
+        report = courier.hand_over(soul, counter, package)
+        # courier.hand_over already told the bus; nothing to do here
+        # but let the run finish, paid or not.
+        job["at"] = at + 1
+        soul.db.soul_job = job
+        return True
+
     if do == "rob":
         from world.consent import can_contest
         from world.director.security import _target_token

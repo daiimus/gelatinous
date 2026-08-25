@@ -50,13 +50,17 @@ class TestRegistryIntegrity(TestCase):
 
     def test_roster_complete(self):
         # the cast, excluding machinery fixtures like the drill dummy
-        self.assertEqual(len(_cast()), 17)
+        self.assertEqual(len(_cast()), 18)
         for expected in ("butcher_ottilie", "bartender_del", "doctor_marta",
                          "companion_vesper", "dispatch_petra",
                          "tobacconist_bellows",
                          # the emergency board's other two shifts (#2233):
                          # it answered 8 hours in 24 and was dark for 16
                          "dispatch_kiro", "dispatch_ines",
+                         # the rabbit (#2258): route_taste had been built
+                         # and set on nobody, so no soul in the colony
+                         # ever took the awkward way anywhere
+                         "rabbit_wren",
                          # the bench (#2261): maintenance advertises only
                          # where somebody is standing, so these three ARE
                          # the repair system
