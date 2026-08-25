@@ -1,47 +1,137 @@
 # World State Intelligence System (WSIS) Specification
 
-> **Status:** 📋 Proposal — not implemented (tracking #303). Depends on faction / infrastructure / economy systems that are themselves unbuilt.
+> **Status:** P0 **BUILT AND LIVE** (`world/wsis.py`, 2026-08-21) — the
+> signal bus. Everything above it is design. Tracking #303, which is
+> stale and still says no implementation exists.
 >
-> This spec defines a world simulation layer and player-facing intelligence interface
-> for tracking colony-wide state across multiple dimensions (security, infrastructure,
-> economy, faction, environment). Design reference: [koala73/worldmonitor](https://github.com/koala73/worldmonitor),
-> a real-time global intelligence dashboard with 36+ data layers, composite scoring,
-> anomaly detection, and AI-generated intelligence briefs.
->
-> The core insight: WorldMonitor categorizes and monitors **real-world state** across
-> dozens of dimensions with scoring, anomaly detection, and intelligence synthesis.
-> A sci-fi MUD needs the same thing for **game-world state** -- faction tensions,
-> sector instability, resource flows, infrastructure health, threat assessment.
+> **Vision rewritten 2026-08-24** on the owner's call: intelligence is
+> a sourced, fallible, tradeable commodity — not an objective readout.
 
 ---
 
-## Overview
+## The thesis
 
-WSIS is a two-layer system:
+**WSIS is the colony's capacity to notice itself.**
 
-1. **Simulation Layer** -- A background engine that tracks zone/sector state across seven signal layers, computes composite threat scores, detects anomalies against temporal baselines, and identifies convergence zones where multiple signal types spike simultaneously.
+That framing comes from P0's own docstring, and it is the whole point:
 
-2. **Presentation Layer** -- Player-facing interfaces (terminals, NPC intelligence officers, room atmospheric effects) that expose simulation data in-character. Players interact with a living world that evolves based on their actions, NPC faction behavior, and systemic feedback loops.
+> *Collapse is legitimate content. The colony is not propped up, and
+> players and NPCs are meant to decide what state it ends up in. That
+> only works if its state is LEGIBLE. The medical collapse of
+> 2026-08-20 ran for hours in plain sight — both doctors soulless,
+> casualties bleeding out — and nothing anywhere said so.*
 
-### Design References
+A world allowed to fail needs a way to say that it is failing.
+Otherwise failure is indistinguishable from nothing happening, and the
+consequence lands on nobody.
 
-| WorldMonitor Concept | WSIS Equivalent |
+### What this is NOT
+
+**Not a dashboard.** An earlier draft of this spec was built around a
+real-time intelligence dashboard: seven signal layers, toggleable
+views, a terminal showing `Sector 7 · 78 ▲`. That design has been
+withdrawn, for two reasons.
+
+First, **nothing else in this colony works that way.** Information
+here has a mouth. It comes through the radio, through dispatch,
+through Sable, through the Rook, through a board somebody keeps. A
+screen that objectively reports the truth to anyone who walks up would
+be the only thing in the game speaking with the voice of God.
+
+Second, **the layers were inherited rather than derived.** They came
+from an external tool's categories, not from this colony's systems —
+which is why the bus today declares seven layers and only four of them
+have a single signal wired to them. `environment`, `faction` and
+`cyber` are empty boxes waiting for games that do not exist yet.
+
+That is also why the old spec claimed WSIS "depends on faction /
+infrastructure / economy systems that are themselves unbuilt." **P0
+disproved that dependency** by emitting from souls, posts and deaths —
+systems that do exist. WSIS consumes what is real and grows layers as
+the world grows them. It never blocks on a system that hasn't been
+built.
+
+---
+
+## The three movements
+
+Not eight phases. Three, in dependency order.
+
+### 1. Legibility — ✅ BUILT
+
+The colony records what happens to it. Signals are emitted nearly
+free, decay on a per-layer half-life so the picture is always
+"lately" and never "ever", and **never read back into behaviour**.
+WSIS observes. That constraint is what let it ship while everything
+else waits on tuning: an observer needs no balance, because it reports
+whatever the numbers currently are.
+
+### 2. Interpretation — turning signal into a claim
+
+Zones, temporal baselines, anomaly detection, convergence. The engine
+sections below are largely unchanged and still good. This is the part
+that decides that the Snailery being loud for six hours is *a fact
+about the colony* rather than forty rows in a ring buffer.
+
+### 3. Circulation — how a claim reaches a person
+
+The departure, and the cheap part, because **every surface already
+exists.** The Rook broadcasts nightly. Dispatch reads a board.
+Bartenders have opinions. A decker will eventually read files.
+
+---
+
+## Provenance: the rule that makes this the colony's system
+
+**The same discipline as BOLO provenance** (#2247), which the owner
+already ruled on: the system knows the truth, the player gets a
+possibly-false narrator, and *how you learned something is part of
+what you know.*
+
+One fact — *the Snailery is the loudest zone in the colony* — should
+arrive very differently depending on the door it came through:
+
+| source | fidelity | cost |
 |---|---|
-| Countries/regions | Zones (districts, sectors, areas of the colony) |
-| Country Instability Index (CII) | **Zone Threat Index (ZTI)** -- composite score per zone, 0-100 |
-| 36+ data layers | 7 signal layers: security, infrastructure, economy, faction, environment, population, cyber |
-| Multi-source signal fusion | Signal bus fusing combat, deaths, faction actions, resource changes, infrastructure events |
-| Welford's anomaly detection | Temporal baselines per (zone, signal_type) -- flag deviations via z-score |
-| Convergence zones | Multiple signal layers spiking in same zone = escalation multiplier |
-| AI intelligence briefs | NPC intelligence officers / terminal readouts synthesizing zone state |
-| RSS news feeds | In-game Colony News Network (CNN) -- rumor/news/bulletin system |
-| Live entity tracking (flights, ships) | NPC faction patrols, supply convoys, ship movements |
-| Infrastructure layers (cables, pipelines, ports) | Colony systems: power grid, life support, comms, docking, transit |
-| Chokepoints (Hormuz, Suez, Malacca) | Corridor bottlenecks, docking ports, transit junctions |
-| Prediction markets (Polymarket) | Faction odds / betting terminals / intelligence estimates |
-| Cyber threat IOCs | Hacking/intrusion events, network breaches |
-| Climate anomaly panel | Environmental hazard monitoring (radiation, atmo breach, seismic) |
-| Country brief pages | Zone brief -- full dossier per zone with scores, signals, trends, intel |
+| Constabulary terminal | measured, precise, current | requires access |
+| The Rook, 88.8 | true-ish, editorialised, hours late | free; everyone hears it |
+| A bartender | one incident, extrapolated wildly | a drink |
+| A decker's stolen dump | raw signal, no interpretation | a run |
+| An NPC who was there | narrow, vivid, and possibly lying | a favour |
+
+**Nobody gets the objective number for free.** That single rule turns
+a readout into content: intelligence becomes something you buy, trade,
+steal, or are lied to about, which is exactly the favour / reputation
+/ gig economy that the growth direction names as the spine.
+
+It also lands the net layer naturally. "Everything is a file" and
+"the colony's own state is a file" are the same sentence — WSIS is
+what a decker reads, and interpretation is what they steal.
+
+---
+
+## Signal layers — what is real, and what is aspirational
+
+The bus declares seven. **Four carry signals today.** The rest are
+kept only as named intentions, and each states what would have to
+exist first. A layer earns its place by having a system that emits to
+it — never by analogy to somebody else's categories.
+
+| layer | state | emitting today |
+|---|---|
+| **security** | ✅ live | death, killing, assault, robbery, casualty, casualty_untreated |
+| **population** | ✅ live | arrival, resleeve, went_hungry, homeless, undressed |
+| **infrastructure** | ✅ live | post_vacant, post_unsouled, machine_defect, travel_stalled, plan_faulted |
+| **economy** | ✅ live (thin) | sale, wage_paid, till_empty, supply_dry |
+| **faction** | ⏳ aspirational | needs the NPC-only faction layer |
+| **cyber** | ⏳ aspirational | needs the net layer |
+| **environment** | ⏳ aspirational | needs weather/hazard systems to emit; the terraform failure and the Boot breach are the obvious first sources |
+
+Note what the live four already describe: **a colony that starves,
+loses its staff, and bleeds.** That is not a small picture. The
+medical collapse would have been visible in three of these four.
+
+---
 
 ### Scale
 
@@ -125,7 +215,23 @@ world/
 
 ### Zone Definition
 
-Zones are logical groupings of rooms -- a district, sector, or area of the colony. Each room belongs to exactly one zone. Zones are the unit at which the simulation computes scores.
+Zones are **named districts, hand-authored** (owner ruling
+2026-08-24). Southside, Pessoa Street, the Boot, the Brackett Arms,
+the Midden, the Constabulary — the names the map already uses and that
+people already say out loud.
+
+Rejected: deriving zones from the map graph by connectivity. It needs
+no authoring and adapts as the city grows, but it would produce
+clusters nobody has a name for — and a district you cannot NAME is a
+district the Rook cannot mention on air. Circulation is the product;
+zones have to be sayable.
+
+Each room belongs to exactly one zone, declared by the builder. Zones
+are the unit at which the simulation computes scores.
+
+**Today the bus keys on room names**, which is why it reports
+"Escallier Snailery" rather than a district. Authoring the zone map is
+the next real brick.
 
 ```python
 # New AttributeProperty fields on Room typeclass
@@ -168,10 +274,11 @@ class ZoneRegistry(DefaultScript):
 
 ### ZTI Computation
 
-WorldMonitor's CII uses a weighted multi-signal blend. WSIS follows suit:
+A composite index is a weighted blend across layers rather than a
+sum, so one loud layer cannot masquerade as a failing district:
 
 | Layer | Weight | Signals |
-|---|---|---|
+|---|---|
 | Security | 0.25 | Combat events, murders, armed NPCs, faction hostility in zone |
 | Infrastructure | 0.20 | Power grid %, life support %, comms uptime, structural damage |
 | Faction | 0.15 | Faction tension scores, territorial disputes, contested zones |
@@ -211,7 +318,7 @@ graph LR
 ### Escalation Tiers
 
 | ZTI Range | Status | Effects |
-|---|---|---|
+|---|---|
 | 0-20 | STABLE | Normal operations |
 | 21-40 | ELEVATED | Minor atmospheric changes, increased NPC patrols |
 | 41-60 | UNSTABLE | Visible security presence, crowd nervousness |
@@ -224,8 +331,6 @@ graph LR
 
 ### Security Layer
 
-**WorldMonitor reference:** Conflict zones (ACLED/UCDP), military bases, protest events, cyber threats.
-
 **Signals consumed:**
 - Combat events (from `CombatHandler` -- emit signal on `start_combat`, `end_combat`)
 - Deaths/corpse creation (from `DeathProgressionScript`)
@@ -237,12 +342,10 @@ graph LR
 
 ### Infrastructure Layer
 
-**WorldMonitor reference:** Undersea cables, pipelines, internet outages (Cloudflare Radar), datacenters, strategic ports, trade routes.
-
 Colony infrastructure systems, each independently trackable:
 
-| System | WorldMonitor Parallel | Game Mechanic |
-|---|---|---|
+| System | Game Mechanic |
+|---|---|
 | Power Grid | Undersea cables / pipelines | % capacity per zone, sector blackouts |
 | Life Support | Climate anomaly panel | Atmospheric quality, O2 levels, scrubber status |
 | Communications | Internet outages | Comms relay status, jamming, signal degradation |
@@ -254,27 +357,21 @@ Each system has: `capacity` (0-100%), `status` (operational/degraded/offline/cri
 
 ### Economy Layer
 
-**WorldMonitor reference:** 92 stock exchanges, crypto market radar, commodity hubs, WTO trade policy, BIS central bank data.
-
 - **Token economy:** Track velocity (tokens traded per period), inflation/deflation signals
 - **Shop inventory levels:** Scarcity indices for weapon/medical/general goods per zone
 - **Black market activity:** Illicit trades, contraband detection events
 - **Resource extraction:** Mining/salvage output per zone
-- **Supply routes:** Convoy status between zones (like WorldMonitor's 19 trade routes with multi-segment arcs through chokepoints)
+- **Supply routes:** Convoy status between zones, and the chokepoints they must pass
 
 ### Faction Layer
 
-**WorldMonitor reference:** Sanctions regimes, bilateral tensions (GDELT), military deployments, Gulf FDI tracking.
-
 - **Faction tension matrix:** Pairwise tension scores between factions (0-100)
 - **Territorial control:** Which faction controls which zones, contested zones flagged
-- **Force disposition:** Faction NPC patrol strength per zone (like WorldMonitor's military base layer with 220+ bases from 9 operators)
+- **Force disposition:** Faction NPC patrol strength per zone
 - **Diplomatic state:** Allied/neutral/hostile per faction pair
 - **Player faction actions:** Player kills, trade, espionage contribute to faction scores
 
 ### Environment Layer
-
-**WorldMonitor reference:** USGS earthquakes, GDACS disaster alerts, NASA EONET, NASA FIRMS fire detection, climate anomalies vs ERA5 baselines.
 
 - **Weather severity:** Already tracked by `weather_system` -- integrate its intensity level directly
 - **Atmospheric hazards:** Radiation zones, toxic leaks, pressure breaches
@@ -284,17 +381,13 @@ Each system has: `capacity` (0-100%), `status` (operational/degraded/offline/cri
 
 ### Population Layer
 
-**WorldMonitor reference:** WorldPop density estimation, HAPI humanitarian displacement, ACLED protests, crowd events.
-
 - **Crowd system integration:** Already exists (`world/crowd/`) -- crowd levels per room aggregated to zone level
 - **Displacement events:** NPCs fleeing high-ZTI zones (crowd_base_level shifts dynamically)
 - **Casualty tracking:** Deaths per zone per period
 - **Medical load:** Injured characters per zone, medical facility saturation
-- **Migration pressure:** Population flow between zones (like WorldMonitor's HAPI dual-perspective origins vs hosts)
+- **Migration pressure:** Population flow between zones, read from both ends — who is leaving and who is arriving
 
 ### Cyber/Network Layer
-
-**WorldMonitor reference:** Cyber threat IOCs (Feodo Tracker, URLhaus, AlienVault OTX), APT attribution, C2 servers geo-located on globe.
 
 - **System intrusions:** Hacking events against colony infrastructure
 - **Data breaches:** Intelligence leaks, faction secrets exposed
@@ -305,8 +398,6 @@ Each system has: `capacity` (0-100%), `status` (operational/degraded/offline/cri
 ---
 
 ## Signal Bus and Event Aggregation
-
-**WorldMonitor reference:** Multi-source signal fusion -- internet outages, military flights, naval vessels, protests, satellite fires aggregated into unified intelligence picture with per-country and per-region clustering.
 
 ### Design
 
@@ -376,7 +467,7 @@ graph LR
 ```
 
 | Existing System | Hook Point | Signal Emitted |
-|---|---|---|
+|---|---|
 | `CombatHandler` | `start_combat()` | `combat_start` |
 | `CombatHandler` | `stop_combat_logic()` | `combat_end` |
 | `Character` | `at_death()` | `death` |
@@ -410,7 +501,7 @@ def start_combat(self):
 
 ## Update Model
 
-Hybrid event-driven + periodic tick, following WorldMonitor's architecture (event-driven data ingestion + polling-based recomputation).
+Hybrid: event-driven ingestion (emitting is nearly free) plus periodic recomputation (scoring is not).
 
 - **Event-driven:** Signals update layer scores immediately when emitted. A combat starting in Sector 7 immediately nudges that zone's security score.
 - **Periodic tick:** A `ZoneTickScript` (Evennia Script, `interval=300` / 5 minutes) runs:
@@ -451,8 +542,6 @@ graph TD
 ---
 
 ## Anomaly Detection
-
-**WorldMonitor reference:** Welford's online algorithm computes streaming mean/variance per event type, region, weekday, and month over a 90-day window. Z-score thresholds (1.5/2.0/3.0) flag deviations like "Military flights 3.2x normal for Thursday (January)." Stored in Redis via Upstash.
 
 ### Design
 
@@ -518,8 +607,6 @@ def update_baseline(self, zone_id, signal_type, observed_count):
 
 ## Convergence Detection
 
-**WorldMonitor reference:** When multiple signal types spike in the same geographic area, the system identifies convergence zones and escalates severity. Regional convergence scoring clusters signals by geography.
-
 ### Design
 
 If 3+ layers are simultaneously elevated (z-score > 1.5) in the same zone, that zone is flagged as a **convergence zone**. The convergence level (0-3) multiplies the ZTI score.
@@ -537,9 +624,16 @@ If 3+ layers are simultaneously elevated (z-score > 1.5) in the same zone, that 
 
 ## Player-Facing Intelligence Interface
 
-### Intelligence Terminals
+> **Read this section as ONE DOOR, not the door.** The terminal design
+> below is still good and still wanted — it is the source that tells
+> the truth plainly, gated by access rather than by fidelity. But it
+> is one row in the provenance table above, not the product. The Rook,
+> a bartender, a rumour and a stolen file are the others, and most
+> players should meet the colony's state through one of those long
+> before they ever stand in front of a screen.
 
-**WorldMonitor reference:** The full dashboard UI with interactive 3D globe, 36+ toggleable layers, Cmd+K command palette, country brief pages, and shareable intelligence stories.
+
+### Intelligence Terminals
 
 Interactable objects placed in key rooms (command centers, security offices, public information kiosks). Different terminal types may have different access levels.
 
@@ -568,8 +662,6 @@ Interactable objects placed in key rooms (command centers, security offices, pub
 Commands: `terminal status`, `terminal zone <name>`, `terminal alerts`, `terminal factions`, `terminal brief <zone>`.
 
 ### Zone Brief
-
-**WorldMonitor reference:** Country brief pages with CII score ring, AI-generated analysis, top news with citation anchoring, prediction markets, 7-day event timeline, active signal chips, infrastructure exposure, stock market index. Exportable as JSON/CSV/image.
 
 ```
 > terminal brief sector_7
@@ -611,8 +703,6 @@ Commands: `terminal status`, `terminal zone <name>`, `terminal alerts`, `termina
 ```
 
 ### Colony News Network (CNN)
-
-**WorldMonitor reference:** 150+ RSS feeds with entity extraction, custom keyword monitors, instant flat render, virtual scrolling, ML-based clustering with async progressive upgrade.
 
 An in-game news/rumor system where game events generate news items:
 
@@ -666,7 +756,9 @@ NPCs stationed at command posts who deliver zone briefs verbally with personalit
 
 ### Feedback Loops
 
-WorldMonitor observes real-world feedback loops passively. WSIS actively simulates them -- the world reacts to its own state:
+WSIS observes; the world is what reacts. These are the loops the
+colony should close on itself once something is allowed to read the
+bus and act (see the standing constraint: the bus never pushes):
 
 ```mermaid
 graph LR
@@ -685,8 +777,8 @@ graph LR
     ZTI["Sustained High ZTI"] -->|"neglect"| INFRA
 ```
 
-| Trigger | Effect | WorldMonitor Parallel |
-|---|---|---|
+| Trigger | Effect |
+|---|---|
 | High security score | NPC faction patrols increase in zone | Military deployment to conflict zones |
 | Infrastructure failure | Crowd displacement, economy drops | Climate displacement, infrastructure cascade |
 | Faction territory gain | Rival faction escalation response | ACLED conflict escalation tracking |
@@ -833,36 +925,30 @@ These are future phases or separate specs:
 
 ## Implementation Priority
 
-| Phase | Scope | Effort | Dependencies |
-|---|---|---|---|
-| **Phase 1** | Zone system + ZTI computation + terminal commands | Medium | Room attribute additions |
-| **Phase 2** | Signal bus + hook existing combat/death systems | Medium | Phase 1, existing combat system |
-| **Phase 3** | Anomaly detection + convergence detection | Small | Phase 2 |
-| **Phase 4** | News/rumor feed system (Colony News Network) | Medium | Phase 2 |
-| **Phase 5** | Room atmospheric integration (intel contributions) | Small | Phase 1, existing room system |
-| **Phase 6** | NPC faction reactions (patrol deployment, displacement) | Large | Phase 1-3, faction system design |
-| **Phase 7** | Infrastructure simulation (power, life support, comms) | Large | Phase 1-2 |
-| **Phase 8** | Economy layer (trade routes, supply, black market) | Large | Phase 1-2, shop system |
+**The old phase table is withdrawn — reality already reordered it.**
+It had the signal bus as Phase 2, behind zones and terminals. The bus
+shipped FIRST (#2228-era work, live 2026-08-21) precisely because it
+was the piece that needed nothing: no zones, no faction system, no
+tuning. Observation is always the cheapest thing to build and the
+safest thing to be wrong about.
 
-```mermaid
-gantt
-    title WSIS Implementation Phases
-    dateFormat X
-    axisFormat %s
+That is the ordering principle worth keeping: **build the part that
+observes, then the part that interprets, then the part that speaks.**
 
-    section Core Engine
-    Phase 1 · Zones + ZTI + Terminal     :p1, 0, 3
-    Phase 2 · Signal Bus + Hooks         :p2, after p1, 3
-    Phase 3 · Anomaly + Convergence      :p3, after p2, 2
+| | scope | state |
+|---|---|---|
+| **Legibility** | the signal bus, decay, checkpointing | ✅ live |
+| **Zones** | named districts on rooms; the bus keys on them instead of room names | next |
+| **Interpretation** | baselines per (zone, layer), anomaly z-scores, convergence | after zones |
+| **Circulation — the Rook** | he already broadcasts nightly and already has opinions. The cheapest mouth in the colony | after interpretation |
+| **Circulation — a terminal** | one door among several, gated by access, and the only source that tells the truth plainly | any time after zones |
+| **Circulation — rumour** | NPCs repeat what they half-know; fidelity degrades with each retelling | after interpretation |
+| **Circulation — the net layer** | raw signal, stealable, uninterpreted | with decking |
+| **Layers** | faction / cyber / environment | each lands when its emitting system does, never before |
 
-    section Player-Facing
-    Phase 4 · Colony News Network        :p4, after p2, 3
-    Phase 5 · Room Atmospherics          :p5, after p1, 2
+**Nothing here needs a balance pass**, which is the other reason this
+is the right thing to work on now: WSIS reports whatever the numbers
+currently are. When bleeding, infection, wages and damage are finally
+tuned, WSIS does not need retuning — it just starts describing a
+better-balanced world.
 
-    section Depth
-    Phase 6 · NPC Faction Reactions      :p6, after p3, 4
-    Phase 7 · Infrastructure Sim         :p7, after p2, 4
-    Phase 8 · Economy Layer              :p8, after p2, 4
-```
-
-Phase 1-3 form the core simulation engine. Phase 4-5 make it player-visible. Phase 6-8 add depth.
