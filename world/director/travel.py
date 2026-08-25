@@ -179,7 +179,32 @@ def _travel_step(npc: Any) -> None:
             npc.execute_cmd(f"open {nxt.key}")
     except Exception:  # noqa: BLE001 — an odd exit never stalls travel
         pass
-    npc.execute_cmd(nxt.key)
+    # A GAP is not a walk. `Exit.at_traverse` refuses the exit name
+    # outright -- for players too -- and hands you to the jump command,
+    # so typing "north" at a parapet does nothing forever. The
+    # pathfinder only offers these hops to a traverser with a
+    # `route_taste`, and this is the verb that makes such a route
+    # actually walkable (#2303).
+    #
+    # It can fail. She misjudges it, falls, and the run faults like any
+    # other broken step -- the intended consequence, not an edge case
+    # to smooth over.
+    #
+    # A fall does NOT drop what she is carrying (owner, 2026-08-24):
+    # falling is not fumbling. But she can die of it, and then the
+    # parcel is on the body like everything else she owned -- which is
+    # a perfectly good way for a consignment to go missing.
+    # `is True` rather than truthiness: these flags are authored as
+    # literal True everywhere they are set (rooms.py, CmdBuildTools),
+    # and an identity check will not mistake a door for a parapet just
+    # because something answered yes to an attribute it had never heard
+    # of.
+    ndb = getattr(nxt, "db", None)
+    if getattr(ndb, "is_gap", None) is True \
+            or getattr(ndb, "is_edge", None) is True:
+        npc.execute_cmd(f"jump across {nxt.key} edge")
+    else:
+        npc.execute_cmd(nxt.key)
     # stall detection: an exit that exists but bounces (an elevator car
     # on another floor, a lock the pathfinder mispredicted) would loop
     # silently forever — three consecutive no-progress steps FAIL the
