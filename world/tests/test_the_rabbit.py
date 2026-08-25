@@ -584,3 +584,57 @@ class TestRoleWorkJobsSurviveTheirOwnShift(EvenniaCommandTest):
     def test_an_unknown_goal_still_defaults_low(self):
         from world.souls.engine import _goal_band
         self.assertEqual(_goal_band("nonsense"), 4)
+
+
+class TestFailedConsignments(EvenniaCommandTest):
+    """A parcel from a broken run doesn't follow her forever (#2309).
+
+    A run faults for real reasons — an unreachable destination, a
+    keeper who walked off mid-route, a fall. She's left holding a
+    parcel nobody will ever take, and the next run spawns another. One
+    per failure, accumulating.
+
+    Owner's disposal story: a parcel ends delivered (and destroyed), or
+    stolen and fenced (and destroyed). An undelivered one has no third
+    ending yet, so it goes back in the pile it came from.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.rabbit = self.char1
+        self.rabbit.db.soul_post = self.room1
+
+    def _stale(self):
+        pkg = create_object("typeclasses.items.Item",
+                            key="a Longhaul bonded parcel",
+                            location=self.rabbit)
+        pkg.attributes.add("courier_package", True)
+        return pkg
+
+    def test_she_bins_it_before_taking_another(self):
+        stale = self._stale()
+        with mock.patch.object(courier, "_keeper_in", return_value=self.char2), \
+             mock.patch.object(courier, "runnable_destinations",
+                               return_value=[(self.room2, self.char2,
+                                              self.char2)]), \
+             mock.patch.object(salience, "_spawn_package", return_value=None):
+            salience._work_courier(self.rabbit)
+        self.assertFalse(stale.pk, "she kept a dead consignment")
+
+    def test_she_does_not_bin_her_radio(self):
+        """Only parcels. She needs the handset to call the crane."""
+        radio = create_object("typeclasses.items.Item", key="a radio",
+                              location=self.rabbit)
+        with mock.patch.object(courier, "_keeper_in", return_value=self.char2), \
+             mock.patch.object(courier, "runnable_destinations",
+                               return_value=[(self.room2, self.char2,
+                                              self.char2)]), \
+             mock.patch.object(salience, "_spawn_package", return_value=None):
+            salience._work_courier(self.rabbit)
+        self.assertTrue(radio.pk)
+
+    def test_nothing_to_bin_is_fine(self):
+        with mock.patch.object(courier, "_keeper_in", return_value=self.char2), \
+             mock.patch.object(courier, "runnable_destinations",
+                               return_value=[]):
+            salience._work_courier(self.rabbit)   # must not raise

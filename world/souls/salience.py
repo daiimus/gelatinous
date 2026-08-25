@@ -265,6 +265,20 @@ def _work_courier(soul):
     dests = courier.runnable_destinations(soul)
     if not dests:
         return                      # nobody on a counter anywhere: wait
+    # Sign the failed consignment back in before taking another.
+    #
+    # A run that faults -- an unreachable destination, a keeper who
+    # walked off, a fall -- leaves her holding a parcel nobody will
+    # ever take. Left alone she collects a pocketful of them, one per
+    # failure, forever (#2309).
+    #
+    # Destroying it is the whole disposal story for now. Owner: a
+    # parcel ends delivered (and destroyed), or stolen and fenced (and
+    # destroyed). An undelivered one has no third ending yet, so it
+    # goes back in the pile it came from.
+    for stale in [o for o in soul.contents
+                  if o.attributes.has("courier_package")]:
+        stale.delete()
     # Vary the run without randomness (which would make a fault
     # unreproducible): walk the list by a counter she keeps herself.
     n = int(soul.db.soul_runs_made or 0)
