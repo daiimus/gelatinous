@@ -324,6 +324,30 @@ def _permits(soul, need, tags):
     return _under_duress(soul, need)
 
 
+#: Where a recovered unit is taken. Tag-driven so a builder can move
+#: the precinct without editing code; falls back to the soul's own
+#: post, which for a unit is where it charges anyway.
+RECOVERY_TAG = ("recovery_bay", "security")
+
+
+def _obj_by_id(dbid):
+    """Indexed fetch, matching jobs.py's `_obj`."""
+    if not dbid:
+        return None
+    from evennia.objects.models import ObjectDB
+    obj = ObjectDB.objects.get_id(dbid)
+    return obj if obj and obj.pk else None
+
+
+def recovery_bay(soul):
+    """The room a recovered casualty is delivered to."""
+    from evennia.utils.search import search_tag
+    rooms = [r for r in search_tag(*RECOVERY_TAG) if r and r.pk]
+    if rooms:
+        return rooms[0]
+    return soul.db.soul_post or soul.db.soul_home
+
+
 def plan_for(soul, goal_need):
     """Return a job dict for the winning goal, or None (-> fault).
 
@@ -331,6 +355,26 @@ def plan_for(soul, goal_need):
     real by jobs.py. The planner checks preconditions HERE (cash,
     stock, home) so jobs fault rarely and legibly.
     """
+    if goal_need == "recover":
+        # The force recovers its own (owner ruling 2026-08-24). A
+        # second unit leaves its patrol, takes hold of the casualty and
+        # drags it home -- so a downed unit visibly thins the streets
+        # while it happens, which is the cost that makes it matter.
+        #
+        # Dragging is emergent: hold it, then walk. There is no drag
+        # command and there should not be one.
+        wreck = _obj_by_id(soul.db.soul_recovering)
+        if wreck is None or not wreck.pk:
+            return None
+        bay = recovery_bay(soul)
+        if bay is None:
+            return None
+        return {"goal": "recover", "at": 0, "steps": [
+            {"do": "hold", "wreck": wreck.id},
+            {"do": "travel", "room": bay.id},
+            {"do": "deliver", "wreck": wreck.id},
+        ]}
+
     if goal_need == "hunger":
         from world.souls import needs as needs_mod
         # CHECK YOUR POCKETS FIRST. Somebody who is already carrying

@@ -109,6 +109,50 @@ def report_medical(location: Any, casualty: Any = None) -> bool:
     return True
 
 
+def _is_unit(obj: Any) -> bool:
+    """A security unit: the force's own, as opposed to a colonist."""
+    db = getattr(obj, "db", None)
+    return (getattr(db, "role", None) == "security"
+            and getattr(db, "species", None) == "robot")
+
+
+def recover_casualty(soul: Any, casualty: Any) -> bool:
+    """A unit takes a downed unit home. True if it took the errand.
+
+    Deliberately narrow: only a UNIT recovers, and only a UNIT is
+    recovered. A secbot does not sling a bleeding colonist over its
+    shoulder -- that is the medic's job, and the radio report the
+    caller already makes is the right response to a person.
+    """
+    if not _is_unit(soul) or not _is_unit(casualty):
+        return False
+    if casualty is soul or soul.db.soul_recovering:
+        return False
+    # somebody already has it
+    try:
+        from world.combat.grappling import is_grappled
+        if is_grappled(casualty):
+            return False
+    except Exception:  # noqa: BLE001 — unreadable hold: leave it be
+        return False
+    from world.souls import actions
+    soul.db.soul_recovering = casualty.id
+    job = actions.plan_for(soul, "recover")
+    if job is None:
+        soul.db.soul_recovering = None
+        return False
+    soul.db.soul_job = job
+    try:
+        from world.director.security import _cmd
+        _cmd(soul, f"xmit Unit {getattr(soul, 'id', 0) or 0} — "
+                   f"{getattr(soul.location, 'key', 'this location')}. "
+                   f"Unit {getattr(casualty, 'id', 0) or 0} down. "
+                   f"Recovering.")
+    except Exception:  # noqa: BLE001 — flavour never blocks the errand
+        pass
+    return True
+
+
 def notice_casualty(soul: Any, room: Any) -> None:
     """A soul thinking in a room with a downed body acts on it: a MEDIC
     treats it on the spot — nobody radios dispatch about the body at
@@ -121,6 +165,12 @@ def notice_casualty(soul: Any, room: Any) -> None:
     if getattr(soul.db, "soul_role", None) == "medic" \
             or getattr(soul.db, "role", None) == "medic":
         treat_casualty(soul, casualty)
+        return
+    # THE FORCE RECOVERS ITS OWN (owner ruling 2026-08-24). A unit that
+    # comes upon a downed unit doesn't radio about it -- it picks it up
+    # and walks it home. Same shape as the medic branch above: role
+    # decides what finding a body MEANS (#2282).
+    if recover_casualty(soul, casualty):
         return
     if report_medical(room, casualty):
         try:
