@@ -166,6 +166,22 @@ class TestRunsAreShiftWork(EvenniaCommandTest):
             salience._work_courier(rabbit)
         dests.assert_not_called()
 
+    def test_holding_the_duty_job_does_not_block_a_run(self):
+        """The guard means "already OUT", not "holding a job". During
+        post work she is ALWAYS holding the duty job that called this
+        handler — guarding on presence meant returning early forever
+        and never starting a run at all (#2305)."""
+        rabbit = self.char1
+        rabbit.db.soul_post = self.room1
+        rabbit.db.soul_job = {"goal": "duty", "at": 1,
+                              "steps": [{"do": "travel"}, {"do": "work"}]}
+        with mock.patch.object(courier, "_keeper_in",
+                               return_value=self.char2), \
+             mock.patch.object(courier, "runnable_destinations",
+                               return_value=[]) as dests:
+            salience._work_courier(rabbit)
+        dests.assert_called_once()
+
     def test_nowhere_to_go_means_she_waits(self):
         rabbit = self.char1
         rabbit.db.soul_post = self.room1
