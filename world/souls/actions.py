@@ -38,8 +38,9 @@ def _advertiser_objs():
     return _ad_cache["objs"]
 
 
-def _advertisers(soul, need, radius=30):
-    """Advertisers for this need, scored value/(1+distance)."""
+def _advertisers(soul, need, radius=30, reachable=True):
+    """Advertisers for this need, scored value/(1+distance), and
+    filtered to the ones this soul can actually get to."""
     origin = get_xyz(soul.location) if soul.location else None
     found = []
     for obj in _advertiser_objs():
@@ -77,7 +78,56 @@ def _advertisers(soul, need, radius=30):
             dist = radius // 2
         found.append((value / (1.0 + dist), obj, room))
     found.sort(key=lambda t: -t[0])
-    return found
+    return _reachable_only(soul, found) if reachable else found
+
+
+#: How many usable advertisers a caller ever needs. Callers take the
+#: best that works, so pathfinding the whole list is waste -- this
+#: bounds the cost to a handful of A* runs on the rare beat a soul
+#: actually picks a new goal.
+MAX_REACHABLE = 3
+
+
+def _reachable_only(soul, scored):
+    """Drop advertisers this soul has no route to.
+
+    Scoring is `value / (1 + straight-line distance)` -- it never
+    consults the route graph, so the winner could be behind a locked
+    door, up a lift the soul may not ride, or in a sealed room. The
+    MOVEMENT layer is careful about all of this: travel calls lifts,
+    presses floor buttons and opens doors through real commands, and
+    the pathfinder already filters on `access(traverser, "traverse")`
+    and `door_blocks`. SELECTION was the half that never asked (#2316).
+
+    Live consequence before this: the Community Thrift's free rail
+    advertised the best clothing in the colony from behind a padlocked
+    roll-shutter, and every soul who needed clothes planned a trip to
+    it, failed to path, faulted, and tried again on the next think.
+
+    Asked with the soul as traverser, so it is THEIR reachability -- a
+    door they cannot open and a gap only a roof-runner would cross are
+    both answered for the individual, not in general.
+    """
+    if not scored:
+        return scored
+    here = getattr(soul, "location", None)
+    if here is None:
+        return scored
+    from world.spatial.pathfind import find_path
+    out = []
+    for entry in scored:
+        room = entry[2]
+        if room is here:
+            out.append(entry)                 # already standing in it
+        else:
+            try:
+                if find_path(here, room, traverser=soul):
+                    out.append(entry)
+            except Exception:  # noqa: BLE001 — an unroutable question
+                pass            # is a no, and never breaks planning
+        if len(out) >= MAX_REACHABLE:
+            break
+    return out
 
 
 def _counter_open(counter):
