@@ -35,10 +35,23 @@ FEE = 1
 REGISTER = "register"
 
 
+def _is_till(obj: Any) -> bool:
+    """A counter that can actually take money.
+
+    `attributes.has(REGISTER)` is not the same question. The Community
+    Thrift's free rail carries a register of None -- it is a rail of
+    donated clothes, not a till -- and selecting on presence alone made
+    it a delivery destination (#2311).
+    """
+    if obj is None or getattr(obj, "destination", None) is not None:
+        return False
+    return isinstance(obj.attributes.get(REGISTER, None), (int, float))
+
+
 def _counter_in(room: Any):
     """The till-bearing counter in *room*, or None."""
     for obj in getattr(room, "contents", None) or ():
-        if obj.attributes.has(REGISTER) and obj.destination is None:
+        if _is_till(obj):
             return obj
     return None
 
@@ -91,14 +104,39 @@ def runnable_destinations(soul: Any) -> list:
         else getattr(home, "location", None)
     for counter in ObjectDB.objects.filter(
             db_attributes__db_key=REGISTER).distinct():
+        if not _is_till(counter):
+            continue
         room = counter.location
         if room is None or room is home_room:
             continue
         keeper = _keeper_in(room, exclude=soul)
         if keeper is None:
             continue
+        if not _reachable(soul, home_room, room):
+            continue
         out.append((room, counter, keeper))
     return out
+
+
+def _reachable(soul: Any, origin: Any, dest: Any) -> bool:
+    """Can she actually GET there, as herself?
+
+    Checked before dispatching rather than discovered halfway: the
+    pathfinder honours locks, so a shop whose only door is sealed is
+    correctly unreachable and taking that run just faults her in the
+    street holding a parcel nobody will take.
+
+    Asked with `soul` as the traverser, so this is HER reachability --
+    a door she cannot open, or a gap only a roof-runner would cross,
+    are both answered correctly for the person being sent (#2311).
+    """
+    if origin is None or dest is None:
+        return False
+    try:
+        from world.spatial.pathfind import find_path
+        return bool(find_path(origin, dest, traverser=soul))
+    except Exception:  # noqa: BLE001 — an unroutable question is a no
+        return False
 
 
 def hand_over(soul: Any, counter: Any, package: Any = None) -> dict:
