@@ -2174,6 +2174,54 @@ def apply_vital_consequences(target) -> bool:
     return False
 
 
+def strip_organ(target, organ_name: str, into=None):
+    """Remove an organ administratively and return it as an object.
+
+    The same item the surgical path produces -- created through the
+    same `_configure_harvested_item` so identity, decay and prose all
+    match -- but WITHOUT the roll, the pain seeding or the operating
+    theatre. This is not surgery under pressure; it is the precinct
+    taking its shotgun back off a wreck (#2284).
+
+    Sharing the item path matters beyond tidiness: the Ripper's chrome
+    appraisal and the parts trade both key off harvested organs, and a
+    precinct-stripped module must not be a second, subtly different
+    kind of object.
+
+    Args:
+        target: the body to strip.
+        organ_name: canonical organ key.
+        into: where the item lands; defaults to the target's location.
+
+    Returns:
+        The created object, or ``None`` if the organ isn't there or has
+        already been taken.
+    """
+    from evennia import create_object
+    from typeclasses.items import Organ as HarvestedOrgan
+    from world.combat.constants import ORGAN_CONDITION_BY_DECAY  # noqa: F401
+
+    snapshot_organs = get_organ_snapshot(target).get("organs", {}) or {}
+    organ_data = snapshot_organs.get(organ_name)
+    if not organ_data:
+        return None
+    if organ_name in (getattr(target.db, "removed_organs", None) or []):
+        return None
+
+    where = into if into is not None else target.location
+    harvested = create_object(typeclass=HarvestedOrgan, key=organ_name,
+                              location=where)
+    try:
+        _configure_harvested_item(
+            harvested, organ_name=organ_name, condition="damaged",
+            source=target, organ_data=organ_data,
+        )
+    except Exception as exc:  # noqa: BLE001
+        _log_guarded_failure("strip_organ_configure", target, exc)
+    _mark_organ_removed(target, organ_name)
+    return harvested
+
+
 def _mark_organ_removed(target, organ_name: str) -> None:
     """Mark ``organ_name`` as removed from ``target``.
 

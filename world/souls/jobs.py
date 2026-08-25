@@ -483,14 +483,33 @@ def step_job(soul):
         return True
 
     if do == "deliver":
-        # Home with it. Let go, and say so.
+        # Home with it. Let go, and then one of two things.
         from world.director.security import _cmd
         wreck = _obj(step["wreck"])
         soul.execute_cmd("release")
         if wreck is not None:
-            _cmd(soul, f"xmit Unit {getattr(soul, 'id', 0) or 0} — "
-                       f"{getattr(soul.location, 'key', 'the precinct')}. "
-                       f"Unit {getattr(wreck, 'id', 0) or 0} recovered.")
+            uid = getattr(wreck, "id", 0) or 0
+            here = getattr(soul.location, "key", "the precinct")
+            finished = False
+            try:
+                finished = bool(wreck.is_dead())
+            except Exception:  # noqa: BLE001 — unreadable body: treat as
+                finished = False              # repairable, never junk it
+            if finished:
+                # DESTROYED: take the armament off it before anything
+                # else happens to it. A unit's weapon is an augment
+                # organ, so an unstripped wreck is a working shotgun
+                # nobody is holding (#2284).
+                from world.director.disposal import strip_and_junk
+                strip_and_junk(soul, wreck)
+                _cmd(soul, f"xmit Unit {getattr(soul, 'id', 0) or 0} — "
+                           f"{here}. Unit {uid} recovered, not "
+                           f"repairable. Armament secured.")
+            else:
+                # DOWNED: leave it for the bench. The mechanic's own
+                # racking behaviour takes it from here.
+                _cmd(soul, f"xmit Unit {getattr(soul, 'id', 0) or 0} — "
+                           f"{here}. Unit {uid} recovered.")
         soul.db.soul_recovering = None
         soul.db.soul_job = None
         return False
