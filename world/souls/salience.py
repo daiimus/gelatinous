@@ -247,8 +247,12 @@ def _work_courier(soul):
     consignment and no run -- which is correct, and gates her shift on
     somebody else's without either of them knowing about the other.
     """
-    if soul.db.soul_job:
-        return                      # already out
+    # Already OUT on a run -- not merely holding a job. During post work
+    # she is always holding the duty job that called this handler, so
+    # guarding on presence meant returning early forever and never
+    # starting a run at all (#2305).
+    if (soul.db.soul_job or {}).get("goal") == "run":
+        return
     from world.director import courier
     post = soul.db.soul_post
     depot = post if getattr(post, "contents", None) is not None \
