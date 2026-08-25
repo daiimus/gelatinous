@@ -2789,12 +2789,25 @@ SURGICAL_SEALANT = {
 }
 
 
-# Courier Package - what a rabbit runs (#2258)
+# Courier Parcel - what a rabbit runs (#2258)
+#
+# A deliberate McGuffin. Nobody says what is in it, including the
+# people handling it, and that is the point: the parcel is a thing that
+# moves through custody and can be taken off somebody, not a container
+# with an inventory. Branded, because everything manufactured here is.
 COURIER_PACKAGE = {
-    "key": "a wrapped package",
+    "key": "a Longhaul bonded parcel",
     "typeclass": "typeclasses.items.Item",
-    "aliases": ["package", "parcel", "wrap"],
-    "desc": "A flat parcel in grey wrap, corners taped twice over. The consignment slip is stamped and countersigned in a hand that clearly signs a great many of these.",
+    "aliases": ["parcel", "package", "consignment", "longhaul"],
+    "desc": (
+        "A flat parcel in oiled grey wrap, corners taped twice over and "
+        "banded across the middle with a Longhaul bonded strip. The strip "
+        "is the whole product: pull it and it goes from green to a dull "
+        "print-through red that cannot be put back. A consignment number "
+        "is stencilled in the corner, and a countersignature runs under "
+        "it in the loose hand of somebody who signs a great many of "
+        "these. What is inside is the consignor's business."
+    ),
     "tags": [("courier", "item_type")],
     "attrs": [
         ("courier_package", True),

@@ -514,6 +514,28 @@ def step_job(soul):
         soul.db.soul_job = None
         return False
 
+    if do == "collect":
+        # Custody starts with a person, not out of thin air. The depot
+        # keeper is handed the parcel and hands it on -- so there is a
+        # real chain, and a real object that can be taken off her
+        # between here and the far end (#2295).
+        from world.director.security import _target_token
+        clerk = _obj(step["clerk"])
+        if clerk is None or clerk.location is not soul.location:
+            fault(soul, "nobody at the counter to collect from")
+            return False
+        parcel = next((o for o in clerk.contents
+                       if o.attributes.has("courier_package")), None)
+        if parcel is None:
+            fault(soul, "the consignment wasn't ready")
+            return False
+        parcel.move_to(soul, quiet=True, move_hooks=False)
+        soul.execute_cmd(f"emote takes the parcel from "
+                         f"{_target_token(clerk)} and signs for it.")
+        job["at"] = at + 1
+        soul.db.soul_job = job
+        return True
+
     if do == "handoff":
         # The far end of a run. `deliver` is the RECOVERY step's name
         # (#2282) and means something else entirely, so the courier's
@@ -526,6 +548,11 @@ def step_job(soul):
         package = next((o for o in soul.contents
                         if o.attributes.has("courier_package")), None)
         report = courier.hand_over(soul, counter, package)
+        # Signed for and filed. The parcel leaves the world here rather
+        # than accumulating on a counter forever -- one McGuffin per
+        # run, and the run is what mattered.
+        if package is not None and package.pk:
+            package.delete()
         # courier.hand_over already told the bus; nothing to do here
         # but let the run finish, paid or not.
         job["at"] = at + 1

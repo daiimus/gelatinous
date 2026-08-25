@@ -120,11 +120,18 @@ class TestTheRunIsAJob(EvenniaCommandTest):
         self.counter = create_object("typeclasses.items.Item", key="a counter", location=self.room2)
         self.rabbit.db.soul_run_to = self.room2.id
         self.rabbit.db.soul_run_counter = self.counter.id
+        self.rabbit.db.soul_run_clerk = self.char2.id
 
-    def test_cross_the_city_hand_over_come_home(self):
+    def test_sign_it_out_cross_the_city_hand_over_come_home(self):
         job = actions.plan_for(self.rabbit, "run")
         self.assertEqual([s["do"] for s in job["steps"]],
-                         ["travel", "handoff", "travel"])
+                         ["collect", "travel", "handoff", "travel"])
+
+    def test_no_clerk_no_plan(self):
+        """Custody starts with a person. Without a consignor there is
+        nothing to carry and no run to plan."""
+        self.rabbit.db.soul_run_clerk = None
+        self.assertIsNone(actions.plan_for(self.rabbit, "run"))
 
     def test_it_ends_where_it_started(self):
         job = actions.plan_for(self.rabbit, "run")
@@ -166,3 +173,96 @@ class TestRunsAreShiftWork(EvenniaCommandTest):
                                return_value=[]):
             salience._work_courier(rabbit)
         self.assertIsNone(rabbit.db.soul_job)
+
+
+class TestChainOfCustody(EvenniaCommandTest):
+    """The parcel is a real object that passes hand to hand (#2295).
+
+    Spawned to the depot clerk → signed out by the courier → carried
+    across the city → handed to the receiving employee → retired.
+
+    It exists as an object precisely so it can be taken off her in the
+    middle. A package that materialises in her hands and evaporates on
+    arrival cannot be stolen, and a courier who cannot be robbed is a
+    delivery animation rather than a job.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.rabbit, self.clerk = self.char1, self.char2
+        self.rabbit.db.soul_post = self.room1
+        self.clerk.location = self.room1
+
+    def _parcel(self, holder):
+        pkg = create_object("typeclasses.items.Item",
+                            key="a Longhaul bonded parcel", location=holder)
+        pkg.attributes.add("courier_package", True)
+        return pkg
+
+    def test_it_starts_in_the_clerks_hands_not_hers(self):
+        from world.souls import salience
+        pkg = salience._spawn_package(self.clerk, self.room2)
+        self.assertIsNotNone(pkg)
+        self.assertIs(pkg.location, self.clerk)
+
+    def test_she_signs_it_out(self):
+        from world.souls import jobs
+        pkg = self._parcel(self.clerk)
+        job = {"goal": "run", "at": 0,
+               "steps": [{"do": "collect", "clerk": self.clerk.id}]}
+        self.rabbit.db.soul_job = job
+        jobs.step_job(self.rabbit)
+        self.assertIs(pkg.location, self.rabbit)
+
+    def test_no_clerk_no_run(self):
+        """Her shift is gated on somebody else's, without either of
+        them knowing about the other."""
+        from world.souls import salience
+        from world.director import courier
+        with mock.patch.object(courier, "_keeper_in", return_value=None), \
+             mock.patch.object(courier, "runnable_destinations") as dests:
+            salience._work_courier(self.rabbit)
+        dests.assert_not_called()
+        self.assertIsNone(self.rabbit.db.soul_job)
+
+    def test_an_empty_counter_faults_rather_than_inventing_one(self):
+        from world.souls import jobs
+        self.rabbit.db.soul_job = {
+            "goal": "run", "at": 0,
+            "steps": [{"do": "collect", "clerk": self.clerk.id}]}
+        jobs.step_job(self.rabbit)      # clerk holds nothing
+        self.assertIsNone(self.rabbit.db.soul_job)
+        self.assertTrue(self.rabbit.db.soul_faults)
+
+    def test_it_is_retired_on_handoff(self):
+        """One McGuffin per run. Otherwise every counter in the colony
+        slowly silts up with parcels nobody opens."""
+        from world.souls import jobs
+        counter = create_object("typeclasses.items.Item",
+                                key="a counter", location=self.room1)
+        counter.attributes.add("register", 10)
+        pkg = self._parcel(self.rabbit)
+        self.rabbit.db.soul_job = {
+            "goal": "run", "at": 0,
+            "steps": [{"do": "handoff", "counter": counter.id}]}
+        jobs.step_job(self.rabbit)
+        self.assertFalse(pkg.pk, "the parcel outlived its delivery")
+
+    def test_it_can_be_taken_off_her(self):
+        """The whole reason it's an object. Nothing special is needed —
+        it's ordinary inventory, so anything that moves items moves
+        this."""
+        pkg = self._parcel(self.rabbit)
+        pkg.move_to(self.clerk, quiet=True, move_hooks=False)
+        self.assertIs(pkg.location, self.clerk)
+        carried = [o for o in self.rabbit.contents
+                   if o.attributes.has("courier_package")]
+        self.assertEqual(carried, [])
+
+    def test_the_mcguffin_says_nothing_about_itself(self):
+        """Deliberate: nobody knows what's inside, including the people
+        carrying it. It's custody, not cargo."""
+        from world import prototypes
+        desc = prototypes.COURIER_PACKAGE["desc"].lower()
+        self.assertIn("longhaul", prototypes.COURIER_PACKAGE["key"].lower())
+        self.assertIn("consignor's business", desc)

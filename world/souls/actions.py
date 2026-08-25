@@ -362,12 +362,14 @@ def plan_for(soul, goal_need):
         # correctly and gets handed over on the next attempt (#2258).
         dest = _obj_by_id(soul.db.soul_run_to)
         counter = _obj_by_id(soul.db.soul_run_counter)
+        clerk = _obj_by_id(soul.db.soul_run_clerk)
         post = soul.db.soul_post
         home = post if getattr(post, "contents", None) is not None \
             else getattr(post, "location", None)
-        if dest is None or counter is None or home is None:
+        if dest is None or counter is None or clerk is None or home is None:
             return None
         return {"goal": "run", "at": 0, "steps": [
+            {"do": "collect", "clerk": clerk.id},
             {"do": "travel", "room": dest.id},
             {"do": "handoff", "counter": counter.id},
             {"do": "travel", "room": home.id},
