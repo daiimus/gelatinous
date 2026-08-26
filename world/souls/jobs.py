@@ -338,8 +338,23 @@ def step_job(soul):
             lay = getattr(g, "layer", None)
             return 1 if lay is None else int(lay)
 
+        # Garments that cover something STILL BARE come first. Bianca
+        # Morgan carried two pairs of jeans and a mesh top while her
+        # chest was uncovered; ranking by layer alone reached for a
+        # spare pair of trousers, whose name then resolved to the pair
+        # she was already wearing -- "you're already wearing blue
+        # jeans", forever (#2331). The planner learned this rule; the
+        # step had not.
+        _bare = needs_mod.modesty_of(soul) - {
+            c for items in (soul.worn_items or {}).values() for g in items
+            for c in (g.attributes.get("coverage") or ())}
+
+        def _useful_first(garment):
+            covers = set(garment.attributes.get("coverage") or ())
+            return (0 if (covers & _bare) else 1, _rung(garment))
+
         wearable = sorted((o for o in soul.contents if _wearable(soul, o)),
-                          key=_rung)
+                          key=_useful_first)
         if not wearable:
             # shed the paper: real clothes REPLACE the issue rather than
             # layering over it (#2118). The issue TEARS coming off

@@ -463,11 +463,35 @@ def snapshot_imprint(character) -> bool:
     return False
 
 
+def _can_reach(soul, room) -> bool:
+    """Can this soul actually walk there, as itself?"""
+    here = getattr(soul, "location", None)
+    if here is None or room is None:
+        return False
+    if here is room:
+        return True
+    try:
+        from world.spatial.pathfind import find_path
+        return bool(find_path(here, room, traverser=soul))
+    except Exception:  # noqa: BLE001 — an unroutable question is a no
+        return False
+
+
 def _offer(soul, post, room, shift):
     """Hand the claim job: walk there for real, then take the shift.
     Goal is "claim", NOT "duty" — the shift-release logic clears duty
     jobs outside work hours, which ate every after-hours job offer
-    (you take the job tonight; you start when your shift comes)."""
+    (you take the job tonight; you start when your shift comes).
+
+    Refuses a job the soul cannot REACH. The Rook was offered the
+    Helix Lounge from inside his sealed basement studio -- a recluse
+    with no exits, by design -- and re-took the offer every three
+    minutes forever, because nothing asked whether he could walk there
+    (#2331). `_advertisers` learned this already; the job market had
+    not.
+    """
+    if not _can_reach(soul, room):
+        return
     soul.db.soul_job = {
         "goal": "claim", "band": 2, "at": 0,
         "steps": [

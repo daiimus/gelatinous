@@ -158,6 +158,31 @@ def _neighbors(room: Any, traverser: Any):
         # said no (#2227). A walking route may not contain a jump; the
         # souls `flee` step already knew this and the graph did not.
         db = getattr(ex, "db", None)
+        # A SKY ROOM is not a walk either. `Exit.at_traverse` refuses
+        # normal movement into one outright -- "you cannot enter sky
+        # rooms through normal movement, use jump commands" -- and
+        # unlike an edge it carries no is_gap/is_edge flag, so nothing
+        # here excluded it and nothing in travel knew to jump it.
+        #
+        # 155 sky rooms and 146 unflagged exits into them. Ossie
+        # Trelane's crane cab sat behind one, so the graph handed him a
+        # twenty-room route whose FIRST hop could never be taken, and
+        # he bounced on Braddock Avenue every three minutes for hours
+        # -- 61% of every fault in the colony, from one man who could
+        # not get to work (#2331).
+        #
+        # Excluded for everyone, including roof-runners: entering a sky
+        # room needs `ndb.jump_movement_allowed`, which the jump
+        # COMMAND sets and travel never does. This is not a taste, it
+        # is a different mechanism.
+        # `is True`, not truthiness: authored as a literal on every room
+        # (917 False, 155 True), and an identity check will not mistake
+        # an ordinary room for the sky because an unspecced mock
+        # answered yes to an attribute it had never heard of -- which is
+        # exactly what the first version of this did to seven tests.
+        dest_db = getattr(dest, "db", None)
+        if getattr(dest_db, "is_sky_room", None) is True:
+            continue
         if getattr(db, "is_edge", None) or getattr(db, "is_gap", None):
             # ...unless the traverser is somebody who JUMPS. `route_taste`
             # is already the number that means "I take the awkward way";
