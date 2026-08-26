@@ -75,8 +75,20 @@ def travel_to(npc: Any, destination: Any, on_arrive=None, on_fail=None,
     return True
 
 
-def _finish(npc: Any, state: dict, key: str) -> None:
+def _finish(npc: Any, state: dict, key: str, why: str = "") -> None:
+    """End a walk and tell the caller WHY.
+
+    `on_fail` covers three different failures -- the route ran out of
+    steps, the graph offered no route at all, and an exit bounced three
+    times -- and for a long while every one of them was reported as
+    "an exit that wouldn't give". That sent a debugging session after a
+    door for an hour when the real answer was "no route" (#2321).
+
+    The reason rides on ndb so the callback can read it without
+    changing every caller's signature; it is cleared with the state.
+    """
     npc.ndb.director_travel = None
+    npc.ndb.travel_fail_why = why or None
     cb = state.get(key)
     if cb:
         try:
@@ -142,7 +154,8 @@ def _travel_step(npc: Any) -> None:
         return
     state["steps"] += 1
     if state["steps"] > TRAVEL_MAX_STEPS:
-        _finish(npc, state, "on_fail")
+        _finish(npc, state, "on_fail",
+                f"gave up after {TRAVEL_MAX_STEPS} steps")
         return
     # Walk the cached route; re-pathfind only when reality disagrees
     # with it (a bounced exit, a lock change, the npc moved by force).
@@ -150,7 +163,8 @@ def _travel_step(npc: Any) -> None:
     if not (route and route[0].location == npc.location):
         route = find_path_exits(npc.location, destination, traverser=npc)
         if not route:
-            _finish(npc, state, "on_fail")
+            _finish(npc, state, "on_fail",
+                    f"no route from {getattr(npc.location, 'key', '?')}")
             return
         state["route"] = list(route)
         route = state["route"]
@@ -212,7 +226,10 @@ def _travel_step(npc: Any) -> None:
     if npc.location == came_from:
         state["stall"] = state.get("stall", 0) + 1
         if state["stall"] >= 3:
-            _finish(npc, state, "on_fail")
+            _finish(npc, state, "on_fail",
+                    f"{nxt.key} out of "
+                    f"{getattr(came_from, 'key', '?')} "
+                    f"bounced three times")
             return
     else:
         state["stall"] = 0

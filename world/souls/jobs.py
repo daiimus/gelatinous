@@ -189,8 +189,14 @@ def step_job(soul):
             return True
         if not is_travelling(soul):
             def _stalled(npc, _room=room):
-                fault(npc, f"travel stalled toward {_room.key} "
-                           "(an exit that wouldn't give)")
+                # Report what travel actually FOUND, not a guess. This
+                # message used to assert "an exit that wouldn't give"
+                # for every failure including "no route at all", which
+                # sent an hour of debugging after an innocent door
+                # (#2321).
+                why = getattr(npc.ndb, "travel_fail_why", None)
+                fault(npc, f"travel to {_room.key} failed: "
+                           f"{why or 'reason not recorded'}")
             if not travel_to(soul, room, on_fail=_stalled):
                 fault(soul, f"no path to {room.key}")
                 return False
