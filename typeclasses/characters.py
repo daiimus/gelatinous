@@ -712,6 +712,15 @@ class Character(
             release_on_death(self)
         except Exception:  # noqa: BLE001 -- dying must never raise
             pass
+
+        # The population's history. `soul_faults` and the WSIS bus both
+        # forget; this is the only durable record that somebody died
+        # (#2318).
+        try:
+            from world.souls import audit
+            audit.life(self, "death", self.db.soul_role)
+        except Exception:  # noqa: BLE001 -- dying must never raise
+            pass
         
         # Always show death analysis when character dies.
         # debug_death_analysis is fail-soft internally and the audit
