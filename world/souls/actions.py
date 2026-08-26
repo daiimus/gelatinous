@@ -593,8 +593,19 @@ def plan_for(soul, goal_need):
         # the case that actually occurs (waking up with nothing).
         from world.souls import needs as needs_mod
         upgrading = needs_mod.wardrobe_pressure(soul) < 1.0
+        # Only clothes that COVER SOMETHING STILL BARE count as
+        # "already carried". Any wearable used to qualify, so a spare
+        # pair of trousers stopped a soul ever going shopping -- Bianca
+        # Morgan owned two pairs of jeans, needed a chest layer, and
+        # spent hours trying to put the second pair on over the first
+        # (#2329). The shop branch below already picks by missing
+        # coverage; this one was the only place that did not.
+        still_bare = _uncovered(soul)
         carried = [o for o in soul.contents if _wearable(soul, o)
-                   and not (upgrading and o.attributes.get("provisional"))]
+                   and not (upgrading and o.attributes.get("provisional"))
+                   and (not still_bare
+                        or (set(o.attributes.get("coverage") or ())
+                            & still_bare))]
         if carried:
             return {"goal": "wardrobe", "steps": [
                 {"do": "wear"},

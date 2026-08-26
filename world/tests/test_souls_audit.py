@@ -23,7 +23,11 @@ class TestTheLineFormat(EvenniaCommandTest):
     a trivial one. Every field is exactly one whitespace token."""
 
     def _line(self, fn, *a, **kw):
-        with mock.patch.object(audit, "_logger") as lg:
+        # `record()` skips the write under test so the suite stops
+        # appending its fixtures to the production log (#2328). These
+        # tests are ABOUT the write, so they opt back in explicitly.
+        with mock.patch.object(audit, "_under_test", return_value=False), \
+                mock.patch.object(audit, "_logger") as lg:
             fn(*a, **kw)
         return lg.return_value.info.call_args.args[0]
 
@@ -71,12 +75,14 @@ class TestTheLineFormat(EvenniaCommandTest):
 
 class TestObservationNeverBreaksTheThingObserved(EvenniaCommandTest):
     def test_a_broken_logger_is_swallowed(self):
-        with mock.patch.object(audit, "_logger",
+        with mock.patch.object(audit, "_under_test", return_value=False), \
+             mock.patch.object(audit, "_logger",
                                side_effect=RuntimeError("disk full")):
             audit.goal(self.char1, "duty")      # must not raise
 
     def test_a_soul_that_is_gone_still_logs(self):
-        with mock.patch.object(audit, "_logger") as lg:
+        with mock.patch.object(audit, "_under_test", return_value=False), \
+             mock.patch.object(audit, "_logger") as lg:
             audit.fault(None, "duty", "vanished")
         self.assertIn("who=-", lg.return_value.info.call_args.args[0])
 
@@ -128,3 +134,31 @@ class TestRotation(EvenniaCommandTest):
         src = inspect.getsource(audit._logger)
         self.assertIn("CHANNEL_LOG_ROTATE_SIZE", src)
         self.assertIn("backupCount=100", src)
+
+
+class TestTheSuiteDoesNotWriteToTheRealLog(EvenniaCommandTest):
+    """The suite appended its fixtures to the production log — lines
+    like `who=Char#6 at=Room reason=radio_work_crashed:_boom`, where
+    `Char`, `Room` and `boom` are a fixture and a mock, not a colonist
+    and an accident (#2328).
+
+    Found by reading the log this was built to produce, which is the
+    system catching its own contamination.
+    """
+
+    def test_record_is_silent_under_test(self):
+        with mock.patch.object(audit, "_logger") as lg:
+            audit.goal(self.char1, "duty")
+        lg.assert_not_called()
+
+    def test_the_runner_is_detected(self):
+        self.assertTrue(audit._under_test())
+
+    def test_detection_reads_the_database_not_just_argv(self):
+        """Evennia's test DB is IN-MEMORY, not the `test_`-prefixed
+        file the docs describe — the first version of this check
+        assumed the docs and still leaked six lines."""
+        import inspect
+        src = inspect.getsource(audit._under_test)
+        self.assertIn("memory", src)
+        self.assertIn("sys.argv", src)
