@@ -199,21 +199,51 @@ def hand_over(soul: Any, counter: Any, package: Any = None) -> dict:
 CRANE_BAND = "27.0"
 
 
+#: The crane container, cached in-process. Found by INDEXED TAG, never
+#: by scanning -- the first version of this walked `ObjectDB.objects.all()`
+#: on EVERY travel step for EVERY soul, which is a full table scan
+#: thirty-odd times a beat to answer a question that is almost always
+#: "no" (#2323). Hardening spec law #3, the same rule advertisers follow.
+CRANE_TAG = ("crane_car", "machines")
+_CRANE_CACHE_TTL = 60.0
+_crane_cache = {"car": None, "dock": None, "at": 0.0}
+
+
+def _the_crane():
+    """``(car, dock)``, cached. The DOCK is cached too: it is a fixed
+    coordinate, and looking it up per call would have kept a query on
+    the hot path after removing the table scan -- a smaller version of
+    the same mistake."""
+    import time as _time
+    from evennia.utils.search import search_tag
+    now = _time.time()
+    if now - _crane_cache["at"] > _CRANE_CACHE_TTL:
+        cars = [o for o in search_tag(*CRANE_TAG) if o and o.pk]
+        car = cars[0] if cars else None
+        _crane_cache["car"] = car
+        _crane_cache["dock"] = car._room_at(car.UC_ROOF) if car else None
+        _crane_cache["at"] = now
+    return _crane_cache["car"], _crane_cache["dock"]
+
+
 def _crane_car(soul):
-    """The crane container, if this soul is somewhere it matters."""
+    """``(car, where)`` if this soul is somewhere the crane matters.
+
+    Two positions matter and no others: standing on the boarding roof,
+    or aboard the box. Anywhere else this must cost as close to nothing
+    as possible, because it runs on every travel step.
+    """
     from typeclasses.rooms import CraneContainer
     here = getattr(soul, "location", None)
+    if here is None:
+        return None, None
     if isinstance(here, CraneContainer):
         return here, "aboard"
-    # standing at the dock: the car's boarding roof
-    from evennia.objects.models import ObjectDB
-    for room in ObjectDB.objects.all():
-        if not isinstance(room, CraneContainer):
-            continue
-        dock = room._room_at(room.UC_ROOF)
-        if dock is not None and dock is here:
-            return room, "dock"
-        break
+    car, dock = _the_crane()
+    if car is None:
+        return None, None
+    if dock is not None and dock is here:
+        return car, "dock"
     return None, None
 
 

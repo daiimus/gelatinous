@@ -709,3 +709,44 @@ class TestARunMustBePossible(EvenniaCommandTest):
 
     def test_an_unroutable_question_is_a_no(self):
         self.assertFalse(courier._reachable(self.rabbit, None, self.room2))
+
+
+class TestTheCraneLookupIsCheap(EvenniaCommandTest):
+    """`_crane_car` runs on EVERY travel step for EVERY soul (#2323).
+
+    The first version answered "is this soul at the crane?" by walking
+    `ObjectDB.objects.all()` — a full table scan, thirty-odd times a
+    beat, to return "no" almost every time. That is hardening spec law
+    #3 exactly: found by indexed tag, never by scanning.
+    """
+
+    def test_it_never_walks_the_object_table(self):
+        import inspect
+        src = inspect.getsource(courier._the_crane) + \
+            inspect.getsource(courier._crane_car)
+        self.assertNotIn("objects.all()", src)
+        self.assertIn("search_tag", src)
+
+    def test_it_looks_up_by_tag(self):
+        self.assertEqual(courier.CRANE_TAG, ("crane_car", "machines"))
+
+    def test_a_container_tags_itself_at_creation(self):
+        from evennia import create_object
+        car = create_object("typeclasses.rooms.CraneContainer", key="a box")
+        self.assertTrue(car.tags.get("crane_car", category="machines"))
+
+    def test_the_dock_is_cached_too(self):
+        """Caching the car but looking the dock up per call would keep
+        a query on the hot path — a smaller version of the same bug."""
+        import inspect
+        self.assertIn("dock", inspect.getsource(courier._the_crane))
+        self.assertNotIn("_room_at", inspect.getsource(courier._crane_car))
+
+    def test_no_crane_is_a_cheap_no(self):
+        with mock.patch.object(courier, "_the_crane",
+                               return_value=(None, None)):
+            self.assertEqual(courier._crane_car(self.char1), (None, None))
+
+    def test_a_soul_nowhere_is_a_cheap_no(self):
+        self.char1.location = None
+        self.assertEqual(courier._crane_car(self.char1), (None, None))
