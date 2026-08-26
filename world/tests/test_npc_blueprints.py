@@ -50,7 +50,7 @@ class TestRegistryIntegrity(TestCase):
 
     def test_roster_complete(self):
         # the cast, excluding machinery fixtures like the drill dummy
-        self.assertEqual(len(_cast()), 20)
+        self.assertEqual(len(_cast()), 24)
         for expected in ("butcher_ottilie", "bartender_del", "doctor_marta",
                          "companion_vesper", "dispatch_petra",
                          "tobacconist_bellows",
@@ -66,6 +66,12 @@ class TestRegistryIntegrity(TestCase):
                          # the counter, so a courier's shift was
                          # silently gated on the pawnbroker's
                          "pawn_hollis", "pawn_sunny",
+                         # food around the clock (#2325): both stocked
+                         # counters ran day-only, so the colony had no
+                         # reachable food for 16 hours in 24 and 26
+                         # souls sat pinned at maximum hunger
+                         "snailer_pia", "snailer_tobias",
+                         "vendor_marek", "vendor_sunniva",
                          # the bench (#2261): maintenance advertises only
                          # where somebody is standing, so these three ARE
                          # the repair system
