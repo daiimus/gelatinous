@@ -68,6 +68,8 @@ def pay_wage(soul):
             treasury.db.balance = avail - paid
     if paid > 0:
         soul.tokens = (soul.tokens or 0) + paid
+        from world.souls import audit
+        audit.coin(soul, paid, "wage")
     # the fractional remainder stays owed — sub-token accrual is never
     # discarded across paydays
     soul.db.soul_wage_owed = owed_f - paid

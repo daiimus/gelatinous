@@ -165,8 +165,12 @@ def hand_over(soul: Any, counter: Any, package: Any = None) -> dict:
         counter.attributes.add(REGISTER, till - FEE)
         soul.tokens = (soul.tokens or 0) + FEE
         out["paid"] = FEE
+        from world.souls import audit
+        audit.coin(soul, FEE, "delivery", other=keeper)
     else:
         out["short"] = True
+        from world.souls import audit
+        audit.coin(soul, 0, "delivery_unpaid", other=keeper)
         # The colony saying it cannot pay for its own errands. The bus
         # already knows this signal; nothing else had to be invented.
         try:

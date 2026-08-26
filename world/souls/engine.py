@@ -118,6 +118,8 @@ def ensoul(npc, role="resident", home=None, post=None, schedule="day",
     npc.db.soul_faults = []
     npc.db.soul_job = None
     npc.tags.add(SOUL_TAG[0], category=SOUL_TAG[1])
+    from world.souls import audit
+    audit.life(npc, "ensouled", role)
     get_heartbeat()
     return npc
 
@@ -393,6 +395,8 @@ def think(soul, hour):
         return
     new_job["band"] = band          # remembered for interrupt comparisons
     soul.db.soul_job = new_job
+    from world.souls import audit
+    audit.goal(soul, desired, band=band, hour=hour)
     jobs.step_job(soul)
 
 
@@ -448,6 +452,10 @@ class SoulsHeartbeat(DefaultScript):
                 from world.souls import population
                 arrival = population.sweep(self, now)
                 if arrival is not None:
+                    from world.souls import audit
+                    audit.life(arrival, "arrival",
+                               "desperate" if arrival.db.soul_lawless
+                               else "seeker")
                     from evennia.utils import logger
                     logger.log_info(
                         f"Population keeper: {arrival.key} arrived "

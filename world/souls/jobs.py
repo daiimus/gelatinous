@@ -28,6 +28,10 @@ def fault(soul, msg):
     # take another errand (#2282)
     if soul.db.soul_recovering:
         soul.db.soul_recovering = None
+    # soul_faults keeps only the last FAULT_KEEP, so the audit line is
+    # the only durable record that this happened at all (#2318)
+    from world.souls import audit
+    audit.fault(soul, (soul.db.soul_job or {}).get("goal"), msg)
     log = soul.db.soul_faults or []
     log.append((time.time(), msg))
     soul.db.soul_faults = log[-FAULT_KEEP:]
@@ -152,6 +156,8 @@ def step_job(soul):
     steps = job.get("steps") or []
     at = job.get("at", 0)
     if at >= len(steps):
+        from world.souls import audit
+        audit.done(soul, job.get("goal"))
         soul.db.soul_job = None
         return False
     step = steps[at]
