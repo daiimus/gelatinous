@@ -56,6 +56,12 @@ def travel_to(npc: Any, destination: Any, on_arrive=None, on_fail=None,
         return True
     route = find_path_exits(npc.location, destination, traverser=npc)
     if route is None:
+        # This path calls back DIRECTLY rather than through _finish, so
+        # it has to set the reason itself -- otherwise the caller gets
+        # "reason not recorded", which is honest but useless (#2321).
+        npc.ndb.travel_fail_why = (
+            f"no route from {getattr(npc.location, 'key', '?')} "
+            f"at all")
         if on_fail:
             on_fail(npc)
         return False
