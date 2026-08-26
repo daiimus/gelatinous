@@ -46,6 +46,43 @@ AUDIT_FILENAME = "souls_audit.log"
 _LOGGER: list = []
 
 
+def _under_test() -> bool:
+    """True when a test runner owns this process.
+
+    Both audit logs write to ``settings.LOG_DIR``, which the test
+    settings do not override -- so every suite run appended its
+    fixtures and mock exceptions to the PRODUCTION logs. Found by
+    reading this one and seeing `who=Char#6 at=Room
+    reason=radio_work_crashed:_boom`: `Char`, `Room` and `boom` are a
+    test fixture and a mock, not a colonist and an accident (#2328).
+
+    `combat_audit.log` had it far worse -- 6542 MagicMock references in
+    401MB -- because it has been running for months.
+
+    Detected by the DATABASE, not by argv: Django's test runner swaps
+    in a `test_`-prefixed database, and that is true no matter how the
+    suite was invoked.
+    """
+    import sys
+    # The runner itself. `evennia test ...` is how the suite is always
+    # invoked here, and this is true before any database exists.
+    if "test" in sys.argv[:3]:
+        return True
+    try:
+        from django.db import connection
+        name = str(connection.settings_dict.get("NAME") or "")
+    except Exception:  # noqa: BLE001 — if we cannot tell, keep logging
+        return False
+    # Django swaps in a throwaway database. Evennia's is IN-MEMORY --
+    # `file:memorydb_default?mode=memory&cache=shared` -- not the
+    # `test_`-prefixed file the docs describe, which is why the first
+    # version of this check let six more lines through and had to be
+    # measured rather than assumed.
+    import os
+    return ("memory" in name
+            or os.path.basename(name).startswith("test_"))
+
+
 def _logger():
     """The stdlib logger writing ``souls_audit.log``.
 
@@ -92,6 +129,8 @@ def _who(soul) -> str:
 def record(kind: str, soul=None, **fields) -> None:
     """Write one audit line. Never raises -- observation must not be
     able to break the thing it observes."""
+    if _under_test():
+        return          # never append test fixtures to the real log
     try:
         parts = [kind, f"who={_who(soul)}"]
         if soul is not None:
