@@ -1262,6 +1262,10 @@ class CraneContainer(Room):
         self.db.outside = True
         self.db.is_sky_room = False
         self.db.type = "rooftop"
+        # Found by INDEXED TAG, not by scanning: `world.director.courier`
+        # asks "is this soul at the crane?" on every travel step, and
+        # the first version answered it with a full table scan (#2323).
+        self.tags.add("crane_car", category="machines")
         self.db.level = self.MIN_Z
 
     # -- helpers ---------------------------------------------------------
