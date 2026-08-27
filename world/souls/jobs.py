@@ -147,6 +147,52 @@ def _leave_the_post(soul):
         soul.ndb.seated_by_shift = False
 
 
+def _rung(g):
+    """A garment's layer, defaulting to the middle. Module-level because
+    both the wear step and `_shed_the_issue` order by it, and two copies
+    of one rule is the bug this whole file keeps being fixed for."""
+    lay = getattr(g, "layer", None)
+    return 1 if lay is None else int(lay)
+
+
+def _shed_the_issue(soul) -> bool:
+    """Take the paper decant issue off so real clothes can go on.
+
+    Real clothes REPLACE the issue rather than layering over it
+    (#2118), and the issue TEARS coming off (#2120) -- so decide
+    BEFORE stripping: only shed it when what remains still covers
+    everything modesty asks for. Otherwise the paper stays on and is
+    worn under.
+
+    Returns True if anything was shed.
+    """
+    worn_now = list(dict.fromkeys(
+        g for items in (soul.worn_items or {}).values() for g in items))
+    paper = [g for g in worn_now if g.attributes.get("provisional")]
+    real = [g for g in worn_now if not g.attributes.get("provisional")]
+    # NOT the things already on. Worn garments stay in `contents`, so
+    # counting them here let the very issue being shed prop up the
+    # decency check that decides whether shedding is safe.
+    carried = [o for o in soul.contents
+               if getattr(o, "is_wearable", None) and o.is_wearable()
+               and not soul.is_item_worn(o)]
+    if not paper:
+        return False
+    # What modesty would still be satisfied by once the paper is gone:
+    # anything real already worn, PLUS anything real being carried,
+    # since the point of shedding is to put that on.
+    keeps = set()
+    for garment in real + carried:
+        keeps |= set(garment.attributes.get("coverage") or ())
+    if not (needs_mod.modesty_of(soul) <= keeps):
+        return False                  # would leave them indecent
+    for garment in sorted(worn_now, key=lambda g: -_rung(g)):
+        soul.remove_item(garment)
+    for garment in sorted((g for g in real if g.pk), key=_rung):
+        soul.wear_item(garment)
+    return True
+
+
 def step_job(soul):
     """Advance the current job by at most one step. Returns True while
     the job continues, False when finished/faulted."""
@@ -334,10 +380,6 @@ def step_job(soul):
         from world.souls.actions import _wearable
         # dress from the skin out; `int(layer or 1)` would promote
         # every layer-0 garment to base and put socks over trousers
-        def _rung(g):
-            lay = getattr(g, "layer", None)
-            return 1 if lay is None else int(lay)
-
         # Garments that cover something STILL BARE come first. Bianca
         # Morgan carried two pairs of jeans and a mesh top while her
         # chest was uncovered; ranking by layer alone reached for a
@@ -361,21 +403,7 @@ def step_job(soul):
             # (#2120), so decide BEFORE stripping: only shed it when the
             # real clothes already cover everything modesty asks for.
             # Otherwise the paper stays on and is worn under.
-            worn_now = list(dict.fromkeys(
-                g for items in (soul.worn_items or {}).values() for g in items))
-            paper = [g for g in worn_now if g.attributes.get("provisional")]
-            real = [g for g in worn_now if not g.attributes.get("provisional")]
-            if paper and real:
-                covered_by_real = set()
-                for garment in real:
-                    covered_by_real |= set(garment.attributes.get("coverage") or ())
-                if needs_mod.modesty_of(soul) <= covered_by_real:
-                    # safe to lose the paper: strip everything (the issue
-                    # perishes on the way off), then re-dress in what's real
-                    for garment in sorted(worn_now, key=lambda g: -_rung(g)):
-                        soul.remove_item(garment)
-                    for garment in sorted((g for g in real if g.pk), key=_rung):
-                        soul.wear_item(garment)
+            _shed_the_issue(soul)
             if needs_mod.wardrobe_pressure(soul) >= 1.0:
                 fault(soul, "nothing here fit to wear")
                 return False
@@ -387,6 +415,31 @@ def step_job(soul):
             return False
         soul.execute_cmd(f"wear {wearable[0].key.split()[-1]}")
         rounds = step.get("rounds", 0) + 1
+        if rounds > 4 and not step.get("shed"):
+            # IT WON'T GO ON BECAUSE THE PAPER IS IN THE WAY.
+            #
+            # A layer-0 garment has to go UNDER everything, so somebody
+            # still in the Thawn-Harrison decant issue cannot put real
+            # socks on over the slippers -- the clothing system refuses,
+            # correctly. The code that fixes this already exists right
+            # above: shed the issue, then re-dress in what's real.
+            #
+            # But it only ran when there was NOTHING left to wear, and
+            # holding the socks is precisely what stopped it running.
+            # Noel Dudnik and Jordan Esparza sat in that loop for hours
+            # -- 100% of the colony's remaining faults, two souls who
+            # were perfectly decent and merely could not upgrade
+            # (#2333).
+            #
+            # Triggered by the OBSERVED failure rather than by
+            # re-deriving the layer rule here: clothing_mixin owns that
+            # rule, and a second copy in the souls layer is how these
+            # bugs happen in the first place.
+            step["shed"] = True
+            step["rounds"] = 0
+            if _shed_the_issue(soul):
+                soul.db.soul_job = job
+                return True          # re-dressed; try again next beat
         if rounds > 8:
             fault(soul, f"{wearable[0].key} won't go on")
             return False
