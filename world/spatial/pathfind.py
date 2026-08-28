@@ -183,6 +183,16 @@ def _neighbors(room: Any, traverser: Any):
         dest_db = getattr(dest, "db", None)
         if getattr(dest_db, "is_sky_room", None) is True:
             continue
+        # A GAP is a crossing -- a roof-runner can leap it, and #2303
+        # opened those up for anyone with a `route_taste`. An EDGE
+        # WITHOUT a gap is not a crossing, it is a DROP: `jump off`,
+        # one-way, and a fall. Routing a courier off a ledge to save
+        # ninety seconds was never the intent, and travel then issued
+        # `jump across` at it anyway -- "the breach exit is not a gap
+        # you can jump across" -- 377 faults from one soul in fourteen
+        # hours, 91% of everything wrong in the colony (#2335).
+        if getattr(db, "is_edge", None) and not getattr(db, "is_gap", None):
+            continue                       # a drop is never a route
         if getattr(db, "is_edge", None) or getattr(db, "is_gap", None):
             # ...unless the traverser is somebody who JUMPS. `route_taste`
             # is already the number that means "I take the awkward way";
