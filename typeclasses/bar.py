@@ -31,6 +31,7 @@ from world.bar import (
     bar_stock,
     make_drink_from_recipe,
     match_recipe,
+    plate_or_mix,
     resolve_drink,
     stockable_cocktails,
     tender_at,
@@ -359,6 +360,11 @@ class BarCounter(Seating, Item):
         self.db.owner = None
         self.db.staff = []
         self.db.integrate = True          # part of the room, not a loose object
+        # A counter declares its own JOB. `register_post` may rename it (the
+        # Snailery calls the same work "snailer") and adds the shift slots;
+        # until then this is what says a bar is a thing somebody tends, and
+        # it is what `world/service.py` keys the serve handler on (#2350).
+        self.db.post_role = "bartender"
         self.locks.add("get:false()")     # stuck — can't be pocketed
         self.cmdset.add(BarCmdSet, persistent=True)
         # Seating: the stools ARE the bar — `sit at bar` fills one of these slots.
@@ -443,47 +449,6 @@ class BarCounter(Seating, Item):
 # ---------------------------------------------------------------------------
 #: Substrings that read as thanks/acknowledgement in something said near the
 #: bartender. Matched case-insensitively against the spoken content; 'thank'
-#: covers thanks/thank you/thank ya, 'obliged' covers much obliged, etc.
-GRATITUDE_TRIGGERS = (
-    "thank", "cheers", "obliged", "appreciate", "good look", "nice one",
-    "ta for", "much love",
-)
-
-#: Non-verbal acknowledgements — Sully's taciturn, so he answers with a gesture
-#: rather than words. Phrased as emote actions (the identity system prepends his
-#: per-observer name).
-ACK_EMOTES = (
-    "tips his chin a fraction, not looking up from the taps.",
-    "raises two fingers off the slab in a flat, unhurried salute.",
-    "grunts once, low, and keeps wiping down a glass.",
-    "gives a single slow nod, the kind that's already moved on to the next thing.",
-    "knocks two knuckles against the slab and lets that be the answer.",
-)
-
-#: Minimum seconds between acknowledgements, so a chatty room doesn't spam them.
-ACK_COOLDOWN = 6.0
-
-#: Imperative cues that mark spoken words as a drink ORDER (vs a casual mention).
-#: A DETERMINISTIC conversational order — spoken to the bartender in open speech,
-#: not just the formal `to del, whiskey` form — routes to the real serve path so
-#: a real order never rides on the model's flaky prepare_drink tool roll.
-ORDER_CUES = (
-    "pour", "gimme", "give me", "get me", "make me", "fix me", "grab me",
-    "i'll have", "i'll take", "i will have", "lemme get", "let me get",
-    "let me have", "hit me with", "set me up", "line me up", "can i get",
-    "can i have", "i'd like", "i would like", "i want", "i need a", "another",
-)
-
-#: Throwaway words around a BARE order ("whiskey, neat") — strip these and the
-#: drink's own keywords; if nothing meaningful is left, the whole line WAS the
-#: order (so "whiskey ruined me" — remainder "ruined" — is correctly NOT one).
-ORDER_FILLER = frozenset((
-    "a", "an", "the", "one", "some", "of", "glass", "mug", "shot", "shots",
-    "pint", "double", "single", "neat", "straight", "up", "rocks", "on",
-    "cold", "chilled", "stiff", "tall", "please", "thanks", "cheers", "and",
-    "with", "ice", "make", "it", "me", "just", "yeah", "gimme", "another",
-    "round",
-))
 
 
 class Bartender(LLMNpcMixin, Character):
@@ -521,150 +486,41 @@ class Bartender(LLMNpcMixin, Character):
                 return obj
         return None
 
-    def _handle_directed_speech(self, speech, speaker, kwargs):
-        """Bartender intercept (before the LLM layer): gratitude → a small
-        non-verbal nod (checked first so "thanks for the rotgut" reads as a
-        thank-you, not a re-order); an *addressed* line → a menu order. Returns
-        True when handled, so conversation only reaches the LLM otherwise.
-        """
-        if self._is_gratitude(speech):
-            self._acknowledge()
-            return True
-        if kwargs.get("addressed"):
-            delay(1.5, self._fulfil_order, speech, speaker)
-            return True
-        # DETERMINISTIC conversational order (reliability lever): a clear spoken
-        # order goes to the real serve path instead of the model's flaky
-        # prepare_drink — but only when it's plausibly aimed at THIS bartender
-        # (engaged/alone/named), so an order overheard across the room doesn't
-        # get served. Anything ambiguous still flows to the LLM as the backstop.
-        if (self._is_conversational_order(speech)
-                and self._classify_speech(speech, speaker) == "directed"):
-            delay(1.5, self._fulfil_order, speech, speaker)
-            return True
-        return False
-
-    def _is_conversational_order(self, speech):
-        """Deterministic drink-order detector. Conservative by design — a
-        question or a casual drink mention is NOT an order. It's an order only
-        when a servable drink resolves AND either an imperative cue is present
-        ("pour me a rotgut") OR the whole line is just that drink plus filler
-        ("whiskey, neat")."""
-        import re
-        low = " ".join((speech or "").lower().split())
-        if not low or "?" in low:
-            return False
-        bar = self._find_bar()
-        recipe, _off = (resolve_drink(low, bar) if bar
-                        else (match_recipe(low, self.db.menu or []), False))
-        if not recipe:
-            return False
-        if any(cue in low for cue in ORDER_CUES):
-            return True
-        # Bare order: strip the matched drink's keywords + its name + filler;
-        # an empty remainder means the line WAS the order and nothing else.
-        kws = set()
-        for kw in recipe.get("order_keywords", (recipe.get("name", ""),)):
-            kws.update(kw.lower().split())
-        kws.update(recipe.get("name", "").lower().split())
-        remainder = [w for w in re.findall(r"[a-z']+", low)
-                     if w not in kws and w not in ORDER_FILLER]
-        return not remainder
+    # The order intercept, the gratitude nod and the conversational-order
+    # detector all moved OFF this class (#2350). They are the shape of the
+    # JOB, not of this typeclass, and welding them here is exactly why the
+    # Hub and Howl could not pour a drink on two of its three shifts: the
+    # swing and night keepers hold the bartender post and are a class that
+    # never learned to serve. `LLMNpcMixin._handle_directed_speech` now runs
+    # the generic intercept and `world/bar.serve_from_board` does the work,
+    # registered against the roles that wear it.
 
     def _name_aliases(self):
         return ["bartender", "barkeep", "barkeeper"]
 
-    @staticmethod
-    def _is_gratitude(content):
-        low = (content or "").lower()
-        return any(trigger in low for trigger in GRATITUDE_TRIGGERS)
-
-    def _acknowledge(self):
-        """A throttled, non-verbal nod to thanks."""
-        now = monotonic()
-        last = self.ndb.last_ack or 0
-        if now - last < ACK_COOLDOWN:
-            return
-        self.ndb.last_ack = now
-        delay(1.0, self.execute_cmd, f"emote {random.choice(ACK_EMOTES)}")
-
     def _make_order(self, recipe, loc):
-        """The order made physical, on the counter. Returns it, or None.
-
-        Two ways a board entry becomes a thing. A recipe naming a
-        ``proto`` is PLATED — the real prototype (the snail skewer, the
-        bowl of kuro) spawned onto the surface, so a kitchen serves the
-        same items the shelf sold and inherits everything they already
-        carry: nutrition, bites, taste, decay. Everything else is MIXED
-        from ingredients, the drink path this bar was built on.
-
-        One gesture either way, which is the point — a restaurant and a
-        bar differ in what comes out, not in how it reaches you (#2342).
-        """
-        proto = recipe.get("proto")
-        if not proto:
-            return make_drink_from_recipe(recipe, location=loc)
-        from evennia.prototypes.spawner import spawn
-        from evennia.utils import logger
-        try:
-            spawned = spawn(proto)
-        except Exception as err:  # noqa: BLE001
-            logger.log_err(f"Bartender: could not plate '{proto}': {err}")
-            return None
-        if not spawned:
-            logger.log_err(f"Bartender: nothing spawned for '{proto}'")
-            return None
-        dish = spawned[0]
-        dish.move_to(loc, quiet=True)
-        return dish
+        """Thin delegate — the plating lives in `world.bar.plate_or_mix`."""
+        return plate_or_mix(recipe, loc)
 
     def _fulfil_order(self, order_text, patron):
-        if not self.location or getattr(patron, "location", None) is not self.location:
-            return
-        bar = self._find_bar()
-        # MENU first, then off-menu from STOCK — a classic the bar carries the
-        # makings for is served even if it's not on the board.
-        recipe, _offmenu = resolve_drink(order_text, bar) if bar else (
-            match_recipe(order_text, self.db.menu or []), False)
-        if not recipe:
-            # An addressed line that isn't an order becomes conversation when the
-            # LLM is driving her; otherwise the curt scripted line still stands.
-            if not self._try_llm_reply(order_text, patron, "directed",
-                                       on_fail=self._llm_fallback):
-                self.execute_cmd("say Don't serve that here.")
-            return
-        price = int(recipe.get("price", 0) or 0)
-        have = int(getattr(patron, "tokens", 0) or 0)
-        if price and have < price:
-            self.execute_cmd(f"say That's {price}. Come back when you've got it.")
-            return
-        # Make it on the bar surface, take the cash as part of the gesture.
-        loc = bar if bar else self.location
-        drink = self._make_order(recipe, loc)
-        if drink is None:
-            self.execute_cmd("say That's off tonight.")
-            return
-        if price:
-            patron.tokens = have - price
-            if bar:
-                bar.db.register = int(bar.db.register or 0) + price
-        # The whole transaction is one wordless gesture — make it, set it down,
-        # and (when there's a tab) take the cash. Routed through `emote` so the
-        # bartender renders by per-observer identity (a stranger sees "a lean
-        # man", not "Sully"), and no price is spoken: the swept payment says it.
-        # A free drink just gets slid over — no phantom payment.
-        craft = recipe.get("craft", "fixes the drink")
-        where = bar.key if bar else "the bar"
-        closer = (
-            "sweeps the payment off the slab with a practiced hand"
-            if price else "slides it over"
-        )
-        self.execute_cmd(
-            f"emote {craft}, sets {with_article(drink.key)} on {where}, "
-            f"and {closer}."
-        )
+        """Thin delegate — serve an order spoken to this keeper directly.
 
-    # --- bartender tool routing (over the shared LLM brain) ------------------
+        The board resolution and the gesture live in `world/bar.py` so any
+        post-holder reaches them; this remains as the named entry point for
+        a Bartender specifically.
+        """
+        from world.bar import fulfil_now
+        # No counter in the room? The keeper IS the board — their own
+        # `db.menu` answers and the drink lands where they stand.
+        return fulfil_now(self._find_bar() or self, order_text, patron, self)
+
+    def _is_conversational_order(self, speech):
+        """Would this overheard line be served? The detector moved into
+        `world.bar.resolve_order` with the rest of the board logic; this
+        remains as the named predicate."""
+        from world.bar import resolve_order
+        return resolve_order(self._find_bar() or self, speech,
+                             addressed=False) is not None
 
     def _run_context_tool(self, tool, arg, patron):
         """Extend the read-only tools with ``check_stock`` (``look`` is the

@@ -13,6 +13,7 @@ from evennia.utils.test_resources import BaseEvenniaTest
 
 import world.speech as speech
 import typeclasses.bar as barmod
+import world.bar as worldbar
 import typeclasses.llm_npc as llmnpc
 
 
@@ -567,11 +568,17 @@ class TestBartenderReaction(BaseEvenniaTest):
         )
 
     def test_addressed_order_fulfils(self):
+        """An addressed line reaches the POST's service handler.
+
+        What happens next is the handler's business and is covered
+        against real objects in test_served_at_the_counter; here we pin
+        that the intercept hands off rather than talking (#2350)."""
         b = self._bartender()
         speaker = object()
-        with patch.object(barmod, "delay") as mock_delay:
+        with patch("world.service.serve", return_value=True) as served:
             self._call(b, speaker, speech="a rotgut please", addressed=True)
-        mock_delay.assert_called_once()
+        served.assert_called_once()
+        self.assertTrue(served.call_args.kwargs["addressed"])
         b._acknowledge.assert_not_called()
 
     def test_unaddressed_speech_does_nothing(self):
@@ -721,13 +728,14 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
 
     def test_addressed_still_routes_to_order(self):
         b, spk = self._bartender(), self._speaker()
-        # the addressed→order delay fires in the bartender hook (bar module),
-        # before the LLM layer is even consulted.
-        with patch.object(barmod, "delay") as mock_delay:
+        # The addressed→order delay now fires in the SERVICE handler
+        # (world/bar.py), reached through the generic post intercept —
+        # the competence moved off the typeclass (#2350). Still before
+        # the LLM layer is consulted.
+        with patch("world.service.serve", return_value=True) as served:
             self._call(b, spk, speech="a rotgut", addressed=True)
-        mock_delay.assert_called_once()
-        # the addressed branch targets _fulfil_order, not the LLM layer
-        self.assertIs(mock_delay.call_args.args[1], b._fulfil_order)
+        served.assert_called_once()
+        self.assertTrue(served.call_args.kwargs["addressed"])
 
     # --- _try_llm_reply gating + payload ---
 
@@ -762,11 +770,22 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     # --- order-path fallback, render, fail-safe ---
 
     def test_order_no_recipe_llm_off_curt_line(self):
+        """A keeper who can't talk still answers.
+
+        The curt line used to live inside the order path; an addressed
+        non-order that resolves to nothing now falls THROUGH service and
+        would reach the voice — so with no voice it has to land on the
+        scripted fallback rather than silence (#2350)."""
         b, patron = self._bartender(llm_driven=False), self._speaker()
-        b._find_bar = lambda: None
-        b.db.menu = []
-        with patch.object(barmod, "match_recipe", return_value=None):
-            barmod.Bartender._fulfil_order(b, "a unicorn tear", patron)
+        b._is_gratitude = llmnpc.LLMNpcMixin._is_gratitude
+        b._llm_fallback = barmod.Bartender._llm_fallback.__get__(
+            b, barmod.Bartender)
+        with patch.object(llmnpc, "llm_enabled", return_value=False), \
+                patch("world.service.serve", return_value=False), \
+                patch("world.service.post_for", return_value=b.db.bar):
+            handled = llmnpc.LLMNpcMixin._handle_directed_speech(
+                b, "a unicorn tear", patron, {"addressed": True})
+        self.assertTrue(handled)
         b.execute_cmd.assert_any_call("say Don't serve that here.")
 
     def test_render_unified_pose(self):
@@ -1009,18 +1028,19 @@ class TestConversationalOrderRouting(BaseEvenniaTest):
         b._is_gratitude = lambda s: False
         b._is_conversational_order = lambda s: order
         b._classify_speech = lambda s, spk: kind
-        b._handle_directed_speech = barmod.Bartender._handle_directed_speech.__get__(
+        b._handle_directed_speech = llmnpc.LLMNpcMixin._handle_directed_speech.__get__(
             b, barmod.Bartender)
         return b
 
     def test_directed_order_routes_to_serve(self):
         b = self._bartender(order=True, kind="directed")
-        with patch.object(barmod, "delay") as d:
+        with patch("world.service.serve", return_value=True) as served:
             handled = b._handle_directed_speech("pour me a rotgut", MagicMock(),
                                                 {"addressed": False})
         self.assertTrue(handled)
-        # delay(1.5, self._fulfil_order, speech, speaker) — arg[1] is the callback
-        self.assertEqual(d.call_args.args[1], b._fulfil_order)
+        # overheard, so it reached service NOT as an addressed line — the
+        # handler then holds it to the stricter conversational standard
+        self.assertFalse(served.call_args.kwargs["addressed"])
 
     def test_ambient_order_not_served(self):
         # same order words, but overheard (not aimed at us) → falls through to LLM

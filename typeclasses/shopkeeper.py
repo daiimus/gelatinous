@@ -381,7 +381,7 @@ class Shopkeeper(LLMNpcMixin, Character):
 
     # --- deterministic spoken orders ---------------------------------
     def _handle_directed_speech(self, speech, speaker, kwargs):
-        from typeclasses.bar import GRATITUDE_TRIGGERS
+        from world.bar import GRATITUDE_TRIGGERS
         low = (speech or "").lower()
         if any(t in low for t in GRATITUDE_TRIGGERS):
             self._acknowledge()
@@ -433,7 +433,7 @@ class Shopkeeper(LLMNpcMixin, Character):
         scoring. Returns the prototype key, or the string "ambiguous" when
         two items tie (the keeper asks which)."""
         import re
-        from typeclasses.bar import ORDER_CUES, ORDER_FILLER
+        from world.bar import ORDER_CUES, ORDER_FILLER
         low = " ".join((speech or "").lower().split())
         if not low:
             return None

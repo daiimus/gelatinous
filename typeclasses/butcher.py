@@ -178,7 +178,7 @@ class Butcher(LLMNpcMixin, Character):
 
     @staticmethod
     def _is_gratitude(content):
-        from typeclasses.bar import GRATITUDE_TRIGGERS
+        from world.bar import GRATITUDE_TRIGGERS
         low = (content or "").lower()
         return any(trigger in low for trigger in GRATITUDE_TRIGGERS)
 
@@ -203,7 +203,7 @@ class Butcher(LLMNpcMixin, Character):
         ("a skewer."); a question without a cue ("is the stew any good?")
         is conversation, not an order. Returns the dish prototype key."""
         import re
-        from typeclasses.bar import ORDER_CUES, ORDER_FILLER
+        from world.bar import ORDER_CUES, ORDER_FILLER
         from world.food import FOOD_RECIPES
         low = " ".join((speech or "").lower().split())
         if not low:
