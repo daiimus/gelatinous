@@ -33,6 +33,7 @@ from world.bar import (
     match_recipe,
     resolve_drink,
     stockable_cocktails,
+    tender_at,
 )
 
 #: Price colour on the menu — the same burnt orange (XTERM-256 |520) the
@@ -80,6 +81,53 @@ class CmdBarMenu(Command):
                 f"  {label.ljust(width)}   {MENU_PRICE_COLOR}({price})|n"
             )
         self.caller.msg("\n".join(lines))
+
+
+class CmdOrder(Command):
+    """
+    Order something from whoever is working the counter.
+
+    Usage:
+        order <thing>
+
+    Says it aloud to the person behind the counter — the same as speaking
+    to them directly, without having to know their name. They make it,
+    set it down on the counter, and take the payment out of the gesture;
+    pick it up when it lands.
+
+    ``menu`` shows what's on the board. A counter with nobody working it
+    doesn't take orders.
+    """
+
+    key = "order"
+    locks = "cmd:all()"
+    help_category = "Bar"
+
+    def func(self):
+        caller = self.caller
+        bar = self.obj              # the counter this cmdset is attached to
+        speech = (self.args or "").strip()
+        if not speech:
+            caller.msg("Order what?")
+            return
+        location = caller.location
+        if location is None or bar.location is not location:
+            caller.msg("You aren't at the counter.")
+            return
+        tender = tender_at(bar)
+        if tender is None:
+            name = bar.get_display_name(caller)
+            caller.msg(f"There's nobody working {name}.")
+            return
+        # Ordering is just DIRECTED SPEECH with the targeting done for you.
+        # It rides the shared speech backbone rather than a private channel,
+        # so the room hears the order, perception applies as it does to any
+        # other spoken line, and the whole serve path — menu, off-menu
+        # mixing, price, till, emote — is reached exactly the way a patron
+        # who knew the tender's name would reach it (#2342).
+        from world.speech import broadcast_speech
+        caller.msg(f'You say to {tender.get_display_name(caller)}, "{speech}"')
+        broadcast_speech(caller, speech, location, target=tender)
 
 
 class CmdBarUse(Command):
@@ -278,6 +326,7 @@ class BarCmdSet(CmdSet):
 
     def at_cmdset_creation(self):
         self.add(CmdBarMenu())
+        self.add(CmdOrder())
         self.add(CmdBarUse())
         self.add(CmdBarPrepare())
         self.add(CmdBarClear())
@@ -539,6 +588,36 @@ class Bartender(LLMNpcMixin, Character):
         self.ndb.last_ack = now
         delay(1.0, self.execute_cmd, f"emote {random.choice(ACK_EMOTES)}")
 
+    def _make_order(self, recipe, loc):
+        """The order made physical, on the counter. Returns it, or None.
+
+        Two ways a board entry becomes a thing. A recipe naming a
+        ``proto`` is PLATED — the real prototype (the snail skewer, the
+        bowl of kuro) spawned onto the surface, so a kitchen serves the
+        same items the shelf sold and inherits everything they already
+        carry: nutrition, bites, taste, decay. Everything else is MIXED
+        from ingredients, the drink path this bar was built on.
+
+        One gesture either way, which is the point — a restaurant and a
+        bar differ in what comes out, not in how it reaches you (#2342).
+        """
+        proto = recipe.get("proto")
+        if not proto:
+            return make_drink_from_recipe(recipe, location=loc)
+        from evennia.prototypes.spawner import spawn
+        from evennia.utils import logger
+        try:
+            spawned = spawn(proto)
+        except Exception as err:  # noqa: BLE001
+            logger.log_err(f"Bartender: could not plate '{proto}': {err}")
+            return None
+        if not spawned:
+            logger.log_err(f"Bartender: nothing spawned for '{proto}'")
+            return None
+        dish = spawned[0]
+        dish.move_to(loc, quiet=True)
+        return dish
+
     def _fulfil_order(self, order_text, patron):
         if not self.location or getattr(patron, "location", None) is not self.location:
             return
@@ -561,7 +640,10 @@ class Bartender(LLMNpcMixin, Character):
             return
         # Make it on the bar surface, take the cash as part of the gesture.
         loc = bar if bar else self.location
-        drink = make_drink_from_recipe(recipe, location=loc)
+        drink = self._make_order(recipe, loc)
+        if drink is None:
+            self.execute_cmd("say That's off tonight.")
+            return
         if price:
             patron.tokens = have - price
             if bar:

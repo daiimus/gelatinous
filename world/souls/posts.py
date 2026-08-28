@@ -105,8 +105,8 @@ def off_duty_keepers_present(post):
     return out
 
 
-def any_keeper_present(fixture) -> bool:
-    """Is the shift that's actually RUNNING being stood?
+def keeper_on_duty(fixture):
+    """WHO is standing the shift that's actually RUNNING, or None.
 
     Two conditions, and both matter: somebody must be here, and it must
     be their shift. Presence alone used to be enough, which meant a
@@ -118,6 +118,11 @@ def any_keeper_present(fixture) -> bool:
     That one means "does this person still hold this job", which the
     succession sweep needs to be true around the clock, or every
     off-shift slot would read vacant and get refilled by morning.
+
+    The object form exists because two callers need the person, not the
+    fact: the `order` command has to address them, and the souls planner
+    has to decide whether an order is worth the walk. Both read the
+    clock through here, so neither can drift from the till's answer.
     """
     room = _post_room(fixture)
     now_shift = current_shift()
@@ -127,12 +132,18 @@ def any_keeper_present(fixture) -> bool:
         if shift != now_shift:
             continue
         if keeper is not None and keeper.pk and keeper.location == room:
-            return True
+            return keeper
     if slots:
-        return False              # a shift-staffed counter answers to the clock
+        return None               # a shift-staffed counter answers to the clock
     legacy = fixture.db.post_keeper
-    return bool(legacy is not None and legacy.pk
-                and legacy.location == room)
+    if legacy is not None and legacy.pk and legacy.location == room:
+        return legacy
+    return None
+
+
+def any_keeper_present(fixture) -> bool:
+    """Is the running shift being stood? The fact, from `keeper_on_duty`."""
+    return keeper_on_duty(fixture) is not None
 
 
 def _slot_held(post, shift, slot) -> bool:

@@ -185,6 +185,92 @@ def _edible_wares(counter):
             if _is_edible_proto(proto_key) and _in_stock(counter, proto_key)]
 
 
+def _board_of(fixture):
+    """The MENU a tender serves off this fixture, [] if it has none.
+
+    A board is what separates a place that serves you from a place that
+    sells to you. Shops have a shelf (`prototype_inventory`); bars and
+    restaurants have this."""
+    return list(getattr(fixture.db, "menu", None) or [])
+
+
+def _order_word(entry):
+    """The single word a soul says to ask for a board entry."""
+    keywords = entry.get("order_keywords") or (entry.get("name", ""),)
+    return next((k for k in keywords if k), entry.get("name", ""))
+
+
+def _board_food(fixture):
+    """[(entry, price)] for board entries that actually NOURISH.
+
+    Asked of the plated prototype where there is one — the same question
+    `_edible_wares` asks of a shelf, so a dish cannot be food on the
+    board and not food in the hand — else of the recipe's own dose. A
+    bar's drinks and its free snacks both fail this, which is why a
+    hungry soul walks past a counter that only pours."""
+    out = []
+    for entry in _board_of(fixture):
+        proto = entry.get("proto")
+        nourishes = (_is_edible_proto(proto) if proto
+                     else bool((entry.get("effects") or {}).get("nutrition")))
+        if nourishes:
+            out.append((entry, int(entry.get("price", 0) or 0)))
+    return out
+
+
+def _board_vice(fixture, craved):
+    """[((entry, verb), price)] for board entries carrying the craved
+    substance. A plated dish answers through the prototype registry; a
+    mixed drink carries its dose inline, on the recipe."""
+    out = []
+    for entry in _board_of(fixture):
+        proto = entry.get("proto")
+        if proto:
+            verb, subs = _vice_info(proto)
+        else:
+            verb, subs = "drink", frozenset(entry.get("effects") or {})
+        if verb and _sub_matches(subs, craved):
+            out.append(((entry, verb), int(entry.get("price", 0) or 0)))
+    return out
+
+
+def _pick_ware(soul, pairs):
+    """Which of these a soul reaches for, or None if none is affordable.
+
+    The cheapest thing that does the job, unless an Open-Valve price
+    ceiling says otherwise — that soul buys the best they can afford
+    rather than the least they can get away with. Shared by every door
+    so the shelf, the board and the cart all read a wallet the same
+    way; it used to be written out once per door, which is exactly how
+    doors drift apart."""
+    purse = int(soul.tokens or 0)
+    affordable = [pair for pair in pairs if pair[1] <= purse]
+    if not affordable:
+        return None
+    from world.souls import traits as traits_mod
+    if traits_mod.dial(soul, "price_ceiling", 1.0) > 1.0:
+        return max(affordable, key=lambda pair: pair[1])
+    return min(affordable, key=lambda pair: pair[1])
+
+
+def _tender_for(soul, fixture):
+    """The tender a soul could order from here, or None. Wraps the shared
+    reading so the planner and the `order` command agree about who is
+    working — and refuses a tender the soul cannot see, because you
+    cannot order from someone you have no idea is there."""
+    from world.bar import tender_at
+    tender = tender_at(fixture)
+    if tender is None:
+        return None
+    try:
+        from world.perception import can_perceive
+        if not can_perceive(soul, tender):
+            return None
+    except Exception:  # noqa: BLE001 — perception is a filter, not a gate
+        pass
+    return tender
+
+
 _vice_memo = {}                # proto_key -> (verb or None, substances)
 
 
@@ -410,6 +496,98 @@ def recovery_bay(soul):
     return soul.db.soul_post or soul.db.soul_home
 
 
+def _feed_at(soul, fixture, shape):
+    """The steps that would feed this soul AT THIS FIXTURE, or None.
+
+    Three doors, and the VENUE decides which one opens: a tended board
+    is ORDERED from, a serving fixture is GRAZED, a shelf is BOUGHT
+    from. The door used to be chosen by the soul's species profile
+    instead, which is how sixteen colonists could stand in a restaurant
+    and starve — only a recluse knew how to be served, and only a shelf
+    would sell to anybody (#2342).
+
+    `shape` still narrows it: a recluse grazes and does nothing else.
+    Their food is plumbed into the seal, and walking to a counter is the
+    one thing their story doesn't allow.
+    """
+    if shape != "graze":
+        board = _board_food(fixture)
+        # Ask the SAME question the till asks — "is anyone's shift-holder
+        # standing here" — so the planner and the counter can never
+        # disagree about whether a place is open (#2142).
+        if board and _counter_open(fixture):
+            tender = _tender_for(soul, fixture)
+            pick = _pick_ware(soul, board) if tender is not None else None
+            if pick is not None:
+                entry, _price = pick
+                return [
+                    {"do": "order", "counter": fixture.id,
+                     "tender": tender.id, "word": _order_word(entry),
+                     "want": entry.get("name", "")},
+                    {"do": "pickup", "counter": fixture.id, "verb": "eat",
+                     "want": entry.get("name", "")},
+                    {"do": "eat"},
+                ]
+    # sealed-biome feeding (spec §12 recluse, #2074): a serving fixture
+    # (db.snacks with nutrition) eaten through the REAL eat verb — the
+    # same membrane, gates and pharmacology a player in the room hits
+    entry = next((s for s in (fixture.db.snacks or [])
+                  if (s.get("effects") or {}).get("nutrition")), None)
+    if entry is not None:
+        return [{"do": "graze", "fixture": fixture.id,
+                 "word": _order_word(entry)}]
+    if shape == "graze":
+        return None
+    if not _counter_open(fixture):
+        return None      # regulars know the hours: a shuttered counter
+                         # isn't worth the walk
+    pick = _pick_ware(soul, _edible_wares(fixture))
+    if pick is None:
+        return None
+    proto, price = pick
+    return [
+        {"do": "buy", "counter": fixture.id, "proto": proto, "price": price},
+        {"do": "eat"},
+    ]
+
+
+def _indulge_at(soul, fixture, craved):
+    """The steps that would answer this craving AT THIS FIXTURE, or None.
+
+    The same two doors as food, chosen the same way. A bar is where a
+    drink comes from, and until now the addicts of this colony could
+    only buy bottles off a shop shelf — nobody could pour them one."""
+    board = _board_vice(fixture, craved)
+    if board and _counter_open(fixture):
+        tender = _tender_for(soul, fixture)
+        pick = _pick_ware(soul, board) if tender is not None else None
+        if pick is not None:
+            (entry, verb), _price = pick
+            return [
+                {"do": "order", "counter": fixture.id, "tender": tender.id,
+                 "word": _order_word(entry), "want": entry.get("name", "")},
+                {"do": "pickup", "counter": fixture.id, "verb": verb,
+                 "want": entry.get("name", "")},
+                {"do": "consume", "verb": verb},
+            ]
+    if not _counter_open(fixture):
+        return None                        # shuttered: cravings wait
+    wares = [((proto_key, verb), price)
+             for proto_key, price
+             in (fixture.db.prototype_inventory or {}).items()
+             for verb, subs in (_vice_info(proto_key),)
+             if verb and _sub_matches(subs, craved)
+             and _in_stock(fixture, proto_key)]
+    pick = _pick_ware(soul, wares)
+    if pick is None:
+        return None
+    (proto, verb), price = pick
+    return [
+        {"do": "buy", "counter": fixture.id, "proto": proto, "price": price},
+        {"do": "consume", "verb": verb},
+    ]
+
+
 def plan_for(soul, goal_need):
     """Return a job dict for the winning goal, or None (-> fault).
 
@@ -469,53 +647,12 @@ def plan_for(soul, goal_need):
         from world.consumables import supports_delivery
         if any(supports_delivery(o, "eat") for o in soul.contents):
             return {"goal": "hunger", "steps": [{"do": "eat"}], "at": 0}
-        if needs_mod.shape_of(soul, "hunger") == "graze":
-            # sealed-biome feeding (spec §12 recluse, #2074): a serving
-            # fixture (db.snacks with nutrition) eaten through the REAL
-            # eat verb — the same membrane, gates, and pharmacology a
-            # player standing in the room would hit
-            for score, fixture, room in _advertisers(soul, "hunger"):
-                entry = next(
-                    (s for s in (fixture.db.snacks or [])
-                     if (s.get("effects") or {}).get("nutrition")), None)
-                if entry is None:
-                    continue
-                word = (entry.get("order_keywords")
-                        or (entry.get("name", ""),))[0]
-                return {"goal": "hunger", "steps": [
-                    {"do": "travel", "room": room.id},
-                    {"do": "graze", "fixture": fixture.id, "word": word},
-                ], "at": 0}
-            return None
-        for score, counter, room in _advertisers(soul, "hunger"):
-            # regulars know the hours: a shuttered counter isn't worth
-            # the walk. Ask the SAME question the shop asks — "is
-            # anyone's shift-holder standing here" — rather than the
-            # legacy single-keeper mirror, which had souls skipping
-            # counters that would have served them and walking to ones
-            # that wouldn't (#2142).
-            if not _counter_open(counter):
-                continue
-            wares = _edible_wares(counter)
-            if not wares:
-                continue
-            proto, price = min(wares, key=lambda kv: kv[1])
-            from world.souls import traits as traits_mod
-            ceiling = traits_mod.dial(soul, "price_ceiling", 1.0)
-            if ceiling > 1.0:
-                # Open-Valve buys the best they can afford, not the cheapest
-                affordable = [w for w in wares
-                              if w[1] <= int(soul.tokens or 0)]
-                if affordable:
-                    proto, price = max(affordable, key=lambda kv: kv[1])
-            if (soul.tokens or 0) < price:
-                continue                       # broke: try cheaper advertiser
-            return {"goal": "hunger", "steps": [
-                {"do": "travel", "room": room.id},
-                {"do": "buy", "counter": counter.id, "proto": proto,
-                 "price": price},
-                {"do": "eat"},
-            ], "at": 0}
+        shape = needs_mod.shape_of(soul, "hunger")
+        for score, fixture, room in _advertisers(soul, "hunger"):
+            steps = _feed_at(soul, fixture, shape)
+            if steps:
+                return {"goal": "hunger", "at": 0, "steps":
+                        [{"do": "travel", "room": room.id}] + steps}
         # the desperate fallback (spec §2 disposition gates): a LAWLESS
         # soul that cannot afford to eat turns predator — grapple, lift
         # a cut of the mark's tokens, disengage. Lawful souls simply
@@ -558,26 +695,11 @@ def plan_for(soul, goal_need):
         craved = craved or "alcohol"   # pre-habit misery reaches for drink
         if not _permits(soul, "craving", ("indulgence",)):
             return None                # they know what it costs
-        for score, counter, room in _advertisers(soul, "vice"):
-            if not _counter_open(counter):
-                continue                       # shuttered: cravings wait
-            wares = [(price, proto_key, verb)
-                     for proto_key, price
-                     in (counter.db.prototype_inventory or {}).items()
-                     for verb, subs in (_vice_info(proto_key),)
-                     if verb and _sub_matches(subs, craved)
-                     and _in_stock(counter, proto_key)]
-            if not wares:
-                continue
-            price, proto, verb = min(wares)
-            if (soul.tokens or 0) < price:
-                continue
-            return {"goal": "craving", "steps": [
-                {"do": "travel", "room": room.id},
-                {"do": "buy", "counter": counter.id, "proto": proto,
-                 "price": price},
-                {"do": "consume", "verb": verb},
-            ], "at": 0}
+        for score, fixture, room in _advertisers(soul, "vice"):
+            steps = _indulge_at(soul, fixture, craved)
+            if steps:
+                return {"goal": "craving", "at": 0, "steps":
+                        [{"do": "travel", "room": room.id}] + steps}
         # a broke addict with lawless hands robs for the fix — the same
         # knife, mark, and mood gate as hunger (misery is the mechanism)
         if soul.db.soul_lawless:
