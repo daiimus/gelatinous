@@ -379,9 +379,24 @@ claims the body only when nothing more urgent does (in practice: a
 critical battery walks it to the cradle between assignments). Two
 systems never fight over one body.
 
-**Companions are excluded** from ensoulment for now: Vesper's agentic
+~~**Companions are excluded** from ensoulment for now: Vesper's agentic
 tool loop is its own driver, and the handshake between that loop and
-a soul belongs to the §3.5 soul↔soul work, not to phase 3.
+a soul belongs to the §3.5 soul↔soul work, not to phase 3.~~
+
+> **REVERSED — owner ruling 2026-08-28:** *"Vesper/Companions can be
+> shift workers too."* There is no LLM-NPC exemption from ensoulment.
+>
+> The paragraph above was wrong about the shape of the thing: an agentic
+> tool loop is not a *driver*, it is a voice that happens to be able to
+> act. It read as a driver only because it is the one voice with hands.
+> The precedence law has three tiers — combat > director > souls — and
+> the LLM appears in none of them, by construction.
+>
+> Cost while it stood: `world/souls/posts.py::_slot_held` carries a
+> branch letting an UNSOULED cast member hold a post by presence, so the
+> vacancy watcher would not resleeve a second Vesper while the first was
+> standing there (#2132). That branch exists only to support this
+> exclusion and goes when she is ensouled.
 
 ## 13 · Succession, phase P4a — the post survives its keeper
 
