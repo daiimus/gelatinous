@@ -308,7 +308,19 @@ def _wearable(soul, obj):
     check = getattr(obj, "is_wearable", None)
     if not callable(check) or not check():
         return False
-    return not soul.is_item_worn(obj)
+    if soul.is_item_worn(obj):
+        return False
+    # ...and it has to actually GO ON. A layer-0 garment cannot be put
+    # on over what is already worn, so picking one meant issuing a
+    # command that could only ever be refused (#2337). The rule lives
+    # in clothing_mixin; this asks rather than re-deriving it.
+    ask = getattr(soul, "can_wear_now", None)
+    if callable(ask):
+        try:
+            return bool(ask(obj))
+        except Exception:  # noqa: BLE001 — unanswerable means don't pick it
+            return False
+    return True
 
 
 def _find_mark(soul, min_tokens=3, radius=30):

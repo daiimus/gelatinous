@@ -28,6 +28,42 @@ class ClothingMixin:
         - Reads ``self.hands`` (AttributeProperty on Character) during wear_item.
     """
 
+    def blocking_garments(self, item):
+        """Worn garments that would stop *item* going on right now.
+
+        The layering rule lived only inside `wear_item`, so the only
+        way to ask "can this go on" was to TRY it and read the refusal.
+        Souls did exactly that: the wardrobe planner picked a layer-0
+        garment, the wear step issued the command, the command refused,
+        and it looped -- Noel Dudnik and Jordan Esparza spent days
+        trying to put socks on over their slippers (#2337).
+
+        One rule, one place, two callers: `wear_item` enforces it and
+        the souls layer consults it before choosing.
+
+        Returns a list of the worn items in the way (empty = it fits).
+        """
+        blockers = []
+        worn = self.worn_items or {}
+        try:
+            coverage = item.get_current_coverage()
+        except Exception:  # noqa: BLE001 — an odd item simply doesn't fit
+            return [item]
+        item_layer = getattr(item, "layer", 2)
+        for location in coverage:
+            for worn_item in worn.get(location, ()):
+                worn_layer = getattr(worn_item, "layer", 2)
+                # same layer in the same place, or trying to go UNDER
+                # something already on -- both refused by wear_item
+                if worn_layer == item_layer or item_layer < worn_layer:
+                    if worn_item not in blockers:
+                        blockers.append(worn_item)
+        return blockers
+
+    def can_wear_now(self, item) -> bool:
+        """Whether *item* would go on over what is already worn."""
+        return not self.blocking_garments(item)
+
     def wear_item(
         self, item, *,
         on_committed=None,
