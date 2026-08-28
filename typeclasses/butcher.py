@@ -159,42 +159,9 @@ class Butcher(LLMNpcMixin, Character):
         return ["butcher", "meatcutter", "grinder"]
 
     # --- deterministic dish orders (the bartender pattern, #1235) --------
-    def _handle_directed_speech(self, speech, speaker, kwargs):
-        """A spoken dish order serves FOR REAL off the cart — the exact
-        bartender split: addressed lines and clear conversational orders go
-        to the deterministic serve (which falls back to the LLM for
-        non-orders); the model never invents prices or narrates a serve."""
-        if self._is_gratitude(speech):
-            self._acknowledge()
-            return True
-        if kwargs.get("addressed"):
-            delay(1.5, self._fulfil_dish_order, speech, speaker)
-            return True
-        if (self._match_dish_order(speech) is not None
-                and self._classify_speech(speech, speaker) == "directed"):
-            delay(1.5, self._fulfil_dish_order, speech, speaker)
-            return True
-        return False
-
-    @staticmethod
-    def _is_gratitude(content):
-        from world.bar import GRATITUDE_TRIGGERS
-        low = (content or "").lower()
-        return any(trigger in low for trigger in GRATITUDE_TRIGGERS)
-
-    def _acknowledge(self):
-        """A throttled non-verbal nod to thanks (the bartender's ack shape)."""
-        from time import monotonic
-        from random import choice
-        now = monotonic()
-        if now - (self.ndb.last_ack or 0) < 6.0:
-            return
-        self.ndb.last_ack = now
-        delay(1.0, self.execute_cmd, "emote " + choice((
-            "tips her cleaver a bare inch off the board in acknowledgement.",
-            "gives a single downward nod, already back at the cut.",
-            "grunts once, which from her is a toast.",
-        )))
+    # The intercept and the gratitude nod moved off this class (#2350) —
+    # they are the shape of the job, and the job lives on the post. The
+    # cart's own serve is `world/shop/service.serve_from_board_cart`.
 
     def _match_dish_order(self, speech):
         """Resolve spoken words to a dish the CART actually sells, using the
@@ -234,36 +201,19 @@ class Butcher(LLMNpcMixin, Character):
         return matched if not remainder else None
 
     def _fulfil_dish_order(self, order_text, patron):
-        """Serve a spoken order off the cart for real: stock + tokens checked,
-        the dish spawned to the patron, the till credited — all through the
-        cart's own purchase path. Non-orders fall through to conversation."""
-        if not self.location or getattr(patron, "location", None) is not self.location:
-            return
+        """Serve immediately, no delay — the named entry point for a
+        butcher asked directly. Stock, tokens and the till all ride the
+        cart's own purchase path; non-orders fall through to talk."""
+        from world.shop.service import _fulfil_from_shelf
         cart = self._find_block()
         proto = self._match_dish_order(order_text)
         if not proto or cart is None:
             if not self._try_llm_reply(order_text, patron, "directed",
                                        on_fail=self._llm_fallback):
                 self.execute_cmd("say Board's behind me. It says what I sell.")
-            return
-        if int((cart.db.item_inventory or {}).get(proto, 0) or 0) <= 0:
-            self.execute_cmd("say Board's out of that. Bring me a rat and "
-                             "it won't be.")
-            return
-        price = int(cart.get_price(proto) or 0)
-        have = int(getattr(patron, "tokens", 0) or 0)
-        if price and have < price:
-            self.execute_cmd(f"say That's {price}. Come back when you've "
-                             "got it.")
-            return
-        ok, result = cart.purchase_item(patron, proto)
-        if not ok:
-            self.execute_cmd("say Cart says no. Take it up with the cart.")
-            return
-        self.execute_cmd(
-            f"emote sets {with_article(result.key)} on the board and sweeps "
-            f"{price} into the till."
-        )
+            return False
+        _fulfil_from_shelf(cart, proto, patron, self, style="board")
+        return True
 
     def _llm_fallback(self):
         """Sidecar down on an addressed non-order: the curt scripted line."""

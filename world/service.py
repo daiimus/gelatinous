@@ -36,7 +36,7 @@ SERVICE = {}
 #: registration has to have HAPPENED before the first patron speaks, and
 #: nothing else guarantees these are imported by then. Handlers still live
 #: with the state they read; only the import lives here.
-PROVIDERS = ("world.bar",)
+PROVIDERS = ("world.bar", "world.shop.service")
 
 _loaded = False
 
