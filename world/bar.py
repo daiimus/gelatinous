@@ -12,6 +12,7 @@ All drink/ingredient content authored here is original to the colony.
 import re
 
 from evennia import create_object
+from evennia.utils import delay
 
 from world.grammar import with_article
 
@@ -766,6 +767,191 @@ def tender_at(fixture):
     return None
 
 
+#: covers thanks/thank you/thank ya, 'obliged' covers much obliged, etc.
+GRATITUDE_TRIGGERS = (
+    "thank", "cheers", "obliged", "appreciate", "good look", "nice one",
+    "ta for", "much love",
+)
+
+#: Non-verbal acknowledgements — Sully's taciturn, so he answers with a gesture
+#: rather than words. Phrased as emote actions (the identity system prepends his
+#: per-observer name).
+ACK_EMOTES = (
+    "tips his chin a fraction, not looking up from the taps.",
+    "raises two fingers off the slab in a flat, unhurried salute.",
+    "grunts once, low, and keeps wiping down a glass.",
+    "gives a single slow nod, the kind that's already moved on to the next thing.",
+    "knocks two knuckles against the slab and lets that be the answer.",
+)
+
+#: Minimum seconds between acknowledgements, so a chatty room doesn't spam them.
+ACK_COOLDOWN = 6.0
+
+#: Imperative cues that mark spoken words as a drink ORDER (vs a casual mention).
+#: A DETERMINISTIC conversational order — spoken to the bartender in open speech,
+#: not just the formal `to del, whiskey` form — routes to the real serve path so
+#: a real order never rides on the model's flaky prepare_drink tool roll.
+ORDER_CUES = (
+    "pour", "gimme", "give me", "get me", "make me", "fix me", "grab me",
+    "i'll have", "i'll take", "i will have", "lemme get", "let me get",
+    "let me have", "hit me with", "set me up", "line me up", "can i get",
+    "can i have", "i'd like", "i would like", "i want", "i need a", "another",
+)
+
+#: Throwaway words around a BARE order ("whiskey, neat") — strip these and the
+#: drink's own keywords; if nothing meaningful is left, the whole line WAS the
+#: order (so "whiskey ruined me" — remainder "ruined" — is correctly NOT one).
+ORDER_FILLER = frozenset((
+    "a", "an", "the", "one", "some", "of", "glass", "mug", "shot", "shots",
+    "pint", "double", "single", "neat", "straight", "up", "rocks", "on",
+    "cold", "chilled", "stiff", "tall", "please", "thanks", "cheers", "and",
+    "with", "ice", "make", "it", "me", "just", "yeah", "gimme", "another",
+    "round",
+))
+
+
+def plate_or_mix(recipe, loc):
+    """The order made physical, on the counter. Returns it, or None.
+
+    A recipe naming a ``proto`` is PLATED — the real prototype spawned
+    onto the surface, so a kitchen serves the same items the shelf sold.
+    Everything else is MIXED from ingredients, the drink path the bar was
+    built on. One gesture either way (#2342)."""
+    proto = recipe.get("proto")
+    if not proto:
+        return make_drink_from_recipe(recipe, location=loc)
+    from evennia.prototypes.spawner import spawn
+    from evennia.utils import logger
+    try:
+        spawned = spawn(proto)
+    except Exception as err:  # noqa: BLE001
+        logger.log_err(f"bar: could not plate '{proto}': {err}")
+        return None
+    if not spawned:
+        logger.log_err(f"bar: nothing spawned for '{proto}'")
+        return None
+    dish = spawned[0]
+    dish.move_to(loc, quiet=True)
+    return dish
+
+
+def _bare_order(low, recipe):
+    """Is this line ONLY the order — the drink plus filler, nothing else?"""
+    import re
+    words = set()
+    for kw in recipe.get("order_keywords", (recipe.get("name", ""),)):
+        words.update(kw.lower().split())
+    words.update(recipe.get("name", "").lower().split())
+    return not [w for w in re.findall(r"[a-z']+", low)
+                if w not in words and w not in ORDER_FILLER]
+
+
+def resolve_order(post, speech, addressed=False):
+    """The board entry this line orders, or None.
+
+    An ADDRESSED line only has to match the board. An overheard one must
+    clear a conservative bar — no question mark, and either an imperative
+    cue or a line that is nothing but the order — so table talk about
+    whiskey doesn't get somebody poured one.
+    """
+    low = " ".join((speech or "").lower().split())
+    if not low:
+        return None
+    recipe, _offmenu = resolve_drink(low, post)
+    if not recipe:
+        return None
+    if addressed:
+        return recipe
+    if "?" in low:
+        return None
+    if any(cue in low for cue in ORDER_CUES) or _bare_order(low, recipe):
+        return recipe
+    return None
+
+
+def serve_from_board(post, speech, patron, by, addressed=False):
+    """Take an order at a counter that keeps a board. True if claimed.
+
+    The service shape shared by every venue with a menu — a bar, a
+    restaurant, a noodle window. Registered against the ROLES that wear
+    it rather than living on a typeclass, because the competence belongs
+    to the post: the Hub and Howl's swing and night keepers hold the
+    bartender post and stand behind the bar, and could not pour a drink,
+    because `_fulfil_order` was welded to a class they are not (#2350).
+
+    The match is synchronous — the caller needs to know NOW whether to
+    stay quiet — and only the gesture is delayed, so the tender takes a
+    beat to make it rather than answering and pouring in the same breath.
+    """
+    recipe = resolve_order(post, speech, addressed)
+    if recipe is None:
+        return False               # not an order — let the voice answer
+    delay(1.5, _fulfil_from_board, post, recipe, patron, by)
+    return True
+
+
+def fulfil_now(post, speech, patron, by):
+    """Serve an order immediately, no delay. True if it was one.
+
+    The named entry point for a keeper asked directly, where the caller
+    has already paid the beat.
+    """
+    recipe = resolve_order(post, speech, addressed=True)
+    if recipe is None:
+        return False
+    _fulfil_from_board(post, recipe, patron, by)
+    return True
+
+
+def _surface(post, by):
+    """Where a served item is set down.
+
+    A counter is its own surface. A post that IS a room has none, so the
+    floor of that room serves. And a keeper acting as their own board —
+    no counter in the room at all — sets it down where they stand, never
+    inside themselves.
+    """
+    if post is None or post is by:
+        return getattr(by, "location", None)
+    if getattr(post, "location", None) is None:
+        return post                     # the post is the room
+    return post
+
+
+def _fulfil_from_board(post, recipe, patron, by):
+    """Make it, set it down, take the cash — one wordless gesture."""
+    from world.grammar import with_article
+    if getattr(patron, "location", None) is not getattr(by, "location", None):
+        return
+    surface = _surface(post, by)
+    if surface is None:
+        return
+    price = int(recipe.get("price", 0) or 0)
+    have = int(getattr(patron, "tokens", 0) or 0)
+    if price and have < price:
+        by.execute_cmd(f"say That's {price}. Come back when you've got it.")
+        return
+    drink = plate_or_mix(recipe, surface)
+    if drink is None:
+        by.execute_cmd("say That's off tonight.")
+        return
+    if price:
+        patron.tokens = have - price
+        # Sale proceeds must not vanish from the economy — but only a
+        # counter that KEEPS a till gets credited (the FoodCart lesson).
+        if getattr(surface.db, "register", None) is not None:
+            surface.db.register = int(surface.db.register or 0) + price
+    # Routed through `emote` so the keeper renders by per-observer identity
+    # (a stranger sees "a lean man", not "Sully"), and no price is spoken:
+    # the swept payment says it. A free drink just gets slid over.
+    craft = recipe.get("craft", "fixes the drink")
+    where = surface.key if surface is not None else "the bar"
+    closer = ("sweeps the payment off the slab with a practiced hand"
+              if price else "slides it over")
+    by.execute_cmd(f"emote {craft}, sets {with_article(drink.key)} on "
+                   f"{where}, and {closer}.")
+
+
 def match_snack(text, snacks):
     """Find the first snack whose keywords appear in `text`. Returns dict/None."""
     if not text or not snacks:
@@ -854,3 +1040,13 @@ HUB_AND_HOWL_MENU = [
         "craft": "draws a scalding measure straight from the battered caf urn",
     },
 ]
+
+
+# --- service registration (world/service.py) -------------------------------
+# The board shape, bound to the ROLES that wear it. `snailer` is the
+# Snailery's own word for the same job — the vocabulary is content, and
+# normalising it is not worth a migration (#2350).
+from world.service import register as _register_service  # noqa: E402
+
+for _role in ("bartender", "snailer"):
+    _register_service(_role, serve_from_board)

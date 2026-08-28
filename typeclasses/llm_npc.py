@@ -93,9 +93,62 @@ class LLMNpcMixin:
         return True
 
     def _handle_directed_speech(self, speech, speaker, kwargs):
-        """Hook: a subclass intercepts addressed/special speech before the LLM
-        layer (a bartender's orders/gratitude). Return True if fully handled."""
+        """Service before conversation — the generic intercept (#2350).
+
+        Whoever stands a post can be asked to do the job, and what
+        typeclass they are does not enter into it. This used to be a bare
+        hook that four venue classes each overrode with their own copy of
+        one shape, so an NPC holding the bartender post while being a
+        plain `LLMNpc` could not serve at all: the Hub and Howl's swing
+        and night keepers stood behind the bar for two thirds of every
+        day unable to pour a drink.
+
+        Gratitude is checked FIRST, so "thanks for the rotgut" reads as a
+        thank-you rather than a fresh order. Then the post's own handler
+        decides, and a refusal falls through to the voice — which is how
+        "what's good tonight?" stays conversation.
+        """
+        if self._is_gratitude(speech):
+            self._acknowledge()
+            return True
+        from world import service
+        addressed = bool(kwargs.get("addressed"))
+        # An overheard line must be plausibly aimed HERE before the post
+        # gets a look at it; the handler applies its own stricter test on
+        # top, so table talk about whiskey doesn't get somebody poured one.
+        if not addressed and self._classify_speech(speech, speaker) != "directed":
+            return False
+        if service.serve(self, speech, speaker, addressed=addressed):
+            return True
+        # Addressed, standing a post, and it wasn't a service request. With a
+        # voice this is simply conversation. WITHOUT one it used to be
+        # silence — the keeper stared back — because the curt scripted line
+        # lived inside the old order path we just left. A counter that can't
+        # talk still has to answer (#2350).
+        if (addressed and not llm_enabled()
+                and service.post_for(self) is not None
+                and hasattr(self, "_llm_fallback")):
+            self._llm_fallback()
+            return True
         return False
+
+    @staticmethod
+    def _is_gratitude(content):
+        """Thanks, in any of the ways the colony says it."""
+        from world.bar import GRATITUDE_TRIGGERS
+        low = (content or "").lower()
+        return any(trigger in low for trigger in GRATITUDE_TRIGGERS)
+
+    def _acknowledge(self):
+        """A throttled, non-verbal nod to thanks."""
+        import random
+        from time import monotonic
+        from world.bar import ACK_COOLDOWN, ACK_EMOTES
+        now = monotonic()
+        if now - (self.ndb.last_ack or 0) < ACK_COOLDOWN:
+            return
+        self.ndb.last_ack = now
+        delay(1.0, self.execute_cmd, f"emote {random.choice(ACK_EMOTES)}")
 
     # --- classification --------------------------------------------------
     def _is_npc_speaker(self, speaker):

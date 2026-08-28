@@ -265,6 +265,58 @@ class TestTakingWhatWasSetDown(_CounterTest):
         self.assertNotIn("rotgut", self.said[0])
 
 
+class TestHoldingThePostIsTheQualification(_CounterTest):
+    """The Hub and Howl bug (#2350).
+
+    Its swing and night keepers hold the bartender post, carry
+    `soul_role='bartender'`, stand behind the bar — and could not pour a
+    drink, because `_fulfil_order` was welded to a class they are not.
+    Two thirds of every day, the busiest bar in the colony could not
+    serve. Competence belongs to the post.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from world.souls.posts import register_post
+        self.tender.delete()
+        # a bare LLMNpc — no Bartender class in sight
+        self.plain = create_object("typeclasses.llm_npc.LLMNpc",
+                                   key="Bianca", location=self.room1)
+        register_post(self.counter, "bartender", shifts=("day",))
+        self.counter.db.post_slots = {
+            "day": {"keeper": self.plain, "vacant_since": None}}
+
+    def _speak(self, line, addressed=True):
+        with mock.patch("world.souls.posts.current_shift",
+                        return_value="day"):
+            return self.plain._handle_directed_speech(
+                line, self.patron, {"addressed": addressed})
+
+    def test_a_plain_npc_on_the_post_serves(self):
+        self.assertTrue(self._speak("a skewer"))
+
+    def test_and_the_dish_actually_lands(self):
+        from world.bar import fulfil_now
+        with mock.patch("world.souls.posts.current_shift",
+                        return_value="day"):
+            self.assertTrue(
+                fulfil_now(self.counter, "skewer", self.patron, self.plain))
+        self.assertTrue(any(supports_delivery(o, "eat")
+                            for o in self.counter.contents))
+
+    def test_conversation_is_still_conversation(self):
+        """A refusal falls through to the voice — the post only claims
+        what it can actually serve."""
+        self.assertFalse(self._speak("long night?"))
+
+    def test_off_shift_the_post_does_not_answer(self):
+        with mock.patch("world.souls.posts.current_shift",
+                        return_value="night"):
+            handled = self.plain._handle_directed_speech(
+                "a skewer", self.patron, {"addressed": True})
+        self.assertFalse(handled)
+
+
 class TestWhoIsWorkingTheCounter(_CounterTest):
     """One reading of the question, so the command and the planner
     cannot disagree with the till."""
