@@ -81,7 +81,7 @@ class TestTakingTheChair(_SeatCase):
 
     def test_already_seated_does_not_re_sit_every_beat(self):
         _run_sit(self.soul, self.chair)
-        self.soul.ndb.seated_by_shift = True
+        self.soul.db.seated_by_shift = True
         with mock.patch.object(type(self.soul), "execute_cmd") as ran:
             _take_the_post(self.soul)
         ran.assert_not_called()
@@ -112,7 +112,7 @@ class TestTakingTheChair(_SeatCase):
 class TestGivingItBack(_SeatCase):
     def test_ending_the_shift_stands_up(self):
         _run_sit(self.soul, self.chair)
-        self.soul.ndb.seated_by_shift = True
+        self.soul.db.seated_by_shift = True
         with mock.patch.object(type(self.soul), "execute_cmd") as ran:
             _leave_the_post(self.soul)
         ran.assert_called_once_with("stand")

@@ -380,6 +380,19 @@ def think(soul, hour):
             jobs.step_job(soul)
             return
 
+    # RECONCILE the placement, do not merely catch the transition.
+    # Both release sites fire only when the soul is holding a `duty`
+    # job at the moment the shift lapses; a keeper whose block ended
+    # while they were eating kept standing behind their counter, from
+    # across town (#2339). State that must be true is cheaper to check
+    # than an event that must be caught.
+    if soul.db.placed_by_shift:
+        post = soul.db.soul_post
+        at_post = post is not None and (
+            soul.location is post or soul.location is getattr(post, "location", None))
+        if not at_post or not _in_block(hour, sched["work"]):
+            _release_placement(soul)
+
     if desired is None or is_travelling(soul):
         return
     new_job = actions.plan_for(soul, desired)
