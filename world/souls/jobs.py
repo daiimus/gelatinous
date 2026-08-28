@@ -259,6 +259,60 @@ def step_job(soul):
                 return False
         return True                        # walking; check again next think
 
+    if do == "order":
+        # Ask for it. The `order` command does the targeting a soul
+        # cannot do for itself — it can't address a tender by name,
+        # because it doesn't know her name, and the sdesc that would
+        # resolve ("a wiry woman") is shared by half the room (#2342).
+        counter = _obj(step["counter"])
+        tender = _obj(step["tender"])
+        if counter is None or counter.location != soul.location:
+            fault(soul, "counter gone from room")
+            return False
+        if tender is None or tender.location != soul.location:
+            fault(soul, f"nobody working {step.get('want') or 'the counter'}")
+            return False
+        soul.execute_cmd(f"order {step['word']}")
+        job["at"] = at + 1
+        soul.db.soul_job = job
+        return True
+
+    if do == "pickup":
+        # Take what was set down for you. The tender serves ONTO the
+        # counter and the transaction is already closed by the time we
+        # get here — the payment went with the gesture — so this is a
+        # pair of hands, not a purchase.
+        from world.consumables import supports_delivery
+        counter = _obj(step["counter"])
+        if counter is None or counter.location != soul.location:
+            fault(soul, "counter gone from room")
+            return False
+        verb = step.get("verb", "eat")
+        served = [o for o in counter.contents if supports_delivery(o, verb)]
+        want = (step.get("want") or "").lower()
+        item = next((o for o in served if want and want in o.key.lower()),
+                    None) or (served[0] if served else None)
+        if item is None:
+            # She's still making it. The order rides a delay and can
+            # route through the model on its way; a beat or two of
+            # standing at the counter is the correct behaviour, and
+            # only a counter that never produces anything is a fault.
+            rounds = step.get("rounds", 0) + 1
+            step["rounds"] = rounds
+            soul.db.soul_job = job
+            if rounds > 3:
+                fault(soul, f"ordered {step.get('word')} and nothing came")
+                return False
+            return True
+        before = set(o.id for o in soul.contents)
+        soul.execute_cmd(f"get {item.key} from {counter.key}")
+        if not any(o.id not in before for o in soul.contents):
+            fault(soul, f"could not lift {item.key} off {counter.key}")
+            return False
+        job["at"] = at + 1
+        soul.db.soul_job = job
+        return True
+
     if do == "buy":
         counter = _obj(step["counter"])
         if counter is None or counter.location != soul.location:

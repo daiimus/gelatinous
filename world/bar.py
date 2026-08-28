@@ -734,6 +734,38 @@ def derive_bar_stock(menu):
     return [k for k in INGREDIENT_CATALOG if k in keys]
 
 
+def tender_at(fixture):
+    """Who would actually serve at this counter right now, or None.
+
+    One reading of the question for every door — the ``order`` command
+    needs somebody to address, and the souls planner needs to know
+    whether an order is worth the walk. The posted shift-holder wins;
+    a counter that runs on slots answers to the CLOCK and to nobody
+    else, so a bartender who happens to be standing in the room after
+    hours cannot be pressed into serving (the same rule that stops a
+    proprietor selling at midnight). An unposted counter — a bar with
+    no shift structure — falls back to whatever bartender is here.
+    """
+    if fixture is None:
+        return None
+    try:
+        from world.souls.posts import keeper_on_duty
+        keeper = keeper_on_duty(fixture)
+    except Exception:  # noqa: BLE001 — an unposted fixture is still servable
+        keeper = None
+    if keeper is not None:
+        return keeper
+    if getattr(fixture.db, "post_slots", None):
+        return None
+    room = getattr(fixture, "location", None)
+    if room is None:
+        return None
+    for obj in room.contents:
+        if getattr(obj.db, "is_bartender_npc", False):
+            return obj
+    return None
+
+
 def match_snack(text, snacks):
     """Find the first snack whose keywords appear in `text`. Returns dict/None."""
     if not text or not snacks:
