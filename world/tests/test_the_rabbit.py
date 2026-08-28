@@ -750,3 +750,56 @@ class TestTheCraneLookupIsCheap(EvenniaCommandTest):
     def test_a_soul_nowhere_is_a_cheap_no(self):
         self.char1.location = None
         self.assertEqual(courier._crane_car(self.char1), (None, None))
+
+
+class TestADropIsNotARoute(EvenniaCommandTest):
+    """A gap is a crossing; an edge without a gap is a DROP (#2335).
+
+    #2303 opened parkour gaps to anyone with a `route_taste` so NPCs
+    could finally use the colony's crossings. It opened DROPS too, and
+    travel then issued the crossing verb at them -- "the breach exit is
+    not a gap you can jump across."
+
+    Wren faulted on the Boot's breach 377 times in fourteen hours: 91%
+    of every fault in the colony, from the one soul with the flag that
+    let her be routed off a ledge.
+    """
+
+    def _edge(self, *, gap):
+        ex = create_object("typeclasses.exits.Exit", key="breach",
+                           location=self.room1, destination=self.room2)
+        ex.db.is_edge = True
+        if gap:
+            ex.db.is_gap = True
+        return ex
+
+    def test_a_drop_is_never_offered_even_to_a_roof_runner(self):
+        from world.spatial.pathfind import _neighbors
+        ex = self._edge(gap=False)
+        self.char1.db.route_taste = 0.2
+        offered = [e for _d, e in _neighbors(self.room1, self.char1)]
+        self.assertNotIn(ex, offered)
+
+    def test_a_real_gap_still_is(self):
+        """The #2303 capability must survive the fix."""
+        from world.spatial.pathfind import _neighbors
+        ex = self._edge(gap=True)
+        self.char1.db.route_taste = 0.2
+        offered = [e for _d, e in _neighbors(self.room1, self.char1)]
+        self.assertIn(ex, offered)
+
+    def test_travel_only_leaps_gaps(self):
+        """`jump across` is the crossing verb. Issuing it at a drop
+        earns a refusal forever."""
+        import inspect
+        from world.director import travel
+        src = inspect.getsource(travel)
+        self.assertIn('is_gap", None) is True', src)
+        self.assertNotIn('or getattr(ndb, "is_edge", None) is True', src)
+
+    def test_ordinary_souls_still_see_neither(self):
+        from world.spatial.pathfind import _neighbors
+        drop = self._edge(gap=False)
+        self.char2.attributes.remove("route_taste")
+        offered = [e for _d, e in _neighbors(self.room1, self.char2)]
+        self.assertNotIn(drop, offered)

@@ -219,9 +219,13 @@ def _travel_step(npc: Any) -> None:
     # and an identity check will not mistake a door for a parapet just
     # because something answered yes to an attribute it had never heard
     # of.
+    # `jump across` is for a GAP. An edge without a gap is a drop and
+    # takes `jump off` -- issuing the crossing verb at one just earns
+    # "the breach exit is not a gap you can jump across", forever
+    # (#2335). The pathfinder no longer offers drops at all, so this
+    # only has to handle the crossing case.
     ndb = getattr(nxt, "db", None)
-    if getattr(ndb, "is_gap", None) is True \
-            or getattr(ndb, "is_edge", None) is True:
+    if getattr(ndb, "is_gap", None) is True:
         npc.execute_cmd(f"jump across {nxt.key} edge")
     else:
         npc.execute_cmd(nxt.key)
