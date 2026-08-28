@@ -121,7 +121,7 @@ def _take_the_post(soul):
     line = _post_placement(soul)
     if line and soul.db.temp_place != line:
         soul.db.temp_place = line
-        soul.ndb.placed_by_shift = True
+        soul.db.placed_by_shift = True
 
     seat = _post_seat(soul)
     if (seat is not None and soul.db.furniture is not seat
@@ -131,20 +131,31 @@ def _take_the_post(soul):
         # all hold — and somebody squatting the chair keeps it, which is
         # a desk that can't broadcast rather than a bug
         soul.execute_cmd(f"sit on {seat.key}")
-        soul.ndb.seated_by_shift = True
+        soul.db.seated_by_shift = True
 
 
 def _leave_the_post(soul):
     """Stop standing at work — only clears placement WE set, so a
     player-authored @temp_place is never trampled. Same courtesy for the
-    chair: we only stand them up if the shift is what sat them down."""
-    if getattr(soul.ndb, "placed_by_shift", False):
+    chair: we only stand them up if the shift is what sat them down.
+
+    The markers are PERSISTENT. They used to live on `ndb`, which dies
+    on every reload -- while the thing they guard, `db.temp_place`,
+    does not. So after any reload the permission to clear was gone and
+    the placement string was stuck forever: Ezra Vantomme stood in the
+    Snailery yard reading "is behind the steel counter, appraising
+    something" -- a counter in a different building -- because his day
+    shift had ended on the far side of a restart (#2339).
+
+    A volatile flag guarding persistent state can only ever leak.
+    """
+    if soul.db.placed_by_shift:
         soul.db.temp_place = ""
-        soul.ndb.placed_by_shift = False
-    if getattr(soul.ndb, "seated_by_shift", False):
+        soul.db.placed_by_shift = False
+    if soul.db.seated_by_shift:
         if soul.db.furniture is not None:
             soul.execute_cmd("stand")
-        soul.ndb.seated_by_shift = False
+        soul.db.seated_by_shift = False
 
 
 def _rung(g):
