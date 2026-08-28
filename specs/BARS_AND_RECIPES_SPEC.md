@@ -294,10 +294,29 @@ Notes:
 
 ### 7.1 · Ordering — by talking to the bartender
 
-There is **no `order`/`buy` verb.** A patron orders the way they would in life: by
-**addressing the bartender** — directed speech (`to <bartender> …`, which rides
-`say` aimed at one person) or a pose. This unifies player and NPC bartenders —
-both simply respond to a spoken request.
+A patron orders the way they would in life: by **addressing the bartender** —
+directed speech (`to <bartender> …`, which rides `say` aimed at one person) or a
+pose. This unifies player and NPC bartenders — both simply respond to a spoken
+request.
+
+> **Amended 2026-08-28 (#2342).** This section used to open "There is **no
+> `order`/`buy` verb**". The `order` half of that decision has been reversed,
+> for a reason the original couldn't have seen: **you cannot address someone
+> whose name you don't know.** `to` takes a *single-token* target and identity
+> gates the name, so a stranger in a crowded bar resolves `Nonna` to nothing
+> and `woman` to five people at once. `menu` showed you a board you had no way
+> to act on. Souls hit the same wall permanently — they never learn names, so
+> no NPC could order anything from anyone.
+>
+> **`order <thing>` is a targeting affordance, not a second economy path.** It
+> resolves the tender for you and speaks the order at them through the same
+> `broadcast_speech` backbone: the room hears it, perception applies, and
+> fulfilment runs the identical serve path. The principle above is intact —
+> ordering is still *talking to the bartender*. What changed is that you no
+> longer have to have been introduced first.
+>
+> The `buy` half still stands: there is no `buy` verb at a bar. A counter is
+> **served**, a shelf is **sold from**, and a venue has exactly one of them.
 
 - **NPC bartender** — listens for directed requests aimed at it, matches the
   request against its **menu** (v1: a drink-name / keyword match), and fulfils:
@@ -314,6 +333,45 @@ both simply respond to a spoken request.
 individual; e.g. `Bob [to William]: …`). If `to` isn't built yet it's a prerequisite
 for NPC ordering (pose works in the meantime). NPC intent-parsing beyond a menu-name
 match is a tuning concern, not a v1 blocker.
+
+### 7.2 · Plated dishes — a board can serve food (#2342)
+
+A menu entry naming a **`proto`** is *plated* rather than mixed: the real
+prototype is spawned onto the counter, instead of a drink being composed from
+ingredients. Same gesture, same surface, same payment — only the thing that
+lands is different.
+
+```python
+{"name": "grilled snail skewer", "order_keywords": ("skewer", "escargot"),
+ "proto": "snail_skewer", "price": 3, "craft": "lays six on the grill-pan…"}
+```
+
+This is what makes a **restaurant** expressible. Before it, a bar could pour but
+not feed: the serve path always ended in `make_drink_from_recipe`, and the other
+half — free `snacks` (§10) — are bottomless, priced at nothing and never enter
+inventory. A plated dish inherits everything the item already carries (nutrition,
+bites, taste, decay), so a kitchen serves exactly what a shelf sold.
+
+**The three venue models, and the rule.** A venue answers to *one* of these:
+
+| model | fixture | how you're served |
+|---|---|---|
+| **served** | `BarCounter` with a `menu` | `order <thing>` → tender plates it onto the counter → you `get` it |
+| **sold** | `ShopContainer` with `prototype_inventory` | `buy <thing> from <counter>` → pressed into your hand |
+| **grazed** | anything with nutritious `snacks` | `eat <thing> from <fixture>` — free, in place, never inventory |
+
+**Give a venue exactly one.** The Snailery carried a shelf *and* was described as
+a restaurant, and that split is what produced the bug: two doors at one counter,
+only one of which anyone maintained.
+
+**Souls use the same doors.** The planner dispatches on **what the venue is**,
+never on what the soul is — see `world/souls/actions.py::_feed_at` /
+`_indulge_at`. This was the actual defect behind #2342: the door was chosen by
+the soul's *species profile*, so only a `recluse` knew how to be served and only
+a shelf would sell to anybody. Sixteen colonists could stand in a restaurant and
+starve. A venue that wants NPC custom needs three things — a board, somebody
+working it, and the `("advertiser", "souls")` **tag** (an indexed tag, never the
+bare attribute).
 
 ## 8 · Ownership & staffing
 
@@ -336,10 +394,13 @@ counter object.
 
 **Patron**
 - `read menu on <bar>` — what's servable, with prices.
-- *to order:* **address the bartender** — `to <bartender> …` (directed speech) or a
-  pose. No `order`/`buy` verb; ordering is social (§7.1).
+- `order <thing>` — ask whoever is working the counter (§7.1). Directed speech
+  with the targeting resolved, for when you don't know the tender's name — which
+  is most of the time, and always for an NPC.
+- *or address the bartender yourself* — `to <bartender> …` or a pose. Identical
+  path; ordering is social.
 - `eat <snack> from <bar>` — free snacks (§10).
-- `get <drink> from <bar>` — take a drink served onto the bar.
+- `get <drink> from <bar>` — take what was served onto the counter.
 
 **Bartender** (owner or staff)
 - `load <ingredients> into <bar>` (`put … in <bar>`) — load ingredient items, or a
