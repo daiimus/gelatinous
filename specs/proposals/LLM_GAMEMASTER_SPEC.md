@@ -126,12 +126,34 @@ voice/TTS, and any authority over **player** characters (which is a hard line �
    output, validation reject — degrades to the *current* scripted behaviour or to
    silence, never to a crash or a broken-character leak.
 8. **Two intelligences, one NPC.** The LLM owns *creative and narrative*
-   decisions (dialogue, wants, who to trust, the decision *to* act); a classical
+   decisions (dialogue, ~~wants, who to trust, the decision *to* act~~); a classical
    NPC AI owns *tactical resolution* (combat targeting, when to actually flee,
    pathing, self-preservation). The LLM emits a *narrative intent*; a
    deterministic resolver and the existing game systems carry it out. **Don't make
    the language model grind combat turns** — it's slower, costlier, and worse at
    it than a utility function (§2.2).
+
+   > **NARROWED when souls shipped (2026-08-17, annotated 2026-08-28).**
+   > `NPC_NEEDS_AND_GOALS_SPEC` states the governing law: **"No LLM
+   > anywhere in the decision path — the two-brain split (deterministic
+   > will, LLM voice) is law."** *Wants* moved to the deterministic side
+   > and are now the needs/goal band tree; *who to trust* is
+   > `souls/thoughts.py` valence and the trust system; *the decision to
+   > act* is `plan_for` → `step_job`. The LLM's half of Principle 8 is
+   > now **dialogue and pose only** — it narrates a state the engine
+   > produced and chooses nothing.
+   >
+   > The rest of the principle stands, and stands harder: the seam
+   > between narrative intent and deterministic resolution is exactly
+   > right, it simply moved. Everything downstream of it in this
+   > document (§2.2, §5, §8, §9) still applies to the *voice* half.
+   >
+   > Note the live counter-example this invalidates: the `feel` tool
+   > (`prompt.py`) writes a model-authored free-text valence into
+   > `db.llm_dossiers`, and `_set_valence` says it is "consulted by
+   > trust/consent later" — a model-written value scheduled to feed a
+   > real mechanic. That is Principle 8 in its pre-souls form and needs
+   > to read `souls/thoughts.py` instead of holding its own opinion.
 
 ---
 

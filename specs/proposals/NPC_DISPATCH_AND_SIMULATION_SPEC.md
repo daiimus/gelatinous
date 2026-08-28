@@ -79,9 +79,13 @@
 > virtual-row model — §3's spawn-on-approach/virtualization is ABANDONED;
 > cold souls stay instantiated. **§4** roles-and-routines is SUPERSEDED for
 > souls (wants, not clocks — the tripartite 8h shift system) but still runs
-> as-written for the ambient civilian layer; the population doctrine (thin
-> ambient tier vs absorption into souls) is an OPEN owner decision, as is
-> unifying the two wealth scales (civilians 100–500 vs souls' earned wages).
+> as-written for the ambient civilian layer; ~~the population doctrine (thin
+> ambient tier vs absorption into souls) is an OPEN owner decision~~
+> **DECIDED (owner, 2026-08-28): ABSORPTION — every NPC gets a soul.**
+> There is no permanent thin tier. Sequenced after the role model is
+> unified, so the ambient population is not merged into a shape that is
+> about to change. Still open: unifying the two wealth scales
+> (civilians 100–500 vs souls' earned wages).
 > **§5/§5.1** dispatch + crime chain: IMPLEMENTED, shared by both layers;
 > souls route NPC-on-NPC crime through the same witness/BOLO machinery, and
 > a `medical` event type now rides the same bus (the rescue loop). **§5.2**
