@@ -7,6 +7,8 @@ from evennia import create_object
 from evennia.utils.test_resources import BaseEvenniaTest
 
 import typeclasses.clinic as clinicmod
+import typeclasses.llm_npc as llmnpc
+import world.clinic as worldclinic
 from world.llm.prompt import tool_names
 
 
@@ -170,24 +172,35 @@ class TestMedicalRequestRouting(BaseEvenniaTest):
         d._parse_medical_request = lambda s: req
         d._classify_speech = lambda s, spk: kind
         d._patient = lambda spk: "patient"
-        d._handle_directed_speech = clinicmod.Doctor._handle_directed_speech.__get__(
-            d, clinicmod.Doctor)
+        # the intercept is now the GENERIC one — a doctor is a post-holder
+        # like any other (#2352)
+        d._is_gratitude = llmnpc.LLMNpcMixin._is_gratitude
+        d._handle_directed_speech = \
+            llmnpc.LLMNpcMixin._handle_directed_speech.__get__(
+                d, clinicmod.Doctor)
         return d
 
     def test_directed_install_routes(self):
         d = self._doctor(("install", "put a chrome arm on me"))
-        with patch.object(clinicmod, "delay") as dl:
+        with patch.object(worldclinic, "delay") as dl, \
+                patch("world.service.post_for", return_value=MagicMock()), \
+                patch("world.service.handler_for",
+                      return_value=worldclinic.serve_at_clinic):
             handled = d._handle_directed_speech("put a chrome arm on me",
                                                 MagicMock(), {})
         self.assertTrue(handled)
-        self.assertEqual(dl.call_args.args[1], d._install_cyber)
+        self.assertEqual(dl.call_args.args[1], worldclinic.install_cyber)
 
     def test_directed_treat_routes(self):
         d = self._doctor(("treat", "gimme a painkiller"))
-        with patch.object(clinicmod, "delay") as dl:
-            handled = d._handle_directed_speech("gimme a painkiller", MagicMock(), {})
+        with patch.object(worldclinic, "delay") as dl, \
+                patch("world.service.post_for", return_value=MagicMock()), \
+                patch("world.service.handler_for",
+                      return_value=worldclinic.serve_at_clinic):
+            handled = d._handle_directed_speech("gimme a painkiller",
+                                                MagicMock(), {})
         self.assertTrue(handled)
-        self.assertEqual(dl.call_args.args[1], d._treat)
+        self.assertEqual(dl.call_args.args[1], worldclinic.treat)
 
     def test_ambient_request_not_acted(self):
         d = self._doctor(("install", "put a chrome arm on me"), kind="ambient")
@@ -201,4 +214,53 @@ class TestMedicalRequestRouting(BaseEvenniaTest):
         d = self._doctor(None)
         handled = d._handle_directed_speech("something's broke in here",
                                             MagicMock(), {})
+        self.assertFalse(handled)
+
+
+class TestHoldingTheClinicPostIsTheQualification(BaseEvenniaTest):
+    """The clinic is the last venue where competence rode the typeclass.
+
+    It had no live gap when this was ported — both doctor posts were held
+    by `Doctor` keepers — but every other 24/7 venue in the colony was
+    dark two thirds of the time for exactly this reason, and the
+    blueprint table cannot stop naming role typeclasses while one venue
+    still depends on one (#2352). The `medic` post is the near one: it
+    runs `policy=successor` with no blueprint, so a generic soul takes it
+    the moment it falls vacant.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from evennia import create_object
+        from world.souls.posts import register_post
+        self.station = create_object("typeclasses.items.Item",
+                                     key="a billing terminal",
+                                     location=self.room1)
+        register_post(self.station, "medic", shifts=("day",))
+        self.keeper = create_object("typeclasses.llm_npc.LLMNpc",
+                                    key="Maritza", location=self.room1)
+        self.station.db.post_slots = {
+            "day": {"keeper": self.keeper, "vacant_since": None}}
+        self.patient = self.char1
+        self.patient.location = self.room1
+
+    def _ask(self, line):
+        with patch("world.souls.posts.current_shift", return_value="day"), \
+                patch.object(worldclinic, "delay") as dl:
+            handled = self.keeper._handle_directed_speech(
+                line, self.patient, {"addressed": True})
+        return handled, dl
+
+    def test_a_plain_npc_on_the_post_treats(self):
+        handled, dl = self._ask("gimme a painkiller")
+        self.assertTrue(handled)
+        self.assertEqual(dl.call_args.args[1], worldclinic.treat)
+
+    def test_a_symptom_is_not_a_request(self):
+        """Diagnosis-driven treatment belongs to the sim, not the words."""
+        handled, _dl = self._ask("my arm hurts")
+        self.assertFalse(handled)
+
+    def test_a_question_is_not_a_request(self):
+        handled, _dl = self._ask("can you do anything about a painkiller?")
         self.assertFalse(handled)
