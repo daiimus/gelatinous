@@ -93,7 +93,13 @@ class CmdBuy(Command):
         keeper = self._find_keeper(caller, container)
         if keeper:
             caller.msg(f"You pay {format_currency(price)}.")
-            keeper.serve_purchase(caller, item, price)
+            # The keeper's own gesture when they have one; else the job's.
+            serve = getattr(keeper, "serve_purchase", None)
+            if callable(serve):
+                serve(caller, item, price)
+            else:
+                from world.shop.service import hand_over
+                hand_over(keeper, caller, item, price)
             self._notify_merchant(caller, item, price, container)
             return
 
@@ -183,20 +189,23 @@ class CmdBuy(Command):
         return None
     
     def _find_keeper(self, buyer, container):
-        """The shopkeeper minding this counter, if one is present — an
-        ``is_merchant`` character in the room whose own counter lookup
-        resolves to this container (so a keeper never serves a stranger's
-        shelf)."""
-        for obj in buyer.location.contents:
-            if not getattr(obj, "is_merchant", False):
-                continue
-            serve = getattr(obj, "serve_purchase", None)
-            find_counter = getattr(obj, "_find_counter", None)
-            if not (callable(serve) and callable(find_counter)):
-                continue
-            if find_counter() == container:
-                return obj
-        return None
+        """Whoever is minding this counter, if anyone — the on-duty keeper
+        of the post, which is the same reading the till, the planner and
+        the counter all use.
+
+        This used to duck-type on `is_merchant` + `serve_purchase` +
+        `_find_counter`, i.e. on the buyer's counterpart being a
+        `Shopkeeper`. A generated successor is a plain `LLMNpc`, so a
+        manned shop silently fell through to SELF-SERVICE while somebody
+        stood right there (#2352)."""
+        from world.souls.posts import keeper_on_duty
+        try:
+            keeper = keeper_on_duty(container)
+        except Exception:  # noqa: BLE001 — an odd post can't break a sale
+            return None
+        if keeper is None or keeper.location is not buyer.location:
+            return None
+        return keeper
 
     def _notify_merchant(self, buyer, item, price, container):
         """

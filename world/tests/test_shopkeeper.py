@@ -179,29 +179,35 @@ class TestBuyRoutesThroughKeeper(TestCase):
         buyer.location.contents = room_contents
         return cmd, buyer
 
-    def _keeper(self, counter, merchant=True):
+    def _keeper(self, buyer=None):
         keeper = MagicMock()
-        keeper.is_merchant = merchant
-        keeper._find_counter = lambda: counter
+        keeper.location = buyer.location if buyer is not None else MagicMock()
         return keeper
 
     def test_keeper_at_this_counter_found(self):
+        """Whoever is ON DUTY at the post serves it — not whoever happens
+        to be a `Shopkeeper`. A generated successor is a plain `LLMNpc`,
+        and duck-typing on `serve_purchase` had a manned shop fall
+        through to self-service with somebody standing there (#2352)."""
         counter = MagicMock()
-        keeper = self._keeper(counter)
-        cmd, buyer = self._cmd([keeper, counter])
-        self.assertIs(cmd._find_keeper(buyer, counter), keeper)
+        cmd, buyer = self._cmd([counter])
+        keeper = self._keeper(buyer)
+        with patch("world.souls.posts.keeper_on_duty", return_value=keeper):
+            self.assertIs(cmd._find_keeper(buyer, counter), keeper)
 
-    def test_strangers_counter_not_served(self):
-        counter, other = MagicMock(), MagicMock()
-        keeper = self._keeper(other)          # minds a different fixture
-        cmd, buyer = self._cmd([keeper, counter])
-        self.assertIsNone(cmd._find_keeper(buyer, counter))
-
-    def test_non_merchant_ignored(self):
+    def test_unmanned_counter_stays_self_service(self):
         counter = MagicMock()
-        bystander = self._keeper(counter, merchant=False)
-        cmd, buyer = self._cmd([bystander, counter])
-        self.assertIsNone(cmd._find_keeper(buyer, counter))
+        cmd, buyer = self._cmd([counter])
+        with patch("world.souls.posts.keeper_on_duty", return_value=None):
+            self.assertIsNone(cmd._find_keeper(buyer, counter))
+
+    def test_keeper_who_stepped_away_does_not_serve(self):
+        """On duty but not in the room is not minding the counter."""
+        counter = MagicMock()
+        cmd, buyer = self._cmd([counter])
+        keeper = self._keeper()               # somewhere else entirely
+        with patch("world.souls.posts.keeper_on_duty", return_value=keeper):
+            self.assertIsNone(cmd._find_keeper(buyer, counter))
 
     def test_serve_purchase_emote(self):
         b = MagicMock()

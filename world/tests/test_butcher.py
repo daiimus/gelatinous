@@ -178,8 +178,12 @@ class TestButcherArchetype(TestCase):
         from world.llm.prompt import ARCHETYPES, tool_names
         self.assertIn("butcher", ARCHETYPES)
         persona = {"persona_seed": {"archetype": "butcher"}}
+        # `check_stock` is granted because the butcher JOB can run it —
+        # a grant with nothing behind it hands the model an empty string
+        # and it invents stock (#2352)
         self.assertEqual(tool_names(persona),
-                         ["look", "remember", "feel", "release"])
+                         ["look", "remember", "feel", "release",
+                          "check_stock"])
 
     def test_fewshot_demonstrates_memory_tools(self):
         from world.llm.prompt import ARCHETYPES
