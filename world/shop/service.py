@@ -150,10 +150,10 @@ def _fulfil_from_shelf(post, match, patron, by, style="shelf"):
     if not ok:
         by.execute_cmd(f"say {lines['refused']}")
         return
-    _hand_over(by, patron, item, price, lines["gesture"])
+    hand_over(by, patron, item, price, lines["gesture"])
 
 
-def _hand_over(by, patron, item, price, gesture=None):
+def hand_over(by, patron, item, price, gesture=None):
     """The final gesture. A manned counter is never self-service — the
     thing reaches the buyer through somebody's hands."""
     from world.grammar import with_article

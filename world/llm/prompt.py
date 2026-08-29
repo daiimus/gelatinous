@@ -483,7 +483,7 @@ ARCHETYPES = {
                    "a spare gesture with whatever's in your hands."),
         # The buy/break-down/pay transaction is DETERMINISTIC (typeclasses/
         # butcher.py), never a tool — same split as the bartender's orders.
-        "tools": ["release"],
+        "tools": ["release", "check_stock"],
         "fewshot": [
             {"user": 'a lean man says to you: "what stinks in here?"',
              "assistant": {"speech": "Commerce.",
