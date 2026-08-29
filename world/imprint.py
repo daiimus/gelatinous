@@ -24,6 +24,10 @@ The record:
     memories     episodic (LLM cast only)
     dossiers     conclusions about people (LLM cast only)
     thoughts     interiority (souls only)
+    opinions     what they made of PEOPLE (souls only) — the per-person
+                 half of the same feeling `thoughts` holds. A record
+                 written before the opinion layer (#2388) simply has
+                 none, which restores correctly.
     recognition  who they knew by FACE
     voice        who they knew by VOICE
 
@@ -69,6 +73,7 @@ def capture(character, now=None):
         "memories": _db("llm_memories", []),
         "dossiers": _db("llm_dossiers", {}),
         "thoughts": _db("soul_thoughts", []),
+        "opinions": _db("soul_opinions", {}),
         "recognition": _prop("recognition_memory", {}),
         "voice": _prop("voice_memory", {}),
     }
@@ -139,6 +144,19 @@ def restore(body, snap, now=None):
     if snap.get("thoughts"):
         body.db.soul_thoughts = [
             t for t in snap["thoughts"] if float(t[0]) < cutoff]
+    if snap.get("opinions"):
+        # Same cutoff as thoughts, per person: what you had already
+        # concluded about someone survives; what they did to you inside
+        # the backup gap is gone with the rest of that stretch. A person
+        # who has nothing left is dropped rather than kept as an empty
+        # acquaintance.
+        kept = {}
+        for uid, entries in (snap["opinions"] or {}).items():
+            fresh = [tuple(e) for e in entries
+                     if float(tuple(e)[0]) < cutoff]
+            if fresh:
+                kept[uid] = fresh
+        body.db.soul_opinions = kept
 
     # ...and who they knew, by face and by voice, on the same terms.
     body.recognition_memory = remembered_before(
