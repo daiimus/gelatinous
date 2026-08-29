@@ -228,6 +228,37 @@ SKINTONE_PALETTE = {
 # Valid skintone names for validation
 VALID_SKINTONES = set(SKINTONE_PALETTE.keys())
 
+#: The two halves of the palette, in display order. Tuples, so the
+#: `@skintone list` preview has a deliberate ordering rather than whatever
+#: a set happens to iterate to.
+ORGANIC_SKINTONES = ("porcelain", "pale", "fair", "light", "golden",
+                     "tan", "olive", "brown", "rich")
+SYNTHETIC_SKINTONES = ("alabaster", "ashen", "slate", "pewter", "jade",
+                       "lilac", "cobalt", "chrome")
+
+
+def skintones_for_species(species):
+    """Which tones a body of this species may wear.
+
+    ASYMMETRIC on purpose. A human cannot be chrome: the synthetic
+    spectrum exists precisely to read as "not quite human" beside the
+    realistic range, and letting a human draw from it dissolves the
+    distinction the palette was built to make.
+
+    A synthetic may wear ANY of them, because it was manufactured, and
+    the cast already leans on both halves — Tomas is `fair`, Cynthia
+    `olive`, Angela `golden` (synths built to pass) while Ossie is
+    `pewter` and the Rook `alabaster`. That is authored characterisation,
+    and restricting synths to the metallic end would silently invalidate
+    eight existing NPCs.
+
+    An unknown species gets the whole palette: a species added later
+    should not be constrained by a check written before it existed.
+    """
+    return (ORGANIC_SKINTONES
+            if str(species or "human").lower() == "human"
+            else ORGANIC_SKINTONES + SYNTHETIC_SKINTONES)
+
 # Raw cybernetic chrome (#516 review).  Inorganic body locations
 # render in a dark steel grey instead of the wearer's skintone —
 # chrome is not flesh.  Matches the "black leather" tone the

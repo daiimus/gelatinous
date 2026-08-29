@@ -1927,24 +1927,48 @@ class CmdSkintone(Command):
             caller.msg("You have no skintone set. Longdescs will appear uncolored.")
             
     def _show_available_tones(self, caller):
-        """Display available skintones with previews"""
+        """The skintones THIS body can wear, with previews.
+
+        This list was a hardcoded nine organic tones, so the entire
+        synthetic spectrum was settable but undiscoverable — a bioroid
+        could be `alabaster` only by already knowing the word. It comes
+        from the species now, and the synthetic half is labelled rather
+        than silently appended.
+        """
+        from world.combat.constants import (ORGANIC_SKINTONES,
+                                            skintones_for_species)
+
+        allowed = skintones_for_species(caller.db.species)
         caller.msg("|wAvailable Skintones:|n")
         caller.msg("")
-        
-        # All tones in order
-        all_tones = ["porcelain", "pale", "fair", "light", "golden", "tan", "olive", "brown", "rich"]
-        for tone in all_tones:
+        shown_header = False
+        for tone in allowed:
+            if tone not in ORGANIC_SKINTONES and not shown_header:
+                shown_header = True
+                caller.msg("")
+                caller.msg("  |wSynthetic spectrum|n")
             color_code = SKINTONE_PALETTE[tone]
             caller.msg("  " + tone.ljust(10) + " - " + f"{color_code}Sample text|n")
-            
+
         caller.msg("")
         caller.msg("Use: |w@skintone <tone>|n to set your skintone")
         caller.msg("Use: |w@skintone clear|n to remove coloring")
 
     def _set_skintone(self, caller, target, tone):
         """Set skintone on target character"""
+        from world.combat.constants import skintones_for_species
+
         if tone not in VALID_SKINTONES:
             caller.msg(f"'{tone}' is not a valid skintone. Use '@skintone list' to see available options.")
+            return
+        # Species gate: a human cannot be chrome. Checked against the
+        # TARGET's species rather than the caller's, so staff setting a
+        # tone on somebody else get that body's rules, not their own.
+        if tone not in skintones_for_species(target.db.species):
+            caller.msg(
+                f"'{tone}' is not a skintone a "
+                f"{target.db.species or 'human'} can have. "
+                f"Use '@skintone list' to see available options.")
             return
             
         target.db.skintone = tone

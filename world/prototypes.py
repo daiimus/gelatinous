@@ -1264,7 +1264,7 @@ TACTICAL_JUMPSUIT = {
     "attrs": [
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen", "groin", "left_arm", "right_arm", "left_thigh", "right_thigh", "left_shin", "right_shin", "left_foot", "right_foot"]),
-        ("worn_desc", "A sleek {color}black|n tactical jumpsuit that hugs their form like a second skin, its reinforced synthetic weave providing minimal protection while prioritizing mobility and tactical flexibility"),
+        ("worn_desc", "A sleek {color}black|n tactical jumpsuit that hugs {their} form like a second skin, its reinforced synthetic weave providing minimal protection while prioritizing mobility and tactical flexibility"),
         ("layer", 1),  # Base clothing layer (worn under armor)
         ("color", "black"),
         ("material", "synthetic"),
@@ -1659,7 +1659,7 @@ PLATE_MAIL = {
     "attrs": [
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
-        ("worn_desc", "Imposing {color}steel|n plate armor that encases their torso and arms in overlapping metal segments, each piece precisely fitted and articulated for maximum protection while maintaining combat mobility"),
+        ("worn_desc", "Imposing {color}steel|n plate armor that encases {their} torso and arms in overlapping metal segments, each piece precisely fitted and articulated for maximum protection while maintaining combat mobility"),
         ("layer", 5),  # Heavy armor layer (over plate carriers and other armor)
         ("color", "bright_white"),  # Polished steel
         ("material", "steel"),
