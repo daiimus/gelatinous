@@ -418,20 +418,27 @@ def security_arrival(npc: Any, assignment: Any) -> None:
         delay(INVESTIGATE_SECONDS, resolve, npc)
 
 
-def _watch_tick(npc: Any) -> None:
-    """Re-scan while holding a suspect (event-BOLO match *or* a face on
-    the wanted record); give up after ``WATCH_ROUNDS`` cycles or when no
-    subject holds. A unit in combat never walks home mid-fight, and a held
-    suspect who turns violent gets the Engage rung."""
+def watch_once(npc: Any) -> bool:
+    """One cycle of holding a suspect. True = keep watching.
+
+    Split out of the delay-chained `_watch_tick` so something else can
+    drive it — a souls job, once dispatch stops seizing the body
+    (NPC_PLATFORM_SPEC §7, #2383). The behaviour is unchanged; only who
+    calls it, and how often, moves.
+
+    Returning False means the watch is over and the unit should stand
+    down. It deliberately does NOT call `resolve` itself: deciding to
+    stop and walking home are different acts, and conflating them is why
+    this could only ever be driven by a timer.
+    """
     from world.director.assignment import get_assignment
     assignment = get_assignment(npc)
     if assignment is None:
-        return  # stood down meanwhile
+        return False  # stood down meanwhile
     _mayday(npc, assignment)
     if _in_combat(npc):
         # The fight owns the unit; keep monitoring without burning rounds.
-        delay(WATCH_SECONDS, _watch_tick, npc)
-        return
+        return True
     bolo = (getattr(assignment.event, "payload", None) or {}).get("bolo")
     confidence, suspect = _scan(npc, bolo)
     holding = confidence == "high"
@@ -441,18 +448,26 @@ def _watch_tick(npc: Any) -> None:
     if holding and _in_combat(suspect):
         # The held suspect started (or resumed) violence under watch.
         _engage(npc, assignment, suspect)
-        delay(WATCH_SECONDS, _watch_tick, npc)
-        return
+        return True
     rounds = assignment.payload.get("watch_rounds", 0) - 1
     assignment.payload["watch_rounds"] = rounds
     if not holding or rounds <= 0:
         if holding:
             _cmd(npc, "emote logs the subject's presence and stands down.")
         _release_aim(npc)   # lower the weapon before walking home
-        resolve(npc)
-        return
+        return False
     _cmd(npc, "emote holds position, optics locked on its subject.")
-    delay(WATCH_SECONDS, _watch_tick, npc)
+    return True
+
+
+def _watch_tick(npc: Any) -> None:
+    """The timer-driven watch: tick once, then re-arm or stand down."""
+    from world.director.assignment import get_assignment
+    if watch_once(npc):
+        delay(WATCH_SECONDS, _watch_tick, npc)
+        return
+    if get_assignment(npc) is not None:
+        resolve(npc)
 
 
 def security_completion(npc: Any, assignment: Any) -> None:
