@@ -262,6 +262,7 @@ def _goal_band(goal):
     # to flee, not to go back to standing at the counter.
     return {"safety": 0, "hunger": 1, "rest": 2, "duty": 2, "claim": 2,
             "wardrobe": 2, "run": 2, "recover": 2, "patrol": 4,
+        "respond": 0,
             "craving": 3, "social": 3,
             "off_duty": 4}.get(goal, 4)
 
@@ -302,11 +303,17 @@ def _release_placement(soul):
 
 def think(soul, hour):
     """One decision beat: end lapsed shifts, arbitrate, plan, step."""
-    from world.director.assignment import is_assigned
     from world.director.security import _in_combat
     from world.director.travel import is_travelling
-    if is_assigned(soul):
-        return          # precedence law: combat > assignment > souls
+    # An assignment used to return here — the soul was switched OFF for
+    # the whole call. That was a boolean where a BAND belongs, and it
+    # cost once already: nothing cleared it on death, so a wrecked unit's
+    # soul stayed asleep permanently, even after repair (#2255).
+    #
+    # Dispatch hands out a band-0 `respond` job now (#2384). Band 0
+    # outranks everything, so a unit still does not wander off a call,
+    # but it is arbitrated rather than silenced — safety can still reach
+    # it, and a dead unit's job clears like any other job.
     if _in_combat(soul):
         # combat owns the body — EXCEPT the crime steps, which are
         # designed to run inside it (a grappler auto-yields; the rob

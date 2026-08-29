@@ -43,6 +43,12 @@ COMPLETION_HANDLERS: dict[str, Callable] = {}
 #: role -> handler(npc, assignment) for a responder that dies
 #: still holding one (#2255).
 DEATH_HANDLERS: dict = {}
+#: role -> callable(npc) -> bool, run once per BEAT while a responder is
+#: on scene. True keeps it there. This is what lets an assignment be
+#: WORK the souls engine does rather than a body the director seizes
+#: (NPC_PLATFORM_SPEC §7): a hold that re-arms its own timer can only
+#: ever be driven by that timer.
+WATCH_HANDLERS: dict[str, Callable] = {}
 
 
 @dataclass
@@ -54,6 +60,42 @@ class Assignment:
     post: Any                     # room to return to when resolved
     state: str = "en_route"       # en_route | on_scene | returning | done
     payload: dict = field(default_factory=dict)
+
+
+def register_watch_handler(role: str, handler: Callable) -> None:
+    """Register *handler(npc) -> bool*, ticked once a beat on scene."""
+    WATCH_HANDLERS[role] = handler
+
+
+def run_arrival(npc: Any) -> None:
+    """Run the on-scene handler for whoever this is. Shared by the old
+    travel callback and the souls `respond` step, so both doors cannot
+    drift."""
+    assignment = _ACTIVE.get(npc)
+    if assignment is None:
+        return
+    assignment.state = "on_scene"
+    role = getattr(getattr(npc, "db", None), "role", None)
+    handler = ARRIVAL_HANDLERS.get(role, default_arrival)
+    try:
+        handler(npc, assignment)
+    except Exception:  # noqa: BLE001 — a bad handler must not strand the NPC
+        resolve(npc)
+
+
+def run_watch(npc: Any) -> bool:
+    """One on-scene beat. False when the responder is done holding."""
+    assignment = _ACTIVE.get(npc)
+    if assignment is None:
+        return False
+    role = getattr(getattr(npc, "db", None), "role", None)
+    handler = WATCH_HANDLERS.get(role)
+    if handler is None:
+        return False          # no watch for this role: arriving IS the job
+    try:
+        return bool(handler(npc))
+    except Exception:  # noqa: BLE001 — a bad watch must not strand the NPC
+        return False
 
 
 def register_arrival_handler(role: str, handler: Callable) -> None:
@@ -134,12 +176,45 @@ def assign(npc: Any, event: Any) -> bool:
     _ACTIVE[npc] = assignment
     if npc.ndb is not None:
         setattr(npc.ndb, _NDB_KEY, assignment)
+    # HAND THE SOUL THE WORK rather than seizing the body (#2384). Band 0
+    # outranks everything, so the unit still does not wander off a call —
+    # which is what the old `is_assigned` silence switch was protecting —
+    # but it is ARBITRATED now instead of switched off, so a band-0
+    # safety need can still reach it and a dead unit's job clears like
+    # any other. That switch had already cost once: nothing cleared it on
+    # death, and a wrecked unit's soul stayed asleep permanently, even
+    # after repair (#2255).
+    if _has_soul(npc):
+        npc.db.soul_job = {
+            "goal": "respond", "band": 0, "at": 0, "steps": [
+                {"do": "travel", "room": event.location.id},
+                {"do": "respond"},
+                {"do": "travel", "room": post.id},
+                {"do": "stand_down"},
+            ],
+        }
+        return True
+    # An unsouled responder — nothing in the colony currently is — still
+    # gets driven the old way rather than standing there.
     started = travel_to(npc, event.location,
                         on_arrive=_on_scene, on_fail=_on_travel_fail)
     if not started:
         clear_assignment(npc)
         return False
     return True
+
+
+def _has_soul(npc: Any) -> bool:
+    try:
+        from world.souls.engine import SOUL_TAG
+        return bool(npc.tags.get(SOUL_TAG[0], category=SOUL_TAG[1]))
+    except Exception:  # noqa: BLE001 — no tag handler is no soul
+        return False
+
+
+def finish(npc: Any) -> None:
+    """Settle a completed assignment (the souls `stand_down` step)."""
+    _done(npc)
 
 
 def clear_assignment(npc: Any) -> None:
@@ -168,16 +243,7 @@ def resolve(npc: Any) -> None:
 # --- internal lifecycle steps --------------------------------------------
 
 def _on_scene(npc: Any) -> None:
-    assignment = _ACTIVE.get(npc)
-    if assignment is None:
-        return
-    assignment.state = "on_scene"
-    role = getattr(getattr(npc, "db", None), "role", None)
-    handler = ARRIVAL_HANDLERS.get(role, default_arrival)
-    try:
-        handler(npc, assignment)
-    except Exception:  # noqa: BLE001 — a bad handler must not strand the NPC
-        resolve(npc)
+    run_arrival(npc)
 
 
 def _on_travel_fail(npc: Any) -> None:
