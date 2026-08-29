@@ -149,12 +149,18 @@ def any_keeper_present(fixture) -> bool:
 def _slot_held(post, shift, slot) -> bool:
     """Is this slot's keeper alive and still on this post?
 
-    A souled keeper holds it by assignment — their post and shift must
-    still match, so a soul who quits or is reassigned frees the slot.
-    An UNSOULED cast member holds it by presence: Vesper works her
-    chaise without a needs engine, and reading her slot as vacant
-    would have the insurance resleeve a second Vesper while the first
-    was standing there (#2132).
+    A keeper holds it by assignment — their post and shift must still
+    match, so a soul who quits or is reassigned frees the slot.
+
+    **A post keeper is a soul.** That is now an invariant rather than a
+    hope. This used to carry a third branch letting an UNSOULED cast
+    member hold a slot by presence, because Vesper worked her chaise
+    without a needs engine and reading her slot as vacant would have the
+    insurance resleeve a second Vesper while the first stood there
+    (#2132). She was the only body it was ever for, and she has a soul
+    now (#2362) — so an unsouled keeper is a build error, and a slot it
+    holds correctly reads vacant and gets filled by somebody who can
+    actually do the work.
     """
     keeper = slot.get("keeper")
     if keeper is None or not keeper.pk:
@@ -173,7 +179,7 @@ def _slot_held(post, shift, slot) -> bool:
             return keeper.location == room
         return (keeper.db.soul_post == room
                 and (keeper.db.soul_schedule or "day") == shift)
-    return keeper.location == room
+    return False
 
 
 def _eligible_candidates(room):

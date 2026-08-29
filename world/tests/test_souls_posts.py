@@ -4,8 +4,8 @@ Coverage ported from the retired blueprint sweep, which had fourteen
 tests while the system that actually runs succession had none. These
 pin the behaviours that survived the merge: a held slot is left alone,
 a dark one is stamped and then filled once its grace elapses, nobody
-is seated over a live fight, resleeving restores the person, and an
-unsouled cast member holds their post by standing in it.
+is seated over a live fight, resleeving restores the person, and a
+post keeper is a soul.
 """
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -126,13 +126,19 @@ class TestSlotTenure(BaseEvenniaTest):
         self.assertFalse(postsmod._slot_held(
             post, "day", {"keeper": self.char2}))
 
-    def test_unsouled_cast_hold_by_presence(self):
-        """Vesper works her chaise without a needs engine. Reading her
-        slot as vacant would resleeve a second Vesper beside her."""
+    def test_an_unsouled_keeper_holds_nothing(self):
+        """A post keeper is a soul — an invariant now, not a hope.
+
+        This used to be the reverse: an unsouled cast member held a slot
+        by standing in it, because Vesper worked her chaise without a
+        needs engine and reading her slot as vacant would have resleeved
+        a second Vesper beside her (#2132). She was the only body it was
+        ever for and she has a soul now (#2362), so an unsouled keeper
+        is a build error and the slot correctly reads vacant."""
         self.char2.location = self.room1
         post = SimpleNamespace(db=SimpleNamespace(post_slots={}),
                                location=self.room1)
-        self.assertTrue(postsmod._slot_held(
+        self.assertFalse(postsmod._slot_held(
             post, "swing", {"keeper": self.char2}))
 
     def test_a_dead_keeper_holds_nothing(self):
