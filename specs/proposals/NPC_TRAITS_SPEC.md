@@ -293,3 +293,45 @@ anything. Producers only, today: courtesy (`+0.08`) and being attacked
 service, prices, trust grants or dialogue on an untuned score is how you get a
 colony that hates everybody. **Tune the producers against real play first**,
 then wire consumers one at a time.
+
+
+## 13. The gap: these traits are mechanics, not personality
+
+Owner observation, 2026-08-29: *"the traits we have are neat and inform
+mechanics but not really personality."* Correct, and the vocabulary shows it.
+Every dial the 19 traits turn is needs-facing:
+
+```
+rate:hunger  soft:hunger  schedule_affinity  misery_pull
+crit:safety  rate:social  price_ceiling  duty_lead  violence_gate
+```
+
+Nine dials, and **not one points at another person.** They tune appetite,
+timetable and spending — what a soul consumes and when, never how it treats
+anybody. The ethos tags come closer, but they fire only *reflexively*, on the
+soul's own deeds via `against_my_nature`: Soft-Handed feels guilt when SHE hurts
+someone and forms no stronger view of a stranger who does it in front of her.
+
+The tell is already in §6. **Grudge-Etched is the only real personality trait in
+the list, and the only one whose dial was never implemented** — `(grudge decay
+slow — revenge seam)`, parenthesised. It had nowhere to land, because the thing
+it needed to modify did not exist.
+
+It exists now (§12). The missing piece is a **temperament axis** whose dials
+point at people:
+
+1. **Trait weights the event** — Callous discounts courtesy; Grudge-Etched slows
+   decay on slights (that is `_weight`'s wound half-life, made per-trait). One
+   argument in `add_opinion`.
+2. **Trait meets trait** — two souls whose ethos opposes seed a standing opinion
+   on sight. This is what makes NPC-to-NPC society legible with no authoring.
+3. **Acting against nature** — already shipped.
+
+Vocabulary gaps to name when it is drafted: honesty, warmth/cruelty, generosity
+*toward others* (Open-Valve is about spending on yourself), pride, and
+trust/suspicion. Forgiveness is half-covered by Grudge-Etched having no opposite.
+
+**Blocked on §12's balance prerequisite**, not on design: temperament traits are
+consumers of opinion, and opinion has two untuned producers and no play data
+behind them. Names are owner territory (§6 convention) — draft as placeholders
+expecting the red pen.

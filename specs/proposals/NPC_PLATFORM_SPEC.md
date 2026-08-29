@@ -95,6 +95,32 @@ is the two-brain law holding: souls decide, the LLM voices.
 The remaining entries in §6 are things deliberately NOT unified, not debts
 against this checklist.
 
+## 5b · Criterion 9 — why the hunt sits at band 4
+
+Recorded because the reasoning is not obvious and the next person will
+reasonably think it is wrong.
+
+`tick_hunt` came off the 45s director tick and became a souls goal, offered at
+**band 4, above patrol**. Band 4 looks far too low for a security response —
+below hunger, below duty. It is not a judgement that hunting matters less than
+eating. **It is where the hunt already sat.**
+
+`is_patrol_idle` returned False whenever `soul_job` was set, so a unit that was
+on duty, in combat, travelling or mid-conversation never hunted. Only a
+genuinely idle unit did. Band 4 reproduces that exactly, and the merge changes
+*who drives the body*, nothing else. Re-banding a security behaviour while
+claiming to unify schedulers would have been a design change smuggled in under
+a refactor — the kind that is invisible in a diff and shows up in play weeks
+later.
+
+If the colony later wants a guard to abandon its post for an intruder, that is a
+real decision about how security behaves, and it is one line in `_desired_goal`.
+
+`wants_hunt` is deliberately PURE. The band tree must ask whether a unit wants
+to hunt before deciding whether that outranks what it is doing, and `tick_hunt`
+cannot answer without emoting and seeding state — merely *considering* a hunt
+would have started one.
+
 ## 6 · Deliberately not unified
 
 - **`db.role` vs `soul_role`** now mean *background* and *occupation* —
