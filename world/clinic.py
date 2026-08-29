@@ -249,8 +249,26 @@ def serve_at_clinic(post, speech, patron, by, addressed=False):
     return True
 
 
+def _diagnose(post, arg, patron, by):
+    """The patient's real medical state — the clinic's `check_stock`."""
+    from world.medical.utils import get_medical_status_summary
+    try:
+        return (get_medical_status_summary(patient_for(by, patron))
+                or "nothing obviously wrong")
+    except Exception:  # noqa: BLE001 — never break a turn over a read
+        return "you can't get a clean read on them"
+
+
+def _treat_tool(post, arg, patron, by):
+    """Draw a supply and apply it for real."""
+    if arg and getattr(by, "location", None):
+        treat(by, patient_for(by, patron), arg)
+    return None
+
+
 for _role in CLINIC_ROLES:
     register(_role, serve_at_clinic,
              aliases=("doctor", "doc", "medic", "surgeon", "ripperdoc"),
              fallback=None,   # a doctor asked something odd stays quiet
-             archetype="doctor")
+             archetype="doctor",
+             tools={"diagnose": _diagnose, "treat": _treat_tool})

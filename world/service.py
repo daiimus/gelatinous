@@ -64,7 +64,8 @@ def _ensure_loaded():
             logger.log_trace(f"service provider {path} failed to load")
 
 
-def register(role, handler, aliases=(), fallback=None, archetype=None):
+def register(role, handler, aliases=(), fallback=None, archetype=None,
+             tools=None):
     """Bind a job to a post role.
 
     Args:
@@ -72,9 +73,15 @@ def register(role, handler, aliases=(), fallback=None, archetype=None):
         aliases: what the job answers to ("bartender", "barkeep")
         fallback: what it says when addressed with no voice available
         archetype: the `world/llm/prompt.ARCHETYPES` key for its register
+        tools: ``{tool_name: fn(post, arg, patron, by)}`` — what the job can
+            actually DO when the model calls one. The archetype GRANTS a
+            tool; this is what runs it, and the two must come from the
+            same place or a successor is handed `check_stock` and gets an
+            empty string back (#2352).
     """
     SERVICE[role] = {"handler": handler, "aliases": tuple(aliases),
-                     "fallback": fallback, "archetype": archetype}
+                     "fallback": fallback, "archetype": archetype,
+                     "tools": dict(tools or {})}
 
 
 def job_for(post):
@@ -153,6 +160,25 @@ def archetype_for(worker):
     """
     job = job_of(worker)
     return job.get("archetype") if job else None
+
+
+def run_tool(worker, tool, arg, patron):
+    """Run a job tool for whoever is standing the post.
+
+    Returns ``(handled, result)``. The caller must distinguish "this job
+    has no such tool" from "the tool ran and returned nothing", or a
+    keeper answers an empty string as though it were stock.
+    """
+    job = job_of(worker)
+    fn = (job or {}).get("tools", {}).get(tool)
+    if fn is None:
+        return False, None
+    try:
+        return True, fn(post_for(worker), arg, patron, worker)
+    except Exception:  # noqa: BLE001 — a broken tool must not eat the turn
+        from evennia.utils import logger
+        logger.log_trace(f"job tool {tool} failed for {worker}")
+        return True, None
 
 
 def serve(worker, speech, patron, addressed=False):

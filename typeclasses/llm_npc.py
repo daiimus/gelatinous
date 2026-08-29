@@ -829,14 +829,28 @@ class LLMNpcMixin:
 
     def _run_context_tool(self, tool, arg, patron):
         """Run a read-only context tool and return its result for the model.
-        ``look`` is built in; subclasses extend (then call super)."""
+
+        ``look`` is built in; the JOB being stood supplies the rest. The
+        archetype GRANTS a tool and the job RUNS it, and both now come
+        off the post — grant it from one place and run it from another
+        and a successor gets handed `check_stock` only to receive an
+        empty string, which the model then improvises around (#2352).
+        Subclasses may still extend, then call super."""
         if tool == "look":
             return self._perceive(patron) or "nothing remarkable"
+        from world import service
+        handled, result = service.run_tool(self, tool, arg, patron)
+        if handled:
+            return result if result is not None else ""
         return ""
 
     def _handle_action_tool(self, tool, arg, patron):
         """Route an action tool to a real command. ``remember``/``feel``/
         ``release`` are universal; subclasses extend then call super."""
+        from world import service
+        handled, _result = service.run_tool(self, tool, arg, patron)
+        if handled:
+            return
         if tool == "remember" and arg and patron and self.location:
             self._remember_person(patron, arg)
         elif tool == "feel" and arg and patron:

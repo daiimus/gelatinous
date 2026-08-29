@@ -1048,10 +1048,26 @@ HUB_AND_HOWL_MENU = [
 # normalising it is not worth a migration (#2350).
 from world.service import register as _register_service  # noqa: E402
 
+def _check_stock(post, arg, patron, by):
+    """The board, plus what can be mixed off it from stock — read off the
+    POST, so a successor knows the bar they are standing (#2352)."""
+    menu = (post.db.menu if post is not None else None) or []
+    names = [r.get("name") for r in menu if r.get("name")]
+    parts = [("Board: " + ", ".join(names)) if names
+             else "nothing on the board"]
+    off = stockable_cocktails(bar_stock(post)) if post is not None else []
+    if off:
+        shown = ", ".join(off[:8])
+        parts.append("Off the board, can mix from stock: " + shown
+                     + (", and more" if len(off) > 8 else ""))
+    return ". ".join(parts) + "."
+
+
 for _role in ("bartender", "snailer"):
     _register_service(
         _role, serve_from_board,
         aliases=("bartender", "barkeep", "barkeeper"),
         fallback="Don't serve that here.",
         archetype="bartender",
+        tools={"check_stock": _check_stock},
     )
