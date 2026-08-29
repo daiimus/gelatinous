@@ -257,14 +257,14 @@ class TestToolScoping(TestCase):
 
     def test_bartender_grants_its_job_tools_plus_base(self):
         names = tool_names(_PERSONA)  # bartender archetype
-        self.assertEqual(names, ["look", "remember", "feel",
+        self.assertEqual(names, ["look", "remember",
                                  "check_stock", "prepare_drink", "wield"])
 
     def test_schema_scoped_to_archetype(self):
-        # the social archetype gets the base tools (look/remember/feel) but
+        # the social archetype gets the base tools (look/remember) but
         # never a bartender's prepare_drink.
         enum = schema_for(self.social)["properties"]["tool"]["enum"]
-        self.assertEqual(enum, ["none", "look", "remember", "feel"])
+        self.assertEqual(enum, ["none", "look", "remember"])
         self.assertNotIn("prepare_drink", enum)
 
     def test_turn_schema_builder(self):
@@ -337,7 +337,7 @@ class TestParseTurn(TestCase):
 
     def test_schema_tool_enum(self):
         self.assertEqual(TURN_SCHEMA["properties"]["tool"]["enum"],
-                         ["none", "look", "remember", "feel", "style",
+                         ["none", "look", "remember", "style",
                           "release", "wield", "radio", "check_stock",
                           "prepare_drink", "diagnose", "treat", "install"])
 
@@ -579,14 +579,14 @@ class TestMerchantArchetype(TestCase):
         self.assertIn("merchant", ARCHETYPES)
         # no fake buy/sell tool — transactions go through the shop command
         self.assertEqual(tool_names(self._merchant()),
-                         ["look", "remember", "feel", "release", "radio",
+                         ["look", "remember", "release", "radio",
                           "wield", "check_stock"])
 
     def test_dj_scoped_to_the_board(self):
         from world.llm.prompt import tool_names
         self.assertEqual(
             tool_names({"persona_seed": {"archetype": "dj"}}),
-            ["look", "remember", "feel", "release", "radio"])
+            ["look", "remember", "release", "radio"])
 
     def test_duties_ground_ownership(self):
         msgs = build_messages(self._merchant(), "someone",

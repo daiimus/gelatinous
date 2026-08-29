@@ -181,15 +181,18 @@ class TestButcherArchetype(TestCase):
         # a grant with nothing behind it hands the model an empty string
         # and it invents stock (#2352)
         self.assertEqual(tool_names(persona),
-                         ["look", "remember", "feel", "release",
-                          "check_stock"])
+                         ["look", "remember", "release", "check_stock"])
 
     def test_fewshot_demonstrates_memory_tools(self):
+        """`feel` was retired in #2388 — the read on a person is derived by
+        the engine, so the examples must not demonstrate calling it. What the
+        few-shot still has to teach is `remember` (naming people) and
+        restraint (ending on no tool at all)."""
         from world.llm.prompt import ARCHETYPES
         tools = [e["assistant"]["tool"]
                  for e in ARCHETYPES["butcher"]["fewshot"]]
         self.assertIn("remember", tools)
-        self.assertIn("feel", tools)
+        self.assertNotIn("feel", tools)
         self.assertEqual(tools[-1], "none")   # ends on restraint
 
     def test_duties_draw_the_ripper_line(self):

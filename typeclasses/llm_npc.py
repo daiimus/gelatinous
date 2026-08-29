@@ -121,6 +121,7 @@ class LLMNpcMixin:
         "what's good tonight?" stays conversation.
         """
         if self._is_gratitude(speech):
+            self._note_courtesy(speaker)
             self._acknowledge()
             return True
         from world import service
@@ -150,6 +151,24 @@ class LLMNpcMixin:
         from world.bar import GRATITUDE_TRIGGERS
         low = (content or "").lower()
         return any(trigger in low for trigger in GRATITUDE_TRIGGERS)
+
+    def _note_courtesy(self, speaker):
+        """Being thanked nudges this NPC's read on the person UPWARD (#2388).
+
+        Small on purpose: courtesy is cheap, and the point of a decayed sum is
+        that a hundred thank-yous still don't outweigh being knifed once. This
+        is a PRODUCER of opinion, not a consumer — nothing gates on the score
+        yet, deliberately (NPC_TRAITS_SPEC §12, balance pass pending).
+        """
+        if speaker is None or speaker is self:
+            return
+        try:
+            from world.souls import thoughts
+            thoughts.add_opinion(self, self._memory_subject(speaker),
+                                 "was_civil", 0.08,
+                                 note="they were decent to me")
+        except Exception:  # noqa: BLE001 — a feeling must not eat a reply
+            pass
 
     def _acknowledge(self):
         """A throttled, non-verbal nod to thanks."""
@@ -562,11 +581,20 @@ class LLMNpcMixin:
 
     def _relationship_line(self, subject, patron):
         """A one-line WHO summary for the prompt — the names this NPC knows the
-        person by + its read on them. ``None`` for a clean stranger."""
+        person by + its read on them. ``None`` for a clean stranger.
+
+        THE READ IS THE ENGINE'S, NOT THE MODEL'S. It used to be a free-text
+        valence that the `feel` tool wrote and this line read back — the
+        two-brain law running backwards, with the model authoring a state the
+        game stored. Opinion is now the decayed sum of what the person
+        actually DID (`souls.thoughts`), derived on read. Souls decide; the
+        voice is handed the answer.
+        """
+        from world.souls import thoughts
         d = self._dossiers().get(subject) or {}
         aliases = [a for a in (d.get("aliases") or []) if a]
-        valence = d.get("valence") or "neutral"
-        if not aliases and valence == "neutral":
+        band = thoughts.opinion_band(thoughts.opinion_of(self, subject))
+        if not aliases and band == "neutral":
             return None
         parts = []
         if len(aliases) == 1:
@@ -574,8 +602,14 @@ class LLMNpcMixin:
         elif aliases:
             parts.append("you've known them as "
                          + ", ".join(f"'{a}'" for a in aliases))
-        if valence != "neutral":
-            parts.append(f"your read on them: {valence}")
+        if band != "neutral":
+            read = f"your read on them: {band}"
+            because = thoughts.opinion_note(self, subject)
+            if because:
+                # cite the REASON, so the voice narrates the engine's
+                # grievance instead of inventing its own
+                read += f" (because {because})"
+            parts.append(read)
         return ("; ".join(parts) + ".") if parts else None
 
     def _note_alias(self, subject, name):
@@ -589,17 +623,17 @@ class LLMNpcMixin:
         d[subject] = entry
         self.db.llm_dossiers = d
 
-    def _set_valence(self, subject, valence):
-        """Update the NPC's private read on a person (§8.5 behaviour-driven).
-        Surfaces in the WHO block next turn; consulted by trust/consent later."""
-        valence = " ".join(str(valence).split())[:40]
-        if not valence:
-            return
-        d = self._dossiers()
-        entry = dict(d.get(subject) or {"aliases": [], "valence": "neutral"})
-        entry["valence"] = valence
-        d[subject] = entry
-        self.db.llm_dossiers = d
+    # `_set_valence` is GONE (#2388). The NPC's read on a person is derived
+    # from `souls.thoughts.opinion_of` now — see `_relationship_line`. The old
+    # method let the model write a free-text state that the game then stored
+    # and read back, which is the two-brain law inverted; the docstring even
+    # promised trust/consent would consult it, which would have made a
+    # MECHANIC depend on a model turn (platform law 4).
+    #
+    # Existing `llm_dossiers[uid]["valence"]` strings are simply ignored.
+    # They are left in place rather than migrated away: they are inert, they
+    # cost nothing, and they are a readable record of what each NPC used to
+    # think for anyone reviewing the transition.
 
     def _store_memory(self, patron, speaker_name, line, speech, subject=None):
         """Remember this exchange: embed it off-reactor, then write a record
@@ -643,7 +677,7 @@ class LLMNpcMixin:
                 return None
             from world.souls import thoughts
             band = thoughts.mood_band(thoughts.mood(self))
-            feel = {
+            mood_line = {
                 "bright": "You are in good spirits today.",
                 "level": "You are steady today.",
                 "low": "You are worn down and short on patience today.",
@@ -667,7 +701,7 @@ class LLMNpcMixin:
             else:
                 where = (f"You are off duty, away from your post, at "
                          f"{here.key}." if here else "You are off duty.")
-            return f"{where} {feel}".strip()
+            return f"{where} {mood_line}".strip()
         except Exception:  # noqa: BLE001 — a feeling must not break a reply
             return None
 
@@ -866,16 +900,18 @@ class LLMNpcMixin:
         return ""
 
     def _handle_action_tool(self, tool, arg, patron):
-        """Route an action tool to a real command. ``remember``/``feel``/
-        ``release`` are universal; subclasses extend then call super."""
+        """Route an action tool to a real command. ``remember`` and
+        ``release`` are universal; subclasses extend then call super.
+
+        An unknown tool falls through silently, which is deliberate: a model
+        trained on an older schema can still emit a retired tool (``feel``,
+        #2388) and the router must shrug rather than act on it."""
         from world import service
         handled, _result = service.run_tool(self, tool, arg, patron)
         if handled:
             return
         if tool == "remember" and arg and patron and self.location:
             self._remember_person(patron, arg)
-        elif tool == "feel" and arg and patron:
-            self._set_valence(self._memory_subject(patron), arg)
         elif tool == "style" and arg:
             # Adjust own clothing through the REAL zip/rollup/remove/wear
             # commands — the fiction and the worn state stay in agreement.

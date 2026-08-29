@@ -4,6 +4,7 @@ Methods bound to a MagicMock stand-in (the file's established pattern), so no
 Evennia boot — just the recall-before-generate and the write-after-turn flows.
 """
 
+import time
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -98,38 +99,41 @@ class TestActionAwareness(TestCase):
 
 
 class TestDossier(TestCase):
-    def _npc(self, dossiers):
+    """The dossier holds NAMES. The READ on a person is the engine's now,
+    derived from the event log (#2388) — `_set_valence` and the `feel` tool
+    are gone, because a model must not author a state the game stores."""
+
+    def _npc(self, dossiers, opinions=None):
         b = MagicMock()
         b.db.llm_dossiers = dossiers
-        for m in ("_dossiers", "_relationship_line", "_note_alias",
-                  "_set_valence"):
+        # Explicit: left as a bare MagicMock this gets deserialized as the
+        # opinion book and quietly poisons every read.
+        b.db.soul_opinions = opinions or {}
+        for m in ("_dossiers", "_relationship_line", "_note_alias"):
             _bind(b, m)
         return b
-
-    def test_set_valence_persists(self):
-        b = self._npc({})
-        b._set_valence("#5", "fed up with their bullshit")
-        self.assertEqual(b.db.llm_dossiers["#5"]["valence"],
-                         "fed up with their bullshit")
-
-    def test_valence_surfaces_in_relationship_line(self):
-        b = self._npc({})
-        b._set_valence("#5", "wary")
-        # re-read what _set_valence wrote
-        b.db.llm_dossiers = b.db.llm_dossiers
-        line = b._relationship_line("#5", MagicMock())
-        self.assertIn("wary", line)
 
     def test_relationship_line_none_for_stranger(self):
         self.assertIsNone(self._npc({})._relationship_line("#5", MagicMock()))
 
-    def test_relationship_line_with_aliases_and_valence(self):
-        b = self._npc({"#5": {"aliases": ["the foot guy", "Bob"],
-                              "valence": "wary"}})
+    def test_aliases_surface(self):
+        b = self._npc({"#5": {"aliases": ["the foot guy", "Bob"]}})
         line = b._relationship_line("#5", MagicMock())
         self.assertIn("the foot guy", line)
         self.assertIn("Bob", line)
-        self.assertIn("wary", line)
+
+    def test_the_read_is_derived_from_what_they_did(self):
+        b = self._npc({}, opinions={"#5": [
+            (time.time(), "attacked_me", -0.7, "they put hands on me")]})
+        line = b._relationship_line("#5", MagicMock())
+        self.assertIn("hostile", line)
+        self.assertIn("they put hands on me", line)   # cites the reason
+
+    def test_a_stale_model_written_valence_is_inert(self):
+        """Old dossiers still carry the strings `feel` wrote. They must not
+        colour anything — the read comes from the log or from nowhere."""
+        b = self._npc({"#5": {"aliases": [], "valence": "smitten"}})
+        self.assertIsNone(b._relationship_line("#5", MagicMock()))
 
     def test_note_alias_appends_dedups_and_persists(self):
         b = self._npc({})
@@ -171,12 +175,14 @@ class TestRememberTool(TestCase):
         b._handle_action_tool("prepare_drink", "Negroni", MagicMock())
         b.execute_cmd.assert_not_called()       # drinks are the bartender's job
 
-    def test_feel_routes_to_set_valence(self):
+    def test_a_retired_tool_is_ignored_not_obeyed(self):
+        """`feel` is gone (#2388). A model trained on the old schema may still
+        emit it; the router must shrug rather than act on a tool the game no
+        longer honours."""
         b = self._npc()
         b._memory_subject = lambda p: "#5"
-        b._set_valence = MagicMock()
         b._handle_action_tool("feel", "wary", MagicMock())
-        b._set_valence.assert_called_once_with("#5", "wary")
+        b.execute_cmd.assert_not_called()
 
 
 class TestRecall(TestCase):

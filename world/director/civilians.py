@@ -642,6 +642,20 @@ def react_to_attack(victim: Any, attacker: Any) -> None:
     if not reaction:
         return  # not a role-bearing NPC — none of our business
 
+    # Being attacked is the strongest thing a person can do to your read on
+    # them (#2388). Recorded BEFORE the ladder runs, so it lands even if the
+    # reaction itself fails, and as a WOUND so it fades over days rather than
+    # hours. The per-key stack cap keeps a long fight from flooding the log
+    # with one grudge repeated forty times.
+    try:
+        from world.identity import get_apparent_uid
+        from world.souls import thoughts
+        thoughts.add_opinion(victim, get_apparent_uid(attacker),
+                             "attacked_me", -0.60,
+                             note="they put hands on me", wound=True)
+    except Exception:  # noqa: BLE001 — a feeling must never break combat
+        pass
+
     def _cmd(command):
         try:
             victim.execute_cmd(command)

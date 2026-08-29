@@ -83,14 +83,23 @@ def _feed_rag(soul, note):
         pass
 
 
+def _weight(key, age):
+    """How much a thought of this key still counts after `age` seconds.
+
+    The ONE decay rule. Mood and opinion both read it, so a wound fades
+    slowly in both or in neither — two half-lives for the same feeling
+    would be two doors onto one decision."""
+    half = WOUND_HALFLIFE if key in WOUND_KEYS else HALFLIFE_SECONDS
+    return 0.5 ** (max(0.0, age) / half)
+
+
 def decayed(soul, now=None):
     """[(age_weighted_valence, key, note, age_seconds)] for the log."""
     now = now if now is not None else time.time()
     out = []
     for stamp, key, valence, note in (soul.db.soul_thoughts or []):
-        half = WOUND_HALFLIFE if key in WOUND_KEYS else HALFLIFE_SECONDS
-        weight = 0.5 ** (max(0.0, now - stamp) / half)
-        out.append((valence * weight, key, note, now - stamp))
+        age = now - stamp
+        out.append((valence * _weight(key, age), key, note, age))
     return out
 
 
@@ -105,3 +114,117 @@ def mood_band(value):
         if value >= floor:
             return label
     return "grim"
+
+
+# ---------------------------------------------------------------------------
+# Opinion — the same feeling, pointed at a PERSON
+# ---------------------------------------------------------------------------
+#
+# Mood is what a soul thinks of its life; opinion is what it thinks of YOU.
+# Both are the decayed sum of things that happened, derived on read, and both
+# run through `_weight` so a grudge and a bad mood age at one rate.
+#
+# It lives in its own attribute rather than sharing `soul_thoughts` because
+# that log is capped at 20 for the soul's OWN life. A bartender who meets a
+# dozen patrons in a night would evict her own payday and hunger to make room
+# for acquaintances — sociability would quietly degrade mood. Per-person
+# storage also lets two people both be "generous" without the stack cap
+# treating them as the same thought.
+#
+# NOTHING GATES ON THIS YET, deliberately. Opinion is something souls HAVE
+# before it is something that decides anything: no system in the colony has
+# been balance-tuned, and refusing service or moving prices off an untuned
+# score is how you get a colony that hates everyone. See NPC_TRAITS_SPEC §12.
+
+OPINION_STACK_CAP = 3        # same key about the same person
+OPINION_CAP = 6              # entries kept per person
+ACQUAINTANCE_CAP = 24        # people tracked at once; least-recent evicted
+MOOD_SHARE = 0.35            # how much of a personal event also colours the day
+
+OPINION_BANDS = (            # (floor, label) — first match wins
+    (0.40, "warm"),
+    (0.10, "friendly"),
+    (-0.10, "neutral"),
+    (-0.40, "wary"),
+    (-10.0, "hostile"),
+)
+
+
+def _opinions(soul):
+    from evennia.utils.dbserialize import deserialize
+    return deserialize(soul.db.soul_opinions) or {}
+
+
+def add_opinion(soul, uid, key, valence, note="", wound=False,
+                mood_share=MOOD_SHARE):
+    """Record that `uid` did something that moves this soul's read on them.
+
+    Also nudges the general mood at `mood_share` of the weight (owner
+    ruling 2026-08-29): being robbed at knifepoint should dent your day,
+    not merely your opinion of the robber. Pass ``mood_share=0`` for
+    something that is genuinely only about that person.
+    """
+    uid = str(uid or "").strip()
+    if not uid or not valence:
+        return
+    if wound:
+        WOUND_KEYS.add(key)
+    book = _opinions(soul)
+    entries = [tuple(e) for e in (book.get(uid) or [])]
+    entries.append((time.time(), key, float(valence), note))
+
+    # dedupe within this person only — A being generous must not evict B
+    same = [e for e in entries if e[1] == key]
+    for stale in same[:-OPINION_STACK_CAP]:
+        entries.remove(stale)
+    book[uid] = entries[-OPINION_CAP:]
+
+    if len(book) > ACQUAINTANCE_CAP:
+        # forget the least recently FELT-ABOUT person, not the oldest
+        # acquaintance: someone seen daily stays known, someone met once a
+        # year ago does not.
+        def _last(item):
+            return max((e[0] for e in item[1]), default=0.0)
+        for uid_out, _ in sorted(book.items(), key=_last)[
+                :len(book) - ACQUAINTANCE_CAP]:
+            book.pop(uid_out, None)
+    soul.db.soul_opinions = book
+
+    if mood_share:
+        add_thought(soul, key, float(valence) * mood_share, note, wound=wound)
+
+
+def opinion_of(soul, uid, now=None):
+    """Clamped, decayed sum of what `uid` has done to this soul. Pure read —
+    no attribute holds it, exactly as with mood."""
+    uid = str(uid or "").strip()
+    if not uid:
+        return 0.0
+    now = now if now is not None else time.time()
+    entries = _opinions(soul).get(uid) or []
+    total = sum(float(v) * _weight(k, now - t) for t, k, v, _n in
+                (tuple(e) for e in entries))
+    return max(-1.0, min(1.0, total))
+
+
+def opinion_band(value):
+    for floor, label in OPINION_BANDS:
+        if value >= floor:
+            return label
+    return "hostile"
+
+
+def opinion_note(soul, uid, now=None):
+    """The strongest surviving reason behind the current opinion, for a
+    voice to cite. Returns '' when there is nothing worth saying."""
+    uid = str(uid or "").strip()
+    if not uid:
+        return ""
+    now = now if now is not None else time.time()
+    best, best_note = 0.0, ""
+    for e in (_opinions(soul).get(uid) or []):
+        stamp, key, valence, note = tuple(e)
+        weighted = abs(float(valence) * _weight(key, now - stamp))
+        if note and weighted > best:
+            best, best_note = weighted, note
+    return best_note
