@@ -115,11 +115,12 @@ def tick_npc(npc: Any) -> str:
     (for diagnostics): ``skip`` / ``wait`` / ``travel`` / ``waypoint`` /
     ``souls`` / ``hunt`` / ``none``.
 
-    A SOULED body returns ``souls``: it walks its beat through the souls
-    engine now (#2373), and this returns before touching it. What
-    remains here is the hunt — a security response, not idle drift — and
-    the walking fallback for an unsouled body, which nothing in the
-    colony currently is.
+    A SOULED body returns ``souls`` rather than being WALKED here: it
+    takes its beat through the souls engine now (#2373). The hunt still
+    runs first and still drives the body, because a hunt is a security
+    RESPONSE rather than idle drift — it is the last thing this tick
+    moves, and the last piece of criterion 9. The walking fallback below
+    is for an unsouled body, which nothing in the colony currently is.
 
     * **Cadence** (``db.patrol_cadence``, default 1): act only every Nth
       tick — civilians drift at a stroll while security marches. Now
