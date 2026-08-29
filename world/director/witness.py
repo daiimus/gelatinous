@@ -36,6 +36,12 @@ from world.identity import BUILDS, HEIGHTS
 WITNESS_REPORT_DELAY = 40.0
 #: Seconds after reporting before the witness slips away and despawns.
 WITNESS_DESPAWN_DELAY = 90.0
+#: Backstop age. The despawn rides a Twisted `delay`, which does NOT
+#: survive a reload — a reload inside the window loses the callback and
+#: strands the witness in the street forever. Two were found standing
+#: months later, wearing the crowd's clothes and carrying a walkie
+#: (#2367). Anything this old has outlived every legitimate window.
+WITNESS_MAX_AGE = 600.0
 #: §5.2: civilians carry pockets worth mugging, not farming.
 WITNESS_TOKENS = (100, 500)
 
@@ -267,6 +273,35 @@ def _cower(witness: Any) -> None:
     except Exception:  # noqa: BLE001
         pass
     delay(WITNESS_DESPAWN_DELAY, despawn_witness, witness)
+
+
+def sweep_stranded(now: float | None = None) -> int:
+    """Despawn witnesses whose despawn callback died with a reload.
+
+    The flash-temp contract is "exists for the report, lingers briefly,
+    and despawns". A Twisted delay cannot honour the last part across a
+    reload, so this is the part that can: state that must be true is
+    cheaper to check than an event that must be caught.
+    """
+    import time
+    from typeclasses.characters import Character
+    from evennia.objects.models import ObjectDB
+    now = time.time() if now is None else now
+    swept = 0
+    for obj in ObjectDB.objects.all():
+        try:
+            if not isinstance(obj, Character) or not obj.db.is_witness:
+                continue
+            created = obj.db_date_created
+            if created is None:
+                continue
+            if (now - created.timestamp()) < WITNESS_MAX_AGE:
+                continue
+            despawn_witness(obj)
+            swept += 1
+        except Exception:  # noqa: BLE001 — one bad body can't stop the sweep
+            continue
+    return swept
 
 
 def despawn_witness(witness: Any) -> None:
