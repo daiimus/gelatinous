@@ -35,6 +35,23 @@ def fault(soul, msg):
     log = soul.db.soul_faults or []
     log.append((time.time(), msg))
     soul.db.soul_faults = log[-FAULT_KEEP:]
+    # COOL THE GOAL DOWN. A plan that cannot be MADE already cooled
+    # (engine.think), but a job that dies mid-flight did not — so a soul
+    # whose travel failed re-planned the identical impossible trip on
+    # the very next beat, forever. One stranded body on a rooftop it
+    # could not path out of produced 75 of 120 faults in a window,
+    # re-deciding to walk home every thirty seconds (#2375).
+    #
+    # `safety` is exempt by the engine's own reading of this map, which
+    # is correct: nothing earns the right to stop a soul fleeing.
+    goal = (soul.db.soul_job or {}).get("goal")
+    if goal:
+        from world.souls.engine import GOAL_COOLDOWN_SECONDS
+        now = time.time()
+        cooldowns = {g: t for g, t in (soul.db.soul_goal_cooldown or {}).items()
+                     if t > now}
+        cooldowns[goal] = now + GOAL_COOLDOWN_SECONDS
+        soul.db.soul_goal_cooldown = cooldowns
     soul.db.soul_job = None
     stop_travel(soul)       # an aborted job must not keep walking its route
     _signal("travel_stalled" if "travel" in msg else "plan_faulted", soul, f"{soul.key}: {msg}")
