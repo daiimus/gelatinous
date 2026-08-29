@@ -103,18 +103,37 @@ class Item(DefaultObject):
 ### Perspective-Aware Descriptions (NOT using $pron())
 **Important**: After testing, we discovered that `$pron()` functions are **NOT available in prototypes**. They only work in `msg_contents()` calls during runtime messaging.
 
-Instead, clothing descriptions use static pronouns and rely on the Item class methods for perspective handling:
-
-```python
-# Correct approach - static descriptions in prototypes
-HOODIE_WORN_DESC = "A menacing black developer hoodie that clings to their frame like digital shadow incarnate, command-line text pulsing ominously across the chest"
-
-JEANS_WORN_DESC = "Battle-tested denim jeans that cling to their form with urban authority, the faded indigo surface scarred by countless encounters"
-
-BOOTS_WORN_DESC = "Imposing black leather combat boots laced with military precision, steel-reinforced toes speaking of serious intent"
-```
-
-**Perspective handling** occurs in the `get_current_worn_desc_with_perspective()` method in the Item class, not in the prototype definitions.
+> **CORRECTED 2026-08-29 (#2396).** This section used to say worn
+> descriptions take **static pronouns** and that "perspective handling occurs
+> in `get_current_worn_desc_with_perspective()`, not in the prototype
+> definitions" — while the example forty lines below used `{their}` tokens.
+> Both conventions were documented, so both got written: of 78 worn
+> descriptions, 13 used tokens and 65 did not.
+>
+> **The code settles it.** `get_current_worn_desc_with_perspective()` ends in:
+>
+> ```python
+> return from_obj._process_description_variables(
+>     colored_desc, looker, force_third_person=True)
+> ```
+>
+> That is the SAME token processor longdescs use. So `{their}` is resolved
+> against the wearer's gender and renders "his" / "her" / "its"; a literal
+> `their` is never touched and renders "their" on everybody. A static pronoun
+> is not perspective-neutral — it is simply wrong for any wearer who is not a
+> plural.
+>
+> **The rule:** any pronoun referring to the WEARER is a token — `{their}`,
+> `{them}`. A pronoun referring to the GARMENT stays plain prose ("office
+> trousers holding their line", "its ripstop fabric"), because the garment's
+> number does not change with who is wearing it.
+>
+> Body-part references may use either `{their} chest` or `the chest`; both
+> read correctly. `{their}` is preferred for new work, as in `COMBAT_BOOTS`.
+>
+> A worn_desc must never assert the WEARER'S history — it is the same string
+> on everyone who puts the garment on. History belongs to the garment
+> ("ghost-stitching where patches used to live"), not the person.
 
 ### ANSI Color System Integration
 Clothing items support primary and secondary color attributes for enhanced visual immersion:
