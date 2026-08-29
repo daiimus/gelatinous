@@ -182,6 +182,25 @@ def _slot_held(post, shift, slot) -> bool:
     return False
 
 
+def slot_is_taken(post, shift, by=None) -> bool:
+    """Is this SHIFT's slot already held by somebody other than *by*?
+
+    The question the claim step must ask, and asks through `_slot_held`
+    so it is the same reading the succession sweep uses. The claim used
+    to check `post_keeper` — the legacy SINGLE mirror, which cannot tell
+    one shift from another — and additionally required the holder to be
+    standing there. Souls leave their post constantly (a band-1 need
+    outranks duty), so a keeper who stepped out to eat was displaced by
+    the next candidate offered the same slot, and the pair of them ended
+    up believing they held it (#2371).
+    """
+    slot = (post.db.post_slots or {}).get(shift) or {}
+    keeper = slot.get("keeper")
+    if keeper is None or not keeper.pk or keeper is by:
+        return False
+    return _slot_held(post, shift, slot)
+
+
 def _eligible_candidates(room):
     """Unemployed souls, nearest first — human-shaped, idle, alive."""
     from world.souls import engine
