@@ -120,6 +120,10 @@ class LLMNpcMixin:
         decides, and a refusal falls through to the voice — which is how
         "what's good tonight?" stays conversation.
         """
+        # Someone giving their name is CLERICAL, not conversational: write it
+        # down and carry on. Deliberately does NOT return — an introduction
+        # still deserves a reply, so this records and falls through (#2390).
+        self._note_introduction(speech, speaker)
         if self._is_gratitude(speech):
             self._note_courtesy(speaker)
             self._acknowledge()
@@ -151,6 +155,25 @@ class LLMNpcMixin:
         from world.bar import GRATITUDE_TRIGGERS
         low = (content or "").lower()
         return any(trigger in low for trigger in GRATITUDE_TRIGGERS)
+
+    def _note_introduction(self, speech, speaker):
+        """They told us their name — write it down, with no model involved.
+
+        The last mechanic that only existed behind a model turn (#2390). It
+        routes through `_remember_person`, so it runs the same REAL `remember`
+        command a player would, and inherits its guards: pronouns rejected, a
+        no-op re-name skipped. The LLM keeps `remember` for the thing it is
+        actually good at — coining a nickname nobody offered.
+        """
+        if speaker is None or speaker is self:
+            return
+        try:
+            from world.identity import parse_introduction
+            name = parse_introduction(speech)
+            if name:
+                self._remember_person(speaker, name)
+        except Exception:  # noqa: BLE001 — never let bookkeeping eat a reply
+            pass
 
     def _note_courtesy(self, speaker):
         """Being thanked nudges this NPC's read on the person UPWARD (#2388).

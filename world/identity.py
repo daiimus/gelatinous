@@ -16,6 +16,7 @@ See specs/IDENTITY_RECOGNITION_SPEC.md for the full specification.
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import TYPE_CHECKING, Any
 
 from evennia.server.models import ServerConfig
@@ -993,6 +994,89 @@ def get_apparent_uid(char: Any) -> str | None:
     return hashlib.blake2b(
         signature_bytes, digest_size=_APPARENT_UID_DIGEST_BYTES
     ).hexdigest()
+
+
+#: Ways the colony gives its name. STRONG leads cannot plausibly mean anything
+#: else, so a lowercase name is accepted. WEAK leads are real introductions too
+#: but collide with ordinary speech — "call me later", "I'm tired" — so they
+#: additionally require the name to be CAPITALISED. A false positive is worse
+#: than a miss here: the name becomes the NPC's address handle and is
+#: player-visible in every pose afterwards.
+_INTRO_STRONG = (
+    "my name is", "my name's", "the name's",
+    "i go by", "i'm called", "i am called",
+)
+_INTRO_WEAK = (
+    "you can call me", "they call me", "people call me", "folks call me",
+    "call me", "name's", "i'm", "i am",
+)
+
+#: Grammatically a name, obviously not one — "call me later" must not
+#: christen anybody Later.
+_NOT_A_NAME = {
+    "later", "back", "tomorrow", "tonight", "soon", "anytime", "sometime",
+    "when", "if", "whatever", "please", "maybe", "never", "always",
+    "sir", "maam", "ma'am", "boss", "chief", "friend", "stranger",
+    "sorry", "fine", "good", "well", "okay", "ok", "here", "there",
+    "busy", "tired", "hungry", "broke", "done", "new", "lost", "looking",
+    "just", "not", "no", "yes", "still", "only", "afraid", "sure",
+}
+
+
+def _clean_intro_name(tail: str, require_capital: bool) -> str | None:
+    """The name out of the tail of an introduction, or ``None``."""
+    # a name ends at punctuation: "I'm Marcus, and I need work"
+    tail = re.split(r"[.,!?;:—]|\band\b", tail, maxsplit=1)[0]
+    words = [w.strip("'\"") for w in tail.split() if w.strip("'\"")][:4]
+    if not words:
+        return None
+    # "They call me the Toe Guy" — a coined name often leads with an article,
+    # so the capital that tells a name apart from ordinary speech sits on the
+    # word AFTER it.
+    head = 1 if (len(words) > 1
+                 and words[0].lower() in ("the", "a", "an")) else 0
+    if require_capital and not words[head][:1].isupper():
+        return None
+    if any(w.lower().strip("'-") in _NOT_A_NAME for w in words):
+        return None
+    if not all(re.fullmatch(r"[A-Za-z][A-Za-z'\-]*", w) for w in words):
+        return None
+    return " ".join(words)
+
+
+def parse_introduction(text: str) -> str | None:
+    """The name someone just gave for THEMSELVES, or ``None``.
+
+    Deterministic on purpose (#2390). An NPC learning your name used to happen
+    only when the LLM chose to call the `remember` tool — so with the breaker
+    off, no NPC in the colony ever learned anybody's name. A conversational
+    courtesy was living behind a model turn, which platform law 4 forbids.
+
+    What this produces is an ``assigned_name``: an observer's chosen label,
+    NOT a verified identity. A name given in speech is a CLAIM and may be a
+    lie, which is intended — recognition memory records what the NPC
+    *believes*, and the disguise layer is built on that belief being wrong
+    sometimes. A verified name requires proof (an ID, a wanted record,
+    paydata) and is a separate concern this deliberately does not touch.
+    """
+    raw = " ".join(str(text or "").split())
+    if not raw:
+        return None
+    low = raw.lower()
+    for leads, needs_capital in ((_INTRO_STRONG, False), (_INTRO_WEAK, True)):
+        for lead in leads:
+            idx = low.find(lead)
+            if idx == -1:
+                continue
+            if idx and low[idx - 1].isalnum():
+                continue          # must start a word
+            tail = raw[idx + len(lead):]
+            if tail[:1] not in (" ", "'"):
+                continue          # ...and be followed by one
+            name = _clean_intro_name(tail, needs_capital)
+            if name:
+                return name
+    return None
 
 
 def get_assigned_name(observer: Any, target: Any) -> str | None:
