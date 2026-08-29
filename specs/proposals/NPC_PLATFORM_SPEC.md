@@ -75,14 +75,14 @@ they held moves by kind:
 | 4 | one driver walks a body | ✅ #2373 (patrol) |
 | 5 | **exactly one NPC typeclass** | ❌ five exist |
 | 6 | **no blueprint names a role typeclass** | ❌ nine do |
-| 7 | **no class shadows a job hook** | ❌ all four do |
+| 7 | no class shadows a job hook | ✅ #2377 |
 | 8 | dispatch is a job, not a body seizure | ❌ `is_assigned()` |
 | 9 | one scheduler | ❌ 45s + 30s |
 | 10 | game fully playable with the LLM off | 🟡 breaker + memory done; `remember`/`feel`/`style`/NPC-`radio` have no deterministic twin |
 
-**1–4 are the machinery. 5–7 are the collapse the machinery was for,
-and skipping from 4 to "done" is the mistake this spec exists to make
-visible.** 8–9 are the director half; 10 is the voice half.
+**1–4 and 7 are done. 5–6 are the collapse itself — deleting the
+classes and repointing the blueprints — and skipping to "done" without
+them is the mistake this spec exists to make visible.** 8–9 are the director half; 10 is the voice half.
 
 ## 6 · Deliberately not unified
 

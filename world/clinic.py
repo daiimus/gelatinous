@@ -259,6 +259,14 @@ def _diagnose(post, arg, patron, by):
         return "you can't get a clean read on them"
 
 
+def _install_tool(post, arg, patron, by):
+    """Fit chrome for real — the chart, the rolls and the outcome all
+    belong to the procedure engine; the keeper just operates."""
+    if arg and getattr(by, "location", None):
+        install_cyber(by, patient_for(by, patron), arg)
+    return None
+
+
 def _treat_tool(post, arg, patron, by):
     """Draw a supply and apply it for real."""
     if arg and getattr(by, "location", None):
@@ -271,4 +279,5 @@ for _role in CLINIC_ROLES:
              aliases=("doctor", "doc", "medic", "surgeon", "ripperdoc"),
              fallback=None,   # a doctor asked something odd stays quiet
              archetype="doctor",
-             tools={"diagnose": _diagnose, "treat": _treat_tool})
+             tools={"diagnose": _diagnose, "treat": _treat_tool,
+                    "install": _install_tool})

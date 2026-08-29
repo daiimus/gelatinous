@@ -56,10 +56,15 @@ class TestDoctorTools(BaseEvenniaTest):
         d._handle_action_tool("treat", "nanite cloud", self._patient())
         d.execute_cmd.assert_not_called()
 
-    def test_name_aliases(self):
-        d = self._doctor()
-        self.assertIn("doc", d._name_aliases())
-        self.assertIn("surgeon", d._name_aliases())
+    def test_name_aliases_come_from_the_job(self):
+        """"doc" and "surgeon" belong to whoever is standing the clinic
+        post, not to a typeclass (#2352)."""
+        from world.clinic import CLINIC_ROLES
+        from world import service
+        service._ensure_loaded()
+        job = service.SERVICE[CLINIC_ROLES[0]]
+        self.assertIn("doc", job["aliases"])
+        self.assertIn("surgeon", job["aliases"])
 
 
 class TestDoctorPatientTargeting(BaseEvenniaTest):

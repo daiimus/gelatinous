@@ -1063,11 +1063,31 @@ def _check_stock(post, arg, patron, by):
     return ". ".join(parts) + "."
 
 
+def _prepare_drink(post, arg, patron, by):
+    """The model asked for a drink to be made. Resolve its phrasing
+    against the REAL board (fuzzy facade) and run the real `prepare`
+    command — the bar makes it, the model never fakes a pour."""
+    drink = " ".join(str(arg or "").split())
+    if not drink or post is None:
+        return None
+    try:
+        from world.fuzzy import best_match
+        names = [r.get("name") for r in (post.db.menu or []) if r.get("name")]
+        hit = best_match(drink, names)
+        if hit:
+            drink = hit[0]
+    except Exception:  # noqa: BLE001 — resolution is best-effort
+        pass
+    by.execute_cmd(f"prepare {drink}")
+    return None
+
+
 for _role in ("bartender", "snailer"):
     _register_service(
         _role, serve_from_board,
         aliases=("bartender", "barkeep", "barkeeper"),
         fallback="Don't serve that here.",
         archetype="bartender",
-        tools={"check_stock": _check_stock},
+        tools={"check_stock": _check_stock,
+               "prepare_drink": _prepare_drink},
     )

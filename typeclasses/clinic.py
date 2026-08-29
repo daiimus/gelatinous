@@ -66,13 +66,6 @@ class Doctor(LLMNpcMixin, Character):
                 return occupants[0]
         return patron
 
-    def _name_aliases(self):
-        return ["doctor", "doc", "medic", "surgeon", "ripperdoc"]
-
-    # --- deterministic medical requests (reliability lever) --------------
-    # The intercept moved to the generic one in `LLMNpcMixin`, and the
-    # procedures to `world/clinic.py`, so whoever stands the post can run
-    # them (#2352). These remain as named delegates.
 
     def _parse_medical_request(self, speech):
         from world.clinic import parse_medical_request

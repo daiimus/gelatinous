@@ -155,13 +155,6 @@ class Butcher(LLMNpcMixin, Character):
         self.db.llm_driven = False
         self.db.is_butcher_npc = True   # loop-guard marker (cf. is_bartender_npc)
 
-    def _name_aliases(self):
-        return ["butcher", "meatcutter", "grinder"]
-
-    # --- deterministic dish orders (the bartender pattern, #1235) --------
-    # The intercept and the gratitude nod moved off this class (#2350) —
-    # they are the shape of the job, and the job lives on the post. The
-    # cart's own serve is `world/shop/service.serve_from_board_cart`.
 
     def _match_dish_order(self, speech):
         """Resolve spoken words to a dish the CART actually sells, using the
@@ -215,9 +208,6 @@ class Butcher(LLMNpcMixin, Character):
         _fulfil_from_shelf(cart, proto, patron, self, style="board")
         return True
 
-    def _llm_fallback(self):
-        """Sidecar down on an addressed non-order: the curt scripted line."""
-        self.execute_cmd("say Board's behind me. It says what I sell.")
 
     def _find_block(self):
         """The cart she works from (name kept for the give-flow history)."""

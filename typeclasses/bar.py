@@ -495,8 +495,6 @@ class Bartender(LLMNpcMixin, Character):
     # the generic intercept and `world/bar.serve_from_board` does the work,
     # registered against the roles that wear it.
 
-    def _name_aliases(self):
-        return ["bartender", "barkeep", "barkeeper"]
 
     def _make_order(self, recipe, loc):
         """Thin delegate — the plating lives in `world.bar.plate_or_mix`."""
@@ -563,7 +561,3 @@ class Bartender(LLMNpcMixin, Character):
             return
         LLMNpcMixin._handle_action_tool(self, tool, arg, patron)
 
-    def _llm_fallback(self):
-        """Sidecar failed on an addressed non-order: the curt scripted line."""
-        if self.location:
-            self.execute_cmd("say Don't serve that here.")
