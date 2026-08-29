@@ -241,3 +241,55 @@ Existing generated souls get a one-time backfill roll (build script).
   memory-distortion conversation.
 - **Grudge-Etched's dial** is a forward reference to that revenge
   work; in P1 it is voice + ethos only.
+
+## 12. Opinion — the same feeling, pointed at a person
+
+> **Status:** ✅ **SHIPPED #2388.** Mechanism only. Nothing gates on it yet,
+> deliberately — see the balance note below.
+
+Mood is what a soul thinks of its life. **Opinion is what it thinks of *you*.**
+Both are the clamped, half-life-decayed sum of things that actually happened,
+derived on read, and both run through one decay rule (`thoughts._weight`) so a
+grudge and a bad mood cannot age at different rates.
+
+```
+opinion_of(soul, uid)  ->  -1.0 .. +1.0     derived, never stored
+opinion_band(value)    ->  warm / friendly / neutral / wary / hostile
+opinion_note(soul,uid) ->  the strongest surviving REASON, for a voice to cite
+```
+
+**Why its own attribute** (`soul_opinions`, not the shared `soul_thoughts`):
+that log is capped at 20 entries for the soul's *own* life, and `STACK_CAP`
+dedupes on event key alone. Sharing it meant a bartender who met a dozen
+patrons in a night would evict her own payday and hunger to make room for
+acquaintances — sociability would quietly degrade mood — and person A being
+"generous" would evict person B being generous. Per-person storage fixes both.
+Caps: 3 per key per person, 6 entries per person, 24 acquaintances, evicting
+the least-recently-*felt-about* rather than the oldest.
+
+**Mood coupling** (owner ruling 2026-08-29): an interpersonal event moves
+opinion at full weight and mood at `MOOD_SHARE` of it. Being robbed at
+knifepoint should dent your day, not merely your view of the robber. Pass
+`mood_share=0` for something genuinely only about that person.
+
+**This retires the `feel` tool.** The read on a person used to be free text the
+MODEL wrote and the game stored and read back — platform law 4 inverted, with
+the old setter's docstring promising trust/consent would consult it one day,
+which would have made a real mechanic depend on a model's word choice. The
+engine scores the relationship now and the voice is *handed* the answer,
+reasons included, so an NPC narrates the grievance it actually has. Existing
+`llm_dossiers[uid]["valence"]` strings are inert, left in place as a readable
+record of the transition.
+
+**Traits reprice it.** A trait modulates how far a given event moves opinion —
+the same repricing idea as §1, pointed at relationships instead of tasks. Not
+built yet; the seam is `add_opinion`'s valence argument.
+
+### Balance prerequisite — READ BEFORE WIRING A CONSUMER
+
+Opinion is something souls **have** before it is something that **decides**
+anything. Producers only, today: courtesy (`+0.08`) and being attacked
+(`-0.60`, a wound). No system in the colony has been balance-tuned, and gating
+service, prices, trust grants or dialogue on an untuned score is how you get a
+colony that hates everybody. **Tune the producers against real play first**,
+then wire consumers one at a time.

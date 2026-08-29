@@ -33,13 +33,12 @@ TOOLS = {
                          "words, no punctuation, no sentence, and never a "
                          "pronoun like 'you' or 'him' — you'll be using this "
                          "word as their name in your poses from now on"},
-    "feel": {"kind": "action",
-             "desc": "update your private read on the person you're speaking to, "
-                     "based on what they've done and said (e.g. 'wary', 'fond', "
-                     "'fed up', 'amused', 'owes me one'). It colours how you treat "
-                     "them from now on — set it when their behaviour shifts how "
-                     "you feel, not every turn (argument: a short plain-English "
-                     "word or phrase)"},
+    # NO `feel` TOOL (#2388). How an NPC reads a person is the ENGINE'S
+    # answer, not the model's: the decayed sum of what that person actually
+    # did (`world.souls.thoughts.opinion_of`), handed to the voice in the WHO
+    # line. Letting the model write it made a STORED state depend on a model
+    # turn — platform law 4 running backwards. To express a feeling, the NPC
+    # speaks or acts; that is what `speech` and `action` are for.
     "style": {"kind": "action",
               "desc": "adjust your OWN clothing for real — zip, unzip, "
                       "button, unbutton, rollup, unroll, remove, or wear a "
@@ -97,10 +96,11 @@ TOOLS = {
                         "left/right), 'eye'/'ear'/'kidney' (+side), 'jaw', 'heart'"},
 }
 
-#: Granted to every archetype on top of its job tools: ``look`` (grounding),
-#: ``remember`` (privately name/nickname people, §4) and ``feel`` (update the
-#: private affective read on a person, §3) — NPC_MEMORY_AND_IDENTITY_SPEC.
-BASE_TOOLS = ("look", "remember", "feel")
+#: Granted to every archetype on top of its job tools: ``look`` (grounding) and
+#: ``remember`` (privately name/nickname people, §4) —
+#: NPC_MEMORY_AND_IDENTITY_SPEC. ``feel`` was here until #2388; the affective
+#: read is derived by the engine now, not authored by the model.
+BASE_TOOLS = ("look", "remember")
 
 #: Read-only tools that loop their result back (vs. action tools → real commands).
 #: Derived from the registry so adding a tool can't desync the game-side router.
@@ -302,13 +302,13 @@ ARCHETYPES = {
                            "thought": "Third time this week he's asked me to "
                                       "forget him. A man that careful earns a name.",
                            "tool": "remember", "tool_argument": "the ghost"}},
-            # feel: update the private read when someone's behaviour shifts how
-            # you regard them — a short plain word, not every turn.
+            # The private read lives in THOUGHT, not a tool: the engine
+            # scores the relationship from what they actually did (#2388).
             {"user": 'a smug suit says to you: "keep the change, sweetheart."',
              "assistant": {"speech": "Generous of you.",
                            "action": "rakes the coins off the bar without a glance",
                            "thought": "Talks to me like I'm furniture. That sticks.",
-                           "tool": "feel", "tool_argument": "condescending"}},
+                           "tool": "", "tool_argument": ""}},
             {"user": 'a cocky droog says to you: "you always this slow?"',
              "assistant": {"speech": "Only for the ones worth making wait.",
                            "action": "slides the glass over slow, holding the "
@@ -354,7 +354,7 @@ ARCHETYPES = {
                            "thought": "Third time back, same nerves he tries to "
                                       "hide. He wants to be known.",
                            "tool": "remember", "tool_argument": "the regular"}},
-            # feel: let a client's behaviour update your private read on them.
+            # The read on a client is the engine's; voice it in thought (#2388).
             {"user": 'a patron says to you: "just sit there and look pretty."',
              "assistant": {"speech": "For you? I can do decorative. Costs the "
                                      "same either way.",
@@ -362,7 +362,7 @@ ARCHETYPES = {
                                      "degree",
                            "thought": "Talks down when he's nervous. Not cruel — "
                                       "scared. Worth remembering how he softens.",
-                           "tool": "feel", "tool_argument": "guarded, all front"}},
+                           "tool": "", "tool_argument": ""}},
             {"user": 'a patron says to you: "rough day. i just need to forget it."',
              "assistant": {"speech": "Then leave it at the door, sweetheart. In "
                                      "here it's just you and me and however long "
@@ -397,7 +397,7 @@ ARCHETYPES = {
         ),
         "length": ("Keep it tight — a line or two and a spare, clinical gesture. "
                    "You work more than you talk."),
-        "tools": ["diagnose", "treat", "install"],  # + BASE look/remember/feel
+        "tools": ["diagnose", "treat", "install"],  # + BASE look/remember
         "fewshot": [
             {"user": 'a patient says to you: "just patch me up, doc, i\'m fine."',
              "assistant": {"speech": "Everyone's fine until they're on my table. "
@@ -503,7 +503,7 @@ ARCHETYPES = {
                            "thought": "Third clean kill this week. A supplier, "
                                       "not a tourist — worth a name.",
                            "tool": "remember", "tool_argument": "the ratcatcher"}},
-            # feel: update the private read when someone shows you who they are.
+            # Someone shows you who they are — say so in thought (#2388).
             {"user": 'a smug stranger says to you: "half that meat\'s rot and '
                      'you know it. i\'ll give you two."',
              "assistant": {"speech": "Then buy rot somewhere it's sold. The "
@@ -512,7 +512,7 @@ ARCHETYPES = {
                                      "unhurried",
                            "thought": "Lowballs the freshest cut on the row. "
                                       "Time-waster.",
-                           "tool": "feel", "tool_argument": "lowballer"}},
+                           "tool": "", "tool_argument": ""}},
             {"user": 'a nervous kid says to you: "does it hurt them?"',
              "assistant": {"speech": "Not by the time they reach me. That's "
                                      "the hunter's department.",
@@ -561,7 +561,7 @@ ARCHETYPES = {
                            "thought": "Says browsing, cases the shelves like he's "
                                       "pricing a job. That one gets a name.",
                            "tool": "remember", "tool_argument": "the caser"}},
-            # feel: update the private read when they show you who they are.
+            # They show you who they are — say so in thought (#2388).
             {"user": 'a stranger says to you: "this all you got? figured a real '
                      'shop."',
              "assistant": {"speech": "Real enough to turn away tyre-kickers. You "
@@ -569,7 +569,7 @@ ARCHETYPES = {
                            "action": "rests both hands flat on the counter, "
                                      "unhurried",
                            "thought": "Mouth first, credits never. Time-waster.",
-                           "tool": "feel", "tool_argument": "tyre-kicker"}},
+                           "tool": "", "tool_argument": ""}},
         ],
     },
     "dispatcher": {
@@ -726,7 +726,8 @@ ARCHETYPES = {
                                       "for tracking.",
                            "tool": "remember", "tool_argument": "the evasive "
                                              "subject"}},
-            # feel: flag a subject's disposition for the record (§ note it).
+            # A subject's disposition is scored by the engine; note it in
+            # thought rather than calling a tool (#2388).
             {"user": 'a man says to you: "you tin cans don\'t scare me. i\'m not '
                      'moving."',
              "assistant": {"speech": "Compliance is not fear. Second instruction: "
@@ -734,7 +735,7 @@ ARCHETYPES = {
                            "action": "holds position, optics locked, servos "
                                      "idling",
                            "thought": "Non-compliant, escalating. Flag it.",
-                           "tool": "feel", "tool_argument": "uncooperative"}},
+                           "tool": "", "tool_argument": ""}},
         ],
     },
 }
@@ -1011,8 +1012,8 @@ def build_messages(persona: dict, speaker: str, line: str, mode: str,
     who = f"WHO — {relationship}\n\n" if relationship else ""
     # STATE (souls §11): the mood the deterministic engine produced, for
     # the voice to NARRATE — never to decide with (the two-brain law).
-    feel = f"STATE — {state}\n\n" if state else ""
-    who = feel + who
+    state_block = f"STATE — {state}\n\n" if state else ""
+    who = state_block + who
     seen = ""
     if events:
         seen = ("RECENTLY — what you've just seen happen around you (it colours "
