@@ -262,6 +262,13 @@ def _tender_for(soul, fixture):
     tender = tender_at(fixture)
     if tender is None:
         return None
+    if tender is soul:
+        # YOU CANNOT BE SERVED BY YOURSELF. `at_msg_receive` drops a
+        # message whose speaker is the receiver, so a keeper ordering at
+        # their own post spoke into the void, waited, and faulted —
+        # Sable ordering at the Helix while tending the Helix (#2364).
+        # Falling through sends her somewhere she can actually be served.
+        return None
     try:
         from world.perception import can_perceive
         if not can_perceive(soul, tender):
