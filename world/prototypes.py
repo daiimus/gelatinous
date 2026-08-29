@@ -4853,7 +4853,10 @@ LAB_COAT = {
         ("category", "clothing"),
         ("worn_desc", "A {color}white|n lab coat, honestly stained, pens racked in the breast pocket"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
-        ("layer", 4),
+        ("layer", 5),  # OUTER than scrubs (4): a coat goes on over
+                       # them, and dressing runs inner->outer, so at the
+                       # same layer one of the two silently fails to
+                       # wear — which is what a clinic aide did (#2381),
         ("color", "white"),
         ("material", "poly-cotton"),
         ("weight", 0.7),
