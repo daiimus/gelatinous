@@ -259,6 +259,22 @@ def step_job(soul):
                 return False
         return True                        # walking; check again next think
 
+    if do == "patrol_mark":
+        # Arrived at a stop: run the director's waypoint hook (a security
+        # sweep for wanted faces, a civilian's ambient beat) and aim at
+        # the next one. The BEHAVIOUR stays theirs; only the walking
+        # moved (#2373).
+        from world.director.routines import advance_waypoint, at_waypoint
+        try:
+            at_waypoint(soul)
+        except Exception as err:  # noqa: BLE001 — a bad stop ends the loop
+            fault(soul, f"waypoint hook failed: {err}")
+            return False
+        advance_waypoint(soul)
+        job["at"] = at + 1
+        soul.db.soul_job = job
+        return True
+
     if do == "order":
         # Ask for it. The `order` command does the targeting a soul
         # cannot do for itself — it can't address a tender by name,

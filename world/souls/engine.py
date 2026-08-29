@@ -229,6 +229,18 @@ def _desired_goal(soul, hour, exclude=()):
             and not _in_block(hour, sched["work"]) \
             and "off_duty" not in exclude:
         return (4, "off_duty")
+    # band 4: PATROL — the idle filler, which is what the director always
+    # called it ("patrol is the IDLE filler"). It used to be a second
+    # DRIVER: a 45s ticker walking the same bodies this engine walks,
+    # the two coordinating by reading each other's attributes. After the
+    # population merge every patrolled body was also a soul — 46 bodies
+    # with two drivers and none with one — so the beat is now work this
+    # engine does, and the director supplies the route rather than the
+    # feet (#2373).
+    if soul.db.patrol_beat and "patrol" not in exclude:
+        from world.director.routines import cadence_ready
+        if cadence_ready(soul):
+            return (4, "patrol")
     return (4, None)
 
 
@@ -249,7 +261,7 @@ def _goal_band(goal):
     # needs still can, which is what we want: she drops the parcel run
     # to flee, not to go back to standing at the counter.
     return {"safety": 0, "hunger": 1, "rest": 2, "duty": 2, "claim": 2,
-            "wardrobe": 2, "run": 2, "recover": 2,
+            "wardrobe": 2, "run": 2, "recover": 2, "patrol": 4,
             "craving": 3, "social": 3,
             "off_duty": 4}.get(goal, 4)
 
