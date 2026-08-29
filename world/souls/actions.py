@@ -595,6 +595,26 @@ def _indulge_at(soul, fixture, craved):
     ]
 
 
+def _patrol_plan(soul):
+    """Walk the next stop on this soul's beat, then work the waypoint.
+
+    The route, the stagger and the waypoint behaviour all stay in the
+    director — it owns what a beat IS and what happens at a stop. Souls
+    owns the feet. That split is the whole point: one driver, and the
+    director demoted to a source of work (#2373)."""
+    from world.director.routines import next_waypoint
+    waypoint, _idx = next_waypoint(soul)
+    if waypoint is None:
+        return None
+    if soul.location == waypoint:
+        return {"goal": "patrol", "at": 0,
+                "steps": [{"do": "patrol_mark"}]}
+    return {"goal": "patrol", "at": 0, "steps": [
+        {"do": "travel", "room": waypoint.id},
+        {"do": "patrol_mark"},
+    ]}
+
+
 def plan_for(soul, goal_need):
     """Return a job dict for the winning goal, or None (-> fault).
 
@@ -641,6 +661,9 @@ def plan_for(soul, goal_need):
             {"do": "travel", "room": bay.id},
             {"do": "deliver", "wreck": wreck.id},
         ]}
+
+    if goal_need == "patrol":
+        return _patrol_plan(soul)
 
     if goal_need == "hunger":
         from world.souls import needs as needs_mod

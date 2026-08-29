@@ -113,15 +113,21 @@ def is_patrol_idle(npc: Any) -> bool:
 def tick_npc(npc: Any) -> str:
     """Advance one NPC's patrol by one nudge. Returns what happened
     (for diagnostics): ``skip`` / ``wait`` / ``travel`` / ``waypoint`` /
-    ``none``.
+    ``souls`` / ``hunt`` / ``none``.
+
+    A SOULED body returns ``souls``: it walks its beat through the souls
+    engine now (#2373), and this returns before touching it. What
+    remains here is the hunt — a security response, not idle drift — and
+    the walking fallback for an unsouled body, which nothing in the
+    colony currently is.
 
     * **Cadence** (``db.patrol_cadence``, default 1): act only every Nth
-      tick — civilians drift at a stroll while security marches.
+      tick — civilians drift at a stroll while security marches. Now
+      consulted by the souls band tree too, through `cadence_ready`.
     * **Stagger**: a fresh/reloaded NPC starts at a *random* beat index,
       so multiple units on the same loop spread out instead of walking
-      in lockstep.
+      in lockstep. Lives in `next_waypoint`, shared by both.
     """
-    from random import randrange
     beat = get_beat(npc)
     if not beat:
         return "none"
@@ -137,26 +143,93 @@ def tick_npc(npc: Any) -> str:
                 return "hunt"
         except Exception:  # noqa: BLE001 — a broken hunt must not stall beats
             pass
-    cadence = int(getattr(npc.db, "patrol_cadence", None) or 1)
-    if cadence > 1:
-        waited = int(getattr(npc.ndb, "patrol_wait", None) or 0) + 1
-        if waited < cadence:
-            npc.ndb.patrol_wait = waited
-            return "wait"
-        npc.ndb.patrol_wait = 0
-    idx = getattr(npc.ndb, "patrol_idx", None)
-    if idx is None:
-        idx = randrange(len(beat))          # stagger across the loop
-    idx = int(idx) % len(beat)
-    waypoint = beat[idx]
+    # THE FEET MOVED. Walking the beat is a souls goal now (band 4, the
+    # idle filler this always described itself as) — see
+    # `actions._patrol_plan`. This module still owns what a beat IS, the
+    # stagger, the cadence and what happens at a stop; it just no longer
+    # drives the body, because after the population merge every patrolled
+    # body was ALSO a soul and two schedulers were walking the same 46
+    # people, coordinating by reading each other's attributes (#2373).
+    #
+    # An UNSOULED body on a beat would go nowhere, so it still walks
+    # here. Nothing in the colony is in that state today; this is the
+    # honest fallback rather than a silent assumption.
+    if _is_souled(npc):
+        return "souls"
+    if not cadence_ready(npc):
+        return "wait"
+    waypoint, idx = next_waypoint(npc)
+    if waypoint is None:
+        return "none"
     if npc.location != waypoint:
         npc.ndb.patrol_idx = idx            # keep aiming here
         travel_to(npc, waypoint)
         return "travel"
-    # Arrived: run the waypoint hook, then aim for the next stop.
-    npc.ndb.patrol_idx = (idx + 1) % len(beat)
+    advance_waypoint(npc)
     at_waypoint(npc)
     return "waypoint"
+
+
+def _is_souled(npc: Any) -> bool:
+    """Does the souls engine own this body's feet?
+
+    Defensive: a body with no tag handler is not a soul. Fails toward
+    "the director still walks it", so a body nothing else drives keeps
+    moving rather than freezing in the street.
+    """
+    from world.souls.engine import SOUL_TAG
+    tags = getattr(npc, "tags", None)
+    if tags is None:
+        return False
+    try:
+        return bool(tags.get(SOUL_TAG[0], category=SOUL_TAG[1]))
+    except Exception:  # noqa: BLE001 — an unreadable tag is not a soul
+        return False
+
+
+def next_waypoint(npc: Any):
+    """The waypoint this NPC is currently walking to, and its index.
+
+    Extracted so the souls planner and this module cannot disagree about
+    where somebody is headed. The stagger (a random starting index) is
+    preserved: multiple units on one loop must not walk in lockstep.
+    """
+    from random import randrange
+    beat = get_beat(npc)
+    if not beat:
+        return None, None
+    idx = getattr(npc.ndb, "patrol_idx", None)
+    if idx is None:
+        idx = randrange(len(beat))
+    idx = int(idx) % len(beat)
+    return beat[idx], idx
+
+
+def advance_waypoint(npc: Any) -> None:
+    """Aim at the next stop on the loop."""
+    beat = get_beat(npc)
+    if not beat:
+        return
+    idx = getattr(npc.ndb, "patrol_idx", None) or 0
+    npc.ndb.patrol_idx = (int(idx) + 1) % len(beat)
+
+
+def cadence_ready(npc: Any) -> bool:
+    """Is this NPC due to move this beat?
+
+    Civilians drift at a stroll and security marches, which is what
+    `patrol_cadence` expresses. Consulted by the souls band tree rather
+    than by a second walker, so the pacing survives the driver moving.
+    """
+    cadence = int(getattr(npc.db, "patrol_cadence", None) or 1)
+    if cadence <= 1:
+        return True
+    waited = int(getattr(npc.ndb, "patrol_wait", None) or 0) + 1
+    if waited < cadence:
+        npc.ndb.patrol_wait = waited
+        return False
+    npc.ndb.patrol_wait = 0
+    return True
 
 
 def at_waypoint(npc: Any) -> None:
