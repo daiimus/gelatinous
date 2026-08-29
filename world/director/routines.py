@@ -263,6 +263,18 @@ class DirectorRoutineScript(DefaultScript):
             maintain_broadcasts()
         except Exception:  # noqa: BLE001 — the station must not stall the beats
             pass
+        # The flash-temp backstop: a witness despawns on a Twisted delay,
+        # which a reload inside the window loses — stranding them in the
+        # street forever (#2367). State that must be true is cheaper to
+        # check than an event that must be caught.
+        try:
+            from world.director.witness import sweep_stranded
+            swept = sweep_stranded()
+            if swept:
+                from evennia.utils import logger
+                logger.log_info(f"Witness sweep: {swept} stranded despawned.")
+        except Exception:  # noqa: BLE001 — cleanup can't kill the heartbeat
+            pass
         # Tick telemetry (DB-backed → visible cross-process; surfaced by
         # @patrol/status as "last tick Ns ago").
         import time
