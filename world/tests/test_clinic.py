@@ -18,11 +18,20 @@ class TestDoctorTools(BaseEvenniaTest):
     def _doctor(self):
         d = MagicMock()
         d.location = "clinic"
-        for name in ("_run_context_tool", "_handle_action_tool", "_treat",
-                     "_name_aliases"):
+        for name in ("_run_context_tool", "_handle_action_tool"):
             setattr(d, name,
-                    getattr(clinicmod.Doctor, name).__get__(d, clinicmod.Doctor))
+                    getattr(llmnpc.LLMNpcMixin, name).__get__(d, llmnpc.LLMNpc))
+        d._treat = lambda patient, what: worldclinic.treat(d, patient, what)
         d._patient = lambda patron: patron        # default: the speaker
+        # The tools belong to the JOB now (#2352): the archetype grants
+        # them and the job runs them, so a bare mock with no post has no
+        # tools at all. Stand this one at the clinic post.
+        from world import service
+        service._ensure_loaded()
+        patcher = patch("world.service.job_of",
+                        return_value=service.SERVICE["doctor"])
+        patcher.start()
+        self.addCleanup(patcher.stop)
         return d
 
     def _patient(self, name="a wiry man"):
@@ -72,7 +81,7 @@ class TestDoctorPatientTargeting(BaseEvenniaTest):
 
     def test_patient_is_the_autodoc_occupant(self):
         from typeclasses.furniture import AutoDoc
-        doc = create_object("typeclasses.clinic.Doctor", key="Doc",
+        doc = create_object("typeclasses.llm_npc.LLMNpc", key="Doc",
                             location=self.room1)
         pod = create_object(AutoDoc, key="autodoc", location=self.room1)
         patient = create_object("typeclasses.characters.Character", key="Pat",
@@ -80,14 +89,14 @@ class TestDoctorPatientTargeting(BaseEvenniaTest):
         patient.db.furniture = pod                # lying on the table
         speaker = create_object("typeclasses.characters.Character", key="Spk",
                                 location=self.room1)
-        self.assertEqual(doc._patient(speaker), patient)
+        self.assertEqual(worldclinic.patient_for(doc, speaker), patient)
 
     def test_patient_falls_back_to_speaker(self):
-        doc = create_object("typeclasses.clinic.Doctor", key="Doc2",
+        doc = create_object("typeclasses.llm_npc.LLMNpc", key="Doc2",
                             location=self.room1)
         speaker = create_object("typeclasses.characters.Character", key="Spk2",
                                 location=self.room1)
-        self.assertEqual(doc._patient(speaker), speaker)   # no AutoDoc, no patient
+        self.assertEqual(worldclinic.patient_for(doc, speaker), speaker)   # no AutoDoc, no patient
 
 
 class TestDoctorArchetype(BaseEvenniaTest):
@@ -107,22 +116,22 @@ class TestDoctorInstall(BaseEvenniaTest):
     """The install tool lays out the real incise -> install -> suture surgery."""
 
     def test_resolve_cyberware_sides(self):
-        doc = create_object("typeclasses.clinic.Doctor", key="Doc3",
+        doc = create_object("typeclasses.llm_npc.LLMNpc", key="Doc3",
                             location=self.room1)
-        self.assertEqual(doc._resolve_cyberware("right eye")[0], "CYBER_RIGHT_EYE")
-        self.assertEqual(doc._resolve_cyberware("a new heart")[0],
+        self.assertEqual(worldclinic.resolve_cyberware("right eye")[0], "CYBER_RIGHT_EYE")
+        self.assertEqual(worldclinic.resolve_cyberware("a new heart")[0],
                          "CYBERNETIC_HEART")
-        self.assertEqual(doc._resolve_cyberware("cyber arm, left"),
+        self.assertEqual(worldclinic.resolve_cyberware("cyber arm, left"),
                          ("CYBER_ARM", "left"))
-        self.assertEqual(doc._resolve_cyberware("nanite cloud"), (None, None))
+        self.assertEqual(worldclinic.resolve_cyberware("nanite cloud"), (None, None))
 
     def test_build_install_chart_lays_out_surgery(self):
         from world.medical import charts as chart_lib
-        doc = create_object("typeclasses.clinic.Doctor", key="Doc4",
+        doc = create_object("typeclasses.llm_npc.LLMNpc", key="Doc4",
                             location=self.room1)
         patient = create_object("typeclasses.characters.Character", key="Pat4",
                                 location=self.room1)
-        chart = doc._build_install_chart(patient, "cyber arm left")
+        chart = worldclinic.build_install_chart(doc, patient, "cyber arm left")
         self.assertIsNotNone(chart)
         self.assertEqual([s["verb"] for s in chart["steps"]],
                          ["incise", "install", "suture"])
@@ -139,8 +148,7 @@ class TestMedicalRequestParser(BaseEvenniaTest):
 
     def _doctor(self):
         d = MagicMock()
-        d._parse_medical_request = clinicmod.Doctor._parse_medical_request.__get__(
-            d, clinicmod.Doctor)
+        d._parse_medical_request = worldclinic.parse_medical_request
         return d
 
     def test_install_requests(self):
@@ -182,7 +190,7 @@ class TestMedicalRequestRouting(BaseEvenniaTest):
         d._is_gratitude = llmnpc.LLMNpcMixin._is_gratitude
         d._handle_directed_speech = \
             llmnpc.LLMNpcMixin._handle_directed_speech.__get__(
-                d, clinicmod.Doctor)
+                d, llmnpc.LLMNpc)
         return d
 
     def test_directed_install_routes(self):

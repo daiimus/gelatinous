@@ -92,6 +92,18 @@ class LLMNpcMixin:
                 delay(1.0, self._try_llm_reply, speech, speaker, "ambient")
         return True
 
+    def at_object_receive(self, moved_obj, source_location, **kwargs):
+        """Something was handed to this NPC — offer it to their JOB.
+
+        Receiving is the one venue act that happens to a PERSON rather
+        than at a counter: you put the thing in their hands. It was the
+        last behaviour welded to a role typeclass, and welded is exactly
+        why a corpse handed to the night-shift butcher did nothing
+        (#2378)."""
+        super().at_object_receive(moved_obj, source_location, **kwargs)
+        from world import service
+        service.receive(self, moved_obj, source_location)
+
     def _handle_directed_speech(self, speech, speaker, kwargs):
         """Service before conversation — the generic intercept (#2350).
 
@@ -1273,12 +1285,24 @@ class LLMNpcMixin:
 
 
 class LLMNpc(LLMNpcMixin, Character):
-    """A generic LLM-driven social NPC. The persona's ``archetype`` is its job;
-    the typeclass is only the brain. Opt in per-NPC via ``db.llm_driven`` (and
-    the deployment-wide ``LLM_GM_ENABLED``)."""
+    """THE NPC. The only one (#2378).
+
+    A body with a voice. What it can DO comes from the post it stands
+    (`world/service.py`) and the soul it carries (`world/souls`) — never
+    from its class, which says what it IS and nothing more
+    (NPC_PLATFORM_SPEC §3, law 5). `Bartender`, `Shopkeeper`, `Doctor`
+    and `Butcher` were folded into this one.
+
+    The voice is opt-in per NPC (`db.llm_driven`) and deployment-wide
+    (`LLM_GM_ENABLED`); with both off this is a mute body that still
+    serves, sells, treats and walks its beat.
+    """
 
     def at_object_creation(self):
         super().at_object_creation()
+        # The canonical NPC marker — its ABSENCE means PC, so everything
+        # that distinguishes a person from a player reads this.
+        self.db.is_npc = True
         # Identity safety-net: a Character with no height/build composes no sdesc
         # and falls back to its *key* — leaking the NPC's real name. Seed a
         # baseline so it always renders through the identity system.
