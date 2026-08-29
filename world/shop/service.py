@@ -175,5 +175,11 @@ def serve_from_board_cart(post, speech, patron, by, addressed=False):
 
 
 for _role in SHELF_ROLES:
-    register(_role, serve_from_shelf)
-register("butcher", serve_from_board_cart)
+    register(_role, serve_from_shelf,
+             aliases=("shopkeeper", "shopkeep", "merchant", "vendor"),
+             fallback="Shelf's all labeled. It says what I sell.",
+             archetype="merchant")
+register("butcher", serve_from_board_cart,
+         aliases=("butcher", "cook"),
+         fallback="Board's behind me. It says what I sell.",
+         archetype="butcher")

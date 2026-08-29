@@ -250,4 +250,7 @@ def serve_at_clinic(post, speech, patron, by, addressed=False):
 
 
 for _role in CLINIC_ROLES:
-    register(_role, serve_at_clinic)
+    register(_role, serve_at_clinic,
+             aliases=("doctor", "doc", "medic", "surgeon", "ripperdoc"),
+             fallback=None,   # a doctor asked something odd stays quiet
+             archetype="doctor")

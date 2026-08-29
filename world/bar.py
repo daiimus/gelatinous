@@ -1049,4 +1049,9 @@ HUB_AND_HOWL_MENU = [
 from world.service import register as _register_service  # noqa: E402
 
 for _role in ("bartender", "snailer"):
-    _register_service(_role, serve_from_board)
+    _register_service(
+        _role, serve_from_board,
+        aliases=("bartender", "barkeep", "barkeeper"),
+        fallback="Don't serve that here.",
+        archetype="bartender",
+    )

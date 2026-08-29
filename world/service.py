@@ -29,7 +29,16 @@ in the director modules they belong to. Nothing accumulates here.
     handler(post, speech, patron, by) -> bool     # True if claimed
 """
 
-#: post_role -> handler. See the module docstring for the contract.
+#: post_role -> the whole job. The handler is only the largest part of
+#: it: a job also answers to a NAME ("hey, bartender"), has a LINE it
+#: gives when there is no voice to improvise one, and carries the
+#: ARCHETYPE that shapes how it talks and which tools it is granted.
+#:
+#: All four used to live on the role typeclass, which meant a successor
+#: inherited the post and none of them — the Hub and Howl's swing keeper
+#: could not serve, did not answer to "bartender", said nothing at all
+#: with the model off, and was prompted as a generic colonist while
+#: standing behind a bar (#2352).
 SERVICE = {}
 
 #: Modules that register handlers. An import manifest, not behaviour —
@@ -55,17 +64,31 @@ def _ensure_loaded():
             logger.log_trace(f"service provider {path} failed to load")
 
 
-def register(role, handler):
-    """Bind a service handler to a post role."""
-    SERVICE[role] = handler
+def register(role, handler, aliases=(), fallback=None, archetype=None):
+    """Bind a job to a post role.
+
+    Args:
+        handler: ``handler(post, speech, patron, by, addressed)`` -> bool
+        aliases: what the job answers to ("bartender", "barkeep")
+        fallback: what it says when addressed with no voice available
+        archetype: the `world/llm/prompt.ARCHETYPES` key for its register
+    """
+    SERVICE[role] = {"handler": handler, "aliases": tuple(aliases),
+                     "fallback": fallback, "archetype": archetype}
 
 
-def handler_for(post):
-    """The handler this post serves through, or None."""
+def job_for(post):
+    """The whole job record for this post, or None."""
     if post is None:
         return None
     _ensure_loaded()
     return SERVICE.get(getattr(post.db, "post_role", None))
+
+
+def handler_for(post):
+    """The handler this post serves through, or None."""
+    job = job_for(post)
+    return job.get("handler") if job else None
 
 
 def post_for(worker):
@@ -100,6 +123,36 @@ def post_for(worker):
         except Exception:  # noqa: BLE001 — a bad post can't break speech
             continue
     return None
+
+
+def job_of(worker):
+    """The job *worker* is standing right now, or None. Off shift this is
+    None and they are simply themselves again — which is the point: the
+    voice follows the body, and an off-duty vendor is not a vendor."""
+    return job_for(post_for(worker))
+
+
+def aliases_for(worker):
+    """What the job this worker is standing answers to."""
+    job = job_of(worker)
+    return list(job["aliases"]) if job else []
+
+
+def fallback_for(worker):
+    """The line this job gives when addressed with no voice to answer."""
+    job = job_of(worker)
+    return job.get("fallback") if job else None
+
+
+def archetype_for(worker):
+    """The prompt archetype this worker's CURRENT job implies, or None.
+
+    Beats whatever the persona was authored with. A blueprint says who
+    somebody is; the post says what they are doing right now, and the
+    second is what a patron is talking to.
+    """
+    job = job_of(worker)
+    return job.get("archetype") if job else None
 
 
 def serve(worker, speech, patron, addressed=False):
