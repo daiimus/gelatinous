@@ -301,7 +301,10 @@ def step_job(soul):
             step["rounds"] = rounds
             soul.db.soul_job = job
             if rounds > 3:
-                fault(soul, f"ordered {step.get('word')} and nothing came")
+                # name what was asked for: `word` belongs to the ORDER
+                # step, so reaching for it here always read None
+                asked = step.get("want") or step.get("word") or "something"
+                fault(soul, f"ordered {asked} and nothing came")
                 return False
             return True
         before = set(o.id for o in soul.contents)

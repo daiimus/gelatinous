@@ -419,3 +419,60 @@ class TestTheJobComesWithThePost(_CounterTest):
             self.assertEqual(
                 self.plain._run_context_tool("check_stock", "", self.patron),
                 "")
+
+
+class TestYouCannotBeServedByYourself(_CounterTest):
+    """A keeper ordering at their own post spoke into the void (#2364).
+
+    `at_msg_receive` opens with `if speaker is self: return True`, so the
+    order never reached the service intercept. The planner did not know
+    that, built order -> pickup -> eat anyway, and the pickup step waited
+    three rounds and faulted — while the soul stood at a counter they
+    were personally tending.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from world.souls.posts import register_post
+        self.tender.delete()
+        self.keeper = create_object("typeclasses.llm_npc.LLMNpc",
+                                    key="Sable", location=self.room1)
+        register_post(self.counter, "bartender", shifts=("day",))
+        self.counter.db.post_slots = {
+            "day": {"keeper": self.keeper, "vacant_since": None}}
+        self.counter.db.advertises = {"hunger": 0.9}
+        self.counter.tags.add("advertiser", category="souls")
+        self.keeper.tokens = 20
+
+    def test_the_keeper_is_not_offered_their_own_counter(self):
+        from world.souls import actions
+        with mock.patch("world.souls.posts.current_shift",
+                        return_value="day"):
+            self.assertIsNone(actions._tender_for(self.keeper, self.counter))
+
+    def test_so_no_order_plan_is_built_for_them(self):
+        from world.souls import actions
+        actions._ad_cache["at"] = 0
+        with mock.patch("world.souls.posts.current_shift",
+                        return_value="day"):
+            plan = actions.plan_for(self.keeper, "hunger")
+        doors = [s["do"] for s in plan["steps"]] if plan else None
+        self.assertNotIn("order", doors or [])
+
+    def test_a_patron_is_still_served_normally(self):
+        """The guard must not close the counter to everyone else."""
+        from world.souls import actions
+        with mock.patch("world.souls.posts.current_shift",
+                        return_value="day"):
+            self.assertIs(actions._tender_for(self.patron, self.counter),
+                          self.keeper)
+
+    def test_a_stalled_pickup_names_what_was_asked_for(self):
+        self.soul = self.patron
+        self.soul.db.soul_job = {"goal": "hunger", "at": 0, "steps": [
+            {"do": "pickup", "counter": self.counter.id, "verb": "eat",
+             "want": "bowl of kuro-nikomi"}]}
+        with mock.patch.object(jobs, "fault") as faulted:
+            for _ in range(5):
+                jobs.step_job(self.soul)
+        self.assertIn("bowl of kuro-nikomi", str(faulted.call_args))
