@@ -778,10 +778,12 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         scripted fallback rather than silence (#2350)."""
         b, patron = self._bartender(llm_driven=False), self._speaker()
         b._is_gratitude = llmnpc.LLMNpcMixin._is_gratitude
-        b._llm_fallback = barmod.Bartender._llm_fallback.__get__(
+        b._llm_fallback = llmnpc.LLMNpcMixin._llm_fallback.__get__(
             b, barmod.Bartender)
         with patch.object(llmnpc, "llm_enabled", return_value=False), \
                 patch("world.service.serve", return_value=False), \
+                patch("world.service.fallback_for",
+                      return_value="Don't serve that here."), \
                 patch("world.service.post_for", return_value=b.db.bar):
             handled = llmnpc.LLMNpcMixin._handle_directed_speech(
                 b, "a unicorn tear", patron, {"addressed": True})
@@ -878,9 +880,24 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         d.assert_not_called()
 
     def test_llm_fallback_curt_line(self):
+        """The curt line belongs to the JOB now, not the class (#2352).
+        A keeper standing the bar says it; the same body off shift is
+        not a bartender and says nothing."""
         b = self._bartender()
-        b._llm_fallback()
+        b._llm_fallback = llmnpc.LLMNpcMixin._llm_fallback.__get__(
+            b, barmod.Bartender)
+        with patch("world.service.fallback_for",
+                   return_value="Don't serve that here."):
+            b._llm_fallback()
         b.execute_cmd.assert_called_once_with("say Don't serve that here.")
+
+    def test_off_shift_there_is_no_line_to_give(self):
+        b = self._bartender()
+        b._llm_fallback = llmnpc.LLMNpcMixin._llm_fallback.__get__(
+            b, barmod.Bartender)
+        with patch("world.service.fallback_for", return_value=None):
+            b._llm_fallback()
+        b.execute_cmd.assert_not_called()
 
     def _bind_memory(self, b):
         b._hist_key = barmod.Bartender._hist_key            # staticmethods
@@ -979,11 +996,21 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         self.assertIn("Negroni", b._run_context_tool("check_stock", "", patron))
 
     def test_mentions_self(self):
+        """Role words come from the JOB being stood (#2352): whoever is
+        behind the bar answers to "bartender", and the same body off
+        shift does not."""
         b = self._bartender()
+        b._name_aliases = lambda: ["bartender", "barkeep"]
         self.assertTrue(b._mentions_self("hey sable"))
         self.assertTrue(b._mentions_self("yo bartender"))
         self.assertTrue(b._mentions_self("nice catgirl ears"))
         self.assertFalse(b._mentions_self("this whole place is dead"))
+
+    def test_off_shift_the_role_word_is_not_theirs(self):
+        b = self._bartender()
+        b._name_aliases = lambda: []
+        self.assertFalse(b._mentions_self("yo bartender"))
+        self.assertTrue(b._mentions_self("hey sable"))    # their NAME still is
 
 
 class TestConversationalOrderDetection(BaseEvenniaTest):

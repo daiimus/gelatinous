@@ -368,8 +368,6 @@ class Shopkeeper(LLMNpcMixin, Character):
         self.db.is_npc = True
         self.is_merchant = True   # the buy command's notify hook finds us
 
-    def _name_aliases(self):
-        return ["shopkeeper", "shopkeep", "merchant", "clerk"]
 
     def _find_counter(self):
         if not self.location:
@@ -439,5 +437,3 @@ class Shopkeeper(LLMNpcMixin, Character):
                 else "The shelf is empty."
         return super()._run_context_tool(tool, arg, patron)
 
-    def _llm_fallback(self):
-        self.execute_cmd("say Shelf's all labeled. It says what I sell.")
