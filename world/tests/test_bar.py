@@ -554,16 +554,16 @@ class TestBartenderReaction(BaseEvenniaTest):
 
     def _bartender(self):
         b = MagicMock()
-        b._is_gratitude = barmod.Bartender._is_gratitude  # real staticmethod
+        b._is_gratitude = llmnpc.LLMNpc._is_gratitude  # real staticmethod
         b._acknowledge = MagicMock()
         # at_msg_receive (mixin) defers to this real bartender hook for the
         # gratitude/order intercept before the LLM layer.
         b._handle_directed_speech = (
-            barmod.Bartender._handle_directed_speech.__get__(b, barmod.Bartender))
+            llmnpc.LLMNpc._handle_directed_speech.__get__(b, llmnpc.LLMNpc))
         return b
 
     def _call(self, b, speaker, **payload):
-        return barmod.Bartender.at_msg_receive(
+        return llmnpc.LLMNpc.at_msg_receive(
             b, text=None, from_obj=speaker, **payload
         )
 
@@ -632,9 +632,9 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b.ndb.last_llm = 0
         b.ndb.llm_engaged_until = None    # no conversation hold by default
         b.location = location
-        b._is_gratitude = barmod.Bartender._is_gratitude  # real staticmethod
+        b._is_gratitude = llmnpc.LLMNpc._is_gratitude  # real staticmethod
         for name in self._REAL:
-            bound = getattr(barmod.Bartender, name).__get__(b, barmod.Bartender)
+            bound = getattr(llmnpc.LLMNpc, name).__get__(b, llmnpc.LLMNpc)
             setattr(b, name, bound)
         # default: not alone (so ambient stays ambient); override per test
         b._is_alone_with = lambda speaker: False
@@ -666,7 +666,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         return s
 
     def _call(self, b, speaker, **payload):
-        return barmod.Bartender.at_msg_receive(
+        return llmnpc.LLMNpc.at_msg_receive(
             b, text=None, from_obj=speaker, **payload
         )
 
@@ -716,8 +716,8 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     def test_is_alone_with_detects_other_characters(self):
         from typeclasses.characters import Character
         b = self._bartender()
-        b._is_alone_with = barmod.Bartender._is_alone_with.__get__(
-            b, barmod.Bartender)
+        b._is_alone_with = llmnpc.LLMNpc._is_alone_with.__get__(
+            b, llmnpc.LLMNpc)
         spk = MagicMock(spec=Character)
         room = MagicMock()
         b.location = room
@@ -779,7 +779,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b, patron = self._bartender(llm_driven=False), self._speaker()
         b._is_gratitude = llmnpc.LLMNpcMixin._is_gratitude
         b._llm_fallback = llmnpc.LLMNpcMixin._llm_fallback.__get__(
-            b, barmod.Bartender)
+            b, llmnpc.LLMNpc)
         with patch.object(llmnpc, "llm_enabled", return_value=False), \
                 patch("world.service.serve", return_value=False), \
                 patch("world.service.fallback_for",
@@ -829,7 +829,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     def _bind(self, b, *names):
         for name in names:
             setattr(b, name,
-                    getattr(barmod.Bartender, name).__get__(b, barmod.Bartender))
+                    getattr(llmnpc.LLMNpc, name).__get__(b, llmnpc.LLMNpc))
 
     def test_present_others_excludes_self_and_speaker(self):
         # The roster is who ELSE is here, by the name this NPC perceives them by.
@@ -885,7 +885,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         not a bartender and says nothing."""
         b = self._bartender()
         b._llm_fallback = llmnpc.LLMNpcMixin._llm_fallback.__get__(
-            b, barmod.Bartender)
+            b, llmnpc.LLMNpc)
         with patch("world.service.fallback_for",
                    return_value="Don't serve that here."):
             b._llm_fallback()
@@ -894,17 +894,17 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     def test_off_shift_there_is_no_line_to_give(self):
         b = self._bartender()
         b._llm_fallback = llmnpc.LLMNpcMixin._llm_fallback.__get__(
-            b, barmod.Bartender)
+            b, llmnpc.LLMNpc)
         with patch("world.service.fallback_for", return_value=None):
             b._llm_fallback()
         b.execute_cmd.assert_not_called()
 
     def _bind_memory(self, b):
-        b._hist_key = barmod.Bartender._hist_key            # staticmethods
-        b._reconstruct_reply = barmod.Bartender._reconstruct_reply
+        b._hist_key = llmnpc.LLMNpc._hist_key            # staticmethods
+        b._reconstruct_reply = llmnpc.LLMNpc._reconstruct_reply
         for name in ("_recent_history", "_remember_turn"):
             setattr(b, name,
-                    getattr(barmod.Bartender, name).__get__(b, barmod.Bartender))
+                    getattr(llmnpc.LLMNpc, name).__get__(b, llmnpc.LLMNpc))
 
     def test_short_term_memory_roundtrip(self):
         b = self._bartender()
@@ -940,13 +940,13 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     # --- the agentic tool loop ---
 
     def _bind_loop(self, b):
-        b._hist_key = barmod.Bartender._hist_key
-        b._reconstruct_reply = barmod.Bartender._reconstruct_reply
+        b._hist_key = llmnpc.LLMNpc._hist_key
+        b._reconstruct_reply = llmnpc.LLMNpc._reconstruct_reply
         for name in ("_on_turn", "_run_context_tool", "_render_llm_reply",
                      "_handle_action_tool", "_remember_turn", "_recent_history",
                      "_repeats_self"):
             setattr(b, name,
-                    getattr(barmod.Bartender, name).__get__(b, barmod.Bartender))
+                    getattr(llmnpc.LLMNpc, name).__get__(b, llmnpc.LLMNpc))
         b.ndb.llm_history = {}
 
     def test_on_turn_context_tool_loops(self):
@@ -961,7 +961,7 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         b.execute_cmd.assert_not_called()               # no terminal render yet
 
     def test_on_turn_action_tool_runs_real_command(self):
-        b = self._bartender(); self._bind_loop(b)
+        b = self._stand_the_bar(self._bartender()); self._bind_loop(b)
         patron = self._speaker(); patron.id = 6
         turn = {"speech": "Coming up", "action": "grabs a glass", "thought": None,
                 "tool": "prepare_drink", "tool_argument": "Negroni"}
@@ -981,19 +981,36 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
             b._on_turn(["m"], {}, patron, "hi", "a man", lambda: None, 0, None, "directed", "{}")
         b.execute_cmd.assert_any_call('emote nods, "hey"')
 
+    def _stand_the_bar(self, b):
+        """Tools come from the JOB now (#2352) — a bare mock with no post
+        has none. Stand this one behind the bar."""
+        from world import service
+        service._ensure_loaded()
+        for target, value in (("world.service.job_of",
+                               service.SERVICE["bartender"]),
+                              ("world.service.post_for", b.db.bar)):
+            pat = patch(target, return_value=value)
+            pat.start()
+            self.addCleanup(pat.stop)
+        return b
+
     def test_run_context_tool_look_and_stock(self):
-        b = self._bartender()
+        b = self._stand_the_bar(self._bartender())
         b._perceive = lambda patron: "a wiry courier, scarred jaw"
         patron = self._speaker()
         # look is the shared mixin tool (Bartender delegates to it via super)
         self.assertIn("wiry courier",
                       llmnpc.LLMNpcMixin._run_context_tool(b, "look", "patron", patron))
-        # check_stock is the bartender's own extension
-        b._run_context_tool = barmod.Bartender._run_context_tool.__get__(
-            b, barmod.Bartender)
-        b._find_bar = lambda: None
-        b.db.menu = [{"name": "Negroni"}, {"name": "Martini"}]
-        self.assertIn("Negroni", b._run_context_tool("check_stock", "", patron))
+        # check_stock belongs to the JOB and reads the POST's board —
+        # the counter being stood, not a menu on the person (#2352)
+        b._run_context_tool = llmnpc.LLMNpcMixin._run_context_tool.__get__(
+            b, llmnpc.LLMNpc)
+        counter = MagicMock()
+        counter.db.menu = [{"name": "Negroni"}, {"name": "Martini"}]
+        counter.db.stock = None
+        with patch("world.service.post_for", return_value=counter):
+            stock = b._run_context_tool("check_stock", "", patron)
+        self.assertIn("Negroni", stock)
 
     def test_mentions_self(self):
         """Role words come from the JOB being stood (#2352): whoever is
@@ -1026,8 +1043,10 @@ class TestConversationalOrderDetection(BaseEvenniaTest):
         b = MagicMock()
         b._find_bar = lambda: None          # no bar obj → match against db.menu
         b.db.menu = self.MENU
-        b._is_conversational_order = barmod.Bartender._is_conversational_order.__get__(
-            b, barmod.Bartender)
+        # the detector is `world.bar.resolve_order` now — an overheard
+        # line held to the stricter standard (#2350)
+        b._is_conversational_order = lambda speech: (
+            worldbar.resolve_order(b, speech, addressed=False) is not None)
         return b
 
     def test_orders_detected(self):
@@ -1056,7 +1075,7 @@ class TestConversationalOrderRouting(BaseEvenniaTest):
         b._is_conversational_order = lambda s: order
         b._classify_speech = lambda s, spk: kind
         b._handle_directed_speech = llmnpc.LLMNpcMixin._handle_directed_speech.__get__(
-            b, barmod.Bartender)
+            b, llmnpc.LLMNpc)
         return b
 
     def test_directed_order_routes_to_serve(self):

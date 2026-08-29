@@ -815,7 +815,6 @@ def step_job(soul):
         # dies on the doorstep, the broke just limp off unhealed.
         import time as _time
 
-        from typeclasses.clinic import Doctor
         from world.souls import thoughts
 
         TREAT_FEE = 8
@@ -823,8 +822,16 @@ def step_job(soul):
         if terminal is None or terminal.location != soul.location:
             fault(soul, "the clinic desk is gone")
             return False
+        # WHOEVER IS STANDING THE CLINIC POST, not whoever is a Doctor.
+        # An isinstance check meant the swing and night keepers — plain
+        # LLMNpcs since the population merge — were invisible to a
+        # patient, so the clinic was staffed around the clock and
+        # answered "no doctor on the floor" two thirds of it (#2378).
+        from world import service
         doctor = next((o for o in soul.location.contents
-                       if isinstance(o, Doctor) and o.pk), None)
+                       if o.pk and o is not soul
+                       and (service.job_of(o) or {}).get("archetype")
+                       == "doctor"), None)
         if doctor is None:
             fault(soul, "no doctor on the floor")
             return False

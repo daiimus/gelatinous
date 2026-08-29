@@ -75,11 +75,15 @@ TREAT_CUES = ("gimme", "give me", "i need", "i want", "hit me with", "hook me up
               "can i get", "shoot me", "get me", "i could use", "something for")
 
 def find_autodoc(room):
-    """The clinic's pod, or None."""
-    from typeclasses.clinic import AutoDoc
-    if room is None:
+    """The clinic's pod, or None. Defensive: a location that cannot be
+    enumerated simply has no pod, and a treatment must not die because
+    of where somebody is standing."""
+    from typeclasses.furniture import AutoDoc
+    try:
+        contents = list(room.contents)
+    except Exception:  # noqa: BLE001
         return None
-    for obj in room.contents:
+    for obj in contents:
         if isinstance(obj, AutoDoc):
             return obj
     return None

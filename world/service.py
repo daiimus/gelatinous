@@ -65,7 +65,7 @@ def _ensure_loaded():
 
 
 def register(role, handler, aliases=(), fallback=None, archetype=None,
-             tools=None):
+             tools=None, on_receive=None):
     """Bind a job to a post role.
 
     Args:
@@ -73,6 +73,10 @@ def register(role, handler, aliases=(), fallback=None, archetype=None,
         aliases: what the job answers to ("bartender", "barkeep")
         fallback: what it says when addressed with no voice available
         archetype: the `world/llm/prompt.ARCHETYPES` key for its register
+        on_receive: ``fn(post, obj, giver, by) -> bool`` — the job's
+            answer to something being HANDED to whoever stands it.
+            Receiving is the one venue act that happens to a PERSON
+            rather than at a counter: you put the carcass in their hands.
         tools: ``{tool_name: fn(post, arg, patron, by)}`` — what the job can
             actually DO when the model calls one. The archetype GRANTS a
             tool; this is what runs it, and the two must come from the
@@ -81,7 +85,7 @@ def register(role, handler, aliases=(), fallback=None, archetype=None,
     """
     SERVICE[role] = {"handler": handler, "aliases": tuple(aliases),
                      "fallback": fallback, "archetype": archetype,
-                     "tools": dict(tools or {})}
+                     "tools": dict(tools or {}), "on_receive": on_receive}
 
 
 def job_for(post):
@@ -179,6 +183,24 @@ def run_tool(worker, tool, arg, patron):
         from evennia.utils import logger
         logger.log_trace(f"job tool {tool} failed for {worker}")
         return True, None
+
+
+def receive(worker, obj, giver):
+    """Offer something handed to *worker* to the job they are standing.
+
+    Returns True when the job took it. A body off shift is nobody in
+    particular and takes nothing, which is correct: handing a corpse to
+    an off-duty butcher in a bar should not start a butchery."""
+    job = job_of(worker)
+    hook = (job or {}).get("on_receive")
+    if hook is None:
+        return False
+    try:
+        return bool(hook(post_for(worker), obj, giver, worker))
+    except Exception:  # noqa: BLE001 — a bad hand-over must not eat the item
+        from evennia.utils import logger
+        logger.log_trace(f"on_receive failed for {worker}")
+        return False
 
 
 def serve(worker, speech, patron, addressed=False):

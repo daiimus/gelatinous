@@ -11,6 +11,9 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 import typeclasses.butcher as butchmod
+import typeclasses.llm_npc as llmnpc
+import world.butchery as butchery
+import world.shop.service as shopsvc
 from typeclasses.butcher import (
     ACCEPTED_BUTCHER_SPECIES, BUTCHER_DECAY_REFUSAL, RAT_PRODUCTS,
 )
@@ -48,16 +51,11 @@ def _corpse(snapshot=None, species="rat", severed=(), removed=(), decay=0.0):
 
 
 def _butcher():
+    """The KEEPER — just a body now. The butchery itself lives in
+    `world/butchery.py` and is reached through the job's `on_receive`
+    hook, so these are plain functions taking the keeper (#2378)."""
     b = MagicMock()
     b.location = "room"
-    for name in ("_butcher_yields", "_process_corpse", "_refuse",
-                 "_drop_from_hands"):
-        setattr(b, name,
-                getattr(butchmod.Butcher, name).__get__(b, butchmod.Butcher))
-    # staticmethods: already plain functions off the class — do NOT re-bind
-    # (a __get__ would inject a spurious self argument)
-    b._refusal_line = butchmod.Butcher._refusal_line
-    b._render_cuts = butchmod.Butcher._render_cuts
     b.hands = {}
     return b
 
@@ -66,7 +64,7 @@ class TestButcherYields(TestCase):
     """The condition-gated butchery table."""
 
     def _yields(self, corpse, decay=0.0):
-        return dict(_butcher()._butcher_yields(corpse, decay))
+        return dict(butchery._butcher_yields(_butcher(), corpse, decay))
 
     def test_clean_fresh_rat_full_cuts(self):
         y = self._yields(_corpse(_rat_snapshot()))
@@ -114,13 +112,14 @@ class TestProcessCorpse(TestCase):
         b = _butcher()
         block = MagicMock()
         block.db.register = till
-        b._find_block = lambda: block
         giver = MagicMock()
         giver.pk = 1
         giver.tokens = 0
-        with patch.object(butchmod, "spawn") as sp:
+        with patch.object(butchery, "spawn") as sp:
             sp.return_value = [MagicMock()]
-            b._process_corpse(corpse, giver)
+            # the BLOCK is the post now — passed in, not looked up off
+            # the person, which is the whole point of the move
+            butchery.process_corpse(block, b, corpse, giver)
         return b, block, giver
 
     def test_human_corpse_refused_not_destroyed(self):
@@ -359,12 +358,21 @@ class TestButcherPersonaGrounding(TestCase):
 
 class TestDishOrderMatching(TestCase):
     """Spoken orders resolve to real dishes via the recipe keywords —
-    conservative: cue or bare order; a cue-less question is conversation."""
+    conservative: cue or bare order; a cue-less question is conversation.
+
+    The butcher's matcher WAS its own method; it is the shelf matcher
+    now, because a cart and a shop sell the same way (#2352/#2378)."""
+
+    #: the COOKED board — what the cart actually sells. The raw cuts in
+    #: RAT_PRODUCTS are what she buys, which is a different list.
+    DISHES = ("mystery_skewer", "rat_tail_stew", "grilled_rat_chops",
+              "roast_rat_haunch", "butchers_breakfast")
 
     def _match(self, speech):
-        b = MagicMock()
-        return butchmod.Butcher._match_dish_order.__get__(
-            b, butchmod.Butcher)(speech)
+        from world.shop.service import match_from_shelf, shelf_of
+        cart = MagicMock()
+        cart.db.prototype_inventory = {k: 1 for k in self.DISHES}
+        return match_from_shelf(shelf_of(cart), speech)
 
     def test_orders_matched(self):
         for speech, proto in (
@@ -400,8 +408,19 @@ class TestDishOrderFulfilment(TestCase):
         b._find_block = lambda: cart
         b._match_dish_order = lambda s: proto
         patron = MagicMock(); patron.location = "room"; patron.tokens = tokens
-        b._fulfil_dish_order = butchmod.Butcher._fulfil_dish_order.__get__(
-            b, butchmod.Butcher)
+        # the cart sells through the shelf shape now, in "board" style:
+        # it sets the dish down instead of pressing it into a hand
+        def _fulfil(text, patron):
+            """The cart's serve, with the non-order fallback the class
+            used to carry: nothing on the board means it was talk."""
+            match = b._match_dish_order(text)
+            if match is None:
+                b._try_llm_reply(text, patron, "directed",
+                                 on_fail=b._llm_fallback)
+                return False
+            shopsvc._fulfil_from_shelf(cart, match, patron, b, style="board")
+            return True
+        b._fulfil_dish_order = _fulfil
         return b, cart, patron
 
     def test_serve_happy_path(self):
@@ -430,3 +449,38 @@ class TestDishOrderFulfilment(TestCase):
         b._fulfil_dish_order("what's good here?", patron)
         b._try_llm_reply.assert_called_once()
         cart.purchase_item.assert_not_called()
+
+
+class TestReceivingIsTheJobs(TestCase):
+    """Handing a corpse over is a JOB act, not a typeclass act (#2378).
+
+    Receiving is the one venue behaviour that happens to a PERSON rather
+    than at a counter — you put the carcass in their hands. It was the
+    last thing welded to a role class, and welded is exactly why a
+    corpse handed to a night-shift butcher did nothing: the successor
+    was a plain LLMNpc with no `at_object_receive` override.
+    """
+
+    def _corpse_obj(self):
+        from typeclasses.corpse import Corpse
+        c = MagicMock(spec=Corpse)
+        return c
+
+    def test_the_butcher_job_carries_the_hook(self):
+        from world import service
+        service._ensure_loaded()
+        self.assertIsNotNone(service.SERVICE["butcher"]["on_receive"])
+
+    def test_a_corpse_starts_the_buy(self):
+        with patch.object(butchery, "delay") as later:
+            took = butchery.on_receive(MagicMock(), self._corpse_obj(),
+                                       MagicMock(), MagicMock())
+        self.assertTrue(took)
+        self.assertIs(later.call_args.args[1], butchery.process_corpse)
+
+    def test_anything_else_is_not_the_butcher_s_business(self):
+        with patch.object(butchery, "delay") as later:
+            took = butchery.on_receive(MagicMock(), MagicMock(),
+                                       MagicMock(), MagicMock())
+        self.assertFalse(took)
+        later.assert_not_called()

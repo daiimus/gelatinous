@@ -68,15 +68,14 @@ class TestStyleToolResolution(TestCase):
 
 class TestPrepareDrinkResolution(TestCase):
     def test_loose_order_resolves_to_menu_name(self):
-        import typeclasses.bar as barmod
+        """`prepare_drink` is a JOB tool now and reads the POST's board
+        (#2378) — the fuzzy resolution is unchanged, its home is not."""
+        import world.bar as worldbar
         b = MagicMock()
         b.location = MagicMock()
-        b._find_bar = lambda: None
-        b.db.menu = [{"name": "mug of rotgut"}, {"name": "reactor cut"}]
-        bound = barmod.Bartender._handle_action_tool.__get__(
-            b, barmod.Bartender)
-        with patch.object(barmod.LLMNpcMixin, "_handle_action_tool"):
-            bound("prepare_drink", "a mug of rotgutt", MagicMock())
+        counter = MagicMock()
+        counter.db.menu = [{"name": "mug of rotgut"}, {"name": "reactor cut"}]
+        worldbar._prepare_drink(counter, "a mug of rotgutt", MagicMock(), b)
         b.execute_cmd.assert_called_once_with("prepare mug of rotgut")
 
 
@@ -88,8 +87,9 @@ class TestClinicTreatResolution(TestCase):
         doc._draw_supply = MagicMock(return_value=item)
         patient = MagicMock()
         patient.get_display_name = lambda looker=None: "a lean man"
-        bound = clinic.Doctor._treat.__get__(doc, clinic.Doctor)
-        bound(patient, "bandge")       # typo: no exact, no containment
+        import world.clinic as worldclinic
+        # `treat` is a job behaviour now, taking the keeper (#2378)
+        worldclinic.treat(doc, patient, "bandge")   # typo: no exact match
         doc._draw_supply.assert_called_once_with("GAUZE_BANDAGES")
         doc.execute_cmd.assert_called_once_with(
             "apply gauze bandages on a lean man")

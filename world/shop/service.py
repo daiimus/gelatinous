@@ -189,7 +189,10 @@ for _role in SHELF_ROLES:
              fallback="Shelf's all labeled. It says what I sell.",
              archetype="merchant",
              tools={"check_stock": _check_stock})
+from world.butchery import on_receive as _butcher_receive  # noqa: E402
+
 register("butcher", serve_from_board_cart,
+         on_receive=_butcher_receive,
          aliases=("butcher", "cook"),
          fallback="Board's behind me. It says what I sell.",
          archetype="butcher",

@@ -8,6 +8,8 @@ from django.test import override_settings
 from evennia.utils.test_resources import BaseEvenniaTest
 
 import typeclasses.shopkeeper as shopmod
+import typeclasses.llm_npc as llmnpc
+import world.shop.service as shopsvc
 
 
 SHELF = [("cigarette_pack_noir", "pack of Noir cigarettes",
@@ -22,8 +24,8 @@ class TestShopOrderMatching(TestCase):
     def _match(self, speech):
         b = MagicMock()
         b._shelf = lambda: SHELF
-        return shopmod.Shopkeeper._match_shop_order.__get__(
-            b, shopmod.Shopkeeper)(speech)
+        from world.shop.service import match_from_shelf
+        return match_from_shelf(b._shelf(), speech)
 
     def test_orders_matched(self):
         for speech, want in (
@@ -61,10 +63,10 @@ class TestShopOrderFulfilment(TestCase):
         b._match_shop_order = lambda s: match
         b._address_handle = lambda p: "the lean man"
         patron = MagicMock(); patron.location = "room"; patron.tokens = tokens
-        b._fulfil_shop_order = shopmod.Shopkeeper._fulfil_shop_order.__get__(
-            b, shopmod.Shopkeeper)
-        b.serve_purchase = shopmod.Shopkeeper.serve_purchase.__get__(
-            b, shopmod.Shopkeeper)
+        b._fulfil_shop_order = lambda text, patron: shopsvc._fulfil_from_shelf(
+            counter, b._match_shop_order(text), patron, b)
+        b.serve_purchase = lambda patron, item, price: shopsvc.hand_over(
+            b, patron, item, price)
         return b, counter, patron
 
     def test_serve_hands_item_over(self):
@@ -213,8 +215,7 @@ class TestBuyRoutesThroughKeeper(TestCase):
         b = MagicMock()
         b._address_handle = lambda p: "the lean man"
         item = MagicMock(); item.key = "syringe of guttervenom"
-        shopmod.Shopkeeper.serve_purchase.__get__(
-            b, shopmod.Shopkeeper)(MagicMock(), item, 15)
+        shopsvc.hand_over(b, MagicMock(), item, 15)
         emote = b.execute_cmd.call_args.args[0]
         self.assertIn("presses it into the lean man's hand", emote)
         self.assertIn("sweeps 15 into the till", emote)

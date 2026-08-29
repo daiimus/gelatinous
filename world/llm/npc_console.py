@@ -154,8 +154,8 @@ DEFAULT_PERSONAS = {
 
 # Which NPC typeclass hosts each archetype.
 ARCHETYPE_TYPECLASS = {
-    "bartender": "typeclasses.bar.Bartender",
-    "doctor": "typeclasses.clinic.Doctor",
+    "bartender": "typeclasses.llm_npc.LLMNpc",
+    "doctor": "typeclasses.llm_npc.LLMNpc",
     "companion": "typeclasses.llm_npc.LLMNpc",
 }
 

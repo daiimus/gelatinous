@@ -18,6 +18,7 @@ from evennia.utils.test_resources import EvenniaCommandTest
 
 from world.consumables import supports_delivery
 from world.souls import actions, jobs
+import world.bar as worldbar
 
 #: a plated board entry — a real prototype comes off the grill
 DISH = {
@@ -47,7 +48,7 @@ class _CounterTest(EvenniaCommandTest):
             location=self.room1)
         self.counter.db.menu = [DISH]
         self.tender = create_object(
-            "typeclasses.bar.Bartender", key="Nonna", location=self.room1)
+            "typeclasses.llm_npc.LLMNpc", key="Nonna", location=self.room1)
         self.patron = self.char1
         self.patron.location = self.room1
         self.patron.tokens = 10
@@ -88,24 +89,24 @@ class TestAMenuThatPlatesADish(_CounterTest):
     """A board entry naming a `proto` serves that real item."""
 
     def test_a_plated_entry_becomes_the_real_food(self):
-        dish = self.tender._make_order(DISH, self.counter)
+        dish = worldbar.plate_or_mix(DISH, self.counter)
         self.assertEqual(dish.location, self.counter)
         self.assertTrue(supports_delivery(dish, "eat"))
 
     def test_a_mixed_entry_is_still_a_drink(self):
-        drink = self.tender._make_order(POUR, self.counter)
+        drink = worldbar.plate_or_mix(POUR, self.counter)
         self.assertEqual(drink.location, self.counter)
         self.assertTrue(supports_delivery(drink, "drink"))
 
     def test_a_prototype_that_does_not_exist_serves_nothing(self):
-        self.assertIsNone(self.tender._make_order(
+        self.assertIsNone(worldbar.plate_or_mix(
             {"name": "ghost", "proto": "no_such_prototype_at_all"},
             self.counter))
 
     def test_the_dish_lands_on_the_counter_and_the_till_takes_the_cash(self):
         """The whole gesture, through the real serve path: made on the
         surface, payment swept, nothing pressed into a hand."""
-        self.tender._fulfil_order("skewer", self.patron)
+        worldbar.fulfil_now(self.counter, "skewer", self.patron, self.tender)
         served = [o for o in self.counter.contents
                   if supports_delivery(o, "eat")]
         self.assertEqual(len(served), 1)
@@ -114,7 +115,7 @@ class TestAMenuThatPlatesADish(_CounterTest):
 
     def test_a_patron_who_cannot_pay_is_not_served(self):
         self.patron.tokens = 1
-        self.tender._fulfil_order("skewer", self.patron)
+        worldbar.fulfil_now(self.counter, "skewer", self.patron, self.tender)
         self.assertEqual(self.counter.contents, [])
         self.assertEqual(self.patron.tokens, 1)
 
@@ -235,7 +236,7 @@ class TestTakingWhatWasSetDown(_CounterTest):
             return jobs.step_job(self.soul)
 
     def test_it_lifts_the_dish_off_the_counter(self):
-        self.tender._make_order(DISH, self.counter)
+        worldbar.plate_or_mix(DISH, self.counter)
         self.assertTrue(self._step())
         self.assertTrue(any(supports_delivery(o, "eat")
                             for o in self.soul.contents))
@@ -258,8 +259,8 @@ class TestTakingWhatWasSetDown(_CounterTest):
 
     def test_it_takes_the_dish_it_asked_for(self):
         """Two souls at one counter: take yours, not theirs."""
-        self.tender._make_order(POUR, self.counter)
-        mine = self.tender._make_order(DISH, self.counter)
+        worldbar.plate_or_mix(POUR, self.counter)
+        mine = worldbar.plate_or_mix(DISH, self.counter)
         self._step()
         self.assertIn(mine, self.soul.contents)
         self.assertNotIn("rotgut", self.said[0])

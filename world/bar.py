@@ -761,8 +761,12 @@ def tender_at(fixture):
     room = getattr(fixture, "location", None)
     if room is None:
         return None
+    # An UNPOSTED counter is the vending tier: whoever is here serves.
+    # This used to sniff for `is_bartender_npc`, a flag only the deleted
+    # Bartender class ever set — a role flag on a body, which is the
+    # thing the platform work exists to remove (#2378).
     for obj in room.contents:
-        if getattr(obj.db, "is_bartender_npc", False):
+        if getattr(obj.db, "is_npc", False) and hasattr(obj, "execute_cmd"):
             return obj
     return None
 
