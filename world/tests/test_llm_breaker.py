@@ -80,3 +80,41 @@ class TestTheSwitchStillWins(_BreakerTest):
     def test_off_is_off_however_healthy(self):
         client.note_transport_success("gm")
         self.assertFalse(client.llm_enabled())
+
+
+class TestAMindSurvivesTheEmbedder(BaseEvenniaTest):
+    """An NPC lived through it even if the embedder was down (#2360).
+
+    Long-term memory used to be written ONLY inside the embedding
+    success callback, so with no embedder `db.llm_memories` stayed
+    permanently empty — and an imprint or resleeve taken during that
+    window carried an empty mind forward forever, with nothing left to
+    backfill from.
+    """
+
+    def test_a_vectorless_record_is_still_written(self):
+        from world.llm import memory as mem
+        records = mem.remember([], "she said something", None, subject="x")
+        self.assertEqual(len(records), 1)
+        self.assertIn("she said something", mem.memory_texts(records))
+
+    def test_but_it_cannot_be_recalled_until_backfilled(self):
+        from world.llm import memory as mem
+        records = mem.remember([], "unvectored", None, subject="x")
+        self.assertEqual(mem.retrieve([0.1, 0.2], records, subject="x"), [])
+        self.assertFalse(mem.is_retrievable(records[0]))
+
+    def test_downtime_does_not_evict_what_can_be_recalled(self):
+        """Recency is most of salience, so ranking on salience alone
+        would let a spell of embedder downtime quietly forget everything
+        an NPC could actually recall."""
+        from world.llm import memory as mem
+        old = mem.make_record("real memory", [1.0, 0.0], subject="x",
+                              now=1_000.0)
+        records = [old]
+        for i in range(mem.DEFAULT_CAP_PER_SUBJECT + 3):
+            records = mem.remember(records, f"blind {i}", None, subject="x",
+                                   now=2_000.0 + i)
+        self.assertIn(old, records)
+        self.assertEqual(
+            [r for r in records if mem.is_retrievable(r)], [old])

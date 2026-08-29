@@ -608,7 +608,16 @@ class LLMNpcMixin:
             self.db.llm_memories = mem.remember(
                 self._load_memories(), text, vec, subject=subject)
 
-        request_embedding(text, on_done=_save, on_fail=self._llm_silent)
+        def _save_unvectored():
+            # The embedder is unreachable, but this still HAPPENED. Write
+            # the text with no vector: it cannot be recalled by similarity
+            # until backfilled, and `prune` drops it before anything that
+            # can — but the NPC lived through it, and an imprint taken
+            # during a sidecar outage used to carry an empty mind forward
+            # permanently, with nothing to backfill from (#2360).
+            _save(None)
+
+        request_embedding(text, on_done=_save, on_fail=_save_unvectored)
 
     def _soul_state_line(self):
         """Self-state for ensouled NPCs: WHERE the body is and what it's

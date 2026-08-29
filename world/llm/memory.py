@@ -113,15 +113,33 @@ def remember(records, text, embedding, subject="", now=None):
     return prune(records, now=now)
 
 
+def is_retrievable(record):
+    """Can this record ever come back? Only if it carries a vector.
+
+    A record written while the embedder was unreachable has none, so
+    `cosine` scores it 0 and `retrieve` drops it. It is kept for its
+    TEXT — an NPC's mind should not be empty just because the sidecar
+    was down when they lived through something (#2360) — but it cannot
+    contribute to a reply until it is backfilled."""
+    return bool(record.get("embedding"))
+
+
 def prune(records, cap_per_subject=DEFAULT_CAP_PER_SUBJECT, now=None):
-    """Forgetting: keep the most-salient ``cap_per_subject`` records per subject."""
+    """Forgetting: keep the most-salient ``cap_per_subject`` per subject.
+
+    Retrievable records outrank unretrievable ones regardless of age. A
+    vectorless record is recent, and recency is most of salience, so
+    ranking on salience alone would have a spell of embedder downtime
+    quietly evict everything an NPC could actually recall and replace it
+    with records that can never surface."""
     now = time.time() if now is None else now
     by_subject = {}
     for r in records:
         by_subject.setdefault(r.get("subject", ""), []).append(r)
     kept = []
     for recs in by_subject.values():
-        recs.sort(key=lambda r: salience(r, now), reverse=True)
+        recs.sort(key=lambda r: (is_retrievable(r), salience(r, now)),
+                  reverse=True)
         kept.extend(recs[:cap_per_subject])
     return kept
 
