@@ -30,6 +30,7 @@ from world.director.assignment import (
     register_death_handler,
     register_arrival_handler,
     register_completion_handler,
+    register_watch_handler,
     resolve,
 )
 from world.director.intel import is_wanted, log_local_sighting, sync_bot_intel
@@ -479,6 +480,7 @@ def security_completion(npc: Any, assignment: Any) -> None:
 
 
 register_arrival_handler("security", security_arrival)
+register_watch_handler("security", watch_once)
 def security_death(npc: Any, assignment: Any) -> None:
     """A responder destroyed on a call. Settle the call it was holding.
 

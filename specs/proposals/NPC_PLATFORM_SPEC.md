@@ -76,8 +76,8 @@ they held moves by kind:
 | 5 | exactly one NPC typeclass | ✅ #2378 |
 | 6 | no blueprint names a role typeclass | ✅ #2378 |
 | 7 | no class shadows a job hook | ✅ #2377 |
-| 8 | dispatch is a job, not a body seizure | ❌ `is_assigned()` |
-| 9 | one scheduler | ❌ 45s + 30s |
+| 8 | dispatch is a job, not a body seizure | ✅ #2384 |
+| 9 | one scheduler | 🟡 the 45s tick drives only the hunt now |
 | 10 | game fully playable with the LLM off | 🟡 breaker + memory done; `remember`/`feel`/`style`/NPC-`radio` have no deterministic twin |
 
 **1–7 are done: the platform exists and the collapse it was for has

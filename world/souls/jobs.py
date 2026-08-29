@@ -276,6 +276,37 @@ def step_job(soul):
                 return False
         return True                        # walking; check again next think
 
+    if do == "respond":
+        # ON SCENE. The director owns what a responder DOES here — the
+        # scan, the challenge, the engage rung — and this owns the body
+        # doing it. Arrival runs once; the watch ticks once a beat until
+        # the hold is over, and then the job walks home like any other
+        # (NPC_PLATFORM_SPEC §7, #2384).
+        from world.director import assignment as amod
+        if amod.get_assignment(soul) is None:
+            # Stood down while travelling — the call was closed, or the
+            # unit was released. Not a fault: nothing went wrong.
+            soul.db.soul_job = None
+            return False
+        if not step.get("arrived"):
+            step["arrived"] = True
+            soul.db.soul_job = job
+            amod.run_arrival(soul)
+            return True
+        if amod.run_watch(soul):
+            return True                  # still holding
+        job["at"] = at + 1
+        soul.db.soul_job = job
+        return True
+
+    if do == "stand_down":
+        # Home again: settle the assignment through the director's own
+        # completion path, so intel syncs exactly where it always did.
+        from world.director import assignment as amod
+        amod.finish(soul)
+        soul.db.soul_job = None
+        return False
+
     if do == "patrol_mark":
         # Arrived at a stop: run the director's waypoint hook (a security
         # sweep for wanted faces, a civilian's ambient beat) and aim at
