@@ -116,14 +116,19 @@ def build_persona(npc) -> dict:
             "desc": _room_desc(npc),
         }
 
-    # The bar's real menu, so she knows exactly what she serves (and what she
-    # doesn't) — and never fakes pouring something off-list.
+    # The board they are actually working, so they know exactly what they
+    # serve (and what they don't) — and never fake pouring something
+    # off-list. Read off the POST rather than a typeclass method, so a
+    # successor standing the bar is grounded in it too (#2352).
+    from world import service
+    post = service.post_for(npc)
     menu = None
-    find_bar = getattr(npc, "_find_bar", None)
-    if callable(find_bar):
-        bar = find_bar()
-        bar_menu = (bar.db.menu if bar else None) or npc.db.menu or []
-        menu = [r.get("name") for r in bar_menu if r.get("name")] or None
+    board = (post.db.menu if post is not None else None)
+    if not board:
+        find_bar = getattr(npc, "_find_bar", None)
+        bar = find_bar() if callable(find_bar) else None
+        board = (bar.db.menu if bar else None) or npc.db.menu or []
+    menu = [r.get("name") for r in (board or []) if r.get("name")] or None
 
     # The butcher's real trade, same grounding principle: the cart's ACTUAL
     # board (live shop stock + prices) and what she buys — without these the
@@ -227,4 +232,11 @@ def build_persona(npc) -> dict:
         # deserialize → plain dict/list (the seed's nested mes_example is a
         # _SaverDict/_SaverList off the DB, which json.dumps can't serialize).
         "persona_seed": deserialize(npc.db.llm_persona) or {},
+        # THE JOB BEATS THE SEED. A blueprint says who somebody is; the
+        # post says what they are doing right now, and the second is what
+        # a patron is talking to. Without this a successor stands behind
+        # the bar prompted as a generic colonist, with a colonist's tool
+        # grant — no `check_stock`, no `prepare_drink` (#2352). Off shift
+        # it resolves to None and they are simply themselves again.
+        "archetype": service.archetype_for(npc),
     }

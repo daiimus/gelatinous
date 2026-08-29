@@ -343,3 +343,59 @@ class TestWhoIsWorkingTheCounter(_CounterTest):
                         return_value="day"):
             self.assertIs(keeper_on_duty(self.counter), self.tender)
             self.assertTrue(any_keeper_present(self.counter))
+
+
+class TestTheJobComesWithThePost(_CounterTest):
+    """A post carries the whole job, not just the ability (#2352).
+
+    Serving was only the loudest quarter of it. A successor also has to
+    answer to "bartender", to have something to say when there is no
+    voice available, and to be prompted as a bartender rather than as
+    whatever the generator authored them. Live, the Hub and Howl's swing
+    keeper had none of the four:
+
+        Sully  (day, Bartender)  aliases=[...]  fallback=True   archetype=bartender
+        Bianca (swing, LLMNpc)   aliases=[]     fallback=False  archetype=colonist
+    """
+
+    def setUp(self):
+        super().setUp()
+        from world.souls.posts import register_post
+        self.tender.delete()
+        self.plain = create_object("typeclasses.llm_npc.LLMNpc",
+                                   key="Bianca", location=self.room1)
+        self.plain.db.llm_persona = {"archetype": "colonist"}
+        register_post(self.counter, "bartender", shifts=("day",))
+        self.counter.db.post_slots = {
+            "day": {"keeper": self.plain, "vacant_since": None}}
+
+    def _on_shift(self):
+        return mock.patch("world.souls.posts.current_shift",
+                          return_value="day")
+
+    def test_it_answers_to_the_job(self):
+        with self._on_shift():
+            self.assertIn("bartender", self.plain._name_aliases())
+
+    def test_it_has_a_line_when_there_is_no_voice(self):
+        with self._on_shift(), \
+             mock.patch.object(type(self.plain), "execute_cmd") as ran:
+            self.plain._llm_fallback()
+        self.assertIn("Don't serve that here.", str(ran.call_args))
+
+    def test_it_is_prompted_as_the_job_not_the_seed(self):
+        from typeclasses.llm_persona import build_persona
+        from world.llm.prompt import tool_names
+        with self._on_shift():
+            persona = build_persona(self.plain)
+        self.assertEqual(persona["archetype"], "bartender")
+        # and therefore gets the job's tools, not a colonist's
+        self.assertIn("prepare_drink", tool_names(persona))
+
+    def test_off_shift_they_are_themselves_again(self):
+        """The voice follows the body: an off-duty keeper is not a keeper."""
+        from typeclasses.llm_persona import build_persona
+        with mock.patch("world.souls.posts.current_shift",
+                        return_value="night"):
+            self.assertEqual(self.plain._name_aliases(), [])
+            self.assertIsNone(build_persona(self.plain)["archetype"])

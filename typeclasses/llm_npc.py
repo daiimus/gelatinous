@@ -314,8 +314,24 @@ class LLMNpcMixin:
         return any(n and n in low for n in names)
 
     def _name_aliases(self):
-        """Hook: extra words that count as naming this NPC (role words)."""
-        return []
+        """Extra words that count as naming this NPC — its JOB's words.
+
+        Whoever is standing the bar answers to "bartender", and whoever
+        is standing it tomorrow answers to it too. This used to live on
+        the role typeclass, so a successor inherited the post and not the
+        name for it (#2352). A subclass may still override."""
+        from world import service
+        return service.aliases_for(self)
+
+    def _llm_fallback(self):
+        """What this NPC says when addressed with no voice to improvise.
+
+        The job's line, because the job is what was addressed. Silence is
+        correct for a post with no line and for anyone off duty."""
+        from world import service
+        line = service.fallback_for(self)
+        if line and self.location:
+            self.execute_cmd(f"say {line}")
 
     # --- request orchestration -------------------------------------------
     def _try_llm_reply(self, line, patron, mode, on_fail=None):

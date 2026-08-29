@@ -747,7 +747,15 @@ def _archetype(persona: dict) -> dict:
     """Resolve the persona's job/archetype spine (duties + tools + fewshot)."""
     persona = persona or {}
     seed = persona.get("persona_seed") or {}
-    name = seed.get("archetype") or persona.get("archetype") or DEFAULT_ARCHETYPE
+    # THE POST FIRST. `persona["archetype"]` is what the speaker is doing
+    # right now (`build_persona` reads it off the job they are standing);
+    # the seed is what their blueprint authored them as. A successor
+    # behind the bar has to be prompted as a bartender, with a
+    # bartender's tools, rather than as whatever the generator made them
+    # (#2352). Off shift the post resolves to None and the seed takes
+    # over again — an off-duty vendor is not a vendor.
+    name = (persona.get("archetype") or seed.get("archetype")
+            or DEFAULT_ARCHETYPE)
     return ARCHETYPES.get(name, ARCHETYPES[DEFAULT_ARCHETYPE])
 
 
