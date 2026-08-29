@@ -394,6 +394,28 @@ def create_flash_clone(account, old_character):
     char.sex = old_character.sex
     if old_character.db.skintone is not None:
         char.db.skintone = old_character.db.skintone
+
+    # INHERIT: SPECIES. The body you get back is the body you had.
+    #
+    # Without this a bioroid came back mechanically HUMAN while keeping
+    # every bioroid longdesc: the description, the sdesc keyword and the
+    # synthetic skintone all survived death and the species did not.
+    # Cobalt blood turned crimson, the wetcore became a brain, ×1.25
+    # durability and infection immunity quietly vanished, and the corpse
+    # would rot instead of going inert. Nothing surfaced the
+    # contradiction until somebody opened them up and found a liver
+    # where the filter gland should be.
+    #
+    # The medical state is REBUILT rather than copied, because the clone
+    # was created — and its organs seeded — before we knew its species.
+    # Longdescs are inherited above and deliberately NOT re-seeded from
+    # species defaults here: that is authored text, not anatomy.
+    old_species = old_character.db.species
+    if old_species and old_species != char.db.species:
+        from world.medical.core import MedicalState
+        char.db.species = old_species
+        char._medical_state = MedicalState(char)
+        char.db.medical_state = char._medical_state.to_dict()
     
     # INHERIT: Physical identity — same body means same sleeve_uid
     if old_character.sleeve_uid is not None:
