@@ -174,12 +174,23 @@ def serve_from_board_cart(post, speech, patron, by, addressed=False):
                             style="board")
 
 
+def _check_stock(post, arg, patron, by):
+    """What is actually on this counter's shelf."""
+    if post is None:
+        return "no counter to check"
+    names = [display for _, display, _ in shelf_of(post)]
+    return ("On the shelf: " + ", ".join(names) + ".") if names \
+        else "The shelf is empty."
+
+
 for _role in SHELF_ROLES:
     register(_role, serve_from_shelf,
              aliases=("shopkeeper", "shopkeep", "merchant", "vendor"),
              fallback="Shelf's all labeled. It says what I sell.",
-             archetype="merchant")
+             archetype="merchant",
+             tools={"check_stock": _check_stock})
 register("butcher", serve_from_board_cart,
          aliases=("butcher", "cook"),
          fallback="Board's behind me. It says what I sell.",
-         archetype="butcher")
+         archetype="butcher",
+         tools={"check_stock": _check_stock})

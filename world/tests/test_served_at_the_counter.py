@@ -399,3 +399,23 @@ class TestTheJobComesWithThePost(_CounterTest):
                         return_value="night"):
             self.assertEqual(self.plain._name_aliases(), [])
             self.assertIsNone(build_persona(self.plain)["archetype"])
+
+    def test_it_can_run_the_tools_it_is_granted(self):
+        """The archetype GRANTS a tool; the job RUNS it. Grant from one
+        place and run from another and a successor is handed
+        `check_stock` only to get an empty string back — which the model
+        then improvises around, inventing stock."""
+        from world.llm.prompt import tool_names
+        from typeclasses.llm_persona import build_persona
+        with self._on_shift():
+            self.assertIn("check_stock", tool_names(build_persona(self.plain)))
+            answer = self.plain._run_context_tool("check_stock", "",
+                                                  self.patron)
+        self.assertIn("snail skewer", answer)
+
+    def test_off_shift_the_tool_is_not_theirs(self):
+        with mock.patch("world.souls.posts.current_shift",
+                        return_value="night"):
+            self.assertEqual(
+                self.plain._run_context_tool("check_stock", "", self.patron),
+                "")
