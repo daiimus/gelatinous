@@ -615,6 +615,18 @@ def _patrol_plan(soul):
     ]}
 
 
+def _hunt_plan(soul):
+    """One beat of the hunt.
+
+    Deliberately a SINGLE step rather than a chain: `tick_hunt` is
+    already a state machine holding its own progress on `ndb.hunt` (the
+    target, the sweep budget, the rooms already swept). A multi-step
+    plan would be a second place tracking the same thing, and the two
+    would drift. Souls supplies the beat; the director keeps every rule
+    about what a hunt IS — the same split patrol got (#2373)."""
+    return {"goal": "hunt", "at": 0, "steps": [{"do": "hunt"}]}
+
+
 def plan_for(soul, goal_need):
     """Return a job dict for the winning goal, or None (-> fault).
 
@@ -664,6 +676,9 @@ def plan_for(soul, goal_need):
 
     if goal_need == "patrol":
         return _patrol_plan(soul)
+
+    if goal_need == "hunt":
+        return _hunt_plan(soul)
 
     if goal_need == "hunger":
         from world.souls import needs as needs_mod
