@@ -323,6 +323,30 @@ def step_job(soul):
         soul.db.soul_job = job
         return True
 
+    if do == "hunt":
+        # One beat of the director's hunt state machine — the LAST
+        # body-driver to come off the 45s tick (#2373). The machine
+        # stays in the director; souls only supplies the beat it used to
+        # take from the ticker.
+        from world.director.hunt import tick_hunt
+        try:
+            still_hunting = tick_hunt(soul)
+        except Exception as err:  # noqa: BLE001 — a broken hunt must not
+            fault(soul, f"hunt beat failed: {err}")   # wedge the soul
+            return False
+        if not still_hunting:
+            # Nothing left to chase. Ending is NOT a fault: `fault` cools
+            # the goal, which would blind the unit to the next intruder
+            # for the whole cooldown — a security hole dressed as
+            # tidiness.
+            soul.db.soul_job = None
+            return False
+        # Stays on step 0 deliberately. `ndb.hunt` holds the progress, so
+        # each beat re-runs this single step until the hunt ends;
+        # advancing would run off the end of a one-step plan.
+        soul.db.soul_job = job
+        return True
+
     if do == "order":
         # Ask for it. The `order` command does the targeting a soul
         # cannot do for itself — it can't address a tender by name,

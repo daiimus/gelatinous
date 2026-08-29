@@ -113,14 +113,17 @@ def is_patrol_idle(npc: Any) -> bool:
 def tick_npc(npc: Any) -> str:
     """Advance one NPC's patrol by one nudge. Returns what happened
     (for diagnostics): ``skip`` / ``wait`` / ``travel`` / ``waypoint`` /
-    ``souls`` / ``hunt`` / ``none``.
+    ``souls`` / ``none``.
 
     A SOULED body returns ``souls`` rather than being WALKED here: it
-    takes its beat through the souls engine now (#2373). The hunt still
-    runs first and still drives the body, because a hunt is a security
-    RESPONSE rather than idle drift — it is the last thing this tick
-    moves, and the last piece of criterion 9. The walking fallback below
-    is for an unsouled body, which nothing in the colony currently is.
+    takes its beat through the souls engine now (#2373). THIS TICK NO
+    LONGER MOVES ANY SOULED BODY. The hunt was the last one — it is a
+    souls goal now (band 4, offered above patrol, which is exactly where
+    it already sat: ``is_patrol_idle`` refused to hunt while a soul job
+    existed). One scheduler, which was the whole point.
+
+    The walking fallback below is for an unsouled body, which nothing in
+    the colony currently is.
 
     * **Cadence** (``db.patrol_cadence``, default 1): act only every Nth
       tick — civilians drift at a stroll while security marches. Now
@@ -134,16 +137,6 @@ def tick_npc(npc: Any) -> str:
         return "none"
     if not is_patrol_idle(npc):
         return "skip"
-    # The hunt owns an idle security unit before the beat does (stealth
-    # spec §5): awareness records of hidden presences turn the patroller
-    # into a hunter until it reacquires or gives up.
-    if getattr(npc.db, "role", None) == "security":
-        try:
-            from world.director.hunt import tick_hunt
-            if tick_hunt(npc):
-                return "hunt"
-        except Exception:  # noqa: BLE001 — a broken hunt must not stall beats
-            pass
     # THE FEET MOVED. Walking the beat is a souls goal now (band 4, the
     # idle filler this always described itself as) — see
     # `actions._patrol_plan`. This module still owns what a beat IS, the

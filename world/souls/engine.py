@@ -237,6 +237,26 @@ def _desired_goal(soul, hour, exclude=()):
     # with two drivers and none with one — so the beat is now work this
     # engine does, and the director supplies the route rather than the
     # feet (#2373).
+    # band 4: THE HUNT, which owns an idle security unit BEFORE the beat
+    # does (stealth spec §5) — so it is offered above patrol, inside the
+    # same band.
+    #
+    # Band 4 looks low for a security response, and it is not a judgement
+    # that hunting matters less than eating. It is where the hunt already
+    # sat: `is_patrol_idle` refused to hunt while a soul job existed, so
+    # a unit on duty, in combat, mid-travel or mid-conversation never
+    # hunted. Reproducing that exactly is the point — this is the last
+    # step of the two-scheduler merge (#2373), and a merge that quietly
+    # re-banded a security behaviour would be a design change smuggled in
+    # under a refactor.
+    #
+    # If the colony later wants a guard to abandon its post for an
+    # intruder, that is a real decision about how security behaves, and
+    # it is one line here.
+    if "hunt" not in exclude:
+        from world.director.hunt import wants_hunt
+        if wants_hunt(soul):
+            return (4, "hunt")
     if soul.db.patrol_beat and "patrol" not in exclude:
         from world.director.routines import cadence_ready
         if cadence_ready(soul):
@@ -262,6 +282,7 @@ def _goal_band(goal):
     # to flee, not to go back to standing at the counter.
     return {"safety": 0, "hunger": 1, "rest": 2, "duty": 2, "claim": 2,
             "wardrobe": 2, "run": 2, "recover": 2, "patrol": 4,
+            "hunt": 4,
         "respond": 0,
             "craving": 3, "social": 3,
             "off_duty": 4}.get(goal, 4)

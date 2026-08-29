@@ -98,14 +98,35 @@ class TestItCallsItsOwnDamage(EvenniaCommandTest):
 
 
 class TestItIsWiredWhereUnitsActuallyTick(EvenniaCommandTest):
+    def setUp(self):
+        super().setUp()
+        self.unit = self.char1
+        self.unit.db.species = "robot"
+        self.unit.db.role = "security"
+        self.assignment = _Assignment(self.room1)
+
     def test_the_watch_round_checks_it(self):
-        """The watch tick is the loop that keeps running THROUGH a
-        fight, which is where a unit actually gets wrecked. If the
-        check only lived on arrival it would never fire in combat."""
-        import inspect
-        src = inspect.getsource(security._watch_tick)
-        self.assertIn("_mayday(npc, assignment)", src)
-        self.assertLess(src.index("_mayday"), src.index("_in_combat(npc)"))
+        """The watch round is the loop that keeps running THROUGH a
+        fight, which is where a unit actually gets wrecked. If the check
+        only lived on arrival it would never fire mid-combat.
+
+        BEHAVIOURAL on purpose. This used to assert that the SOURCE TEXT
+        of `_watch_tick` contained `_mayday(npc, assignment)`. Criterion
+        8 split the round out into `watch_once` (#2384): the call moved
+        down one function, the conduct did not change at all, and the
+        test went red anyway. A test that tracks letters reports a
+        refactor as a regression — and would just as happily stay green
+        if the call were left sitting in a function nothing ever ran.
+
+        Combat is forced ON because that is the case the docstring is
+        about: the mayday has to fire while the fight owns the unit.
+        """
+        with mock.patch("world.director.assignment.get_assignment",
+                        return_value=self.assignment), \
+                mock.patch.object(security, "_in_combat", return_value=True), \
+                mock.patch.object(security, "_mayday") as mayday:
+            self.assertTrue(security.watch_once(self.unit))   # keeps watching
+        mayday.assert_called_once()
 
     def test_arrival_checks_it_too(self):
         """A unit can reach a scene already wrecked from the last one."""

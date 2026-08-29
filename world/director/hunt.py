@@ -67,6 +67,33 @@ def is_hunting(npc) -> bool:
     return bool(getattr(getattr(npc, "ndb", None), "hunt", None))
 
 
+def wants_hunt(npc) -> bool:
+    """Is there a reason to hunt right now? PURE — this asks, it never
+    commits: no emote, no state, no give-up.
+
+    The souls band tree has to know what a unit WANTS before it decides
+    whether that outranks what it is doing, and `tick_hunt` cannot answer
+    that question because answering it changes the world. So the rule
+    lives here once and both doors read it: this predicate decides
+    whether a hunt is offered, `tick_hunt` runs the beat.
+
+    Kept deliberately in lockstep with `tick_hunt`'s own opening — best
+    record only, not any record, because that is the record `tick_hunt`
+    will act on. Two doors onto one decision drift the moment they stop
+    reading the same line.
+    """
+    if getattr(npc.db, "role", None) != "security":
+        return False
+    if is_hunting(npc):
+        return True                 # a live hunt still owes a beat
+    from world.stealth import SUSPICIOUS, hunt_records
+    records = _with_cause(npc, hunt_records(npc))
+    if not records:
+        return False
+    _key, level, _last_room_id, _t = records[0]
+    return level >= SUSPICIOUS
+
+
 def _give_up(npc, target_key) -> None:
     from world.stealth import UNAWARE, seed_awareness
     npc.ndb.hunt = None
