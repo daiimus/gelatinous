@@ -26,9 +26,75 @@ _DEFAULT_TIMEOUT = 40          # warm 24B constrained gen ~17s/round; cover one 
 _DEFAULT_MAX_TOKENS = 160
 
 
+# --------------------------------------------------------------------------
+# The breaker — "enabled but dead" is the worst state, so stop being in it.
+#
+# Switched OFF, the game is clean and instant: every gated path takes its
+# scripted branch. Switched ON with the sidecar down, every path takes the
+# LLM branch, `_try_llm_reply` reports the path as TAKEN so the caller
+# suppresses its scripted line, and the only thing that ever speaks is the
+# `on_fail` callback — after the full `LLM_GM_TIMEOUT`. Two minutes of a
+# bartender staring at you, per turn, per NPC.
+#
+# So a lane that keeps failing to CONNECT is treated as switched off until
+# it proves otherwise. Only transport failures count: an empty or truncated
+# turn means the backend is alive and the prompt is wrong, which is a
+# different problem and must not take the lane down.
+# --------------------------------------------------------------------------
+
+#: Consecutive transport failures before a lane reads as down.
+BREAKER_TRIP = 3
+#: Seconds a tripped lane stays down before one probe is let through.
+BREAKER_COOLDOWN = 60.0
+
+_breaker = {}          # lane -> {"fails": int, "until": float}
+
+
+def _lane_down(lane) -> bool:
+    """Is this lane tripped? Half-opens once the cooldown elapses, so the
+    lane heals itself the moment the sidecar comes back."""
+    from time import monotonic
+    state = _breaker.get(lane)
+    if not state or state["fails"] < BREAKER_TRIP:
+        return False
+    if monotonic() >= state["until"]:
+        # half-open: let the next call through. One more failure re-trips.
+        state["fails"] = BREAKER_TRIP - 1
+        return False
+    return True
+
+
+def note_transport_failure(lane="gm"):
+    """A lane failed to answer at the transport level."""
+    from time import monotonic
+    state = _breaker.setdefault(lane, {"fails": 0, "until": 0.0})
+    state["fails"] += 1
+    state["until"] = monotonic() + BREAKER_COOLDOWN
+    if state["fails"] == BREAKER_TRIP:
+        logger.log_warn(
+            f"LLM lane '{lane}' unreachable {BREAKER_TRIP}x — treating it as "
+            f"off for {BREAKER_COOLDOWN:.0f}s. NPCs use scripted lines.")
+
+
+def note_transport_success(lane="gm"):
+    """A lane answered — clear its record."""
+    state = _breaker.get(lane)
+    if state and state["fails"]:
+        if state["fails"] >= BREAKER_TRIP:
+            logger.log_info(f"LLM lane '{lane}' is answering again.")
+        state["fails"] = 0
+
+
 def llm_enabled() -> bool:
-    """Deployment-wide master switch for LLM-driven NPCs (one of two gates)."""
-    return bool(getattr(settings, "LLM_GM_ENABLED", False))
+    """Is the GM lane usable right now?
+
+    The deployment switch AND the breaker, deliberately behind one
+    question: every call site already asks this before taking the LLM
+    branch, so a dead sidecar degrades to exactly the behaviour of a
+    disabled one instead of to a two-minute silence."""
+    if not bool(getattr(settings, "LLM_GM_ENABLED", False)):
+        return False
+    return not _lane_down("gm")
 
 
 def request_turn(messages, on_turn, on_fail, schema=None):
@@ -65,6 +131,8 @@ def request_turn(messages, on_turn, on_fail, schema=None):
         return (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
 
     def _at_return(content):
+        # The backend answered — whatever it said, the lane is alive.
+        note_transport_success("gm")
         if not content:
             # Empty body = the model returned nothing usable — usually a turn
             # truncated against LLM_GM_MAX_TOKENS, occasionally a genuine decline.
@@ -82,6 +150,7 @@ def request_turn(messages, on_turn, on_fail, schema=None):
         # full traceback — a bare "NoneType has no attribute" with no stack
         # hid a mystery caller for weeks.
         exc = getattr(failure, "value", failure)
+        note_transport_failure("gm")
         logger.log_err(f"LLM backend call failed [{type(exc).__name__}]: {exc}")
         tb = getattr(failure, "getTraceback", None)
         if callable(tb) and not isinstance(exc, (TimeoutError, OSError)):
@@ -148,7 +217,12 @@ def request_embedding(text, on_done, on_fail):
 # --------------------------------------------------------------------------
 
 def civic_enabled() -> bool:
-    return bool(getattr(settings, "CIVIC_LLM_ENABLED", False))
+    """The civic switch AND its breaker — same reasoning as `llm_enabled`,
+    and it matters more here: consumers keep a deterministic fallback, so
+    a tripped civic lane costs nothing but the flavour."""
+    if not bool(getattr(settings, "CIVIC_LLM_ENABLED", False)):
+        return False
+    return not _lane_down("civic")
 
 
 def request_civic_line(instructions, prompt, on_reply, on_fail):
@@ -177,12 +251,14 @@ def request_civic_line(instructions, prompt, on_reply, on_fail):
         return " ".join(text.split()) or None
 
     def _at_return(text):
+        note_transport_success("civic")
         if not text:
             on_fail()
             return
         on_reply(text)
 
     def _at_err(failure):
+        note_transport_failure("civic")
         logger.log_err(f"Civic LLM call failed: {failure}")
         on_fail()
 
@@ -227,12 +303,14 @@ def request_civic_verdict(instructions, prompt, schema, on_verdict, on_fail):
         return verdict if isinstance(verdict, dict) else None
 
     def _at_return(verdict):
+        note_transport_success("civic")
         if verdict is None:
             on_fail()
             return
         on_verdict(verdict)
 
     def _at_err(failure):
+        note_transport_failure("civic")
         logger.log_err(f"Civic verdict call failed: {failure}")
         on_fail()
 
