@@ -350,11 +350,22 @@ class TestReactToAttack(TestCase):
     and CONTINUED violence climbs the escalation ladder instead of
     re-firing the same reaction (the spam guard)."""
 
-    def _victim(self, reaction, weapon=None, stage=None):
+    def _victim(self, reaction, weapon=None, stage=None, carrying=()):
+        """A civilian being attacked.
+
+        `contents` is not optional: `react_to_attack` asks
+        `find_best_weapon` what is actually ON them — ranked by reach and
+        hurt, so the picker draws the box cutter rather than the walkie —
+        and only falls back to the legacy `carried_weapon` string. This
+        fixture predated that and had no `contents` at all, so eleven
+        tests here died on an AttributeError inside the weapon lookup
+        rather than exercising any reaction (#2381).
+        """
         return SimpleNamespace(
             db=SimpleNamespace(reaction=reaction, role="x",
                                carried_weapon=weapon),
             ndb=SimpleNamespace(reaction_stage=stage),
+            contents=list(carrying),
             execute_cmd=MagicMock())
 
     @patch("evennia.utils.delay")

@@ -46,6 +46,27 @@ def _fake_uid(char):
     return getattr(char, "uid", None)
 
 
+def _fighting(char):
+    """Make *char* genuinely read as in combat.
+
+    `_in_combat` is LIVENESS-CHECKED: it validates the handler reference
+    and clears a stale one, because a dead ndb ref would otherwise read
+    as in-combat forever and wedge the soul engine out of that
+    character's life. Setting the ndb attribute alone stopped being
+    enough when that check landed, and three tests here went on faking
+    combat the old way — passing the attribute, failing the validation,
+    and quietly exercising the polite aim path while claiming to test
+    the engage path.
+
+    Returns the patcher context so a test can scope it.
+    """
+    from world.combat.constants import NDB_COMBAT_HANDLER
+    setattr(char.ndb, NDB_COMBAT_HANDLER, MagicMock())
+    return patch("world.combat.utils.validate_character_handler_reference",
+                 return_value=(True, getattr(char.ndb, NDB_COMBAT_HANDLER),
+                               None))
+
+
 def _assignment(npc, bolo):
     event = WorldEvent("assault", npc.location,
                        payload={"bolo": bolo} if bolo is not None else {})
@@ -222,13 +243,12 @@ class TestSecurityArrival(TestCase):
     def test_crime_in_progress_engages_instead_of_aiming(self, _log, *_m):
         # Suspect actively in combat on arrival -> the Engage rung: deploy
         # the arm gun and attack; no polite aim lock.
-        from world.combat.constants import NDB_COMBAT_HANDLER
         perp = _Char("perp", uid="PERP", height="tall", build="lean")
-        setattr(perp.ndb, NDB_COMBAT_HANDLER, MagicMock())
         bot = self._scene(perp)
         a = _assignment(bot, {"uid": "PERP", "height": "tall",
                           "build": "lean", "via": "machine"})
-        security_arrival(bot, a)
+        with _fighting(perp):
+            security_arrival(bot, a)
         cmds = [c.args[0] for c in bot.execute_cmd.call_args_list]
         self.assertIn("/shotgun", cmds)
         self.assertIn("attack perp", cmds)
@@ -246,13 +266,12 @@ class TestSecurityArrival(TestCase):
         self.assertEqual(bot.execute_cmd.call_count, first_count)
 
     def test_watch_never_walks_home_mid_fight(self, mock_delay, *_m):
-        from world.combat.constants import NDB_COMBAT_HANDLER
         perp = _Char("perp", uid="PERP")
         bot = self._scene(perp)
         a = _assignment(bot, {"uid": "PERP", "height": None, "build": None})
         a.payload["watch_rounds"] = 1
-        setattr(bot.ndb, NDB_COMBAT_HANDLER, MagicMock())  # bot is fighting
-        with patch("world.director.security.resolve") as mock_resolve:
+        with _fighting(bot), \
+                patch("world.director.security.resolve") as mock_resolve:
             smod._watch_tick(bot)
             mock_resolve.assert_not_called()               # stays on scene
         self.assertEqual(a.payload["watch_rounds"], 1)     # no round burned
@@ -260,13 +279,18 @@ class TestSecurityArrival(TestCase):
 
     @patch("world.director.security.log_local_sighting")
     def test_held_suspect_turning_violent_escalates(self, _log, mock_delay, *_m):
-        from world.combat.constants import NDB_COMBAT_HANDLER
         perp = _Char("perp", uid="PERP")
         bot = self._scene(perp)
-        a = _assignment(bot, {"uid": "PERP", "height": None, "build": None})
+        # `via="machine"` is the PROVENANCE gate (#2247): a uid only
+        # counts as a positive identification when it came from
+        # something that could actually record one. Without it the watch
+        # can never read as "still holding", so this test spent its life
+        # asserting an escalation that could not fire.
+        a = _assignment(bot, {"uid": "PERP", "height": None, "build": None,
+                              "via": "machine"})
         a.payload["watch_rounds"] = 3
-        setattr(perp.ndb, NDB_COMBAT_HANDLER, MagicMock())  # suspect fighting
-        smod._watch_tick(bot)
+        with _fighting(perp):                       # suspect turns violent
+            smod._watch_tick(bot)
         cmds = [c.args[0] for c in bot.execute_cmd.call_args_list]
         self.assertIn("attack perp", cmds)
         self.assertTrue(a.payload["engaged"])

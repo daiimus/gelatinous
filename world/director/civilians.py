@@ -209,9 +209,12 @@ CIVILIAN_ROLES: dict[str, dict] = {
     },
     "synth_company_man": {
         "species": "synthetic_humanoid",
+        # WORK_COVERALLS dropped from the leg roll: it covers chest at
+        # the same layer as the HIVIS_VEST above, so whenever the roll
+        # picked it one of the two silently failed to wear (#2381).
         "wardrobe": ["HIVIS_VEST", "MINING_HELMET",
                      ["COMPANY_WINDBREAKER", "COMPANY_COAT"],
-                     ["CARGO_TROUSERS", "WORK_COVERALLS"],
+                     "CARGO_TROUSERS",
                      ["PIT_BOOTS", "COMBAT_BOOTS"]],
         "reaction": "comply", "armed": False, "reports": "fast",
         "ambient": [
@@ -283,8 +286,10 @@ CIVILIAN_ROLES: dict[str, dict] = {
         },
     },
     "sump_tech": {
+        # same collision as the company man: coveralls and the vest both
+        # take chest at layer 2 (#2381)
         "wardrobe": ["HIVIS_VEST", "RUBBER_WADERS",
-                     ["WORK_COVERALLS", "THERMAL_SHIRT"],
+                     "THERMAL_SHIRT",
                      ["RESPIRATOR", "NECK_REBREATHER"],
                      "WORK_GLOVES"],
         "reaction": "comply", "armed": False, "reports": None,
