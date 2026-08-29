@@ -75,44 +75,132 @@ the aliases memory keeps the **history** around it. It lives alongside / extends
 the recognition entry (which already keys on apparent_uid and links presentations
 via piercing), not a parallel store.
 
+### 2b · A verified name requires PROOF (owner ruling 2026-08-29)
+
+There is no way for an NPC to verify a name **in speech**, so everything spoken
+is a claim — including "call me Blade", which is a self-styled claim rather than
+a name. Provenance, not the string, is what separates them:
+
+| kind | authored by | verifiable |
+|---|---|---|
+| true identity | the world | `real_sleeve_uid` — ground truth, OOC validation |
+| **verified name** | a document — ID, wanted record, paydata | ✅ **field does not exist yet** |
+| given name | the subject, to you | ❌ claim; may be a lie |
+| self-styled | the subject | ❌ claim, but *offered* ("call me Blade") |
+| imposed | an observer | ❌ coinage ("Fat Tony") — the subject may hate it |
+
+Self-styled and imposed are both aliases and behave oppositely, which is why
+provenance has to be recorded rather than inferred: Blade wants Blade, and
+nobody introduces themselves as Fat Tony.
+
+**The target scenario** (owner, 2026-08-29): *show an NPC a picture of someone
+they know as Billy who is actually Robert Paulson, ask about them, and have the
+NPC tell you they go by Billy, recognise the document as an official source, and
+recall what they know about the man.*
+
+What that needs, and what already exists:
+
+| piece | status |
+|---|---|
+| "they go by Billy" | ✅ `assigned_name` |
+| linking Billy ⇄ Robert Paulson as one body | ✅ `linked_to`, `walk_linked_chain`, `get_linked_aliases` — already renders "Also known as:" |
+| memories about him, surfaced on request | ✅ RAG memory scoped by subject uid |
+| a document as an object (ID, wanted poster) | ❌ |
+| **a way to SHOW something to someone** | ❌ no `show` command exists at all |
+| reading proof → writing `verified_name` + linking | ❌ |
+
+The identity-chain machinery — the expensive half, built for disguise and
+unmasking — is the rail this runs on. What is missing is the front end.
+
+**Address is a CHOICE, not a lookup.** Which of these an NPC uses out loud is
+the NPC's decision, and the natural selector is opinion (§3): a warm NPC uses
+the name you gave, a hostile one uses the ugly nickname to your face, a wary one
+saves it for when you have left. That makes "Fat Tony" an insult the sim
+generates rather than a string someone typed. Blocked on the §12 balance
+prerequisite — opinion needs tuning against real play before anything gates on
+it.
+
 ## 3 · Affective state is itself memory
 
-How an NPC **feels** about a person — trust, suspicion, fondness, irritation,
-amusement — is a first-class, recalled memory dimension. It is the lever that
-turns identity tracking into character. The recognition entry already carries a
-`relationship_valence` (+ `notes`, `tags`, `recent_interactions`), so this has a
-home — no new structure.
+How an NPC **feels** about a person — trust, suspicion, fondness, irritation —
+is a first-class memory dimension. It is the lever that turns identity tracking
+into character.
 
-**Decision: valence is an LLM-adjusted metric driven by *experience*, not just
-words.** The model has a perfectly good read on social behaviour — so it judges
-what a person *does* and nudges its valence accordingly, exactly as a person
-would. Does Bob pose about pissing on the bar? Kill someone in the room? Harass
-the NPC? Tip well, defend the NPC, keep their word? Each shifts the read. The
-**persona guides the weighting** — Sully shrugs off what makes Vesper cold; a
-prim NPC and a gutter one score the same act differently.
+**DECISION REVERSED 2026-08-29 (#2388). Opinion is the ENGINE'S, not the
+model's.** This section previously read: *"valence is an LLM-adjusted metric…
+the model judges what a person does and nudges its valence accordingly."* That
+is platform law 4 inverted — the model authoring a state the game stores and
+reads back — and this section itself named the consequence: *"trust is the
+accumulated affective state, and many third-party actions should consult it."*
+A mechanic would have depended on a model's word choice.
 
-The response to a detected inconsistency (§2) or a behaviour is **not** a fixed
-rule — it's the NPC's personality reading its own valence:
+**Opinion** is now the clamped, half-life-decayed sum of what a person actually
+DID, derived on read, sharing one decay rule with mood (`world/souls/thoughts`,
+`NPC_TRAITS_SPEC` §12):
 
-- **Discreet** — clocks the third alias this month, says nothing, files it.
-- **Fed up** — tired of your bullshit; gets cold, cuts you off, names the game.
-- **Witty** — *"Which one are we using tonight, sugar?"*
+```
+opinion_of(soul, uid)   -> -1.0 .. +1.0    derived, never stored
+opinion_band(value)     -> warm / friendly / neutral / wary / hostile
+opinion_note(soul, uid) -> the strongest surviving REASON
+```
 
-The classical/tactical layer may gate hard reactions (a fed-up bouncer refusing
-service); the *expression* is the LLM's. This is where Memory meets
-`TRUST_AND_CONSENT_SPEC` — trust is the accumulated affective state, and many
-third-party actions should consult it.
+The `feel` tool is **retired**. The WHO line hands the voice the band *and the
+reason*, so an NPC narrates the grievance the engine actually holds instead of
+inventing one.
 
-**⚠️ Load-bearing dependency:** valence-on-behaviour requires the NPC to
-**perceive behaviour**. Today it reacts to *speech* only (`at_msg_receive` on the
-speech payload) — a pure pose/emote/combat event isn't even noticed. So §8.3
-depends on **ambient action-awareness**: the NPC observing room poses, emotes,
-and combat events (attributed to an actor's apparent_uid), forming impressions
-and updating valence. That's a feature in its own right (a slice before the
-valence layer), and it rides the existing perception system + the speech
-backbone's broadcast path.
+**The original intent survives, by other means.** This section wanted
+persona-weighted reactions — *"Sully shrugs off what makes Vesper cold."* That
+is trait **repricing** (`NPC_TRAITS_SPEC`), applied to opinion rather than to
+needs: a trait scales how far a given event moves the score. Not built; the
+seam is `add_opinion`'s valence argument. See §12 there for the balance
+prerequisite — producers get tuned against real play BEFORE any consumer gates
+on the number.
+
+The expression stays the model's, and the examples below still hold —
+**discreet** files it silently, **fed up** cuts you off, **witty** asks which
+one we're using tonight. The engine decides the state; the voice performs it.
+
+**Load-bearing dependency (partly delivered).** Valence-on-behaviour needs the
+NPC to perceive behaviour, not just speech. Combat now feeds it directly —
+`react_to_attack` writes a `-0.60` wound against the attacker — and courtesy
+feeds it from speech. Poses and other room events still do not.
 
 ## 4 · Naming is a spontaneous, creative act (nicknames)
+
+> **AMENDED 2026-08-29 (#2390).** Naming was doing two jobs under one name and
+> only the model could do either. They are split now:
+>
+> | | what it is | owner |
+> |---|---|---|
+> | "I'm Marcus", "call me Blade" | someone **told** you — clerical | the **ENGINE**, deterministically (`identity.parse_introduction`) |
+> | "the Toe Guy", "tab dodger" | coined from observation — creative | the **LLM**, as below |
+>
+> With the LLM breaker off, NPCs still learn the names people give them. What
+> is lost is the coinage, which is flavour rather than mechanic — platform
+> criterion 10.
+>
+> **Primary vs list (owner ruling 2026-08-29).** `assigned_name` is the
+> **primary** — the one name used for display, pose and search. The alias list
+> keeps **everything**: setting a new primary shifts the old one down the list
+> rather than discarding it. So an NPC who coined "the Toe Guy" and is later
+> told "I'm Iver" calls you Iver and *still knows both*. This supersedes the
+> "sticky nickname" wording below, which read as the nickname staying primary;
+> what is sticky is the MEMORY, not the display slot. Eventually the whole list
+> becomes visible through the remember/memory interface; for now only NPCs hold
+> it.
+>
+> **Destination: a net-file.** The dossier is not staying an attribute.
+> `DECKING_MATRIX` §2 already names it — *"A contact / dossier is a file (who
+> knows whom; a face-to-name link)"* — a real game object a decker can read,
+> copy or forge, where editing the file edits the world. **Do not build an
+> intermediate home for it.** It currently lives on `db.llm_dossiers`, which is
+> the wrong name for a general memory, and moving it anywhere short of the file
+> layer is work that gets thrown away.
+>
+> **Still owed from §2:** the claim-history proper — *which* names, *how often*,
+> *how recently* — and the inconsistency event when a known face offers a new
+> name. Today the list is flat, deduped and capped at 8.
+
 
 A nickname is just a **self-authored `assigned_name`**, fed by a salient memory —
 the recognition slot doesn't care if it holds "Jax" (claimed) or "the foot guy"
