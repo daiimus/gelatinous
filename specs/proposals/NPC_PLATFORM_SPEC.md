@@ -78,12 +78,22 @@ they held moves by kind:
 | 7 | no class shadows a job hook | ✅ #2377 |
 | 8 | dispatch is a job, not a body seizure | ✅ #2384 |
 | 9 | one scheduler | ✅ #2386 — the 45s tick drives NOTHING with a soul |
-| 10 | game fully playable with the LLM off | 🟡 breaker + memory done; `feel` RETIRED #2388 (opinion is derived, not authored); `style`/`wield`/NPC-`radio` already route to real commands — remaining gap is a souls-side *caller* for them, not a twin |
+| 10 | game fully playable with the LLM off | ✅ #2390 — `feel` retired (#2388, opinion is derived); introductions scraped deterministically; `style`/`wield`/`radio` already had souls-side callers. The LLM adds flavour on top, never a mechanic |
 
-**1–7 are done: the platform exists and the collapse it was for has
-happened.** 8–9 are the director half — dispatch still seizes a body
-rather than handing it work, and two schedulers still tick. 10 is the
-voice half. Those three are what "unified" still owes. 8–9 are the director half; 10 is the voice half.
+**ALL TEN ARE DONE (2026-08-29).** The platform exists, the collapse it was
+for has happened, the director hands out work instead of seizing bodies, one
+scheduler drives every body, and no mechanic lives behind a model turn.
+
+What that means concretely, and the claim worth holding the work to: **pull
+the LLM breaker and the colony still runs.** Souls still work shifts, eat,
+drink, dress, patrol, hunt, respond to dispatch, serve at counters, treat
+patients, transmit on the radio, form opinions of the people who are decent or
+violent toward them, and learn the names those people give. What is lost is
+*voice* — the improvised line, the coined nickname, the turn of phrase. That
+is the two-brain law holding: souls decide, the LLM voices.
+
+The remaining entries in §6 are things deliberately NOT unified, not debts
+against this checklist.
 
 ## 6 · Deliberately not unified
 
