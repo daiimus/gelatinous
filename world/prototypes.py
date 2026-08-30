@@ -3840,7 +3840,7 @@ MINING_HELMET = {
     "desc": "A scuffproof composite mining helmet with a lamp bracket riveted above the brim and a chin strap gone soft with use. The lamp itself is company property and rarely survives the walk home.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A {color}yellow|n composite mining helmet, lamp bracket empty, chin strap hanging loose"),
+        ("worn_desc", "A {color}yellow|n composite mining helmet sits square on {their} head, the chin strap left hanging rather than buckled. The lamp bracket above the brow is empty, its contacts bare"),
         ("coverage", ["head"]),
         ("layer", 5),
         ("color", "yellow"),
@@ -3857,7 +3857,7 @@ NECK_REBREATHER = {
     "desc": "A half-mask rebreather on a rubberized neck strap, filters screwed in at each cheek. Worn slung at the throat, ready to pull up when the air goes bad — down-shaft, or on a bad wind day.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A half-mask rebreather slung at the throat on a {color}black|n rubber strap, filters capped"),
+        ("worn_desc", "A half-mask rebreather hangs at {their} throat on a {color}black|n rubber strap, pushed down out of the way. Both filter ports are capped, waiting to be hauled up over the mouth when the air turns"),
         ("coverage", ["neck"]),
         ("layer", 2),
         ("color", "black"),
@@ -3874,7 +3874,7 @@ PIT_BOOTS = {
     "desc": "Steel-shanked pit boots laced to the shin, with a gum-rubber sole thick enough to shrug off dropped stock and hot slag alike. Heavy, honest footwear.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Steel-shanked {color}brown|n pit boots laced to the shin, gum-rubber soled"),
+        ("worn_desc", "{Their} feet are shod in heavy {color}brown|n pit boots, laced tight past the ankle and up the shin with a steel shank holding the arch rigid. The gum-rubber soles grip whatever the floor is doing, and the toe caps are built to take a dropped load without complaint"),
         ("coverage", ["left_foot", "right_foot"]),
         ("layer", 5),  # footwear layer — worn over trousers, never conflicts
         ("color", "brown"),
@@ -3891,7 +3891,7 @@ WORK_GLOVES = {
     "desc": "Split-leather work gloves with reinforced palms and elastic cuffs. The kind bought by the crate and worn until the stitching gives.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Split-leather {color}tan|n work gloves, palms reinforced, cuffs elastic"),
+        ("worn_desc", "Split-leather {color}tan|n work gloves cover {their} hands to the wrist, the palms doubled where a grip goes and the cuffs elasticated to keep grit out. They sit stiff until the leather warms through"),
         ("coverage", ["left_hand", "right_hand"]),
         ("layer", 5),
         ("color", "tan"),
@@ -3908,7 +3908,7 @@ DUST_PONCHO = {
     "desc": "A waxed-canvas poncho cut wide at the shoulder, with a drawstring hood collar and snap closures down each side. Colony streetwear for wind days.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A waxed {color}olive|n canvas poncho hanging wide off the shoulders, side-snaps half done"),
+        ("worn_desc", "A waxed {color}olive|n canvas poncho hangs wide off {their} shoulders with the side-snaps only half done, more shelter than garment. The wax has gone dull along the folds where it gets handled"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("layer", 3),
         ("color", "olive"),
@@ -3918,7 +3918,7 @@ DUST_PONCHO = {
             "closure": {
                 "zipped": {
                     "coverage_mod": [],
-                    "desc_mod": "A waxed {color}olive|n canvas poncho snapped shut down both sides, a weatherproof tent of a garment",
+                    "desc_mod": "A waxed {color}olive|n canvas poncho is snapped shut down both sides, closing {their} torso and arms into a weatherproof tent. Only the head and the boots are left out in it",
                 },
                 "unzipped": {"coverage_mod": [], "desc_mod": ""},
             },
@@ -3935,7 +3935,7 @@ HIVIS_VEST = {
     "desc": "A company-issue high-visibility vest in signal orange with two reflective chest bands. The back is stencilled PROPERTY OF THE COMPANY in letters that outlast the vest.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A signal-{color}orange|n hi-vis vest, reflective bands catching the light, company stencil across the back"),
+        ("worn_desc", "A signal-{color}orange|n hi-vis vest hangs open over {their} chest and back, cut loose enough to go over whatever else is on. Reflective bands throw back any light that finds them, and a company stencil sits square between the shoulder blades"),
         ("coverage", ["chest", "back"]),
         ("layer", 2),  # worn OVER the jacket/coat (armor-layer precedent)
         ("color", "orange"),
@@ -3952,7 +3952,7 @@ COMPANY_WINDBREAKER = {
     "desc": "A lightweight company windbreaker in corporate blue, the logo screen-printed over the heart. Issued at orientation; worn until it isn't.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A corporate-{color}blue|n windbreaker, company logo printed over the heart"),
+        ("worn_desc", "A corporate-{color}blue|n windbreaker is zipped up over {their} chest and arms, the nylon rustling at every movement. A company logo is printed small over the heart"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("layer", 3),
         ("color", "blue"),
@@ -3963,7 +3963,7 @@ COMPANY_WINDBREAKER = {
                 "zipped": {"coverage_mod": [], "desc_mod": ""},
                 "unzipped": {
                     "coverage_mod": ["-chest"],
-                    "desc_mod": "A corporate-{color}blue|n windbreaker hanging open, the logo\'d panel flapping with each step",
+                    "desc_mod": "A corporate-{color}blue|n windbreaker hangs open off {their} shoulders, the logo\'d panel flapping loose with each step and whatever is underneath showing down the middle",
                 },
             },
         }),
@@ -3979,7 +3979,7 @@ THERMAL_SHIRT = {
     "desc": "A long-sleeved thermal in waffle-knit cotton, collar stretched from being pulled on in the dark. The colony runs cold underground and colder above.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A waffle-knit {color}charcoal|n thermal, collar gone soft with years of pulling on"),
+        ("worn_desc", "A waffle-knit {color}charcoal|n thermal sits close against {their} chest and arms, thin enough to disappear under anything worn over it. The collar has gone soft and shapeless from being hauled on and off"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("layer", 1),
         ("color", "charcoal"),
@@ -3990,7 +3990,7 @@ THERMAL_SHIRT = {
                 "normal": {"coverage_mod": [], "desc_mod": ""},
                 "rolled": {
                     "coverage_mod": [],
-                    "desc_mod": "A waffle-knit {color}charcoal|n thermal with the sleeves pushed past the elbow, collar gone soft",
+                    "desc_mod": "A waffle-knit {color}charcoal|n thermal sits close against {their} chest, the sleeves shoved past the elbow and holding there on the knit alone. The collar has gone soft and shapeless from being hauled on and off",
                 },
             },
         }),
@@ -4006,7 +4006,7 @@ CARGO_TROUSERS = {
     "desc": "Ripstop cargo trousers with bellows pockets at each thigh and a webbing belt sewn straight into the waist. Colony cut: roomy, hemmed high of the boot.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Ripstop {color}khaki|n cargo trousers, thigh pockets bellowed with the day's carrying"),
+        ("worn_desc", "Ripstop {color}khaki|n cargo trousers hang straight from {their} hips to the ankle, roomy and entirely unremarkable. The thigh pockets bellow out where the day's carrying has been stuffed into them"),
         ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
         ("layer", 1),
         ("color", "khaki"),
@@ -4023,12 +4023,26 @@ KNIT_CAP = {
     "desc": "A ribbed knit watch cap, cuffed once. The kind of hat that lives in a coat pocket eleven months a year and on a head the twelfth.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A ribbed {color}black|n knit cap cuffed low over the ears"),
-        ("coverage", ["head"]),
+        ("worn_desc", "A ribbed {color}black|n knit cap is pulled down over {their} skull, the cuff turned low enough to cover the ears. It holds its shape badly and sags at the crown"),
+        # The cuff is the whole point of a watch cap, so it is a real style
+        # axis: turned down it covers the ears, rolled up it does not. The
+        # base coverage matches the DEFAULT state — the description said the
+        # cuff covered the ears while the coverage only ever claimed the head.
+        ("coverage", ["head", "left_ear", "right_ear"]),
         ("layer", 5),
         ("color", "black"),
         ("material", "wool"),
         ("weight", 0.1),
+        ("style_configs", {
+            "adjustable": {
+                "normal": {"coverage_mod": [], "desc_mod": ""},
+                "rolled": {
+                    "coverage_mod": ["-left_ear", "-right_ear"],
+                    "desc_mod": "A ribbed {color}black|n knit cap sits high on {their} skull with the cuff rolled up off the ears, riding the crown more than covering it",
+                },
+            },
+        }),
+        ("style_properties", {"adjustable": "normal"}),
     ],
 }
 
@@ -4040,7 +4054,7 @@ UTILITY_HARNESS = {
     "desc": "A webbing utility harness hung with empty carabiners, cable loops, and a dozen pouches sized for parts, tools, and whatever fits. A scavver's second spine.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A webbing utility harness criss-crossing the torso, {color}grey|n pouches and carabiners at every strap"),
+        ("worn_desc", "A webbing utility harness criss-crosses {their} chest and back, buckled snug enough not to swing when {they} move. Pouches and carabiners in {color}grey|n webbing hang off every strap, each one filled or clipped to something"),
         ("coverage", ["chest", "back"]),
         ("layer", 3),
         ("color", "grey"),
