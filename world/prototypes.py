@@ -1532,7 +1532,7 @@ KEVLAR_VEST = {
     "attrs": [
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen"]),
-        ("worn_desc", "A {color}black|n kevlar vest sits square over {their} torso, thick with trauma plates front and back. It does not move much when {they} do"),
+        ("worn_desc", "A {color}black|n kevlar vest sits square over {their} torso, thick with trauma plates front and back. It does not move much when {they do}"),
         ("layer", 4),  # Light armor layer
         ("color", "black"),
         ("material", "kevlar"),
@@ -4054,7 +4054,7 @@ UTILITY_HARNESS = {
     "desc": "A webbing utility harness hung with empty carabiners, cable loops, and a dozen pouches sized for parts, tools, and whatever fits. A scavver's second spine.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A webbing utility harness criss-crosses {their} chest and back, buckled snug enough not to swing when {they} move. Pouches and carabiners in {color}grey|n webbing hang off every strap, each one filled or clipped to something"),
+        ("worn_desc", "A webbing utility harness criss-crosses {their} chest and back, buckled snug enough not to swing when {they move}. Pouches and carabiners in {color}grey|n webbing hang off every strap, each one filled or clipped to something"),
         ("coverage", ["chest", "back"]),
         ("layer", 3),
         ("color", "grey"),
@@ -4295,7 +4295,7 @@ SYNTHWEAVE_SHEATH = {
     "desc": "A fitted sheath dress in liquid-black synthweave, cut to the knee with a side-zip from hip to hem. The fabric carries a faint pearlescent sheen and never wrinkles — engineered, like its usual wearers, to look effortless.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A liquid-{color}black|n synthweave sheath is fitted down {their} body from shoulder to knee, close enough to show the line of them. The pearlescent sheen shifts and slides as {they} move"),
+        ("worn_desc", "A liquid-{color}black|n synthweave sheath is fitted down {their} body from shoulder to knee, close enough to show the line of them. The pearlescent sheen shifts and slides as {they move}"),
         ("coverage", ["chest", "back", "abdomen", "groin", "left_thigh", "right_thigh"]),
         ("layer", 2),
         ("color", "black"),
@@ -4369,7 +4369,7 @@ HEELED_BOOTS = {
     "desc": "Knee-high boots in polished synth-leather on a sculpted heel — high enough to announce every step on ferrocrete, stable enough to run in if the night turns.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Knee-high {color}black|n heeled boots run up {their} shins and stop just under the knee, polished to a street-lamp shine. The heel announces every step a moment before {they} arrive"),
+        ("worn_desc", "Knee-high {color}black|n heeled boots run up {their} shins and stop just under the knee, polished to a street-lamp shine. The heel announces every step a moment before {they arrive}"),
         ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin"]),
         ("layer", 5),  # footwear layer — worn over trousers, never conflicts
         ("color", "black"),
@@ -4879,7 +4879,7 @@ LAB_COAT = {
                 "buttoned": {"coverage_mod": [], "desc_mod": ""},
                 "open": {
                     "coverage_mod": ["-chest", "-abdomen"],
-                    "desc_mod": "A {color}white|n lab coat swings loose around {their} legs as {they} move, unbuttoned and trailing like the tail end of a thought",
+                    "desc_mod": "A {color}white|n lab coat swings loose around {their} legs as {they move}, unbuttoned and trailing like the tail end of a thought",
                 },
             },
         }),
