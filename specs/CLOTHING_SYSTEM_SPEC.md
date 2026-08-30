@@ -148,6 +148,43 @@ class Item(DefaultObject):
 > worn_desc is seen by everyone, so it must not smuggle in knowledge the
 > observer has not earned.
 
+### Coverage is binary, and two real garments need it not to be
+
+**Status: 📋 PROPOSAL — the gap is real and demonstrated, the design is not
+decided.**
+
+A location is either covered by a garment or it is not. `coverage_mod` can add
+or remove a location per style state, but there is no third setting, and two
+things in the game already need one:
+
+* **Sheer.** `MESH_TOP` is described as a weave "open enough to read as shadow
+  rather than fabric" while its coverage is the entire torso and both arms — so
+  it conceals the body completely. The prose promises sheer and the model
+  delivers opaque. Cutting its coverage to compensate is worse: it would stop
+  registering as clothing on those locations at all, so layering, armour and
+  removal-blocking would all mis-handle it.
+* **Partial.** A hat sits ON the head and hair shows under the brim. The
+  existing convention splits headwear into garments that ENVELOP (balaclava,
+  ski mask, hood, wigs — these cover `hair`) and garments that SIT ON
+  (helmets, caps, wide-brim hats — these do not), which is a reasonable
+  approximation, but `HEAD_WRAP` is genuinely mis-grouped and cannot be fixed
+  by moving it between two groups when the truth is "mostly covered".
+
+Both want the same missing idea: **a garment can cover a location without
+concealing it.**
+
+Sketch, not a decision — the cheapest shape is likely a per-garment
+`sheer` flag (or a per-location set) consulted by
+`_build_clothing_coverage_map`: a sheer garment still registers for layering,
+armour and removal rules, but the appearance layer renders the body longdesc
+underneath *as well as* the garment rather than instead of it. That keeps the
+mechanical meaning of coverage intact and changes only what is shown.
+
+Open questions the owner should settle before anyone builds it: whether sheer
+is a property of the garment or of a style state (a coat can be open without
+being sheer); whether armour and combat targeting should see through it at all;
+and how two sheer layers stack.
+
 ### ANSI Color System Integration
 Clothing items support primary and secondary color attributes for enhanced visual immersion:
 
