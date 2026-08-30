@@ -2045,7 +2045,20 @@ class CmdRemember(Command):
         caller = self.caller
         args = self.args.strip()
 
-        if not args or " as " not in args:
+        if not args:
+            caller.msg("Usage: remember <target> as <name>")
+            return
+
+        # A DOCUMENT may be remembered without a name — it carries one
+        # (#2408). `remember <papers>` commits the face it depicts, which is
+        # how you come to know a face you have never actually met: the
+        # deliberate act of memorising, not merely reading (owner ruling
+        # 2026-08-29). Looking alone still only attests faces you already know.
+        if " as " not in args:
+            doc = self._find_document(caller, args)
+            if doc is not None:
+                self._remember_from_document(caller, doc, None)
+                return
             caller.msg("Usage: remember <target> as <name>")
             return
 
@@ -2066,10 +2079,20 @@ class CmdRemember(Command):
             self._remember_self_as_persona(caller, name)
             return
 
-        # Find the target
-        target = caller.search(target_str)
+        # Find the target. A document somebody is HOLDING is a valid thing
+        # to remember a face by, and `search` does not reach into hands.
+        target = caller.search(target_str, quiet=True)
+        target = target[0] if target else self._find_document(caller, target_str)
         if not target:
-            return  # caller.search already sends error messages
+            caller.search(target_str)   # re-run for its error messaging
+            return
+
+        # A document is a legitimate thing to remember somebody BY — it
+        # depicts a face, and committing it is how an unmet face enters
+        # memory (#2408).
+        if target.attributes.get("depicts_uid"):
+            self._remember_from_document(caller, target, name)
+            return
 
         # Must be a character (not an item/exit)
         from typeclasses.characters import Character
@@ -2103,6 +2126,96 @@ class CmdRemember(Command):
 
         # Apply the assignment
         self._remember_target(caller, target, apparent_uid, name)
+
+    def _find_document(self, caller, query):
+        """A document you can see: carried, on the floor, or in a hand.
+
+        `caller.search` reaches your inventory and the room but not what
+        somebody else is HOLDING, and holding a thing up is one of the normal
+        ways of showing it (owner, 2026-08-29). Hands only — their pockets are
+        not on display.
+        """
+        found = caller.search(query, quiet=True)
+        for obj in (found or []):
+            if obj.attributes.get("depicts_uid"):
+                return obj
+        from world.search import held_by_others
+        for obj in held_by_others(caller, query):
+            if obj.attributes.get("depicts_uid"):
+                return obj
+        return None
+
+    def _remember_from_document(self, caller, doc, name):
+        """Commit the face a document depicts, and file what it vouches for.
+
+        This is the ONLY route by which a face you have never met enters
+        recognition memory. Merely LOOKING at papers attests a name onto a
+        face you already know; deliberately remembering them is what makes a
+        stranger's face known to you — which is how a wanted notice is
+        supposed to work, and why it takes an act rather than a glance.
+        """
+        from world.identity import (_recognition_now_iso, attest,
+                                    get_apparent_uid)
+
+        uid = doc.attributes.get("depicts_uid")
+        attested = doc.attributes.get("attested_name")
+        if not uid:
+            caller.msg(f"There's no face on the {doc.key} to remember.")
+            return
+        if uid == get_apparent_uid(caller):
+            caller.msg("You already know your own face.")
+            return
+
+        name = (name or attested or "").strip()
+        if not name:
+            caller.msg(f"The {doc.key} doesn't name anybody.")
+            return
+
+        memory = caller.recognition_memory or {}
+        now = _recognition_now_iso()
+        where = caller.location.key if caller.location else "unknown"
+        new_face = uid not in memory
+        if new_face:
+            # Known BY PAPER, not by sight: first_seen records the document,
+            # so `recall` never claims an encounter that did not happen.
+            memory[uid] = {
+                "assigned_name": name,
+                "first_seen": now,
+                "last_seen": now,
+                "times_seen": 0,
+                "location_first_seen": where,
+                "location_last_seen": where,
+                "locations_seen": [where],
+                "sdesc_at_first_encounter": f"a face on {doc.key}",
+                "sdesc_at_last_encounter": f"a face on {doc.key}",
+                "notes": "",
+                "tags": [],
+                "confidence": 1.0,
+                "relationship_valence": "neutral",
+                "lost_contact": False,
+                "recent_interactions": [],
+                "linked_to": None,
+                "real_sleeve_uid": None,
+                "attested": [],
+            }
+        else:
+            memory[uid] = dict(memory[uid], assigned_name=name)
+        caller.recognition_memory = memory
+
+        attest(
+            caller, uid, attested or name,
+            issuer=doc.attributes.get("issuer") or "unknown",
+            authority=doc.attributes.get("authority") or "personal",
+            protocol=doc.attributes.get("protocol") or "unverified",
+            verified=bool(doc.attributes.get("protocol_ok", True)),
+        )
+        if new_face:
+            caller.msg(
+                f"You study the {doc.key} and commit the face to memory. "
+                f"You will recognise them as |w{name}|n."
+            )
+        else:
+            caller.msg(f"You will now recognise them as |w{name}|n.")
 
     def _remember_self_as_persona(self, caller, name):
         """Save the caller's current overrides as a named persona."""
@@ -2642,6 +2755,17 @@ class CmdRecall(Command):
             if aliases:
                 lines.append(
                     f"Also known as: |w{'|n, |w'.join(aliases)}|n"
+                )
+
+            # Papers you have actually been shown, strongest authority first.
+            # Distinct from `Also known as` on purpose: those are names you or
+            # somebody chose, these are names something VOUCHED for (#2408).
+            from world.identity import attestations
+            for row in attestations(caller, apparent_uid):
+                mark = "" if row.get("verified") else " |y(unverified)|n"
+                lines.append(
+                    f"Papers: |w{row.get('name')}|n — {row.get('issuer')}"
+                    f" ({row.get('protocol')}){mark}"
                 )
 
         caller.msg("\n".join(lines))

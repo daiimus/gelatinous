@@ -5297,3 +5297,84 @@ SNAIL_KURO = {
     "tags": [("eat", "delivery_method"), ("food", "item_type")],
 }
 
+# ===================================================================
+# DOCUMENTS — paper that vouches for a face (#2408)
+#
+# A document is spawned ABOUT somebody: `depicts_uid` is set at creation to
+# the apparent uid it portrays. These prototypes are the blanks.
+# ===================================================================
+
+SLEEVE_ID = {
+    "prototype_key": "SLEEVE_ID",
+    "key": "Thawn-Harrison sleeve card",
+    "aliases": ["card", "id", "sleeve card", "identification"],
+    "typeclass": "typeclasses.items.Document",
+    "desc": "A stiff polymer card in Thawn-Harrison off-white, a decant portrait "
+            "laser-etched into one corner and the registry line printed beneath "
+            "it. A holographic seal runs across the face; tilted to the light it "
+            "resolves into the company mark and a batch number.",
+    "attrs": [
+        ("category", "document"),
+        ("issuer", "Thawn-Harrison Cryogenics"),
+        ("authority", "corporate"),
+        ("protocol", "holographic seal"),
+        ("protocol_ok", True),
+        ("weight", 0.02),
+    ],
+}
+
+COLONY_ID = {
+    "prototype_key": "COLONY_ID",
+    "key": "colony registry card",
+    "aliases": ["card", "registry card", "id", "papers"],
+    "typeclass": "typeclasses.items.Document",
+    "desc": "A worn registry card, the colony seal pressed into the laminate and "
+            "gone soft at the corners from a decade in a pocket. The photograph "
+            "has faded toward grey but the registry line is still crisp.",
+    "attrs": [
+        ("category", "document"),
+        ("issuer", "Domino's Gambit Colony Registry"),
+        ("authority", "colony"),
+        ("protocol", "pressed colony seal"),
+        ("protocol_ok", True),
+        ("weight", 0.02),
+    ],
+}
+
+WANTED_NOTICE = {
+    "prototype_key": "WANTED_NOTICE",
+    "key": "constabulary notice",
+    "aliases": ["notice", "poster", "wanted", "bolo"],
+    "typeclass": "typeclasses.items.Document",
+    "desc": "A printed constabulary notice, the face reproduced coarse enough to "
+            "have come off a camera rather than a sitting. The registry name runs "
+            "under it in block capitals, above a countersignature and a case "
+            "number.",
+    "attrs": [
+        ("category", "document"),
+        ("issuer", "Colony Constabulary"),
+        ("authority", "colony"),
+        ("protocol", "countersigned case number"),
+        ("protocol_ok", True),
+        ("weight", 0.01),
+    ],
+}
+
+CLUB_CARD = {
+    "prototype_key": "CLUB_CARD",
+    "key": "Helix membership card",
+    "aliases": ["card", "membership", "helix card"],
+    "typeclass": "typeclasses.items.Document",
+    "desc": "A slim black card with the Helix mark foiled along one edge and a "
+            "contact chip seated flush in the corner. The name on it is the one "
+            "the house uses, which is not necessarily the one on anybody's "
+            "papers.",
+    "attrs": [
+        ("category", "document"),
+        ("issuer", "Helix Lounge"),
+        ("authority", "commercial"),
+        ("protocol", "contact chip"),
+        ("protocol_ok", True),
+        ("weight", 0.01),
+    ],
+}

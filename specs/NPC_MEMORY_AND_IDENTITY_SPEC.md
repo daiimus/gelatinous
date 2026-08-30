@@ -120,6 +120,45 @@ generates rather than a string someone typed. Blocked on the §12 balance
 prerequisite — opinion needs tuning against real play before anything gates on
 it.
 
+### 2c · The dossier is the file (#2408)
+
+Owner, 2026-08-29: *"Inherently, it's part of the whole dossier system, right?
+Everything is a file."* Yes — and that settles what `remember` **is**.
+
+`remember` is not a naming command. It is the act of **writing to your
+dossier**, and the dossier is the same object `DECKING_MATRIX` §2 already
+names: *"A contact / dossier is a file (who knows whom; a face-to-name
+link)."* Recognition memory and its attestations are two columns of one
+record:
+
+```
+assigned_name   what I call them          — introduction, coinage, or my choice
+attested[]      what VOUCHED for them     — {name, issuer, authority, protocol}
+linked_to       which faces are one body  — the disguise chain
+real_sleeve_uid ground truth              — OOC validation only
+```
+
+Three consequences, and they are why the framing matters:
+
+* **`remember` must reach anything you can perceive.** A face, a document in
+  your hand, one on the bar, one somebody is holding up. Those are all
+  "commit this to my file", and requiring a different verb per case is the
+  hazard the owner rejected. Hands only for other people — their pockets are
+  not on display, and a search that reached them would turn `look` into a
+  frisk.
+* **A face known only by paper is a legitimate record.** `times_seen` stays 0
+  and `first_seen` reads "a face on constabulary notice", so the file never
+  claims a meeting that did not happen.
+* **The file is an attack surface.** When the net layer lands, a decker reads
+  or edits a dossier the same way they read a wanted record, and forgery
+  attacks the **protocol** rather than the name. This is already the design:
+  §2b keeps provenance per attestation precisely so a forged seal has
+  something to be forged *against*.
+
+Nothing here should grow a second store. If a future feature wants to
+remember a place, an event or an item, it extends this record — because it is
+all one file.
+
 ## 3 · Affective state is itself memory
 
 How an NPC **feels** about a person — trust, suspicion, fondness, irritation —

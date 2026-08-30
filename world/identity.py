@@ -1887,7 +1887,95 @@ def _build_link_entry(
         "recent_interactions": [],
         "linked_to": linked_to,
         "real_sleeve_uid": real_sleeve_uid,
+        # names documents have vouched for — see `attest`. Written only by
+        # proof, never by speech; a name someone merely CLAIMS is an
+        # `assigned_name` (IDENTITY §2b).
+        "attested": [],
     }
+
+
+#: What kind of body vouched for a name. TIER IS NOT TRUTH — it is how much
+#: weight the attestation carries, and a low tier is not a lie. A Helix VIP
+#: card attesting "Vesper" is a genuine document telling the truth about a
+#: working name (owner ruling 2026-08-29: "in some cases documents can pass
+#: aliases instead of official names").
+AUTHORITY_TIERS: dict[str, int] = {
+    "colony": 4,      # colony records, constabulary notices — the government name
+    "corporate": 3,   # employer records, sleeve paperwork
+    "commercial": 2   ,  # shop accounts, club membership, tabs
+    "personal": 1,    # handwritten, self-printed, vouched by nobody
+}
+
+#: An attestation only counts once its SECURITY PROTOCOL is satisfied — the
+#: badge, the file, the seal, the countersignature (owner, 2026-08-29). Tier
+#: and protocol are separate axes on purpose: a colony document with a broken
+#: seal is high authority and worthless, a club card with a valid chip is low
+#: authority and perfectly genuine. Forgery, when it lands, attacks the
+#: PROTOCOL rather than the name — which is the decking layer's
+#: "editing a file edits the world" (DECKING_MATRIX §2).
+PROTOCOL_UNVERIFIED = "unverified"
+
+
+def attest(observer: Any, uid: str, name: str, *, issuer: str,
+           authority: str = "personal", protocol: str = PROTOCOL_UNVERIFIED,
+           verified: bool = True) -> bool:
+    """Record that something vouched to *observer* for *uid* being *name*.
+
+    This is per-observer KNOWLEDGE, never global truth. `verified_name` as a
+    property of a person would collapse the disguise layer the moment it
+    existed: what a document proves is only ever "somebody could show me
+    this", and two observers can hold different, equally honest records.
+
+    Returns True if anything was written. Re-attesting the same name from the
+    same issuer refreshes it rather than stacking duplicates.
+    """
+    name = " ".join(str(name or "").split())
+    uid = str(uid or "").strip()
+    if not name or not uid:
+        return False
+    memory = observer.recognition_memory or {}
+    entry = memory.get(uid)
+    if entry is None:
+        return False          # you cannot hold papers on a face you've never seen
+    entry = dict(entry)
+    rows = [dict(r) for r in (entry.get("attested") or [])]
+    row = {
+        "name": name,
+        "issuer": str(issuer or "unknown"),
+        "authority": authority if authority in AUTHORITY_TIERS else "personal",
+        "protocol": str(protocol or PROTOCOL_UNVERIFIED),
+        "verified": bool(verified),
+    }
+    rows = [r for r in rows
+            if not (r.get("name") == name and r.get("issuer") == row["issuer"])]
+    rows.append(row)
+    entry["attested"] = rows[-8:]
+    memory[uid] = entry
+    observer.recognition_memory = memory
+    return True
+
+
+def attestations(observer: Any, uid: str) -> list:
+    """Every name vouched for *uid*, strongest authority first."""
+    entry = (observer.recognition_memory or {}).get(str(uid or "")) or {}
+    rows = [dict(r) for r in (entry.get("attested") or [])]
+    rows.sort(key=lambda r: AUTHORITY_TIERS.get(r.get("authority"), 0),
+              reverse=True)
+    return rows
+
+
+def official_name(observer: Any, uid: str) -> str | None:
+    """The government name, if *observer* has ever been shown proof of it.
+
+    A QUERY rather than a stored field, because "official" is a property of
+    who vouched and whether their protocol held — not of the string. An
+    unverified colony document proves nothing; a verified club card is not a
+    government name however genuine it is.
+    """
+    for row in attestations(observer, uid):
+        if row.get("verified") and row.get("authority") == "colony":
+            return row.get("name")
+    return None
 
 
 def _collect_unmasking_observers(char: Any) -> list:

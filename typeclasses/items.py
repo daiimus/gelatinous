@@ -670,6 +670,61 @@ class Item(ObjectParent, DefaultObject):
         super().at_delete()
 
 
+class Document(Item):
+    """Paper (or plastic, or a chip) that vouches for who a face belongs to.
+
+    A document does its work through PERCEPTION, not through a verb. Looking
+    at it is the mechanic — and that covers every route without teaching
+    anybody a new word: reading it in your own hand, reading one left on a
+    bar, or being handed one (an NPC's `at_object_receive` routes to its job,
+    which looks at the thing). One hook, every path, so the two doors this
+    codebase keeps growing never open here (owner ruling 2026-08-29: "these
+    are all expressions of look essentially").
+
+    What it carries:
+
+    ``depicts_uid``   the APPARENT uid it portrays — a face, not a person.
+                      Deliberate: a poster of somebody's disguised face must
+                      not burn the face underneath it.
+    ``attested_name`` the name this issuer vouches for. May legitimately be an
+                      ALIAS — a club card attesting "Blade" is a genuine
+                      document telling the truth about a working name.
+    ``issuer``        who is vouching.
+    ``authority``     which tier they vouch at (`identity.AUTHORITY_TIERS`).
+    ``protocol``      the SECURITY PROTOCOL — a badge, a file, a seal, a
+                      countersignature. Separate axis from authority: a colony
+                      document with a broken seal is high authority and
+                      worthless.
+    ``protocol_ok``   whether that protocol currently holds. Forgery, when it
+                      lands, attacks THIS rather than the name.
+    """
+
+    def _attest_to(self, looker):
+        """Hand what this document proves to whoever just read it."""
+        uid = self.attributes.get("depicts_uid")
+        name = self.attributes.get("attested_name")
+        if not uid or not name or looker is None:
+            return
+        if not hasattr(looker, "recognition_memory"):
+            return
+        try:
+            from world.identity import attest
+            attest(
+                looker, uid, name,
+                issuer=self.attributes.get("issuer") or "unknown",
+                authority=self.attributes.get("authority") or "personal",
+                protocol=self.attributes.get("protocol") or "unverified",
+                verified=bool(self.attributes.get("protocol_ok", True)),
+            )
+        except Exception:  # noqa: BLE001 — reading must never raise
+            pass
+
+    def return_appearance(self, looker, **kwargs):
+        appearance = super().return_appearance(looker, **kwargs)
+        self._attest_to(looker)
+        return appearance
+
+
 class Radio(Item):
     """A comm device — a walkie-talkie (RADIO_COMMS_SPEC Phase 1).
 
