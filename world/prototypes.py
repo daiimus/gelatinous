@@ -4152,7 +4152,7 @@ GANG_CUT = {
     "desc": "A sleeveless heavy-canvas cut, collar torn off, back panel left bare where a set's colors get painted on. Wearing one unmarked is an invitation; wearing one marked is an allegiance.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A sleeveless {color}black|n canvas cut, back panel painted with set colors"),
+        ("worn_desc", "A sleeveless {color}black|n canvas cut hangs off {their} shoulders with the arms taken off at the seam. The back panel carries a painted set of colors, worn where everyone behind {them} can read it"),
         ("coverage", ["chest", "back"]),
         ("layer", 3),
         ("color", "black"),
@@ -4295,7 +4295,7 @@ SYNTHWEAVE_SHEATH = {
     "desc": "A fitted sheath dress in liquid-black synthweave, cut to the knee with a side-zip from hip to hem. The fabric carries a faint pearlescent sheen and never wrinkles — engineered, like its usual wearers, to look effortless.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A liquid-{color}black|n synthweave sheath, fitted from shoulder to knee, its pearlescent sheen shifting as {they} move"),
+        ("worn_desc", "A liquid-{color}black|n synthweave sheath is fitted down {their} body from shoulder to knee, close enough to show the line of them. The pearlescent sheen shifts and slides as {they} move"),
         ("coverage", ["chest", "back", "abdomen", "groin", "left_thigh", "right_thigh"]),
         ("layer", 2),
         ("color", "black"),
@@ -4306,7 +4306,7 @@ SYNTHWEAVE_SHEATH = {
                 "zipped": {"coverage_mod": [], "desc_mod": ""},
                 "unzipped": {
                     "coverage_mod": ["-left_thigh"],
-                    "desc_mod": "A liquid-{color}black|n synthweave sheath with the side-zip run open hip to hem, the slit baring one thigh with every stride",
+                    "desc_mod": "A liquid-{color}black|n synthweave sheath is fitted down {their} body from shoulder to knee with the side-zip run open from hip to hem. The slit bares one thigh with every stride",
                 },
             },
         }),
@@ -4322,7 +4322,7 @@ MESH_TOP = {
     "desc": "A long-sleeved top of fine industrial mesh, more suggestion than fabric. Colony street fashion at its most honest: it keeps off exactly nothing.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A fine {color}smoke|n-grey mesh top, more suggestion than fabric, skin reading through the weave"),
+        ("worn_desc", "A fine {color}smoke|n-grey mesh top clings over {their} chest and arms, the weave open enough to read as shadow rather than fabric. It sits closer to a suggestion than a garment"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("layer", 1),
         ("color", "smoke"),
@@ -4339,7 +4339,7 @@ CROPPED_JACKET = {
     "desc": "A cropped moto-cut jacket in dyed synth-leather, hem stopping at the ribs, with an off-center zip and a collar built to be worn up.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A cropped {color}oxblood|n synth-leather jacket ending at the ribs, collar up, zip catching the light"),
+        ("worn_desc", "A cropped {color}oxblood|n synth-leather jacket sits high on {their} torso and stops at the ribs, the collar turned up. The zip catches whatever light the room has"),
         ("coverage", ["chest", "back", "left_arm", "right_arm"]),
         ("layer", 3),
         ("color", "oxblood"),
@@ -4349,11 +4349,11 @@ CROPPED_JACKET = {
             "closure": {
                 "zipped": {
                     "coverage_mod": [],
-                    "desc_mod": "A cropped {color}oxblood|n synth-leather jacket zipped to the throat, collar up like a closed door",
+                    "desc_mod": "A cropped {color}oxblood|n synth-leather jacket is zipped to {their} throat and stops at the ribs, the collar standing up like a closed door",
                 },
                 "unzipped": {
                     "coverage_mod": ["-chest"],
-                    "desc_mod": "A cropped {color}oxblood|n synth-leather jacket hanging open off the shoulders, framing whatever's worn beneath",
+                    "desc_mod": "A cropped {color}oxblood|n synth-leather jacket hangs open off {their} shoulders, ending at the ribs and framing whatever is worn beneath it",
                 },
             },
         }),
@@ -4369,7 +4369,7 @@ HEELED_BOOTS = {
     "desc": "Knee-high boots in polished synth-leather on a sculpted heel — high enough to announce every step on ferrocrete, stable enough to run in if the night turns.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Knee-high {color}black|n heeled boots, polished to a street-lamp shine, announcing every step"),
+        ("worn_desc", "Knee-high {color}black|n heeled boots run up {their} shins and stop just under the knee, polished to a street-lamp shine. The heel announces every step a moment before {they} arrive"),
         ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin"]),
         ("layer", 5),  # footwear layer — worn over trousers, never conflicts
         ("color", "black"),
@@ -4386,7 +4386,7 @@ SYNTH_COLLAR = {
     "desc": "A slim collar of brushed alloy on a synthweave band, closed with a magnetic clasp. On some necks it's jewelry; on a synth's, it reads uncomfortably like a maker's mark.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A slim brushed-{color}silver|n collar at the throat, clasp winking with each turn of the head"),
+        ("worn_desc", "A slim brushed-{color}silver|n collar sits close around {their} throat, narrow enough to read as jewellery until it catches the light. The clasp winks with each turn of the head"),
         ("coverage", ["neck"]),
         ("layer", 1),
         ("color", "silver"),
