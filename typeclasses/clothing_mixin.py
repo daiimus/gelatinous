@@ -528,6 +528,50 @@ class ClothingMixin:
         outermost_item = items[0]
         return outermost_item.get_current_worn_desc()
 
+    def refresh_worn_coverage(self, item):
+        """Re-register a worn item's coverage after its style changed.
+
+        `worn_items` was built from `get_current_coverage()` at the MOMENT OF
+        WEARING and never rebuilt. Rolling a sleeve or opening a zip changes
+        that coverage — and used to change only the description. A rolled
+        sleeve still counted as covering the forearm, so the layer beneath
+        could never surface, and `coverage_mod` was inert for every garment in
+        the game the instant it was on a body.
+
+        Ordering is preserved exactly as `wear_item` does it — outermost
+        (highest layer) first, because `_build_clothing_coverage_map` takes
+        `items[0]` as the one that shows.
+        """
+        if not self.worn_items:
+            return
+        coverage = list(getattr(
+            item, "get_current_coverage",
+            lambda: getattr(item, "coverage", []) or [],
+        )())
+
+        worn = dict(self.worn_items)
+        # lift it out everywhere, then re-seat it where it now covers
+        for loc in list(worn.keys()):
+            if item in worn[loc]:
+                remaining = [i for i in worn[loc] if i != item]
+                if remaining:
+                    worn[loc] = remaining
+                else:
+                    del worn[loc]
+
+        item_layer = getattr(item, "layer", 2)
+        for loc in coverage:
+            items = list(worn.get(loc) or [])
+            insert_index = 0
+            for i, worn_item in enumerate(items):
+                if item_layer <= getattr(worn_item, "layer", 2):
+                    insert_index = i + 1
+                else:
+                    break
+            items.insert(insert_index, item)
+            worn[loc] = items
+        self.worn_items = worn
+
     def _build_clothing_coverage_map(self):
         """
         Map each body location to outermost covering clothing item.

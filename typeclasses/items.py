@@ -339,11 +339,26 @@ class Item(ObjectParent, DefaultObject):
         """Set specific style property to given state with validation"""
         if not self.can_style_property_to(property_name, state_name):
             return False
-        
+
         if not self.style_properties:
             self.style_properties = {}
-        
+
         self.style_properties[property_name] = state_name
+
+        # A style change moves COVERAGE, not just prose. The wearer's
+        # `worn_items` was built from `get_current_coverage()` when the garment
+        # went on and nothing rebuilt it — so rolling a sleeve changed the
+        # description while the forearm stayed covered, and the layer beneath
+        # could never surface. Done HERE rather than in the two style commands
+        # so every caller (commands, souls, the LLM `style` tool) gets it from
+        # one place instead of three that drift apart.
+        wearer = self.location
+        if wearer is not None and hasattr(wearer, "refresh_worn_coverage"):
+            try:
+                if wearer.is_item_worn(self):
+                    wearer.refresh_worn_coverage(self)
+            except Exception:  # noqa: BLE001 — restyling must never raise
+                pass
         return True
     
     def get_style_property(self, property_name):

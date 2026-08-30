@@ -3806,7 +3806,7 @@ WORK_COVERALLS = {
     "desc": "Standard-issue colony coveralls in heavy grey twill: reinforced knees and elbows, a double-stitched tool loop at the hip, and a chest patch where a shift-tag clips. The cut is boxy and the zip runs collar to crotch.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Heavy {color}grey|n twill coveralls, boxy and utilitarian, the chest patch waiting for a shift-tag"),
+        ("worn_desc", "Heavy {color}grey|n twill coveralls swallow {their} frame from collar to ankle, cut boxy enough to work in and plain enough to disappear in. Reinforced patches sit at the knees and elbows, a tool loop rides one hip, and the chest patch is still blank where a shift-tag clips"),
         ("coverage", ["chest", "back", "abdomen", "groin", "left_thigh", "right_thigh", "left_shin", "right_shin", "left_arm", "right_arm"]),
         ("layer", 2),
         ("color", "grey"),
@@ -3817,14 +3817,14 @@ WORK_COVERALLS = {
                 "normal": {"coverage_mod": [], "desc_mod": ""},
                 "rolled": {
                     "coverage_mod": ["-left_arm", "-right_arm"],
-                    "desc_mod": "Heavy {color}grey|n twill coveralls with the sleeves rolled past the elbow, forearms bare for the work",
+                    "desc_mod": "Heavy {color}grey|n twill coveralls swallow {their} frame from collar to ankle, the sleeves shoved past the elbow and bunched there, leaving {their} forearms bare to the work. The chest patch is still blank where a shift-tag clips",
                 },
             },
             "closure": {
                 "zipped": {"coverage_mod": [], "desc_mod": ""},
                 "unzipped": {
                     "coverage_mod": ["-chest"],
-                    "desc_mod": "Heavy {color}grey|n twill coveralls unzipped to the sternum, hanging open over whatever's beneath",
+                    "desc_mod": "Heavy {color}grey|n twill coveralls hang off {their} shoulders unzipped to the sternum, the top half folded back to show whatever is underneath. The sleeves stay down, the knees stay doubled, and the chest patch stays blank",
                 },
             },
         }),
