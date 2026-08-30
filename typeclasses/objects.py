@@ -10,6 +10,7 @@ with a location in the game world (like Characters, Rooms, Exits).
 
 from evennia.objects.objects import DefaultObject
 from evennia.utils import gametime
+from world import gametime as colony_clock
 import random
 import re
 
@@ -361,7 +362,7 @@ class GraffitiObject(Object):
             'color': color,  # Store full color name for display
             'color_code': color_code,  # Store single-letter code for formatting
             'author': author.key if author else 'someone',
-            'timestamp': gametime.gametime()
+            'timestamp': colony_clock.stamp()
         })
         
         # Enforce FIFO limit (cannibalization)
@@ -488,6 +489,30 @@ class GraffitiObject(Object):
         return "\n".join(appearance)
 
 
+#: Evidence is stamped with `world.gametime.stamp()` — real POSIX seconds —
+#: NOT `evennia.utils.gametime`, which returns ACCUMULATED SERVER RUNTIME and
+#: is not monotonic: a database restore rewinds it while stored stamps keep
+#: their old values, so ages computed against it go wrong and some go
+#: negative. A live stain read "Evidence age span: -8649.8 hours" (#2414).
+#: Stamps below this are runtime-scale leftovers from before that fix.
+LEGACY_RUNTIME_STAMP_MAX = 1_000_000_000
+
+
+def _incident_age_hours(incident):
+    """Hours since an evidence incident, on the restore-safe clock.
+
+    `world.gametime.since` clamps a negative elapsed to zero, so a stamp from
+    the future can no longer render as a negative age. A LEGACY runtime-scale
+    stamp cannot be converted to real time at all — the mapping went with the
+    runtime counter — so it reads as 0 rather than as the 54-year-old puddle
+    the arithmetic would otherwise produce. Build 145 re-anchors those.
+    """
+    ts = (incident or {}).get("timestamp")
+    if ts is None or ts < LEGACY_RUNTIME_STAMP_MAX:
+        return 0.0
+    return colony_clock.since(ts) / 3600.0
+
+
 class BloodPool(Object):
     """
     Blood pool object for forensic evidence and atmospheric effect.
@@ -501,7 +526,7 @@ class BloodPool(Object):
         self.db.is_blood_pool = True
         self.db.bleeding_incidents = []  # List of forensic incidents like graffiti entries
         self.db.total_volume = 0
-        self.db.created_time = gametime.gametime()
+        self.db.created_time = colony_clock.stamp()
         self.db.last_updated = self.db.created_time
         
         # Set up integration for room description (like graffiti)
@@ -537,7 +562,7 @@ class BloodPool(Object):
                 donor at bleed-time.  Mirrors
                 ``corpse.db.apparent_uid_at_death``.
         """
-        current_time = gametime.gametime()
+        current_time = colony_clock.stamp()
 
         incident = {
             'character': character_name,
@@ -569,7 +594,7 @@ class BloodPool(Object):
             
         # Cleaning effectiveness based on tool quality and age
         oldest_incident = min(self.db.bleeding_incidents, key=lambda x: x['timestamp'])
-        age_hours = (gametime.gametime() - oldest_incident['timestamp']) / 3600.0
+        age_hours = _incident_age_hours(oldest_incident)
         
         if tool_quality == "professional":
             base_effectiveness = 90
@@ -606,10 +631,9 @@ class BloodPool(Object):
         if not self.db.bleeding_incidents:
             return 0
             
-        oldest_incident = min(self.db.bleeding_incidents, key=lambda x: x['timestamp'])
-        current_time = gametime.gametime()
-        age_seconds = current_time - oldest_incident['timestamp']
-        return age_seconds / 3600.0
+        oldest_incident = min(self.db.bleeding_incidents,
+                              key=lambda x: x['timestamp'])
+        return _incident_age_hours(oldest_incident)
     
     def get_volume_description(self):
         """Get description based on total blood volume."""
