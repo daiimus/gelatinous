@@ -311,6 +311,38 @@ def identity_match_characters(
     return all_matches
 
 
+def held_by_others(looker, query: str) -> list:
+    """Items in the HANDS of other characters in the room, matching *query*.
+
+    `caller.search()` reaches your inventory, the room, and the people in it —
+    but not what those people are holding, because that lives inside their
+    contents. Showing somebody a photo by holding it up is a real interaction
+    (owner, 2026-08-29) and it needs a target you can actually name.
+
+    HANDS ONLY, deliberately. `character.hands` is what is on display; the
+    rest of their contents is pockets, and a search that reached those would
+    quietly turn `look` into a frisk.
+    """
+    out = []
+    location = getattr(looker, "location", None)
+    if location is None or not query:
+        return out
+    q = strip_leading_article(str(query).strip().lower())
+    for other in (location.contents or []):
+        if other is looker or not hasattr(other, "hands"):
+            continue
+        for held in (getattr(other, "hands", None) or {}).values():
+            if held is None or held in out:
+                continue
+            names = [getattr(held, "key", "") or ""]
+            names += list(getattr(held, "aliases", None).all()
+                          if hasattr(getattr(held, "aliases", None), "all")
+                          else [])
+            if any(q in str(n).lower() for n in names if n):
+                out.append(held)
+    return out
+
+
 def is_identity_match(
     searcher: "Character", target: object, query: str
 ) -> bool:
