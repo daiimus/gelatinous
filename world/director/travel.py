@@ -104,7 +104,35 @@ def _finish(npc: Any, state: dict, key: str, why: str = "") -> None:
 
 
 #: ticks a walker will wait on a car before giving up and stalling
+#: Fallback only. Real patience is derived per shaft by `_lift_patience` —
+#: a flat tick count cannot serve both a 2-floor lift and a 16-floor one.
 LIFT_PATIENCE = 15
+
+
+def _lift_patience(car: Any, step_delay: float) -> int:
+    """How many ticks to wait on THIS car, from how long its shaft can take.
+
+    The flat 15 ticks was 30 seconds at the default step delay, while the
+    Brackett's 16-floor shaft needs 3 + 6×15 = 93 seconds end to end. Any ride
+    of five floors or more therefore ran out of patience, fell through to the
+    ordinary walk, bounced off a door with no car behind it three times and
+    faulted — which is what stranded souls mid-errand (#2412).
+
+    Worst case for the shaft plus a margin, so a short lift stays brisk and a
+    tall one gets the time it actually needs.
+    """
+    try:
+        from typeclasses.elevator import DOOR_SECONDS, RIDE_SECONDS_PER_FLOOR
+        floors = len((getattr(car, "db", None) and car.db.floors) or [])
+        if floors < 2:
+            # Cannot read the shaft. Deriving from nothing would produce a
+            # confidently-wrong SHORT patience, which is the failure mode this
+            # function exists to remove — take the documented flat cap.
+            return LIFT_PATIENCE
+        worst = DOOR_SECONDS * 2 + RIDE_SECONDS_PER_FLOOR * max(1, floors - 1)
+        return int(worst / max(0.5, float(step_delay))) + 4
+    except Exception:  # noqa: BLE001 — an odd car falls back to the flat cap
+        return LIFT_PATIENCE
 
 
 def _await_lift(npc: Any, state: dict, nxt: Any, route: list,
@@ -118,14 +146,14 @@ def _await_lift(npc: Any, state: dict, nxt: Any, route: list,
         return False
 
     waited = state.get("lift_wait", 0)
-    if waited > LIFT_PATIENCE:
-        return False                      # give up; normal stall path
 
     if isinstance(nxt, ElevatorDoorExit):
         # at a landing: the car has to be here before the door gives
         if car_docked(nxt.destination, npc.location):
             state["lift_wait"] = 0
             return False
+        if waited > _lift_patience(nxt.destination, state["step_delay"]):
+            return False                  # give up; normal stall path
         if not waited:
             npc.execute_cmd("call")
         state["lift_wait"] = waited + 1
@@ -141,6 +169,8 @@ def _await_lift(npc: Any, state: dict, nxt: Any, route: list,
         idx = car.floor_index(want) if hasattr(car, "floor_index") else None
         if idx is None:
             return False                  # not our shaft; walk it normally
+        if waited > _lift_patience(car, state["step_delay"]):
+            return False                  # give up; normal stall path
         if not waited:
             label = (car.db.floors or [])[idx][1]
             npc.execute_cmd(f"press {label}")
