@@ -598,7 +598,7 @@ CODER_SOCKS = {
     "attrs": [
         # Basic clothing attributes
         ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin", "left_thigh", "right_thigh"]),
-        ("worn_desc", "Electric {color}rainbow|n coding socks stretching up {their} thighs, {their} prismatic patterns pulsing with soft bioluminescent threads that seem to respond to neural activity"),
+        ("worn_desc", "Electric {color}rainbow|n socks stretch up {their} thighs, the prismatic pattern shot through with bioluminescent thread. The glow pulses slowly, apparently on its own schedule"),
         ("layer", 0),  # Direct skin contact layer (underwear, thin socks)
         ("color", "bright_magenta"),
         ("material", "synthetic"),
@@ -651,7 +651,7 @@ DEV_HOODIE = {
     "attrs": [
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
-        ("worn_desc", "A menacing {color}black|n developer hoodie draped loose and open, the cryptic green 'rm -rf /' text glowing with malevolent promise while embedded LED threads create subtle data-stream patterns across {their} fabric"),
+        ("worn_desc", "A {color}black|n hoodie hangs loose and open off {their} shoulders, the green 'rm -rf /' across the chest lit from behind. LED thread runs data-stream patterns down the sleeves"),
         ("layer", 3),  # Regular clothing layer
         ("color", "black"),
         ("material", "cotton"),
@@ -944,7 +944,7 @@ BLACK_WIG = {
     "desc": "A shoulder-length wig of glossy jet-black synthetic hair, cut to a blunt fringe. The mesh cap is fine enough to pass for a natural hairline at conversational distance.",
     "attrs": [
         ("coverage", ["hair", "head"]),
-        ("worn_desc", "A glossy fall of {color}black|n shoulder-length hair, cut to a blunt fringe"),
+        ("worn_desc", "A glossy fall of {color}black|n hair reaches {their} shoulders and frames the face, cut level to a blunt fringe across the brow"),
         ("layer", 1),
         ("color", "black"),
         ("material", "synthetic"),
@@ -977,7 +977,7 @@ BLOND_WIG = {
     "desc": "A chin-length blond wig in honey-gold synthetic fibre, layered for volume. The cap is mesh-lined and the parting has been hand-stitched to mimic a real scalp.",
     "attrs": [
         ("coverage", ["hair", "head"]),
-        ("worn_desc", "Honey-{color}blond|n chin-length hair, layered full and loose"),
+        ("worn_desc", "Honey-{color}blond|n hair falls to {their} chin in full loose layers, catching the light along the top of each one"),
         ("layer", 1),
         ("color", "gold"),
         ("material", "synthetic"),
@@ -1001,7 +1001,7 @@ BROWN_WIG = {
     "desc": "A mid-length brown wig in walnut-toned synthetic fibre, parted off-centre. The cap is a soft stretch mesh and the ends have been heat-set into a loose wave.",
     "attrs": [
         ("coverage", ["hair", "head"]),
-        ("worn_desc", "Walnut-{color}brown|n mid-length hair parted off-centre, falling in loose waves"),
+        ("worn_desc", "Walnut-{color}brown|n hair falls past {their} jaw in loose waves, parted off-centre and tucked back behind one ear"),
         ("layer", 1),
         ("color", "brown"),
         ("material", "synthetic"),
@@ -1032,7 +1032,7 @@ COLORED_CONTACTS = {
     "desc": "A blister-pack pair of cosmetic contact lenses in vivid emerald green. The pigment ring covers the iris completely; pupils show through unaltered.",
     "attrs": [
         ("coverage", ["left_eye", "right_eye"]),
-        ("worn_desc", "Cosmetic contact lenses tinting {their} eyes vivid emerald"),
+        ("worn_desc", "Cosmetic lenses tint {their} eyes a vivid emerald, the colour saturated enough to catch attention across a room"),
         ("layer", 1),
         ("color", "emerald"),
         ("material", "hydrogel"),
@@ -1071,7 +1071,7 @@ MIRRORSHADES = {
     "desc": "A pair of mirrorshade aviators with a chrome-coated finish so dense the lenses throw back the room as a warped silver pane. The frames are thin gunmetal wire, the bridge a single arched bar.",
     "attrs": [
         ("coverage", ["left_eye", "right_eye"]),
-        ("worn_desc", "A pair of {color}chrome|n mirrorshades reflecting the room as a warped silver pane"),
+        ("worn_desc", "A pair of {color}chrome|n mirrorshades sit across {their} eyes and give nothing back but the room, warped into a silver pane. Whatever is behind them stays behind them"),
         ("layer", 2),
         ("color", "chrome"),
         ("material", "metal"),
@@ -1099,7 +1099,7 @@ AVIATOR_SUNGLASSES = {
     "desc": "A pair of aviator sunglasses with teardrop-shaped smoke-tinted lenses and a thin gold frame. The lenses are dark enough to obscure the eyes but translucent enough to read intent through.",
     "attrs": [
         ("coverage", ["left_eye", "right_eye"]),
-        ("worn_desc", "A pair of {color}gold|n-framed aviator sunglasses with teardrop smoke-tinted lenses"),
+        ("worn_desc", "A pair of {color}gold|n-framed aviators rest on {their} nose, the teardrop lenses smoked dark enough to hide the eyes without hiding where they are pointed"),
         ("layer", 2),
         ("color", "gold"),
         ("material", "metal"),
@@ -1123,7 +1123,7 @@ BLUE_JEANS = {
     
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Battle-tested {color}denim|n jeans that cling to {their} form with urban authority, {their} faded indigo surface scarred by countless encounters with concrete and circumstance"),
+        ("worn_desc", "Faded {color}denim|n jeans sit close on {their} hips and fall straight to the boot, worn pale at the knee and seat. The indigo has given up unevenly, the way denim does"),
         ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
         ("layer", 1),  # Regular clothing layer
         ("color", "blue"),
@@ -1138,7 +1138,7 @@ BLUE_JEANS = {
                 },
                 "rolled": {
                     "coverage_mod": ["-left_shin", "-right_shin"],
-                    "desc_mod": "Battle-tested {color}denim|n jeans with cuffs deliberately rolled up to mid-calf in street-smart defiance, exposing {their} scarred ankles and the promise of swift movement when the situation demands it"
+                    "desc_mod": "Faded {color}denim|n jeans sit close on {their} hips with the cuffs turned up to mid-calf, leaving the ankle bare above the boot"
                 }
             },
             "closure": {
@@ -1148,7 +1148,7 @@ BLUE_JEANS = {
                 },
                 "unzipped": {
                     "coverage_mod": ["-groin"],
-                    "desc_mod": "Battle-tested {color}denim|n jeans hanging loose with dangerous nonchalance, {their} undone fly creating a calculated statement of rebellion against the oppressive tyranny of proper dress codes"
+                    "desc_mod": "Faded {color}denim|n jeans hang loose on {their} hips with the fly undone, either carelessness or a point being made"
                 }
             }
         }),
@@ -1175,7 +1175,7 @@ COTTON_TSHIRT = {
     
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A deceptively simple {color}white|n cotton t-shirt that seems to absorb and reflect the ambient light of {their} urban environment, its clean lines and perfect fit suggesting either careful maintenance or recent acquisition"),
+        ("worn_desc", "A plain {color}white|n cotton t-shirt fits clean across {their} chest and shoulders with nothing printed on it. It is either well looked after or very recently acquired"),
         ("coverage", ["chest", "back", "abdomen"]),
         ("layer", 1),  # Base clothing layer (worn under hoodies/jackets)
         ("color", "white"),
@@ -1190,7 +1190,7 @@ COTTON_TSHIRT = {
                 },
                 "rolled": {
                     "coverage_mod": ["-abdomen"],
-                    "desc_mod": "A deceptively simple {color}white|n cotton t-shirt deliberately rolled up at the hem to expose {their} midriff, the casual gesture somehow managing to convey both vulnerability and confident defiance of conventional modesty"
+                    "desc_mod": "A plain {color}white|n cotton t-shirt is knotted up at the hem, leaving a band of {their} midriff bare above the waistband"
                 }
             }
         }),
@@ -1216,7 +1216,7 @@ COMBAT_BOOTS = {
     
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Imposing {color}black leather|n combat boots laced with military precision, {their} steel-reinforced toes and deep-tread soles speaking of {their} owner's serious intent while weathered leather tells stories of urban warfare and late-night foot chases"),
+        ("worn_desc", "Heavy {color}black leather|n combat boots come up over {their} ankles, laced with a precision that suggests it was taught rather than chosen. The toes are steel-reinforced and the soles deep-tread, built to keep footing on anything"),
         ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin"]),
         ("layer", 5),  # Footwear layer (doesn't conflict with pants)
         ("color", "black"),
@@ -1264,7 +1264,7 @@ TACTICAL_JUMPSUIT = {
     "attrs": [
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen", "groin", "left_arm", "right_arm", "left_thigh", "right_thigh", "left_shin", "right_shin", "left_foot", "right_foot"]),
-        ("worn_desc", "A sleek {color}black|n tactical jumpsuit that hugs {their} form like a second skin, its reinforced synthetic weave providing minimal protection while prioritizing mobility and tactical flexibility"),
+        ("worn_desc", "A sleek {color}black|n tactical jumpsuit fits {their} body close from throat to ankle, the synthetic weave reinforced at every joint. It is built to move in rather than to stop anything"),
         ("layer", 1),  # Base clothing layer (worn under armor)
         ("color", "black"),
         ("material", "synthetic"),
@@ -1292,7 +1292,7 @@ TACTICAL_PANTS = {
     "attrs": [
         # Clothing attributes
         ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
-        ("worn_desc", "Durable {color}black|n tactical pants with reinforced knees and cargo pockets, their ripstop fabric providing minimal protection while maintaining tactical functionality"),
+        ("worn_desc", "Durable {color}black|n tactical trousers sit heavy on {their} hips, the knees doubled and the cargo pockets flat until they are filled. The ripstop tears in a line rather than a hole"),
         ("layer", 1),  # Base clothing layer (worn under armor)
         ("color", "black"),
         ("material", "synthetic"),
@@ -1320,7 +1320,7 @@ TACTICAL_SHIRT = {
     "attrs": [
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
-        ("worn_desc", "A practical {color}black|n tactical shirt with moisture-wicking fabric, its reinforced shoulders and minimal protection designed to serve as a foundation for armor systems"),
+        ("worn_desc", "A practical {color}black|n tactical shirt fits close over {their} chest and arms, the shoulders reinforced where straps bite. It is cut to disappear under armour"),
         ("layer", 1),  # Base clothing layer (worn under armor)
         ("color", "black"),
         ("material", "synthetic"),
@@ -1352,7 +1352,7 @@ PLATE_CARRIER = {
     "attrs": [
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen"]),
-        ("worn_desc", "A professional {color}tan|n plate carrier with tactical webbing and modular plate pockets, its adjustable straps and MOLLE system creating a foundation for serious ballistic protection"),
+        ("worn_desc", "A {color}tan|n plate carrier is strapped over {their} chest and back, cinched down at the shoulders and ribs. Webbing runs across every panel, waiting for whatever gets clipped to it"),
         ("layer", 2),  # Light armor layer
         ("color", "tan"),
         ("material", "nylon"),
@@ -1532,7 +1532,7 @@ KEVLAR_VEST = {
     "attrs": [
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen"]),
-        ("worn_desc", "A professional {color}black|n kevlar vest with trauma plates, its tactical webbing and ballistic panels speaking of serious protection against projectile threats"),
+        ("worn_desc", "A {color}black|n kevlar vest sits square over {their} torso, thick with trauma plates front and back. It does not move much when {they} do"),
         ("layer", 4),  # Light armor layer
         ("color", "black"),
         ("material", "kevlar"),
@@ -1659,7 +1659,7 @@ PLATE_MAIL = {
     "attrs": [
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
-        ("worn_desc", "Imposing {color}steel|n plate armor that encases {their} torso and arms in overlapping metal segments, each piece precisely fitted and articulated for maximum protection while maintaining combat mobility"),
+        ("worn_desc", "{color}Steel|n plate encases {their} torso and arms in overlapping segments, each one fitted and articulated to the one beside it. It moves with a sound before it moves"),
         ("layer", 5),  # Heavy armor layer (over plate carriers and other armor)
         ("color", "bright_white"),  # Polished steel
         ("material", "steel"),
@@ -1691,7 +1691,7 @@ ARMORED_LEATHER_JACKET = {
     "attrs": [
         # Clothing attributes  
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
-        ("worn_desc", "A reinforced {color}black leather|n jacket studded with steel reinforcements, its thick hide and metal accents providing street-smart protection without sacrificing the rebellious aesthetic of urban warfare"),
+        ("worn_desc", "A reinforced {color}black leather|n jacket sits heavy on {their} shoulders, the hide thick enough to turn an edge and studded through with steel. It was built to be worn as much as to protect"),
         ("layer", 3),
         ("color", "black"),
         ("material", "leather"),
@@ -1702,11 +1702,11 @@ ARMORED_LEATHER_JACKET = {
             "closure": {
                 "zipped": {
                     "coverage_mod": [],
-                    "desc_mod": "A reinforced {color}black leather|n jacket zipped tight and studded with steel reinforcements, its thick hide creating a defensive shell around their torso"
+                    "desc_mod": "A reinforced {color}black leather|n jacket is zipped tight to {their} throat, the studded hide closing into a shell around the torso"
                 },
                 "unzipped": {
                     "coverage_mod": ["-chest", "-abdomen"],
-                    "desc_mod": "A reinforced {color}black leather|n jacket hanging open to reveal whatever lies beneath, steel studs and thick hide still providing partial protection to their back and arms"
+                    "desc_mod": "A reinforced {color}black leather|n jacket hangs open off {their} shoulders, showing whatever is beneath while the studded hide still sits across the back and arms"
                 }
             }
         }),
@@ -1738,7 +1738,7 @@ COMBAT_HELMET = {
     "attrs": [
         # Clothing attributes
         ("coverage", ["head", "left_ear", "right_ear"]),  # Protects skull and ears, but face/eyes/jaw exposed
-        ("worn_desc", "A menacing {color}matte black|n tactical helmet with ballistic protection, its angular design and integrated electronics creating an intimidating visage of military precision"),
+        ("worn_desc", "A {color}matte black|n tactical helmet encloses {their} skull and ears in angular composite, electronics seated flush along one side. It leaves the face open and covers everything else"),
         ("layer", 5),
         ("color", "black"),
         ("material", "kevlar"),
@@ -4085,7 +4085,7 @@ LONGHAUL_CHRONO = {
             "expects you.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A matte {color}gunmetal|n crew chrono riding the left wrist, its lume dots holding a faint green charge"),
+        ("worn_desc", "A matte {color}gunmetal|n crew chrono rides {their} left wrist on a webbing strap, bezel scuffed from being knocked into things. The lume dots hold a faint green charge"),
         ("coverage", ["left_hand"]),
         ("layer", 1),
         ("color", "gunmetal"),
@@ -4108,7 +4108,7 @@ GILT_WRISTWATCH = {
             "forgive that.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A {color}gilt|n dress watch on the left wrist, cream dial and knife-point indices, gone warm brass at the edges"),
+        ("worn_desc", "A {color}gilt|n dress watch sits on {their} left wrist over a cream dial and knife-point indices. The plating has worn to warm brass at every edge a sleeve touches"),
         ("coverage", ["left_hand"]),
         ("layer", 1),
         ("clock_skew", -9),
@@ -4132,7 +4132,7 @@ STOPPED_WATCH = {
             "instead of the hour it is.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "An old {color}steel|n watch on the left wrist, crystal frosted with cracks, its hands standing perfectly still"),
+        ("worn_desc", "An old {color}steel|n watch is buckled to {their} left wrist with the crystal frosted through with cracks. The hands stand perfectly still and have for some time"),
         ("coverage", ["left_hand"]),
         ("layer", 5),
         # 1970-01-02 12:17 UTC -> 04:17 colony local; only {time} renders,
@@ -4169,7 +4169,7 @@ HAWKERS_APRON = {
     "desc": "A many-pocketed trade apron tied at the waist, each pouch sized to a different denomination of merchandise. The strings have been retied so many times they're mostly knot.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A many-pocketed {color}brown|n trade apron tied at the waist, pouches lumpy with stock"),
+        ("worn_desc", "A many-pocketed {color}brown|n trade apron is tied off at {their} waist and hangs to the knee. Every pouch across the front sits lumpy with stock"),
         ("coverage", ["chest", "abdomen"]),
         ("layer", 4),
         ("color", "brown"),
@@ -4186,7 +4186,7 @@ COMPANY_COAT = {
     "desc": "A knee-length coat in company charcoal, creases pressed sharp, the breast pocket exactly deep enough for a tally-book. Authority you can dry-clean.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A pressed {color}charcoal|n company coat falling to the knee, tally-book squared in the breast pocket"),
+        ("worn_desc", "A pressed {color}charcoal|n company coat falls from {their} shoulders to the knee without a crease out of place. A tally-book sits squared in the breast pocket"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
         ("layer", 4),
         ("color", "charcoal"),
@@ -4403,7 +4403,7 @@ LONG_COAT = {
     "desc": "An ankle-length coat in heavy stormcloth, collar wide enough to hide in, cut to move like weather. The colony's most democratic garment: everyone from companions to gun-hands wears one eventually.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "An ankle-length {color}charcoal|n stormcloth coat moving like low weather around {them}"),
+        ("worn_desc", "An ankle-length {color}charcoal|n stormcloth coat falls from {their} shoulders to the ankle and moves like low weather around {them}"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
         ("layer", 4),  # over-everything duster — clears knee-high boots at the shins
         ("color", "charcoal"),
@@ -4413,11 +4413,11 @@ LONG_COAT = {
             "closure": {
                 "zipped": {
                     "coverage_mod": [],
-                    "desc_mod": "An ankle-length {color}charcoal|n stormcloth coat fastened to the collar, a moving column of weather",
+                    "desc_mod": "An ankle-length {color}charcoal|n stormcloth coat is fastened to {their} collar and closed the whole way down, a moving column of weather",
                 },
                 "unzipped": {
                     "coverage_mod": ["-chest", "-abdomen"],
-                    "desc_mod": "An ankle-length {color}charcoal|n stormcloth coat worn open, billowing back from whatever's underneath",
+                    "desc_mod": "An ankle-length {color}charcoal|n stormcloth coat hangs open off {their} shoulders, billowing back from whatever is underneath it",
                 },
             },
         }),
@@ -4433,7 +4433,7 @@ BOMBER_JACKET = {
     "desc": "A nylon bomber with ribbed cuffs and a two-way zip, the shoulders patched with the ghost-stitching of insignia long since cut off.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A {color}forest|n-green nylon bomber, cuffs ribbed tight, ghost-stitching where patches used to live"),
+        ("worn_desc", "A {color}forest|n-green nylon bomber sits short on {their} waist with the cuffs ribbed tight. Ghost-stitching marks the sleeve where patches used to live"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("layer", 3),
         ("color", "forest"),
@@ -4444,7 +4444,7 @@ BOMBER_JACKET = {
                 "zipped": {"coverage_mod": [], "desc_mod": ""},
                 "unzipped": {
                     "coverage_mod": ["-chest"],
-                    "desc_mod": "A {color}forest|n-green nylon bomber hanging open, ribbed hem swinging loose",
+                    "desc_mod": "A {color}forest|n-green nylon bomber hangs open off {their} shoulders, the ribbed hem swinging loose at the waist",
                 },
             },
         }),
@@ -4460,7 +4460,7 @@ FLANNEL_SHIRT = {
     "desc": "A brushed-flannel work shirt in a red-black check, buttons mismatched from a decade of replacements. Sleeves made to be rolled.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A {color}red|n-black check flannel, soft with wear, buttons mismatched down the front"),
+        ("worn_desc", "A {color}red|n-black check flannel hangs soft on {their} shoulders, washed thin enough to drape. The buttons down the front no longer match each other"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("layer", 1),
         ("color", "red"),
@@ -4471,14 +4471,14 @@ FLANNEL_SHIRT = {
                 "normal": {"coverage_mod": [], "desc_mod": ""},
                 "rolled": {
                     "coverage_mod": [],
-                    "desc_mod": "A {color}red|n-black check flannel with the sleeves rolled past the elbow, forearms bare for work",
+                    "desc_mod": "A {color}red|n-black check flannel hangs soft on {their} shoulders with the sleeves turned past the elbow, leaving {their} forearms bare for work",
                 },
             },
             "closure": {
                 "zipped": {"coverage_mod": [], "desc_mod": ""},
                 "unzipped": {
                     "coverage_mod": ["-chest", "-abdomen"],
-                    "desc_mod": "A {color}red|n-black check flannel worn open over whatever's beneath, tails loose",
+                    "desc_mod": "A {color}red|n-black check flannel hangs open off {their} shoulders with the tails loose, showing whatever is worn beneath it",
                 },
             },
         }),
@@ -4494,7 +4494,7 @@ TANK_TOP = {
     "desc": "A ribbed cotton tank in colony white — which is to say, grey. Cut close, holds its shape, asks nothing.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A ribbed {color}grey|n-white tank cut close to the body, shoulders bare"),
+        ("worn_desc", "A ribbed {color}grey|n-white tank is cut close over {their} chest and leaves the shoulders entirely bare. The knit has stretched slack at the armholes"),
         ("coverage", ["chest", "back", "abdomen"]),
         ("layer", 1),
         ("color", "grey"),
@@ -4511,7 +4511,7 @@ SLIT_SKIRT = {
     "desc": "A long bias-cut skirt in matte synthetic, slit high on one side. Moves like smoke; stops traffic like a wall.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A long matte-{color}black|n skirt slit high up one side, baring a stripe of thigh with each step"),
+        ("worn_desc", "A long matte-{color}black|n skirt falls to {their} ankle with a slit run high up one side. It bares a stripe of thigh with every second step"),
         ("coverage", ["groin", "right_thigh", "left_shin", "right_shin"]),
         ("layer", 1),
         ("color", "black"),
@@ -4528,7 +4528,7 @@ LEATHER_TROUSERS = {
     "desc": "Close-cut trousers in matte synth-leather, seams double-stitched, knees pre-scuffed by the factory or the street — impossible to say which.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Close-cut matte-{color}black|n synth-leather trousers, catching light along the seams"),
+        ("worn_desc", "Close-cut matte-{color}black|n synth-leather trousers fit down {their} legs with no give in them at all. Light catches along the seams and nowhere else"),
         ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
         ("layer", 1),
         ("color", "black"),
@@ -4545,7 +4545,7 @@ HIGH_TOPS = {
     "desc": "Canvas high-tops re-soled at least once, laces replaced with paracord. Street standard: quiet, quick, and dry enough.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Scuffed {color}white|n canvas high-tops laced with paracord"),
+        ("worn_desc", "Scuffed {color}white|n canvas high-tops come up over {their} ankles, laced with paracord in place of whatever came with them. The canvas has gone grey at the toe"),
         ("coverage", ["left_foot", "right_foot"]),
         ("layer", 5),  # footwear layer — worn over trousers, never conflicts
         ("color", "white"),
@@ -4716,7 +4716,7 @@ CORPO_BLAZER = {
     "desc": "A structured blazer in company-neutral slate, shoulders built to a silhouette some brand manual specified. The lapel carries a stitched loop where an affiliation pin clips — empty, which says something too.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A structured {color}slate|n blazer, corporate-cut, its pin loop conspicuously empty"),
+        ("worn_desc", "A structured {color}slate|n blazer squares off {their} shoulders in a cut that costs more than it looks like it does. The lapel pin loop sits conspicuously empty"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("layer", 3),
         ("color", "slate"),
@@ -4727,7 +4727,7 @@ CORPO_BLAZER = {
                 "buttoned": {"coverage_mod": [], "desc_mod": ""},
                 "open": {
                     "coverage_mod": ["-chest", "-abdomen"],
-                    "desc_mod": "A structured {color}slate|n blazer worn open, corporate formality at the end of a long shift",
+                    "desc_mod": "A structured {color}slate|n blazer hangs open off {their} shoulders, the shape of it going slack. It is corporate formality at the end of a long shift",
                 },
             },
         }),
@@ -4743,7 +4743,7 @@ DRESS_SHIRT = {
     "desc": "A dress shirt in recycled-fiber white, pressed to creases you could file paper under. The collar is the kind that leaves a mark by end of shift.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A pressed {color}white|n dress shirt, collar sharp enough to leave a mark"),
+        ("worn_desc", "A pressed {color}white|n dress shirt is buttoned to {their} throat, the collar sharp enough to leave a mark on the skin under it"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("layer", 1),
         ("color", "white"),
@@ -4754,7 +4754,7 @@ DRESS_SHIRT = {
                 "normal": {"coverage_mod": [], "desc_mod": ""},
                 "rolled": {
                     "coverage_mod": ["-left_arm", "-right_arm"],
-                    "desc_mod": "A pressed {color}white|n dress shirt with the sleeves rolled — formality making concessions",
+                    "desc_mod": "A pressed {color}white|n dress shirt sits open at {their} collar with the sleeves turned back to the forearm. It is formality making concessions",
                 },
             },
         }),
@@ -4770,7 +4770,7 @@ DRESS_TROUSERS = {
     "desc": "Office trousers with a crease that survived the commute, in a grey engineered to match every blazer the company ever issued.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Creased {color}grey|n office trousers holding their line against the colony"),
+        ("worn_desc", "Creased {color}grey|n office trousers fall clean from {their} hips to the shoe, holding their line against a colony that ruins everything else"),
         ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
         ("layer", 1),
         ("color", "grey"),
@@ -4787,7 +4787,7 @@ PENCIL_SKIRT = {
     "desc": "A knee-length pencil skirt in charcoal, cut narrow and lined — office armor of the type that predates the colony and will outlast it.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A narrow {color}charcoal|n pencil skirt, knee-length and exact"),
+        ("worn_desc", "A narrow {color}charcoal|n pencil skirt fits close over {their} hips and stops exactly at the knee. It permits a short stride and nothing else"),
         ("coverage", ["groin", "left_thigh", "right_thigh"]),
         ("layer", 1),
         ("color", "charcoal"),
@@ -4804,7 +4804,7 @@ OXFORD_SHOES = {
     "desc": "Lace-up oxfords polished to a corporate shine that the street grating is actively working to undo.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Polished {color}black|n oxfords fighting a losing war with the grating"),
+        ("worn_desc", "Polished {color}black|n oxfords sit narrow on {their} feet, laced flat and buffed to a shine. They are fighting a losing war with the grating"),
         ("coverage", ["left_foot", "right_foot"]),
         ("layer", 5),
         ("color", "black"),
@@ -4821,7 +4821,7 @@ NECKTIE = {
     "desc": "A necktie in muted company stripes, knotted by muscle memory. On this colony it reads less as fashion than as allegiance.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A striped {color}company-blue|n necktie, knotted tight — allegiance worn at the throat"),
+        ("worn_desc", "A striped {color}company-blue|n necktie is knotted tight at {their} throat and squared under the collar, allegiance worn where it can be checked"),
         ("coverage", ["neck"]),
         ("layer", 5),
         ("color", "company-blue"),
@@ -4832,7 +4832,7 @@ NECKTIE = {
                 "normal": {"coverage_mod": [], "desc_mod": ""},
                 "loosened": {
                     "coverage_mod": [],
-                    "desc_mod": "A striped {color}company-blue|n necktie yanked loose from the collar, the day's honesty showing",
+                    "desc_mod": "A striped {color}company-blue|n necktie hangs loose at {their} throat with the knot dragged down and the top button gone. The day has stopped pretending",
                 },
             },
         }),
@@ -4848,7 +4848,7 @@ MEDICAL_SCRUBS = {
     "desc": "Two-piece scrubs in clinical teal, autoclave-faded, the breast pocket permanently sprung from carried instruments.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Autoclave-faded {color}teal|n scrubs, the breast pocket sprung from years of instruments"),
+        ("worn_desc", "Autoclave-faded {color}teal|n scrubs hang loose on {their} frame, cut for moving fast and washing hot. The breast pocket is sprung from years of instruments riding in it"),
         ("coverage", ["chest", "back", "abdomen", "groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
         ("layer", 4),
         ("color", "teal"),
@@ -4865,7 +4865,7 @@ LAB_COAT = {
     "desc": "A knee-length lab coat, white where it matters and stained honestly where it doesn't, a row of pens clipped to the breast pocket in descending order of function.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A {color}white|n lab coat, honestly stained, pens racked in the breast pocket"),
+        ("worn_desc", "A {color}white|n lab coat hangs open to the knee off {their} shoulders, honestly stained and not apologised for. Pens are racked in the breast pocket in a row"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
         ("layer", 5),  # OUTER than scrubs (4): a coat goes on over
                        # them, and dressing runs inner->outer, so at the
@@ -4879,7 +4879,7 @@ LAB_COAT = {
                 "buttoned": {"coverage_mod": [], "desc_mod": ""},
                 "open": {
                     "coverage_mod": ["-chest", "-abdomen"],
-                    "desc_mod": "A {color}white|n lab coat worn open and moving like the tail end of a thought",
+                    "desc_mod": "A {color}white|n lab coat swings loose around {their} legs as {they} move, unbuttoned and trailing like the tail end of a thought",
                 },
             },
         }),
@@ -4895,7 +4895,7 @@ SEALED_SLICKER = {
     "desc": "A hooded slicker in safety amber, seams heat-welded and cuffs gasketed — rated for tox rain, which on this colony is not a hypothetical. The hood's clear visor strip has gone the yellow of old resin.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A heat-welded {color}amber|n slicker, gasketed at the cuffs, built for rain that shouldn't touch skin"),
+        ("worn_desc", "A heat-welded {color}amber|n slicker seals {their} body from throat to shin, gasketed tight at the cuffs. It is built for rain that should not be allowed near skin"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
         ("layer", 3),
         ("color", "amber"),
@@ -4906,7 +4906,7 @@ SEALED_SLICKER = {
                 "hood_down": {"coverage_mod": [], "desc_mod": ""},
                 "hood_up": {
                     "coverage_mod": ["+head"],
-                    "desc_mod": "A heat-welded {color}amber|n slicker with the hood up, face reduced to a yellowed visor strip",
+                    "desc_mod": "A heat-welded {color}amber|n slicker seals {their} body from throat to shin with the hood drawn up and cinched. The face is reduced to a strip behind yellowed visor plastic",
                 },
             },
         }),
@@ -4922,7 +4922,7 @@ GROWERS_APRON = {
     "desc": "A heavy rubber apron stained the particular green-brown of nutrient work, its front pocket sprouting shears, ties, and a moisture probe. Smells like the inside of an agridome because it has never been anywhere else.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A nutrient-stained {color}green-brown|n rubber apron, tools sprouting from the front pocket"),
+        ("worn_desc", "A nutrient-stained {color}green-brown|n rubber apron covers {them} from chest to shin, tied off behind the back. Tools sprout from the front pocket at every angle"),
         ("coverage", ["chest", "abdomen", "groin"]),
         ("layer", 4),
         ("color", "green-brown"),
@@ -4939,7 +4939,7 @@ RUBBER_WADERS = {
     "desc": "Thigh-high rubber waders, patched at the left knee with something that used to be a different color. For standing in what the colony's floors collect.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Thigh-high {color}black|n rubber waders, patched, made for standing in what collects"),
+        ("worn_desc", "Thigh-high {color}black|n rubber waders swallow {their} legs to the hip, patched in more than one place. They are made for standing in whatever collects at the bottom of things"),
         ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin", "left_thigh", "right_thigh"]),
         ("layer", 5),
         ("color", "black"),
@@ -4956,7 +4956,7 @@ SHOWER_SANDALS = {
     "desc": "Molded plastic slides in a faded orange, the tread long gone. The unofficial uniform of every cube-hotel corridor in the colony.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Faded {color}orange|n shower sandals slapping with every step"),
+        ("worn_desc", "Faded {color}orange|n shower sandals hang off {their} feet by a single moulded strap. They slap the floor with every step and announce {them} down a corridor"),
         ("coverage", ["left_foot", "right_foot"]),
         ("layer", 5),
         ("color", "orange"),
@@ -4973,7 +4973,7 @@ HOUSE_ROBE = {
     "desc": "A quilted robe washed to an ambiguous mauve, belt tied in the permanent knot of someone who has stopped performing for the corridor.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A quilted {color}mauve|n house robe, belt in its permanent knot — off duty from everything"),
+        ("worn_desc", "A quilted {color}mauve|n house robe hangs off {their} shoulders to the shin, the belt tied in what is clearly its permanent knot. It is the uniform of being off duty from everything"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
         ("layer", 4),
         ("color", "mauve"),
@@ -4990,7 +4990,7 @@ HEAD_WRAP = {
     "desc": "A meter of printed cloth wrapped and tucked with practiced architecture, its pattern faded from a market bolt that sold out years ago.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A printed {color}ochre|n head wrap tucked with practiced architecture"),
+        ("worn_desc", "A printed {color}ochre|n head wrap is wound over {their} hair and tucked with practised architecture, no end left loose. It has been done the same way a thousand times"),
         ("coverage", ["head"]),
         ("layer", 5),
         ("color", "ochre"),
@@ -5007,7 +5007,7 @@ EVENING_SUIT = {
     "desc": "An evening suit in true midnight, cut close and unbranded — the kind of formality that costs more for what it doesn't say. Colony dust does not stick to it, which is its own small miracle.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A {color}midnight|n evening suit, close-cut and unbranded, wearing the room's light well"),
+        ("worn_desc", "A {color}midnight|n evening suit is cut close to {their} frame, unbranded and precise about it. The cloth takes the room's light and gives very little of it back"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
         ("layer", 1),
         ("color", "midnight"),
@@ -5024,7 +5024,7 @@ SILK_SLIP_DRESS = {
     "desc": "A bias-cut slip dress in real silk — or synthesis close enough to require touching, which is the point. It moves half a beat behind its wearer, like a rumor.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A bias-cut {color}oyster|n silk slip moving half a beat behind {them}"),
+        ("worn_desc", "A bias-cut {color}oyster|n silk slip skims {their} body and hangs off two thin straps. The fabric moves half a beat behind {them} and settles late"),
         ("coverage", ["chest", "abdomen", "groin", "left_thigh", "right_thigh"]),
         ("layer", 1),
         ("color", "oyster"),
@@ -5041,7 +5041,7 @@ LONG_SCARF = {
     "desc": "Two meters of knit scarf in a rust that flatters nobody and warms everybody, wound twice and still trailing.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A {color}rust|n knit scarf wound twice at the throat and still trailing"),
+        ("worn_desc", "A {color}rust|n knit scarf is wound twice around {their} throat and still has length left over, both ends trailing down the front"),
         ("coverage", ["neck"]),
         ("layer", 5),
         ("color", "rust"),
@@ -5058,7 +5058,7 @@ WIDE_BRIM_HAT = {
     "desc": "A wide-brimmed hat in oiled canvas, shaped by weather into something between agriculture and myth. Keeps the processor glare off and opinions in.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "A weather-shaped {color}oiled-tan|n wide-brimmed hat pulled low against the glare"),
+        ("worn_desc", "A weather-shaped {color}oiled-tan|n hat sits low on {their} head, the wide brim pulled down against the glare. The oil in the felt has gone dark where it gets handled"),
         ("coverage", ["head"]),
         ("layer", 5),
         ("color", "oiled-tan"),
@@ -5075,7 +5075,7 @@ THERMAL_LEGGINGS = {
     "desc": "Ribbed thermal leggings in expedition black, the base layer of everyone who works where the colony's heating doesn't reach.",
     "attrs": [
         ("category", "clothing"),
-        ("worn_desc", "Ribbed {color}black|n thermal leggings, the honest base layer of cold work"),
+        ("worn_desc", "Ribbed {color}black|n thermal leggings fit tight down {their} legs, thin and unglamorous. They are the honest base layer of cold work"),
         ("coverage", ["groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
         ("layer", 1),
         ("color", "black"),

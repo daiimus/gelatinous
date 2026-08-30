@@ -135,6 +135,19 @@ class Item(DefaultObject):
 > on everyone who puts the garment on. History belongs to the garment
 > ("ghost-stitching where patches used to live"), not the person.
 
+> **A DISGUISE GARMENT MUST NOT BETRAY ITSELF (2026-08-29).** A wig covers
+> `hair` in order to change apparent identity, so its worn description has to
+> read as *hair* — not as a wig. Anything that tells the reader the hair is
+> artificial ("sits too evenly to have grown there", "moves as one piece")
+> defeats the mechanic the item exists for, because that string is what every
+> observer sees. The same holds for contacts, masks and anything else on the
+> disguise line: describe what it is meant to be taken FOR, never what it
+> actually is.
+>
+> This is the disguise-layer counterpart to the no-wearer-history rule: a
+> worn_desc is seen by everyone, so it must not smuggle in knowledge the
+> observer has not earned.
+
 ### ANSI Color System Integration
 Clothing items support primary and secondary color attributes for enhanced visual immersion:
 
