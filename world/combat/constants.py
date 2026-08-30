@@ -194,6 +194,26 @@ STYLE_STATE_ZIPPED = "zipped"
 STYLE_STATE_UNZIPPED = "unzipped"
 
 # ===================================================================
+# CLOTHING LAYERS
+# ===================================================================
+#
+# Higher = further out. Two garments on the same layer and location
+# conflict; a higher layer blocks removal of what is under it.
+#
+#   0  inserts        armour plates seated INSIDE a carrier
+#   1  next to skin   thermals, tanks, socks, underwear
+#   2  main garment   shirts, trousers, coveralls, dresses      (default)
+#   3  outer garment  jackets, aprons, harnesses, vests
+#   4  overcoat       long coats, ponchos
+#   5  outside all    footwear, headwear, gloves, masks, watches
+#
+# The range is 0..5 and has been since footwear was given its own layer
+# ("worn over trousers, never conflicts"). A linter asserting 1..4 predated
+# that and failed OXFORD_SHOES for being correct (#2412).
+CLOTHING_LAYER_MIN = 0
+CLOTHING_LAYER_MAX = 5
+
+# ===================================================================
 # SKINTONE SYSTEM
 # ===================================================================
 

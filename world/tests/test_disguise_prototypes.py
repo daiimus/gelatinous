@@ -505,14 +505,22 @@ class TestWardrobeExpansion(TestCase):
 
     def test_batch_is_wearable_and_well_formed(self):
         from world import prototypes
-        from world.combat.constants import VALID_LONGDESC_LOCATIONS
+        from world.combat.constants import (CLOTHING_LAYER_MAX,
+                                            CLOTHING_LAYER_MIN,
+                                            VALID_LONGDESC_LOCATIONS)
         for name in self.BATCH:
             proto = getattr(prototypes, name)
             attrs = dict((k, v) for k, v, *_ in
                          [(a[0], a[1]) for a in proto["attrs"]])
             self.assertEqual(attrs["category"], "clothing", name)
             self.assertIn("worn_desc", attrs, name)
-            self.assertTrue(1 <= attrs["layer"] <= 4, name)
+            # 0..5, not 1..4 — footwear, headwear and gloves sit at 5 by
+            # design and armour plates at 0. The old bound predated both and
+            # failed correct garments (#2412).
+            self.assertTrue(
+                CLOTHING_LAYER_MIN <= attrs["layer"] <= CLOTHING_LAYER_MAX,
+                f"{name}: layer {attrs['layer']} outside "
+                f"{CLOTHING_LAYER_MIN}..{CLOTHING_LAYER_MAX}")
             for slot in attrs["coverage"]:
                 self.assertIn(slot, VALID_LONGDESC_LOCATIONS,
                               f"{name}: bad slot {slot!r}")

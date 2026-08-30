@@ -599,7 +599,7 @@ CODER_SOCKS = {
         # Basic clothing attributes
         ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin", "left_thigh", "right_thigh"]),
         ("worn_desc", "Electric {color}rainbow|n socks stretch up {their} thighs, the prismatic pattern shot through with bioluminescent thread. The glow pulses slowly, apparently on its own schedule"),
-        ("layer", 0),  # Direct skin contact layer (underwear, thin socks)
+        ("layer", 1),  # Direct skin contact layer (underwear, thin socks)
         ("color", "bright_magenta"),
         ("material", "synthetic"),
         ("weight", 0.2),  # Very light
