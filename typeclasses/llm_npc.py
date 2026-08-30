@@ -461,7 +461,8 @@ class LLMNpcMixin:
             # reactor-side: score this NPC's memories against the line, inject.
             try:
                 hits = mem.retrieve(vec, self._load_memories(),
-                                    k=LLM_MEMORY_TOPK, subject=subject)
+                                    k=LLM_MEMORY_TOPK,
+                                    subject=self._memory_scope(subject))
                 _go(mem.memory_texts(hits))
             except Exception:  # noqa: BLE001 — memory is best-effort
                 _go(None)
@@ -488,6 +489,31 @@ class LLMNpcMixin:
             return get_apparent_uid(patron) or self._hist_key(patron)
         except Exception:  # noqa: BLE001 — never break a reply over keying
             return self._hist_key(patron)
+
+    def _memory_scope(self, subject):
+        """Every face this NPC believes is the same person as *subject*.
+
+        Memory is keyed on the PERCEIVED identity, which is right — a
+        disguise should read as a stranger. But once the NPC has connected
+        two presentations, whether by piercing the disguise or by being shown
+        papers, what it was told under one face has to be recallable under the
+        other. The `linked_to` chain already recorded that belief and nothing
+        consulted it, so the connection existed and the memories still did not
+        follow it (#2410).
+
+        Uses `linked_family` rather than a forward walk, because identity is
+        symmetric: which face you are looking at right now must not decide
+        whether you can remember them.
+
+        Returns the family, or the bare subject when nothing is linked — so
+        the ordinary case stays exactly as it was.
+        """
+        try:
+            from world.identity import linked_family
+            chain = linked_family(self.recognition_memory or {}, subject)
+            return chain if len(chain) > 1 else subject
+        except Exception:  # noqa: BLE001 — recall must not break on bad links
+            return subject
 
     def _load_memories(self):
         """This NPC's stored memory records as plain dicts (deserialized)."""

@@ -200,6 +200,10 @@ class TestRecall(TestCase):
         b._agentic_round = MagicMock()
         b._llm_silent = lambda: None
         _bind(b, "_try_llm_reply")
+        # recall spans the identity family now (#2410); bind it like the rest
+        # or the partial mock hands `retrieve` a MagicMock subject
+        b.recognition_memory = {}
+        _bind(b, "_memory_scope")
         return b
 
     def _patron(self):

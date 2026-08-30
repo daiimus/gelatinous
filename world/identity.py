@@ -1952,7 +1952,42 @@ def attest(observer: Any, uid: str, name: str, *, issuer: str,
     entry["attested"] = rows[-8:]
     memory[uid] = entry
     observer.recognition_memory = memory
+    _link_by_papers(observer, uid, row)
     return True
+
+
+def _link_by_papers(observer: Any, uid: str, row: dict) -> bool:
+    """Connect two faces the observer now has matching OFFICIAL papers on.
+
+    DELIBERATELY NARROW. Linking asserts "these are one person", which is a
+    real claim with consequences — it merges what you recall about them. So
+    it fires only when BOTH faces carry a VERIFIED, COLONY-tier attestation of
+    the same name: two sets of government papers agreeing. Names are not
+    unique enough for anything weaker, and linking a coined nickname to a
+    stranger because both were called "Red" would be worse than not linking
+    at all.
+
+    A disguise pierced by observation links through the existing unmasking
+    path; this is the paper route to the same conclusion.
+    """
+    if not row.get("verified") or row.get("authority") != "colony":
+        return False
+    name = row.get("name")
+    memory = observer.recognition_memory or {}
+    for other_uid, other in memory.items():
+        if other_uid == uid:
+            continue
+        if other.get("linked_to") or (memory.get(uid) or {}).get("linked_to"):
+            continue                       # already connected to something
+        for att in (other.get("attested") or []):
+            if (att.get("verified") and att.get("authority") == "colony"
+                    and att.get("name") == name):
+                entry = dict(memory[uid])
+                entry["linked_to"] = other_uid
+                memory[uid] = entry
+                observer.recognition_memory = memory
+                return True
+    return False
 
 
 def attestations(observer: Any, uid: str) -> list:
@@ -2568,6 +2603,43 @@ def walk_linked_chain(
             break
         current = memory[current].get("linked_to")
     return chain
+
+
+def linked_family(memory: dict, uid: str,
+                  max_hops: int = _LINKED_CHAIN_MAX_HOPS) -> list[str]:
+    """Every uid the observer believes is the SAME PERSON as *uid*.
+
+    `walk_linked_chain` follows `linked_to` FORWARD, which is right for its
+    job: the unmasking path points a new presentation back at the one it
+    replaced, so walking from the face in front of you reaches their history.
+
+    But identity is symmetric and recall must be too. If you knew somebody as
+    A, met them again as B (B → A), then looked at A again, a forward walk
+    from A reaches nothing — and what they told you as B would be
+    unrecallable purely because of which face you happened to be looking at
+    (#2410). This closes over the links in BOTH directions.
+
+    Returns at least ``[uid]``.
+    """
+    if uid not in memory:
+        return [uid] if uid else []
+    seen = {uid}
+    frontier = [uid]
+    hops = 0
+    while frontier and hops < max_hops:
+        hops += 1
+        current = frontier.pop()
+        forward = (memory.get(current) or {}).get("linked_to")
+        if forward and forward not in seen and forward in memory:
+            seen.add(forward)
+            frontier.append(forward)
+        for other_uid, entry in memory.items():
+            if other_uid in seen:
+                continue
+            if (entry or {}).get("linked_to") == current:
+                seen.add(other_uid)
+                frontier.append(other_uid)
+    return list(seen)
 
 
 def get_linked_aliases(memory: dict, uid: str) -> list[str]:

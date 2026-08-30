@@ -64,10 +64,41 @@ def salience(record, now=None):
     return recency + 0.1 * record.get("uses", 0)
 
 
+def _in_scope(record, subject):
+    """Is this record within the asked-for subject scope?
+
+    `subject` may be a single uid OR AN ITERABLE of them, because one person
+    can be known under several faces. When a disguise is pierced — or papers
+    connect two presentations — the recognition entries link, and what you
+    were told under one face has to be recallable under the other. Filtering
+    on a single exact uid meant the chain existed and the memories still did
+    not follow it (#2410).
+
+    An empty subject is a general memory and is always in scope.
+    """
+    if subject is None:
+        return True
+    rec = record.get("subject")
+    if not rec:
+        return True
+    if isinstance(subject, (str, bytes)):
+        return rec == subject
+    try:
+        return rec in set(subject)
+    except TypeError:
+        # Not a uid and not iterable. Falling through to "no match" would
+        # silently return an EMPTY recall, which reads as a character having
+        # forgotten everything rather than as the bug it is — so compare
+        # directly and let a genuine mismatch be a mismatch.
+        return rec == subject
+
+
 def retrieve(query_vec, records, k=3, subject=None, now=None):
     """Return the ``k`` records most similar to ``query_vec`` (cosine).
 
-    When ``subject`` is given, only that subject's records + general (empty-
+    ``subject`` may be a single uid or an ITERABLE of them — one person can
+    be known under several faces, and a pierced disguise must not hide what
+    they already told you. Only those subjects' records + general (empty-
     subject) records are considered, so "what I recall about *this* person"
     ranks above unrelated chatter. Records with non-positive similarity are
     dropped. The returned records are bumped (``last_seen``/``uses``) so recall
@@ -75,7 +106,7 @@ def retrieve(query_vec, records, k=3, subject=None, now=None):
     """
     now = time.time() if now is None else now
     pool = [r for r in records
-            if subject is None or not r.get("subject") or r.get("subject") == subject]
+            if _in_scope(r, subject)]
     scored = [(cosine(query_vec, r.get("embedding") or []), r) for r in pool]
     scored.sort(key=lambda sr: sr[0], reverse=True)
     hits = [r for sim, r in scored[:k] if sim > 0.0]
