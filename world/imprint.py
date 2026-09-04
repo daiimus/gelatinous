@@ -76,6 +76,15 @@ def capture(character, now=None):
         "opinions": _db("soul_opinions", {}),
         "recognition": _prop("recognition_memory", {}),
         "voice": _prop("voice_memory", {}),
+        # Identity-level, per world/manifest.py:19 — "designation and
+        # skills survive resleeving". Nothing implemented that: both
+        # resleeve paths build a NEW object (charcreate's flash clone,
+        # posts.py's build_npc) and the only writer of designation is
+        # charcreate's `if not char.db.designation` branch, which rolled
+        # a fresh random one. Somebody came back off the same imprint
+        # with a different service record (#2800).
+        "designation": _db("designation", {}),
+        "skills": _db("skills", {}),
     }
 
 
@@ -168,4 +177,13 @@ def restore(body, snap, now=None):
         body.recognition_memory = remembered_before(snap["recognition"], cutoff)
     if snap.get("voice"):
         body.voice_memory = remembered_before(snap["voice"], cutoff)
+
+    # No cutoff on these two: a service record is not an episode. What
+    # the chart rated you for does not fall inside a backup gap.
+    # Guarded like the rest — a record written before this existed must
+    # not wipe a designation the new body already rolled.
+    if snap.get("designation"):
+        body.db.designation = dict(snap["designation"])
+    if snap.get("skills"):
+        body.db.skills = dict(snap["skills"])
     return True
