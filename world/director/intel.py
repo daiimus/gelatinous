@@ -77,6 +77,15 @@ def sync_bot_intel(bot: Any) -> int:
     local = dict(getattr(bot.db, "local_sightings", None) or {})
     if not local:
         return 0
+    # "The bot is back at base" is the whole rule (§5.1): the walk home is
+    # a deliberate latency window, so a unit destroyed or stopped en route
+    # loses what it learned. It was stated in three docstrings and enforced
+    # in none — and `_done` is wired as the walk-home FAILURE callback too
+    # (#2761), so a unit that never arrived reached this and uplinked
+    # anyway, emoting that it had docked (#2795).
+    post = getattr(getattr(bot, "db", None), "post", None)
+    if post is not None and getattr(bot, "location", None) != post:
+        return 0
     record = dict(get_wanted_record())
     for uid, sighting in local.items():
         entry = dict(record.get(uid) or {"count": 0})
