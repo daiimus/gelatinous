@@ -49,8 +49,9 @@ def build_atlas_html(game_dir=".", staff=False, fragment=False):
 
     masts = []
     try:
-        from world.radio import (_all_powered_radios, _antenna_site,
-                                 _effective_tx_range, _grid_room)
+        from world.radio import (RANGE_CLEAR_FRACTION, _all_powered_radios,
+                                 _antenna_site, _effective_tx_range,
+                                 _grid_room)
         from world.spatial import get_xyz
         for radio in _all_powered_radios():
             if radio.db.is_base_station is not True:
@@ -64,7 +65,7 @@ def build_atlas_html(game_dir=".", staff=False, fragment=False):
             reach = _effective_tx_range(radio, site)
             masts.append({"x": site[0], "y": site[1], "name": radio.key,
                           "freq": str(radio.db.frequency or ""),
-                          "crisp": round(0.7 * reach, 1),
+                          "crisp": round(RANGE_CLEAR_FRACTION * reach, 1),
                           "reach": round(reach, 1)})
     except Exception:  # noqa: BLE001 — coverage is annotation, not truth
         pass
