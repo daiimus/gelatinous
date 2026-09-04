@@ -274,6 +274,18 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         # Remove Evennia's default setdesc; the Short Description menu option
         # and `describe short <text>` now own the main description.
         self.remove(CmdSetDesc())
+
+        # Remove Evennia's stock @time. `help tokens` states the premise
+        # outright -- "there is no command that tells you the hour. A
+        # character carrying nothing does not know what time it is." --
+        # which is what makes a chrono worth carrying. CmdTime is locked
+        # to perm(Player), so anyone could type it, and it prints
+        # `datetime.now()`: the REAL-WORLD date, in the wrong century and
+        # the wrong timezone. It did not merely defeat the timepiece
+        # design, it broke the fiction (#2819). If an in-world clock
+        # command is ever wanted, it reads colony_now().
+        from evennia.commands.default.system import CmdTime
+        self.remove(CmdTime())
         
         # Add skintone system command
         self.add(CmdSkintone())

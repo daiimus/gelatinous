@@ -128,9 +128,10 @@ HELP_ENTRY_DICTS = [
             Braces are entirely optional. A description with no tokens is shown
             verbatim, exactly as you typed it. Use tokens only where the wording
             must change for the viewer (pronouns) or for missing body parts
-            (number). Anything the resolver does not recognise is left on screen
-            literally with its braces intact, so a typo like |w{thier}|n is easy
-            to spot in the preview rather than silently vanishing.
+            (number). |wCheck your spelling inside braces.|n A braced word the
+            resolver does not know is treated as a verb and conjugated, so the
+            typo |w{thier}|n renders as |wthiers|n rather than staying on screen
+            with its braces. Nothing warns you; read the preview.
 
             See also: |whelp describe|n.
         """,
