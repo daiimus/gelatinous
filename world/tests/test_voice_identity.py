@@ -225,6 +225,75 @@ class VoiceRecognitionTests(TestCase):
         self.assertIsNone(get_assigned_voice_name(observer, speaker))
 
 
+class DeafListenerTests(TestCase):
+    """`CmdRemember` reasoned "you are co-located, so you hear them" and
+    checked only whether the SPEAKER's voice was garbled. That is sound
+    for a hearing listener and is exactly the assumption deafness breaks,
+    so a deaf character who remembered someone they could SEE acquired a
+    voice signature they cannot hear (#2809). The gate lives in
+    `remember_voice` rather than at the call site, so a second caller
+    cannot miss it.
+    """
+
+    def test_a_deaf_observer_learns_no_voice(self):
+        deaf = _FakeChar(sleeve_uid="obs", hearing=0.0)
+        speaker = _FakeChar("gravelly", "drawl", sleeve_uid="spk")
+        self.assertFalse(remember_voice(deaf, speaker, "Bob"))
+        self.assertIsNone(get_assigned_voice_name(deaf, speaker))
+
+    def test_a_hearing_observer_still_learns_it(self):
+        """The pin: the gate must not deafen everybody. `can_hear` fails
+        OPEN with no medical model, and most observers have none."""
+        observer = _FakeChar(sleeve_uid="obs")
+        speaker = _FakeChar("gravelly", "drawl", sleeve_uid="spk")
+        self.assertTrue(remember_voice(observer, speaker, "Bob"))
+        self.assertEqual(get_assigned_voice_name(observer, speaker), "Bob")
+
+
+class ForgetAnAbsentVoiceTests(TestCase):
+    """Remembering requires presence -- you learn a voice by hearing it.
+    Forgetting required presence too, which is not the same thing: the
+    entry lives under a voice UID in the observer's OWN memory and needs
+    nothing from the target to clear. So a name assigned to a voice could
+    only be revised while that person stood in front of you -- and for a
+    disguised or hostile speaker, the case voice memory exists for, that
+    is the least likely moment (#2809).
+    """
+
+    def _remembered(self):
+        observer = _FakeChar(sleeve_uid="obs")
+        speaker = _FakeChar("gravelly", "drawl", sleeve_uid="spk")
+        remember_voice(observer, speaker, "Bob")
+        return observer, speaker
+
+    def test_forget_by_assigned_name(self):
+        observer, speaker = self._remembered()
+        self.assertTrue(forget_voice(observer, name="Bob"))
+        self.assertIsNone(get_assigned_voice_name(observer, speaker))
+
+    def test_forget_by_voice_uid(self):
+        observer, speaker = self._remembered()
+        uid = get_apparent_voice_uid(speaker)
+        self.assertTrue(forget_voice(observer, voice_uid=uid))
+        self.assertIsNone(get_assigned_voice_name(observer, speaker))
+
+    def test_the_name_match_is_not_case_sensitive(self):
+        observer, speaker = self._remembered()
+        self.assertTrue(forget_voice(observer, name="bob"))
+        self.assertIsNone(get_assigned_voice_name(observer, speaker))
+
+    def test_an_unknown_name_clears_nothing(self):
+        observer, speaker = self._remembered()
+        self.assertFalse(forget_voice(observer, name="Nobody"))
+        self.assertEqual(get_assigned_voice_name(observer, speaker), "Bob")
+
+    def test_forgetting_a_present_target_still_works(self):
+        """The pin: the existing call site passes a live target."""
+        observer, speaker = self._remembered()
+        self.assertTrue(forget_voice(observer, speaker))
+        self.assertIsNone(get_assigned_voice_name(observer, speaker))
+
+
 class PerceptionTests(TestCase):
     """can_see / can_hear capacity thresholds + override seams (§4.5)."""
 
@@ -375,3 +444,28 @@ class CommandRegistrationTests(TestCase):
         cs.at_cmdset_creation()
         keys = {c.key for c in cs.commands}
         self.assertIn("@voice", keys)
+
+
+class VocabularyIsRuntimeEditableTests(TestCase):
+    """`_read_conf_set`'s docstring said it mirrors
+    `world.identity._read_keyword_set` and that server config may extend
+    the vocabulary "without a code change". It read
+    `django.conf.settings` -- a module loaded at startup -- while the
+    function it named reads ServerConfig, which is runtime-editable and
+    has staff commands behind it. Different store, different lifecycle,
+    and editing settings.py IS a code change (#2809).
+    """
+
+    def test_the_vocabulary_comes_from_serverconfig(self):
+        from evennia.server.models import ServerConfig
+        from world.voice import get_voice_descriptions
+        ServerConfig.objects.conf("VOICE_DESCRIPTIONS",
+                                  ["clanging", "subsonic"])
+        self.addCleanup(ServerConfig.objects.conf,
+                        "VOICE_DESCRIPTIONS", delete=True)
+        self.assertEqual(get_voice_descriptions(),
+                         frozenset({"clanging", "subsonic"}))
+
+    def test_an_unset_key_falls_back_to_the_defaults(self):
+        from world.voice import DEFAULT_VOICE_DESCRIPTIONS, get_voice_descriptions
+        self.assertEqual(get_voice_descriptions(), DEFAULT_VOICE_DESCRIPTIONS)
