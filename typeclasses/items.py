@@ -1415,6 +1415,19 @@ class Appendage(Item):
 
     def at_object_creation(self):
         super().at_object_creation()
+        # Dead tissue, and stamped as such. `classify_condition_rung`
+        # detects a severed part by `db.death_time` and its docstring
+        # named the two typeclasses that stamp it -- Corpse and
+        # SeveredHead. There are three. Without this an arm on the table
+        # fell through to the healthiest rung and reported
+        # "condition: stable" (#2811). SeveredHead re-stamps both in its
+        # own at_object_creation and configure_from_sever overwrites
+        # them from the source corpse, so the clock still comes from the
+        # body when there is one.
+        import time
+        now = time.time()
+        self.db.creation_time = now
+        self.db.death_time = now
         self.db.location_name = ""
         self.db.condition = "pristine"
         self.db.source_signature = None
