@@ -157,6 +157,13 @@ def process_corpse(post, by, corpse, giver):
 
     yields = _butcher_yields(by, corpse, decay)
     payout = sum(RAT_PRODUCTS[key]["buy"] * count for key, count in yields)
+    # Debit and credit must sit under the SAME condition. The register was
+    # decremented whenever a block existed, while the payout was credited
+    # only `if giver and giver.pk` — with `_drop_from_hands` and
+    # `corpse.delete()` in between — so a giverless or mid-transaction
+    # deleted giver left the money nowhere (#2814).
+    if not (giver and giver.pk):
+        payout = 0
     if block:
         payout = min(payout, till)
         block.db.register = till - payout
