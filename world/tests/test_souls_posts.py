@@ -195,3 +195,43 @@ class TestEstateAcrossDeath(BaseEvenniaTest):
             ok = postsmod._try_resleave(
                 post, self.room1, "day", post.db.post_slots["day"], 2.0)
         self.assertFalse(ok)      # it keeps earning toward her
+
+
+class TestSweepDoesNotRevertAResleave(BaseEvenniaTest):
+    """`sweep` must not write its snapshot over an install (#2802).
+
+    `sweep` takes `slots = dict(post.db.post_slots or {})` at the top of
+    each post, then calls `_try_resleave` — which reaches
+    `_install_keeper`, and that re-reads `post_slots`, records the new
+    keeper and persists it. Writing the loop's snapshot afterwards put
+    the vacancy straight back, so a keeper who had just been installed
+    and emoted "back at the post" left the slot reading empty.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.room = self.room1
+
+    def test_the_installed_keeper_survives_the_sweep(self):
+        post = _post(self.room, shift="day", keeper=None,
+                     vacant_since=1.0, policy="resleave", blueprint="bp-1")
+
+        def _install_like_the_real_thing(*_a, **_kw):
+            # what _install_keeper does: re-read, record, persist
+            slots = dict(post.db.post_slots or {})
+            slots["day"] = {"keeper": self.char2, "vacant_since": None}
+            post.db.post_slots = slots
+            return True
+
+        with patch.object(postsmod, "get_posts", return_value=[post]), \
+             patch.object(postsmod, "_slot_held", return_value=False), \
+             patch.object(postsmod, "_living_body", return_value=None), \
+             patch.object(postsmod, "_eligible_candidates", return_value=[]), \
+             patch.object(postsmod, "_try_resleave",
+                          side_effect=_install_like_the_real_thing), \
+             patch("world.director.security._in_combat", return_value=False):
+            postsmod.sweep(now=10_000.0)
+
+        self.assertEqual(post.db.post_slots["day"]["keeper"], self.char2,
+                         "sweep reverted the keeper _install_keeper had just set")
+        self.assertIsNone(post.db.post_slots["day"]["vacant_since"])
