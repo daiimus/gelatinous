@@ -48,8 +48,48 @@ def normalize_sutured_stumps(target) -> dict:
     if raw is None:
         return {}
     if hasattr(raw, "keys"):
-        return dict(raw)
-    return {loc: "success" for loc in raw}
+        out = dict(raw)
+    else:
+        out = {loc: "success" for loc in raw}
+    if not out:
+        return out
+
+    # A suture record for a location that is no longer severed is
+    # STALE. The attribute is written additively and nothing in the
+    # repo ever removed an entry, so any path that restores a limb
+    # (`@resetmedical` rebuilding the body from species, a prosthetic
+    # taking a flesh limb's place) left the old suture behind — and the
+    # renderer consults this map BEFORE any decay-derived stage, so the
+    # NEXT amputation at that location rendered as already-bandaged
+    # (#2770).
+    #
+    # Validated here rather than at each restore site because this is
+    # the single funnel every reader goes through, so it cannot be
+    # bypassed by a restore path nobody has thought of yet. The prune
+    # is read-only; `_resolve_suture` reads-modifies-writes through
+    # this same function, so stale keys drop out of storage on the next
+    # suture instead of needing a migration.
+    #
+    # Only prune when the body can actually be INSPECTED. An empty
+    # severed set means "no severance" on a real target, but it also
+    # means "this shape carries neither an organ table nor
+    # wounds_at_death" — and erasing a real treatment on no evidence is
+    # the worse of the two failures.
+    if not _severance_is_derivable(target):
+        return out
+    severed = compute_severed_containers(target)
+    return {loc: outcome for loc, outcome in out.items() if loc in severed}
+
+
+def _severance_is_derivable(target) -> bool:
+    """True when ``compute_severed_containers`` can reach real data on
+    ``target`` — mirrors the two shapes it supports, so an empty result
+    can be read as "nothing is severed" rather than "nothing is known"."""
+    state = getattr(target, "medical_state", None)
+    if getattr(state, "organs", None):
+        return True
+    db = getattr(target, "db", None)
+    return getattr(db, "wounds_at_death", None) is not None
 
 
 # ---------------------------------------------------------------------

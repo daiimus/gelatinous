@@ -71,6 +71,65 @@ class NormalizeSuturedStumps(TestCase):
             {"head": "success", "left_arm": "success"},
         )
 
+    def test_a_restored_limb_drops_its_old_suture(self):
+        """`db.sutured_stumps` is written additively and nothing in the
+        repo ever removed an entry. Restore a limb by any means --
+        `@resetmedical` rebuilding the body from species, or a
+        prosthetic taking a flesh limb's place -- and the old suture
+        survived. The renderer consults this map BEFORE any
+        decay-derived stage, so the NEXT amputation at that location
+        rendered as already-bandaged (#2770).
+        """
+        from world.medical.severance import normalize_sutured_stumps
+        target = _target(
+            {"left_arm": _FakeOrgan("left_arm")},      # whole again
+            sutured_stumps={"left_arm": "success"},
+        )
+        self.assertEqual(normalize_sutured_stumps(target), {})
+
+    def test_a_still_severed_limb_keeps_its_suture(self):
+        """The pin against the over-correction: a treated stump must
+        keep rendering as treated."""
+        from world.medical.severance import normalize_sutured_stumps
+        target = _target(
+            {"left_arm": _FakeOrgan("left_arm", wound_stage="severed",
+                                    current_hp=0)},
+            sutured_stumps={"left_arm": "success"},
+        )
+        self.assertEqual(normalize_sutured_stumps(target),
+                         {"left_arm": "success"})
+
+    def test_only_the_restored_location_is_dropped(self):
+        from world.medical.severance import normalize_sutured_stumps
+        target = _target(
+            {"left_arm": _FakeOrgan("left_arm"),        # restored
+             "head": _FakeOrgan("head", wound_stage="severed",
+                                current_hp=0)},         # still gone
+            sutured_stumps={"left_arm": "success", "head": "partial"},
+        )
+        self.assertEqual(normalize_sutured_stumps(target),
+                         {"head": "partial"})
+
+    def test_an_uninspectable_shape_is_left_alone(self):
+        """An empty severed set means "nothing severed" on a real body,
+        but it also means "this shape carries neither an organ table nor
+        wounds_at_death". Erasing a real treatment on no evidence is the
+        worse of the two failures, so the prune requires evidence."""
+        from world.medical.severance import normalize_sutured_stumps
+        target = SimpleNamespace(
+            db=SimpleNamespace(sutured_stumps={"head": "success"}))
+        self.assertEqual(normalize_sutured_stumps(target),
+                         {"head": "success"})
+
+    def test_a_corpse_with_its_death_wounds_is_inspectable(self):
+        from world.medical.severance import normalize_sutured_stumps
+        corpse = SimpleNamespace(db=SimpleNamespace(
+            sutured_stumps={"head": "success", "left_arm": "success"},
+            wounds_at_death=[{"injury_type": "severed", "location": "head"}],
+        ))
+        self.assertEqual(normalize_sutured_stumps(corpse),
+                         {"head": "success"})
+
     def test_missing_db_handled(self):
         from world.medical.severance import normalize_sutured_stumps
         target = SimpleNamespace()  # no .db at all
