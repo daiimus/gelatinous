@@ -62,6 +62,51 @@ class TestWhatTheCallerSaw(EvenniaCommandTest):
             self.assertEqual(got["text"], "")
 
 
+class TestABoloNeedsAPersonDescribed(EvenniaCommandTest):
+    """An adjective is not a silhouette (#2807).
+
+    The description vocabulary is ordinary English — `heavy`, `big`,
+    `little`, `long`, `short`, `solid` — so scanning a caller's words for
+    any of them invented a suspect out of lines that described no one.
+    "a little help here" put out a BOLO for a short person.
+
+    A BOLO now needs BOTH: a description axis, and evidence a PERSON is
+    what is being described — a person-noun or a named garment. Both
+    directions are pinned together, because the safe failure here is to
+    describe nobody (`anonymous` is a modelled state, documented as "a
+    FACT, not a blank") and the unsafe one is to describe somebody the
+    caller never mentioned.
+    """
+
+    # --- must NOT build a BOLO: no person is being described ----------
+    def test_adjective_about_a_non_person_describes_nobody(self):
+        for said in ("a little help here",
+                     "some heavy stuff went down",
+                     "there was a short fight",
+                     "a tall order",
+                     "the big one just blew"):
+            with self.subTest(said=said):
+                self.assertIsNone(describe_suspect(said)["bolo"])
+
+    def test_a_garment_alone_is_not_a_description(self):
+        # a garment with no axis word describes no silhouette
+        self.assertIsNone(describe_suspect("my jacket got stolen")["bolo"])
+
+    # --- must STILL build a BOLO: a person IS being described ---------
+    def test_person_noun_with_an_axis_still_describes(self):
+        for said in ("he was a big guy",
+                     "tall man in a jacket",
+                     "the suspect is heavyset",
+                     "some skinny kid took it"):
+            with self.subTest(said=said):
+                self.assertIsNotNone(describe_suspect(said)["bolo"])
+
+    def test_a_named_garment_carries_a_description(self):
+        """No person-noun, but naming what they WORE is describing them."""
+        got = describe_suspect("tall, thin, wearing a jacket")
+        self.assertIsNotNone(got["bolo"])
+
+
 class TestHearsayIsOnlyEverASilhouette(EvenniaCommandTest):
     """What a described BOLO is worth when a unit arrives."""
 

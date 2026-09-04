@@ -110,6 +110,25 @@ def _garments_named(low: str) -> set:
     return found
 
 
+#: Words that establish a PERSON is what is being described. The height
+#: and build vocabularies are ordinary English — `heavy`, `big`, `little`,
+#: `long`, `short`, `solid` — so an axis word alone is not evidence anyone
+#: was described at all: "a little help here" is not a short suspect
+#: (#2807). Naming what somebody WORE counts too, and is handled beside
+#: this in `describe_suspect`.
+_PERSON_WORDS = frozenset("""
+guy guys man men woman women person people someone somebody anyone anybody
+he she they him her them his hers their kid kids girl boy lady gent dude
+fella bloke stranger colonist suspect perp perpetrator attacker assailant
+victim
+""".split())
+
+
+def _names_a_person(words) -> bool:
+    """True when the caller referred to a person at all."""
+    return any(re.search(rf"\b{re.escape(w)}\b", words) for w in _PERSON_WORDS)
+
+
 def _match_axis(words, table) -> Optional[str]:
     for axis, vocab in table.items():
         for word in vocab:
@@ -145,7 +164,15 @@ def describe_suspect(speech: str) -> dict:
                     for w in _ANONYMOUS)
 
     bolo = None
-    if height or build or worn:
+    # An axis word is only a silhouette if somebody was being described.
+    # A person-noun establishes that; so does naming a garment, but a
+    # garment ALONE ("my jacket got stolen") describes no one, so it
+    # needs an axis beside it (#2807).
+    describes_a_person = (
+        (_names_a_person(low) and (height or build or worn))
+        or ((height or build) and worn)
+    )
+    if describes_a_person:
         # the same shape `build_bolo` produces, on the channel that can
         # carry the least: a voice on the radio, which may also be
         # vague, mistaken, or lying
