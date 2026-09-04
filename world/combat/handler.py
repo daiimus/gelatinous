@@ -249,16 +249,27 @@ class CombatHandler(DefaultScript):
         if not self.pk or not self.id:
             return
 
-        # NPC perception (#954): closure for bystander brains
-        try:
-            from world.llm.observation import observe_event
-            observe_event(self.obj,
-                          lambda observer: "The fight breaks off.",
-                          sound="the sounds of fighting die down")
-            from world.llm.reflex import fire_combat_reflex
-            fire_combat_reflex(self, self.obj, "fight_ended")
-        except Exception:  # noqa: BLE001 — perception never breaks combat
-            pass
+        # NPC perception (#954): closure for bystander brains.
+        #
+        # Guarded because this method is RE-ENTRANT by construction: it
+        # deletes the script whose deletion calls it back. Evennia's
+        # `delete()` runs `_stop_task()` — firing `at_stop()`, which calls
+        # straight back in here — BEFORE `super().delete()` clears the
+        # row, so the `self.pk` check at the top still passes on the way
+        # through and every bystander recorded the closure twice (#2766).
+        # `fire_combat_reflex` already guards itself with
+        # `ndb.combat_reflex_done`; the buffered beat did not.
+        if getattr(self.ndb, "combat_closure_done", None) is not True:
+            self.ndb.combat_closure_done = True
+            try:
+                from world.llm.observation import observe_event
+                observe_event(self.obj,
+                              lambda observer: "The fight breaks off.",
+                              sound="the sounds of fighting die down")
+                from world.llm.reflex import fire_combat_reflex
+                fire_combat_reflex(self, self.obj, "fight_ended")
+            except Exception:  # noqa: BLE001 — perception never breaks combat
+                pass
         
         splattercast = get_splattercast()
         
