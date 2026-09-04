@@ -41,7 +41,69 @@ ROOMS = [
     _room(2001, "Maxwell Medical Clinic - Waiting Room"),
     _room(3001, "Suds & Bubbles Laundromat"),
     _room(3002, "Colonial Constabulary Lobby"),
+    # possessive and single-word venues: the two shapes this module has
+    # historically got wrong in OPPOSITE directions (see the class below)
+    _room(1452, "Riveter's Way"),
+    _room(5001, "The Kettle - Entrance"),
+    _room(5002, "Rack 3"),
 ]
+
+
+class TestVenueNaming(TestCase):
+    """`_room_named_in` must name a venue ONLY when one was named.
+
+    This module has failed both ways and the fixes chase each other, so
+    both directions are pinned here together — changing one must not
+    silently reopen the other.
+
+    * **#2240** — a two-token guard, added to stop "in the street"
+      pinning a street, swallowed every single-word venue in the colony
+      (the Kettle, the Halcyon, Ramirez). Removed.
+    * **#2764** — with the guard gone, the tokeniser's bare ``s`` from
+      a possessive ("there's") matched the ``s`` in any apostrophe-s
+      room name, so ordinary speech pinned an unrelated room — and
+      OVERRODE a location the caller had actually given.
+    """
+
+    # --- must NOT name a venue: nobody said a place ------------------
+    def test_contraction_names_no_venue(self):
+        for said in ("there's a fight", "he's stabbing someone",
+                     "somebody's down", "it's bad, hurry"):
+            with self.subTest(said=said):
+                self.assertEqual(rr._room_named_in(said, ROOMS), "")
+
+    def test_bare_digit_names_no_venue(self):
+        for said in ("3 of them", "two down", "level 5 now"):
+            with self.subTest(said=said):
+                self.assertEqual(rr._room_named_in(said, ROOMS), "")
+
+    def test_stated_location_is_not_overridden(self):
+        # the #2764 headline: a contraction must not beat a real venue
+        self.assertEqual(
+            rr._room_named_in("there's a fight at the Kettle", ROOMS),
+            "The Kettle - Entrance",
+        )
+
+    # --- must STILL name a venue: the #2240 direction ----------------
+    def test_single_word_venue_still_resolves(self):
+        self.assertEqual(
+            rr._room_named_in("fight at the Kettle", ROOMS),
+            "The Kettle - Entrance",
+        )
+
+    def test_possessive_venue_still_resolves(self):
+        # the room whose name caused #2764 must remain reachable when
+        # somebody actually means it
+        self.assertEqual(
+            rr._room_named_in("trouble on Riveter's Way", ROOMS),
+            "Riveter's Way",
+        )
+
+    def test_multiword_venue_still_resolves(self):
+        self.assertEqual(
+            rr._room_named_in("outside the laundromat", ROOMS),
+            "Suds & Bubbles Laundromat",
+        )
 
 
 class TestResolveLocation(TestCase):
