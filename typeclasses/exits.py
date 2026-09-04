@@ -463,8 +463,15 @@ class Exit(DefaultExit):
         full_description = base_description
         if character_display:
             full_description += f" {character_display}"
-            
-        return full_description
+
+        # Exit does NOT inherit ObjectParent, so it never reached the one
+        # place `render_time_tokens` is called and an authored {time} on
+        # an exit rendered literally (#2772). Rendered here rather than by
+        # adding ObjectParent to the bases: that would also bring
+        # `get_search_query_replacement`, changing how exits are targeted.
+        from world.gametime import render_time_tokens
+
+        return render_time_tokens(full_description, self)
         
     def _get_atmospheric_description(self, looker):
         """

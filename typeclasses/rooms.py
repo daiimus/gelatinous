@@ -86,13 +86,21 @@ class Room(ObjectParent, DefaultRoom):
             if text and can_perceive_sense(looker, sense):
                 parts.append(text)
 
+        # Time tokens: this override composes its own string from the
+        # sense layers and never reaches ObjectParent.get_display_desc,
+        # which is the only place `render_time_tokens` is called — so an
+        # authored {time} on a room used to render literally (#2772).
+        # Rendered here rather than via super() because super() would
+        # re-fetch db.desc and lose the perception-gated composition.
+        from world.gametime import render_time_tokens
+
         if parts:
-            return " ".join(parts)
+            return render_time_tokens(" ".join(parts), self)
 
         # Nothing perceivable — give a sense-appropriate void rather than blank.
         if not can_perceive_sense(looker, "visual"):
             return "You can't see a thing here, and nothing else reaches you."
-        return visual or "You see nothing special."
+        return render_time_tokens(visual or "You see nothing special.", self)
 
     def at_object_creation(self):
         """
