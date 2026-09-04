@@ -74,17 +74,23 @@ VOICE_FLAVOR_SPRINKLE_CHANCE = 0.25
 def _read_conf_set(conf_key: str, default: frozenset[str]) -> frozenset[str]:
     """Return a config-overridable vocabulary set, falling back to *default*.
 
-    Mirrors ``world.identity._read_keyword_set`` — server config may extend or
-    replace the starter vocabulary without a code change.
+    Mirrors ``world.identity._read_keyword_set`` — and now actually does.
+    It read ``django.conf.settings``, a module loaded at startup, while
+    the function it named as its model reads ``ServerConfig``, which is
+    runtime-editable and has staff commands behind it. Different backing
+    store, different lifecycle, and "without a code change" was false:
+    editing settings.py IS a code change, and it needs a restart. The
+    voice vocabularies were effectively hardcoded while the identity
+    vocabulary they were modelled on was live-editable (#2809).
     """
     try:
-        from django.conf import settings
-        value = getattr(settings, conf_key, None)
-    except Exception:
-        value = None
-    if not value:
+        from evennia.server.models import ServerConfig
+        stored = ServerConfig.objects.conf(conf_key)
+    except Exception:  # noqa: BLE001 — no DB yet (import time, a bare test)
+        stored = None
+    if not stored:
         return default
-    return frozenset(str(v).strip().lower() for v in value if str(v).strip())
+    return frozenset(str(v).strip().lower() for v in stored if str(v).strip())
 
 
 def get_voice_descriptions() -> frozenset[str]:
@@ -254,8 +260,17 @@ def remember_voice(observer: Any, target: Any, name: str) -> bool:
     entry (you can know someone's real voice and not their disguised one).
 
     Returns ``True`` if an entry was written, ``False`` when the target has no
-    usable voice UID (nothing to remember).
+    usable voice UID (nothing to remember) or *observer* cannot hear.
+
+    The gate lives HERE rather than at each caller. `CmdRemember` reasoned
+    "you are co-located, so you hear them" and checked only whether the
+    SPEAKER's voice was garbled — which is sound for a hearing listener
+    and is exactly the assumption deafness breaks, so a deaf character
+    who remembered someone they could see acquired a voice they cannot
+    hear (#2809).
     """
+    if not can_hear(observer):
+        return False
     voice_uid = get_apparent_voice_uid(target)
     if voice_uid is None:
         return False
@@ -278,22 +293,42 @@ def remember_voice(observer: Any, target: Any, name: str) -> bool:
     return True
 
 
-def forget_voice(observer: Any, target: Any) -> bool:
-    """Clear *observer*'s assigned name for *target*'s current voice.
+def forget_voice(observer: Any, target: Any = None, *, name: str = "",
+                 voice_uid: str = "") -> bool:
+    """Clear *observer*'s assigned name for a voice they have named.
+
+    Addressable three ways: by a present ``target``, by the ``name`` the
+    observer assigned, or by ``voice_uid`` directly.
+
+    Remembering requires presence — you learn a voice by hearing it.
+    FORGETTING does not: the entry lives under a voice UID in the
+    observer's own memory and needs nothing from the target to clear. So
+    a name assigned to a voice could only be revised while that person
+    stood in front of you, which for a disguised or hostile speaker — the
+    case voice memory exists for — is the least likely moment (#2809).
 
     Returns ``True`` if an entry was cleared, ``False`` otherwise.
     """
-    voice_uid = get_apparent_voice_uid(target)
-    if voice_uid is None:
-        return False
     memory = getattr(observer, "voice_memory", None)
-    if not memory or voice_uid not in memory:
+    if not memory:
         return False
+
+    if not voice_uid and target is not None:
+        voice_uid = get_apparent_voice_uid(target) or ""
+    if not voice_uid and name:
+        wanted = str(name).strip().lower()
+        voice_uid = next(
+            (uid for uid, entry in memory.items()
+             if str((entry or {}).get("assigned_name") or "").lower() == wanted),
+            "")
+    if not voice_uid or voice_uid not in memory:
+        return False
+
     memory[voice_uid]["assigned_name"] = ""
     observer.voice_memory = memory
-    invalidate_voice_discern_cache_for_sleeve(
-        observer, getattr(target, "sleeve_uid", None)
-    )
+    sleeve = (getattr(target, "sleeve_uid", None) if target is not None
+              else memory[voice_uid].get("real_sleeve_uid"))
+    invalidate_voice_discern_cache_for_sleeve(observer, sleeve)
     return True
 
 
