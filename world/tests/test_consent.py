@@ -271,6 +271,48 @@ class TestDistrustCommand(TestCase):
         cmd.func()
         self.assertEqual(get_grants(cmd.caller), {})
 
+    def test_a_name_that_prefixes_another_is_still_revocable(self):
+        """The exact-match and substring tests sat in ONE condition, so
+        an exact hit did not take precedence -- it appended alongside
+        every substring hit. No phrase could isolate the shorter name,
+        because a prefix is a substring by definition, so the grant was
+        unrevocable except by wiping every grant. The live world holds
+        nine Laszlos off one resleeve lineage (#2791).
+        """
+        grants = {"uid-1": {"classes": ["heal"], "label": "Laszlo"},
+                  "uid-2": {"classes": ["heal"], "label": "Laszlo XIV"}}
+        cmd = self._cmd("Laszlo", grants=grants)
+        cmd.func()
+        remaining = get_grants(cmd.caller)
+        self.assertNotIn("uid-1", remaining)
+        self.assertIn("uid-2", remaining)
+
+    def test_the_longer_name_is_revocable_too(self):
+        grants = {"uid-1": {"classes": ["heal"], "label": "Laszlo"},
+                  "uid-2": {"classes": ["heal"], "label": "Laszlo XIV"}}
+        cmd = self._cmd("Laszlo XIV", grants=grants)
+        cmd.func()
+        remaining = get_grants(cmd.caller)
+        self.assertIn("uid-1", remaining)
+        self.assertNotIn("uid-2", remaining)
+
+    def test_a_genuinely_ambiguous_phrase_still_refuses(self):
+        """The pin against the over-correction: dropping the ambiguity
+        check entirely would silently revoke the wrong person."""
+        grants = {"uid-1": {"classes": ["heal"], "label": "Laszlo XIV"},
+                  "uid-2": {"classes": ["heal"], "label": "Laszlo XVI"}}
+        cmd = self._cmd("Laszlo X", grants=grants)
+        cmd.func()
+        self.assertEqual(len(get_grants(cmd.caller)), 2)
+        self.assertIn("more than one person",
+                      cmd.caller.msg.call_args.args[0])
+
+    def test_partial_matching_still_works_when_unambiguous(self):
+        grants = {"uid-1": {"classes": ["heal"], "label": "a lean man"}}
+        cmd = self._cmd("lean man", grants=grants)
+        cmd.func()
+        self.assertEqual(get_grants(cmd.caller), {})
+
     def test_unknown_person_messaged(self):
         cmd = self._cmd("stranger")
         cmd.func()
