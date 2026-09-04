@@ -9,6 +9,9 @@ from __future__ import annotations
 
 from unittest import TestCase
 
+from types import SimpleNamespace
+
+from world import consumables
 from world.consumables import consume_use
 
 
@@ -284,3 +287,125 @@ class TestEatingFeedsThroughTheCommand(_NutritionTestBase):
         }]
         soul.execute_cmd("eat feed")
         self.assertLessEqual(needs.pressure(soul, "hunger"), 0.05)
+
+
+class TestBothDoorsAgree(TestCase):
+    """`uses_left` had two decrement doors and they disagreed three ways
+    (#2812). All three were latent — no item in the world was at or
+    below zero — and all three are structural.
+    """
+
+    def _item(self, **attrs):
+        store = dict(attrs)
+
+        class _Attrs:
+            def get(self, key, default=None):
+                return store.get(key, default)
+
+            def add(self, key, value):
+                store[key] = value
+
+        item = SimpleNamespace(attributes=_Attrs(), key="a bandage")
+        item._store = store
+        item.deleted = False
+
+        def _delete():
+            item.deleted = True
+        item.delete = _delete
+        return item
+
+    def test_the_medical_door_deletes_at_zero(self):
+        """`world/consumables.py` states the invariant: zero uses => gone.
+        `treatments._consume_use` decremented and stopped, leaving a
+        spent item in the world -- visible, holdable, and refused by
+        every consumer that checks."""
+        from world.medical.treatments import _consume_use
+        item = self._item(uses_left=1)
+        _consume_use(item)
+        self.assertEqual(item._store["uses_left"], 0)
+        self.assertTrue(item.deleted, "a spent item stayed in the world")
+
+    def test_the_medical_door_still_leaves_a_partly_used_item(self):
+        from world.medical.treatments import _consume_use
+        item = self._item(uses_left=3)
+        _consume_use(item)
+        self.assertEqual(item._store["uses_left"], 2)
+        self.assertFalse(item.deleted)
+
+    def test_an_item_without_uses_left_is_still_the_callers_problem(self):
+        """The pin: `_consume_use` documents that items with no
+        `uses_left` are left alone, and that must not change."""
+        from world.medical.treatments import _consume_use
+        item = self._item()
+        _consume_use(item)
+        self.assertFalse(item.deleted)
+        self.assertNotIn("uses_left", item._store)
+
+    def test_a_missing_uses_left_means_one_use_not_zero(self):
+        """The medical layer's `can_be_used` defaults to 1 (usable);
+        `consume_use` defaulted to 0 (already spent). An item was usable
+        on one side of the wall and empty on the other."""
+        from world.consumables import consume_use
+        item = self._item()
+        out = consume_use(item)
+        self.assertTrue(out["success"])
+        self.assertTrue(out["destroyed"])
+
+
+class TestTheDeliveryMigrationRunsOnce(TestCase):
+    """`supports_delivery`'s docstring promises the implied tags are
+    written back "so the migration happens once per item". The early
+    return only fired when the QUERIED method was one of the implied
+    ones -- which no negative check ever is -- so `eat` on a bandage
+    re-added the same tags on every call, forever (#2812)."""
+
+    def _tagged_item(self, medical_type):
+        adds = []
+
+        class _Tags:
+            def __init__(self):
+                self.store = set()
+
+            def has(self, key, category=None):
+                return (key, category) in self.store
+
+            def add(self, key, category=None):
+                adds.append((key, category))
+                self.store.add((key, category))
+
+        class _Attrs:
+            def get(self, key, default=None):
+                return {"medical_type": medical_type}.get(key, default)
+
+        item = SimpleNamespace(tags=_Tags(), attributes=_Attrs())
+        item._adds = adds
+        return item
+
+    def test_a_negative_check_does_not_rewrite_the_tags(self):
+        from world.consumables import LEGACY_MEDICAL_TYPE_DELIVERIES
+        mtype = next(k for k, v in LEGACY_MEDICAL_TYPE_DELIVERIES.items()
+                     if v)
+        item = self._tagged_item(mtype)
+        self.assertFalse(consumables.supports_delivery(item, "nosuchverb"))
+        after_first = len(item._adds)
+        for _ in range(5):
+            consumables.supports_delivery(item, "nosuchverb")
+        self.assertEqual(len(item._adds), after_first,
+                         "the migration re-ran on every negative check")
+
+    def test_the_migration_still_grants_the_implied_verbs(self):
+        from world.consumables import LEGACY_MEDICAL_TYPE_DELIVERIES
+        mtype, implied = next((k, v) for k, v
+                              in LEGACY_MEDICAL_TYPE_DELIVERIES.items() if v)
+        item = self._tagged_item(mtype)
+        self.assertTrue(consumables.supports_delivery(item, implied[0]))
+
+    def test_the_implied_verb_still_answers_after_a_negative_check(self):
+        """The over-correction to avoid: marking the migration done on a
+        negative check must not lock out the verbs it just granted."""
+        from world.consumables import LEGACY_MEDICAL_TYPE_DELIVERIES
+        mtype, implied = next((k, v) for k, v
+                              in LEGACY_MEDICAL_TYPE_DELIVERIES.items() if v)
+        item = self._tagged_item(mtype)
+        consumables.supports_delivery(item, "nosuchverb")
+        self.assertTrue(consumables.supports_delivery(item, implied[0]))

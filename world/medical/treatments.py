@@ -615,4 +615,11 @@ def _consume_use(item) -> None:
         return
     uses = attrs.get("uses_left")
     if isinstance(uses, int) and uses > 0:
-        attrs.add("uses_left", uses - 1)
+        # Delegate, so "zero uses => gone" holds on BOTH doors. This one
+        # decremented and stopped, leaving a spent item in the world:
+        # visible, holdable, and refused by every consumer that checks
+        # (#2812). `consume_use` owns the deletion and the on_destroy
+        # hook; the guard above stays, so items with no `uses_left` are
+        # still left to the caller.
+        from world.consumables import consume_use
+        consume_use(item)

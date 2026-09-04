@@ -95,8 +95,11 @@ def _item(effectiveness: dict, uses_left: int = 3,
     }
 
     class _Attrs:
-        def get(self, key):
-            return attrs_store.get(key)
+        # `get(key, default)` matches Evennia's AttributeHandler and the
+        # contract `consumables.consume_use` documents. The one-argument
+        # version predated the medical path delegating to it (#2812).
+        def get(self, key, default=None):
+            return attrs_store.get(key, default)
 
         def add(self, key, value):
             attrs_store[key] = value
