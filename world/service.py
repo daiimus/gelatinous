@@ -64,6 +64,15 @@ def _ensure_loaded():
             logger.log_trace(f"service provider {path} failed to load")
 
 
+#: An explicit, greppable "this job answers with silence". A bare
+#: `fallback=None` cannot tell a considered choice from a forgotten
+#: line, and the clinic's silence IS considered — a doctor asked
+#: something odd stays quiet. Pass this instead so the next role
+#: registered without a line is the only one that shows up in the log
+#: (#2824).
+SILENT = "__silent__"
+
+
 def register(role, handler, aliases=(), fallback=None, archetype=None,
              tools=None, on_receive=None):
     """Bind a job to a post role.
@@ -71,7 +80,11 @@ def register(role, handler, aliases=(), fallback=None, archetype=None,
     Args:
         handler: ``handler(post, speech, patron, by, addressed)`` -> bool
         aliases: what the job answers to ("bartender", "barkeep")
-        fallback: what it says when addressed with no voice available
+        fallback: what it says when addressed with no voice available.
+            `SILENT` means the job answers with silence ON PURPOSE.
+            Omitting it entirely gets the same runtime behaviour and a
+            startup warning, because a mute NPC is otherwise found by a
+            player standing at a counter with the sidecar down.
         archetype: the `world/llm/prompt.ARCHETYPES` key for its register
         on_receive: ``fn(post, obj, giver, by) -> bool`` — the job's
             answer to something being HANDED to whoever stands it.
@@ -83,6 +96,12 @@ def register(role, handler, aliases=(), fallback=None, archetype=None,
             same place or a successor is handed `check_stock` and gets an
             empty string back (#2352).
     """
+    if fallback is None:
+        from evennia.utils import logger
+        logger.log_warn(
+            f"service.register({role!r}): no fallback line — a voiceless "
+            f"{role} will not answer when addressed at a post. Pass "
+            f"fallback=SILENT if that is intended.")
     _check_signature(role, "handler", handler,
                      ("post", "speech", "patron", "by", "addressed"))
     _check_signature(role, "on_receive", on_receive,
@@ -190,9 +209,17 @@ def aliases_for(worker):
 
 
 def fallback_for(worker):
-    """The line this job gives when addressed with no voice to answer."""
+    """The line this job gives when addressed with no voice to answer.
+
+    `None` for a job that answers with silence — whether it CHOSE that
+    (`fallback=SILENT`) or never had a line. The sentinel is a
+    registration-time signal, not a thing anybody says out loud, so it
+    is translated back here rather than at each caller: it is truthy,
+    and every consumer guards on `if line` (#2824).
+    """
     job = job_of(worker)
-    return job.get("fallback") if job else None
+    line = job.get("fallback") if job else None
+    return None if line == SILENT else line
 
 
 def archetype_for(worker):
