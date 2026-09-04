@@ -15,6 +15,7 @@ from unittest import TestCase
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from world.identity import (
+    get_short_sdesc,
     compose_sdesc,
     format_clothing_feature,
     format_hair_feature,
@@ -787,3 +788,41 @@ class TestWardrobePluralia(TestCase):
         self.assertEqual(with_article("white lab coat"),
                          "a white lab coat")
         self.assertEqual(with_article("evening suit"), "an evening suit")
+
+
+class TestShortSdescHonoursOverrides(TestCase):
+    """The short handle must not leak the body under the mask (#2806).
+
+    `get_short_sdesc` is documented as *"the handle an LLM NPC addresses
+    someone by"* and its own example is *"the stocky droog"* — an
+    override value. It read the base `height`/`build`/`sdesc_keyword`
+    instead, so a masked character was addressed by the physique they
+    were concealing, while `Character.get_sdesc` correctly showed the
+    override to everyone else.
+    """
+
+    def _char(self, **kw):
+        char = _make_character(**kw)
+        char.db.height_override = None
+        char.db.build_override = None
+        char.db.keyword_override = None
+        return char
+
+    def test_without_overrides_it_uses_the_real_axes(self):
+        char = self._char(height="tall", build="lean", sdesc_keyword="man")
+        self.assertEqual(get_short_sdesc(char, article=False), "gaunt man")
+
+    def test_an_override_wins_over_the_real_axis(self):
+        char = self._char(height="tall", build="lean", sdesc_keyword="man")
+        char.db.height_override = "short"
+        char.db.build_override = "heavyset"
+        real = get_physical_descriptor("tall", "lean")
+        shown = get_short_sdesc(char, article=False)
+        self.assertNotIn(real, shown,
+                         "the concealed physique leaked into the handle")
+        self.assertIn(get_physical_descriptor("short", "heavyset"), shown)
+
+    def test_a_keyword_override_wins_too(self):
+        char = self._char(height="tall", build="lean", sdesc_keyword="man")
+        char.db.keyword_override = "droog"
+        self.assertIn("droog", get_short_sdesc(char, article=False))
