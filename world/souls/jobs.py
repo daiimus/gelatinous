@@ -752,10 +752,20 @@ def step_job(soul):
                 # organ, so an unstripped wreck is a working shotgun
                 # nobody is holding (#2284).
                 from world.director.disposal import strip_and_junk
-                strip_and_junk(soul, wreck)
+                report = strip_and_junk(soul, wreck)
+                # strip_and_junk returns a report BECAUSE the strip can
+                # fail quietly (a broad except turns it into None). The
+                # old call discarded it and radioed "Armament secured."
+                # either way, so a dispatcher hearing that had no reason
+                # to send anyone back to a wreck that is still a working
+                # shotgun nobody is holding (#2765, #2284).
+                secured = ("Armament secured."
+                           if report.get("module") is not None
+                           else "Armament NOT recovered — wreck still "
+                                "armed. Requesting a second unit.")
                 _cmd(soul, f"xmit Unit {getattr(soul, 'id', 0) or 0} — "
                            f"{here}. Unit {uid} recovered, not "
-                           f"repairable. Armament secured.")
+                           f"repairable. {secured}")
             else:
                 # DOWNED: leave it for the bench. The mechanic's own
                 # racking behaviour takes it from here.

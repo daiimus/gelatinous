@@ -59,8 +59,11 @@ def strip_and_junk(actor: Any, wreck: Any) -> dict:
     if yard is None or yard == wreck.location:
         return out
     try:
-        wreck.move_to(yard, quiet=True, move_hooks=False)
-        out["junked"] = True
+        # move_to signals a REFUSAL by returning False, not by raising,
+        # so the try alone cannot see one — `junked` read True for a
+        # wreck that never left the room (#2765).
+        out["junked"] = bool(
+            wreck.move_to(yard, quiet=True, move_hooks=False))
     except Exception:  # noqa: BLE001 — the wreck stays put; still disarmed
         pass
     return out

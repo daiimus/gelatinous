@@ -15,6 +15,7 @@ dragging nothing, successfully, with no fault raised.
 """
 from unittest import mock
 
+from evennia.utils.create import create_object
 from evennia.utils.test_resources import EvenniaCommandTest
 
 from world.director import medical
@@ -137,3 +138,38 @@ class TestTheHoldStep(EvenniaCommandTest):
         unit.db.soul_recovering = 4242
         jobs.fault(unit, "test")
         self.assertIsNone(unit.db.soul_recovering)
+
+
+class TestTheReportIsRead(EvenniaCommandTest):
+    """`strip_and_junk` returns a report because the strip can fail
+    quietly — the broad except converts a raising `strip_organ` into
+    `module: None`. The only caller discarded it and radioed "Armament
+    secured." regardless (#2765), so a dispatcher hearing that had no
+    reason to send anyone back to a still-armed wreck.
+    """
+
+    def test_a_refused_move_is_not_a_junking(self):
+        """move_to reports refusal by RETURNING False. The try/except
+        around it could only ever see an exception."""
+        from world.director import disposal
+        wreck = create_object("typeclasses.characters.Character",
+                              key="a wrecked unit", location=self.room1)
+        yard = create_object("typeclasses.rooms.Room", key="the yard")
+        with mock.patch.object(disposal, "scrapyard", return_value=yard), \
+             mock.patch("world.medical.procedures.strip_organ",
+                        return_value=None), \
+             mock.patch.object(type(wreck), "move_to", return_value=False):
+            out = disposal.strip_and_junk(self.char1, wreck)
+        self.assertFalse(out["junked"])
+
+    def test_a_successful_move_still_reads_as_junked(self):
+        from world.director import disposal
+        wreck = create_object("typeclasses.characters.Character",
+                              key="a wrecked unit", location=self.room1)
+        yard = create_object("typeclasses.rooms.Room", key="the yard")
+        with mock.patch.object(disposal, "scrapyard", return_value=yard), \
+             mock.patch("world.medical.procedures.strip_organ",
+                        return_value=None):
+            out = disposal.strip_and_junk(self.char1, wreck)
+        self.assertTrue(out["junked"])
+        self.assertEqual(wreck.location, yard)
