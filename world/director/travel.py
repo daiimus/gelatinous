@@ -7,8 +7,15 @@ dispatch both). The NPC walks by **executing the real exit command**
 messages, and proximity cleanup all apply, and the LLM-NPC mandate (NPCs
 act through real commands) is honoured for deterministic NPCs too.
 
-The route is re-pathed every step, so a changed graph (a blown-open wall,
-a locked door) is handled automatically.
+The route is computed ONCE and walked. A step that does not land where the
+route expects re-pathfinds, but the graph is not otherwise re-read
+mid-journey: A* measures ~18ms per path and per-step re-pathing saturates
+the reactor at commute scale (SOULS_SCALE_HARDENING_SPEC Law 8, §1.5).
+
+So a wall blown open mid-walk does NOT open a shortcut, and a door locked
+behind a walking NPC is noticed one step late rather than at once.
+Anything needing the graph re-read every step — a collapsing corridor, a
+chase — has to arrange that itself.
 """
 
 from __future__ import annotations
