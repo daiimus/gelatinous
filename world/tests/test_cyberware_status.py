@@ -128,3 +128,52 @@ class TestCyberwareSystemReadout(TestCase):
             rendered = render_system(_char(organs))
             print(f"\n===== {label} =====\n{rendered}")
             self.assertTrue(rendered)
+
+
+# --- flesh-mounted abilities read their HOST's condition (#2794) ---------
+
+def _nailz(left_hp, right_hp):
+    """Nailz in both hands — a flesh mount, no prosthetic frame."""
+    data = {"abilities": {"nailz": {"type": "natural_weapon"}}}
+    return _char({
+        "left_metacarpals": _organ("left_hand", left_hp, 10, dict(data)),
+        "right_metacarpals": _organ("right_hand", right_hp, 10, dict(data)),
+    })
+
+
+class TestFleshMountsShowHostDamage(TestCase):
+    """A gun bolted to a damaged hand is not ONLINE (#2794).
+
+    The flesh branch hardcoded the green tag and never called
+    `_status_tag`, so an implant reported ONLINE whatever the host it
+    lives on — while the chrome branch beside it took the worst organ in
+    its group and graded it. Both grade now.
+
+    Hosts are DAMAGED rather than destroyed on purpose: `_cyber_organs`
+    drops an organ at 0 hp before the branch ever sees it, which is
+    reasonable (a destroyed hand is not a host) but means a
+    hp=0 fixture proves nothing about this code.
+    """
+
+    @staticmethod
+    def _tag_line(out):
+        return next(l for l in out.splitlines() if "Nailz" in l)
+
+    def test_intact_hosts_read_online(self):
+        self.assertIn("ONLINE", self._tag_line(render_system(_nailz(10, 10))))
+
+    def test_a_damaged_host_downgrades_the_tag(self):
+        line = self._tag_line(render_system(_nailz(10, 3)))
+        self.assertNotIn("ONLINE", line)
+        self.assertIn("DAMAGED", line)
+
+    def test_the_worst_host_decides(self):
+        """One good hand does not redeem the other."""
+        self.assertEqual(
+            self._tag_line(render_system(_nailz(10, 3))),
+            self._tag_line(render_system(_nailz(3, 3))),
+        )
+
+    def test_condition_prose_follows_the_tag(self):
+        out = render_system(_nailz(10, 3))
+        self.assertIn("degraded", out)
