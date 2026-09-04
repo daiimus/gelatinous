@@ -106,6 +106,28 @@ class TestTheHandover(EvenniaCommandTest):
         self.assertGreaterEqual(
             int(self.counter.attributes.get("register")), 0)
 
+    def test_no_parcel_no_fee(self):
+        """The mirror of the unpaid delivery, and NOT a second ruling.
+        `package` defaults to None, so any caller handing over nothing
+        emptied the till and filed a "delivery" audit row for it."""
+        self.counter.attributes.add("register", 10)
+        out = courier.hand_over(self.rabbit, self.counter, None)
+        self.assertFalse(out["delivered"])
+        self.assertEqual(out["paid"], 0)
+        self.assertEqual(self.rabbit.tokens, 0)
+        self.assertEqual(self.counter.attributes.get("register"), 10)
+
+    def test_a_refused_move_is_not_a_delivery(self):
+        """move_to signals refusal by RETURNING False. The try/except
+        around it could only ever see an exception."""
+        self.counter.attributes.add("register", 10)
+        pkg = self._package()
+        with mock.patch.object(type(pkg), "move_to", return_value=False):
+            out = courier.hand_over(self.rabbit, self.counter, pkg)
+        self.assertFalse(out["delivered"])
+        self.assertEqual(self.rabbit.tokens, 0)
+        self.assertEqual(self.counter.attributes.get("register"), 10)
+
     def test_the_fee_is_testing_scale(self):
         """One token, deliberately. She runs all shift; at a realistic
         fee she would strip every till in the colony inside a day."""
@@ -387,6 +409,31 @@ class TestSheAsksForTheCrane(EvenniaCommandTest):
         said = " ".join(c.args[0] for c in cmd.call_args_list)
         self.assertIn("tune", said)
         self.assertIn(courier.CRANE_BAND, said)
+
+    def test_the_canonical_band_counts_as_tuned(self):
+        """`tune` stores "27MHz"; CRANE_BAND is "27.0". The raw string
+        compare was unsatisfiable, so she re-tuned on every call."""
+        self._handset(on=True, freq="27MHz")
+        with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:
+            self.assertTrue(courier.call_the_crane(self.rabbit, 2))
+        self.assertNotIn("tune", " ".join(c.args[0]
+                                          for c in cmd.call_args_list))
+
+    def test_a_handset_that_would_not_come_on_is_not_a_transmission(self):
+        """She returned True on having FOUND a radio. The toggle, the
+        tune and the xmit were all unchecked."""
+        self._handset(on=False, freq="27MHz")
+        with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:
+            self.assertFalse(courier.call_the_crane(self.rabbit, 2))
+        self.assertNotIn("xmit", " ".join(c.args[0]
+                                          for c in cmd.call_args_list))
+
+    def test_a_handset_that_would_not_tune_is_not_a_transmission(self):
+        self._handset(on=True, freq="911MHz")
+        with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:
+            self.assertFalse(courier.call_the_crane(self.rabbit, 2))
+        self.assertNotIn("xmit", " ".join(c.args[0]
+                                          for c in cmd.call_args_list))
 
     def test_already_tuned_means_no_fiddling(self):
         self._handset(on=True, freq="27.0")

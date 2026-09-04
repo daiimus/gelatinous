@@ -155,10 +155,20 @@ def hand_over(soul: Any, counter: Any, package: Any = None) -> dict:
     if package is not None and package.pk:
         target = keeper if keeper is not None else counter
         try:
-            package.move_to(target, quiet=True, move_hooks=False)
-            out["delivered"] = True
+            # move_to reports a refusal by RETURNING False, not by
+            # raising, so the try alone cannot see one (#2763).
+            out["delivered"] = bool(
+                package.move_to(target, quiet=True, move_hooks=False))
         except Exception:  # noqa: BLE001 — a stuck parcel is not a crash
             pass
+
+    # Deliver-then-pay is asymmetric ON PURPOSE — see the docstring — but
+    # only in the one direction. Nothing delivered, nothing owed: without
+    # this gate a caller passing no parcel (the default!) emptied FEE from
+    # a real till into a real wallet and filed a "delivery" audit row for
+    # a parcel that never moved.
+    if not out["delivered"]:
+        return out
 
     till = int(counter.attributes.get(REGISTER, 0) or 0)
     if till >= FEE:
@@ -270,19 +280,32 @@ def crane_level_wanted(soul):
 
 
 def call_the_crane(soul, level) -> bool:
-    """Key the handset and ask for a level. True if she transmitted.
+    """Key the handset and ask for a level. True if she keyed a powered
+    handset tuned to the crane band — the strongest claim available,
+    since `xmit` itself reports nothing back.
 
     Uses the REAL verb on a REAL carried radio, so the console hears it
     exactly as it hears a player — no back door, and the operator can
     refuse, be absent, or ask her to confirm.
     """
-    from world.radio import is_radio
+    from world.radio import frequency_of, is_powered, is_radio, same_band
     handset = next((o for o in soul.contents if is_radio(o)), None)
     if handset is None:
         return False
-    if not handset.attributes.get("radio_on"):
+    if not is_powered(handset):
         soul.execute_cmd(f"toggle {handset.key} on")
-    if str(handset.attributes.get("frequency") or "") != CRANE_BAND:
+    # `tune` stores the CANONICAL band ("27MHz"), so a raw string compare
+    # against CRANE_BAND ("27.0") could never be satisfied and she
+    # re-tuned an already-tuned handset on every single call. same_band
+    # is the comparison the radio layer provides for exactly this.
+    if not same_band(frequency_of(handset), CRANE_BAND):
         soul.execute_cmd(f"tune {handset.key} to {CRANE_BAND}")
+    # execute_cmd returns nothing useful, so the device's own state is
+    # the only honest evidence the two setup verbs took. Without this the
+    # function returned True on having FOUND a radio, and a caller
+    # believed a request reached Ossie that never left the room.
+    if not is_powered(handset) or not same_band(frequency_of(handset),
+                                                CRANE_BAND):
+        return False
     soul.execute_cmd(f"xmit Ossie, Rabbit. Bring the box to {level}.")
     return True
