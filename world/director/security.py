@@ -60,6 +60,12 @@ INVESTIGATE_SECONDS = 30.0
 #: and decking. Everyone else describes.
 BOLO_CHANNELS = ("machine", "witness", "radio")
 
+#: The integrated weapon a security unit draws to engage — the ABILITY
+#: name the ``/<ability>`` toggle takes, not the organ key (that is
+#: ``world.director.disposal.ARMAMENT``, which names the hardware the
+#: recovery errand strips off a wreck).
+ARM_WEAPON = "shotgun"
+
 
 def build_bolo(perp: Any, *, via: str = "witness", by: Any = None) -> dict | None:
     """Snapshot what an observer on channel *via* could honestly pass on.
@@ -230,6 +236,46 @@ def _release_aim(npc: Any) -> None:
         _cmd(npc, "aim stop")
 
 
+def _weapon_deployed(npc: Any, ability: str = ARM_WEAPON) -> bool:
+    """Is *npc*'s integrated weapon currently out?
+
+    ``/<ability>`` is a TOGGLE over state persisted on the organ, so the
+    only safe way to reach a known position is to read it first. Reads
+    the same record the toggle writes.
+    """
+    try:
+        from world.medical.augments import _ability_state, find_ability
+        organ, _spec = find_ability(npc, ability)
+        if organ is None:
+            return False
+        return bool(_ability_state(organ, ability).get("deployed"))
+    except Exception:  # noqa: BLE001 — unreadable hardware reads as stowed
+        return False
+
+
+def _draw_weapon(npc: Any, ability: str = ARM_WEAPON) -> None:
+    """Put the integrated weapon out, if it is not already (#2760).
+
+    The toggle is not idempotent: issuing it against an already-deployed
+    weapon RETRACTS it, which is how units ended up attacking with an
+    empty hand on every second engagement.
+    """
+    if not _weapon_deployed(npc, ability):
+        _cmd(npc, f"/{ability}")
+
+
+def _stow_weapon(npc: Any, ability: str = ARM_WEAPON) -> None:
+    """Put the integrated weapon away when standing down (#2760).
+
+    Paired with :func:`_draw_weapon` so a unit's hardware state follows
+    its ASSIGNMENT rather than the parity of how many fights it has been
+    in. Deliberately NOT called on death: a wrecked unit keeps its
+    armament for the recovery errand to strip (`strip_and_junk`).
+    """
+    if _weapon_deployed(npc, ability):
+        _cmd(npc, f"/{ability}")
+
+
 def _in_combat(char: Any) -> bool:
     """Is *char* currently in an active combat handler?
 
@@ -262,7 +308,7 @@ def _engage(npc: Any, assignment: Any, suspect: Any) -> None:
     assignment.payload["engaged"] = True
     _cmd(npc, "say Cease, Colonist. Violence in progress: "
               "force is authorized.")
-    _cmd(npc, "/shotgun")   # deploy the integrated riot gun
+    _draw_weapon(npc)       # deploy the integrated riot gun (#2760: toggle)
     _cmd(npc, f"attack {_target_token(suspect)}")
 
 
@@ -456,6 +502,7 @@ def watch_once(npc: Any) -> bool:
         if holding:
             _cmd(npc, "emote logs the subject's presence and stands down.")
         _release_aim(npc)   # lower the weapon before walking home
+        _stow_weapon(npc)   # ...and put the arm gun away (#2760)
         return False
     _cmd(npc, "emote holds position, optics locked on its subject.")
     return True
@@ -475,6 +522,7 @@ def security_completion(npc: Any, assignment: Any) -> None:
     """Back at post: sync local sightings into the force-wide wanted
     record (§5.1 — intel goes force-wide only *here*; the walk home is
     the latency window, and a bot that never makes it back never syncs)."""
+    _stow_weapon(npc)   # back at post: hardware follows the assignment (#2760)
     if sync_bot_intel(npc):
         _cmd(npc, "emote docks at its post and uplinks patrol data.")
 
