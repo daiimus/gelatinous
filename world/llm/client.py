@@ -52,14 +52,24 @@ _breaker = {}          # lane -> {"fails": int, "until": float}
 
 def _lane_down(lane) -> bool:
     """Is this lane tripped? Half-opens once the cooldown elapses, so the
-    lane heals itself the moment the sidecar comes back."""
+    lane heals itself the moment the sidecar comes back.
+
+    Exactly ONE probe goes through per cooldown. Knocking `fails` down to
+    `BREAKER_TRIP - 1` did not achieve that: the leading `fails <
+    BREAKER_TRIP` check then short-circuited for every subsequent call,
+    so the lane read as healthy until a failure was RECORDED — and
+    failures are recorded on the errback, a full timeout later. Every
+    beat firing in that window was dispatched at a sidecar still down
+    (#2769). `probing` closes the window explicitly.
+    """
     from time import monotonic
     state = _breaker.get(lane)
     if not state or state["fails"] < BREAKER_TRIP:
         return False
+    if state.get("probing"):
+        return True                      # a probe is already in flight
     if monotonic() >= state["until"]:
-        # half-open: let the next call through. One more failure re-trips.
-        state["fails"] = BREAKER_TRIP - 1
+        state["probing"] = True
         return False
     return True
 
@@ -68,6 +78,7 @@ def note_transport_failure(lane="gm"):
     """A lane failed to answer at the transport level."""
     from time import monotonic
     state = _breaker.setdefault(lane, {"fails": 0, "until": 0.0})
+    state["probing"] = False       # the probe came back: allow the next one
     state["fails"] += 1
     state["until"] = monotonic() + BREAKER_COOLDOWN
     if state["fails"] == BREAKER_TRIP:
@@ -79,6 +90,8 @@ def note_transport_failure(lane="gm"):
 def note_transport_success(lane="gm"):
     """A lane answered — clear its record."""
     state = _breaker.get(lane)
+    if state:
+        state["probing"] = False
     if state and state["fails"]:
         if state["fails"] >= BREAKER_TRIP:
             logger.log_info(f"LLM lane '{lane}' is answering again.")
