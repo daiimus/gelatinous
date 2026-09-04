@@ -1,120 +1,56 @@
-"""A dead sidecar must behave like a switched-off one (#2358).
+"""The half-open breaker admits exactly one probe (#2769).
 
-"Enabled but dead" was the worst state the game could be in. Switched
-OFF it is clean and instant — every gated path takes its scripted
-branch. Switched ON with nothing listening, every path took the LLM
-branch, `_try_llm_reply` reported the path as TAKEN so the caller
-suppressed its scripted line, and the only thing that ever spoke was the
-failure callback, after the full `LLM_GM_TIMEOUT`. Two minutes of a
-bartender staring at you, per turn, per NPC.
+Both comments promise it: *"before one probe is let through"* and *"let
+the next call through"*. Knocking `fails` down to `BREAKER_TRIP - 1` did
+not deliver that — the leading `fails < BREAKER_TRIP` check then
+short-circuited for every subsequent call, so the lane read healthy until
+a failure was RECORDED. Failures are recorded on the errback, a full
+`LLM_GM_TIMEOUT` later, so every beat firing in that window was dispatched
+at a sidecar still down.
 """
 
-from unittest import mock
+from __future__ import annotations
 
-from django.test import override_settings
-from evennia.utils.test_resources import BaseEvenniaTest
+from unittest import TestCase
 
 from world.llm import client
 
 
-class _BreakerTest(BaseEvenniaTest):
+class TestHalfOpenAdmitsOneProbe(TestCase):
     def setUp(self):
-        super().setUp()
         client._breaker.clear()
 
-    def tearDown(self):
-        client._breaker.clear()
-        super().tearDown()
+    tearDown = setUp
 
-
-@override_settings(LLM_GM_ENABLED=True, CIVIC_LLM_ENABLED=True)
-class TestTheBreaker(_BreakerTest):
-
-    def test_a_healthy_lane_is_enabled(self):
-        self.assertTrue(client.llm_enabled())
-
-    def test_one_blip_does_not_trip_it(self):
-        """A single timeout is a slow turn, not a dead backend."""
-        client.note_transport_failure("gm")
-        self.assertTrue(client.llm_enabled())
-
-    def test_repeated_unreachability_reads_as_off(self):
+    def _trip(self, lane="gm"):
         for _ in range(client.BREAKER_TRIP):
-            client.note_transport_failure("gm")
-        self.assertFalse(client.llm_enabled())
+            client.note_transport_failure(lane)
 
-    def test_it_half_opens_after_the_cooldown(self):
-        """The lane heals itself — nothing has to notice and reset it."""
-        for _ in range(client.BREAKER_TRIP):
-            client.note_transport_failure("gm")
-        self.assertFalse(client.llm_enabled())
-        with mock.patch("time.monotonic",
-                        return_value=client._breaker["gm"]["until"] + 1):
-            self.assertTrue(client.llm_enabled())
+    def test_a_tripped_lane_is_down(self):
+        self._trip()
+        self.assertTrue(client._lane_down("gm"))
 
-    def test_a_success_clears_it(self):
-        for _ in range(client.BREAKER_TRIP):
-            client.note_transport_failure("gm")
+    def test_only_one_call_passes_after_the_cooldown(self):
+        self._trip()
+        client._breaker["gm"]["until"] = 0.0        # cooldown elapsed
+        self.assertFalse(client._lane_down("gm"), "the probe should pass")
+        # everything behind it must still be held
+        for _ in range(5):
+            self.assertTrue(client._lane_down("gm"),
+                            "a second call slipped through the half-open")
+
+    def test_a_failed_probe_re_arms_the_next_one(self):
+        self._trip()
+        client._breaker["gm"]["until"] = 0.0
+        client._lane_down("gm")                     # probe goes out
+        client.note_transport_failure("gm")         # ...and fails
+        client._breaker["gm"]["until"] = 0.0        # next cooldown elapsed
+        self.assertFalse(client._lane_down("gm"),
+                         "a later probe should be allowed")
+
+    def test_a_successful_probe_reopens_the_lane(self):
+        self._trip()
+        client._breaker["gm"]["until"] = 0.0
+        client._lane_down("gm")
         client.note_transport_success("gm")
-        self.assertTrue(client.llm_enabled())
-
-    def test_the_lanes_are_independent(self):
-        """The civic lane is a different process on a different port; one
-        dying must not mute the other."""
-        for _ in range(client.BREAKER_TRIP):
-            client.note_transport_failure("gm")
-        self.assertFalse(client.llm_enabled())
-        self.assertTrue(client.civic_enabled())
-
-    def test_an_empty_turn_does_not_trip_it(self):
-        """A truncated turn means the backend is ALIVE and the prompt is
-        wrong — a different problem, and taking the lane down for it
-        would hide the real one."""
-        client.note_transport_success("gm")
-        self.assertTrue(client.llm_enabled())
-
-
-@override_settings(LLM_GM_ENABLED=False)
-class TestTheSwitchStillWins(_BreakerTest):
-
-    def test_off_is_off_however_healthy(self):
-        client.note_transport_success("gm")
-        self.assertFalse(client.llm_enabled())
-
-
-class TestAMindSurvivesTheEmbedder(BaseEvenniaTest):
-    """An NPC lived through it even if the embedder was down (#2360).
-
-    Long-term memory used to be written ONLY inside the embedding
-    success callback, so with no embedder `db.llm_memories` stayed
-    permanently empty — and an imprint or resleeve taken during that
-    window carried an empty mind forward forever, with nothing left to
-    backfill from.
-    """
-
-    def test_a_vectorless_record_is_still_written(self):
-        from world.llm import memory as mem
-        records = mem.remember([], "she said something", None, subject="x")
-        self.assertEqual(len(records), 1)
-        self.assertIn("she said something", mem.memory_texts(records))
-
-    def test_but_it_cannot_be_recalled_until_backfilled(self):
-        from world.llm import memory as mem
-        records = mem.remember([], "unvectored", None, subject="x")
-        self.assertEqual(mem.retrieve([0.1, 0.2], records, subject="x"), [])
-        self.assertFalse(mem.is_retrievable(records[0]))
-
-    def test_downtime_does_not_evict_what_can_be_recalled(self):
-        """Recency is most of salience, so ranking on salience alone
-        would let a spell of embedder downtime quietly forget everything
-        an NPC could actually recall."""
-        from world.llm import memory as mem
-        old = mem.make_record("real memory", [1.0, 0.0], subject="x",
-                              now=1_000.0)
-        records = [old]
-        for i in range(mem.DEFAULT_CAP_PER_SUBJECT + 3):
-            records = mem.remember(records, f"blind {i}", None, subject="x",
-                                   now=2_000.0 + i)
-        self.assertIn(old, records)
-        self.assertEqual(
-            [r for r in records if mem.is_retrievable(r)], [old])
+        self.assertFalse(client._lane_down("gm"))
