@@ -713,15 +713,27 @@ def get_short_sdesc(char, article: bool = True) -> str:
     aren't set.
     """
     from world.grammar import DEFAULT_SDESC_KEYWORDS, get_article
+    # Presentation overrides take precedence over the real axes, exactly
+    # as `Character.get_sdesc` consumes them. Reading the base attributes
+    # here leaked a MASKED character's true descriptor through the very
+    # handle this function exists to provide — an LLM NPC addressing "the
+    # stocky droog" got "the portly droog", the body under the mask
+    # (#2806). The docstring's own example is the override value.
+    db = getattr(char, "db", None)
     descriptor = ""
-    height, build = getattr(char, "height", None), getattr(char, "build", None)
+    height = (getattr(db, "height_override", None) if db is not None else None) \
+        or getattr(char, "height", None)
+    build = (getattr(db, "build_override", None) if db is not None else None) \
+        or getattr(char, "build", None)
     if height and build:
         try:
             descriptor = get_physical_descriptor(height, build)
         except (KeyError, AttributeError):
             descriptor = ""
-    keyword = (getattr(char, "sdesc_keyword", None) or DEFAULT_SDESC_KEYWORDS.get(
-        getattr(char, "gender", "neutral"), "person"))
+    keyword = ((getattr(db, "keyword_override", None) if db is not None else None)
+               or getattr(char, "sdesc_keyword", None)
+               or DEFAULT_SDESC_KEYWORDS.get(
+                   getattr(char, "gender", "neutral"), "person"))
     core = compose_sdesc(descriptor, keyword).strip() if descriptor else keyword
     if not core:
         return getattr(char, "key", "someone")
