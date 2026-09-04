@@ -79,7 +79,12 @@ RING = 400
 #: Checkpoint the ring to disk every N emits (writes are the budget).
 CHECKPOINT_EVERY = 25
 
-_ring = []            # in-process: [(stamp, kind, layer, zone, weight, note)]
+#: In-process ring: [(stamp, kind, layer, zone, weight, note)].
+#: ``None`` until `_load` rehydrates it — distinct from a loaded-and-EMPTY
+#: ring, which is the normal state after a flush and on a cold start. A
+#: truthiness memo could not tell those apart, so an empty ring re-read the
+#: database on every call and the docstring's "once" was false (#2818).
+_ring = None
 _since_checkpoint = 0
 
 
@@ -91,7 +96,7 @@ def _heartbeat():
 def _load():
     """Rehydrate the ring after a reload, once."""
     global _ring
-    if _ring:
+    if _ring is not None:
         return _ring
     hb = _heartbeat()
     stored = (hb.db.wsis_ring if hb else None) or []
