@@ -98,9 +98,12 @@ def colony_year():
     """
     Years since planetfall — CY. Currently 61.
 
-    Returns the *local* reckoning, not TST.
+    Returns the *local* reckoning, not TST — the colony sits at
+    ``COLONY_UTC_OFFSET``, so for the hours between the two new years
+    these disagree, and the ``{cy}`` token renders from ``colony_now``
+    (#2772).
     """
-    return tst_now().year - FOUNDING_YEAR_TST
+    return colony_now().year - FOUNDING_YEAR_TST
 
 
 # -- timestamps ---------------------------------------------------------

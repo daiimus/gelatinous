@@ -194,3 +194,67 @@ class TestSleeveDatesRenderInColonyTime(EvenniaTest):
         born = datetime(2025, 11, 13, 5, 43, tzinfo=timezone.utc).timestamp()
         died = datetime(2025, 11, 13, 5, 45, tzinfo=timezone.utc).timestamp()
         self.assertEqual(gametime.since(born, now=died), 120.0)
+
+
+class TestTimeTokensReachThePlayer(EvenniaTest):
+    """Tokens must render where a player LOOKS, not just in the helper.
+
+    `render_time_tokens` has one call site — `ObjectParent.get_display_desc`.
+    `Room` overrides that method to compose its perception-gated sense
+    layers and never called it; `Exit` does not inherit `ObjectParent` at
+    all. So an authored `{time}` rendered literally on both, while passing
+    every test aimed at the helper (#2772).
+
+    These go through `get_display_desc` deliberately: this exact defect
+    shipped once already behind a helper-level test.
+    """
+
+    def test_a_room_renders_its_time_token(self):
+        self.room1.db.desc = "A bar. The clock reads {time}."
+        shown = self.room1.get_display_desc(self.char1)
+        self.assertNotIn("{time}", shown)
+        self.assertIn("The clock reads", shown)
+
+    def test_an_exit_renders_its_time_token(self):
+        self.exit.db.desc = "A doorway. A chrono shows {time12}."
+        shown = str(self.exit.get_display_desc(self.char1))
+        self.assertNotIn("{time12}", shown)
+
+    def test_a_room_without_tokens_is_untouched(self):
+        self.room1.db.desc = "A plain room, no clocks."
+        self.assertIn("A plain room, no clocks.",
+                      self.room1.get_display_desc(self.char1))
+
+
+class TestColonyYearMatchesItsToken(EvenniaTest):
+    """`colony_year()` and `{cy}` must name the same year (#2772).
+
+    `colony_year` computed from `tst_now()` (UTC) while the token renders
+    from `colony_now()` (UTC-8), so for the eight hours between the two
+    new years they disagreed — and the docstring described the local
+    reckoning the function did not use.
+    """
+
+    def test_they_agree(self):
+        self.assertEqual(f"CY {gametime.colony_year()}",
+                         gametime.render_time_tokens("{cy}"))
+
+    def test_colony_year_uses_the_colony_clock(self):
+        self.assertEqual(
+            gametime.colony_year(),
+            gametime.colony_now().year - gametime.FOUNDING_YEAR_TST)
+
+    def test_they_agree_across_the_new_year_gap(self):
+        """The eight hours where the two clocks disagree.
+
+        The colony sits at UTC-8, so UTC crosses midnight on New Year
+        first. Both plain assertions above pass on any ordinary day —
+        this is the only window where the bug was visible, so it has to
+        be pinned with the clock held still.
+        """
+        just_past_utc_newyear = datetime(2027, 1, 1, 3, 0,
+                                         tzinfo=timezone.utc)
+        with mock.patch.object(gametime, "_real_utc",
+                               return_value=just_past_utc_newyear):
+            self.assertEqual(f"CY {gametime.colony_year()}",
+                             gametime.render_time_tokens("{cy}"))
