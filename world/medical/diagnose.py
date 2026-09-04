@@ -95,16 +95,27 @@ def classify_condition_rung(patient) -> str:
     the rung is always visible to the surgeon inside the chart.
 
     Corpses and severed parts (no live ``medical_state``) report
-    as :data:`RUNG_DECEASED` — detected by the presence of a
-    ``death_time`` attribute on ``.db``, which both
-    :class:`~typeclasses.corpse.Corpse` and
-    :class:`~typeclasses.items.SeveredHead` stamp at creation.
+    as :data:`RUNG_DECEASED` — detected by a ``death_time`` stamp, or
+    by the ``medical_state_at_death`` snapshot that every severed part
+    carries. The second test exists because the docstring used to name
+    only :class:`~typeclasses.corpse.Corpse` and
+    :class:`~typeclasses.items.SeveredHead` as stampers, and
+    :class:`~typeclasses.items.Appendage` — the third — did not stamp,
+    so a severed arm fell through to the healthiest rung and reported
+    itself stable. Appendage stamps now; this keeps the parts already
+    in the world honest without rewriting their attributes (#2811).
     """
     state = getattr(patient, "medical_state", None)
     if state is None:
         db = getattr(patient, "db", None)
         if db is not None and getattr(db, "death_time", None) is not None:
             return RUNG_DECEASED
+        attrs = getattr(patient, "attributes", None)
+        try:
+            if attrs is not None and attrs.has("medical_state_at_death"):
+                return RUNG_DECEASED
+        except Exception:  # noqa: BLE001 — a mock or a bare object
+            pass
         return RUNG_STABLE
 
     is_dead = getattr(state, "is_dead", None)

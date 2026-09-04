@@ -20,7 +20,13 @@ import time
 from unittest import TestCase
 from unittest.mock import patch
 
+from evennia.utils.create import create_object
+from evennia.utils.test_resources import EvenniaCommandTest
+
 from world.medical import diagnose as dx
+from world.medical.diagnose import (
+    RUNG_DECEASED, RUNG_STABLE, classify_condition_rung,
+)
 
 
 # ---------------------------------------------------------------------
@@ -463,3 +469,42 @@ class TestConditionRendering(TestCase):
         joined = "\n".join(lines)
         self.assertIn("haemorrhage", joined)
         self.assertIn("thoracic", joined)
+
+
+class TestSeveredPartsAreNotStable(EvenniaCommandTest):
+    """A severed limb on the table reported `condition: stable` (#2811).
+
+    `classify_condition_rung` detects dead tissue by a `death_time`
+    stamp, and its docstring named the two typeclasses that carry one --
+    Corpse and SeveredHead. There are three. Appendage never stamped it,
+    so an arm fell through to the healthiest rung on the ladder. Fourteen
+    of them were in the world reporting stable.
+    """
+
+    def test_a_fresh_appendage_stamps_its_death(self):
+        limb = create_object("typeclasses.items.Appendage",
+                             key="a left arm", location=self.room1)
+        self.assertIsNotNone(limb.db.death_time)
+        self.assertEqual(classify_condition_rung(limb), RUNG_DECEASED)
+
+    def test_a_severed_head_still_reads_deceased(self):
+        head = create_object("typeclasses.items.SeveredHead",
+                             key="a head", location=self.room1)
+        self.assertEqual(classify_condition_rung(head), RUNG_DECEASED)
+
+    def test_a_part_predating_the_stamp_is_still_dead_tissue(self):
+        """The fourteen already in the world carry no death_time and
+        will never gain one without a data rewrite. The snapshot every
+        severed part carries is the second signal."""
+        limb = create_object("typeclasses.items.Appendage",
+                             key="an old arm", location=self.room1)
+        limb.attributes.remove("death_time")
+        self.assertTrue(limb.attributes.has("medical_state_at_death"))
+        self.assertEqual(classify_condition_rung(limb), RUNG_DECEASED)
+
+    def test_an_ordinary_item_is_not_a_corpse(self):
+        """The pin: the fallback must stay a fallback. A knife has no
+        medical_state either, and is not deceased."""
+        knife = create_object("typeclasses.items.Item",
+                              key="a knife", location=self.room1)
+        self.assertEqual(classify_condition_rung(knife), RUNG_STABLE)
