@@ -137,3 +137,36 @@ class TestBothPathsUseIt(EvenniaCommandTest):
         src = inspect.getsource(charcreate.create_flash_clone)
         self.assertIn("imprint_mod.restore", src)
         self.assertNotIn("recognition_memory is NOT inherited", src)
+
+
+class TestRestoreAppliesOnlyWhatTheRecordHolds(EvenniaCommandTest):
+    """A record without face/voice must not erase the body's own (#2799).
+
+    `restore` guards four fields with `if snap.get(...)` and wrote the
+    last two unconditionally, `or {}`-ing a missing key into an empty
+    dict. Restoring a record written before recognition existed therefore
+    wiped the recognition and voice memory of the body it was restored
+    onto — silently, and totally.
+
+    The docstring already states the contract: "Applies only what the
+    record holds."
+    """
+
+    def test_a_record_without_recognition_leaves_it_alone(self):
+        self.char1.recognition_memory = {"uid-a": {"assigned_name": "Sully"}}
+        self.char1.voice_memory = {"v-a": {"assigned_name": "Sully"}}
+        # a legacy snapshot: no recognition/voice keys at all
+        imprint.restore(self.char1, {"sleeve_uid": "sleeve-1"})
+        self.assertEqual(self.char1.recognition_memory,
+                         {"uid-a": {"assigned_name": "Sully"}})
+        self.assertEqual(self.char1.voice_memory,
+                         {"v-a": {"assigned_name": "Sully"}})
+
+    def test_a_record_that_holds_them_still_applies(self):
+        self.char1.recognition_memory = {"old": {"assigned_name": "Old"}}
+        imprint.restore(self.char1, {
+            "sleeve_uid": "sleeve-1",
+            "recognition": {"uid-b": {"assigned_name": "Vesper",
+                                      "first_seen": 0}},
+        })
+        self.assertIn("uid-b", self.char1.recognition_memory)

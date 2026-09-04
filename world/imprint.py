@@ -158,8 +158,14 @@ def restore(body, snap, now=None):
                 kept[uid] = fresh
         body.db.soul_opinions = kept
 
-    # ...and who they knew, by face and by voice, on the same terms.
-    body.recognition_memory = remembered_before(
-        snap.get("recognition") or {}, cutoff)
-    body.voice_memory = remembered_before(snap.get("voice") or {}, cutoff)
+    # ...and who they knew, by face and by voice, on the same terms —
+    # which means GUARDED like the four above. Written unconditionally,
+    # `or {}` turned a record that simply lacks these keys (one written
+    # before recognition existed) into an empty dict, and restoring it
+    # wiped the face and voice memory of the body being restored onto.
+    # "Applies only what the record holds" is the contract (#2799).
+    if snap.get("recognition"):
+        body.recognition_memory = remembered_before(snap["recognition"], cutoff)
+    if snap.get("voice"):
+        body.voice_memory = remembered_before(snap["voice"], cutoff)
     return True
