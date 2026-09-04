@@ -1,4 +1,4 @@
-SCALPEL_MESSAGES = {
+MESSAGES = {
     "initiate": [
         {
             'attacker_msg': "You draw a scalpel, the blade catching the light with surgical intent.",
