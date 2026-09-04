@@ -42,6 +42,10 @@ WITNESS_DESPAWN_DELAY = 90.0
 #: months later, wearing the crowd's clothes and carrying a walkie
 #: (#2367). Anything this old has outlived every legitimate window.
 WITNESS_MAX_AGE = 600.0
+
+#: Lookup index for flash-temp witnesses. An attribute records WHAT a
+#: thing is; a tag is how you FIND it without a table scan (Law 3).
+WITNESS_TAG = ("flash_witness", "director")
 #: §5.2: civilians carry pockets worth mugging, not farming.
 WITNESS_TOKENS = (100, 500)
 
@@ -130,6 +134,11 @@ def spawn_witness(location: Any) -> Any | None:
     witness.db.is_npc = True   # the canonical NPC marker (absence = PC)
     witness.db.tokens = randint(*WITNESS_TOKENS)          # §5.2 pockets
     witness.db.is_witness = True
+    # Tagged as well as flagged: the stranded-witness sweep runs on the
+    # 45s heartbeat and used to walk the WHOLE object table to find these
+    # (SOULS_SCALE_HARDENING_SPEC Law 8), because an attribute is not a
+    # lookup. Law 3 says tags for lookup — this is the index (#2759).
+    witness.tags.add(WITNESS_TAG[0], category=WITNESS_TAG[1])
     # The visible tell — this is who saw you, and what they're about to do.
     witness.look_place = ("edging away from the scene, one hand on a "
                           "battered walkie-talkie.")
@@ -284,21 +293,28 @@ def sweep_stranded(now: float | None = None) -> int:
     cheaper to check than an event that must be caught.
     """
     import time
-    from typeclasses.characters import Character
-    from evennia.objects.models import ObjectDB
+    from evennia.utils.search import search_tag
     now = time.time() if now is None else now
     swept = 0
-    for obj in ObjectDB.objects.all():
+    # The TAG is only the index. `db.is_witness` remains the marker —
+    # "the marker is the whole qualification" — so a stray tag cannot
+    # make something a witness, and the semantics are unchanged.
+    for obj in search_tag(WITNESS_TAG[0], category=WITNESS_TAG[1]):
         try:
-            if not isinstance(obj, Character) or not obj.db.is_witness:
+            if not obj.pk or not obj.db.is_witness:
                 continue
             created = obj.db_date_created
             if created is None:
                 continue
             if (now - created.timestamp()) < WITNESS_MAX_AGE:
                 continue
+            # Count what actually WENT. `despawn_witness` declines the
+            # dead — the corpse pipeline owns them — so counting the call
+            # reported a stranded witness despawned every 45 seconds,
+            # forever, for a body that was never removed (#2759).
             despawn_witness(obj)
-            swept += 1
+            if not obj.pk:
+                swept += 1
         except Exception:  # noqa: BLE001 — one bad body can't stop the sweep
             continue
     return swept
