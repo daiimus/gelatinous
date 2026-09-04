@@ -17,6 +17,8 @@ import time
 
 from evennia.utils.search import search_object
 
+from world.souls.posts import POST_TAG
+
 
 def _resolve(dbref):
     hits = search_object(dbref)
@@ -40,6 +42,14 @@ def snapshot_keeper_memory(npc):
                 continue
             fixture = _resolve(post["fixture"])
             if not fixture or fixture.db.post_keeper != npc:
+                continue
+            # REFUSE a non-post, exactly as `_install_keeper` does. Both
+            # write a complete, valid-looking record onto whatever they
+            # are handed, and build 117 handed that one the dispatch
+            # CONSOLE (#2259). The guard was added at that seam and not
+            # this one, so a stale blueprint dbref could still drop a
+            # keeper's dossiers onto an arbitrary object (#2808).
+            if not fixture.tags.get(POST_TAG[0], category=POST_TAG[1]):
                 continue
             fixture.db.post_memory_snapshot = {
                 "keeper": npc.key,
