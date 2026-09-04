@@ -36,6 +36,33 @@ WOUND_HALFLIFE = 3 * 24 * 3600
 #: betrayal) without touching the decay maths.
 WOUND_KEYS = {"against_my_nature"}
 
+#: Where a soul's OWN wound keys live. `WOUND_KEYS` above is the shared
+#: baseline; anything recorded with `wound=True` is added here, on the
+#: soul, so it survives a reload. It used to be added to the module set
+#: instead — which died with the process, silently dropping a grudge from
+#: a three-day half-life to six hours, and which was shared, so the first
+#: soul to record a key made it a wound for everyone (#2783).
+_WOUND_ATTR = "soul_wound_keys"
+
+
+def _wound_keys(soul):
+    """The keys that decay slowly FOR THIS SOUL."""
+    try:
+        own = set(getattr(soul.db, _WOUND_ATTR, None) or ())
+    except Exception:  # noqa: BLE001 — an unreadable body has no wounds
+        own = set()
+    return WOUND_KEYS | own
+
+
+def _mark_wound(soul, key):
+    try:
+        own = set(getattr(soul.db, _WOUND_ATTR, None) or ())
+        if key not in own:
+            own.add(key)
+            setattr(soul.db, _WOUND_ATTR, sorted(own))
+    except Exception:  # noqa: BLE001 — never block a feeling on bookkeeping
+        pass
+
 
 def add_thought(soul, key, valence, note="", wound=False):
     """Record a thought; feed the RAG memory when it's significant.
@@ -44,7 +71,7 @@ def add_thought(soul, key, valence, note="", wound=False):
     as ONE sustained misery, not twenty, and can't flood every other
     memory out of the log."""
     if wound:
-        WOUND_KEYS.add(key)
+        _mark_wound(soul, key)
     log = list(soul.db.soul_thoughts or [])
     log.append((time.time(), key, float(valence), note))
     same = [t for t in log if t[1] == key]
@@ -83,13 +110,14 @@ def _feed_rag(soul, note):
         pass
 
 
-def _weight(key, age):
+def _weight(key, age, soul=None):
     """How much a thought of this key still counts after `age` seconds.
 
     The ONE decay rule. Mood and opinion both read it, so a wound fades
     slowly in both or in neither — two half-lives for the same feeling
     would be two doors onto one decision."""
-    half = WOUND_HALFLIFE if key in WOUND_KEYS else HALFLIFE_SECONDS
+    keys = _wound_keys(soul) if soul is not None else WOUND_KEYS
+    half = WOUND_HALFLIFE if key in keys else HALFLIFE_SECONDS
     return 0.5 ** (max(0.0, age) / half)
 
 
@@ -99,7 +127,7 @@ def decayed(soul, now=None):
     out = []
     for stamp, key, valence, note in (soul.db.soul_thoughts or []):
         age = now - stamp
-        out.append((valence * _weight(key, age), key, note, age))
+        out.append((valence * _weight(key, age, soul), key, note, age))
     return out
 
 
@@ -168,7 +196,7 @@ def add_opinion(soul, uid, key, valence, note="", wound=False,
     if not uid or not valence:
         return
     if wound:
-        WOUND_KEYS.add(key)
+        _mark_wound(soul, key)
     book = _opinions(soul)
     entries = [tuple(e) for e in (book.get(uid) or [])]
     entries.append((time.time(), key, float(valence), note))
@@ -202,7 +230,7 @@ def opinion_of(soul, uid, now=None):
         return 0.0
     now = now if now is not None else time.time()
     entries = _opinions(soul).get(uid) or []
-    total = sum(float(v) * _weight(k, now - t) for t, k, v, _n in
+    total = sum(float(v) * _weight(k, now - t, soul) for t, k, v, _n in
                 (tuple(e) for e in entries))
     return max(-1.0, min(1.0, total))
 
@@ -224,7 +252,7 @@ def opinion_note(soul, uid, now=None):
     best, best_note = 0.0, ""
     for e in (_opinions(soul).get(uid) or []):
         stamp, key, valence, note = tuple(e)
-        weighted = abs(float(valence) * _weight(key, now - stamp))
+        weighted = abs(float(valence) * _weight(key, now - stamp, soul))
         if note and weighted > best:
             best, best_note = weighted, note
     return best_note
