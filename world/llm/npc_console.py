@@ -89,12 +89,21 @@ def make_synchronous():
     bar.delay = inline_delay
 
 
+#: DEFAULT_HOME as it was before `enable_llm` cleared it, so the teardown
+#: can restore something `clear_contents` can parse (#2776).
+_teardown_home = None
+
+
 def enable_llm(model, url, timeout):
     """Flip the deployment gate on and point at the sidecar for this process."""
     from django.conf import settings
     settings.LLM_GM_ENABLED = True
     # A bare `migrate` db has no Limbo (#2); without this create_object fails
-    # looking up the (nonexistent) DEFAULT_HOME. Ephemeral scene needs no home.
+    # looking up the (nonexistent) DEFAULT_HOME. Ephemeral scene needs no home
+    # while it RUNS — but delete() does need one, so remember the real value
+    # for the teardown to put back (#2776).
+    global _teardown_home
+    _teardown_home = getattr(settings, "DEFAULT_HOME", None)
     settings.DEFAULT_HOME = None
     if url:
         settings.LLM_GM_URL = url
@@ -321,11 +330,26 @@ def main():
         save_state(npc, puppet, args.state)   # persist before tearing down
         # Ephemeral scene — leave no objects behind (matters if ever run on a
         # real db; harmless in the throwaway).
+        #
+        # `enable_llm` sets DEFAULT_HOME = None so create_object works on a
+        # bare `migrate` db with no Limbo. Evennia's delete() calls
+        # clear_contents(), whose FIRST statement is
+        # `int(settings.DEFAULT_HOME.lstrip("#"))` — ahead of its own try —
+        # so every delete raised AttributeError, the bare except below
+        # swallowed it, and this teardown had never removed anything (#2776).
+        # Restore a home for the duration of the sweep.
+        from django.conf import settings
+        settings.DEFAULT_HOME = _teardown_home or "#2"
+        failed = []
         for obj in (puppet, npc, room):
             try:
                 obj.delete()
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001
+                failed.append(f"{getattr(obj, 'key', obj)}: {exc}")
+        if failed:
+            # An "ephemeral scene" that cannot clean up has to SAY so —
+            # silence here is what hid the bug for the life of the file.
+            print("teardown failed to delete: " + "; ".join(failed))
 
 
 if __name__ == "__main__":
