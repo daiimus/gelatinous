@@ -20,7 +20,7 @@ import re
 
 from evennia.utils import delay
 
-from world.service import register
+from world.service import SILENT, register
 
 #: Roles that work on people. `medic` runs `policy=successor` with no
 #: blueprint, so a generic soul takes that post the moment it falls
@@ -303,7 +303,10 @@ def _treat_tool(post, arg, patron, by):
 for _role in CLINIC_ROLES:
     register(_role, serve_at_clinic,
              aliases=("doctor", "doc", "medic", "surgeon", "ripperdoc"),
-             fallback=None,   # a doctor asked something odd stays quiet
+             # a doctor asked something odd stays quiet -- ON PURPOSE.
+             # SILENT rather than None so the decision is on the record
+             # and the startup warning stays for roles that forgot (#2824).
+             fallback=SILENT,
              archetype="doctor",
              tools={"diagnose": _diagnose, "treat": _treat_tool,
                     "install": _install_tool})

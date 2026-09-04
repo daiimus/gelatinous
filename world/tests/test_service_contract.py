@@ -107,3 +107,59 @@ class TestTheDocstringMatchesTheCall(TestCase):
         four for years while the call site passed five."""
         self.assertIn("handler(post, speech, patron, by, addressed)",
                       service.__doc__)
+
+
+class TestChosenSilenceIsOnTheRecord(TestCase):
+    """`fallback=None` could not tell a considered silence from a
+    forgotten line. The clinic's silence IS considered -- a doctor asked
+    something odd stays quiet, passed explicitly with the reasoning
+    inline -- so a future role registered without a line was
+    indistinguishable from it, and produced a mute NPC nobody finds
+    until a player stands at a counter with the sidecar down (#2824).
+    """
+
+    def setUp(self):
+        self._saved = dict(service.SERVICE)
+        self.addCleanup(lambda: (service.SERVICE.clear(),
+                                 service.SERVICE.update(self._saved)))
+
+    def test_a_forgotten_line_warns_at_registration(self):
+        with mock.patch("evennia.utils.logger.log_warn") as warn:
+            service.register("test_role", _five_arg)
+        self.assertTrue(warn.called)
+        self.assertIn("fallback=SILENT", warn.call_args.args[0])
+
+    def test_a_chosen_silence_does_not_warn(self):
+        with mock.patch("evennia.utils.logger.log_warn") as warn:
+            service.register("test_role", _five_arg, fallback=service.SILENT)
+        self.assertFalse(warn.called)
+
+    def test_a_real_line_does_not_warn(self):
+        with mock.patch("evennia.utils.logger.log_warn") as warn:
+            service.register("test_role", _five_arg, fallback="Not here.")
+        self.assertFalse(warn.called)
+
+    def test_the_sentinel_is_never_spoken(self):
+        """It is truthy, and every consumer guards on `if line`. A
+        doctor must go on saying nothing, not saying "__silent__"."""
+        service.register("test_role", _five_arg, fallback=service.SILENT)
+        worker = mock.MagicMock()
+        with mock.patch.object(service, "job_of",
+                               return_value=service.SERVICE["test_role"]):
+            self.assertIsNone(service.fallback_for(worker))
+
+    def test_a_real_line_still_comes_back(self):
+        service.register("test_role", _five_arg, fallback="Not here.")
+        worker = mock.MagicMock()
+        with mock.patch.object(service, "job_of",
+                               return_value=service.SERVICE["test_role"]):
+            self.assertEqual(service.fallback_for(worker), "Not here.")
+
+    def test_the_clinic_declares_its_silence(self):
+        """The live registration, not a fixture: the doctor's silence
+        must now be the explicit kind."""
+        service.SERVICE.clear()
+        service.SERVICE.update(self._saved)
+        service._ensure_loaded()
+        self.assertEqual(service.SERVICE["doctor"]["fallback"],
+                         service.SILENT)

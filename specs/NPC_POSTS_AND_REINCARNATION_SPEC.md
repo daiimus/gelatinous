@@ -100,6 +100,42 @@ makes them *administrative*:
   `integration_desc` ("The food cart stands cold, its burner ring dark, a
   chain through its wheels.") — the room tells the story without a keeper.
 
+#### 1.2.1 What a role must supply to stand a post
+
+The post fixture is half the contract; the other half is the **job**,
+registered with `world.service.register(role, handler, ...)`. Until #2824
+this existed only as convention plus one inline comment, so the
+requirements are stated here.
+
+- **`handler(post, speech, patron, by, addressed) -> bool`** — the job
+  itself. Returns True when the post CLAIMED the line, which obliges the
+  caller to stay quiet: the order has been taken. The signature is
+  checked at registration and a mismatch is logged, because a handler
+  that cannot be called simply never claims anything and the venue reads
+  as a keeper who never takes an order (#2797).
+- **`aliases`** — what the job answers to ("bartender", "barkeep").
+- **`fallback`** — what the job says when addressed with no voice
+  available to improvise. **Silence is a permitted choice, and it must be
+  an explicit one:** pass `service.SILENT`. A doctor asked something odd
+  stays quiet on purpose. Omitting `fallback` gets the same runtime
+  behaviour and a startup warning, because otherwise a forgotten line is
+  indistinguishable from a chosen silence and surfaces as a mute NPC the
+  first time a player stands at that counter with the sidecar down
+  (#2824).
+- **`archetype`** — the `world/llm/prompt.ARCHETYPES` key for the
+  register the job talks in.
+- **`tools`** — what the job can DO when the model calls one. The
+  archetype GRANTS a tool; this is what runs it, and the two must come
+  from the same place or a successor is handed `check_stock` and gets an
+  empty string back (#2352).
+- **`on_receive(post, obj, giver, by) -> bool`** — optional; the job's
+  answer to something being HANDED to whoever stands it. Receiving is the
+  one venue act that happens to a PERSON rather than at a counter.
+
+Handlers register in the module that owns the state they read — bar
+service lives in `world/bar.py` — so nothing accumulates in
+`world/service.py`.
+
 ### 1.3 The watcher — a generalized complement loop
 
 The director heartbeat (the same `GLOBAL_SCRIPTS` loop that runs patrol beats
