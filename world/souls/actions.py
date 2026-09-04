@@ -602,10 +602,14 @@ def _patrol_plan(soul):
     director — it owns what a beat IS and what happens at a stop. Souls
     owns the feet. That split is the whole point: one driver, and the
     director demoted to a source of work (#2373)."""
-    from world.director.routines import next_waypoint
+    from world.director.routines import cadence_taken, next_waypoint
     waypoint, _idx = next_waypoint(soul)
     if waypoint is None:
         return None
+    # The plan is being ADOPTED — this is the beat the patrol is
+    # actually spent on, and the only correct moment to consume the
+    # cadence (#2804).
+    cadence_taken(soul)
     if soul.location == waypoint:
         return {"goal": "patrol", "at": 0,
                 "steps": [{"do": "patrol_mark"}]}
