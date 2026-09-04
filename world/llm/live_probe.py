@@ -12,7 +12,7 @@ Two modes:
 * **lint** (default, HOST, stdlib only) — ``prompt.py`` imports just json/re, so
   this runs on the host with no Evennia. Inspects the raw action string::
 
-      python3 world/llm/live_probe.py --scenario companion --n 5
+      python3 -m world.llm.live_probe --scenario companion --n 5
 
 * **render** (``--render``, needs Evennia → run in the throwaway container) —
   builds real character mocks, derives the handles THEY perceive each other by,
@@ -24,7 +24,7 @@ Two modes:
       docker run --rm --entrypoint bash -v "$PWD":/usr/src/game -w /usr/src/game \\
         evennia/evennia:latest -lc \\
         'LLM_PROBE_URL=http://host.docker.internal:8765/v1/chat/completions \\
-         python3 world/llm/live_probe.py --scenario companion_bystander --render'
+         python3 -m world.llm.live_probe --scenario companion_bystander --render'
 """
 
 from __future__ import annotations
@@ -452,8 +452,13 @@ def run_score(scenario_name, n, url):
     print("--- failing samples ---")
     for ex in examples:
         print(ex)
+    # `empty` is counted separately, so an all-poseless run leaves
+    # `scored` at zero — and that is exactly the run you reach for
+    # --score to diagnose (sidecar down, prompt change killed the pose).
+    # Crashing on it hid the diagnostic (#2817).
+    pct = (100 * clean / scored) if scored else 0.0
     print(f"\n=== {clean}/{scored} clean "
-          f"({100*clean/scored:.1f}%) | {empty} empty (no pose) ===")
+          f"({pct:.1f}%) | {empty} empty (no pose) ===")
     print("failures by category:")
     for cat in sorted(by_cat, key=lambda c: -by_cat[c]):
         print(f"  {cat:16} {by_cat[cat]}")

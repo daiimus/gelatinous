@@ -2376,7 +2376,7 @@ into the look output naturally — no custom override required.  A
 freshly harvested heart reads:
 
 ```
-It is a pristine specimen. A dense, dark-red heart, its muscle firm
+A dense, dark-red heart, its muscle firm
 and the great vessels stumped cleanly above.
 ```
 

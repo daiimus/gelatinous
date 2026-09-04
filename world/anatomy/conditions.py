@@ -10,31 +10,24 @@ self-describing: "A glistening pinkish-grey mass..." vs "A dulled
 brain, its folds slack...".  Prepending "It is a damaged specimen."
 on top of "A dulled brain..." just doubled up the signal.
 
-Both helpers are now no-ops: ``format_condition_tagline`` returns
-the empty string for every condition, and ``prepend_condition_to_desc``
-returns the desc untouched.  The ``condition`` argument is still
+``prepend_condition_to_desc`` is now a no-op: it returns the desc
+untouched.  The ``condition`` argument is still
 the upstream signal that selects which decay-tier prose to fetch
 (via ``get_organ_default_description`` / ``get_severed_part_description``);
 these helpers used to *also* mention it in player-facing prose,
 which was the redundancy.
 
-Kept as no-op shims rather than deleted because four configure-time
-call sites (Organ, Appendage corpse / living, SeveredHead) still
-import them.  Each can drop the call independently; the helper API
-stays stable in the meantime.
+``prepend_condition_to_desc`` is kept as a no-op shim rather than
+deleted because four configure-time call sites (Organ, Appendage corpse
+/ living, SeveredHead) still call it.  Each can drop the call
+independently; the helper API stays stable in the meantime.
+
+``format_condition_tagline`` was kept on the same grounds and had NO
+callers at all — only the package facade re-exporting it — so it has
+been removed (#2822).
 """
 
 from __future__ import annotations
-
-
-def format_condition_tagline(condition: str | None) -> str:
-    """Return ``""`` for every condition (kept as no-op shim).
-
-    Callers used to receive a sentence like ``"It is a pristine
-    specimen."`` that they prepended to the item's prose.  The decay-
-    tier prose is now the sole vehicle for communicating freshness.
-    """
-    return ""
 
 
 def prepend_condition_to_desc(condition: str | None, desc: str | None) -> str:
