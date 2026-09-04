@@ -290,7 +290,13 @@ def sweep(now=None):
             owned = bool(bp_key) and _living_body(bp_key) is None
             if owned:
                 if _try_resleave(post, room, shift, slot, now):
-                    post.db.post_slots = slots
+                    # NOTHING to write back. `_install_keeper` has already
+                    # re-read `post_slots`, recorded the new keeper and
+                    # persisted it. Writing `slots` — this loop's snapshot,
+                    # taken BEFORE the resleave — put the vacancy straight
+                    # back, so a keeper who had just been installed and
+                    # emoted "back at the post" left the slot reading
+                    # empty (#2802).
                     return                           # one per sweep
                 continue        # can't afford yet: the till keeps earning
             # Nobody's name on this shift — a stranger may claim it,
