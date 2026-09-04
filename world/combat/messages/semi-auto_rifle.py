@@ -1,4 +1,4 @@
-SEMI_AUTO_RIFLE_MESSAGES = {
+MESSAGES = {
     "initiate": [
         {
             'attacker_msg': "You raise a semi-automatic rifle, the weapon looking efficient and modern, or perhaps a well-maintained classic.",

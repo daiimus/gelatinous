@@ -1,4 +1,4 @@
-SCIMITAR_MESSAGES = {
+MESSAGES = {
     "initiate": [
         {
             'attacker_msg': "You draw the scimitar, its curved blade whispering from the scabbard like a desert wind.",

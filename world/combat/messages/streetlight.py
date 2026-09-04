@@ -1,4 +1,4 @@
-STREETLIGHT_MESSAGES = {
+MESSAGES = {
     'initiate': [
         {
             'attacker_msg': "With a mighty heave, you rip a streetlight from the ground, aiming it at {target_name}.",
