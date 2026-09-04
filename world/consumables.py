@@ -22,6 +22,12 @@ from typing import Callable, Optional
 #: ``("inject", ...)``, etc.  See SUBSTANCES_AND_DELIVERY_SPEC §2/§4.
 DELIVERY_METHOD_CATEGORY = "delivery_method"
 
+#: Marks an item whose legacy `medical_type` has been translated into
+#: delivery tags. Its absence is the only honest "not yet migrated"
+#: signal — the presence of any particular verb is not, because a
+#: migration can legitimately imply a verb the caller never asks about.
+MIGRATED_TAG = "_migrated"
+
 #: Pre-#474 medical items declared *how they enter the body* via their
 #: ``medical_type`` string (which also keys their pharmacology).  This
 #: table maps each legacy type to the delivery method(s) the old
@@ -91,6 +97,8 @@ def supports_delivery(item, method: str) -> bool:
         return False
     if tags.has(method, category=DELIVERY_METHOD_CATEGORY):
         return True
+    if tags.has(MIGRATED_TAG, category=DELIVERY_METHOD_CATEGORY):
+        return False        # already migrated; the tag above is the answer
     # Legacy migration: derive delivery tags from medical_type once.
     attributes = getattr(item, "attributes", None)
     if attributes is None:
@@ -100,6 +108,14 @@ def supports_delivery(item, method: str) -> bool:
     if implied:
         for verb in implied:
             tags.add(verb, category=DELIVERY_METHOD_CATEGORY)
+        # MARK the migration done rather than inferring it from the
+        # query. The old early return only fired when the QUERIED method
+        # was one of the implied ones — which no negative check ever is
+        # — so every `eat` on a bandage or `inject` on gauze fell through
+        # and re-added the same tags, forever. Idempotent in effect,
+        # repeated in cost, and the docstring promised "once per item"
+        # (#2812).
+        tags.add(MIGRATED_TAG, category=DELIVERY_METHOD_CATEGORY)
         return method in implied
     return False
 
@@ -130,7 +146,13 @@ def consume_use(
     attrs = getattr(item, "attributes", None)
     if attrs is None:
         return {"success": False, "destroyed": False}
-    uses_left = int(attrs.get("uses_left", 0) or 0)
+    # Missing means ONE, not zero. The medical layer's `can_be_used`
+    # already read it that way and `treatments._consume_use` skips such
+    # items as "single-use disposables relying on deletion, or legacy
+    # items" — so an item with no attribute was usable on one side of
+    # the wall and already spent on the other. Both defaults are
+    # defensible alone; having both is not (#2812).
+    uses_left = int(attrs.get("uses_left", 1) or 0)
     if uses_left <= 0:
         return {"success": False, "destroyed": False}
     uses_left -= 1
