@@ -135,3 +135,104 @@ class TestWiring(TestCase):
         cs = CharacterCmdSet()
         cs.at_cmdset_creation()
         self.assertIn("@patrol", [c.key for c in cs.commands])
+
+
+class TestTheStaggerSurvives(TestCase):
+    """A random starting index that is not persisted is not a stagger
+    (#2804, SOULS_SCALE_HARDENING_SPEC Law 4).
+
+    `next_waypoint` rolled the draw and returned it; the only write was
+    in the caller's TRAVEL branch. A unit already standing on its
+    randomly-chosen waypoint fell through to `advance_waypoint`, which
+    read `patrol_idx` as still-unset, collapsed it to 0, and aimed at
+    index 1 — so every such unit converged on the same index, which is
+    exactly the lockstep the docstring forbids. The souls planner
+    discards the returned index too, so the write had to live at the
+    roll or neither caller kept it.
+    """
+
+    def _npc_on_a_beat(self, rooms):
+        npc = _Npc(rooms[0], beat=[r.name for r in rooms])
+        return npc
+
+    def test_the_roll_is_written_where_it_is_rolled(self):
+        rooms = [_Room(f"r{i}") for i in range(5)]
+        npc = self._npc_on_a_beat(rooms)
+        with patch.object(rmod, "get_beat", return_value=rooms), \
+             patch("random.randrange", return_value=3):
+            waypoint, idx = rmod.next_waypoint(npc)
+        self.assertEqual(idx, 3)
+        self.assertEqual(npc.ndb.patrol_idx, 3,
+                         "the draw was thrown away")
+
+    def test_a_unit_standing_on_its_waypoint_keeps_its_draw(self):
+        """The exact path that lost it: no travel, so the caller's
+        write never ran and advance_waypoint saw an unset index."""
+        rooms = [_Room(f"r{i}") for i in range(5)]
+        npc = self._npc_on_a_beat(rooms)
+        with patch.object(rmod, "get_beat", return_value=rooms), \
+             patch("random.randrange", return_value=3):
+            rmod.next_waypoint(npc)
+            rmod.advance_waypoint(npc)
+        self.assertEqual(npc.ndb.patrol_idx, 4,
+                         "advanced from 0 instead of from the draw")
+
+    def test_an_existing_index_is_not_re_rolled(self):
+        rooms = [_Room(f"r{i}") for i in range(5)]
+        npc = self._npc_on_a_beat(rooms)
+        npc.ndb.patrol_idx = 2
+        with patch.object(rmod, "get_beat", return_value=rooms), \
+             patch("random.randrange", return_value=3):
+            _waypoint, idx = rmod.next_waypoint(npc)
+        self.assertEqual(idx, 2)
+
+    def test_index_zero_is_not_mistaken_for_unset(self):
+        """`or 0` could not tell a legitimate index 0 from None."""
+        rooms = [_Room(f"r{i}") for i in range(5)]
+        npc = self._npc_on_a_beat(rooms)
+        npc.ndb.patrol_idx = 0
+        with patch.object(rmod, "get_beat", return_value=rooms):
+            rmod.advance_waypoint(npc)
+        self.assertEqual(npc.ndb.patrol_idx, 1)
+
+
+class TestTheCadenceIsSpentNotBrowsed(TestCase):
+    """`cadence_ready` is asked during goal SELECTION and the answer may
+    be discarded — a running job of the same band keeps going. Resetting
+    the counter on the way past drained the cadence on beats the patrol
+    was never taken, so a unit stepped immediately the first beat patrol
+    actually won instead of pacing (#2804)."""
+
+    def _marcher(self, cadence=3, waited=None):
+        npc = _Npc(_Room("r"), beat=["r"])
+        npc.db.patrol_cadence = cadence
+        if waited is not None:
+            npc.ndb.patrol_wait = waited
+        return npc
+
+    def test_a_ready_answer_does_not_reset_by_itself(self):
+        npc = self._marcher(cadence=3, waited=2)
+        self.assertTrue(rmod.cadence_ready(npc))
+        self.assertEqual(npc.ndb.patrol_wait, 2,
+                         "arbitration consumed the cadence")
+
+    def test_taking_the_patrol_is_what_resets_it(self):
+        npc = self._marcher(cadence=3, waited=2)
+        rmod.cadence_ready(npc)
+        rmod.cadence_taken(npc)
+        self.assertEqual(npc.ndb.patrol_wait, 0)
+
+    def test_a_waiting_beat_still_advances(self):
+        """The pin: pacing must still pace. A beat spent waiting counts,
+        or a slow cadence never becomes ready at all."""
+        npc = self._marcher(cadence=3)
+        self.assertFalse(rmod.cadence_ready(npc))
+        self.assertEqual(npc.ndb.patrol_wait, 1)
+        self.assertFalse(rmod.cadence_ready(npc))
+        self.assertEqual(npc.ndb.patrol_wait, 2)
+        self.assertTrue(rmod.cadence_ready(npc))
+
+    def test_cadence_one_is_always_ready(self):
+        npc = self._marcher(cadence=1)
+        self.assertTrue(rmod.cadence_ready(npc))
+        self.assertTrue(rmod.cadence_ready(npc))

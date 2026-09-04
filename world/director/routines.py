@@ -155,6 +155,7 @@ def tick_npc(npc: Any) -> str:
     waypoint, idx = next_waypoint(npc)
     if waypoint is None:
         return "none"
+    cadence_taken(npc)                      # the beat is being spent
     if npc.location != waypoint:
         npc.ndb.patrol_idx = idx            # keep aiming here
         travel_to(npc, waypoint)
@@ -194,7 +195,18 @@ def next_waypoint(npc: Any):
         return None, None
     idx = getattr(npc.ndb, "patrol_idx", None)
     if idx is None:
+        # PERSIST THE DRAW HERE. It used to be written only in the
+        # caller's travel branch, so a unit that happened to be standing
+        # ON its randomly-chosen waypoint fell through to
+        # advance_waypoint, which read patrol_idx as still-unset,
+        # collapsed it to 0 and aimed at index 1 — the roll discarded.
+        # Every such unit converged on the same index, which is the
+        # lockstep this docstring says must not happen, and Law 4 of
+        # SOULS_SCALE_HARDENING_SPEC. The souls planner's `_patrol_plan`
+        # discards the returned index too, so the write has to live at
+        # the roll or neither caller keeps it (#2804).
         idx = randrange(len(beat))
+        npc.ndb.patrol_idx = idx
     idx = int(idx) % len(beat)
     return beat[idx], idx
 
@@ -204,8 +216,12 @@ def advance_waypoint(npc: Any) -> None:
     beat = get_beat(npc)
     if not beat:
         return
-    idx = getattr(npc.ndb, "patrol_idx", None) or 0
-    npc.ndb.patrol_idx = (int(idx) + 1) % len(beat)
+    # `or 0` could not tell "unset" from a legitimate index 0. Both
+    # yielded 1 here, but it is why an unpersisted stagger became zero
+    # quietly instead of being noticed.
+    idx = getattr(npc.ndb, "patrol_idx", None)
+    idx = 0 if idx is None else int(idx)
+    npc.ndb.patrol_idx = (idx + 1) % len(beat)
 
 
 def cadence_ready(npc: Any) -> bool:
@@ -220,10 +236,27 @@ def cadence_ready(npc: Any) -> bool:
         return True
     waited = int(getattr(npc.ndb, "patrol_wait", None) or 0) + 1
     if waited < cadence:
+        # A beat genuinely spent waiting. Advancing here is right: the
+        # souls band tree only reaches this branch when patrol is
+        # already the top goal, so nothing above it was displaced.
         npc.ndb.patrol_wait = waited
         return False
-    npc.ndb.patrol_wait = 0
+    # NOT reset here. The caller asks during goal SELECTION and may
+    # still discard the answer — a running job of the same band keeps
+    # going — so resetting on the way past drained the cadence on beats
+    # the patrol was never taken, and the unit stepped immediately the
+    # first beat patrol actually won instead of pacing (#2804). The
+    # reset belongs to whoever ACTS on the answer: `cadence_taken`.
     return True
+
+
+def cadence_taken(npc: Any) -> None:
+    """Consume the cadence — call when a patrol step is actually taken.
+
+    Split out from `cadence_ready` so a predicate consulted during
+    arbitration stops mutating state on beats nothing happens.
+    """
+    npc.ndb.patrol_wait = 0
 
 
 def at_waypoint(npc: Any) -> None:
