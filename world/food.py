@@ -95,6 +95,13 @@ def cook_yields(ingredient_counts):
     dishes = {}
     for recipe_id, recipe in FOOD_RECIPES.items():
         needs = recipe["ingredients"]
+        if not needs:
+            # `all()` over an empty mapping is vacuously True and the body
+            # consumes nothing, so an ingredient-less recipe spins forever
+            # and grows `dishes` without bound — on the single reactor
+            # thread, which wedges the server (#2810). A recipe that eats
+            # nothing cannot be cooked; skip it rather than hang.
+            continue
         while all(remaining.get(k, 0) >= q for k, q in needs.items()):
             for k, q in needs.items():
                 remaining[k] = remaining.get(k, 0) - q
