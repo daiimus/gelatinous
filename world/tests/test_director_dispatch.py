@@ -136,6 +136,46 @@ class TestDispatch(TestCase):
         self.assertEqual(dispatch(WorldEvent("assault", _Room("e"))), [])
 
 
+class TestEveryCrimeRollsSomebody(TestCase):
+    """Every registered crime must reach a responder (#2781).
+
+    `report_crime` types the event with the SPECIFIC crime
+    ("shoplifting", "murder"), while `ROLE_RESPONDS_TO` was keyed on a
+    different vocabulary — so seven of eight resolved to no role and
+    `find_responders` returned `[]`. That is indistinguishable from
+    "every unit is busy", which is why five idle units and an unanswered
+    murder looked identical from the desk.
+
+    Pinned as a JOIN over `CRIME_SEVERITY` rather than a list of types:
+    a crime added there without a responder route fails here instead of
+    silently never dispatching.
+    """
+
+    @patch("world.director.dispatch.hears_emergency_band", return_value=True)
+    @patch("world.director.dispatch.path_length", return_value=3)
+    @patch("world.director.dispatch._npcs_with_roles")
+    def test_every_crime_type_finds_a_responder(self, mock_npcs, _pl, _hb):
+        from world.director.crime import CRIME_SEVERITY
+        unit = _npc(_Room("post"), "unit")
+        mock_npcs.return_value = [unit]
+        for crime in CRIME_SEVERITY:
+            with self.subTest(crime=crime):
+                ranked = find_responders(
+                    WorldEvent(crime, _Room("scene")))
+                self.assertEqual(
+                    [n for _s, n in ranked], [unit],
+                    f"{crime!r} dispatches nobody",
+                )
+
+    def test_severity_is_the_star_rating(self):
+        """A bigger crime rolls more units — `dispatch` sends
+        `max(1, severity)`, so the rating lives in CRIME_SEVERITY."""
+        from world.director.crime import CRIME_SEVERITY
+        self.assertEqual(CRIME_SEVERITY["shoplifting"], 1)
+        self.assertEqual(CRIME_SEVERITY["assault"], 2)
+        self.assertEqual(CRIME_SEVERITY["murder"], 3)
+
+
 class TestDispatchWiring(TestCase):
     def test_dispatch_command_registered(self):
         from commands.default_cmdsets import CharacterCmdSet

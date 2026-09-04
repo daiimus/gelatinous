@@ -91,6 +91,22 @@ def find_responders(event: WorldEvent) -> list:
     locationless NPCs are dropped. Empty when no role responds to the type.
     """
     roles = ROLE_RESPONDS_TO.get(event.type)
+    if roles is None:
+        # Any REGISTERED crime rolls the Constabulary. `report_crime`
+        # types its events with the specific crime, so keying only on
+        # the generic bucket meant seven of eight kinds — murder among
+        # them — resolved to no role and dispatched nobody (#2781).
+        #
+        # Routed through the generic entry rather than listing each
+        # type, so a crime added to CRIME_SEVERITY dispatches on its
+        # own instead of silently not. How many units roll is already
+        # `event.severity` (see `dispatch`), which CRIME_SEVERITY rates
+        # 1-3 — the star rating, not something this lookup decides.
+        #
+        # Local import: crime imports THIS module for WorldEvent.
+        from world.director.crime import CRIME_SEVERITY
+        if event.type in CRIME_SEVERITY:
+            roles = ROLE_RESPONDS_TO.get("crime")
     if not roles or event.location is None:
         return []
     try:
