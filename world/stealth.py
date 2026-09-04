@@ -101,8 +101,17 @@ def seed_awareness(observer, target_key, level, last_room_id=None):
         records.pop(target_key, None)
     else:
         rec = dict(records.get(target_key) or {})
-        rec["level"] = max(int(level), int(rec.get("level", UNAWARE)))
-        rec["t"] = time.time()
+        # Decay the stored level before comparing. Every other reader
+        # (`get_awareness`, `hunt_records`) applies lazy decay; this one
+        # took `max()` against the RAW value and then stamped the record
+        # fresh — so a long-dead ALERT beat an incoming faint contact and
+        # came back at full strength with a new timestamp (#2784).
+        now = time.time()
+        prior = int(rec.get("level", UNAWARE))
+        elapsed = max(0.0, now - float(rec.get("t", 0)))
+        prior = max(UNAWARE, prior - int(elapsed // AWARENESS_DECAY))
+        rec["level"] = max(int(level), prior)
+        rec["t"] = now
         if last_room_id is not None:
             rec["last_room"] = last_room_id
         records[target_key] = rec

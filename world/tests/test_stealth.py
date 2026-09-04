@@ -4,11 +4,14 @@ MagicMock stand-ins; randint/time patched for determinism. The identity key
 is patched (uid derivation has its own suite).
 """
 
+import time
+
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 import world.stealth as stealth
 from world.stealth import (
+    AWARENESS_DECAY, SEARCHING, seed_awareness,
     ALERT, SUSPICIOUS, UNAWARE,
     active_search, attempt_hide, break_stealth, get_awareness,
     is_hidden_from, passive_check, set_awareness,
@@ -503,3 +506,39 @@ class TestLurkPlacement(TestCase):
                    return_value=0):
             self.assertIn("lurking in the shadows",
                           lurk_placement(MagicMock()))
+
+
+class TestSeedAwarenessDecaysBeforeComparing(TestCase):
+    """Alert propagation must not revive a dead record (#2784).
+
+    `get_awareness` and `hunt_records` both apply lazy decay -- one level
+    per AWARENESS_DECAY seconds since contact. `seed_awareness` took
+    max() against the RAW stored level and then stamped `t` to now, so a
+    long-dead ALERT beat an incoming faint contact and came back at full
+    strength with a fresh clock, immune to decay forever after.
+    """
+
+    def _seeded(self, stored_level, age, incoming):
+        obs = _char()
+        obs.db.awareness = {"tgt": {"level": stored_level,
+                                    "t": time.time() - age}}
+        seed_awareness(obs, "tgt", incoming)
+        return obs.db.awareness["tgt"]["level"]
+
+    def test_a_decayed_record_does_not_outrank_a_fresh_contact(self):
+        self.assertEqual(
+            self._seeded(ALERT, AWARENESS_DECAY * 10, SUSPICIOUS),
+            SUSPICIOUS, "a fully decayed ALERT was revived")
+
+    def test_a_live_record_still_wins_over_a_weaker_contact(self):
+        self.assertEqual(self._seeded(ALERT, 0, SUSPICIOUS), ALERT)
+
+    def test_a_stronger_contact_still_raises_a_live_record(self):
+        self.assertEqual(self._seeded(SUSPICIOUS, 0, ALERT), ALERT)
+
+    def test_partial_decay_is_partial(self):
+        # one decay interval elapsed: ALERT(3) -> SEARCHING(2), which
+        # still outranks an incoming SUSPICIOUS(1).
+        self.assertEqual(
+            self._seeded(ALERT, AWARENESS_DECAY * 1.5, SUSPICIOUS),
+            SEARCHING)
