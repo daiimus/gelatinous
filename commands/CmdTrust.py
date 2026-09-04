@@ -42,11 +42,22 @@ def _match_stored_grant(caller, phrase):
     (None, None); messages ambiguity/misses itself."""
     phrase_low = phrase.lower().strip()
     matches = []
+    exact = []
     for uid, entry in get_grants(caller).items():
         name = grant_display_name(caller, uid, entry)
         low = name.lower()
-        if phrase_low == low or phrase_low in low:
+        if phrase_low == low:
+            exact.append((uid, name))
+        elif phrase_low in low:
             matches.append((uid, name))
+    # An exact hit WINS. Both tests used to sit in one condition, so a
+    # name that is a prefix of another matched twice and reported
+    # ambiguity — and no phrase could isolate the shorter one, because a
+    # prefix is a substring by definition. "Laszlo" alongside "Laszlo
+    # XIV" was permanently unrevocable except by wiping every grant, and
+    # the live world holds nine Laszlos off one resleeve lineage (#2791).
+    if exact:
+        matches = exact
     if not matches:
         caller.msg(f"You don't have any trust extended to '{phrase}'.")
         return None, None
