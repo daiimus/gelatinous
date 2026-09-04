@@ -213,6 +213,16 @@ def build_install_chart(by, patient, what):
         anchor = decl.get("anchor") or decl.get("container")
         if not anchor:
             return None
+        # DO NOT CLOBBER SOMEBODY ELSE'S SURGERY. `save_chart` writes
+        # `db.medical_chart` wholesale, while the operate menu's
+        # `_add_step_to_chart` reuses an existing chart — two writers,
+        # one attribute, and only one of them reads first. A surgeon
+        # with an amputation and a harvest laid out on this patient
+        # would find them replaced by three install steps, already
+        # RUNNING, because install_cyber commences immediately (#2801).
+        existing = chart_lib.get_chart(patient)
+        if existing and _chart_is_live(existing):
+            return None
         chart = chart_lib.new_chart(by)
         chart_lib.add_step(chart, "incise", {"location": anchor})
         chart_lib.add_step(chart, "install",
@@ -222,6 +232,18 @@ def build_install_chart(by, patient, what):
         return chart
     except Exception:  # noqa: BLE001 — never crash a turn over a bad install
         return None
+
+
+def _chart_is_live(chart) -> bool:
+    """Is this chart somebody's work in progress rather than a spent one?
+
+    A chart with a running or still-pending step is live. A completed or
+    fully-abandoned one is just the record of the last operation and is
+    safe to replace.
+    """
+    from world.medical import charts as chart_lib
+    return any(step.get("status") in (chart_lib.PENDING, chart_lib.RUNNING)
+               for step in (chart.get("steps") or ()))
 
 
 def install_cyber(by, patient, what):

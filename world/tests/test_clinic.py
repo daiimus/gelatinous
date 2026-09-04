@@ -141,6 +141,76 @@ class TestDoctorInstall(BaseEvenniaTest):
         self.assertIsNotNone(chart_lib.get_chart(patient))  # saved on the patient
 
 
+class TestTheClinicDoesNotClobberASurgery(BaseEvenniaTest):
+    """Two writers of `patient.db.medical_chart`. The operate menu's
+    `_add_step_to_chart` reuses an existing chart; `build_install_chart`
+    called `new_chart` unconditionally and `save_chart` replaces the
+    attribute wholesale. A surgeon with an amputation and a harvest laid
+    out on a patient would find them gone, replaced by three install
+    steps that are already RUNNING -- install_cyber commences
+    immediately (#2801).
+    """
+
+    def _pair(self, n):
+        doc = create_object("typeclasses.llm_npc.LLMNpc", key=f"Doc{n}",
+                            location=self.room1)
+        patient = create_object("typeclasses.characters.Character",
+                                key=f"Pat{n}", location=self.room1)
+        return doc, patient
+
+    def test_a_pending_chart_is_not_replaced(self):
+        from world.medical import charts as chart_lib
+        doc, patient = self._pair(90)
+        surgeon = create_object("typeclasses.characters.Character",
+                                key="Surgeon90", location=self.room1)
+        theirs = chart_lib.new_chart(surgeon)
+        chart_lib.add_step(theirs, "amputate", {"location": "left_arm"})
+        chart_lib.save_chart(patient, theirs)
+
+        self.assertIsNone(
+            worldclinic.build_install_chart(doc, patient, "cyber arm left"))
+        kept = chart_lib.get_chart(patient)
+        self.assertEqual([s["verb"] for s in kept["steps"]], ["amputate"])
+
+    def test_a_running_chart_is_not_replaced(self):
+        from world.medical import charts as chart_lib
+        doc, patient = self._pair(91)
+        surgeon = create_object("typeclasses.characters.Character",
+                                key="Surgeon91", location=self.room1)
+        theirs = chart_lib.new_chart(surgeon)
+        step = chart_lib.add_step(theirs, "harvest", {"organ_name": "heart"})
+        step["status"] = chart_lib.RUNNING
+        chart_lib.save_chart(patient, theirs)
+
+        self.assertIsNone(
+            worldclinic.build_install_chart(doc, patient, "cyber arm left"))
+        self.assertEqual(
+            [s["verb"] for s in chart_lib.get_chart(patient)["steps"]],
+            ["harvest"])
+
+    def test_a_spent_chart_is_fair_game(self):
+        """The pin against the over-correction: one finished operation
+        must not lock the patient out of every future one."""
+        from world.medical import charts as chart_lib
+        doc, patient = self._pair(92)
+        surgeon = create_object("typeclasses.characters.Character",
+                                key="Surgeon92", location=self.room1)
+        theirs = chart_lib.new_chart(surgeon)
+        step = chart_lib.add_step(theirs, "suture", {})
+        step["status"] = chart_lib.DONE
+        chart_lib.save_chart(patient, theirs)
+
+        chart = worldclinic.build_install_chart(doc, patient, "cyber arm left")
+        self.assertIsNotNone(chart)
+        self.assertEqual([s["verb"] for s in chart["steps"]],
+                         ["incise", "install", "suture"])
+
+    def test_no_chart_at_all_is_fair_game(self):
+        doc, patient = self._pair(93)
+        self.assertIsNotNone(
+            worldclinic.build_install_chart(doc, patient, "cyber arm left"))
+
+
 class TestMedicalRequestParser(BaseEvenniaTest):
     """Deterministic medical-request detection (reliability lever, parity with the
     bartender's order parser): an EXPLICIT install/treat request runs for real; a
