@@ -423,8 +423,18 @@ def apply_verdict(verdict, speaker, speech):
             type=event_type,
             location=room,
             severity=severity,
-            source=speaker,
+            # A phoned-in report names NO instigator. `source` is the
+            # ground truth of who did it (`is_the_right_person` reads it
+            # exactly that way), and hearsay cannot supply that — it
+            # supplies a description, which rides in `bolo` below. Putting
+            # the CALLER here made the truth check report that detaining
+            # the caller was correct and catching the perpetrator was not,
+            # and made `known_source` true so `incident_context` skipped
+            # the anonymous crimes it exists for (#2782).
+            source=None,
             payload={"radio_report": True, "traffic": str(speech)[:200],
+                     # who phoned it in — descriptive, never the instigator
+                     "caller": speaker,
                      "location_text": verdict.get("location_text"),
                      # the silhouette the caller described, in the shape
                      # `security_arrival` already matches on — hearsay
