@@ -128,9 +128,26 @@ _STOPWORDS = frozenset(
     "the a an in at on of and by near to inside outside".split())
 
 
+#: Possessive suffix, stripped BEFORE tokenising. Left in, ``"there's"``
+#: yields a bare ``s`` that matches the ``s`` in any apostrophe-s room
+#: name, so ordinary speech named an unrelated venue (#2764).
+_POSSESSIVE = re.compile(r"'s\b")
+
+
 def _tokens(text):
-    return [t for t in re.findall(r"[a-z0-9]+", str(text or "").lower())
-            if t not in _STOPWORDS]
+    """Place-bearing words in *text*.
+
+    Possessives are stripped and single characters dropped: neither can
+    identify a place, and both used to. No venue in the colony is named
+    by a one-character word, so the filter costs nothing real — while
+    ``"there's"`` and ``"3"`` stop naming rooms.
+
+    Room names go through this same function, so ``"Riveter's Way"``
+    and a caller saying ``"Riveter's"`` still meet.
+    """
+    text = _POSSESSIVE.sub("", str(text or "").lower())
+    return [t for t in re.findall(r"[a-z0-9]+", text)
+            if t not in _STOPWORDS and len(t) > 1]
 
 
 def _candidate_rooms():
