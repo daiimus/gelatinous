@@ -135,7 +135,19 @@ def department_of(char):
 def roll_designation(dept=None, rank=None):
     """A designation for somebody nobody authored. Never Command, and
     never Commander — both are reserved, and Command is meant to stay
-    empty (its story arrives as artifacts, not officers)."""
+    empty (its story arrives as artifacts, not officers).
+
+    The reservation is enforced by the POOLS -- ROLLABLE omits
+    `command`, ROLLABLE_RANKS omits `commander` -- so both overrides
+    have to be checked against them too, or `roll_designation(
+    dept="command", rank="commander")` returns exactly the thing this
+    docstring says never happens. Both call sites pass nothing today;
+    this is the door, not the breach (#2800).
+    """
+    if dept not in ROLLABLE:
+        dept = None
+    if rank not in ROLLABLE_RANKS:
+        rank = None
     return {
         "vessel": choice(list(VESSELS)),
         "dept": dept or choices(ROLLABLE, weights=DEPARTMENT_WEIGHTS)[0],

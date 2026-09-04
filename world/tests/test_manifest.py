@@ -111,3 +111,36 @@ class TestTheSheet(EvenniaCommandTest):
             __import__("commands.CmdCharacter", fromlist=["x"]).CmdStats(),
             "")
         self.assertIn("NONE ON FILE", out)
+
+
+class TestTheReservationIsGuarded(EvenniaCommandTest):
+    """`roll_designation`'s docstring says "Never Command, and never
+    Commander -- both are reserved, and Command is meant to stay empty".
+    The reservation was enforced by the POOLS, which both parameters
+    bypassed verbatim, so the function could return exactly the thing it
+    says never happens (#2800)."""
+
+    def test_a_reserved_department_is_refused(self):
+        from world.manifest import ROLLABLE, roll_designation
+        for _ in range(20):
+            d = roll_designation(dept="command")
+            self.assertIn(d["dept"], ROLLABLE)
+
+    def test_a_reserved_rank_is_refused(self):
+        from world.manifest import ROLLABLE_RANKS, roll_designation
+        for _ in range(20):
+            d = roll_designation(rank="commander")
+            self.assertIn(d["rank"], ROLLABLE_RANKS)
+
+    def test_a_legitimate_override_still_works(self):
+        """The pin: the parameters exist to author somebody
+        deliberately, and must keep doing that."""
+        from world.manifest import roll_designation
+        d = roll_designation(dept="medical", rank="chief")
+        self.assertEqual(d["dept"], "medical")
+        self.assertEqual(d["rank"], "chief")
+
+    def test_junk_falls_back_to_a_roll(self):
+        from world.manifest import ROLLABLE, roll_designation
+        d = roll_designation(dept="banana")
+        self.assertIn(d["dept"], ROLLABLE)

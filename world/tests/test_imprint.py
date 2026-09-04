@@ -170,3 +170,51 @@ class TestRestoreAppliesOnlyWhatTheRecordHolds(EvenniaCommandTest):
                                       "first_seen": 0}},
         })
         self.assertIn("uid-b", self.char1.recognition_memory)
+
+
+class TestTheServiceRecordSurvives(EvenniaCommandTest):
+    """`world/manifest.py:19` promises designation and skills are
+    identity-level and survive resleeving. Nothing implemented it.
+
+    Both resleeve paths build a NEW object — charcreate's flash clone
+    and posts.py's `build_npc` — and the only writer of designation is
+    charcreate's `if not char.db.designation` branch, which rolls a
+    fresh random one. So somebody came back off the same imprint with a
+    different service record: different department, different rank,
+    different ratings (#2800).
+    """
+
+    def test_capture_takes_the_designation_and_skills(self):
+        self.char1.db.designation = {"vessel": "Kestrel", "dept": "medical",
+                                     "rank": "chief"}
+        self.char1.db.skills = {"medicine": 4, "chemistry": 2}
+        snap = imprint.capture(self.char1)
+        self.assertEqual(snap["designation"]["dept"], "medical")
+        self.assertEqual(snap["skills"]["medicine"], 4)
+
+    def test_the_new_body_comes_back_with_the_same_record(self):
+        self.char1.db.designation = {"vessel": "Kestrel", "dept": "medical",
+                                     "rank": "chief"}
+        self.char1.db.skills = {"medicine": 4}
+        snap = imprint.capture(self.char1)
+
+        # the new sleeve rolled its own on the way in, as charcreate does
+        self.char2.db.designation = {"vessel": "Other", "dept": "security",
+                                     "rank": "crewman"}
+        self.char2.db.skills = {"gunnery": 1}
+        imprint.restore(self.char2, snap)
+
+        self.assertEqual(self.char2.db.designation["dept"], "medical")
+        self.assertEqual(self.char2.db.designation["rank"], "chief")
+        self.assertEqual(self.char2.db.skills["medicine"], 4)
+
+    def test_a_record_without_them_leaves_the_body_alone(self):
+        """The #2799 rule, applied to the new fields: "applies only what
+        the record holds". A snapshot written before this existed must
+        not wipe a designation the new body already rolled."""
+        self.char2.db.designation = {"vessel": "Other", "dept": "security",
+                                     "rank": "crewman"}
+        self.char2.db.skills = {"gunnery": 1}
+        imprint.restore(self.char2, {"version": 1, "died_at": 0})
+        self.assertEqual(self.char2.db.designation["dept"], "security")
+        self.assertEqual(self.char2.db.skills["gunnery"], 1)
