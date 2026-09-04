@@ -26,7 +26,7 @@ in the director modules they belong to. Nothing accumulates here.
 
     register("bartender", serve_from_board)
 
-    handler(post, speech, patron, by) -> bool     # True if claimed
+    handler(post, speech, patron, by, addressed) -> bool   # True if claimed
 """
 
 #: post_role -> the whole job. The handler is only the largest part of
@@ -83,9 +83,49 @@ def register(role, handler, aliases=(), fallback=None, archetype=None,
             same place or a successor is handed `check_stock` and gets an
             empty string back (#2352).
     """
+    _check_signature(role, "handler", handler,
+                     ("post", "speech", "patron", "by", "addressed"))
+    _check_signature(role, "on_receive", on_receive,
+                     ("post", "obj", "giver", "by"))
     SERVICE[role] = {"handler": handler, "aliases": tuple(aliases),
                      "fallback": fallback, "archetype": archetype,
                      "tools": dict(tools or {}), "on_receive": on_receive}
+
+
+def _check_signature(role, kind, fn, args) -> None:
+    """Complain LOUDLY, at registration, about a handler that cannot be
+    called the way `serve` calls it.
+
+    The module docstring published a four-argument contract for years
+    while the call site passed a fifth keyword. A handler written to it
+    raised TypeError on every single line, the blanket except at the
+    call site swallowed that into `False` — which means "the post did
+    not claim it", an entirely ordinary outcome — and the venue was
+    silently mute forever. No error reached the player or the room
+    (#2797).
+
+    Caught here rather than at the call site because a wrong signature
+    is a programming error that should surface when the module loads,
+    not on some patron's first order.
+    """
+    if fn is None:
+        return
+    from inspect import signature
+    # `serve` passes `addressed` BY KEYWORD, so the handler's last
+    # argument has to bind as one. on_receive is called positionally
+    # throughout.
+    positional, keyword = ((args[:-1], {args[-1]: object()})
+                           if kind == "handler" else (args, {}))
+    try:
+        signature(fn).bind(*(object() for _ in positional), **keyword)
+    except TypeError as err:
+        from evennia.utils import logger
+        logger.log_err(
+            f"service: {role}'s {kind} {getattr(fn, '__name__', fn)!r} "
+            f"cannot be called as ({', '.join(args)}): {err}. "
+            f"This post will never serve.")
+    except (ValueError, KeyError):
+        pass    # builtin or C-level callable — no introspectable signature
 
 
 def job_for(post):
@@ -197,6 +237,15 @@ def receive(worker, obj, giver):
         return False
     try:
         return bool(hook(post_for(worker), obj, giver, worker))
+    except TypeError as err:
+        from evennia.utils import logger
+        if err.__traceback__ is None or err.__traceback__.tb_next is None:
+            logger.log_err(
+                f"on_receive {getattr(hook, '__name__', hook)!r} has the "
+                f"wrong signature for {worker}: {err}")
+        else:
+            logger.log_trace(f"on_receive failed for {worker}")
+        return False
     except Exception:  # noqa: BLE001 — a bad hand-over must not eat the item
         from evennia.utils import logger
         logger.log_trace(f"on_receive failed for {worker}")
@@ -220,6 +269,20 @@ def serve(worker, speech, patron, addressed=False):
         return False
     try:
         return bool(handler(post, speech, patron, worker, addressed=addressed))
+    except TypeError as err:
+        # A TypeError raised with NO frame below this one came from the
+        # call itself — a signature mismatch, not something inside the
+        # handler. Only the second is what the blanket catch below is
+        # defending against, and the first deserves to be loud: it means
+        # this venue serves nobody, ever.
+        from evennia.utils import logger
+        if err.__traceback__ is None or err.__traceback__.tb_next is None:
+            logger.log_err(
+                f"service handler {getattr(handler, '__name__', handler)!r} "
+                f"has the wrong signature for post {post}: {err}")
+        else:
+            logger.log_trace(f"service handler failed at {post}")
+        return False
     except Exception:  # noqa: BLE001 — a broken counter must not eat the line
         from evennia.utils import logger
         logger.log_trace(f"service handler failed at {post}")
