@@ -159,9 +159,10 @@ def render_system(character) -> str:
     for name, organ, data in flesh_mods:
         for aname in (data.get("abilities") or {}):
             entry = flesh_abilities.setdefault(
-                aname, {"hosts": [], "organ": organ}
+                aname, {"hosts": [], "organ": organ, "organs": []}
             )
             entry["hosts"].append(getattr(organ, "container", "") or "")
+            entry["organs"].append(organ)   # every host, for the worst-of below
     for aname, entry in flesh_abilities.items():
         hosts = set(entry["hosts"])
         if hosts >= {"left_hand", "right_hand"}:
@@ -173,11 +174,22 @@ def render_system(character) -> str:
             if _ability_state(entry["organ"], aname).get("deployed")
             else "retracted"
         )
+        # An implant is only as good as the flesh it is bolted to, so the
+        # readout takes the WORST host — a gun in a wrecked hand is not
+        # ONLINE. This branch used to hardcode the green tag and never
+        # consult `_status_tag` at all, so host damage never showed (#2794).
+        host_organs = entry.get("organs") or [entry["organ"]]
+        worst = min(
+            (o.current_hp / o.max_hp) if getattr(o, "max_hp", 0) else 0
+            for o in host_organs
+        )
+        tag, condition = _status_tag(worst)
         devices.append((
             aname.capitalize(),
-            "|gONLINE|n",
+            tag,
             [
                 f"mount .......... {where} · flesh",
+                f"condition ...... {condition}",
                 "feedback ....... host tissue · pain registers",
                 f"edge ........... {state}",
             ],
