@@ -697,17 +697,6 @@ def get_substance(item) -> str | None:
     return None
 
 
-def consume_puff(cigarette) -> dict:
-    """Decrement a smokable's remaining puffs.
-
-    Thin wrapper over :func:`world.consumables.consume_use`; kept
-    for callers that want the smoke-specific name.  See the generic
-    helper for the contract.
-    """
-    from world.consumables import consume_use
-    return consume_use(cigarette)
-
-
 # ---------------------------------------------------------------------
 # Argument parser — "bob's cigarette" / "cigarette"
 # ---------------------------------------------------------------------
