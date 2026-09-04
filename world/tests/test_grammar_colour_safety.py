@@ -19,6 +19,7 @@ The two most-used functions had never been examined.
 from evennia.utils.test_resources import EvenniaCommandTest
 
 from world.grammar import (
+    _visible,
     capitalize_first,
     get_article,
     pluralize_noun,
@@ -54,6 +55,37 @@ class TestCapitaliseSeesPastColour(EvenniaCommandTest):
         self.assertEqual(capitalize_first('"get down!" he shouts'),
                          '"Get down!" he shouts')
         self.assertEqual(capitalize_first(""), "")
+
+
+class TestHexTruecolourIsMarkupToo(EvenniaCommandTest):
+    """`|#rrggbb` is colour, not letters (#2805).
+
+    `_ANSI_TOKEN` is deliberately a LOCAL pattern rather than Evennia's,
+    so this module keeps no Evennia dependency in its core functions.
+    The cost is that it cannot track upstream: Evennia 6.1 renders
+    `|#ff0000` and `|[#00ff00` as truecolour, and the local pattern
+    matched neither — so `_visible()` counted eight characters of markup
+    as text a reader sees, and every grammar decision built on it
+    (article choice, capitalisation, width) worked from punctuation.
+
+    No live content uses hex markup yet. This pins it so the next form
+    Evennia adds fails here rather than silently mis-measuring prose.
+    """
+
+    def test_hex_foreground_is_not_visible_text(self):
+        self.assertEqual(_visible("|#ff0000red"), "red")
+
+    def test_hex_background_is_not_visible_text(self):
+        self.assertEqual(_visible("|[#00ff00green"), "green")
+
+    def test_the_older_forms_still_strip(self):
+        self.assertEqual(_visible("|rbasic|n"), "basic")
+        self.assertEqual(_visible("|500xterm|n"), "xterm")
+        self.assertEqual(_visible("|=lgrey|n"), "grey")
+        self.assertEqual(_visible("||literal"), "literal")
+
+    def test_capitalise_sees_past_a_hex_code(self):
+        self.assertEqual(capitalize_first("|#ff0000blood"), "|#ff0000Blood")
 
 
 class TestArticlesSeePastColour(EvenniaCommandTest):

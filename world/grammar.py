@@ -39,6 +39,11 @@ _engine = inflect.engine()
 # functions, and that is worth more than sharing one regex.
 _ANSI_TOKEN = re.compile(
     r"\|\|"                                   # escaped literal pipe
+    # hex truecolour, fg and bg — Evennia 6.1 renders |#rrggbb via
+    # HexColors. Must precede the single-letter branch, which would
+    # otherwise never see a '#' and leave 8 characters of markup
+    # counted as visible text (#2805).
+    r"|\|\[?#[0-9a-fA-F]{6}"
     r"|\|\[?(?:=[a-zA-Z]|[0-5]{3}|[a-zA-Z*/\-_^])"
 )
 
