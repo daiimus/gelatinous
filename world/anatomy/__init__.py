@@ -21,13 +21,11 @@ Public surface:
 * :func:`world.anatomy.organs.get_organ_display_name`
 * :func:`world.anatomy.organs.resolve_organ` — its input-side mirror
 * :func:`world.anatomy.organs.get_organ_default_description`
-* :func:`world.anatomy.conditions.format_condition_tagline`
 * :func:`world.anatomy.conditions.prepend_condition_to_desc`
 * :func:`world.anatomy.longdesc_tokens.substitute_pronoun_tokens`
 """
 
 from .conditions import (
-    format_condition_tagline,
     prepend_condition_to_desc,
 )
 from .longdesc_tokens import substitute_pronoun_tokens
@@ -75,7 +73,6 @@ __all__ = (
     "ORGAN_DISPLAY",
     "SEVERED_PART_DESCRIPTIONS",
     "SPECIES_DEFINITIONS",
-    "format_condition_tagline",
     "get_organ_default_description",
     "get_organ_display_name",
     "resolve_organ",

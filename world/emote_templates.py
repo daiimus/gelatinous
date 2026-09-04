@@ -20,7 +20,6 @@ from typing import TYPE_CHECKING
 
 from evennia.commands.command import Command
 
-from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 
 if TYPE_CHECKING:
