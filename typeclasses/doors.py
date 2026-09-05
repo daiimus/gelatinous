@@ -42,9 +42,24 @@ class DoorExit(Exit):
     # ------------------------------------------------------------------
 
     def twin(self):
-        """The matching exit on the far side, cached after first lookup."""
+        """The matching exit on the far side, cached after first lookup.
+
+        The cache is VALIDATED on read, not merely checked for liveness.
+        A door's twin is the exit that leads back here, and that is the
+        test the search path below already applies — the cache path
+        applied only "does this object still exist", so a `door_twin`
+        left over from a rebuild was returned forever and nothing
+        re-derived it. Twenty live Brackett doors were mirrored onto the
+        WRONG apartment: lock your door and a different tenant's door
+        locks with it, while your own far side stays as it was (#2633).
+
+        A stale entry now falls through to the search and re-caches, so
+        the fix heals the existing twenty on their next use rather than
+        needing a data migration.
+        """
         cached = self.db.door_twin
-        if cached is not None and getattr(cached, "pk", None):
+        if (cached is not None and getattr(cached, "pk", None)
+                and self._pairs_with(cached)):
             return cached
         dest = self.destination
         for ex in (getattr(dest, "exits", None) or []):
@@ -53,7 +68,21 @@ class DoorExit(Exit):
                 self.db.door_twin = ex
                 ex.db.door_twin = self
                 return ex
+        # No partner on the far side. Drop the stale pointer rather than
+        # leaving a wrong answer in place for the next reader.
+        if cached is not None:
+            self.db.door_twin = None
         return None
+
+    def _pairs_with(self, other) -> bool:
+        """Is `other` genuinely this door's far side?
+
+        The same test the search path uses: the twin is the door that
+        leads back into this door's room.
+        """
+        return (getattr(other.db, "is_door", None) is True
+                and other.destination is self.location
+                and other.location is self.destination)
 
     def _mirror(self, **states):
         """Set door state attributes on BOTH sides of the pair."""
