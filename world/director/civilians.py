@@ -406,6 +406,28 @@ CIVILIAN_ROLES: dict[str, dict] = {
 }
 
 
+
+def _is_private_residence(room) -> bool:
+    """A rentable dwelling is not a route node.
+
+    Passing a traverser (above) stops the FAULT loop but not the
+    propriety problem: an UNLOCKED unit is still somebody's home, and a
+    civilian whose beat includes it walks into a tenant's flat on a
+    timer. One keeper's beat held two occupied, unlocked Brackett units
+    for exactly that reason (#2714).
+
+    `cube_door` and `residence_building` are written together by the
+    rental build and agree on all 231 residence rooms in the world —
+    checked live, zero disagreement — so either identifies one; both are
+    tested so a partial build cannot slip through.
+    """
+    db = getattr(room, "db", None)
+    if db is None:
+        return False
+    return (getattr(db, "cube_door", None) is not None
+            or getattr(db, "residence_building", None) is not None)
+
+
 def ambient_beat(npc: Any) -> str | None:
     """A role-flavored idle line for the waypoint hook, or ``None``."""
     role = getattr(getattr(npc, "db", None), "role", None)
@@ -567,7 +589,16 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
         nearby = [
             room for room in rooms_within(anchor, HAUNT_RADIUS)
             if not getattr(room.db, "is_sky_room", False)
-            and is_reachable(anchor, room, max_steps=HAUNT_RADIUS * 4)
+            and not _is_private_residence(room)
+            # TRAVERSER, or the filter answers a different question from
+            # the walk. `travel_to` calls `find_path_exits(...,
+            # traverser=npc)`; this asked lock-blind, so a locked private
+            # apartment counted as reachable and was sampled into the
+            # beat. The walk then correctly found no route and faulted —
+            # one tobacconist failed the same locked door 273 times
+            # (#2711, #2714).
+            and is_reachable(anchor, room, traverser=npc,
+                             max_steps=HAUNT_RADIUS * 4)
         ]
     except Exception:  # noqa: BLE001
         nearby = []

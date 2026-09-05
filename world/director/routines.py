@@ -71,6 +71,25 @@ def get_beat(npc: Any) -> list:
     beat = list(getattr(npc.db, "patrol_beat", None) or [])
     if not beat:
         return []
+    # A PRIVATE DWELLING IS NOT A ROUTE NODE. Beats were built with a
+    # lock-blind reachability test and walked with a lock-aware one, so
+    # locked apartments were sampled in and then failed forever — one
+    # tobacconist failed the same door 273 times. And an UNLOCKED unit
+    # is worse in a different way: the walk succeeds and a civilian
+    # strolls into a tenant's home on a timer (#2711, #2714).
+    #
+    # The builder now excludes them, but beats already written persist
+    # on the NPC. Filtering HERE heals those on the next read rather
+    # than needing a data migration, and covers any beat authored by
+    # hand or by an older build.
+    from world.director.civilians import _is_private_residence
+    kept = [room for room in beat
+            if room is not None and not _is_private_residence(room)]
+    if kept != beat:
+        npc.db.patrol_beat = kept          # write the repair back
+        beat = kept
+    if not beat:
+        return []
     post = getattr(npc.db, "post", None)
     if post is not None and post not in beat:
         beat.insert(0, post)
