@@ -868,6 +868,13 @@ class CmdResetMedical(Command):
             caller.msg("|yFlesh rebuilt from the current structure; installed cyberware carried over.|n")
 
 
+def _acting_account_name(caller) -> str:
+    """The ACCOUNT behind a caller, or "" — a separate namespace from
+    the character key (#2790)."""
+    account = getattr(caller, "account", None)
+    return getattr(account, "key", "") or ""
+
+
 def _reset_medical_preserving_augments(char) -> int:
     """Thin alias — the implementation moved to
     `world.medical.procedures.reset_body_preserving_augments` so the
@@ -1089,8 +1096,16 @@ class CmdKeywords(Command):
                 return
 
             if filter_type == "player":
+                # EITHER namespace. The log prints both `char=` and
+                # `acct=`, and a staff member types whichever they read
+                # — but this matched only account_name, so searching the
+                # character name the log itself displays returned
+                # nothing, while an admin's character name returned
+                # admin rows under a "player" heading (#2790).
+                from django.db.models import Q
                 events = KeywordEvent.objects.filter(
-                    account_name__iexact=filter_value
+                    Q(account_name__iexact=filter_value)
+                    | Q(character_name__iexact=filter_value)
                 )[:self._LOG_PAGE_SIZE]
                 title = (
                     f"Keyword Events for player '{filter_value}' "
@@ -1140,9 +1155,14 @@ class CmdKeywords(Command):
             return
 
         gender_list, keyword = parts[0].lower(), parts[1].lower()
+        # BOTH names. `caller.key` is the acting CHARACTER; the account
+        # is a separate namespace and the log has a column for each.
         admin_name = caller.key  # type: ignore[attr-defined]
+        admin_account = _acting_account_name(caller)
 
-        ok, reason = add_approved_keyword(keyword, gender_list, admin_name)
+        ok, reason = add_approved_keyword(
+            keyword, gender_list, admin_name, admin_account
+        )
         if ok:
             caller.msg(
                 f"|gAdded|n '{keyword}' to the |w{gender_list}|n list."
@@ -1161,9 +1181,10 @@ class CmdKeywords(Command):
 
         gender_list, keyword = parts[0].lower(), parts[1].lower()
         admin_name = caller.key  # type: ignore[attr-defined]
+        admin_account = _acting_account_name(caller)
 
         ok, reason = remove_approved_keyword(
-            keyword, gender_list, admin_name
+            keyword, gender_list, admin_name, admin_account
         )
         if ok:
             caller.msg(

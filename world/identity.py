@@ -451,6 +451,7 @@ def add_approved_keyword(
     keyword: str,
     gender_list: str,
     admin_name: str = "",
+    admin_account: str = "",
 ) -> tuple[bool, str]:
     """Add a keyword to an approved gender list.
 
@@ -479,11 +480,18 @@ def add_approved_keyword(
 
     from world.models import KeywordEvent
 
+    # `admin_name` is the acting CHARACTER (callers pass `caller.key`),
+    # so it belongs in character_name. It used to go into account_name,
+    # which the model documents as the acting ACCOUNT and which the
+    # player writer fills with a real account key — two namespaces in
+    # one indexed column, so `@keywords log player <name>` matched
+    # admins and missed the player it named (#2790).
     KeywordEvent.objects.create(
         event_type="admin_add",
         keyword=keyword,
         gender_list=gender_list,
-        account_name=admin_name,
+        character_name=admin_name,
+        account_name=admin_account,
     )
     return True, ""
 
@@ -492,6 +500,7 @@ def remove_approved_keyword(
     keyword: str,
     gender_list: str,
     admin_name: str = "",
+    admin_account: str = "",
 ) -> tuple[bool, str]:
     """Remove a keyword from an approved gender list.
 
@@ -524,7 +533,8 @@ def remove_approved_keyword(
         event_type="admin_remove",
         keyword=keyword,
         gender_list=gender_list,
-        account_name=admin_name,
+        character_name=admin_name,
+        account_name=admin_account,
     )
     return True, ""
 
