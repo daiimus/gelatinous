@@ -170,9 +170,32 @@ def sense_radio(listener, speech, speaker, frequency):
                 or getattr(db, "llm_driven", None) is True
                 or getattr(db, "is_base_station", None) is True):
             return False
-        from world.radio import frequency_of, same_band, seated_base_station
+        from world.radio import (EMERGENCY_BAND, frequency_of, same_band,
+                                 seated_base_station)
         board = seated_base_station(listener)
         if board is None or not same_band(frequency_of(board), frequency):
+            return False
+        # AND it has to be the emergency band. This compared the board
+        # to the INCOMING transmission and nothing else, which every
+        # band satisfies — so whoever sat at ANY base station became an
+        # incident classifier for that band. Its sibling
+        # `filter_for_duty`, twenty-five lines below, imports
+        # EMERGENCY_BAND and checks exactly this; only one of the two
+        # ever did (#2773).
+        #
+        # What that cost: 88.8 is the pirate station and talking on it
+        # is the FEATURE. The Rook holds that chair, is a soul, and so
+        # has his inbox drained by the work loop — which runs the full
+        # incident pipeline. A player keying up to request a track had
+        # their words classified for incident type and severity, and
+        # units rolled to wherever the classifier decided they were.
+        # Ossie's crane console on 27.0 is the same shape, and arms the
+        # moment he takes the chair.
+        #
+        # The loop guard above rejects NPC- and device-sourced traffic
+        # by SPEAKER, so it never covered this: a player speaking is
+        # exactly what passes it.
+        if not same_band(frequency_of(board), EMERGENCY_BAND):
             return False
         return notice(listener, "radio_traffic", WORK_BAND,
                       {"speech": str(speech)[:400], "speaker": speaker,
