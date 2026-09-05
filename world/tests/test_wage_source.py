@@ -108,3 +108,51 @@ class TestWhereTheWageComesFrom(TestCase):
         paid, _t = self._pay(soul)
         self.assertEqual(paid, 30)
         self.assertAlmostEqual(soul.db.soul_wage_owed, 0.75, places=2)
+
+
+class TestANegativeTillDoesNotInflateTheDebt(TestCase):
+    """`min(owed, avail)` with a NEGATIVE `avail` gives a negative
+    `paid`. Both money writes are guarded by `paid > 0` and correctly do
+    nothing -- but `soul.db.soul_wage_owed = owed_f - paid` is NOT
+    guarded, so a negative `paid` ADDED to the debt.
+
+    The keeper of an overdrawn venue would accrue phantom debt equal to
+    the overdraft every payday, compounding, while never being paid
+    (#2703).
+
+    Armed, not firing: zero negative registers live today.
+    """
+
+    def _pay(self, soul, balance=1000):
+        treasury = mock.MagicMock()
+        treasury.db.balance = balance
+        with mock.patch.object(economy, "get_treasury", return_value=treasury), \
+             mock.patch("world.souls.audit.coin"):
+            return economy.pay_wage(soul)
+
+    def test_a_negative_till_pays_nothing(self):
+        soul = _Soul(50.0, _Venue(register=-40))
+        self.assertEqual(self._pay(soul), 0)
+
+    def test_a_negative_till_does_not_grow_the_debt(self):
+        soul = _Soul(50.0, _Venue(register=-40))
+        self._pay(soul)
+        self.assertAlmostEqual(soul.db.soul_wage_owed, 50.0, places=2,
+                               msg="the overdraft was added to the debt")
+
+    def test_a_negative_till_is_not_further_overdrawn(self):
+        venue = _Venue(register=-40)
+        self._pay(_Soul(50.0, venue))
+        self.assertEqual(venue.db.register, -40)
+
+    def test_a_negative_treasury_does_not_grow_the_debt_either(self):
+        soul = _Soul(50.0, None)
+        self._pay(soul, balance=-100)
+        self.assertAlmostEqual(soul.db.soul_wage_owed, 50.0, places=2)
+
+    def test_a_funded_till_is_unaffected(self):
+        """The pin: clamping must not change normal payment."""
+        venue = _Venue(register=200)
+        soul = _Soul(50.0, venue)
+        self.assertEqual(self._pay(soul), 50)
+        self.assertEqual(venue.db.register, 150)

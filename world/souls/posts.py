@@ -455,12 +455,26 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
             return False
     npc.db.is_npc = True
     # the premium moves for real: insurer till -> Maxwell's terminal
-    till.db.register = int(till.db.register or 0) - RESLEAVE_PREMIUM
-    provider = next((o for o in search_object("a Thawn-Harrison billing "
-                                              "terminal") if o.pk), None)
-    if provider is not None:
-        provider.db.register = int(provider.db.register or 0) \
-            + RESLEAVE_PREMIUM
+    #
+    # RE-READ the till here. Affordability is checked far above, before
+    # the decant, and `build_npc` / `spawn` / `move_to` all run in
+    # between — so the balance that was checked is not necessarily the
+    # balance being debited. Re-checking at the point of the write costs
+    # one attribute read and closes the window (#2703).
+    #
+    # And the credit only happens if the debit did. They were separate
+    # statements, so a debit that could not be afforded would still have
+    # credited Maxwell — creating tokens in a system whose header
+    # describes a closed loop where money circulates rather than
+    # appearing.
+    balance = int(till.db.register or 0)
+    if balance >= RESLEAVE_PREMIUM:
+        till.db.register = balance - RESLEAVE_PREMIUM
+        provider = next((o for o in search_object("a Thawn-Harrison billing "
+                                                  "terminal") if o.pk), None)
+        if provider is not None:
+            provider.db.register = int(provider.db.register or 0) \
+                + RESLEAVE_PREMIUM
 
     # the imprint returns, as of the last backup — same code path a
     # player's flash clone uses, so the two can never drift

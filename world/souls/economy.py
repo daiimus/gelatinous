@@ -81,13 +81,21 @@ def pay_wage(soul):
             has_till = False
     if has_till:
         avail = int(venue.db.register or 0)
-        paid = min(owed, avail)
+        # `max(0, ...)` — a NEGATIVE till must not become negative pay.
+        # `min(owed, avail)` with a negative `avail` gives a negative
+        # `paid`; both money writes below are guarded by `paid > 0` and
+        # correctly do nothing, but the final
+        # `soul.db.soul_wage_owed = owed_f - paid` is NOT guarded, so a
+        # negative `paid` ADDED to the debt. The keeper of an overdrawn
+        # venue would accrue phantom debt equal to the overdraft every
+        # payday, compounding, while never being paid (#2703).
+        paid = max(0, min(owed, avail))
         if paid > 0:
             venue.db.register = avail - paid
     else:
         treasury = get_treasury()
         avail = int(treasury.db.balance or 0)
-        paid = min(owed, avail)
+        paid = max(0, min(owed, avail))   # same guard on the other source
         if paid > 0:
             treasury.db.balance = avail - paid
     if paid > 0:
