@@ -279,12 +279,26 @@ class MedicalScript(DefaultScript):
                     and not medical_state.is_dead()):
                     splattercast.msg(f"MEDICAL_SCRIPT_RECOVERY: {self.obj.key} has regained consciousness")
                     self.obj.ndb.unconsciousness_processed = False
-                    # Clear unconsciousness placement description when regaining consciousness
-                    # But ONLY clear unconscious description, not death description
-                    if (hasattr(self.obj, 'override_place') and 
-                        self.obj.override_place == "unconscious and motionless."):
-                        splattercast.msg(f"MEDICAL_SCRIPT_CLEAR_UNCONSCIOUS: Clearing unconscious override_place for {self.obj.key}")
-                        self.obj.override_place = None
+                    # ONE method owns the whole transition, both ways.
+                    #
+                    # This branch used to hand-clear the two flags it knew
+                    # about and stop -- while `apply_unconscious_state`
+                    # had also swapped in `UnconsciousCmdSet`, which is a
+                    # PERSISTENT default. So a character who went down to
+                    # pain, blood loss or sedation and recovered NATURALLY
+                    # stood up in the room description holding `help`,
+                    # `who`, `time` and `quit`: no look, no movement, no
+                    # actions, and reconnecting did not clear it. The only
+                    # things that restored the cmdset were two
+                    # Builder-locked admin commands and the death
+                    # transition (#2416).
+                    #
+                    # The medical model owned half the recovery and the
+                    # command layer owned the other half, and only the
+                    # first half ever ran. `remove_unconscious_state`
+                    # clears the same `override_place` this branch used
+                    # to, so nothing is lost by deferring to it.
+                    self.obj.remove_unconscious_state()
             
             # Check if we should stop (no conditions left AND no
             # stabilized wounds still healing).  PR-C: keep the
