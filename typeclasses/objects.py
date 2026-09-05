@@ -49,6 +49,32 @@ class ObjectParent:
         except Exception:  # noqa: BLE001 — a clock fault never hides an item
             return desc
 
+    def at_object_delete(self):
+        """Give up any equipment slot naming this object before it goes.
+
+        An item that deletes itself while held left the holder's
+        `held_items` pointing at a dead row -- 68 of those were live when
+        this was written, and `CigarettePack` (which deletes itself when
+        the last cigarette is drawn) is one confirmed producer. They were
+        harmless only because `deserialize` renders a dead reference as
+        ``None``, so the slot read as a free hand (#2467).
+
+        On the mixin rather than on `Item`, so it holds for anything
+        deletable that something else can be holding.
+        """
+        release = getattr(self.location, "release_slots", None)
+        if callable(release):
+            try:
+                release(self)
+            except Exception:  # noqa: BLE001
+                # A ledger repair must never be what stops a delete --
+                # but it gets logged, not swallowed: silence here would
+                # turn a bug into a policy.
+                from evennia.utils import logger
+                logger.log_trace(
+                    f"release_slots failed for {self!r} in {self.location!r}")
+        return super().at_object_delete()
+
     # Ordinal word mapping for natural language search
     ORDINAL_WORDS = {
         'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5,

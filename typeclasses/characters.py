@@ -1944,6 +1944,80 @@ class Character(
         self.attributes.remove("hands", category="equipment")
 
     # ===================================================================
+    # EQUIPMENT LEDGER INVARIANT
+    # ===================================================================
+
+    def release_slots(self, obj):
+        """Forget *obj* in every equipment ledger on this body.
+
+        `held_items` and `worn_items` are backing stores maintained by
+        explicit code at each call site, and `Character` had no hook
+        reacting to an item leaving it -- so every path that removed one
+        had to remember, and several did not: `resolve_disarm` and
+        `rig_grenade` mutated a throwaway view (#2421), `LockerBank.stash`
+        moved the item straight out of `caller.contents` and never
+        touched hands at all (#2457), and anything that self-deleted
+        while held simply left the slot pointing at a dead row (#2467).
+        A packed-structure sweep found 68 of those live.
+
+        Rooms, corpses and cigarette packs all hooked object departure.
+        The one type with a hand-slot ledger to keep did not. This is
+        that hook's other half: five call-site obligations become one
+        invariant.
+
+        Also prunes slots that already hold nothing, so a body repairs
+        its own historical drift the next time anything leaves it --
+        `deserialize` renders a dead reference as ``None``, which is why
+        those 68 read as free hands and nothing ever broke loudly.
+
+        Idempotent, and safe to call for an object this body was never
+        holding.
+        """
+        def _is(item):
+            if item is None:
+                return False
+            return item is obj or getattr(item, "id", None) == getattr(obj, "id", "")
+
+        held = dict(self.held_items or {})
+        kept = {slot: item for slot, item in held.items()
+                if item is not None and not _is(item)}
+        if kept != held:
+            self.held_items = kept
+
+        worn = dict(self.worn_items or {})
+        changed = False
+        for location, layers in list(worn.items()):
+            # Duck-typed, NOT isinstance: a stored list comes back as
+            # Evennia's `_SaverList`, which implements MutableSequence
+            # WITHOUT subclassing `list`. An isinstance check here reads
+            # as a safety guard and is really an unconditional skip --
+            # the same shape that made #2701's bleed check compare a
+            # stringified condition instead of a field.
+            if isinstance(layers, str) or not hasattr(layers, "__iter__"):
+                continue
+            remaining = [item for item in layers
+                         if item is not None and not _is(item)]
+            if len(remaining) != len(layers):
+                changed = True
+                if remaining:
+                    worn[location] = remaining
+                else:
+                    del worn[location]
+        if changed:
+            self.worn_items = worn
+
+    def at_object_leave(self, moved_obj, target_location, **kwargs):
+        """Anything leaving this body gives up its hand and clothing slots.
+
+        NOTE for whoever moves an item off a character: several call
+        sites pass ``move_hooks=False`` (to suppress messaging), and that
+        suppresses THIS too. Those must call `release_slots` themselves
+        -- `LockerBank.stash` is the one that already had to.
+        """
+        self.release_slots(moved_obj)
+        return super().at_object_leave(moved_obj, target_location, **kwargs)
+
+    # ===================================================================
     # LONGDESC SYSTEM
     # ===================================================================
     # Detailed body part descriptions: anatomy source of truth
