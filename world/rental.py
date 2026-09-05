@@ -172,14 +172,42 @@ def residence_report(char):
     }
 
 
+def unit_label(cube):
+    """The label a board prints for *cube* -- and one it will accept back.
+
+    "The Brackett Arms - Unit 3B" -> "3B", "The Halcyon - Cabin 1B" ->
+    "1B", "R0-01" -> "R0-01". A single leading WORD is the building's
+    name for its kind of unit and is dropped; anything that is not a bare
+    word (an id like R0-01) is left alone.
+
+    This used to live on `RentalTerminal` and strip only the one prefix
+    "unit ", so the Halcyon board printed "Vacant: Cabin 1B" and then
+    refused `press rent Cabin 1B` -- all 35 of its cabins advertised a
+    label their own parser rejected (#2457). The printer and the parser
+    have to agree, so they now share this.
+    """
+    tail = str(cube.key).split(" - ")[-1].strip()
+    parts = tail.split()
+    if len(parts) > 1 and parts[0].isalpha():
+        return " ".join(parts[1:])
+    return tail
+
+
 def unit_matches(cube, want):
     """Does the name *want* denote this cube? Token match on the key, so
-    "3b" hits "The Brackett Arms - Unit 3B" and "r0-01" hits "R0-01"."""
+    "3b" hits "The Brackett Arms - Unit 3B" and "r0-01" hits "R0-01".
+
+    Also accepts whatever a board would PRINT for it, and the full tail
+    ("cabin 1b"), so a player can always type back what they were just
+    shown."""
     want = (want or "").strip().lower()
     if not want:
         return False
     tokens = [t.strip("().,").lower() for t in cube.key.split()]
-    return want in tokens
+    if want in tokens:
+        return True
+    tail = str(cube.key).split(" - ")[-1].strip().lower()
+    return want in (unit_label(cube).lower(), tail)
 
 
 def assign_cube(char, terminal, unit=None):
