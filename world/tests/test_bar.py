@@ -18,11 +18,25 @@ import typeclasses.llm_npc as llmnpc
 
 
 class _Obs:
-    """A minimal listener that records msg kwargs."""
+    """A minimal listener that records msg kwargs.
+
+    Carries `get_sdesc` and `medical_state` because a pose is delivered
+    only to PERCEIVERS now: `world.emote._perceivers` filters room
+    contents to characters, since every typeclassed object has `.msg`
+    and the old `hasattr(observer, "msg")` guard therefore filtered
+    nothing — 96% of pose rendering was being spent on furniture
+    (#2788). A double standing in for a listener has to be
+    character-shaped or it is standing in for a crate.
+    """
+
+    medical_state = None
 
     def __init__(self, name):
         self.name = name
         self.calls = []
+
+    def get_sdesc(self, *a, **kw):
+        return self.name
 
     def msg(self, *args, **kwargs):
         self.calls.append(kwargs)

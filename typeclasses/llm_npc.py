@@ -460,9 +460,25 @@ class LLMNpcMixin:
         def _with_query_vec(vec):
             # reactor-side: score this NPC's memories against the line, inject.
             try:
-                hits = mem.retrieve(vec, self._load_memories(),
+                # PERSIST THE BUMP. `_load_memories` returns a
+                # DESERIALIZED copy, and `retrieve` mutates the records
+                # it returns — setting `last_seen` and bumping `uses` —
+                # on that copy, which is turned into prompt text and
+                # then discarded. Nothing ever assigned back, so recall
+                # has never strengthened a memory: 2,172 of 2,193 live
+                # records had `uses == 0` (#2728).
+                #
+                # `prune` ranks by `salience`, which reads `uses` and
+                # `last_seen`. Frozen at zero, that signal never varies,
+                # so which memories an NPC keeps was decided by
+                # everything EXCEPT how often they were actually
+                # recalled — the opposite of the documented design.
+                records = self._load_memories()
+                hits = mem.retrieve(vec, records,
                                     k=LLM_MEMORY_TOPK,
                                     subject=self._memory_scope(subject))
+                if hits:
+                    self.db.llm_memories = records
                 _go(mem.memory_texts(hits))
             except Exception:  # noqa: BLE001 — memory is best-effort
                 _go(None)

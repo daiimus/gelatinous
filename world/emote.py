@@ -106,9 +106,22 @@ def _perceivers(location, exclude_set=frozenset()):
     that keeps them, since every NPC typeclass subclasses it and
     `Character` is the only class in the game that overrides `msg()`.
     """
-    from typeclasses.characters import Character
     return [obj for obj in location.contents
-            if obj not in exclude_set and isinstance(obj, Character)]
+            if obj not in exclude_set and _perceives(obj)]
+
+
+def _perceives(obj) -> bool:
+    """Is this thing a character, and so able to receive a pose?
+
+    The same duck-type `world/director/medical.py::_is_character` uses,
+    rather than `isinstance(..., Character)`. Both give IDENTICAL
+    results across every typeclass in the live database — checked, and
+    the two consoles flagged `is_npc` are excluded by both and ignore
+    anything that is not `type="radio"` anyway — but the duck-type does
+    not import a typeclass into a hot path, and it does not exclude a
+    legitimate stand-in that is character-shaped without inheriting.
+    """
+    return hasattr(obj, "get_sdesc") and hasattr(obj, "medical_state")
 
 
 def process_speech(

@@ -99,9 +99,28 @@ def _feed_rag(soul, note):
 
         def _save(vec):
             try:
+                # THROUGH `remember`, not around it. This called
+                # `make_record` and `prune` — the two helpers `remember`
+                # wraps — and skipped the DEDUPLICATION in the middle,
+                # so every thought was appended as a new record whether
+                # or not that exact sentence was already stored.
+                #
+                # Not merely wasted rows: `prune` enforces a per-subject
+                # cap, so duplicates EVICT real memories. A soul that
+                # keeps having the same thought spends its whole
+                # recollection budget on one sentence and genuinely
+                # forgets everything else — which is precisely the
+                # damage build 118 was written to repair, and it had
+                # fully returned: 79% of 2,170 live records were
+                # duplicates (#2707, #2242).
+                #
+                # `remember` also bumps last_seen/uses on a repeat,
+                # which is what `salience` rewards — so a repeated
+                # experience becomes a STRONG memory instead of a crowd
+                # of weak identical ones.
                 recs = deserialize(soul.db.llm_memories) or []
-                recs.append(mem.make_record(text, vec, subject=""))
-                soul.db.llm_memories = mem.prune(recs)
+                soul.db.llm_memories = mem.remember(recs, text, vec,
+                                                    subject="")
             except Exception:   # noqa: BLE001 — memory is best-effort
                 pass
 
