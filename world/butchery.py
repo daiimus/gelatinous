@@ -21,39 +21,25 @@ from world.grammar import with_article
 
 
 #: Species the block buys. Everything else is refused (see _refuse_species).
+#:
+#: THE definition. This block was pasted five times down this module,
+#: growing on each paste, while `typeclasses/butcher.py` carried a sixth
+#: copy that nothing there even used. Python keeps the LAST definition,
+#: so the earlier copies were dead text that would have misled the next
+#: edit -- and a tuning change made in the typeclass would have moved the
+#: tests and nothing in the game, or the reverse (#2632).
 ACCEPTED_BUTCHER_SPECIES = frozenset({"rat"})
 
-#: Species the block buys. Everything else is refused (see _refuse_species).
-ACCEPTED_BUTCHER_SPECIES = frozenset({"rat"})
-
-#: Decay factor (0.0 fresh → 1.0 a week gone) beyond which a carcass is
-#: refused outright — past even her standards.
-BUTCHER_DECAY_REFUSAL = 0.6
-
-#: Species the block buys. Everything else is refused (see _refuse_species).
-ACCEPTED_BUTCHER_SPECIES = frozenset({"rat"})
-
-#: Decay factor (0.0 fresh → 1.0 a week gone) beyond which a carcass is
-#: refused outright — past even her standards.
+#: Decay factor (0.0 fresh -> 1.0 a week gone) beyond which a carcass is
+#: refused outright -- past even her standards.
 BUTCHER_DECAY_REFUSAL = 0.6
 
 #: Register floor: below this the till can't cover a carcass and she stops
-#: buying until it's fed (finite till — the economy hook).
+#: buying until it's fed (finite till -- the economy hook).
 BUTCHER_TILL_FLOOR = 5
 
-#: Species the block buys. Everything else is refused (see _refuse_species).
-ACCEPTED_BUTCHER_SPECIES = frozenset({"rat"})
-
-#: Decay factor (0.0 fresh → 1.0 a week gone) beyond which a carcass is
-#: refused outright — past even her standards.
-BUTCHER_DECAY_REFUSAL = 0.6
-
-#: Register floor: below this the till can't cover a carcass and she stops
-#: buying until it's fed (finite till — the economy hook).
-BUTCHER_TILL_FLOOR = 5
-
-#: The rat butchery BUY values (spec §3.4): what the block pays a supplier
-#: per unit yielded. The SELL side is cooked — dish prices live in
+#: The rat butchery BUY values (spec 3.4): what the block pays a supplier
+#: per unit yielded. The SELL side is cooked -- dish prices live in
 #: ``world.food.FOOD_RECIPES``; raw-cut prose/tags on the prototypes.
 RAT_PRODUCTS = {
     "rat_tail":            {"name": "rat tail", "buy": 5},
@@ -63,62 +49,13 @@ RAT_PRODUCTS = {
     "ground_mystery_meat": {"name": "ground mystery meat", "buy": 1},
 }
 
-#: Species the block buys. Everything else is refused (see _refuse_species).
-ACCEPTED_BUTCHER_SPECIES = frozenset({"rat"})
-
-#: Decay factor (0.0 fresh → 1.0 a week gone) beyond which a carcass is
-#: refused outright — past even her standards.
-BUTCHER_DECAY_REFUSAL = 0.6
-
-#: Register floor: below this the till can't cover a carcass and she stops
-#: buying until it's fed (finite till — the economy hook).
-BUTCHER_TILL_FLOOR = 5
-
-#: The rat butchery BUY values (spec §3.4): what the block pays a supplier
-#: per unit yielded. The SELL side is cooked — dish prices live in
-#: ``world.food.FOOD_RECIPES``; raw-cut prose/tags on the prototypes.
-RAT_PRODUCTS = {
-    "rat_tail":            {"name": "rat tail", "buy": 5},
-    "rat_chops":           {"name": "rat chops", "buy": 3},
-    "rat_haunch":          {"name": "rat haunch", "buy": 3},
-    "rat_offal":           {"name": "rat offal", "buy": 3},
-    "ground_mystery_meat": {"name": "ground mystery meat", "buy": 1},
-}
-
-#: Trunk organs whose average condition gates the chops yield — a
+#: Trunk organs whose average condition gates the chops yield -- a
 #: shotgun-shredded torso yields few or no center cuts.
 _RAT_TRUNK_ORGANS = ("heart", "left_lung", "right_lung", "liver", "stomach",
                      "left_kidney", "right_kidney")
 
 #: Organs that make the offal twist (need at least half sound).
 _RAT_OFFAL_ORGANS = ("heart", "liver", "left_kidney", "right_kidney")
-
-#: Species the block buys. Everything else is refused (see _refuse_species).
-ACCEPTED_BUTCHER_SPECIES = frozenset({"rat"})
-
-#: Decay factor (0.0 fresh → 1.0 a week gone) beyond which a carcass is
-#: refused outright — past even her standards.
-BUTCHER_DECAY_REFUSAL = 0.6
-
-#: Register floor: below this the till can't cover a carcass and she stops
-#: buying until it's fed (finite till — the economy hook).
-BUTCHER_TILL_FLOOR = 5
-
-#: The rat butchery BUY values (spec §3.4): what the block pays a supplier
-#: per unit yielded. The SELL side is cooked — dish prices live in
-#: ``world.food.FOOD_RECIPES``; raw-cut prose/tags on the prototypes.
-RAT_PRODUCTS = {
-    "rat_tail":            {"name": "rat tail", "buy": 5},
-    "rat_chops":           {"name": "rat chops", "buy": 3},
-    "rat_haunch":          {"name": "rat haunch", "buy": 3},
-    "rat_offal":           {"name": "rat offal", "buy": 3},
-    "ground_mystery_meat": {"name": "ground mystery meat", "buy": 1},
-}
-
-#: Trunk organs whose average condition gates the chops yield — a
-#: shotgun-shredded torso yields few or no center cuts.
-_RAT_TRUNK_ORGANS = ("heart", "left_lung", "right_lung", "liver", "stomach",
-                     "left_kidney", "right_kidney")
 
 
 def on_receive(post, obj, giver, by):

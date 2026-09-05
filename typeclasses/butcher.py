@@ -21,35 +21,12 @@ from typeclasses.furniture import Seating
 from typeclasses.shopkeeper import ShopContainer
 from world.grammar import with_article
 
-#: Species the block buys. Everything else is refused (see _refuse_species).
-ACCEPTED_BUTCHER_SPECIES = frozenset({"rat"})
-
-#: Decay factor (0.0 fresh → 1.0 a week gone) beyond which a carcass is
-#: refused outright — past even her standards.
-BUTCHER_DECAY_REFUSAL = 0.6
-
-#: Register floor: below this the till can't cover a carcass and she stops
-#: buying until it's fed (finite till — the economy hook).
-BUTCHER_TILL_FLOOR = 5
-
-#: The rat butchery BUY values (spec §3.4): what the block pays a supplier
-#: per unit yielded. The SELL side is cooked — dish prices live in
-#: ``world.food.FOOD_RECIPES``; raw-cut prose/tags on the prototypes.
-RAT_PRODUCTS = {
-    "rat_tail":            {"name": "rat tail", "buy": 5},
-    "rat_chops":           {"name": "rat chops", "buy": 3},
-    "rat_haunch":          {"name": "rat haunch", "buy": 3},
-    "rat_offal":           {"name": "rat offal", "buy": 3},
-    "ground_mystery_meat": {"name": "ground mystery meat", "buy": 1},
-}
-
-#: Trunk organs whose average condition gates the chops yield — a
-#: shotgun-shredded torso yields few or no center cuts.
-_RAT_TRUNK_ORGANS = ("heart", "left_lung", "right_lung", "liver", "stomach",
-                     "left_kidney", "right_kidney")
-
-#: Organs that make the offal twist (need at least half sound).
-_RAT_OFFAL_ORGANS = ("heart", "liver", "left_kidney", "right_kidney")
+# The butcher constants live in `world.butchery`, with the code that
+# READS them. This module carried a second copy that none of its own
+# functions used -- a leftover from #2378, when the deterministic core
+# moved off the typeclass and onto the job. Two definitions meant a
+# tuning change here moved the tests and nothing in the game, or the
+# reverse; they agreed only by coincidence (#2632).
 
 
 class FoodCart(Seating, ShopContainer):

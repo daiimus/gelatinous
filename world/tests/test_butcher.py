@@ -14,7 +14,7 @@ import typeclasses.butcher as butchmod
 import typeclasses.llm_npc as llmnpc
 import world.butchery as butchery
 import world.shop.service as shopsvc
-from typeclasses.butcher import (
+from world.butchery import (
     ACCEPTED_BUTCHER_SPECIES, BUTCHER_DECAY_REFUSAL, RAT_PRODUCTS,
 )
 
@@ -487,3 +487,53 @@ class TestReceivingIsTheJobs(TestCase):
                                        MagicMock(), MagicMock())
         self.assertFalse(took)
         later.assert_not_called()
+
+
+class TestOneDefinitionOfEachConstant(TestCase):
+    """The butcher constants were defined SIX times: five stacked down
+    `world/butchery.py` from a paste that grew on each repeat, plus a
+    copy in `typeclasses/butcher.py` that none of that module's own
+    functions used. Python keeps the last definition, so the earlier ones
+    were dead text -- and a tuning change made in the typeclass moved the
+    tests and nothing in the game, or the reverse. They agreed only by
+    coincidence (#2632).
+    """
+
+    CONSTANTS = ("ACCEPTED_BUTCHER_SPECIES", "BUTCHER_DECAY_REFUSAL",
+                 "BUTCHER_TILL_FLOOR", "RAT_PRODUCTS",
+                 "_RAT_TRUNK_ORGANS", "_RAT_OFFAL_ORGANS")
+
+    def _source(self, module):
+        import inspect
+        return inspect.getsource(module)
+
+    def test_each_constant_is_defined_exactly_once(self):
+        import re
+        src = self._source(butchery)
+        for name in self.CONSTANTS:
+            hits = len(re.findall(rf"^{re.escape(name)}\s*=", src, re.M))
+            self.assertEqual(hits, 1,
+                             f"{name} has {hits} definitions in world/butchery.py")
+
+    def test_the_typeclass_does_not_redefine_them(self):
+        import re
+        import typeclasses.butcher as butcher_tc
+        src = self._source(butcher_tc)
+        for name in self.CONSTANTS:
+            self.assertEqual(
+                len(re.findall(rf"^{re.escape(name)}\s*=", src, re.M)), 0,
+                f"{name} is defined a second time in typeclasses/butcher.py")
+
+    def test_the_runtime_and_the_tests_read_the_same_object(self):
+        """The actual failure mode: two doors onto one table."""
+        self.assertIs(RAT_PRODUCTS, butchery.RAT_PRODUCTS)
+        self.assertIs(ACCEPTED_BUTCHER_SPECIES,
+                      butchery.ACCEPTED_BUTCHER_SPECIES)
+
+    def test_the_persona_blurb_reads_the_live_table(self):
+        """`llm_persona` named the species she buys from the typeclass
+        copy, so her spoken blurb could disagree with what she accepts."""
+        import inspect
+        import typeclasses.llm_persona as persona
+        self.assertIn("from world.butchery import ACCEPTED_BUTCHER_SPECIES",
+                      inspect.getsource(persona))

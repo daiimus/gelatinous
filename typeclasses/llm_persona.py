@@ -138,7 +138,7 @@ def build_persona(npc) -> dict:
     find_block = getattr(npc, "_find_block", None)
     if callable(find_block):
         try:
-            from typeclasses.butcher import ACCEPTED_BUTCHER_SPECIES
+            from world.butchery import ACCEPTED_BUTCHER_SPECIES
             buys = sorted(ACCEPTED_BUTCHER_SPECIES)
             block = find_block()
             if block is not None:
