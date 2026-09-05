@@ -89,23 +89,40 @@ class CmdStopFollowing(Command):
 
     def func(self):
         caller = self.caller
+        # BOTH couplings, in one invocation. `db.following` (I follow
+        # someone) and being another character's `db.escorting` target
+        # (someone leads me) are independent attributes and can both be
+        # set at once. The follow branch used to `return`, so in that
+        # state the player was told they stopped following and was still
+        # being escorted, with nothing to suggest a second invocation
+        # was needed — while the help text says this "ALSO breaks away
+        # from someone escorting you" (#2792).
+        #
+        # Escort is the more consequential half to miss: a leader's
+        # movement routes through `usher_escortee`, so an unbroken
+        # escort keeps moving the player.
+        did_something = False
+
         if caller.db.following:
             sever_follow(caller)
-            return
+            did_something = True
+
         # Break away from anyone escorting us — it's our movement.
         location = caller.location
         escorts = [obj for obj in (location.contents if location else [])
                    if getattr(obj.db, "escorting", None) == caller]
+        for leader in escorts:
+            leader.db.escorting = None
+            leader.msg(
+                f"{caller.get_display_name(leader)} breaks away from "
+                f"your lead."
+            )
         if escorts:
-            for leader in escorts:
-                leader.db.escorting = None
-                leader.msg(
-                    f"{caller.get_display_name(leader)} breaks away from "
-                    f"your lead."
-                )
             caller.msg("You break away.")
-            return
-        caller.msg("You aren't following anyone.")
+            did_something = True
+
+        if not did_something:
+            caller.msg("You aren't following anyone.")
 
 
 class CmdEscort(Command):

@@ -186,6 +186,64 @@ class TestFollowCommands(TestCase):
         self.assertIn("break away", caller.msg.call_args.args[0])
 
 
+class TestStopFollowingBreaksBoth(TestCase):
+    """`stop following` says it "ALSO breaks away from someone escorting
+    you", which reads as *in addition* -- one command, both couplings
+    dropped. The follow branch used to `return` before the escort block,
+    making them mutually exclusive (#2792).
+
+    `db.following` (I follow someone) and being another character's
+    `db.escorting` target (someone leads me) are independent attributes
+    and can both be set at once. In that state the player was told they
+    stopped following and was still being escorted, with nothing to
+    suggest a second invocation was needed -- and escort is the more
+    consequential half, because a leader's movement routes through
+    `usher_escortee` and keeps moving the player.
+    """
+
+    def _cmd(self, caller):
+        from commands.CmdFollow import CmdStopFollowing
+        cmd = CmdStopFollowing()
+        cmd.caller = caller
+        cmd.args = ""
+        return cmd
+
+    def test_both_couplings_break_in_one_invocation(self):
+        room = _room()
+        caller, ahead, leader = _char(room), _char(room), _char(room)
+        caller.db.following = ahead          # I follow someone
+        leader.db.escorting = caller         # someone leads me
+        room.contents = [caller, ahead, leader]
+        self._cmd(caller).func()
+        self.assertIsNone(caller.db.following, "still following")
+        self.assertIsNone(leader.db.escorting, "still being escorted")
+
+    def test_following_only_still_works(self):
+        room = _room()
+        caller, ahead = _char(room), _char(room)
+        caller.db.following = ahead
+        room.contents = [caller, ahead]
+        self._cmd(caller).func()
+        self.assertIsNone(caller.db.following)
+
+    def test_escort_only_still_works(self):
+        room = _room()
+        caller, leader = _char(room), _char(room)
+        leader.db.escorting = caller
+        room.contents = [caller, leader]
+        self._cmd(caller).func()
+        self.assertIsNone(leader.db.escorting)
+
+    def test_neither_still_says_so(self):
+        """The pin: the no-op message must survive the restructure."""
+        room = _room()
+        caller = _char(room)
+        room.contents = [caller]
+        self._cmd(caller).func()
+        self.assertIn("aren't following anyone",
+                      caller.msg.call_args.args[0])
+
+
 class TestEscortCommand(TestCase):
     def _pair(self):
         room = _room()

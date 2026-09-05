@@ -98,3 +98,20 @@ def get_current_time_period():
         str: Current time period
     """
     return TimeSystem().get_current_time_period()
+
+
+def spoken_period(period):
+    """A TIME_PERIODS key as something a voice can say.
+
+    The keys are identifiers -- ``late_evening`` -- and were being
+    interpolated straight into broadcast prose, so the station said "It
+    is late_evening in the colony" for 18 hours of every 24 (#2785).
+
+    De-underscored rather than hand-mapped, deliberately: every one of
+    the twelve reads correctly that way ("late evening", "pre dawn"), and
+    a lookup table would silently fall back to the raw key the first time
+    somebody adds a period -- which is the exact failure being fixed.
+    """
+    if not period:
+        return period
+    return str(period).replace("_", " ")

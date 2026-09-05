@@ -34,8 +34,18 @@ def _cue():
     period, weather = None, None
     try:
         from world.weather import time_system, weather_system
-        period = time_system.get_current_time_period()
-        weather = weather_system.get_current_weather()
+        # NOTE the two import forms, and do not "tidy" them into one.
+        # `world/weather/__init__.py` binds `time_system` and
+        # `weather_system` to INSTANCES that shadow the submodules of the
+        # same name, so the names above are a TimeSystem and a
+        # WeatherSystem — they carry the getters but not module-level
+        # functions. The helpers have to come from the real submodule
+        # path. Same shadowing family as #2754.
+        from world.weather.time_system import spoken_period
+        from world.weather.weather_system import spoken_weather
+        # SPOKEN forms, not the raw registry keys — these go on air.
+        period = spoken_period(time_system.get_current_time_period())
+        weather = spoken_weather(weather_system.get_current_weather())
     except Exception:  # noqa: BLE001 — a broken clock still runs a station
         pass
     if not period:

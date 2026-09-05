@@ -183,3 +183,17 @@ class WeatherSystem:
     def get_weather_intensity(self):
         """Get current weather intensity level."""
         return WEATHER_INTENSITY.get(self.current_weather, 'mild')
+
+
+def spoken_weather(weather):
+    """A weather key as something a voice can say.
+
+    Same defect as `time_system.spoken_period`: 11 of the 19 weather
+    values are underscored identifiers (``dry_thunderstorm``,
+    ``tox_rain``, ``gray_pall``), so the station would read them on air
+    verbatim. The issue only noticed the time period; the weather half
+    of the same line has it too (#2785).
+    """
+    if not weather:
+        return weather
+    return str(weather).replace("_", " ")
