@@ -52,11 +52,31 @@ class TestBarTill(EvenniaCommandTest):
         self.assertEqual(self.char1.tokens, 40)
 
     def test_a_stranger_may_not(self):
+        """The stranger has to be an ACTUAL stranger.
+
+        `EvenniaTest` gives `char1` the `developer` permission, and
+        `BarCounter.is_bartender` deliberately grants game staff every
+        bar -- so char1 is not a stranger to this counter, and this test
+        only ever passed because `till` used to ask a different question
+        from `use`, `prepare` and `clean` (#2471). char2 carries no
+        permissions, which is what the case was always about.
+        """
+        self.bar.db.owner = self.char1
+        self.bar.db.register = 40
+        self.char2.location = self.room1
+        self.char2.tokens = 0
+        self.call(CmdBarTill(), "", obj=self.bar, caller=self.char2)
+        self.assertEqual(self.bar.db.register, 40)
+        self.assertEqual(self.char2.tokens, 0)
+
+    def test_game_staff_may_take_any_register(self):
+        """The other half of the same ruling, now pinned rather than
+        implied: `is_bartender` says staff can work and manage any bar,
+        and `till` is management."""
         self.bar.db.owner = self.char2
         self.bar.db.register = 40
         self._till()
-        self.assertEqual(self.bar.db.register, 40)
-        self.assertEqual(self.char1.tokens, 0)
+        self.assertEqual(self.char1.tokens, 40)
 
     def test_unowned_bar_is_open_to_anyone(self):
         self.bar.db.register = 15
