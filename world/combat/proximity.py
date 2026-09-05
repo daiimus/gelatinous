@@ -40,6 +40,17 @@ def establish_proximity(char1, char2):
     Args:
         char1: First character
         char2: Second character
+    
+
+    DOES NOT CHECK GEOMETRY. Identity is the only guard here — callers
+    are responsible for the two being in the same room. Every live
+    caller is an advance / charge / grapple-drag path that has just
+    established co-location, which is why the guard lives at the call
+    sites rather than here; the one caller that did NOT was the
+    post-reload sweep, and it now filters on location (#2748).
+
+    If a future caller cannot guarantee co-location, put the test there
+    rather than assuming this will catch it.
     """
     if char1 == char2:
         return

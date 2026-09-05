@@ -81,9 +81,25 @@ def at_server_start():
                 relinked += 1
             # rebuild melee proximity for mutually-engaged pairs (grapples
             # set mutual targets, so they re-establish here too)
+            #
+            # SAME ROOM ONLY. A handler explicitly manages MULTI-ROOM
+            # combat — it carries `db.managed_rooms`, a list — so two
+            # combatants on one handler are not necessarily in one room.
+            # Mutual engagement was the only test, so a fight that
+            # spanned rooms (someone who fled next door, a ranged
+            # exchange across a boundary) came back from a reload with
+            # MELEE proximity between characters who cannot reach each
+            # other — adjacency the geometry does not support (#2748).
+            #
+            # The comment above is right about why the sweep exists: a
+            # melee fight crossing a reload loses its proximity set
+            # while the ticker keeps burning rounds. It just restored
+            # more than it should.
             for i, one in enumerate(chars):
                 for two in chars[i + 1:]:
                     try:
+                        if one.location is not two.location:
+                            continue
                         if handler._are_characters_in_mutual_combat(one, two):
                             establish_proximity(one, two)
                     except Exception:  # noqa: BLE001 — a bad pair skips
