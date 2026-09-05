@@ -95,12 +95,26 @@ def cook_yields(ingredient_counts):
     dishes = {}
     for recipe_id, recipe in FOOD_RECIPES.items():
         needs = recipe["ingredients"]
-        if not needs:
-            # `all()` over an empty mapping is vacuously True and the body
-            # consumes nothing, so an ingredient-less recipe spins forever
-            # and grows `dishes` without bound — on the single reactor
-            # thread, which wedges the server (#2810). A recipe that eats
-            # nothing cannot be cooked; skip it rather than hang.
+        if not needs or any(q <= 0 for q in needs.values()):
+            # The loop's termination rests ENTIRELY on every recipe
+            # declaring at least one ingredient at a POSITIVE quantity,
+            # and nothing validates that. Two shapes never terminate:
+            #
+            #   * no ingredients at all — `all()` over an empty mapping
+            #     is vacuously True and the body consumes nothing;
+            #   * any quantity <= 0 — the condition stays true while
+            #     that ingredient is decremented by nothing.
+            #
+            # Either way the loop spins and grows `dishes` without
+            # bound. This runs synchronously inside a Twisted reactor
+            # callback (process_corpse -> stock_cuts -> here, scheduled
+            # by `delay`), so it does not hang one player's command: it
+            # wedges the whole server. No ticks, no other players, no
+            # shutdown, and memory climbing.
+            #
+            # #2810 handled the empty case; the zero-quantity case
+            # survived it and is what this covers (#2686). A recipe that
+            # consumes nothing cannot be cooked, so skip it.
             continue
         while all(remaining.get(k, 0) >= q for k, q in needs.items()):
             for k, q in needs.items():
