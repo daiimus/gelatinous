@@ -30,7 +30,11 @@ def make_grant(char: Any, issued_by: Any = None,
     """A grant-file entry for *char*'s sleeve (§2.2 record shape)."""
     return {
         "sleeve": sleeve_uid_of(char),
-        "until": float(until) if until else None,
+        # `is None`, not falsy. An expiry of 0 is a real instant --
+        # the epoch, or a duration that has already elapsed -- and
+        # coercing it to None mints a PERMANENT grant out of one that
+        # should already be dead (#2690).
+        "until": None if until is None else float(until),
         "issued_by": str(issued_by) if issued_by else None,
     }
 
@@ -51,7 +55,17 @@ def is_granted(char: Any, grants: Any) -> bool:
             if entry.get("sleeve") != uid:
                 continue
             until = entry.get("until")
-            if until and now > float(until):
+            # Same distinction on the read side, where the mistake was
+            # made independently: `None` and `0` are both falsy, so a
+            # stored zero skipped the expiry test entirely and granted
+            # access forever. Fixing only the writer would have left
+            # this reading any zero already on disk as permanent.
+            #
+            # This is the one ambiguity in the function that failed
+            # OPEN, in a module whose docstring commits to the opposite
+            # -- and it failed open on the value that most obviously
+            # means "not valid" (#2690).
+            if until is not None and now > float(until):
                 continue
             return True
         except Exception:  # noqa: BLE001
