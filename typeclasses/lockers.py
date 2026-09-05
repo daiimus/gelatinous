@@ -251,6 +251,13 @@ class LockerBank(Item):
                              nofound_string=f"You aren't carrying '{name}'.")
         if not item:
             return
+        # `move_hooks=False` (kept, so stashing stays quiet) skips
+        # `Character.at_object_leave`, so the hand slot is released here
+        # by hand. Without this the item sits in the locker and the
+        # holder is still shown holding it (#2457).
+        release = getattr(caller, "release_slots", None)
+        if callable(release):
+            release(item)
         item.move_to(self._store(_uid(caller), create=True), quiet=True,
                      move_hooks=False)
         item.db.locker_owner = _uid(caller)
