@@ -324,17 +324,35 @@ def spawn_dispatch_operator(base: Any) -> Any:
 def ensure_dispatch_operator() -> Any | None:
     """Upkeep (heartbeat at_start): the dispatch room has someone at the
     desk.
-    Idempotent; a dead operator is left to the corpse pipeline and a new
-    one is NOT auto-hired here. Absence is SILENCE: with nobody at the
-    desk the console answers nothing at all, because the colony is
-    operated by its people and an unmanned emergency line is the
-    setting rather than a hole in it (owner ruling, 2026-08-22)."""
+    Idempotent. A DEAD operator is a vacancy and the desk staffs itself
+    again — the same rule every other post follows, and the dispatch
+    fixture already carries `post_policy = resleave` like the bars do
+    (owner ruling, 2026-09-05). An operator who is merely ELSEWHERE is
+    not a vacancy: she is a person who walked off, and hiring a second
+    body of her is how three Petras happened (#2181).
+
+    Absence is still SILENCE while it lasts: with nobody at the desk the
+    console answers nothing at all, because the colony is operated by
+    its people and an unmanned emergency line is the setting rather than
+    a hole in it (owner ruling, 2026-08-22).
+
+    The docstring previously said a dead operator was NOT auto-hired,
+    which contradicted both the post policy on the same fixture and
+    `test_a_dead_operator_does_not_block_rehiring`. The code did neither
+    thing on purpose — its liveness filter read `obj.db.is_dead`, an
+    attribute no object carries, so it was always true and dead
+    operators counted as staff (#2762)."""
     base = get_dispatch_room()
     if base is None:
         return None
     for obj in base.contents:
         if getattr(getattr(obj, "db", None), "dispatch_operator", None) is True:
             return obj
+    # `is_dead()` — the METHOD. `obj.db.is_dead` is an attribute row no
+    # object in the world has ever carried, so the old spelling was
+    # always true and never filtered anybody; the same file already gets
+    # this right 22 lines down. Same misread as #2706.
+    #
     # An operator who exists but is STANDING SOMEWHERE ELSE is not a
     # vacancy to fill — she is a person who walked off, and hiring a
     # second body of her is how three Petras happened (#2181). The
@@ -346,7 +364,7 @@ def ensure_dispatch_operator() -> Any | None:
         obj for obj in ObjectDB.objects.filter(
             db_attributes__db_key="dispatch_operator")
         if obj.pk and obj.db.dispatch_operator is True
-        and not obj.db.is_dead
+        and not obj.is_dead()
     ]
     if existing:
         return None
