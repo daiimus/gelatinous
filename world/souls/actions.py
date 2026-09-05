@@ -34,8 +34,47 @@ def _advertiser_objs():
     if now - _ad_cache["at"] > AD_CACHE_TTL:
         _ad_cache["objs"] = [o for o in search_tag(
             "advertiser", category="souls") if o and o.pk]
+        _reconcile_advertiser_tags(_ad_cache["objs"])
         _ad_cache["at"] = now
     return _ad_cache["objs"]
+
+
+def _reconcile_advertiser_tags(tagged):
+    """Adopt any advertiser that has the ATTRIBUTE but not the TAG.
+
+    The tag is the index (hardening spec law 3: never an attribute-key
+    query on a hot path) and nothing reconciled the two, so a fixture
+    with `db.advertises` and no tag was SILENTLY INVISIBLE to the
+    planner rather than merely slow to find. A purpose-built charging
+    rack sat dead since the day it was built for exactly that reason —
+    `scripts/builds/121_the_charging_rack.py` sets the attribute and is
+    the one advertiser build that never calls `tags.add`, and the
+    backfill migration ran before it (#2697).
+
+    It survived because the loss is a LOCATION, not a behaviour: a
+    second charge advertiser is reachable from every unit, so nothing
+    faulted and no alarm sounded.
+
+    An advertiser attribute without the tag is always a build error, so
+    this adopts rather than merely warning — one attribute query per
+    cache expiry, not per call, which is what keeps law 3 satisfied.
+    """
+    from evennia.objects.models import ObjectDB
+    from evennia.utils import logger
+    try:
+        known = {o.id for o in tagged}
+        strays = [o for o in ObjectDB.objects.filter(
+            db_attributes__db_key="advertises").distinct()
+            if o.pk and o.id not in known and o.db.advertises]
+        for obj in strays:
+            obj.tags.add("advertiser", category="souls")
+            tagged.append(obj)
+            logger.log_warn(
+                f"advertiser tag missing on #{obj.id} {obj.key!r} "
+                f"({dict(obj.db.advertises or {})}) — adopted. The build "
+                f"that created it should tag it too.")
+    except Exception:  # noqa: BLE001 — a broken sweep never blocks planning
+        pass
 
 
 def _advertisers(soul, need, radius=30, reachable=True):
