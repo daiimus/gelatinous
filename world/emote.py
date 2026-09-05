@@ -84,6 +84,33 @@ class CharRefToken:
 # =========================================================================
 
 
+def _perceivers(location, exclude_set=frozenset()):
+    """Room contents that can actually receive a pose.
+
+    Replaces `if not hasattr(observer, "msg"): continue`, which appeared
+    at three sites here and excluded NOTHING — every typeclassed Evennia
+    object has `.msg`, so the guard was always true and the loop body ran
+    for every item, corpse and organ in the room. It read as a safety
+    filter, which is why it survived review (#2788).
+
+    That is not free: these loops call `render_for_observer` and
+    `speech_payload` PER observer. Measured across the live world, 1,961
+    of 2,037 objects standing in rooms are not characters — 96% of the
+    work was rendering a pose for a crate.
+
+    NOT the session gate that `world/identity_utils.py` uses beside its
+    own copy of this check (#462). That gate is right for rendering
+    appearance to viewers and wrong here: NPCs have no session, and an
+    action-aware NPC reacting to a pose aimed at it is deliberate — the
+    comments at these call sites say so. `Character` is the predicate
+    that keeps them, since every NPC typeclass subclasses it and
+    `Character` is the only class in the game that overrides `msg()`.
+    """
+    from typeclasses.characters import Character
+    return [obj for obj in location.contents
+            if obj not in exclude_set and isinstance(obj, Character)]
+
+
 def process_speech(
     text: str,
     speaker: "Character",
@@ -996,12 +1023,7 @@ def render_dot_pose(
     exclude_set = set(exclude) if exclude else set()
     words, referenced = _extract_speech(tokens)
 
-    for observer in location.contents:
-        if observer in exclude_set:
-            continue
-        if not hasattr(observer, "msg"):
-            continue
-
+    for observer in _perceivers(location, exclude_set):
         rendered = render_for_observer(tokens, actor, observer)
         # An embedded quote rides the shared speech rails: hearing listeners get
         # the words, and a listener the pose points at counts as addressed.
@@ -1151,12 +1173,7 @@ def render_emote(
     exclude_set = set(exclude) if exclude else set()
     words, referenced = _extract_speech(tokens)
 
-    for observer in location.contents:
-        if observer in exclude_set:
-            continue
-        if not hasattr(observer, "msg"):
-            continue
-
+    for observer in _perceivers(location, exclude_set):
         rendered = render_emote_for_observer(tokens, actor, observer)
         # An embedded quote rides the shared speech rails: hearing listeners get
         # the words, and a listener the emote points at counts as addressed.
@@ -1180,9 +1197,7 @@ def render_think(actor: "Character", thought: str, location: object) -> None:
     here (see EMOTE_POSE_SPEC.md) without touching callers. The actor's name is
     resolved per-observer, exactly like an emote.
     """
-    for observer in location.contents:
-        if not hasattr(observer, "msg"):
-            continue
+    for observer in _perceivers(location):
         if observer is actor:
             observer.msg(f"You think . o O ( {thought} )")
             continue
