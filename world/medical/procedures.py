@@ -2415,3 +2415,63 @@ def _configure_harvested_item(item, *, organ_name: str, condition: str,
 
     # Organ-bound conditions travel with the organ (#307 follow-up).
     item.db.organ_conditions = list(organ_data.get("conditions") or [])
+
+
+def reset_body_preserving_augments(char) -> int:
+    """Rebuild ``char``'s medical state from the current species table,
+    carrying installed augments across. Returns the organs preserved.
+
+    This is what a fresh SLEEVE is: flesh back to factory, chrome
+    carried over (#526). It lived in `commands/CmdAdmin.py` as a private
+    helper for `@resetmedical`; the post-succession path needs the same
+    operation, and the souls layer must not import a command module, so
+    it lives here and both call it (#2706).
+
+    Note for callers restoring an ARCHIVED body: this is the step that
+    makes them alive again. Essential NPCs are archived to Limbo rather
+    than deleted, so their corpse keeps a truthy `pk` and a working
+    `medical_state` that still reads dead — moving one back to its post
+    without this leaves `is_dead()` True, and any caller that checks
+    aliveness will read the slot vacant again on the very next sweep.
+    """
+    from world.anatomy import get_species_organs
+    from world.medical.core import is_augment_organ
+
+    species = getattr(getattr(char, "db", None), "species", None)
+    species_table = get_species_organs(species)
+
+    preserved = []
+    try:
+        old_state = char.medical_state
+    except AttributeError:
+        old_state = None
+    if old_state is not None and getattr(old_state, "organs", None):
+        preserved = [
+            organ for organ in old_state.organs.values()
+            if is_augment_organ(organ, species_table)
+        ]
+
+    if hasattr(char, "_medical_state"):
+        delattr(char, "_medical_state")
+    if char.db.medical_state:
+        del char.db.medical_state
+
+    if preserved:
+        new_state = char.medical_state  # property rebuilds from species
+        for organ in preserved:
+            organ.medical_state = new_state
+            new_state.organs[organ.name] = organ
+        save = getattr(char, "save_medical_state", None)
+        if callable(save):
+            save()
+    else:
+        # Touch the property so the rebuild happens now rather than on
+        # the next reader — callers gate on is_dead() immediately after.
+        # Guarded: a body with no medical system at all (a bare
+        # DefaultCharacter, a fixture) has nothing to rebuild and is not
+        # dead either, so there is nothing to do.
+        try:
+            _ = char.medical_state
+        except AttributeError:
+            pass
+    return len(preserved)
