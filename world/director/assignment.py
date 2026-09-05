@@ -158,7 +158,48 @@ def active_assignments() -> list:
 
 
 def is_assigned(npc: Any) -> bool:
-    return npc in _ACTIVE
+    """Is this unit committed to an incident RIGHT NOW?
+
+    Verifies the assignment is still live rather than trusting the
+    registry. The souls door onto `assign()` writes a `respond` job and
+    returns — no `on_fail`, no timeout — while the legacy door it
+    replaced has two failure exits. And when a job dies, `fault()` sets
+    `soul_job = None` without touching anything in this module, so the
+    Assignment stayed here marked `en_route` for the life of the
+    process.
+
+    That permanently removed the unit from a FINITE pool: `find_responders`
+    and `units_available` both skip assigned units, so the desk
+    under-reported its strength and eventually reported none available
+    while idle robots stood at post. Travel failure is not exotic — it
+    is the most common job fault in the game, 1,885 in the retained log
+    (#2715).
+
+    Checked on read rather than pushed from `fault()`, because the souls
+    layer is the driver and the director is a source of work: jobs.py
+    importing this module would invert that. Self-healing, so a
+    registry entry already orphaned is dropped the next time anybody
+    asks.
+    """
+    assignment = _ACTIVE.get(npc)
+    if assignment is None:
+        return False
+    if _soul_still_responding(npc):
+        return True
+    clear_assignment(npc)
+    return False
+
+
+def _soul_still_responding(npc: Any) -> bool:
+    """True while the soul is actually running the respond job we gave
+    it. An unsouled responder has no job to check, so it is taken at its
+    word — the legacy path has its own failure exits."""
+    if not _has_soul(npc):
+        return True
+    job = getattr(getattr(npc, "db", None), "soul_job", None)
+    if not job:
+        return False          # the job died; `fault()` cleared it
+    return job.get("goal") == "respond"
 
 
 def assign(npc: Any, event: Any) -> bool:
