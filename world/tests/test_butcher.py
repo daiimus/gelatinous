@@ -537,3 +537,61 @@ class TestOneDefinitionOfEachConstant(TestCase):
         import typeclasses.llm_persona as persona
         self.assertIn("from world.butchery import ACCEPTED_BUTCHER_SPECIES",
                       inspect.getsource(persona))
+
+
+class TestTheCutsReadCorrectly(TestCase):
+    """`_render_cuts` interpolated the SINGULAR name at any count, in a
+    room-visible emote. Everyone present read "breaks the carcass down
+    with a few practiced strokes -- 2 rat haunch, 3 rat chops, and a rat
+    tail to the cook-pot" (#2814).
+
+    Three of the five products were wrong above one. Chops and offal
+    escaped only because one is already plural and the other is a mass
+    noun -- which is the same reason a blanket pluraliser is not the fix
+    either: it gives "rat offals" and "ground mystery meats".
+    """
+
+    def test_a_count_noun_pluralises(self):
+        self.assertEqual(butchery._render_cuts([("rat_haunch", 2)]),
+                         "2 rat haunches")
+        self.assertEqual(butchery._render_cuts([("rat_tail", 3)]),
+                         "3 rat tails")
+
+    def test_an_already_plural_name_is_left_alone(self):
+        self.assertEqual(butchery._render_cuts([("rat_chops", 3)]),
+                         "3 rat chops")
+
+    def test_a_mass_noun_takes_a_portion_not_an_s(self):
+        out = butchery._render_cuts([("rat_offal", 3)])
+        self.assertNotIn("offals", out)
+        self.assertEqual(out, "3 twists of rat offal")
+        out = butchery._render_cuts([("ground_mystery_meat", 2)])
+        self.assertNotIn("meats", out)
+        self.assertEqual(out, "2 handfuls of ground mystery meat")
+
+    def test_a_single_unit_still_takes_its_article(self):
+        self.assertEqual(butchery._render_cuts([("rat_tail", 1)]),
+                         "a rat tail")
+        self.assertEqual(butchery._render_cuts([("rat_offal", 1)]),
+                         "a twist of rat offal")
+
+    def test_two_items_take_no_serial_comma(self):
+        out = butchery._render_cuts([("rat_tail", 1), ("rat_haunch", 2)])
+        self.assertEqual(out, "a rat tail and 2 rat haunches")
+
+    def test_three_items_keep_the_oxford_comma(self):
+        out = butchery._render_cuts(
+            [("rat_haunch", 2), ("rat_chops", 3), ("rat_tail", 1)])
+        self.assertEqual(out, "2 rat haunches, 3 rat chops, and a rat tail")
+
+    def test_an_empty_haul_still_reads(self):
+        self.assertEqual(butchery._render_cuts([]), "nothing worth wrapping")
+
+    def test_every_product_renders_without_a_broken_plural(self):
+        """Sweep the real table, so a product added later is covered."""
+        for key in butchery.RAT_PRODUCTS:
+            out = butchery._render_cuts([(key, 2)])
+            self.assertTrue(out.startswith("2 "), out)
+            self.assertNotIn("offals", out)
+            self.assertNotIn("meats", out)
+            self.assertNotIn("haunchs", out)

@@ -17,7 +17,7 @@ from evennia.prototypes.spawner import spawn
 from evennia.utils.utils import delay
 
 from typeclasses.characters import Character
-from world.grammar import with_article
+from world.grammar import pluralize_noun, with_article
 
 
 #: Species the block buys. Everything else is refused (see _refuse_species).
@@ -45,9 +45,15 @@ RAT_PRODUCTS = {
     "rat_tail":            {"name": "rat tail", "buy": 5},
     "rat_chops":           {"name": "rat chops", "buy": 3},
     "rat_haunch":          {"name": "rat haunch", "buy": 3},
-    "rat_offal":           {"name": "rat offal", "buy": 3},
-    "ground_mystery_meat": {"name": "ground mystery meat", "buy": 1},
+    "rat_offal":           {"name": "rat offal", "buy": 3,
+                            "unit": "twist"},
+    "ground_mystery_meat": {"name": "ground mystery meat", "buy": 1,
+                            "unit": "handful"},
 }
+#: ``unit`` marks a MASS noun -- something counted in portions rather
+#: than pluralised. "3 rat offals" and "3 ground mystery meats" are both
+#: wrong; "3 twists of rat offal" is what she would say, and "twist" is
+#: the module's own word for it (see _RAT_OFFAL_ORGANS below).
 
 #: Trunk organs whose average condition gates the chops yield -- a
 #: shotgun-shredded torso yields few or no center cuts.
@@ -202,12 +208,41 @@ def _drop_from_hands(by, obj):
         pass
 
 def _render_cuts(yields):
+    """The cuts, as the room hears them.
+
+    This interpolated the SINGULAR name at any count, in a
+    room-visible emote: everyone present read "breaks the carcass down
+    with a few practiced strokes -- 2 rat haunch, 3 rat chops, and a rat
+    tail to the cook-pot". Three of the five products were wrong above
+    one; chops and offal only escaped because one is already plural and
+    the other is a mass noun (#2814).
+
+    The singular branch already reached for `with_article`, so the
+    grammar helpers were right there.
+    """
     parts = []
     for key, count in yields:
-        name = RAT_PRODUCTS.get(key, {}).get("name", key)
-        parts.append(f"{count} {name}" if count > 1 else with_article(name))
-    if len(parts) > 1:
+        entry = RAT_PRODUCTS.get(key, {})
+        name = entry.get("name", key)
+        unit = entry.get("unit")
+        if unit:
+            # A mass noun takes a portion, never an -s.
+            if count > 1:
+                phrase = f"{count} {pluralize_noun(unit)} of {name}"
+            else:
+                phrase = with_article(f"{unit} of {name}")
+        elif count > 1:
+            phrase = f"{count} {pluralize_noun(name)}"
+        else:
+            phrase = with_article(name)
+        parts.append(phrase)
+    if len(parts) > 2:
         return ", ".join(parts[:-1]) + ", and " + parts[-1]
+    if len(parts) == 2:
+        # Two items take no serial comma. The old join produced
+        # "3 twists of rat offal, and 2 handfuls of ground mystery meat"
+        # in the same room-visible emote.
+        return " and ".join(parts)
     return parts[0] if parts else "nothing worth wrapping"
 
 
