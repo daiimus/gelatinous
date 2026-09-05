@@ -17,7 +17,7 @@ Two causes, and the second is the nastier:
    moment its shift lapses. A keeper whose block ended while they were
    eating never released.
 2. `placed_by_shift` -- the marker granting permission to clear -- lived
-   on `ndb`, which dies on reload, while `db.temp_place` does not. After
+   on `ndb`, which dies on reload, while the placement does not. After
    any restart the permission was gone and the placement was stuck
    forever. A volatile flag guarding persistent state can only leak.
 """
@@ -36,21 +36,32 @@ class TestTheMarkerSurvivesAReload(EvenniaCommandTest):
         self.assertIn("db.placed_by_shift", src)
 
     def test_leaving_clears_placement_we_set(self):
+        """On `soul.temp_place`, NOT `soul.db.temp_place`.
+
+        Those are two different attribute rows -- the property is
+        categorised `description` -- and this test used to assert on the
+        bare one, which is where the souls layer wrote and which the
+        room renderer has never read. It passed for the same reason the
+        colony's keepers stood at their posts with no placement line at
+        all (#2465)."""
         soul = self.char1
-        soul.db.temp_place = "is behind the steel counter"
+        soul.temp_place = "behind the steel counter"
         soul.db.placed_by_shift = True
         jobs._leave_the_post(soul)
-        self.assertEqual(soul.db.temp_place, "")
+        self.assertEqual(soul.temp_place, "")
         self.assertFalse(soul.db.placed_by_shift)
 
     def test_it_never_tramples_a_player_authored_place(self):
         """The courtesy that made the flag necessary in the first
-        place: only clear what the shift set."""
+        place: only clear what the shift set.
+
+        `@temp_place` writes the property (`CmdCharacter.py`), so that is
+        where a player's line actually lives and what has to survive."""
         soul = self.char1
-        soul.db.temp_place = "is lounging insolently"
+        soul.temp_place = "lounging insolently"
         soul.db.placed_by_shift = False
         jobs._leave_the_post(soul)
-        self.assertEqual(soul.db.temp_place, "is lounging insolently")
+        self.assertEqual(soul.temp_place, "lounging insolently")
 
 
 class TestPlacementIsReconciled(EvenniaCommandTest):

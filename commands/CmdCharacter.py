@@ -76,56 +76,14 @@ def _center_text(text, width=None, session=None):
 # ===================================================================
 
 def _parse_placement_description(raw_input):
+    """Parse `@temp_place` input into a placement clause.
+
+    The implementation is `world.grammar.placement_clause` -- the souls
+    layer needs the same reduction and must not import a command
+    module (#2465).
     """
-    Parse various input formats to extract a placement description.
-
-    Handles patterns like:
-    - "standing here"
-    - "me is standing here"
-    - "me are lounging lazily"
-    - "me is \"standing here\""
-    - "is standing here"
-    - "are crouched in the shadows"
-    - "\"standing here\""
-    - "me is \"is standing here\""
-
-    Args:
-        raw_input (str): The raw command arguments.
-
-    Returns:
-        str: The cleaned placement description.
-    """
-    text = raw_input.strip()
-
-    # Remove outer quotes if present
-    if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
-        text = text[1:-1]
-
-    # Handle "me is ..." / "me are ..." patterns
-    if text.lower().startswith('me is '):
-        text = text[6:].strip()
-        # Remove inner quotes if present after "me is"
-        if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
-            text = text[1:-1]
-    elif text.lower().startswith('me are '):
-        text = text[7:].strip()
-        if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
-            text = text[1:-1]
-
-    # Handle "is ..." / "are ..." patterns (without "me")
-    elif text.lower().startswith('is '):
-        text = text[3:].strip()
-    elif text.lower().startswith('are '):
-        text = text[4:].strip()
-
-    # Clean up redundant "is"/"are" at the beginning
-    # Handle cases like "me is \"is standing here\""
-    if text.lower().startswith('is '):
-        text = text[3:].strip()
-    elif text.lower().startswith('are '):
-        text = text[4:].strip()
-
-    return text.strip()
+    from world.grammar import placement_clause
+    return placement_clause(raw_input)
 
 
 # ===================================================================

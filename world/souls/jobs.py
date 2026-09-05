@@ -128,17 +128,25 @@ def _conscience(soul, job, where=None):
 
 
 def _post_placement(soul):
-    """The on-shift placement line for this soul's post, if it authored
-    one. Looks on the post ROOM's registered fixtures, so a counter can
-    say how its keeper stands at it."""
+    """The on-shift placement CLAUSE for this soul's post, if it
+    authored one. Looks on the post ROOM's registered fixtures, so a
+    counter can say how its keeper stands at it.
+
+    Reduced through `grammar.placement_clause`, because the renderer
+    supplies the verb: all eight `post_work_place` fixtures in the world
+    are authored "is working the bar", which would render as "Camille is
+    is working the bar" -- unnoticeable until #2465 put the line on a
+    row that renders at all."""
+    from world.grammar import placement_clause
+
     room = soul.db.soul_post
     if room is None:
         return None
     for obj in getattr(room, "contents", ()):
         line = getattr(obj.db, "post_work_place", None) if obj.db else None
         if line:
-            return line
-    return getattr(room.db, "post_work_place", None)
+            return placement_clause(line)
+    return placement_clause(getattr(room.db, "post_work_place", None))
 
 
 def _uses_left(item):
@@ -167,11 +175,30 @@ def _post_seat(soul):
     return None
 
 
+def _drop_phantom_place(soul):
+    """Delete the uncategorised ``temp_place`` row, if one is there.
+
+    `temp_place` is `AttributeProperty("", category='description')`
+    (`typeclasses/characters.py:179`), and a categorised property and a
+    bare `.db.temp_place` are DIFFERENT ROWS. This layer used to write
+    the bare one, which `Room.return_appearance` never reads, so every
+    keeper stood at their post with no placement line while the souls
+    bookkeeping looked perfectly healthy -- it wrote and cleared its own
+    phantom row consistently (#2465).
+
+    Removing it here means the repair rides the shift tick: no
+    migration, and nothing to re-run if a soul is off-post today.
+    """
+    if soul.attributes.has("temp_place", category=None):
+        soul.attributes.remove("temp_place", category=None)
+
+
 def _take_the_post(soul):
     """Stand — or sit — visibly at work."""
     line = _post_placement(soul)
-    if line and soul.db.temp_place != line:
-        soul.db.temp_place = line
+    _drop_phantom_place(soul)
+    if line and soul.temp_place != line:
+        soul.temp_place = line
         soul.db.placed_by_shift = True
 
     seat = _post_seat(soul)
@@ -200,8 +227,9 @@ def _leave_the_post(soul):
 
     A volatile flag guarding persistent state can only ever leak.
     """
+    _drop_phantom_place(soul)
     if soul.db.placed_by_shift:
-        soul.db.temp_place = ""
+        soul.temp_place = ""
         soul.db.placed_by_shift = False
     if soul.db.seated_by_shift:
         if soul.db.furniture is not None:
