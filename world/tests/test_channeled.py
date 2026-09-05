@@ -304,3 +304,98 @@ class TestTaxonomyWiring(TestCase):
         cmd.args = ""
         cmd.func()
         self.assertIsNone(is_channeling(a))
+
+
+class TestTheTellSurvivesNothingItShouldnt(TestCase):
+    """Two of the three #2774 defects, both about `override_place`.
+
+    The tell lives in the PERSISTENT tier (`override_place` is an
+    AttributeProperty) while the record that manages it lives in `ndb`.
+    A reload mid-channel therefore left the tell on the character with
+    `prior_place` -- the only record of what to restore -- gone with the
+    process: `_finish` bails on the missing ndb so `_clear` never runs,
+    and `_clear` could not have helped anyway.
+
+    And `_clear` restored UNCONDITIONALLY, overwriting whatever
+    `override_place` held at teardown with the value captured at
+    begin_channel -- so anything set during the channel (the unconscious
+    and death placement lines among them) was silently reverted.
+    """
+
+    def _actor(self, place=""):
+        """The module fixture plus a real attribute store, since the
+        crash breadcrumb is written through `attributes`."""
+        actor = _actor()
+        actor.override_place = place
+        store = {}
+        actor.attributes.add.side_effect = lambda k, v, **kw: store.__setitem__(k, v)
+        actor.attributes.get.side_effect = lambda k, *a, **kw: store.get(k)
+        actor.attributes.remove.side_effect = lambda k, **kw: store.pop(k, None)
+        return actor
+
+    def test_a_normal_clear_restores_the_prior_place(self):
+        """The pin: the happy path is the whole point of prior_place."""
+        actor = self._actor("leaning on the rail")
+        ch.begin_channel(actor, 5, "spraying a tag", lambda: None, lambda f: None)
+        self.assertEqual(actor.override_place, "spraying a tag")
+        ch.stop_channel(actor)
+        self.assertEqual(actor.override_place, "leaning on the rail")
+
+    def test_a_placement_written_during_the_channel_survives_teardown(self):
+        """Knocked unconscious mid-channel: the character must not go
+        back to describing the act they were interrupted from."""
+        actor = self._actor("leaning on the rail")
+        ch.begin_channel(actor, 5, "spraying a tag", lambda: None, lambda f: None)
+        actor.override_place = "unconscious and motionless."
+        ch.stop_channel(actor)
+        self.assertEqual(actor.override_place, "unconscious and motionless.",
+                         "a newer placement was reverted")
+
+    def test_the_crash_breadcrumb_is_written_and_removed(self):
+        actor = self._actor("leaning on the rail")
+        ch.begin_channel(actor, 5, "spraying a tag", lambda: None, lambda f: None)
+        self.assertTrue(actor.attributes.get("channel_strand"))
+        ch.stop_channel(actor)
+        self.assertFalse(actor.attributes.get("channel_strand"))
+
+
+class TestForcedMovementBreaksTheChannel(TestCase):
+    """Being hauled through a door ends a channel (#2774).
+
+    Movement is wired as BLOCKED -- `at_pre_move` calls
+    `refuse_if_channeling` -- but the drag path passes
+    `move_hooks=False` and skips that gate entirely, and no BREAKING
+    caller covered movement either (six `interrupt_channel` call sites,
+    none from a movement path). So the channel simply travelled: its
+    timer kept ticking and `on_complete` fired in a room the actor never
+    chose, resolving an act begun somewhere else, with the tell still
+    showing.
+
+    BREAKING rather than BLOCKED, deliberately: refusing the move would
+    make channeling a grapple immunity, which is the worse outcome.
+    """
+
+    def test_the_drag_path_interrupts_before_it_moves(self):
+        """Structural, because driving a real grapple-drag needs a full
+        combat fixture -- but the ORDER matters (interrupt, then move),
+        so it is asserted rather than assumed."""
+        import inspect
+
+        import typeclasses.exits as exits_mod
+        src = inspect.getsource(exits_mod)
+        self.assertIn("from world.channeled import interrupt_channel", src)
+        interrupt_at = src.index("interrupt_channel(grappled_victim_obj)")
+        move_at = src.index(
+            "grappled_victim_obj.move_to(target_location, quiet=True")
+        self.assertLess(interrupt_at, move_at,
+                        "the victim is moved before the channel breaks")
+
+    def test_interrupt_channel_clears_the_tell(self):
+        """What the drag path relies on."""
+        actor = _actor()
+        actor.override_place = "leaning on the rail"
+        ch.begin_channel(actor, 5, "spraying a tag",
+                         lambda: None, lambda f: None)
+        self.assertTrue(ch.is_channeling(actor))
+        ch.interrupt_channel(actor)
+        self.assertFalse(ch.is_channeling(actor))

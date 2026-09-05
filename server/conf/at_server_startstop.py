@@ -42,6 +42,20 @@ def at_server_start():
         from evennia.utils import logger
         logger.log_trace("Grenade fuse sweep failed.")
 
+    # #2774: a channel's tell lives in the PERSISTENT tier while the
+    # record that manages it lives in ndb, so a reload mid-channel left
+    # the actor described by the act forever, with no path back.
+    try:
+        from world.channeled import sweep_stranded_tells
+        cleared = sweep_stranded_tells()
+        if cleared:
+            from evennia.utils import logger
+            logger.log_info(f"Channel tell sweep: {cleared} stranded "
+                            f"tell(s) cleared.")
+    except Exception:  # noqa: BLE001 — a broken sweep must not stop the boot
+        from evennia.utils import logger
+        logger.log_trace("Channel tell sweep failed.")
+
     # Combat re-link sweep: handler entries survive a reload in db, but
     # ALL ndb state dies with the process — handler refs, melee
     # proximity, aim. Without this, any melee fight that crosses a
