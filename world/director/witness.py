@@ -330,6 +330,26 @@ def despawn_witness(witness: Any) -> None:
         if witness.is_dead():
             return  # the corpse pipeline owns it now
         witness.execute_cmd("emote hurries off, wanting no more part of this.")
+        # TAKE THE KIT WITH THEM. Evennia's `delete()` calls
+        # `clear_contents()`, which moves everything carried or worn to
+        # its `home` — and for a spawned prop that home is Limbo. So the
+        # flash-temp left and their walkie, coat and boots stayed behind
+        # in the engine's orphanage, one set per despawn, forever.
+        #
+        # 18 powered radios and 78 garments had accumulated that way, and
+        # the radios are not inert: they sit switched ON in a room of
+        # ~590 objects, which is what makes one emergency transmission
+        # fan out to hundreds of receivers (#2655). This is the upstream
+        # half of that (#2719).
+        #
+        # A witness is a prop; nothing it carries is authored or owned by
+        # a player, so the kit goes with the body rather than being
+        # dropped in the room.
+        for carried in list(witness.contents):
+            try:
+                carried.delete()
+            except Exception:  # noqa: BLE001 — one bad prop must not
+                pass          # strand the rest of the kit
         witness.delete()
     except Exception:  # noqa: BLE001 — cleanup must never raise into delay
         pass

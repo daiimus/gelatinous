@@ -103,3 +103,68 @@ class TestTheSweepCountsWhatItRemoved(BaseEvenniaTest):
                 now=time.time() + wit.WITNESS_MAX_AGE + 1)
         self.assertEqual(swept, 0, "counted a body it did not remove")
         self.assertTrue(w.pk)
+
+
+class TestTheKitLeavesWithTheWitness(BaseEvenniaTest):
+    """Evennia's `delete()` calls `clear_contents()`, which moves
+    everything carried or worn to its `home` -- and for a spawned prop
+    that home is Limbo. So every despawning witness left its walkie,
+    coat and boots behind in the engine's orphanage, one set per
+    despawn, forever.
+
+    18 powered radios and 78 garments had accumulated that way. The
+    radios are not inert: they sit switched ON in a room of ~590
+    objects, which is what makes one emergency transmission fan out to
+    hundreds of receivers (#2655). This is the upstream half (#2719).
+    """
+
+    def _witness(self):
+        w = create_object("typeclasses.characters.Character",
+                          key="a flash witness", location=self.room1)
+        w.db.is_witness = True
+        return w
+
+    def test_carried_props_go_with_the_body(self):
+        w = self._witness()
+        radio = create_object("typeclasses.items.Radio", key="a walkie",
+                              location=w)
+        radio.db.radio_on = True
+        wit.despawn_witness(w)
+        self.assertIsNone(radio.pk, "the walkie was orphaned")
+
+    def test_the_witness_still_goes(self):
+        w = self._witness()
+        wit.despawn_witness(w)
+        self.assertIsNone(w.pk)
+
+    def test_several_props_all_go(self):
+        w = self._witness()
+        props = [create_object("typeclasses.items.Item", key=f"prop {n}",
+                               location=w) for n in range(4)]
+        wit.despawn_witness(w)
+        self.assertEqual([p.pk for p in props], [None] * 4)
+
+    def test_a_dead_witness_is_left_to_the_corpse_pipeline(self):
+        """The pin: the death path owns the body AND its kit — a corpse
+        keeps what it was carrying, and this must not strip it."""
+        w = self._witness()
+        radio = create_object("typeclasses.items.Radio", key="a walkie",
+                              location=w)
+        with mock.patch.object(type(w), "is_dead", return_value=True):
+            wit.despawn_witness(w)
+        self.assertIsNotNone(w.pk, "the corpse pipeline lost its body")
+        self.assertIsNotNone(radio.pk, "a corpse was stripped")
+
+    def test_a_prop_that_will_not_delete_does_not_strand_the_rest(self):
+        w = self._witness()
+        stubborn = create_object("typeclasses.items.Item", key="stuck",
+                                 location=w)
+        other = create_object("typeclasses.items.Item", key="fine",
+                              location=w)
+        # Patch the INSTANCE, not the class — both props are Items, so a
+        # class-level patch would break the delete for the one that is
+        # supposed to succeed and the test would prove nothing.
+        stubborn.delete = mock.Mock(side_effect=RuntimeError("nope"))
+        wit.despawn_witness(w)
+        self.assertIsNone(other.pk, "one bad prop stranded the kit")
+        self.assertIsNone(w.pk)
