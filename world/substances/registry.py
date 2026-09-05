@@ -109,15 +109,18 @@ class Substance:
         id: Registry key.  Items reference this via ``db.substance``.
         display_name: Human-readable name for messages / inspection.
         effects: Per-dose effects, applied in order.
-        flavor_bank_key: Which flavor bank the delivery command's
-            message picker uses (see ``world/smoke.py:SMOKE_MESSAGES``
-            for the smoke banks).
+    Note: there is deliberately no `flavor_bank_key`. It existed as a
+    field, was set by all seven substances, and was read by nothing --
+    every value was IDENTICAL to the substance's own `id`, and three of
+    the seven named a bank that does not exist. The message pickers key
+    off the id and fall back on their own, so the field could only ever
+    repeat what `id` already said while looking like live configuration
+    (#2767, owner ruling 2026-09-05).
     """
 
     id: str
     display_name: str
     effects: tuple[SubstanceEffect, ...]
-    flavor_bank_key: str
     tolerance: Optional[ToleranceSpec] = None
     addiction: Optional[AddictionSpec] = None
 
@@ -135,7 +138,6 @@ SUBSTANCES: dict[str, Substance] = {
             # per puff.  Pure no-op on a pain-free consumer.
             SubstanceEffect(kind="pain_relief", magnitude=1),
         ),
-        flavor_bank_key="tobacco_neutral",
         tolerance=ToleranceSpec(
             points_per_level=15, decay_per_hour=0.5, max_level=1,
         ),
@@ -153,7 +155,6 @@ SUBSTANCES: dict[str, Substance] = {
             # consciousness penalty) — woozy, never blackout.
             SubstanceEffect(kind="sedation", magnitude=1, max_stack=2),
         ),
-        flavor_bank_key="tobacco_noir",
         tolerance=ToleranceSpec(
             points_per_level=15, decay_per_hour=0.5, max_level=1,
         ),
@@ -170,7 +171,6 @@ SUBSTANCES: dict[str, Substance] = {
             SubstanceEffect(kind="pain_relief", magnitude=1),
             SubstanceEffect(kind="sedation", magnitude=1, max_stack=2),
         ),
-        flavor_bank_key="cannabis",
         tolerance=ToleranceSpec(
             points_per_level=10, decay_per_hour=1.0, max_level=1,
         ),
@@ -188,7 +188,6 @@ SUBSTANCES: dict[str, Substance] = {
             SubstanceEffect(kind="pain_relief", magnitude=1),
             SubstanceEffect(kind="sedation", magnitude=1, max_stack=4),
         ),
-        flavor_bank_key="alcohol",
         tolerance=ToleranceSpec(
             points_per_level=12, decay_per_hour=0.75, max_level=1,
         ),
@@ -206,7 +205,6 @@ SUBSTANCES: dict[str, Substance] = {
             SubstanceEffect(kind="pain_inflict", magnitude=3),
             SubstanceEffect(kind="sedation", magnitude=1, max_stack=3),
         ),
-        flavor_bank_key="guttervenom",
     ),
     "opium": Substance(
         id="opium",
@@ -219,7 +217,6 @@ SUBSTANCES: dict[str, Substance] = {
             SubstanceEffect(kind="pain_relief", magnitude=3),
             SubstanceEffect(kind="sedation", magnitude=2, max_stack=5),
         ),
-        flavor_bank_key="opium",
         tolerance=ToleranceSpec(
             points_per_level=8, decay_per_hour=0.25, max_level=2,
         ),
@@ -239,7 +236,6 @@ SUBSTANCES: dict[str, Substance] = {
             # no-op — same pipeline, same limitations.
             SubstanceEffect(kind="nourish", magnitude=3),
         ),
-        flavor_bank_key="nutrition",
     ),
 }
 

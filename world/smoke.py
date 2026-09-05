@@ -687,13 +687,38 @@ def get_substance(item) -> str | None:
         return None
     substance = getattr(db, "substance", None)
     if substance:
+        # SELF-HEAL a value the old code already laundered. Before the
+        # translation below existed, a legacy brand was stamped into
+        # `substance` verbatim, so items are in the world carrying
+        # `substance='neutral'` -- not a registered id, so no
+        # pharmacology, while flavour still renders as tobacco because
+        # the pickers carry their own legacy map. Those items would
+        # never be reached by the migration below, since this early
+        # return fires first (#2767).
+        healed = _LEGACY_BRAND_MAP.get(substance)
+        if healed is not None:
+            db.substance = healed
+            return healed
         return substance
     legacy_brand = getattr(db, "brand", None)
     if legacy_brand:
-        # Stamp the new field; leave brand in place to avoid
-        # surprising anything else that reads it during migration.
-        db.substance = legacy_brand
-        return legacy_brand
+        # TRANSLATE before stamping. The pickers already carry
+        # `_LEGACY_BRAND_MAP` and render tobacco flavour for a legacy
+        # value, but `get_substance_entry` has no such map and returns
+        # None for one -- which the consumer path treats as a non-event.
+        # So a mistranslated cigarette read, smoked and described
+        # exactly like tobacco while delivering NO pharmacology at all,
+        # and nothing logged it. Stamping the raw value made that
+        # permanent: it launders a recoverable legacy brand into a wrong
+        # substance id (#2767).
+        #
+        # Owner ruling 2026-09-05: those items should have the tobacco
+        # effects they already look and read like.
+        substance = _LEGACY_BRAND_MAP.get(legacy_brand, legacy_brand)
+        # Leave `brand` in place to avoid surprising anything else that
+        # reads it during migration.
+        db.substance = substance
+        return substance
     return None
 
 

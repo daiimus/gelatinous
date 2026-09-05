@@ -97,10 +97,17 @@ class TestRegistry(TestCase):
         self.assertIsNone(get_substance_entry(None))
         self.assertIsNone(get_substance_entry(""))
 
-    def test_entries_carry_flavor_bank_keys(self):
+    def test_entries_are_keyed_by_their_own_id(self):
         for substance_id, entry in SUBSTANCES.items():
             self.assertEqual(entry.id, substance_id)
-            self.assertTrue(entry.flavor_bank_key)
+
+    def test_there_is_no_flavor_bank_key(self):
+        """It was set by all seven substances and read by nothing. Every
+        value was IDENTICAL to the substance's own id, and three of the
+        seven named a bank that does not exist -- so editing it did
+        nothing, invisibly. The pickers key off the id (#2767)."""
+        for entry in SUBSTANCES.values():
+            self.assertFalse(hasattr(entry, "flavor_bank_key"))
 
 
 # ---------------------------------------------------------------------

@@ -252,14 +252,49 @@ class TestGetSubstance(TestCase):
     def test_legacy_brand_promoted_to_substance(self):
         """Pre-#456 cigarettes stored the identifier in ``db.brand``.
         ``get_substance`` returns it AND copies the value to
-        ``db.substance`` so future reads see a single field."""
+        ``db.substance`` so future reads see a single field.
+
+        The stamped value is TRANSLATED through ``_LEGACY_BRAND_MAP``.
+        This used to assert the raw ``"noir"`` was stamped -- but that is
+        a legacy brand, not a registered substance id, so the registry
+        returned None for it and the item delivered no pharmacology at
+        all while reading and smoking exactly like tobacco. Stamping the
+        raw value made that permanent (#2767, owner ruling 2026-09-05).
+        """
         item = _FakeItem(
             role_tags=[(sm.SMOKE_DELIVERY, sm.DELIVERY_METHOD_CATEGORY)],
             legacy_brand="noir",
         )
-        self.assertEqual(sm.get_substance(item), "noir")
-        # Now stamped onto db.substance.
-        self.assertEqual(item.db.substance, "noir")
+        self.assertEqual(sm.get_substance(item), sm.SUBSTANCE_TOBACCO_NOIR)
+        # Now stamped onto db.substance, as a REGISTERED id.
+        self.assertEqual(item.db.substance, sm.SUBSTANCE_TOBACCO_NOIR)
+
+    def test_the_stamped_value_has_real_pharmacology(self):
+        """The point of the translation: the registry must now know it."""
+        from world.substances.registry import get_substance_entry
+        item = _FakeItem(
+            role_tags=[(sm.SMOKE_DELIVERY, sm.DELIVERY_METHOD_CATEGORY)],
+            legacy_brand="neutral",
+        )
+        stamped = sm.get_substance(item)
+        self.assertIsNotNone(get_substance_entry(stamped),
+                             f"{stamped!r} still has no pharmacology")
+
+    def test_an_unknown_brand_is_left_as_it_was(self):
+        """The pin: only the two known legacy brands translate. Anything
+        else keeps its value rather than being mapped to tobacco."""
+        item = _FakeItem(
+            role_tags=[(sm.SMOKE_DELIVERY, sm.DELIVERY_METHOD_CATEGORY)],
+            legacy_brand="banana",
+        )
+        self.assertEqual(sm.get_substance(item), "banana")
+
+    def test_a_registered_substance_is_untouched(self):
+        item = _FakeItem(
+            role_tags=[(sm.SMOKE_DELIVERY, sm.DELIVERY_METHOD_CATEGORY)],
+            legacy_brand=sm.SUBSTANCE_TOBACCO_NEUTRAL,
+        )
+        self.assertEqual(sm.get_substance(item), sm.SUBSTANCE_TOBACCO_NEUTRAL)
 
     def test_returns_none_when_neither_attribute_set(self):
         item = _FakeItem(
