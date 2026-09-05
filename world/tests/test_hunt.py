@@ -319,3 +319,82 @@ class TestIncidentLog(TestCase):
         self.assertEqual(event.type, "disturbance")
         self.assertIsNone(event.source)
         self.assertIs(event.location, room)
+
+
+class TestAnUnreachableRoomDoesNotFreezeTheHunt(TestCase):
+    """The fan-out chose lock-BLIND while the walker is lock-AWARE, and
+    `swept`/`budget` advance only on ARRIVAL. So a destination that was
+    offered but never reached was never marked and never cost anything:
+    it came back next tick, and the next, forever.
+
+    `_give_up` was unreachable on that path -- it needs `dest is None`
+    or `budget <= 0`, and neither could become true -- so the hunt did
+    not fail, it FROZE. `tick_hunt` kept returning True, whose
+    documented meaning is "the hunt owns this NPC's turn (the patrol
+    routine stays out)", so the visible behaviour was a guard standing
+    motionless in a corridor, off patrol, until the stealth record
+    decayed (#2758).
+
+    In the Brackett Arms -- the building the hiding gameplay lives in --
+    38% of adjacent room pairs are in the disagreement set, and the
+    refused ones are exactly the leased units and the sealed basement.
+    """
+
+    def _hunter_facing(self, refused=True):
+        here, there = MagicMock(name="here"), MagicMock(name="there")
+        there.id = 5150
+        npc = _npc(here)
+        npc.ndb.hunt = {"key": "uid-prey", "swept": [], "budget": 3,
+                        "last_room": None}
+        return npc, there
+
+    def test_a_refused_walk_marks_the_room_swept(self):
+        npc, dest = self._hunter_facing()
+        with _all_wanted(), \
+             patch.object(hunt, "_next_sweep_room", return_value=dest), \
+             patch("world.director.travel.travel_to", return_value=False), \
+             patch("world.director.travel.is_travelling", return_value=False), \
+             patch("world.stealth.hunt_records", return_value=_rec()), \
+             patch.object(hunt, "_present_target", return_value=None):
+            tick_hunt(npc)
+        self.assertIn(dest.id, npc.ndb.hunt["swept"],
+                      "the room was re-offerable forever")
+
+    def test_a_refused_walk_spends_budget(self):
+        """So a hunter facing a corridor of locked doors gives up
+        instead of grinding the whole fan-out."""
+        npc, dest = self._hunter_facing()
+        before = npc.ndb.hunt["budget"]
+        with _all_wanted(), \
+             patch.object(hunt, "_next_sweep_room", return_value=dest), \
+             patch("world.director.travel.travel_to", return_value=False), \
+             patch("world.director.travel.is_travelling", return_value=False), \
+             patch("world.stealth.hunt_records", return_value=_rec()), \
+             patch.object(hunt, "_present_target", return_value=None):
+            tick_hunt(npc)
+        self.assertLess(npc.ndb.hunt["budget"], before)
+
+    def test_a_successful_walk_costs_nothing_yet(self):
+        """The pin: arrival is what spends the budget, and a hunter
+        walking normally must not be charged twice."""
+        npc, dest = self._hunter_facing()
+        before = npc.ndb.hunt["budget"]
+        with _all_wanted(), \
+             patch.object(hunt, "_next_sweep_room", return_value=dest), \
+             patch("world.director.travel.travel_to", return_value=True), \
+             patch("world.director.travel.is_travelling", return_value=False), \
+             patch("world.stealth.hunt_records", return_value=_rec()), \
+             patch.object(hunt, "_present_target", return_value=None):
+            tick_hunt(npc)
+        self.assertEqual(npc.ndb.hunt["budget"], before)
+        self.assertEqual(npc.ndb.hunt["swept"], [])
+
+
+class TestTheFanOutAsksTheWalkersQuestion(TestCase):
+    def test_it_filters_on_reachability_with_a_traverser(self):
+        """Structural: the two doors have to keep agreeing, and the
+        default-None traverser makes the lock-blind form the easy one to
+        write (the same shape as #2714)."""
+        import inspect
+        src = inspect.getsource(hunt._next_sweep_room)
+        self.assertIn("is_reachable(npc.location, dest, traverser=npc)", src)
