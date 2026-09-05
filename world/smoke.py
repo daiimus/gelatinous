@@ -516,8 +516,8 @@ SNUFF_MESSAGES: list[tuple[str, str]] = [
         "smoke thins to nothing.",
     ),
     (
-        "You pinch the lit tip until the glow fails.",
-        "{actor} pinches the lit tip until the glow fails.",
+        "You pinch the {smoke}'s lit tip until the glow fails.",
+        "{actor} pinches their {smoke}'s lit tip until the glow fails.",
     ),
 ]
 
