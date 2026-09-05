@@ -141,6 +141,66 @@ class TestDoctorInstall(BaseEvenniaTest):
         self.assertIsNotNone(chart_lib.get_chart(patient))  # saved on the patient
 
 
+class TestTheInstallStepCarriesTheSide(BaseEvenniaTest):
+    """`build_install_chart` resolved the side, used it to build the
+    declaration, then omitted it from the step it wrote.
+
+    The dispatcher cannot recover it -- `side = (args or {}).get("side")`
+    is None, so its `if side:` branch never runs -- and the resolver then
+    refuses a side-agnostic augment without a side. A cyber arm IS
+    side-agnostic, so that was EVERY clinic arm install (#2692).
+
+    The chart is incise -> install -> suture, so the incision succeeds
+    FIRST: the patient is opened at the anchor and left there, with the
+    refusal addressed to the clinic NPC, which has no way to supply a
+    side. `CmdOperate`, the other door onto the same resolver, has
+    always passed it.
+    """
+
+    def _pair(self, n):
+        doc = create_object("typeclasses.llm_npc.LLMNpc", key=f"Doc{n}",
+                            location=self.room1)
+        patient = create_object("typeclasses.characters.Character",
+                                key=f"Pat{n}", location=self.room1)
+        return doc, patient
+
+    def _install_step(self, request, n):
+        doc, patient = self._pair(n)
+        chart = worldclinic.build_install_chart(doc, patient, request)
+        self.assertIsNotNone(chart, f"no chart for {request!r}")
+        return [s for s in chart["steps"] if s["verb"] == "install"][0]
+
+    def test_an_explicit_left_arm_carries_left(self):
+        step = self._install_step("cyber arm, left", 80)
+        self.assertEqual(step["args"].get("side"), "left")
+
+    def test_an_explicit_right_arm_carries_right(self):
+        step = self._install_step("cyber arm, right", 81)
+        self.assertEqual(step["args"].get("side"), "right")
+
+    def test_an_unspecified_arm_still_carries_a_side(self):
+        """The refusal fires on a MISSING side, so the default matters
+        as much as the explicit case -- 'chrome my arm' is what a patron
+        actually says."""
+        step = self._install_step("chrome my arm", 82)
+        self.assertTrue(step["args"].get("side"),
+                        "a side-agnostic augment got no side")
+
+    def test_the_side_agrees_with_the_anchor(self):
+        step = self._install_step("cyber arm, left", 83)
+        self.assertEqual(step["args"].get("location"), "left_arm")
+        self.assertEqual(step["args"].get("side"), "left")
+
+    def test_a_side_agnostic_augment_that_is_not_an_arm_also_carries(self):
+        """The tail is the other prototype that actually resolves an
+        anchor — the eye, ear, kidney, jaw and heart produce no chart at
+        all, because their prototypes carry no augment declaration
+        (#2909). Using the tail keeps this test about the SIDE rather
+        than about that separate defect."""
+        step = self._install_step("tail", 84)
+        self.assertTrue(step["args"].get("location"))
+
+
 class TestTheClinicDoesNotClobberASurgery(BaseEvenniaTest):
     """Two writers of `patient.db.medical_chart`. The operate menu's
     `_add_step_to_chart` reuses an existing chart; `build_install_chart`

@@ -225,8 +225,26 @@ def build_install_chart(by, patient, what):
             return None
         chart = chart_lib.new_chart(by)
         chart_lib.add_step(chart, "incise", {"location": anchor})
+        # CARRY THE SIDE. It is resolved two lines up and used to build
+        # the declaration, then dropped from the step — and the
+        # dispatcher cannot recover it (`side = (args or {}).get("side")`
+        # is None, so its `if side:` branch never runs), so the resolver
+        # refuses:
+        #
+        #     if declaration["side_agnostic"] and not side:
+        #         "mounts on either side — name one (left or right)."
+        #
+        # A cyber arm is side-agnostic, so that was EVERY clinic arm
+        # install. And the chart is incise -> install -> suture, so the
+        # incision succeeds first: the patient is opened at the anchor
+        # and then left there, with the refusal addressed to the clinic
+        # NPC, which has no way to supply a side (#2692).
+        #
+        # `CmdOperate`, the other door onto the same resolver, has always
+        # passed it.
         chart_lib.add_step(chart, "install",
-                           {"organ_item_key": cyber.key, "location": anchor})
+                           {"organ_item_key": cyber.key, "location": anchor,
+                            "side": side})
         chart_lib.add_step(chart, "suture", {})
         chart_lib.save_chart(patient, chart)
         return chart
