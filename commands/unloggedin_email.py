@@ -42,7 +42,32 @@ class CmdEmailConnect(MuxCommand):
         # to prevent user enumeration attacks.
         account = AccountDB.objects.filter(email__iexact=email).first()
 
-        if not account or not account.check_password(password):
+        if account is None:
+            # Spend the same work a real password check costs. `or`
+            # short-circuits, so an unknown email never reached
+            # check_password and returned in ~0.5ms against ~457ms for a
+            # wrong password — roughly 850x, which answers the question
+            # the generic message below deliberately refuses to. The
+            # comment above states enumeration is the threat; the
+            # message channel was closed and the timing channel was not
+            # (#2750).
+            try:
+                AccountDB().set_password(password)
+            except Exception:  # noqa: BLE001 — a mitigation is not a fault
+                pass
+            session.msg("Invalid email or password.")
+            return
+
+        if not account.check_password(password):
+            session.msg("Invalid email or password.")
+            return
+
+        # A deactivated account is refused here too. The web door gets
+        # this from Django's `user_can_authenticate`; this door does not
+        # go through a Django backend at all (#2557), so it has to say
+        # so itself — otherwise "Active" unchecked stops the website and
+        # not the game (#2751).
+        if not getattr(account, "is_active", True):
             session.msg("Invalid email or password.")
             return
 
