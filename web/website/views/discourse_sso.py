@@ -193,16 +193,32 @@ def discourse_sso(request):
                       parsed_discourse.hostname, parsed_return.hostname)
         return HttpResponseBadRequest("Invalid return URL - host mismatch")
     
-    # Validate scheme is http or https
-    if parsed_return.scheme not in ('http', 'https'):
-        logger.warning("SSO redirect with invalid scheme blocked: %s", parsed_return.scheme)
-        return HttpResponseBadRequest("Invalid return URL - invalid scheme")
+    # HTTPS only. This used to admit 'http' as well, which contradicted
+    # the final gate below (`require_https=True`) — an http return URL
+    # passed here, passed the host check, and died at the last line with
+    # a message naming the URL rather than the scheme, so the operator
+    # was pointed at the wrong cause. Requiring it here changes nothing
+    # about what SUCCEEDS; it just fails fast and says why (#2744).
+    # https is the right requirement regardless: this redirect carries a
+    # signed payload containing the user's email.
+    if parsed_return.scheme != 'https':
+        logger.warning("SSO redirect blocked: scheme must be https, got %s",
+                       parsed_return.scheme)
+        return HttpResponseBadRequest("Invalid return URL - must be https")
     
     # Build redirect URL with SSO response parameters
     # Reconstruct from validated components to ensure no injection
+    # NETLOC, not hostname. The intent in the old comment was right —
+    # rebuild from the settings host rather than trusting the caller's —
+    # but `urlparse(...).hostname` is normalised for COMPARISON: it
+    # lowercases, strips the port, and strips the brackets from an IPv6
+    # literal. So a forum on a non-default port was redirected to the
+    # default port instead, and an IPv6 host produced a syntactically
+    # invalid URL (#2745). `netloc` carries the same trust and keeps
+    # both.
     base_url = urlunparse((
         parsed_return.scheme,
-        parsed_discourse.hostname,  # Use the trusted hostname from settings
+        parsed_discourse.netloc,  # trusted host:port from settings
         parsed_return.path,
         '',  # No params
         parsed_return.query,
@@ -213,10 +229,19 @@ def discourse_sso(request):
     redirect_params = urlencode({'sso': response_payload, 'sig': response_signature})
     final_redirect_url = f"{base_url}{separator}{redirect_params}"
     
-    # Final validation with explicit allowlist before redirect
-    allowed_hosts = [parsed_discourse.hostname]
+    # Final validation with explicit allowlist before redirect.
+    # The allowlist must be the NETLOC too: Django compares the URL's
+    # full host:port against these entries, so a bare hostname here
+    # would reject the very port the rebuild above just preserved.
+    allowed_hosts = [parsed_discourse.netloc]
     if not url_has_allowed_host_and_scheme(final_redirect_url, allowed_hosts=allowed_hosts, require_https=True):
-        logger.error("Final redirect validation failed for URL: %s", final_redirect_url)
+        # Host and path only — NEVER the query string. It carries the
+        # signed SSO payload, which is base64 and not encrypted, and
+        # contains the user's email address. Logging the whole URL wrote
+        # a real address into the web log on every failure (#2744).
+        logger.error("Final redirect validation failed for %s://%s%s",
+                     parsed_return.scheme, parsed_discourse.netloc,
+                     parsed_return.path)
         return HttpResponseBadRequest("Invalid redirect URL")
     
     return HttpResponseRedirect(final_redirect_url)
