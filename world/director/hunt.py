@@ -199,10 +199,24 @@ def _next_sweep_room(npc, state) -> Optional[Any]:
     anchor = last_room or npc.location
     if anchor is None:
         return None
+    # LOCK-AWARE, like the walker. The fan-out chose by walking exits
+    # with no traversability test, while `travel_to` resolves the route
+    # with `traverser=npc` and honours locks. In the Brackett Arms —
+    # the building the hiding gameplay lives in — 38% of adjacent room
+    # pairs are in the disagreement set, and the refused ones are
+    # exactly the leased units and the sealed basement: the hiding
+    # places (#2758).
+    from world.spatial import is_reachable
     for exit_obj in getattr(anchor, "exits", []) or []:
         dest = getattr(exit_obj, "destination", None)
-        if dest is not None and dest.id not in swept:
-            return dest
+        if dest is None or dest.id in swept:
+            continue
+        try:
+            if not is_reachable(npc.location, dest, traverser=npc):
+                continue
+        except Exception:  # noqa: BLE001 — an unanswerable room is offered
+            pass           # and the caller's own guard catches the refusal
+        return dest
     return None
 
 
@@ -266,5 +280,22 @@ def tick_hunt(npc) -> bool:
             _engage(npc, found)
         return True
 
-    travel_to(npc, dest)
+    # ACT ON THE ANSWER. `swept` and `budget` advance only on ARRIVAL,
+    # so a destination that was offered but never reached was never
+    # marked and never cost anything — it came back next tick, and the
+    # next, forever. `_give_up` was unreachable on that path (it needs
+    # `dest is None` or `budget <= 0`, and neither could become true),
+    # so the hunt did not fail, it FROZE: `tick_hunt` kept returning
+    # True, which means "the hunt owns this turn", and the guard stood
+    # motionless in a corridor with its patrol routine suppressed until
+    # the stealth record decayed out from under it (#2758).
+    #
+    # Marking it swept is the honest record: we tried this room and
+    # cannot enter it. Spending budget too, so a hunter facing a
+    # corridor of locked doors gives up rather than grinding the whole
+    # fan-out.
+    if not travel_to(npc, dest):
+        state["swept"] = list(state.get("swept") or []) + [dest.id]
+        state["budget"] = int(state.get("budget", 0)) - 1
+        npc.ndb.hunt = state
     return True
