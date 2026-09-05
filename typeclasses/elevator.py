@@ -108,11 +108,51 @@ class ElevatorCar(IndoorRoom):
         if not 0 <= idx < len(floors):
             return False
         locks = self.db.floor_locks or {}
-        grants = locks.get(str(floors[idx][1]))
-        if grants is None:
-            return True
-        from world.access import is_granted
-        return presser is not None and is_granted(presser, grants)
+        if not locks:
+            return True                     # no secured floors on this car
+        label = str(floors[idx][1])
+        grants = locks.get(label)
+        if grants is not None:
+            from world.access import is_granted
+            return presser is not None and is_granted(presser, grants)
+
+        # `None` meant two different things and the code could not tell
+        # them apart: "this floor was never secured" (pass free, right)
+        # and "this floor IS secured, but the lock key no longer matches
+        # its label" (pass free, WRONG). Keys are stringified, so `2` and
+        # `"2"` agree while `"2"` and `"L2"` do not — a builder editing a
+        # floor label silently unlocked the floor, with no error, no log,
+        # and no visible difference. The button simply lit for everyone
+        # (#2687, #2775).
+        #
+        # An ORPHANED lock key — one matching no floor label — is the
+        # evidence that happened. When any exists, this car's lock table
+        # is broken and we cannot know which floor the dangling grants
+        # were protecting, so the unlisted floors fail CLOSED. That is
+        # what the access module documents and what a security control
+        # should do; the previous behaviour admitted everyone silently.
+        orphans = self._orphaned_lock_keys()
+        if orphans:
+            from evennia.utils import logger
+            logger.log_err(
+                f"Elevator {self.key} (#{self.id}): floor_locks keys "
+                f"{sorted(orphans)} match no floor label "
+                f"{sorted(str(f[1]) for f in floors)}. Those floors are "
+                f"UNPROTECTED; refusing unlisted floors until the labels "
+                f"and the lock keys agree.")
+            return False
+        return True
+
+    def _orphaned_lock_keys(self):
+        """Lock keys that match no floor label on this car.
+
+        Their existence means a label was renamed, retyped, or had its
+        type changed after the lock was written — so a floor somebody
+        deliberately secured is no longer being checked at all.
+        """
+        floors = self.db.floors or []
+        labels = {str(f[1]) for f in floors}
+        return {k for k in (self.db.floor_locks or {}) if str(k) not in labels}
 
     def request_floor(self, label, presser=None):
         """A panel press inside the car."""
