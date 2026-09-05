@@ -126,12 +126,46 @@ def health_pressure(soul):
         ms = soul.db.medical_state or {}
         conds = ms.get("conditions") or []
         n = len(conds)
-        bleeding = any("bleed" in str((c.get("type") if isinstance(c, dict)
-                                       else c) or "").lower()
-                       for c in conds)
+        bleeding = any(_is_bleeding_condition(c) for c in conds)
         return min(1.0, 0.12 * n + (0.35 if bleeding else 0.0))
     except Exception:  # noqa: BLE001 — unreadable body reads as well
         return 0.0
+
+
+def _is_bleeding_condition(cond) -> bool:
+    """Does this stored condition represent bleeding?
+
+    Reads the real field, `condition_type`. What this replaces worked
+    only by ACCIDENT, through two faults that cancelled out:
+
+      bleeding = any("bleed" in str((c.get("type") if isinstance(c, dict)
+                                     else c) or "").lower() ...)
+
+    There is no `type` key on a stored condition — the fields are
+    `condition_type`, `severity`, `location` and so on — so that branch
+    would have returned None. It was never taken, because stored
+    conditions are `_SaverDict`, which is NOT a dict subclass, so
+    `isinstance` failed and the `else c` branch stringified the WHOLE
+    condition. The substring then hit `condition_type='minor_bleeding'`
+    and the answer came out right (#2701).
+
+    Two reasons that mattered enough to fix working code:
+
+    * It is a booby trap. The recommended `_SaverDict` cleanup in #2679
+      — duck-type or deserialize so isinstance checks stop failing —
+      would route this into the `type` branch, return None, and SILENTLY
+      stop detecting bleeding, dropping 0.35 of pressure from every
+      bleeding soul.
+    * A substring search over a whole serialized condition matches any
+      future field whose name or value happens to contain "bleed".
+
+    Duck-typed on `.get` rather than isinstance, for the same reason the
+    old code tripped: `_SaverDict` is dict-LIKE without being a dict.
+    """
+    getter = getattr(cond, "get", None)
+    if not callable(getter):
+        return False
+    return "bleed" in str(getter("condition_type") or "").lower()
 
 
 #: pre-habit pull of the bottle: a grim mood registers as a mild
