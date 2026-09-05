@@ -55,8 +55,24 @@ def verify_payload(payload, signature):
         payload.encode('utf-8'),
         hashlib.sha256
     ).hexdigest()
-    
-    return hmac.compare_digest(expected_signature, signature)
+
+    # `signature` is raw query input. hmac.compare_digest refuses str
+    # arguments that are not ASCII-only and raises TypeError, which on
+    # this view meant an unhandled 500 — the comparison sits ABOVE the
+    # only try/except, whose comment states that attacker-controllable
+    # input must always yield a clean 400, never a 500 (#2743).
+    #
+    # Compared as BYTES: that accepts any input without raising, and
+    # keeps the constant-time property, which a length or charset
+    # pre-check would have thrown away.
+    try:
+        return hmac.compare_digest(
+            expected_signature.encode('ascii'),
+            signature.encode('utf-8'),
+        )
+    except (AttributeError, UnicodeEncodeError):
+        # Not string-like at all. A failed comparison, not a crash.
+        return False
 
 
 def sign_payload(payload):
