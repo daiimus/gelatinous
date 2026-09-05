@@ -383,16 +383,46 @@ def get_dispatch_operator() -> Any | None:
     base = get_dispatch_room()
     if base is None:
         return None
-    for obj in base.contents:
-        if getattr(getattr(obj, "db", None), "dispatch_operator", None) is not True:
-            continue
-        try:
-            if obj.is_dead() or obj.is_unconscious():
-                return None
-        except Exception:  # noqa: BLE001 — no medical read, assume working
-            pass
-        return obj
-    return None
+
+    # WHO HOLDS THE CHAIR, not who the spawner flagged. This asked
+    # `db.dispatch_operator is True`, an attribute exactly ONE object in
+    # the database carries — the day keeper. The desk is rostered across
+    # all three shifts (day Petra, swing Kiro, night Ines), so for two
+    # shifts out of three this returned None no matter who was sitting
+    # there, and the automation answered. By the docstring's own framing
+    # that is "a difference players can hear": two-thirds of every day,
+    # the colony had no dispatcher by definition (#2710).
+    #
+    # `keeper_on_duty` is the post machinery the shops, bar and clinic
+    # gates already use, and it answers the state question this
+    # docstring describes: somebody is here AND it is their shift. The
+    # dispatch room IS the post fixture, so it can be asked directly.
+    operator = None
+    try:
+        from world.souls.posts import keeper_on_duty
+        operator = keeper_on_duty(base)
+    except Exception:  # noqa: BLE001 — fall through to the legacy flag
+        operator = None
+
+    if operator is None:
+        # Legacy fallback: a body explicitly flagged and standing here.
+        # Kept so a post with no slots configured still works, and so
+        # this strictly WIDENS who can qualify rather than trading one
+        # narrow test for another.
+        for obj in base.contents:
+            if getattr(getattr(obj, "db", None),
+                       "dispatch_operator", None) is True:
+                operator = obj
+                break
+    if operator is None:
+        return None
+
+    try:
+        if operator.is_dead() or operator.is_unconscious():
+            return None
+    except Exception:  # noqa: BLE001 — no medical read, assume working
+        pass
+    return operator
 
 
 def get_base_station() -> Any | None:
