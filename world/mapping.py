@@ -27,13 +27,29 @@ def _flags(room):
 
 
 def _link_kind(ex, src):
+    """The single label for a link. MOST SPECIFIC CLAIM FIRST.
+
+    `is_gap` is tested before `is_edge` because every one of the
+    colony's 90 gaps also carries `is_edge` — 100% overlap, measured —
+    so with `edge` first the `gap` branch was reached by exactly zero
+    exits. Not dead code: shadowed live code (#2789).
+
+    The distinction is real to a player. An edge is a ledge you can fall
+    off; a gap is a space you jump across, and the colony's first
+    inter-building parkour crossing is a gap. Anything reading this
+    export saw all 90 jumps as ledges, and nothing surfaced the loss
+    because "edge" is a plausible answer and the classifier never errs.
+
+    Ordering rather than retagging: a gap probably IS also an edge for
+    fall purposes, so the flags are not wrong — the precedence was.
+    """
     db = ex.db
     if db.is_door is True:
         return "door"
-    if db.is_edge is True:
-        return "edge"
     if db.is_gap is True:
         return "gap"
+    if db.is_edge is True:
+        return "edge"
     if src.db.is_sky_room is True and ex.key in ("down", "d"):
         return "fall"
     return "walk"
