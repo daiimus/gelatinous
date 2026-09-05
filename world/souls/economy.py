@@ -43,6 +43,21 @@ def pay_wage(soul):
     (`soul.db.soul_venue.db.register`); non-venue posts draw colony
     treasury. Partial payment when the source is short — a drought is a
     visible state (`@soul` shows the unpaid balance), not a crash.
+
+    A venue with NO till is the third case, and it is not a dry one. It
+    used to fall into the venue branch, read `int(None or 0)` as zero,
+    pay nothing, and never reach the `else` that would have gone to the
+    treasury — so the wage accrued forever. Ossie Trelane had banked
+    140.56 tokens against a crane console that has no `register`
+    attribute at all, with the treasury solvent at 1,150 (#2693).
+
+    It stayed invisible because a missing till and an empty one are
+    indistinguishable downstream: both show as an unpaid balance on
+    `@soul`, so the display meant to make a drought visible is exactly
+    what disguised it.
+
+    A control surface is not a counter. If a venue should fund its own
+    posts, give it a register; absent one, the colony pays.
     """
     # fold any un-checkpointed ndb accrual in before paying out
     pending = float(soul.ndb.soul_wage_pending or 0.0)
@@ -55,7 +70,16 @@ def pay_wage(soul):
             soul.db.soul_wage_owed = owed_f   # folded fraction stays owed
         return 0
     venue = soul.db.soul_venue
+    # `has("register")` — not truthiness. An empty till is a real,
+    # documented state; a MISSING one means this fixture was never a
+    # place wages come out of.
+    has_till = False
     if venue is not None:
+        try:
+            has_till = venue.attributes.has("register")
+        except Exception:  # noqa: BLE001 — unreadable venue: treasury pays
+            has_till = False
+    if has_till:
         avail = int(venue.db.register or 0)
         paid = min(owed, avail)
         if paid > 0:
