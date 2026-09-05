@@ -41,10 +41,32 @@ class TestAnAbsentOperatorIsNotAVacancy(EvenniaCommandTest):
                          "hired a second operator while one exists")
 
     def test_a_dead_operator_does_not_block_rehiring(self):
+        """A dead operator IS a vacancy — the same rule every other post
+        follows, and the dispatch fixture already carries
+        `post_policy = resleave` like the bars do (owner ruling
+        2026-09-05, #2762).
+
+        Death is faked through `is_dead()`, the method the code actually
+        consults. This used to set `db.is_dead = True`, an ATTRIBUTE row
+        no object in the world carries — which is precisely why the old
+        liveness filter was always true and never removed anybody. The
+        test passed by feeding the bug the one input that made it move.
+        """
         self.char2.db.dispatch_operator = True
-        self.char2.db.is_dead = True
         self.char2.location = self.room2
-        # no live operator anywhere, so the desk may staff itself
-        op = population.ensure_dispatch_operator()
+        # no LIVE operator anywhere, so the desk may staff itself
+        with mock.patch.object(type(self.char2), "is_dead",
+                               return_value=True):
+            op = population.ensure_dispatch_operator()
         self.assertIsNotNone(op)
         self.assertTrue(op.db.dispatch_operator)
+
+    def test_a_living_operator_elsewhere_still_blocks_rehiring(self):
+        """The distinction that keeps #2181 shut: walked off is not dead.
+        Three Petras happened because the desk could not tell them
+        apart."""
+        self.char2.db.dispatch_operator = True
+        self.char2.location = self.room2
+        before = len(self.room1.contents)
+        self.assertIsNone(population.ensure_dispatch_operator())
+        self.assertEqual(len(self.room1.contents), before)
