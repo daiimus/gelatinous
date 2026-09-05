@@ -309,8 +309,20 @@ def _wear_and_tear(soul):
     got = traits_mod.acquire_defect(soul)
     if got:
         from world.souls import jobs
-        jobs.fault(soul, f"service overdue — developed "
-                         f"{traits_mod.DEFECTS[got]['label']}")
+        # NOTE it, do not ABORT on it. This called `jobs.fault`, which
+        # also cools the running goal, files the audit line under
+        # whatever job happened to be running, and releases any recovery
+        # claim — so a unit that crossed its service interval while
+        # working lost its post for the cooldown period and the audit
+        # blamed the work. The neglect consequence landed on the unit's
+        # JOB rather than on the unit (#2695).
+        #
+        # The cooldown exists for plans that CANNOT succeed (#2375). A
+        # unit due for service has a perfectly good plan; it is simply
+        # also due for service.
+        jobs.note_fault(soul, f"service overdue — developed "
+                              f"{traits_mod.DEFECTS[got]['label']}",
+                        goal="maintenance")
 
 
 def _release_placement(soul):

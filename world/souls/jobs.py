@@ -23,18 +23,39 @@ def _signal(kind, soul, note=""):
         pass
 
 
+def note_fault(soul, msg, goal=None):
+    """RECORD that something went wrong, without aborting the plan.
+
+    The recording half of `fault`, split out because not every reportable
+    condition is a failed plan. `_wear_and_tear` reports a maintenance
+    threshold through `fault`, which also cools the running goal,
+    mislabels the audit line with whatever job happened to be running,
+    and releases any recovery claim — so a unit that crossed its service
+    interval while working lost its post for the cooldown, and the audit
+    blamed the work. The neglect consequence landed on the unit's JOB
+    rather than on the unit (#2695).
+
+    `goal` labels the audit line. Callers reporting a condition rather
+    than a plan failure should pass their own, or the line borrows the
+    running job's goal and reads as a fault of it.
+    """
+    # soul_faults keeps only the last FAULT_KEEP, so the audit line is
+    # the only durable record that this happened at all (#2318)
+    from world.souls import audit
+    if goal is None:
+        goal = (soul.db.soul_job or {}).get("goal")
+    audit.fault(soul, goal, msg)
+    log = soul.db.soul_faults or []
+    log.append((time.time(), msg))
+    soul.db.soul_faults = log[-FAULT_KEEP:]
+
+
 def fault(soul, msg):
     # a faulted recovery must release its claim, or the unit can never
     # take another errand (#2282)
     if soul.db.soul_recovering:
         soul.db.soul_recovering = None
-    # soul_faults keeps only the last FAULT_KEEP, so the audit line is
-    # the only durable record that this happened at all (#2318)
-    from world.souls import audit
-    audit.fault(soul, (soul.db.soul_job or {}).get("goal"), msg)
-    log = soul.db.soul_faults or []
-    log.append((time.time(), msg))
-    soul.db.soul_faults = log[-FAULT_KEEP:]
+    note_fault(soul, msg)
     # COOL THE GOAL DOWN. A plan that cannot be MADE already cooled
     # (engine.think), but a job that dies mid-flight did not — so a soul
     # whose travel failed re-planned the identical impossible trip on

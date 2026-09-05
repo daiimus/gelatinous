@@ -97,9 +97,42 @@ class TestItIsWiredWhereDecisionsHappen(EvenniaCommandTest):
         self.assertIn("audit.goal(", inspect.getsource(engine.think))
 
     def test_faulting_is_recorded(self):
-        import inspect
+        """Asserted on BEHAVIOUR, not on the source of one function.
+
+        This used to grep `jobs.fault` for the string "audit.fault(".
+        The recording half is now `note_fault`, so a source check on the
+        wrapper reports a regression that is not one — while a caller
+        that recorded nothing at all would still have passed as long as
+        the literal appeared somewhere in the function (#2695).
+        """
+        from unittest import mock
+
         from world.souls import jobs
-        self.assertIn("audit.fault(", inspect.getsource(jobs.fault))
+        soul = mock.MagicMock()
+        soul.db.soul_job = {"goal": "duty"}
+        soul.db.soul_faults = []
+        soul.db.soul_recovering = None
+        soul.db.soul_goal_cooldown = {}
+        with mock.patch("world.souls.audit.fault") as filed, \
+             mock.patch.object(jobs, "stop_travel"), \
+             mock.patch.object(jobs, "_signal"):
+            jobs.fault(soul, "a plan died")
+        self.assertTrue(filed.called, "a fault produced no audit line")
+        self.assertEqual(filed.call_args.args[2], "a plan died")
+
+    def test_noting_a_condition_is_recorded_too(self):
+        """The other half of the split: `note_fault` records without
+        aborting, and labels the line with its OWN goal rather than
+        borrowing the running job's."""
+        from unittest import mock
+
+        from world.souls import jobs
+        soul = mock.MagicMock()
+        soul.db.soul_job = {"goal": "duty"}
+        soul.db.soul_faults = []
+        with mock.patch("world.souls.audit.fault") as filed:
+            jobs.note_fault(soul, "service overdue", goal="maintenance")
+        self.assertEqual(filed.call_args.args[1], "maintenance")
 
     def test_finishing_is_recorded(self):
         import inspect
