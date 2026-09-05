@@ -154,11 +154,18 @@ class CmdBuy(Command):
         search_term = item_name.lstrip('#').strip()
         if search_term.isdigit():
             item_number = int(search_term)
-            # Check if container has item number mapping (from recent look)
-            if hasattr(container.ndb, 'item_number_map') and container.ndb.item_number_map:
-                prototype_key = container.ndb.item_number_map.get(item_number)
-                if prototype_key:
-                    return prototype_key
+            # The BUYER's own listing, not the container's -- a shared
+            # map meant the last person to look renumbered everyone
+            # else's screen (#2470). The stored container has to match
+            # the one being bought from, so a number cannot resolve
+            # against a listing from another shop.
+            stored = getattr(self.caller.ndb, "shop_number_map", None)
+            if stored:
+                seen_container, item_map = stored
+                if seen_container is container and item_map:
+                    prototype_key = item_map.get(item_number)
+                    if prototype_key:
+                        return prototype_key
         
         # Get available prototypes
         prototype_inventory = container.db.prototype_inventory

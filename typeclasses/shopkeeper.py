@@ -320,8 +320,21 @@ class ShopContainer(DefaultObject):
         if not item_map:
             return f"The {self.db.container_type} is empty."
         
-        # Store the item map for use by buy command
-        self.ndb.item_number_map = item_map
+        # Store the item map ON THE VIEWER, for their `buy <number>`.
+        #
+        # It used to live on the CONTAINER, so one map was shared by
+        # everyone and the last person to look overwrote it for the rest.
+        # In limited-inventory mode the listing skips out-of-stock lines
+        # and renumbers what remains, so a stock change between two looks
+        # silently moved somebody's numbers: A reads [002] chops, someone
+        # buys the last stew, B looks, and A's `buy 002` hands over
+        # skewers (#2470). `return_appearance` browses too, so a bare
+        # `look` was enough to do it.
+        #
+        # Keyed to this container, so a number never resolves against a
+        # listing from a different shop.
+        if viewer is not None and hasattr(viewer, "ndb"):
+            viewer.ndb.shop_number_map = (self, item_map)
         
         # TODO: Reimplement when newbie flag system is added
         # Footer instruction for new players:
