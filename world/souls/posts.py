@@ -146,6 +146,30 @@ def any_keeper_present(fixture) -> bool:
     return keeper_on_duty(fixture) is not None
 
 
+def _is_dead(obj) -> bool:
+    """Death is DERIVED state — `is_dead()` is a method over
+    `medical_state`, and every other consumer in the codebase calls it
+    as one.
+
+    This module read `obj.db.is_dead` in three places: an attribute row
+    that ZERO objects in the database carry, so `not obj.db.is_dead` was
+    always True and none of the three guards ever fired. The only
+    non-test write to it was a line clearing something never set
+    (#2706).
+
+    Fails ALIVE for anything without the method — a fixture, a non-
+    character — because reading a mock as a corpse would vacate posts
+    that are actually staffed.
+    """
+    check = getattr(obj, "is_dead", None)
+    if not callable(check):
+        return False
+    try:
+        return bool(check())
+    except Exception:  # noqa: BLE001 — an unreadable body is not a dead one
+        return False
+
+
 def _slot_held(post, shift, slot) -> bool:
     """Is this slot's keeper alive and still on this post?
 
@@ -164,6 +188,18 @@ def _slot_held(post, shift, slot) -> bool:
     """
     keeper = slot.get("keeper")
     if keeper is None or not keeper.pk:
+        return False
+    # A DEAD keeper does not hold a post. `pk` is not the test: Essential
+    # personnel are ARCHIVED to Limbo rather than deleted (#2128), which
+    # is deliberate and good — the insurance restores the person instead
+    # of rebuilding a copy — but it means a named keeper's corpse keeps a
+    # truthy pk, its soul tag (desoul() has no callers) and its
+    # `soul_post` (never cleared on death). None of the three changes
+    # when they die, so the slot read HELD forever: no vacancy stamp, no
+    # post_vacant signal, no succession, no resleeve, and the counter
+    # reporting closed with nothing to say why. Every blueprinted keeper
+    # is one death away from it (#2706).
+    if _is_dead(keeper):
         return False
     room = _post_room(post)
     from world.souls import engine
@@ -346,7 +382,7 @@ def _living_body(bp_key):
     for obj in ObjectDB.objects.filter(
             db_attributes__db_key="blueprint_key"):
         if (obj.pk and obj.db.blueprint_key == bp_key
-                and obj.db.is_npc and not obj.db.is_dead
+                and obj.db.is_npc and not _is_dead(obj)
                 and obj.location is not None
                 and obj.location.id != 2):        # not archived in Limbo
             return obj
@@ -373,7 +409,7 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
     # — the original is alive, so it is never archived, so the next
     # sweep cannot restore it either and mints another copy (#2178).
     keeper = slot.get("keeper")
-    if keeper is not None and keeper.pk and not keeper.db.is_dead:
+    if keeper is not None and keeper.pk and not _is_dead(keeper):
         return False
 
     # And never a second body of somebody who already exists. The slot
@@ -401,7 +437,16 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
     npc = _archived_keeper(bp_key)
     if npc is not None:
         npc.move_to(decant, quiet=True, move_hooks=False)
-        npc.db.is_dead = None
+        # REVIVE, don't clear a phantom. This used to set
+        # `db.is_dead = None` — an attribute row no object in the
+        # database has ever carried, so it cleared nothing and the body
+        # arrived at its post still medically dead. With the aliveness
+        # test above, that would turn a permanently-held slot into a
+        # permanently-churning one: revived, read dead, vacated,
+        # resleeved, forever. Flesh back to factory, chrome carried
+        # across — which is what a fresh sleeve IS (#2706, #526).
+        from world.medical.procedures import reset_body_preserving_augments
+        reset_body_preserving_augments(npc)
     else:
         from world.npcs.blueprints import build_npc
         try:

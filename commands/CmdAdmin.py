@@ -869,48 +869,12 @@ class CmdResetMedical(Command):
 
 
 def _reset_medical_preserving_augments(char) -> int:
-    """Rebuild ``char``'s medical state from the current species
-    structure while carrying installed augments over (#526 review).
-
-    Pre-#526 this command nuked the state wholesale — which, with
-    per-character anatomy, erased every installed arm, tail, heart,
-    and module while orphaning their longdesc keys and parked
-    weapon items.  Augment organs (``is_augment_organ``) now survive
-    the rebuild; flesh resets to factory exactly as before.
-
-    Returns the number of organs preserved.
-    """
-    from world.anatomy import get_species_organs
-    from world.medical.core import is_augment_organ
-
-    species = getattr(getattr(char, "db", None), "species", None)
-    species_table = get_species_organs(species)
-
-    preserved = []
-    try:
-        old_state = char.medical_state
-    except AttributeError:
-        old_state = None
-    if old_state is not None and getattr(old_state, "organs", None):
-        preserved = [
-            organ for organ in old_state.organs.values()
-            if is_augment_organ(organ, species_table)
-        ]
-
-    if hasattr(char, '_medical_state'):
-        delattr(char, '_medical_state')
-    if char.db.medical_state:
-        del char.db.medical_state
-
-    if preserved:
-        new_state = char.medical_state  # property rebuilds from species
-        for organ in preserved:
-            organ.medical_state = new_state
-            new_state.organs[organ.name] = organ
-        save = getattr(char, "save_medical_state", None)
-        if callable(save):
-            save()
-    return len(preserved)
+    """Thin alias — the implementation moved to
+    `world.medical.procedures.reset_body_preserving_augments` so the
+    post-succession path could use it without importing a command
+    module (#2706)."""
+    from world.medical.procedures import reset_body_preserving_augments
+    return reset_body_preserving_augments(char)
 
 
 class CmdMedicalAudit(Command):
