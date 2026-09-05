@@ -286,6 +286,26 @@ def at_waypoint(npc: Any) -> None:
     deterministic interaction vocabulary)."""
     role = getattr(getattr(npc, "db", None), "role", None)
     if role == "security":
+        # HARDWARE FOLLOWS THE JOB. `_stow_weapon` is called at
+        # `watch_once` and `security_completion`, and both are inside
+        # the ASSIGNMENT lifecycle — so a unit whose assignment ended
+        # abnormally (or ended before the toggle fix landed) kept its
+        # riot gun out forever, because nothing off-assignment ever put
+        # it away. One live unit was standing in the Constabulary lobby
+        # on routine duty with `deployed: True` (#2709, #2760).
+        #
+        # A patrolling unit with no assignment and no fight has no
+        # reason to be holding a weapon, and the beat is the one hook
+        # that runs off-assignment. Self-healing, so the stale one puts
+        # it away on its next waypoint rather than needing a data fix.
+        try:
+            from world.combat.utils import find_character_handler
+            from world.director.assignment import is_assigned
+            from world.director.security import _stow_weapon
+            if not is_assigned(npc) and find_character_handler(npc) is None:
+                _stow_weapon(npc)
+        except Exception:  # noqa: BLE001 — never stall a beat over this
+            pass
         try:
             from world.director.dispatch import WorldEvent, raise_event
             from world.director.security import _scan_wanted

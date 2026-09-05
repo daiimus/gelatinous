@@ -236,3 +236,56 @@ class TestTheCadenceIsSpentNotBrowsed(TestCase):
         npc = self._marcher(cadence=1)
         self.assertTrue(rmod.cadence_ready(npc))
         self.assertTrue(rmod.cadence_ready(npc))
+
+
+class TestAPatrollingUnitPutsItsWeaponAway(TestCase):
+    """`_stow_weapon` is called at `watch_once` and
+    `security_completion`, and both live inside the ASSIGNMENT
+    lifecycle. So a unit whose assignment ended abnormally -- or ended
+    before the toggle fix (#2760) landed -- kept its riot gun out
+    forever, because nothing off-assignment ever put it away.
+
+    Measured live: one unit standing in the Constabulary lobby on
+    routine duty, not assigned, not in combat, `deployed: True`
+    (#2709).
+
+    A patrolling unit with no assignment and no fight has no reason to
+    be holding a weapon, and the beat is the one hook that runs
+    off-assignment.
+    """
+
+    def _unit(self):
+        npc = _Npc(_Room("a street"), role="security")
+        npc.execute_cmd = MagicMock()
+        return npc
+
+    def _run(self, npc, assigned=False, in_combat=False):
+        with patch("world.director.assignment.is_assigned",
+                   return_value=assigned), \
+             patch("world.combat.utils.find_character_handler",
+                   return_value=object() if in_combat else None), \
+             patch("world.director.security._stow_weapon") as stow, \
+             patch("world.director.security._scan_wanted",
+                   return_value=(None, None, None)):
+            at_waypoint(npc)
+        return stow
+
+    def test_an_idle_patroller_stows(self):
+        self.assertTrue(self._run(self._unit()).called,
+                        "the unit kept its gun out on routine patrol")
+
+    def test_an_assigned_unit_keeps_its_weapon(self):
+        """The pin: a unit rolling to an incident is about to need it."""
+        self.assertFalse(self._run(self._unit(), assigned=True).called)
+
+    def test_a_unit_in_a_fight_keeps_its_weapon(self):
+        """The more important pin — disarming mid-fight would be a far
+        worse bug than the one being fixed."""
+        self.assertFalse(self._run(self._unit(), in_combat=True).called)
+
+    def test_a_civilian_is_untouched(self):
+        npc = _Npc(_Room("a street"), role="civilian")
+        npc.execute_cmd = MagicMock()
+        with patch("world.director.security._stow_weapon") as stow:
+            at_waypoint(npc)
+        self.assertFalse(stow.called)
