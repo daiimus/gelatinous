@@ -394,3 +394,65 @@ class TestDeadTenancyPrune(TestCase):
         self.assertFalse(is_free(cube))
         self.assertIs(cube.db.resident, tenant)
         door._mirror.assert_not_called()
+
+
+class TestGrantsLandOnTheRightDoor(TestCase):
+    """The lease grant file is written through `DoorExit._mirror`, which
+    writes to `self.twin()`. While that cache was unvalidated (#2633), a
+    wrong twin did not merely desync a lock -- it wrote a tenant's
+    ACCESS GRANTS onto another apartment's door.
+
+    All twenty mis-paired doors were Brackett Arms UNIT doors, in a
+    building running 54 leases. They carried no grants only because
+    nobody had rented those specific units yet; the first lease on Unit
+    6A would have written its grant file onto whichever door the stale
+    cache pointed at -- a tenant who cannot open their own door, a
+    tenant who can open a neighbour's, or both (#2821).
+
+    State desync is visible and reversible. A mis-written grant file
+    is neither, which is why this is pinned separately from #2633.
+    """
+
+    def _pair(self):
+        import typeclasses.doors as dmod
+        from world.tests.test_doors import _door_factory, _bind
+        room_a, room_b = SimpleNamespace(exits=[]), SimpleNamespace(exits=[])
+        a, b = _door_factory(), _door_factory()
+        for d in (a, b):
+            if hasattr(dmod.DoorExit, "_pairs_with"):
+                _bind(d, dmod.DoorExit, "_pairs_with")
+        a.location, a.destination = room_a, room_b
+        b.location, b.destination = room_b, room_a
+        room_a.exits, room_b.exits = [a], [b]
+        return a, b
+
+    def _stranger(self):
+        from world.tests.test_doors import _door_factory
+        s = _door_factory()
+        s.location = SimpleNamespace(exits=[])
+        s.destination = SimpleNamespace(exits=[])
+        return s
+
+    def test_a_grant_reaches_the_real_far_side(self):
+        a, b = self._pair()
+        grant = [{"sleeve": "tenant-1", "until": None, "issued_by": "kiosk"}]
+        a._mirror(access_grants=grant)
+        self.assertEqual(b.db.access_grants, grant,
+                         "the tenant cannot open their own door")
+
+    def test_a_grant_never_reaches_another_apartment(self):
+        a, _b = self._pair()
+        stranger = self._stranger()
+        a.db.door_twin = stranger          # the stale cache, as found live
+        a._mirror(access_grants=[{"sleeve": "tenant-1"}])
+        self.assertFalse(stranger.db.access_grants,
+                         "a neighbour was granted entry to their door")
+
+    def test_a_revocation_also_lands_correctly(self):
+        """Revocation rides the same `_mirror` call, so a wrong twin
+        leaves the real far side still granting entry."""
+        a, b = self._pair()
+        a._mirror(access_grants=[{"sleeve": "tenant-1"}])
+        a._mirror(access_grants=[])
+        self.assertEqual(b.db.access_grants, [],
+                         "the far side still admits a former tenant")
