@@ -39,6 +39,42 @@ def is_channeling(actor: Any) -> Optional[str]:
     return chan.get("key") if chan else None
 
 
+#: Persistent breadcrumb for a channel in flight, so a reload can undo a
+#: tell whose `ndb` record died with the process (#2774).
+_STRAND_KEY = "channel_strand"
+
+
+def sweep_stranded_tells() -> int:
+    """Clear tells left behind by a reload mid-channel. Returns the count.
+
+    `ndb.channel` dies with the process while `override_place` persists,
+    so without this a character caught mid-channel by a reload is
+    described by the act forever — `_finish` bails on the missing `ndb`,
+    so `_clear` never runs, and `_clear` could not help anyway because
+    the record it restores from is gone.
+
+    Restores only where the stranded tell is STILL the thing showing, so
+    a placement written after the reload (unconscious, dead) is left
+    alone.
+    """
+    from evennia.objects.models import ObjectDB
+    healed = 0
+    for obj in ObjectDB.objects.filter(db_attributes__db_key=_STRAND_KEY):
+        try:
+            strand = obj.attributes.get(_STRAND_KEY)
+            if not strand:
+                continue
+            if getattr(obj, "ndb", None) is not None and channel_of(obj):
+                continue          # still running: not stranded
+            if obj.override_place == strand.get("tell"):
+                obj.override_place = strand.get("prior") or ""
+                healed += 1
+            obj.attributes.remove(_STRAND_KEY)
+        except Exception:  # noqa: BLE001 — one bad row never stops the sweep
+            continue
+    return healed
+
+
 def refuse_if_channeling(actor: Any) -> bool:
     """The BLOCKED-class gate: True (and a refusal message) when the actor is
     mid-channel. Blocked verbs call this first and return — never a silent
@@ -60,6 +96,7 @@ def begin_channel(actor: Any, duration: float, tell: str,
     if refuse_if_channeling(actor):
         return False
     token = object()   # invalidates the pending completion on interrupt
+    prior_place = getattr(actor, "override_place", None)
     actor.ndb.channel = {
         "key": key,
         "started": monotonic(),
@@ -67,10 +104,22 @@ def begin_channel(actor: Any, duration: float, tell: str,
         "on_complete": on_complete,
         "on_interrupt": on_interrupt,
         "token": token,
-        "prior_place": getattr(actor, "override_place", None),
+        "prior_place": prior_place,
+        # The tell is KEPT so teardown can check it is still the thing
+        # it wrote before restoring over it (see `_clear`).
+        "tell": tell,
     }
     try:
         actor.override_place = tell   # the act is PUBLIC time — visible tell
+        # A CRASH BREADCRUMB, in the persistent tier. `ndb.channel` dies
+        # with the process; `override_place` is an AttributeProperty and
+        # does not. So a reload mid-channel left the tell on the
+        # character with `prior_place` — the only record of what to
+        # restore — gone, and no path back short of staff intervention
+        # (#2774). This is what `_sweep_stranded_tells` reads at
+        # startup.
+        actor.attributes.add(_STRAND_KEY, {"tell": tell,
+                                           "prior": prior_place or ""})
     except Exception:  # noqa: BLE001 — a tell failure never blocks the act
         pass
     delay(duration, _finish, actor, token)
@@ -84,7 +133,16 @@ def _clear(actor: Any) -> Optional[dict]:
         return None
     actor.ndb.channel = None
     try:
-        actor.override_place = chan.get("prior_place")
+        # Restore ONLY if the tell we wrote is still the thing showing.
+        # This overwrote whatever `override_place` held at teardown with
+        # the value captured at begin_channel, so anything set DURING
+        # the channel was silently reverted — including the unconscious
+        # and death placement lines. A character knocked out mid-channel
+        # went back to describing the act they were interrupted from
+        # (#2774).
+        if actor.override_place == chan.get("tell"):
+            actor.override_place = chan.get("prior_place")
+        actor.attributes.remove(_STRAND_KEY)
     except Exception:  # noqa: BLE001
         pass
     return chan

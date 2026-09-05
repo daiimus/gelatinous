@@ -335,6 +335,23 @@ class Exit(DefaultExit):
 
                 # Perform moves: grappler first, then victim quietly
                 super().at_traverse(traversing_object, target_location) 
+                # A channel does not survive being hauled through a door.
+                # Movement is wired as BLOCKED (`at_pre_move` refuses while
+                # channeling), but this call passes `move_hooks=False` and skips
+                # that gate entirely — and no BREAKING caller covered movement
+                # either, so the channel simply travelled: its timer kept
+                # ticking and `on_complete` fired in a room the actor never
+                # chose, resolving an act begun somewhere else (#2774).
+                #
+                # BREAKING rather than BLOCKED, deliberately. Refusing the move
+                # would make channeling a grapple immunity, which is the worse
+                # outcome; being hauled out of the room is exactly the "world
+                # made contact" that the BREAKING class describes.
+                try:
+                    from world.channeled import interrupt_channel
+                    interrupt_channel(grappled_victim_obj)
+                except Exception:  # noqa: BLE001 — never block a drag on this
+                    pass
                 grappled_victim_obj.move_to(target_location, quiet=True, move_hooks=False)
 
                 # Check for rigged grenades after drag movement (same as normal traversal)
