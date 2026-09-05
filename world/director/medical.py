@@ -156,10 +156,31 @@ def recover_casualty(soul: Any, casualty: Any) -> bool:
     if casualty is soul or soul.db.soul_recovering:
         return False
     # somebody already has it
+    #
+    # `is_grappled(combat_handler, character)` takes TWO arguments. This
+    # passed one, so every call raised TypeError — and the except below
+    # returned False, which is the same thing the success branch
+    # returns. The function could therefore never return anything but
+    # False: a medic has NEVER started a casualty recovery. Nine days
+    # and 54,000 log lines show `goal=recover` elected zero times
+    # (#2712).
+    #
+    # `world/consent.py:64` is the one correct call in the repo and
+    # shows the shape: find the handler first.
+    #
+    # The except is narrowed to the failure it was written for — an
+    # unreadable hold — so the next programming error here surfaces
+    # instead of becoming a permanent policy. This is the second
+    # instance in the audit of a blanket except hiding an arity
+    # mismatch (#2668 is the other).
     try:
         from world.combat.grappling import is_grappled
-        if is_grappled(casualty):
+        from world.combat.utils import find_character_handler
+        handler = find_character_handler(casualty)
+        if handler and is_grappled(handler, casualty):
             return False
+    except TypeError:
+        raise                        # a call-shape bug is not a policy
     except Exception:  # noqa: BLE001 — unreadable hold: leave it be
         return False
     from world.souls import actions
