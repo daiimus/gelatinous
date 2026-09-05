@@ -262,17 +262,35 @@ def step_job(soul):
             soul.db.soul_job = job
             return True
         if not is_travelling(soul):
+            # ONE fault per failure. `travel_to` signals a no-route
+            # through BOTH channels -- it invokes on_fail and returns
+            # False -- and this caller acted on both, so every no-route
+            # event faulted twice. That is not just log noise: fault()
+            # appends to `soul_faults`, which keeps only the last few
+            # per soul, so a single failure burned two slots and halved
+            # the real fault history. The travel family is the largest
+            # category in the audit log at 1,885 entries, roughly half
+            # of them duplicates of the other half, which skews anyone
+            # reading that census to prioritise work (#2720).
+            #
+            # The flag rather than simply deleting the second fault:
+            # travel_to also returns False WITHOUT calling on_fail when
+            # an argument is None, and that case must still be recorded.
+            reported = {"done": False}
+
             def _stalled(npc, _room=room):
                 # Report what travel actually FOUND, not a guess. This
                 # message used to assert "an exit that wouldn't give"
                 # for every failure including "no route at all", which
                 # sent an hour of debugging after an innocent door
                 # (#2321).
+                reported["done"] = True
                 why = getattr(npc.ndb, "travel_fail_why", None)
                 fault(npc, f"travel to {_room.key} failed: "
                            f"{why or 'reason not recorded'}")
             if not travel_to(soul, room, on_fail=_stalled):
-                fault(soul, f"no path to {room.key}")
+                if not reported["done"]:
+                    fault(soul, f"no path to {room.key}")
                 return False
         return True                        # walking; check again next think
 
