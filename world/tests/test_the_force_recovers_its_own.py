@@ -63,11 +63,34 @@ class TestWhoRecoversWhom(EvenniaCommandTest):
         self.assertFalse(self._take())
 
     def test_two_units_do_not_both_fetch_the_same_wreck(self):
+        """A wreck somebody already holds is not fetched twice.
+
+        This used to patch only `is_grappled`, and passed for the WRONG
+        REASON: the call site passed one argument to a two-argument
+        function, so it raised TypeError, the surrounding except
+        returned False, and assertFalse was satisfied. Recovery could
+        never run at all (#2712).
+
+        A hold needs a HANDLER as well — `handler and is_grappled(
+        handler, body)` is the idiom, and no handler means not held.
+        """
         with mock.patch.object(medical, "_cmd", create=True), \
+             mock.patch("world.combat.utils.find_character_handler",
+                        return_value=object()), \
              mock.patch("world.combat.grappling.is_grappled",
                         return_value=True):
             self.assertFalse(medical.recover_casualty(self.finder,
                                                       self.wreck))
+
+    def test_a_free_wreck_is_fetched(self):
+        """The other half, which the old test could not express: with
+        nobody holding it, the errand is TAKEN. Before the fix this
+        branch was unreachable."""
+        with mock.patch.object(medical, "_cmd", create=True), \
+             mock.patch("world.combat.utils.find_character_handler",
+                        return_value=None):
+            self.assertTrue(medical.recover_casualty(self.finder,
+                                                     self.wreck))
 
     def test_a_unit_already_on_an_errand_does_not_take_another(self):
         self._take()

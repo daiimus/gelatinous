@@ -733,6 +733,7 @@ def step_job(soul):
         # raised (#2282). Silent success is the worst failure shape
         # there is, so recovery gets its own step.
         from world.combat.grappling import is_grappled
+        from world.combat.utils import find_character_handler
         from world.director.security import _target_token
         wreck = _obj(step["wreck"])
         if wreck is None:
@@ -741,9 +742,17 @@ def step_job(soul):
         if wreck.location != soul.location:
             fault(soul, "the casualty moved before it could be lifted")
             return False
-        if not is_grappled(wreck):
+        # TWO arguments — `is_grappled(combat_handler, character)`.
+        # These passed one and are unguarded, so they would have raised
+        # out of `step_job`; they were only ever unreachable because
+        # nothing created the recovery job (#2712).
+        def _held(body):
+            handler = find_character_handler(body)
+            return bool(handler and is_grappled(handler, body))
+
+        if not _held(wreck):
             soul.execute_cmd(f"grapple {_target_token(wreck)}")
-        if is_grappled(wreck):
+        if _held(wreck):
             job["at"] = at + 1
             soul.db.soul_job = job
             return True
