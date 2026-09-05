@@ -73,10 +73,37 @@ def find_casualty(room: Any, exclude: Any = None) -> Any:
                 continue
         except Exception:  # noqa: BLE001 — unreadable body: skip
             continue
+        # THE DEAD ARE NOT CASUALTIES. A body stays in the room as an
+        # ordinary Character for DEATH_PROGRESSION_DURATION (90s) before
+        # corpse conversion, and it passes every filter above: it is a
+        # character, it has a pk, and it is certainly not conscious.
+        #
+        # Worse than merely being selectable — the tiebreak below is
+        # unconditional, so a BLEEDING candidate always displaces a
+        # non-bleeding one. A medic arriving where one victim has just
+        # died bleeding and another is unconscious and not visibly
+        # bleeding picked the corpse and worked on it while the person
+        # who could still be saved lay beside them (#2757).
+        if _is_dead(obj):
+            continue
         bleeding = _is_bleeding(obj)
         if best is None or (bleeding and not best[0]):
             best = (bleeding, obj)
     return best[1] if best else None
+
+
+def _is_dead(char: Any) -> bool:
+    """Death is derived state — `is_dead()` is a method over
+    `medical_state`, never an attribute row. Fails ALIVE for anything
+    that cannot answer, because refusing to treat a LIVING
+    casualty is the worse error of the two."""
+    check = getattr(char, "is_dead", None)
+    if not callable(check):
+        return False
+    try:
+        return bool(check())
+    except Exception:  # noqa: BLE001 — unreadable body: treat as alive
+        return False
 
 
 def _is_bleeding(char: Any) -> bool:

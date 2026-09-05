@@ -38,16 +38,25 @@ ROLE_RESPONDS_TO: dict[str, tuple[str, ...]] = {
 }
 
 
+#: The two attributes that can name somebody's job. `notice_casualty`
+#: has always accepted either; this door accepted only `role`, and not
+#: as a late comparison but in the QUERYSET — so a soul carrying only
+#: `soul_role` was never in the candidate set at all. Two of the
+#: colony's three medics were invisible to dispatch (#2756).
+_ROLE_KEYS = ("role", "soul_role")
+
+
 def _npcs_with_roles(roles) -> list:
-    """Every Character whose ``db.role`` is one of *roles* (a targeted
-    attribute query — not a full object scan)."""
+    """Every Character whose ``db.role`` OR ``db.soul_role`` is one of
+    *roles* (a targeted attribute query — not a full object scan)."""
     from evennia.objects.models import ObjectDB
     roles = set(roles)
     out = []
-    for obj in ObjectDB.objects.filter(db_attributes__db_key="role").distinct():
+    for obj in ObjectDB.objects.filter(
+            db_attributes__db_key__in=_ROLE_KEYS).distinct():
         if not obj.is_typeclass("typeclasses.characters.Character", exact=False):
             continue
-        if getattr(obj.db, "role", None) in roles:
+        if any(getattr(obj.db, key, None) in roles for key in _ROLE_KEYS):
             out.append(obj)
     return out
 
