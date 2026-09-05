@@ -78,9 +78,22 @@ def _conscience(soul, job, where=None):
     tags = tuple((job or {}).get("ethos") or ())
     if not tags:
         return
-    if getattr(soul.ndb, "conscience_charged", None) == id(job):
-        return                      # once per deed, not once per tick
-    soul.ndb.conscience_charged = id(job)
+    # ONCE PER DEED, and the deed needs a STABLE name. This compared
+    # `id(job)`, but `soul.db.soul_job` returns a fresh `_SaverDict` on
+    # every read — verified live: two consecutive reads give equal
+    # content and different ids — so the marker never matched and guilt
+    # or relish was charged every tick instead of once (#2700).
+    #
+    # A token stamped into the job itself survives the round trip,
+    # because it is stored with the job rather than being an address.
+    token = job.get("_deed")
+    if token is None:
+        token = f"{job.get('goal')}:{time.time():.6f}"
+        job["_deed"] = token
+        soul.db.soul_job = job          # persist the stamp
+    if getattr(soul.ndb, "conscience_charged", None) == token:
+        return
+    soul.ndb.conscience_charged = token
     place = (where or soul.location)
     place = place.key if place else "somewhere"
     if traits_mod.abhors(soul, tags):
@@ -701,6 +714,11 @@ def step_job(soul):
                         f"pose runs a self-test and clears a logged "
                         f"fault: {traits_mod.DEFECTS[fixed]['label']}.")
             soul.execute_cmd(f"pose {pose_out}")
+            # Same for `solitude`, attached to the dwell plan and never
+            # read. Charged at COMPLETION rather than per beat, matching
+            # `linger` — the deed is having taken the time, not having
+            # started to (#2708).
+            _conscience(soul, job)
             soul.db.soul_job = None
             return False
         return True
@@ -1007,6 +1025,17 @@ def step_job(soul):
         # the counter and who is merely standing near it. A person is not
         # their job — but their job is visible while they're doing it
         # (#2148).
+        # THE SHIFT IS THE DEED. `toil` is attached to the duty plan —
+        # the author already decided that working carries moral weight —
+        # but the step never read it, so nine souls authored to take
+        # pride in or resent their work could never register having done
+        # any. It was the most-declared stance in the colony and
+        # entirely inert (#2708).
+        #
+        # Safe per-beat because `_conscience` charges once per deed, now
+        # that the deed has a stable name (#2700). Before that fix this
+        # would have fired every tick.
+        _conscience(soul, job)
         _take_the_post(soul)
         return True
 
