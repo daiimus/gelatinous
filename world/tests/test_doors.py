@@ -294,3 +294,84 @@ class TestTravelOpensDoors(TestCase):
             tmod._travel_step(npc)
         self.assertEqual(
             [c.args[0] for c in npc.execute_cmd.call_args_list], ["north"])
+
+
+def _paired_doors():
+    """Two rooms, one real door pair: A->B and B->A."""
+    room_a, room_b = SimpleNamespace(exits=[]), SimpleNamespace(exits=[])
+    a, b = _door_factory(), _door_factory()
+    # Bind the pairing helper only if it exists, so these tests still
+    # RUN against a build without it and fail on the behaviour rather
+    # than erroring on a missing attribute.
+    for door in (a, b):
+        if hasattr(dmod.DoorExit, "_pairs_with"):
+            _bind(door, dmod.DoorExit, "_pairs_with")
+    a.location, a.destination = room_a, room_b
+    b.location, b.destination = room_b, room_a
+    room_a.exits, room_b.exits = [a], [b]
+    return a, b, room_a, room_b
+
+
+class TestTheTwinCacheIsValidated(TestCase):
+    """`twin()` checked only that the cached object still EXISTED, while
+    the search path beside it checks that the exit leads back here. So a
+    `door_twin` left over from a rebuild was returned forever and nothing
+    re-derived it.
+
+    Twenty live Brackett doors were mirrored onto the wrong apartment:
+    lock your door and a different tenant's door locks with it, while
+    your own far side stays as it was (#2633). The Brackett upper floors
+    were rebuilt once; the twins were cached before that and never
+    invalidated.
+    """
+
+    def test_a_correct_cache_is_still_trusted(self):
+        """The pin: validation must not cost the cache its purpose."""
+        a, b, _ra, room_b = _paired_doors()
+        a.db.door_twin = b
+        room_b.exits = []          # empty the search path
+        self.assertIs(a.twin(), b, "a valid cache was thrown away")
+
+    def test_a_stale_cache_is_not_returned(self):
+        a, b, _ra, _rb = _paired_doors()
+        stranger = _door_factory()
+        stranger.location = SimpleNamespace(exits=[])
+        stranger.destination = SimpleNamespace(exits=[])   # leads elsewhere
+        a.db.door_twin = stranger
+        self.assertIsNot(a.twin(), stranger,
+                         "a door from another apartment was accepted")
+
+    def test_a_stale_cache_is_replaced_by_the_real_twin(self):
+        """Self-healing: the twenty fix themselves on next use, so no
+        data migration is needed."""
+        a, b, _ra, _rb = _paired_doors()
+        stranger = _door_factory()
+        stranger.location = SimpleNamespace(exits=[])
+        stranger.destination = SimpleNamespace(exits=[])
+        a.db.door_twin = stranger
+        self.assertIs(a.twin(), b)
+        self.assertIs(a.db.door_twin, b, "the cache was not repaired")
+
+    def test_a_stale_pointer_with_no_partner_is_cleared(self):
+        a, _b, _ra, room_b = _paired_doors()
+        stranger = _door_factory()
+        stranger.location = SimpleNamespace(exits=[])
+        stranger.destination = SimpleNamespace(exits=[])
+        a.db.door_twin = stranger
+        room_b.exits = []                       # nothing leads back
+        self.assertIsNone(a.twin())
+        self.assertIsNone(a.db.door_twin,
+                          "a known-wrong pointer was left in place")
+
+    def test_mirroring_reaches_the_right_door(self):
+        """The consequence the issue is actually about: `_mirror` writes
+        lock state onto whatever `twin()` returns."""
+        a, b, _ra, _rb = _paired_doors()
+        stranger = _door_factory()
+        stranger.location = SimpleNamespace(exits=[])
+        stranger.destination = SimpleNamespace(exits=[])
+        a.db.door_twin = stranger
+        a._mirror(door_locked=True)
+        self.assertTrue(b.db.door_locked, "the real far side stayed open")
+        self.assertFalse(stranger.db.door_locked,
+                         "another tenant's door was locked")
