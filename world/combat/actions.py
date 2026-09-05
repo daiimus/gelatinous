@@ -85,7 +85,11 @@ def resolve_disarm(handler, char, entry):
         )
         return
 
-    # Check target's hands (hands is an AttributeProperty on Character)
+    # Check target's hands. `hands` is a DERIVED VIEW rebuilt on every
+    # read from the `held_items` AttributeProperty -- it stopped being
+    # an AttributeProperty itself at the PR-H2 migration. Mutating what
+    # it returns changes nothing, and this comment saying otherwise is
+    # the likely reason the write-back below was written that way (#2421).
     hands = target.hands if target.hands is not None else {}
     if not hands:
         char.msg(
@@ -157,7 +161,11 @@ def resolve_disarm(handler, char, entry):
 
     # Success — disarm the item
     item = hands[weapon_hand]
-    hands[weapon_hand] = None
+    # No write-back here: `hands` is a throwaway view, so assigning into
+    # it did nothing, and the weapon stayed wielded while ALSO lying on
+    # the floor (#2421). The slot is released by
+    # `Character.at_object_leave` off the move below -- one invariant
+    # rather than an obligation on every call site (#2468).
     item.move_to(target.location, quiet=True)
 
     char.msg(

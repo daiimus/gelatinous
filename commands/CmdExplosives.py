@@ -164,14 +164,12 @@ class CmdRig(Command):
 
     def rig_grenade(self, grenade, exit_obj):
         """Rig the grenade to the exit and its return exit."""
-        # Remove from hand
-        caller_hands = getattr(self.caller, 'hands', {})
-        for hand_name, wielded_obj in caller_hands.items():
-            if wielded_obj == grenade:
-                caller_hands[hand_name] = None
-                break
-
-        # Keep grenade in current room instead of moving to exit
+        # The hand is released by `Character.at_object_leave` off the move
+        # below. This used to assign into `self.caller.hands`, which is a
+        # throwaway view rebuilt on every read -- so a rigged grenade was
+        # left wielded AND rigged to the exit, live, in two places at once
+        # (#2421). One invariant now covers every way an item leaves a
+        # body (#2468).
         grenade.move_to(self.caller.location, quiet=True)
 
         # Set up rigging on the main exit
