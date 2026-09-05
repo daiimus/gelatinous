@@ -153,3 +153,73 @@ class TestAssignmentLifecycle(_Base):
         clear_assignment(npc)
         self.assertFalse(is_assigned(npc))
         self.assertEqual(active_assignments(), [])
+
+
+class TestAResponderIsNotRetiredByAFailedWalk(_Base):
+    """The souls door onto `assign()` writes a `respond` job and returns
+    -- no `on_fail`, no timeout -- while the legacy door it replaced has
+    two failure exits. And `fault()` sets `soul_job = None` without
+    touching this module, so the Assignment stayed in the registry
+    marked `en_route` for the life of the process.
+
+    That permanently removed the unit from a FINITE pool:
+    `find_responders` and `units_available` both skip assigned units, so
+    the desk under-reported its strength and eventually reported none
+    available while idle robots stood at post. Travel failure is not
+    exotic -- it is the most common job fault in the game, 1,885 in the
+    retained log, one soul failing the same route 273 times (#2715).
+
+    Checked on read rather than pushed from `fault()`: the souls layer
+    is the driver and the director is a source of work, so jobs.py
+    importing this module would invert that.
+    """
+
+    def _souled(self, location, goal="respond"):
+        npc = _npc(location)
+        npc.tags = MagicMock()
+        npc.tags.get.return_value = True          # `_has_soul`
+        npc.db.soul_job = {"goal": goal, "at": 0, "steps": []} if goal else None
+        return npc
+
+    def test_a_soul_running_the_respond_job_is_assigned(self):
+        """The pin: a unit actually rolling must stay committed, or the
+        desk double-books it."""
+        npc = self._souled(_Room("A"))
+        amod._ACTIVE[npc] = object()
+        self.assertTrue(is_assigned(npc))
+
+    def test_a_soul_whose_job_died_is_released(self):
+        """`fault()` sets soul_job to None and tells nobody."""
+        npc = self._souled(_Room("A"), goal=None)
+        amod._ACTIVE[npc] = object()
+        self.assertFalse(is_assigned(npc),
+                         "the unit stayed committed to a dead job")
+
+    def test_a_soul_that_moved_on_to_other_work_is_released(self):
+        """`respond` is never re-planned -- it has no arm in goal
+        arbitration -- so a soul that faults falls back to patrol or
+        duty and looks entirely healthy while the director still
+        believes it is committed."""
+        npc = self._souled(_Room("A"), goal="duty")
+        amod._ACTIVE[npc] = object()
+        self.assertFalse(is_assigned(npc))
+
+    def test_the_release_clears_the_registry(self):
+        """Self-healing: an entry already orphaned is dropped the next
+        time anybody asks."""
+        npc = self._souled(_Room("A"), goal=None)
+        amod._ACTIVE[npc] = object()
+        is_assigned(npc)
+        self.assertNotIn(npc, amod._ACTIVE)
+
+    def test_an_unassigned_npc_is_still_unassigned(self):
+        self.assertFalse(is_assigned(self._souled(_Room("A"))))
+
+    def test_an_unsouled_responder_is_taken_at_its_word(self):
+        """The legacy path has its own failure exits, so there is no job
+        to inspect and nothing to second-guess."""
+        npc = _npc(_Room("A"))
+        npc.tags = MagicMock()
+        npc.tags.get.return_value = None          # not souled
+        amod._ACTIVE[npc] = object()
+        self.assertTrue(is_assigned(npc))
