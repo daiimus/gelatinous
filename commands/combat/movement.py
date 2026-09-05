@@ -71,12 +71,6 @@ class CmdFlee(Command):
         caller = self.caller
         splattercast = get_splattercast()
         
-        # Check if player has already attempted to flee this combat round
-        if hasattr(caller.ndb, "flee_attempted_this_round") and caller.ndb.flee_attempted_this_round:
-            caller.msg("|rYou have already attempted to flee this combat round! Wait for the next round.|n")
-            splattercast.msg(f"{DEBUG_PREFIX_FLEE}_COOLDOWN: {caller.key} attempted to flee but already tried this round.")
-            return
-        
         original_handler_at_flee_start = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
         # This is the specific character who has an NDB-level aim lock on the caller.
         # This aimer could be in the same room or an adjacent one.
@@ -84,9 +78,35 @@ class CmdFlee(Command):
 
         splattercast.msg(f"{DEBUG_PREFIX_FLEE}_DEBUG ({caller.key}): Initial Handler='{original_handler_at_flee_start.key if original_handler_at_flee_start else None}', NDB Aimer='{ndb_aimer_locking_caller.key if ndb_aimer_locking_caller else None}'")
 
-        # Set flee attempt flag to prevent spam within the same round
-        caller.ndb.flee_attempted_this_round = True
-        splattercast.msg(f"{DEBUG_PREFIX_FLEE}_ATTEMPT: {caller.key} marked as having attempted flee this round.")
+        # `flee_attempted_this_round` is a ROUND-scoped token, and the
+        # only thing that clears it is the handler's per-combatant loop
+        # (`world/combat/handler.py:606`) -- which needs you enrolled in a
+        # running fight AND reaching your turn. So it has to be set only
+        # when there IS a round to scope it to. Set unconditionally, one
+        # stray `flee` typed in a quiet room disabled fleeing for the rest
+        # of the session: every later attempt met "wait for the next
+        # round", and the round never came (#2423). That included the
+        # aim-break flee, which is the only escape from an aim lock other
+        # than winning the roll.
+        in_a_round = (original_handler_at_flee_start is not None
+                      or ndb_aimer_locking_caller is not None)
+
+        # Check if player has already attempted to flee this combat round
+        if getattr(caller.ndb, "flee_attempted_this_round", False):
+            if in_a_round:
+                caller.msg("|rYou have already attempted to flee this combat round! Wait for the next round.|n")
+                splattercast.msg(f"{DEBUG_PREFIX_FLEE}_COOLDOWN: {caller.key} attempted to flee but already tried this round.")
+                return
+            # Stale: nothing left to have a round. Clear it and carry on,
+            # so anyone already carrying the old flag is not stuck until
+            # a reload.
+            caller.ndb.flee_attempted_this_round = False
+            splattercast.msg(f"{DEBUG_PREFIX_FLEE}_STALE_CLEARED: {caller.key} had a flee flag with no combat or aimer; cleared.")
+
+        if in_a_round:
+            # Set flee attempt flag to prevent spam within the same round
+            caller.ndb.flee_attempted_this_round = True
+            splattercast.msg(f"{DEBUG_PREFIX_FLEE}_ATTEMPT: {caller.key} marked as having attempted flee this round.")
 
         # --- PRE-FLEE SAFETY CHECK: PINNED BY RANGED TARGETERS IN ADJACENT ROOMS ---
         # Filter out sky rooms - can't flee into the air!
