@@ -51,9 +51,14 @@ class RentalTerminal(Item):
 
     @staticmethod
     def _unit_short(cube):
-        """The board name: "The Brackett Arms - Unit 3B" -> "3B"."""
-        tail = cube.key.split(" - ")[-1]
-        return tail[5:] if tail.lower().startswith("unit ") else tail
+        """The board name: "The Brackett Arms - Unit 3B" -> "3B".
+
+        `world.rental.unit_label` is the implementation, because the
+        PARSER has to accept whatever this PRINTS -- and for a while it
+        did not (#2457).
+        """
+        from world.rental import unit_label
+        return unit_label(cube)
 
     def _press_status(self, presser):
         cubes = self._cubes()
@@ -75,9 +80,18 @@ class RentalTerminal(Item):
         # any claim that would change an existing registration wants an
         # explicit confirm — cross-building, or naming a different unit
         # on this very board (in-building moves are real relocations)
+        # `current in cubes` FIRST: without it, `unit_matches` was asked
+        # whether the label denotes your current cube regardless of which
+        # machine you are standing at. Brackett units and Halcyon cabins
+        # share 35 labels (7A-12C), so a tenant of "Brackett - Unit 9B"
+        # pressing `rent 9b` on the HALCYON kiosk matched their own
+        # Brackett cube, the gate concluded "not relocating", and they
+        # were moved across the colony on one keystroke -- with the old
+        # lease already released into a 48h window they could not undo
+        # (#2457).
         relocating = current is not None and not (
-            (unit and unit_matches(current, unit))
-            or (not unit and current in cubes))
+            current in cubes
+            and (not unit or unit_matches(current, unit)))
         if relocating and not confirm:
             hours = int(RELOCATION_WINDOW // 3600)
             which = f" {unit}" if unit else ""
