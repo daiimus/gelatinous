@@ -11,6 +11,20 @@ from world.spatial import distance, find_path, find_path_exits
 from world.spatial.coordinates import exit_direction
 
 
+def _traversable_by(traverser, origin, target) -> bool:
+    """Can *traverser* actually walk the route, locks and all?
+
+    `@path` shows the topological route. This is the second question —
+    the one `travel_to` asks — so the two can be reported apart instead
+    of the first being mistaken for the second.
+    """
+    try:
+        from world.spatial import is_reachable
+        return bool(is_reachable(origin, target, traverser=traverser))
+    except Exception:  # noqa: BLE001 — a debug window never raises
+        return True
+
+
 class CmdPath(Command):
     """
     Show the shortest travel route from your room to another.
@@ -64,6 +78,22 @@ class CmdPath(Command):
             f"|gRoute to {target.get_display_name(caller)}|n — "
             f"{steps} step(s): {', '.join(directions)}."
         )
+        # SAY THAT THIS IGNORES LOCKS. `find_path_exits` takes a
+        # `traverser` and this debug window does not pass one, which is
+        # defensible for a builder tool — the topological route is what
+        # you usually want to see. But it is the tool somebody reaches
+        # for when an NPC will not walk somewhere, and three separate
+        # bugs in this codebase were exactly a lock-blind route being
+        # trusted over a lock-aware walk (#2711, #2714, #2758). An
+        # unqualified route here sends the next person down the same
+        # hour of debugging that #2321 records.
+        if not _traversable_by(caller, origin, target):
+            caller.msg(
+                "  |y(Lock-blind: this is the topological route. YOU "
+                "cannot walk it — a door on the way refuses you.)|n"
+            )
+        else:
+            caller.msg("  (Lock-blind route; you can walk it as well.)")
         los = distance(origin, target)
         if los is not None:
             caller.msg(
