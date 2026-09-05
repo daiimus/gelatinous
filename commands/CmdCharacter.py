@@ -435,9 +435,8 @@ class CmdLookPlace(Command):
             caller.msg(f"Your look_place description is too long ({len(description)} characters). Please keep it under 200 characters.")
             return
         
-        # Ensure description ends with proper punctuation
-        if not description.endswith(('.', '!', '?')):
-            description += '.'
+        # (terminal punctuation comes from grammar.placement_clause,
+        #  which both @look_place and @temp_place parse through)
         
         # Set the look_place
         caller.look_place = description
@@ -513,9 +512,8 @@ class CmdTempPlace(Command):
             caller.msg(f"Your temp_place description is too long ({len(description)} characters). Please keep it under 200 characters.")
             return
         
-        # Ensure description ends with proper punctuation
-        if not description.endswith(('.', '!', '?')):
-            description += '.'
+        # (terminal punctuation comes from grammar.placement_clause,
+        #  which both @look_place and @temp_place parse through)
         
         # Set the temp_place
         caller.temp_place = description

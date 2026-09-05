@@ -90,20 +90,20 @@ class TestTheClauseNormalisation(_PostCase):
         """The eight in the world today all say "is ...", but the ninth
         may be written correctly. Both have to work."""
         self.counter.db.post_work_place = self.CLAUSE
-        self.assertEqual(_post_placement(self.soul), self.CLAUSE)
+        self.assertEqual(_post_placement(self.soul), f"{self.CLAUSE}.")
 
     def test_a_fixture_authored_as_a_sentence_is_reduced(self):
-        self.assertEqual(_post_placement(self.soul), self.CLAUSE)
+        self.assertEqual(_post_placement(self.soul), f"{self.CLAUSE}.")
 
     def test_a_plural_copula_is_stripped_too(self):
         self.counter.db.post_work_place = "are working the cart"
-        self.assertEqual(_post_placement(self.soul), "working the cart")
+        self.assertEqual(_post_placement(self.soul), "working the cart.")
 
     def test_a_line_merely_beginning_with_is_inside_a_word_survives(self):
         """"island" must not lose its first two letters."""
         self.counter.db.post_work_place = "island-side, watching the water"
         self.assertEqual(_post_placement(self.soul),
-                         "island-side, watching the water")
+                         "island-side, watching the water.")
 
     def test_no_post_no_placement(self):
         self.soul.db.soul_post = None
@@ -142,3 +142,26 @@ class TestPlayerAuthoredPlacementIsNotTrampled(_PostCase):
         self.soul.db.placed_by_shift = False
         _leave_the_post(self.soul)
         self.assertIn("leaning on the counter, waiting", self.render())
+
+
+class TestThePlacementIsTerminated(_PostCase):
+    """A clause without a full stop runs into whoever is described next
+    -- the renderer concatenates placements into a paragraph (#2913).
+
+    Caught in-game, not by the suite: the tests above assert the copula
+    and never looked at what followed the clause."""
+
+    def test_the_rendered_line_terminates(self):
+        _take_the_post(self.soul)
+        self.assertIn(f"{self.CLAUSE}.", self.render())
+
+    def test_an_unterminated_fixture_gains_a_full_stop(self):
+        self.assertTrue(_post_placement(self.soul).endswith("."))
+
+    def test_an_already_terminated_one_is_not_doubled(self):
+        self.counter.db.post_work_place = "working the cart."
+        self.assertEqual(_post_placement(self.soul), "working the cart.")
+
+    def test_other_terminators_are_respected(self):
+        self.counter.db.post_work_place = "working the cart!"
+        self.assertEqual(_post_placement(self.soul), "working the cart!")
