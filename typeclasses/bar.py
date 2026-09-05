@@ -278,9 +278,16 @@ class CmdBarTill(Command):
         bar = self.obj
         caller = self.caller
 
-        owner = bar.db.owner
-        staff = bar.db.staff or []
-        if owner is not None and caller != owner and caller not in staff:
+        # `is_bartender` is the counter's own answer to "do you work
+        # here", and `use`, `prepare` and `clean` all ask it. This
+        # command asked a DIFFERENT question -- one gated on
+        # `owner is not None`, which short-circuits to "yes" whenever no
+        # owner is configured, and no bar in the colony has one. So on
+        # the hull-slab bar (owner None, one staff member) a stranger was
+        # correctly refused by `use` and simultaneously allowed to empty
+        # the register (#2471). Same fixture, same caller, two answers,
+        # and the money was behind the wrong one.
+        if not bar.is_bartender(caller):
             caller.msg("That's not your register.")
             return
 
