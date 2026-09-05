@@ -639,3 +639,53 @@ def capitalize_first(text: str) -> str:
             return text[:i] + text[i].upper() + text[i + 1:]
         i += 1
     return text
+
+
+def placement_clause(raw_input: str) -> str:
+    """Reduce a placement to the CLAUSE the room renderer expects.
+
+    `Room.get_display_characters` supplies the verb itself --
+    `f"{name} is {placement}"`, and `"{a} and {b} are {placement}"` for
+    two -- so a placement is authored as "standing here.", never "is
+    standing here."
+
+    This is the single door onto that decision. It was the player
+    command's private helper (`@temp_place`, which is why it also takes
+    "me is ..." and quotes); the souls layer wrote placements without
+    it and never noticed, because those writes landed on a row nothing
+    rendered (#2465). Both callers come through here now.
+    """
+    if not raw_input:
+        # the souls layer asks about posts that may declare nothing
+        return raw_input
+    text = raw_input.strip()
+
+    # Remove outer quotes if present
+    if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
+        text = text[1:-1]
+
+    # Handle "me is ..." / "me are ..." patterns
+    if text.lower().startswith('me is '):
+        text = text[6:].strip()
+        # Remove inner quotes if present after "me is"
+        if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
+            text = text[1:-1]
+    elif text.lower().startswith('me are '):
+        text = text[7:].strip()
+        if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
+            text = text[1:-1]
+
+    # Handle "is ..." / "are ..." patterns (without "me")
+    elif text.lower().startswith('is '):
+        text = text[3:].strip()
+    elif text.lower().startswith('are '):
+        text = text[4:].strip()
+
+    # Clean up redundant "is"/"are" at the beginning
+    # Handle cases like "me is \"is standing here\""
+    if text.lower().startswith('is '):
+        text = text[3:].strip()
+    elif text.lower().startswith('are '):
+        text = text[4:].strip()
+
+    return text.strip()
