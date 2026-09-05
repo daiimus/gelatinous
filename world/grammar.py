@@ -688,4 +688,18 @@ def placement_clause(raw_input: str) -> str:
     elif text.lower().startswith('are '):
         text = text[4:].strip()
 
-    return text.strip()
+    text = text.strip()
+
+    # Terminate it. The renderer concatenates placements into a
+    # paragraph, so a clause without a full stop runs into whoever is
+    # described next: "... sleeves turned back A lithe woman in a black
+    # mesh halter is ...". Every other placement in the game terminates;
+    # the eight `post_work_place` fixtures do not, because they were
+    # authored against a row that never rendered (#2913).
+    #
+    # This half of the rule used to live in `@temp_place` while the
+    # copula strip above lived here -- one decision behind two doors,
+    # which is what #2465 was about in the first place.
+    if text and not text.endswith((".", "!", "?", '"', "'")):
+        text += "."
+    return text
