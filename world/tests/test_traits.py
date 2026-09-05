@@ -27,6 +27,69 @@ class _TraitBase(BaseEvenniaTest):
         return char
 
 
+class TestDialResolutionOrder(_TraitBase):
+    """`dial()` returned on the FIRST trait declaring a key, while its
+    docstring promises the LAST one wins (#2771).
+
+    Latent when found -- no soul in the colony has two traits declaring
+    the same live dial, because the generator's exclusions hold. It is
+    worth fixing anyway, because the docstring is what a future author
+    designs a deliberately-overlapping curated pair against, and the
+    failure is silent: the wrong value is a plausible value.
+    """
+
+    def _two_traits_declaring(self, key, first, second):
+        """A soul whose two traits both declare `key`, patched into the
+        registry so the test does not depend on curated content that may
+        legitimately change."""
+        soul = self._soul("trait_a", "trait_b")
+        registry = {
+            "trait_a": {"dials": {key: first}, "ethos": (), "needs": {}},
+            "trait_b": {"dials": {key: second}, "ethos": (), "needs": {}},
+        }
+        return soul, patch.object(traits_mod, "registry_for",
+                                  return_value=registry)
+
+    def test_the_last_trait_to_declare_a_dial_wins(self):
+        soul, reg = self._two_traits_declaring("violence_gate", 0.1, 0.9)
+        with reg:
+            self.assertEqual(traits_mod.dial(soul, "violence_gate", 0.25),
+                             0.9, "the first declaration won")
+
+    def test_order_actually_decides_it(self):
+        """The mirror, so the test cannot pass by picking the larger
+        value or by coincidence."""
+        soul, reg = self._two_traits_declaring("violence_gate", 0.9, 0.1)
+        with reg:
+            self.assertEqual(traits_mod.dial(soul, "violence_gate", 0.25),
+                             0.1)
+
+    def test_a_single_declaration_is_unchanged(self):
+        soul = self._soul("trait_a")
+        registry = {"trait_a": {"dials": {"price_ceiling": 7},
+                                "ethos": (), "needs": {}}}
+        with patch.object(traits_mod, "registry_for", return_value=registry):
+            self.assertEqual(traits_mod.dial(soul, "price_ceiling", 3), 7)
+
+    def test_an_undeclared_dial_still_returns_the_default(self):
+        soul = self._soul("trait_a")
+        registry = {"trait_a": {"dials": {}, "ethos": (), "needs": {}}}
+        with patch.object(traits_mod, "registry_for", return_value=registry):
+            self.assertEqual(traits_mod.dial(soul, "misery_pull", 0.5), 0.5)
+
+    def test_rate_dials_still_compound_rather_than_last_win(self):
+        """The pin: `rate:*` keys multiply across every trait and must
+        NOT be changed into a last-wins lookup."""
+        soul = self._soul("trait_a", "trait_b")
+        registry = {
+            "trait_a": {"dials": {"rate:hunger": 2.0}, "ethos": (), "needs": {}},
+            "trait_b": {"dials": {"rate:hunger": 3.0}, "ethos": (), "needs": {}},
+        }
+        with patch.object(traits_mod, "registry_for", return_value=registry):
+            self.assertAlmostEqual(
+                traits_mod.dial(soul, "rate:hunger", 1.0), 6.0, places=3)
+
+
 class TestDials(_TraitBase):
     def test_rate_dials_compound_on_the_need(self):
         greedy = self._soul("ration_burner")

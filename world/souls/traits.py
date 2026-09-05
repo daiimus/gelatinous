@@ -245,10 +245,21 @@ def dial(soul, key, default):
         for name in traits_of(soul):
             factor *= float(registry_for(soul)[name]["dials"].get(key, 1.0))
         return default * factor
+    # LAST wins, as documented. This returned on the FIRST match, so a
+    # deliberately-overlapping curated pair resolved to whichever trait
+    # happened to come first in the soul's list — and the docstring is
+    # what a future author will design that pair against (#2771).
+    #
+    # Latent when found: no soul in the colony currently has two traits
+    # declaring the same live dial, because the generator's exclusions
+    # hold. It would have failed silently when one did: the wrong value
+    # is a plausible value.
+    found = default
     for name in traits_of(soul):
-        if key in registry_for(soul)[name]["dials"]:
-            return registry_for(soul)[name]["dials"][key]
-    return default
+        dials = registry_for(soul)[name]["dials"]
+        if key in dials:
+            found = dials[key]
+    return found
 
 
 def ethos(soul):
