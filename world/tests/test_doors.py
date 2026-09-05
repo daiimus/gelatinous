@@ -176,6 +176,10 @@ class TestElevatorFloorLock(TestCase):
         _bind(car, emod.ElevatorCar,
               "floor_index", "request_floor", "_floor_permitted",
               "_begin_move", "current_landing")
+        # Bind only if present, so these tests still RUN against a build
+        # without it (an unbound MagicMock would read as truthy orphans).
+        if hasattr(emod.ElevatorCar, "_orphaned_lock_keys"):
+            _bind(car, emod.ElevatorCar, "_orphaned_lock_keys")
         return car
 
     def test_secured_floor_refuses_ungranted_sleeve(self):
@@ -200,6 +204,84 @@ class TestElevatorFloorLock(TestCase):
         with patch.object(emod, "delay") as d:
             self.assertTrue(car.request_floor("1", _sleeve("uid-mallory")))
         d.assert_called_once()
+
+
+class TestAnOrphanedLockKeyFailsClosed(TestCase):
+    """`None` from the lock table meant two different things and the gate
+    could not tell them apart: "this floor was never secured" (pass free,
+    correct) and "this floor IS secured, but the lock key no longer
+    matches its label" (pass free, WRONG).
+
+    Keys are stringified, so `2` and `"2"` agree while `"2"` and `"L2"`
+    do not. A builder editing a floor label silently unlocked the floor
+    -- no error, no log, no visible difference; the button simply lit for
+    everyone. The colony has exactly one secured floor, and its whole
+    security rested on a dict key matching an editable label
+    (#2687, #2775).
+    """
+
+    def _car(self, floors, locks):
+        car = MagicMock()
+        car.db = SimpleNamespace(
+            floors=[[MagicMock(), lab] for lab in floors], current_floor=0,
+            moving=False, target_floor=None, floor_locks=locks,
+            shaft_xy=None)
+        car.key = "Test Car"
+        car.id = 1
+        _bind(car, emod.ElevatorCar,
+              "floor_index", "request_floor", "_floor_permitted",
+              "_begin_move", "current_landing")
+        if hasattr(emod.ElevatorCar, "_orphaned_lock_keys"):
+            _bind(car, emod.ElevatorCar, "_orphaned_lock_keys")
+        return car
+
+    def test_a_renamed_label_does_not_silently_unlock(self):
+        """The lock was written for "2"; the label is now "L2". The
+        secured floor must not become free to everyone."""
+        car = self._car(["1", "L2"], {"2": [make_grant(_sleeve("uid-alice"))]})
+        with patch.object(emod, "delay") as d, \
+             patch("evennia.utils.logger.log_err"):
+            self.assertFalse(car.request_floor("L2", _sleeve("uid-mallory")))
+        d.assert_not_called()
+
+    def test_the_misconfiguration_is_logged(self):
+        """It used to be completely silent, which is what let it survive."""
+        car = self._car(["1", "L2"], {"2": [make_grant(_sleeve("uid-alice"))]})
+        with patch.object(emod, "delay"), \
+             patch("evennia.utils.logger.log_err") as err:
+            car.request_floor("L2", _sleeve("uid-mallory"))
+        self.assertTrue(err.called, "a broken lock table stayed silent")
+        self.assertIn("UNPROTECTED", err.call_args.args[0])
+
+    def test_a_healthy_car_is_untouched(self):
+        """The pin: labels and keys agreeing is the normal case, and it
+        must behave exactly as before -- free floors stay free."""
+        car = self._car(["1", "2"], {"2": [make_grant(_sleeve("uid-alice"))]})
+        car.db.current_floor = 1
+        with patch.object(emod, "delay") as d, \
+             patch("evennia.utils.logger.log_err") as err:
+            self.assertTrue(car.request_floor("1", _sleeve("uid-mallory")))
+        d.assert_called_once()
+        self.assertFalse(err.called)
+
+    def test_a_car_with_no_locks_at_all_is_untouched(self):
+        """The Brackett car: 16 floors, no secured ones."""
+        car = self._car([str(n) for n in range(3)], {})
+        car.db.current_floor = 0
+        with patch.object(emod, "delay") as d:
+            self.assertTrue(car.request_floor("2", _sleeve("uid-mallory")))
+        d.assert_called_once()
+
+    def test_the_granted_sleeve_still_gets_its_own_floor(self):
+        car = self._car(["1", "2"], {"2": [make_grant(_sleeve("uid-alice"))]})
+        with patch.object(emod, "delay") as d:
+            self.assertTrue(car.request_floor("2", _sleeve("uid-alice")))
+        d.assert_called_once()
+
+    def test_orphan_detection_is_type_tolerant(self):
+        """`2` and `"2"` are the same floor; the keys are stringified."""
+        car = self._car([1, 2], {"2": [make_grant(_sleeve("uid-alice"))]})
+        self.assertEqual(car._orphaned_lock_keys(), set())
 
 
 class TestAutolock(TestCase):
