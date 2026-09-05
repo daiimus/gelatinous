@@ -85,6 +85,34 @@ class CmdEmailConnect(MuxCommand):
         session.sessionhandler.login(session, account)
 
 
+def derive_username(email):
+    """A free database username derived from *email*'s local part.
+
+    Users never see or type this -- `create` takes only an email and a
+    password -- so its only job is to be unique.
+
+    __iexact, because the constraint this guards is case-INSENSITIVE:
+    EvenniaUsernameAvailabilityValidator, run inside Account.create,
+    filters on username__iexact. The email arrives lowercased, so a
+    case-SENSITIVE test could never collide with a mixed-case account:
+    the loop exited after zero iterations and Account.create then
+    rejected the very name it was written to avoid, naming a username
+    the user never supplied and cannot override. Nine of the 24 live
+    accounts have mixed-case usernames, each permanently blocking a
+    distinct unused email (#2560).
+
+    Extracted from the command body so the loop can be tested against
+    the real database rather than against a copy of itself.
+    """
+    base_username = email.split('@')[0]
+    username = base_username
+    counter = 1
+    while AccountDB.objects.filter(username__iexact=username).exists():
+        username = f"{base_username}_{counter}"
+        counter += 1
+    return username
+
+
 class CmdEmailCreate(MuxCommand):
     """
     Create a new account with email only.
@@ -133,14 +161,7 @@ class CmdEmailCreate(MuxCommand):
 
         # Generate username from email (for internal use)
         # This is just for the database - users never see/use this
-        base_username = email.split('@')[0]
-        username = base_username
-        counter = 1
-        
-        # Ensure username uniqueness (though users won't see this)
-        while AccountDB.objects.filter(username=username).exists():
-            username = f"{base_username}_{counter}"
-            counter += 1
+        username = derive_username(email)
 
         # Create account
         Account = class_from_module(settings.BASE_ACCOUNT_TYPECLASS)
