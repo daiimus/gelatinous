@@ -356,12 +356,53 @@ def start_procedure(
         if dbref:
             _PROCEDURE_COMPLETE_HOOKS[dbref] = on_complete
 
-    evennia_delay(
-        duration,
-        _resolve_procedure_callback,
-        target,
-        persistent=False,
-    )
+    # SURGERY IS A CHANNELED ACT (#2926, owner ruling: "if someone
+    # starts shooting while you're operating on someone — operation
+    # over").
+    #
+    # `world/channeled.py` is the shipped primitive for timed,
+    # interruptible acts, and it already carries the taxonomy this
+    # needs: BREAKING on take_damage, combat enrollment, grapple
+    # establish, unconscious/death and forced movement. Seven sites
+    # already call `interrupt_channel`. Surgery was not a consumer, so
+    # `interrupt_procedure` sat with zero callers while five docstrings
+    # asserted it fired -- a parallel, unwired implementation of
+    # something that already existed.
+    #
+    # The channel IS the timer, rather than running alongside the old
+    # `delay`: two timers would resolve the procedure twice. `_finish`
+    # clears the channel before firing `on_complete`, so the chart
+    # runner's back-to-back steps each open a fresh channel without
+    # refusing themselves.
+    def _channel_done():
+        _resolve_procedure_callback(target)
+
+    def _channel_broken(fraction, _target=target, _verb=verb):
+        interrupt_procedure(_target, reason="interrupted")
+
+    started = False
+    try:
+        from world.channeled import begin_channel
+        started = begin_channel(
+            actor, duration,
+            tell=f"working on {getattr(target, 'key', 'a patient')}",
+            on_complete=_channel_done, on_interrupt=_channel_broken,
+            key="operating",
+        )
+    except Exception:  # noqa: BLE001 — the act still has to resolve
+        started = False
+
+    if not started:
+        # Already channeling something else, or the primitive is
+        # unavailable. Fall back to the pre-#2926 timer so the procedure
+        # still resolves rather than being silently dropped -- the
+        # callers have already told the player they have begun.
+        evennia_delay(
+            duration,
+            _resolve_procedure_callback,
+            target,
+            persistent=False,
+        )
     return record
 
 
