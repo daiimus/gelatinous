@@ -20,8 +20,8 @@ from .constants import (
     DB_CHAR, DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET,
     DB_IS_YIELDING, DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF,
     NDB_PROXIMITY,
-    NDB_PROXIMITY_UNIVERSAL,
-)
+    NDB_PROXIMITY_UNIVERSAL, NDB_CHARGE_PENALTY,
+    )
 from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 
@@ -852,7 +852,9 @@ def _resolve_charge_same_room(
 
         # Apply charge failure penalty — consumed by attack.py as a
         # one-shot halved dodge on the next attack against them (#306)
-        char.ndb.charge_penalty = True
+        # via the constant: the consumer and the cleanup both use
+        # it, and a literal here is how they drift apart (#2425).
+        setattr(char.ndb, NDB_CHARGE_PENALTY, True)
         char.msg("|rYour failed charge leaves you off-balance!|n")
         splattercast.msg(
             f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed charge on "
@@ -1017,5 +1019,7 @@ def _resolve_charge_cross_room(
 
         # Apply charge failure penalty — consumed by attack.py as a
         # one-shot halved dodge on the next attack against them (#306)
-        char.ndb.charge_penalty = True
+        # via the constant: the consumer and the cleanup both use
+        # it, and a literal here is how they drift apart (#2425).
+        setattr(char.ndb, NDB_CHARGE_PENALTY, True)
         char.msg("|rYour failed charge leaves you off-balance!|n")
