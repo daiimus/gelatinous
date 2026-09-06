@@ -300,6 +300,33 @@ class MedicalScript(DefaultScript):
                     # to, so nothing is lost by deferring to it.
                     self.obj.remove_unconscious_state()
             
+            # PERSIST WHAT THIS TICK JUST CHANGED.
+            #
+            # `Character._medical_state` is a plain in-memory instance;
+            # persistence happens only through an explicit
+            # `save_medical_state()`. Nothing in this method called it,
+            # so `blood_level`, condition severities, clot and pain
+            # decay, `last_processed`, dressed-organ HP and
+            # `dressing_progress` all lived in memory until some other
+            # path happened to save -- in practice only combat damage.
+            #
+            # So a reload HEALED bleeding: a character who bled from 100%
+            # to 40% over twenty minutes snapped back to their blood
+            # level at the moment of their last wound, and a dressing
+            # applied to a patient who then took no further damage was
+            # silently lost (#2418).
+            #
+            # This contradicted the script's own lifecycle docstring --
+            # "SURVIVES reload... Conditions apply capped elapsed time
+            # via `process()`" -- which is only true if `last_processed`
+            # round-trips. `CONDITION_CADENCE_SPEC` §4.3/§7 is marked
+            # SHIPPED and states the contract explicitly.
+            #
+            # Saved BEFORE the stop check, so the final healed state
+            # persists too rather than being dropped with the script.
+            from world.medical.utils import save_medical_state
+            save_medical_state(self.obj)
+
             # Check if we should stop (no conditions left AND no
             # stabilized wounds still healing).  PR-C: keep the
             # script alive while there's healing work to do.
