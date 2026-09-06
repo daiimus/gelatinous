@@ -107,10 +107,18 @@ def _is_dead(char: Any) -> bool:
 
 
 def _is_bleeding(char: Any) -> bool:
+    """Third copy of this predicate; now the only implementation.
+
+    This carried the pre-#2701 expression -- `c.get("type") if
+    isinstance(c, dict) else c` -- which reads a key that does not exist
+    on a branch never taken, because a stored condition is a `_SaverDict`
+    and not a dict subclass. It stringified the whole record and matched
+    the substring by accident (#2701, #2428).
+    """
+    from world.souls.needs import is_bleeding_condition
     conds = (getattr(char.db, "medical_state", None) or {}).get(
         "conditions") or []
-    return any("bleed" in str((c.get("type") if isinstance(c, dict) else c)
-                              or "").lower() for c in conds)
+    return any(is_bleeding_condition(c) for c in conds)
 
 
 def report_medical(location: Any, casualty: Any = None) -> bool:
