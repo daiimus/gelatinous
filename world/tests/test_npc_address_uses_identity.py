@@ -14,13 +14,11 @@ still count, and on top of them a speaker may use any handle the game
 already lets them TARGET with -- `world.search.is_identity_match`, the
 resolver behind `look` and `attack`.
 
-A second finding came out of the same reading and is deliberately NOT
-fixed here. The bare-key match means a stranger can address an NPC by a
-true name they cannot know; live, only 6 of 78 of these NPCs present
-their name at all. `IDENTITY_RECOGNITION_SPEC` blocks real keys for
-non-Builders, while `test_bar` asserts the opposite for address in as
-many words. A spec and a deliberate test disagree -- that is a ruling,
-not a bugfix.
+The second half landed on OWNER RULING #2928: a stranger must NOT be
+able to address an NPC by a true name they cannot know -- "that makes no
+sense for RP". Real keys are now Builder-only, which is what
+`IDENTITY_RECOGNITION_SPEC` §Target Resolution said all along; the
+`test_bar` assertion that disagreed has been updated.
 """
 from unittest import mock
 
@@ -98,22 +96,46 @@ class TestWhatTheSpeakerCanSeeAlsoWorks(_AddressCase):
                                    sdesc="a lean man in a canvas apron"))
 
 
-class TestTheBareKeyStillMatches(_AddressCase):
-    """NOT changed by this PR, and pinned so the change is visible if it
-    ever is. A stranger can address an NPC by a true name they have no
-    in-character way to know -- only 6 of 78 of these NPCs present their
-    name at all. `IDENTITY_RECOGNITION_SPEC` §Target Resolution blocks
-    real keys for non-Builders, while
-    `test_bar.test_off_shift_the_role_word_is_not_theirs` asserts the
-    opposite for address. That conflict is an owner ruling (#2451), not
-    something to settle in a bugfix."""
+class TestANameYouCannotKnowDoesNot(_AddressCase):
+    """OWNER RULING #2928: a stranger addressing an NPC by a true name
+    they have no in-character way to know "makes no sense for RP".
 
-    def test_a_stranger_can_still_use_the_full_true_name(self):
+    Live, only 6 of 78 of these NPCs present their name at all -- the
+    rest read as "a lean woman in a thermal shirt" -- so the bare-key
+    match let anyone first-name someone they had never met.
+    `IDENTITY_RECOGNITION_SPEC` §Target Resolution blocks real keys for
+    non-Builders; `test_bar` asserted the opposite for address, and the
+    spec won."""
+
+    def test_the_true_name_is_not_a_handle_for_a_stranger(self):
+        self.assertFalse(self.named("Jordan St. Rivera, a drink"))
+
+    def test_nor_the_first_name(self):
+        self.assertFalse(self.named("Jordan, a drink"))
+
+    def test_but_a_name_they_have_assigned_is(self):
+        self.assertTrue(self.named("Jordan, a drink",
+                                   known="Jordan St. Rivera"))
+
+
+class TestBuildersKeepTheRealKey(_AddressCase):
+    """The carve-out the spec reserves, so staff can drive NPCs while
+    testing."""
+
+    def _make_builder(self):
+        # On the ACCOUNT: `perm()` resolves against the puppeting
+        # account, so granting the character alone leaves the check
+        # false and the test green for the wrong reason.
+        self.speaker.permissions.add("Builder")
+        if self.speaker.account:
+            self.speaker.account.permissions.add("Builder")
+
+    def test_a_builder_can_use_the_true_name(self):
+        self._make_builder()
         self.assertTrue(self.named("Jordan St. Rivera, a drink"))
 
-    def test_but_the_first_name_alone_needs_acquaintance(self):
-        """Which is exactly the asymmetry that made this look broken."""
-        self.assertFalse(self.named("Jordan, a drink"))
+    def test_a_player_cannot(self):
+        self.assertFalse(self.named("Jordan St. Rivera, a drink"))
 
 
 class TestItDoesNotOverReach(_AddressCase):

@@ -1032,16 +1032,28 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
         shift does not."""
         b = self._bartender()
         b._name_aliases = lambda: ["bartender", "barkeep"]
-        self.assertTrue(b._mentions_self("hey sable"))
+        # The JOB's words are public and ungated (#2352).
         self.assertTrue(b._mentions_self("yo bartender"))
-        self.assertTrue(b._mentions_self("nice catgirl ears"))
+        self.assertTrue(b._mentions_self("hey barkeep, a drink"))
         self.assertFalse(b._mentions_self("this whole place is dead"))
+        # A name is not, without a speaker who knows it (#2928).
+        self.assertFalse(b._mentions_self("hey sable", None))
 
     def test_off_shift_the_role_word_is_not_theirs(self):
+        """Off shift, the post's word stops being theirs.
+
+        This used to also assert `b._mentions_self("hey sable")` is True
+        -- "their NAME still is". OWNER RULING #2928 reversed that: a
+        stranger addressing an NPC by a true name they have no
+        in-character way to know "makes no sense for RP", and live only
+        6 of 78 of these NPCs present their name at all. A name now
+        reaches them only if the speaker has one for them, or can see a
+        descriptor that matches. `IDENTITY_RECOGNITION_SPEC` §Target
+        Resolution said so all along; this test was the dissent."""
         b = self._bartender()
         b._name_aliases = lambda: []
         self.assertFalse(b._mentions_self("yo bartender"))
-        self.assertTrue(b._mentions_self("hey sable"))    # their NAME still is
+        self.assertFalse(b._mentions_self("hey sable", None))
 
 
 class TestConversationalOrderDetection(BaseEvenniaTest):
