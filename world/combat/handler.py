@@ -492,6 +492,21 @@ class CombatHandler(DefaultScript):
 
     # ── Main combat loop ───────────────────────────────────────────────
 
+
+    def _refetch_combatants(self):
+        """Re-read `db.combatants` into the round's working snapshot.
+
+        Anything that edits the stored list mid-round -- the grapple
+        validator, the orphan sweep -- is invisible to `at_repeat`'s
+        snapshot, and the snapshot is what gets written back at the end
+        of the round. Re-reading after such an edit is what stops the
+        edit being thrown away (#2422).
+        """
+        combatants_list = [dict(entry)
+                           for entry in get_combatants_safe(self)]
+        self._active_combatants_list = combatants_list
+        return combatants_list
+
     def at_repeat(self):
         """
         Main combat loop — dispatches to extracted modules for action
@@ -540,19 +555,26 @@ class CombatHandler(DefaultScript):
 
         # Validate and clean up stale grapple references
         self.validate_and_cleanup_grapple_state()
+        # RE-FETCH UNCONDITIONALLY. The validator reads and writes
+        # `db.combatants`; this method is working from a snapshot taken
+        # above and writes it back at the end of the round. So unless an
+        # orphan happened to be removed in the same round -- the only
+        # case that used to trigger a refresh -- every repair the
+        # validator made was reverted and re-detected next round,
+        # forever: cleared self-grapples, cleared cross-room grapples,
+        # cleared dead-participant grapples, repaired one-sided
+        # cross-references (#2422).
+        #
+        # `set_target` already knows this shape and dual-writes with the
+        # comment "prevents the working copy from reverting the change at
+        # end of round". Only `set_target` got that treatment.
+        combatants_list = self._refetch_combatants()
 
         # Remove orphaned combatants (no target, not grappling, not grappled, not targeted)
         from .utils import detect_and_remove_orphaned_combatants
         orphaned_chars = detect_and_remove_orphaned_combatants(self)
         if orphaned_chars:
-            # Re-fetch combatants list after orphan removal
-            combatants_list = []
-            db_combatants = get_combatants_safe(self)
-            for entry in db_combatants:
-                regular_entry = dict(entry)
-                combatants_list.append(regular_entry)
-            # Update active list reference after orphan removal
-            self._active_combatants_list = combatants_list
+            combatants_list = self._refetch_combatants()
 
         # Prune invalid combatants (dead, no location, wrong room)
         combatants_list = self._validate_combatants(combatants_list)
