@@ -21,7 +21,13 @@ class TestDoctorTools(BaseEvenniaTest):
         for name in ("_run_context_tool", "_handle_action_tool"):
             setattr(d, name,
                     getattr(llmnpc.LLMNpcMixin, name).__get__(d, llmnpc.LLMNpc))
-        d._treat = lambda patient, what: worldclinic.treat(d, patient, what)
+        # NO `d._treat` here. The fixture used to invent that method on
+        # the mock, and production has no such method anywhere -- build
+        # 143 took the `Doctor` class with it. So the souls layer's
+        # `doctor._treat(soul, "bandage")` raised, AFTER debiting the
+        # fee, and this suite stayed green over it because the mock
+        # supplied what the game did not (#2428). The live door is the
+        # registered `treat` tool, which is what these tests drive.
         d._patient = lambda patron: patron        # default: the speaker
         # The tools belong to the JOB now (#2352): the archetype grants
         # them and the job runs them, so a bare mock with no post has no

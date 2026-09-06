@@ -156,7 +156,11 @@ def _draw(by, proto_key):
 def treat(by, patient, what):
     """Pick the supply named, draw it from stock, and ``apply``/``inject``
     it on the patient — the command runs the sim treatment (+ the AutoDoc
-    bonus when they are on the table)."""
+    bonus when they are on the table).
+
+    Returns True only if a treatment command was actually issued. The
+    supply can be unrecognised or out of stock, and a caller that BILLS
+    for this needs to know which happened (#2428)."""
     key = (what or "").strip().lower()
     entry = CLINIC_SUPPLIES.get(key)
     if not entry:  # loose: any supply word inside the phrase
@@ -170,16 +174,17 @@ def treat(by, patient, what):
         except Exception:  # noqa: BLE001 — resolution is best-effort
             entry = None
     if not entry or not patient:
-        return
+        return False
     proto_key, verb = entry
     item = _draw(by, proto_key)
     if not item:
-        return
+        return False
     target = patient.get_display_name(by)
     if verb == "inject":
         by.execute_cmd(f"inject {item.key} {target}")
     else:
         by.execute_cmd(f"apply {item.key} on {target}")
+    return True
 
 
 def resolve_cyberware(what):

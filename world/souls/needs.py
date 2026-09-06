@@ -126,13 +126,13 @@ def health_pressure(soul):
         ms = soul.db.medical_state or {}
         conds = ms.get("conditions") or []
         n = len(conds)
-        bleeding = any(_is_bleeding_condition(c) for c in conds)
+        bleeding = any(is_bleeding_condition(c) for c in conds)
         return min(1.0, 0.12 * n + (0.35 if bleeding else 0.0))
     except Exception:  # noqa: BLE001 — unreadable body reads as well
         return 0.0
 
 
-def _is_bleeding_condition(cond) -> bool:
+def is_bleeding_condition(cond) -> bool:
     """Does this stored condition represent bleeding?
 
     Reads the real field, `condition_type`. What this replaces worked

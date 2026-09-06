@@ -25,7 +25,12 @@ from unittest import TestCase
 from world.souls import needs as needs_mod
 from world.souls.needs import health_pressure
 
-_is_bleeding_condition = getattr(needs_mod, "_is_bleeding_condition", None)
+# Public since #2428, when the clinic beat turned out to carry its own
+# copy of the pre-#2701 expression and needed the same predicate. The
+# `getattr` default used to be None, which would have made every test
+# below fail with a TypeError rather than say the name had moved -- so
+# it now imports directly and breaks loudly if it moves again.
+_is_bleeding_condition = needs_mod.is_bleeding_condition
 
 
 class _SaverLike:

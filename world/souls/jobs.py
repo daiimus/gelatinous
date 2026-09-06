@@ -994,24 +994,49 @@ def step_job(soul):
         if doctor is None:
             fault(soul, "no doctor on the floor")
             return False
+        # The same predicate the needs layer uses. This used to carry its
+        # own copy of the pre-#2701 expression -- `c.get("type") if
+        # isinstance(c, dict) else c` -- which reads a key that does not
+        # exist, on a branch never taken, because a stored condition is a
+        # `_SaverDict` and NOT a dict subclass. It stringified the whole
+        # record and matched the substring by accident. One predicate now.
+        from world.souls.needs import is_bleeding_condition
+        from world import clinic as clinic_mod
+
         bleeding = any(
-            "bleed" in str((c.get("type") if isinstance(c, dict) else c)
-                           or "").lower()
+            is_bleeding_condition(c)
             for c in ((soul.db.medical_state or {}).get("conditions") or []))
-        paid = False
-        if int(soul.tokens or 0) >= TREAT_FEE:
-            soul.tokens = int(soul.tokens or 0) - TREAT_FEE
-            terminal.db.register = int(terminal.db.register or 0) + TREAT_FEE
-            paid = True
-        elif not bleeding:
+        can_pay = int(soul.tokens or 0) >= TREAT_FEE
+        if not can_pay and not bleeding:
             fault(soul, "couldn't afford the doctor")
             thoughts.add_thought(soul, "turned_away", -0.30,
                                  "too broke for the clinic; walked out "
                                  "still hurting")
             return False
-        doctor._treat(soul, "bandage")
+
+        # TREAT FIRST, BILL SECOND.
+        #
+        # This called `doctor._treat(...)`, a method defined NOWHERE --
+        # build 143 swapped every `typeclasses.clinic.Doctor` to `LLMNpc`
+        # and the name went with it. The fee moved before that line, so
+        # the AttributeError unwound into `fault(soul, "beat crashed")`
+        # and the patient had paid for nothing: no bandage, no cooldown,
+        # no job cleared. Bleeding NPCs owed free triage got nothing
+        # either (#2428).
+        #
+        # The live door is `world.clinic.treat`, which runs the real
+        # `apply`/`inject` commands. Billing now follows delivery, so an
+        # out-of-stock clinic turns you away instead of charging you.
+        if not clinic_mod.treat(doctor, soul, "bandage"):
+            fault(soul, "the clinic had nothing to treat with")
+            return False
+        paid = False
+        if can_pay:
+            soul.tokens = int(soul.tokens or 0) - TREAT_FEE
+            terminal.db.register = int(terminal.db.register or 0) + TREAT_FEE
+            paid = True
         if paid:
-            doctor._treat(soul, "painkiller")
+            clinic_mod.treat(doctor, soul, "painkiller")
             _conscience(soul, job)
             thoughts.add_thought(soul, "patched_up", 0.20,
                                  "paid the clinic and got put back together")
