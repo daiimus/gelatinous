@@ -143,7 +143,7 @@ class CmdAttack(Command):
             validation_error = target.validate_attack_target()
             if validation_error:
                 # Target is invalid - show glitch effect for holographic
-                if target.db.is_holographic:
+                if getattr(target, "is_holographic", False):   # property, not .db (#2420 sweep)
                     caller.msg(f"|yYour attack passes through {get_display_name_safe(target, caller)}'s holographic form with a shimmer of static.|n")
                     if target.location:
                         msg_room_identity(

@@ -968,8 +968,15 @@ class Character(
         Returns:
             None if valid target, or str with error message if invalid
         """
-        # Holographic merchants cannot be attacked
-        if self.db.is_holographic:
+        # Holographic merchants cannot be attacked.
+        #
+        # `is_holographic` is an `AttributeProperty(category="shop")`, so
+        # `self.db.is_holographic` read a different row and was always
+        # None -- this guard has never fired. Latent rather than live,
+        # since nothing currently sets the flag either way, but it is the
+        # same shadowing family as #2420/#2426 and found by the same
+        # sweep.
+        if self.is_holographic:
             return "A holographic merchant cannot be attacked - target validation failed"
         
         # Character is a valid attack target
