@@ -418,6 +418,16 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
             # outcome — the stabilization landed regardless.
             pass
 
+    # Save, like `apply_tourniquet` and `clear_tourniquet` already do.
+    # This sets `organ.stabilized`, `organ.tourniqueted` and
+    # `organ.dressing_rate` on live `Organ` objects and never persisted
+    # them, so a dressing applied to a patient who then took no further
+    # damage was lost on the next reload and the bleeding resumed
+    # unbraked (#2418).
+    save = getattr(target, "save_medical_state", None)
+    if callable(save):
+        save()
+
     # Consume one use of the item.
     _consume_use(item)
 
