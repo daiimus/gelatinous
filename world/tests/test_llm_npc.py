@@ -285,7 +285,7 @@ class TestConversationHold(TestCase):
         b, patron = self._npc(), self._patron()
         b.ndb.llm_engaged_until = monotonic() + 60
         b.ndb.llm_engaged_with = "#5"
-        b._mentions_self = lambda s: False
+        b._mentions_self = lambda s, speaker=None: False
         b._is_alone_with = lambda s: False      # crowded room
         self.assertEqual(b._classify_speech("more of that", patron), "directed")
 
@@ -294,7 +294,7 @@ class TestConversationHold(TestCase):
         b = self._npc()
         b.ndb.llm_engaged_until = monotonic() + 60
         b.ndb.llm_engaged_with = "#5"
-        b._mentions_self = lambda s: False
+        b._mentions_self = lambda s, speaker=None: False
         b._is_alone_with = lambda s: False
         other = MagicMock()
         other.id = 9

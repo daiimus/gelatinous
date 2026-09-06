@@ -221,7 +221,8 @@ class LLMNpcMixin:
         # to ambient and the NPC goes near-mute mid-scene).
         if self._is_engaged_with(speaker):
             return "directed"
-        if self._mentions_self(speech) or self._is_alone_with(speaker):
+        if (self._mentions_self(speech, speaker)
+                or self._is_alone_with(speaker)):
             return "directed"
         return "ambient"
 
@@ -270,7 +271,7 @@ class LLMNpcMixin:
             return
         low = speech.lower()
         broadcast = any(p in low for p in self._RADIO_BROADCAST_PHRASES)
-        if self._mentions_self(speech):
+        if self._mentions_self(speech, speaker):
             mode = "radio"                    # named: answer, cooldown-gated
         elif broadcast and kwargs.get("radio_elected"):
             mode = "radio"                    # "all units": we're the answerer
@@ -358,14 +359,80 @@ class LLMNpcMixin:
             for o in self.location.contents
         )
 
-    def _mentions_self(self, speech):
-        """Whether a line names this NPC (key, keyword, or role aliases)."""
+    #: Openers people put in front of a name. Stripped so "hey st.
+    #: rivera" reaches the resolver as "st. rivera".
+    _VOCATIVE_OPENERS = ("hey", "hi", "hello", "yo", "oi", "excuse me",
+                         "pardon me", "scuse me", "'scuse me", "ey")
+
+    @staticmethod
+    def _address_candidates(low):
+        """The parts of a line that could be a form of address.
+
+        People put the name at one end: "Jordan, what's good here?" or
+        "what's good here, Jordan?". Scanning every WORD instead would
+        make any sentence containing "woman" address every woman in the
+        room, because sdesc words are legitimate ways to refer to
+        someone.
+        """
+        chunks = []
+        if "," in low:
+            chunks.append(low.partition(",")[0])
+            chunks.append(low.rpartition(",")[2])
+        else:
+            chunks.append(low)
+        out = []
+        for chunk in chunks:
+            chunk = chunk.strip(" .!?~-")
+            if not chunk or len(chunk.split()) > 4:
+                continue
+            out.append(chunk)
+            for opener in LLMNpcMixin._VOCATIVE_OPENERS:
+                if chunk.startswith(opener + " "):
+                    out.append(chunk[len(opener):].strip())
+        return [c for c in out if c]
+
+    def _mentions_self(self, speech, speaker=None):
+        """Whether a line names this NPC.
+
+        The old test was `self.key` as a bare substring, so only the
+        COMPLETE key counted: "Jordan, what's worth drinking here?" was
+        ignored while "Jordan St. Rivera, ..." got an immediate answer.
+        53 of 78 LLM NPCs were in that state. Mononyms worked because the
+        whole key IS the first name -- Sable, Sully, Petra, Vesper -- and
+        those are the ones that get demoed, which is why it went
+        unnoticed (#2429).
+
+        This adds, and removes nothing: the key, the keyword and the
+        job's words all still count. On top of them, a speaker can use
+        any handle the game already lets them TARGET with --
+        `world.search.is_identity_match`, the same resolver behind `look`
+        and `attack`, which resolves a name they have assigned or a
+        descriptor they can see. So "Jordan" reaches Jordan for someone
+        who knows Jordan.
+
+        DELIBERATELY NOT CHANGED HERE: the bare-key match means a
+        stranger can address an NPC by a true name they have no
+        in-character way to know -- only 6 of 78 of these NPCs present
+        their name at all. `IDENTITY_RECOGNITION_SPEC` §Target Resolution
+        blocks real keys for non-Builders, while
+        `test_bar.test_off_shift_the_role_word_is_not_theirs` asserts the
+        opposite for address in as many words ("their NAME still is").
+        A spec and a deliberate test disagree, so that is an owner
+        ruling, not a bugfix.
+        """
         low = (speech or "").lower()
         names = [self.key.lower()]
         if self.sdesc_keyword:
             names.append(self.sdesc_keyword.lower())
         names += self._name_aliases()
-        return any(n and n in low for n in names)
+        if any(n and n in low for n in names):
+            return True
+
+        if speaker is None:
+            return False
+        from world.search import is_identity_match
+        return any(is_identity_match(speaker, self, cand)
+                   for cand in self._address_candidates(low))
 
     def _name_aliases(self):
         """Extra words that count as naming this NPC — its JOB's words.
