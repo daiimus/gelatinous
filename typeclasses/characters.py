@@ -1825,6 +1825,43 @@ class Character(
         autocreate=True,
     )
 
+    def grasping_containers(self):
+        """Every container this body can hold something with.
+
+        Species table plus the per-character augment overlay
+        (ANATOMY_AUGMENTS_SPEC §3.4): an installed organ flagged
+        ``grasping`` adds its container as a held-item slot — the
+        prehensile cybernetic tail is a third hand.
+
+        NOT filtered by severance. `hands` applies that filter on top,
+        because the derived view must hide a hand you no longer have.
+        Severance itself needs the UNFILTERED set: by the time it runs,
+        `sever_character_body` has already zeroed the chain's organs, so
+        asking `hands` would miss the very limb being removed (#2438).
+
+        Extracted so severance and the view ask one question. The
+        overlay was applied to `grasping_containers` and
+        `severable_containers` and missed on `sever_hand_by_container`,
+        which is how an augmented limb came to be severable but not
+        droppable.
+        """
+        from world.anatomy import get_species_grasping_containers
+
+        species = getattr(self.db, "species", None)
+        grasping = set(get_species_grasping_containers(species))
+        try:
+            medical_state = self.medical_state
+        except AttributeError:
+            medical_state = None
+        if medical_state is not None:
+            for organ in getattr(medical_state, "organs", {}).values():
+                organ_data = getattr(organ, "data", None)
+                if organ_data and organ_data.get("grasping"):
+                    container = getattr(organ, "container", None)
+                    if container:
+                        grasping.add(container)
+        return grasping
+
     @property
     def hands(self):
         """Derived view of grasping appendage slots.
@@ -1848,27 +1885,15 @@ class Character(
         # the first run.
         self._migrate_legacy_hands_if_needed()
 
-        from world.anatomy import get_species_grasping_containers
+        grasping = set(self.grasping_containers())
 
-        species = getattr(self.db, "species", None)
-        grasping = set(get_species_grasping_containers(species))
-
-        # Per-character grasping overlay (ANATOMY_AUGMENTS_SPEC §3.4):
-        # an installed organ flagged ``grasping`` adds its container
-        # as a held-item slot — the prehensile cybernetic tail is a
-        # third hand.  The severance subtraction below already covers
-        # "the severed tail drops what it held".
+        # The functional-anatomy gate below needs the same medical
+        # state; `grasping_containers` reads it too but does not hand
+        # it back, and re-reading is one attribute access.
         try:
             medical_state = self.medical_state
         except AttributeError:
             medical_state = None
-        if medical_state is not None:
-            for organ in getattr(medical_state, "organs", {}).values():
-                organ_data = getattr(organ, "data", None)
-                if organ_data and organ_data.get("grasping"):
-                    container = getattr(organ, "container", None)
-                    if container:
-                        grasping.add(container)
 
         severed = (
             self._get_severed_locations()
