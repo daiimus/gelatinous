@@ -290,7 +290,15 @@ class TestCadenceAndStagger(TestCase):
         self.assertEqual(rmod.tick_npc(npc), "wait")
 
     @patch("world.director.routines.travel_to")
-    def test_fresh_npc_staggers_to_random_index(self, mock_travel, *_m):
+    def test_fresh_npc_staggers_when_it_has_no_id(self, mock_travel, *_m):
+        """The FALLBACK path. These doubles are `SimpleNamespace`s with
+        no `id` and no `tags`, so they get the random-draw fallback AND
+        the unsouled director walk -- neither of which a live NPC takes:
+        `tick_npc` hands every souled body to the souls engine, and the
+        stagger is derived from the body's id
+        (`SOULS_SCALE_HARDENING_SPEC` §5 law 4, #2431). The souled path
+        and the identity stagger are covered in
+        `test_patrol_stagger_is_identity`."""
         base = _Room("base")
         beat = [_Room(f"r{i}") for i in range(6)]
         seen = set()

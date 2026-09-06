@@ -147,9 +147,11 @@ def tick_npc(npc: Any) -> str:
     * **Cadence** (``db.patrol_cadence``, default 1): act only every Nth
       tick — civilians drift at a stroll while security marches. Now
       consulted by the souls band tree too, through `cadence_ready`.
-    * **Stagger**: a fresh/reloaded NPC starts at a *random* beat index,
-      so multiple units on the same loop spread out instead of walking
-      in lockstep. Lives in `next_waypoint`, shared by both.
+    * **Stagger**: a fresh/reloaded NPC starts at a beat index DERIVED
+      FROM ITS ID, so multiple units on the same loop spread out instead
+      of walking in lockstep, and each one resumes its own phase across
+      a reload rather than jumping. `SOULS_SCALE_HARDENING_SPEC` §5 law
+      4. Lives in `next_waypoint`, shared by both.
     """
     beat = get_beat(npc)
     if not beat:
@@ -201,6 +203,25 @@ def _is_souled(npc: Any) -> bool:
         return False
 
 
+def _identity_phase(npc: Any, span: int) -> int:
+    """A stable starting offset for *npc* over *span* stops.
+
+    Consecutive ids land on consecutive stops, which spreads a shared
+    beat evenly rather than merely randomly. Falls back to a draw for a
+    body with no id (a test double, or an object mid-creation) so the
+    caller still gets a spread instead of a column at 0.
+    """
+    ident = getattr(npc, "id", None)
+    if ident is None:
+        from random import randrange
+        return randrange(span)
+    try:
+        return int(ident) % span
+    except (TypeError, ValueError):
+        from random import randrange
+        return randrange(span)
+
+
 def next_waypoint(npc: Any):
     """The waypoint this NPC is currently walking to, and its index.
 
@@ -208,7 +229,6 @@ def next_waypoint(npc: Any):
     where somebody is headed. The stagger (a random starting index) is
     preserved: multiple units on one loop must not walk in lockstep.
     """
-    from random import randrange
     beat = get_beat(npc)
     if not beat:
         return None, None
@@ -224,7 +244,18 @@ def next_waypoint(npc: Any):
         # SOULS_SCALE_HARDENING_SPEC. The souls planner's `_patrol_plan`
         # discards the returned index too, so the write has to live at
         # the roll or neither caller keeps it (#2804).
-        idx = randrange(len(beat))
+        # DERIVED FROM IDENTITY, not rolled. `patrol_idx` lives on
+        # `ndb`, which dies on every reload, so a random draw
+        # re-randomised the whole population at each restart and gave
+        # each unit one out-of-sequence hop as it jumped to a fresh
+        # index. Keying it to the body means a unit resumes the phase it
+        # had, and two units on one beat still start apart.
+        #
+        # SOULS_SCALE_HARDENING_SPEC §5 law 4: "Stagger by identity.
+        # Anything keyed `beat % N` across a population is a thundering
+        # herd; add the entity id to the phase." A `randrange` never
+        # satisfied that law even while it worked (#2431).
+        idx = _identity_phase(npc, len(beat))
         npc.ndb.patrol_idx = idx
     idx = int(idx) % len(beat)
     return beat[idx], idx

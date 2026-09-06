@@ -132,7 +132,11 @@ class CmdPatrol(default_cmds.MuxCommand):
             if not npc:
                 return
             npc.db.patrol_beat = None
-            npc.ndb.patrol_idx = 0
+            # Cleared, not zeroed: `next_waypoint` derives the starting
+            # phase from identity, and writing 0 here pinned every unit
+            # given a beat in one builder session to the same stop (#2431).
+            if hasattr(npc.ndb, "patrol_idx"):
+                del npc.ndb.patrol_idx
             caller.msg(f"{npc.get_display_name(caller)} is off patrol "
                        f"(post kept).")
             return
@@ -175,7 +179,9 @@ class CmdPatrol(default_cmds.MuxCommand):
                     caller.msg("No rooms given.")
                     return
             npc.db.patrol_beat = beat
-            npc.ndb.patrol_idx = 0
+            if hasattr(npc.ndb, "patrol_idx"):
+                del npc.ndb.patrol_idx      # let identity pick the phase
+
             ensure_heartbeat()
             caller.msg(
                 f"{npc.get_display_name(caller)} now walks: "
