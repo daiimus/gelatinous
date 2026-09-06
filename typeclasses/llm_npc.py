@@ -410,26 +410,49 @@ class LLMNpcMixin:
         descriptor they can see. So "Jordan" reaches Jordan for someone
         who knows Jordan.
 
-        DELIBERATELY NOT CHANGED HERE: the bare-key match means a
-        stranger can address an NPC by a true name they have no
-        in-character way to know -- only 6 of 78 of these NPCs present
-        their name at all. `IDENTITY_RECOGNITION_SPEC` §Target Resolution
-        blocks real keys for non-Builders, while
-        `test_bar.test_off_shift_the_role_word_is_not_theirs` asserts the
-        opposite for address in as many words ("their NAME still is").
-        A spec and a deliberate test disagree, so that is an owner
-        ruling, not a bugfix.
+        OWNER RULING (#2928): a stranger must NOT be able to address an
+        NPC by a true name they have no in-character way to know --
+        "that makes no sense for RP". Live, only 6 of 78 of these NPCs
+        present their name at all; the rest read as "a lean woman in a
+        thermal shirt", so the bare-key match was letting anyone
+        first-name someone they had never met.
+
+        That also settles a conflict:
+        `IDENTITY_RECOGNITION_SPEC` §Target Resolution blocks real keys
+        for non-Builders, while
+        `test_bar.test_off_shift_the_role_word_is_not_theirs` asserted
+        the opposite for address. The spec wins; that test now covers
+        the staff carve-out instead.
+
+        What still reaches an NPC:
+
+        * the JOB's words -- whoever stands the bar answers to
+          "bartender" whether or not you know their name. Public by
+          construction, and ungated;
+        * anything the speaker could TARGET them with, via
+          `world.search.is_identity_match`: a name they have assigned,
+          or a descriptor they can see;
+        * the real key, for Builders only, which is the carve-out the
+          spec reserves so staff can drive NPCs while testing.
         """
         low = (speech or "").lower()
-        names = [self.key.lower()]
-        if self.sdesc_keyword:
-            names.append(self.sdesc_keyword.lower())
-        names += self._name_aliases()
-        if any(n and n in low for n in names):
-            return True
+
+        # Public: the post's vocabulary, not the person's name.
+        for alias in self._name_aliases():
+            if alias and alias.lower() in low:
+                return True
 
         if speaker is None:
             return False
+
+        # The spec's Builder carve-out for real keys.
+        try:
+            if speaker.locks.check_lockstring(speaker, "dummy:perm(Builder)"):
+                if self.key and self.key.lower() in low:
+                    return True
+        except Exception:  # noqa: BLE001 — a lock fault is not an identity
+            pass
+
         from world.search import is_identity_match
         return any(is_identity_match(speaker, self, cand)
                    for cand in self._address_candidates(low))
