@@ -100,8 +100,23 @@ def remembered_before(entries, cutoff):
     An entry with no readable ``first_seen`` is KEPT: losing a
     relationship to a malformed field costs more than it protects.
     """
+    # DESERIALIZE FIRST, then the isinstance below is sound.
+    #
+    # Stored entries come back as `_SaverDict`, which is not a `dict`
+    # subclass, so the guard used to skip EVERY real acquaintance: on
+    # live data, a cutoff of positive infinity — keep everything — kept
+    # 0 of 72 entries across 13 bodies. Resleeving therefore zeroed
+    # every face and every voice a character knew (#2676).
+    #
+    # `world/stealth.py:_records` already does it this way, and its
+    # isinstance check is correct because of it. Converting once at the
+    # top is preferred over duck-typing each entry: it makes every
+    # `isinstance` below true-to-shape rather than leaving a second trap
+    # for the next reader.
+    from evennia.utils.dbserialize import deserialize
+
     out = {}
-    for uid, entry in (entries or {}).items():
+    for uid, entry in (deserialize(entries) or {}).items():
         if not isinstance(entry, dict):
             continue
         try:
