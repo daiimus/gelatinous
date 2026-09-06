@@ -474,6 +474,36 @@ class CmdJump(Command):
             else:
                 splattercast.msg(f"JUMP_EDGE_NO_SKY: Could not find sky room #{sky_room_id}")
         
+        if not sky_room and getattr(destination.db, "is_sky_room", False):
+            # REFUSE RATHER THAN STRAND.
+            #
+            # This fallback treats `destination` as the GROUND: it moves
+            # you there, applies landing damage and says "you land
+            # safely". That is right for the nine `is_edge` exits whose
+            # destination is a street. It is catastrophic for one whose
+            # destination is an air cell -- #8054, the Constabulary
+            # rooftop's south edge, drops into #7876 "In the Air", which
+            # has NO EXITS AT ALL. 81 of the colony's 155 sky rooms are
+            # exitless; they are transit, meant to be passed through by
+            # the fall machinery, not stood in.
+            #
+            # With no `sky_room` configured AND no `down` exit on the
+            # air cell, there is no way to know where the jumper should
+            # land, so there is nothing honest to schedule. Refusing
+            # keeps them on the roof; the alternative is a character
+            # nothing but `@tel` can recover (#2441).
+            splattercast.msg(
+                f"JUMP_EDGE_REFUSED: {self.caller.key} tried the "
+                f"{self.direction} edge of {self.caller.location.key}; "
+                f"exit #{exit_obj.id} has no sky_room and its destination "
+                f"#{destination.id} is an exitless air cell. Refused "
+                f"rather than strand.")
+            self.caller.msg(
+                f"|yYou lean out over the {self.direction} edge and "
+                f"stop. There's nothing to land on down there — no "
+                f"ledge, no fire escape, nothing but air.|n")
+            return
+
         if not sky_room:
             # No sky room configured - direct movement (fallback)
             # Still need to apply fall damage but skip the sky room transit
