@@ -108,15 +108,58 @@ def pay_wage(soul):
     return paid
 
 
+def _reconcile_till_tags(tagged):
+    """Adopt any till that has a REGISTER but not the TAG.
+
+    The tag is the index (hardening spec law 3: never an attribute-key
+    query on a hot path), and nothing reconciled the two — so a register
+    without the tag was silently invisible to this sweep rather than
+    merely slow to find. The live Hammett's Boot food cart (#5221)
+    predates the tagging line, and build 069's backfill covered
+    `ShopContainer`s and not carts, so its register was never swept
+    (#2630).
+
+    It survived because the loss is money going UNTAXED, which nothing
+    faults on: the venue keeps more than it should and no alarm sounds.
+
+    Same shape and same reasoning as `_reconcile_advertiser_tags`
+    (#2697) — a register without the tag is always a build gap, so this
+    adopts rather than merely warning, at one attribute query per sweep
+    rather than per call.
+    """
+    from evennia.objects.models import ObjectDB
+    from evennia.utils import logger
+    try:
+        known = {o.id for o in tagged}
+        strays = [o for o in ObjectDB.objects.filter(
+            db_attributes__db_key="register").distinct()
+            if o.pk and o.id not in known
+            and o.attributes.get("register") is not None]
+        for obj in strays:
+            obj.tags.add("till", category="souls")
+            tagged.append(obj)
+            logger.log_warn(
+                f"till tag missing on #{obj.id} {obj.key!r} "
+                f"(register {obj.db.register}) — adopted. The build that "
+                f"created it should tag it too.")
+    except Exception:  # noqa: BLE001 — reconciliation never blocks the sweep
+        pass
+    return tagged
+
+
 def run_tithe():
     """Sweep a fraction of every venue register back to the treasury.
-    Tills are found by tag (indexed) — ShopContainer tags itself at
-    creation and build 069 tagged the pre-existing ones."""
+
+    Tills are found by tag (indexed). `ShopContainer` tags itself at
+    creation and build 069 tagged the pre-existing ones — but neither
+    covered a cart built before the tagging line, so the tag set is
+    reconciled against the attribute first (#2630).
+    """
     from evennia.utils.search import search_tag
 
     treasury = get_treasury()
     swept = 0
-    for obj in search_tag("till", category="souls"):
+    for obj in _reconcile_till_tags(list(search_tag("till", category="souls"))):
         if not obj or not obj.pk:
             continue
         register = int(obj.db.register or 0)
