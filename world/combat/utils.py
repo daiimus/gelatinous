@@ -954,9 +954,18 @@ def cleanup_combatant_state(char, entry, handler):
         break_grapple(handler, grappler=grappled_by, victim=char)
     
     # Clear NDB attributes
-    from .constants import NDB_CHARGE_BONUS, NDB_CHARGE_VULNERABILITY
-    ndb_attrs = [NDB_PROXIMITY, NDB_SKIP_ROUND, NDB_CHARGE_VULNERABILITY, 
-                NDB_CHARGE_BONUS]
+    #
+    # NDB_CHARGE_PENALTY was missing from this list, and it is the only
+    # one of these a character can carry OUT of a fight: it is consumed
+    # solely when somebody attacks them, so a failed charger who fled,
+    # died to a third party, or whose fight ended on the orphan sweep
+    # kept it for the rest of the uptime. The first attack in an
+    # unrelated fight later then halved their dodge and told them
+    # "Still off-balance from your failed charge" (#2425).
+    from .constants import (NDB_CHARGE_BONUS, NDB_CHARGE_PENALTY,
+                            NDB_CHARGE_VULNERABILITY)
+    ndb_attrs = [NDB_PROXIMITY, NDB_SKIP_ROUND, NDB_CHARGE_VULNERABILITY,
+                 NDB_CHARGE_BONUS, NDB_CHARGE_PENALTY]
     for attr in ndb_attrs:
         if hasattr(char.ndb, attr):
             delattr(char.ndb, attr)

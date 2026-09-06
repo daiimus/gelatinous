@@ -521,6 +521,11 @@ class CmdJump(Command):
         
         # Jumping off always succeeds - you're airborne now!
         # Allow jump system to move through sky rooms
+        # Captured BEFORE the move -- see #2424: the broadcast below used
+        # `previous_location`, which nothing in the repo assigns, so the
+        # only line the room they leapt from would have seen never
+        # printed. The move is `quiet=True`, so it was silent.
+        old_location = self.caller.location
         self.caller.ndb.jump_movement_allowed = True
         self.caller.move_to(sky_room, quiet=True)
         if hasattr(self.caller.ndb, "jump_movement_allowed"):
@@ -556,9 +561,9 @@ class CmdJump(Command):
         self.caller.msg(f"|yYou leap from the {self.direction} edge and are now falling through the air!|n")
         
         # Message the room they left
-        if hasattr(self.caller, 'previous_location') and self.caller.previous_location:
+        if old_location and old_location != sky_room:
             msg_room_identity(
-                location=self.caller.previous_location,
+                location=old_location,
                 template=f"|y{{actor}} leaps off the {self.direction} edge!|n",
                 char_refs={"actor": self.caller},
             )
@@ -768,7 +773,7 @@ class CmdJump(Command):
                         check_rigged_grenade(self.caller, obj)
                         break
         else:
-            splattercast.msg(f"JUMP_GAP_DEBUG: No origin room found, previous_location not set")
+            splattercast.msg("JUMP_GAP_DEBUG: no origin room found for this gap")
         
         # Check for auto-defuse opportunities in destination room
         from commands.explosion_utils import check_auto_defuse
@@ -803,15 +808,16 @@ class CmdJump(Command):
         
         # Move to sky room first (failed transit)
         # Allow jump system to move through sky rooms
+        old_location = self.caller.location      # before the move (#2424)
         self.caller.ndb.jump_movement_allowed = True
         self.caller.move_to(sky_room, quiet=True)
         if hasattr(self.caller.ndb, "jump_movement_allowed"):
             del self.caller.ndb.jump_movement_allowed
         
         # Message the origin room
-        if hasattr(self.caller, 'previous_location') and self.caller.previous_location:
+        if old_location and old_location != sky_room:
             msg_room_identity(
-                location=self.caller.previous_location,
+                location=old_location,
                 template=f"|r{{actor}} attempts to leap across the {self.direction} gap but falls short!|n",
                 char_refs={"actor": self.caller},
             )

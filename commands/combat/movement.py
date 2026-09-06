@@ -259,7 +259,19 @@ class CmdFlee(Command):
         if aim_successfully_broken and not original_handler_at_flee_start:
             chosen_exit = choice(available_exits)
             destination = chosen_exit.destination
-            
+
+            # Captured BEFORE the move. This used to read
+            # `caller.previous_location`, which is assigned nowhere in the
+            # repo and is not a `DefaultObject` attribute either -- so the
+            # `hasattr` guard below was always False and the departure
+            # line never printed. The move is deliberately `quiet=True`,
+            # so that broadcast was the ONLY thing the room they left
+            # would have seen: bystanders watched them vanish while the
+            # destination announced an arrival, which reads as a teleport
+            # (#2424). The in-combat branch of this same function does it
+            # this way already.
+            old_location = caller.location
+
             # Move to the chosen exit
             caller.move_to(destination, quiet=True)
             
@@ -280,9 +292,9 @@ class CmdFlee(Command):
             )
             
             # Message the room they left
-            if hasattr(caller, 'previous_location') and caller.previous_location:
+            if old_location and old_location != destination:
                 msg_room_identity(
-                    location=caller.previous_location,
+                    location=old_location,
                     template=f"|y{{actor}} flees {chosen_exit.key}!|n",
                     char_refs={"actor": caller},
                 )
