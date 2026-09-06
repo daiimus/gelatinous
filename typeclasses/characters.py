@@ -1969,13 +1969,26 @@ class Character(
         in the ``equipment`` category.  Once migrated, the legacy
         attribute is removed so subsequent reads short-circuit.
 
-        No-op if the legacy attribute is absent or non-dict.  Only
-        carries forward slots that aren't already populated in
+        No-op if the legacy attribute is absent or not mapping-shaped.
+        Only carries forward slots that aren't already populated in
         ``held_items`` (avoids clobbering newer writes during the
         transition window).
+
+        DUCK-TYPED, NOT ``isinstance``. Evennia returns a persisted dict
+        as `_SaverDict`, whose MRO is `_SaverDict -> _SaverMutable ->
+        MutableMapping -> Mapping` -- it never inherits `dict`. So
+        `isinstance(legacy, dict)` was always False and this migration
+        had never run for anyone: 55 legacy rows were still present, and
+        7 characters were holding weapons the game could not see,
+        including a katana and a chainsaw (#2582).
+
+        The same shape has now appeared five times in this codebase
+        (#2701 bleeding, #2465 placement, #2468 worn layers, #2438
+        severance, here). The rule: a stored container is mapping- or
+        sequence-LIKE, never the builtin.
         """
         legacy = self.attributes.get("hands", category="equipment")
-        if not isinstance(legacy, dict):
+        if legacy is None or not hasattr(legacy, "items"):
             return
 
         held = dict(self.held_items or {})
