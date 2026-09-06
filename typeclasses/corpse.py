@@ -108,6 +108,28 @@ class Corpse(IdentityBearerMixin, Item):
         base_aliases = {"corpse", "remains", "body"}
         desired = stage_names | base_aliases
 
+        # DROP THE ALIASES OF A SPECIES WE ARE NO LONGER.
+        #
+        # `at_object_creation` runs DURING `create_object`, before the
+        # spawner applies `db.species`, so this seeds for "human" and
+        # overwrites the correct key with "human corpse". The key is
+        # repaired later by `_refresh_decay_key_if_changed`; the aliases
+        # never were, so a synth chassis answered to "human corpse",
+        # "rotting corpse" and "skeletal remains" for life (#2430).
+        seeded_for = self.db.decay_alias_species
+        if seeded_for and seeded_for != species:
+            stale = {
+                get_species_corpse_name(seeded_for, stage)
+                for stage in ("fresh", "early", "moderate", "advanced",
+                              "skeletal")
+            } - desired
+            for alias in stale:
+                try:
+                    self.aliases.remove(alias)
+                except Exception:  # noqa: BLE001 — an absent alias is fine
+                    pass
+        self.db.decay_alias_species = species
+
         current = set(self.aliases.all())
         for alias in desired:
             if alias not in current:
@@ -932,6 +954,12 @@ class Corpse(IdentityBearerMixin, Item):
         from world.anatomy import get_species_corpse_name
 
         species = self.db.species or "human"
+        # Re-seed first: if the species arrived AFTER creation -- which
+        # it always does, the spawner applies attributes after the hook
+        # -- the aliases seeded at creation belong to the wrong species
+        # (#2430). Idempotent, and its own docstring invites re-calling.
+        if self.db.decay_alias_species != species:
+            self._seed_decay_aliases_and_key()
         stage = self.get_decay_stage()
         stage_name = get_species_corpse_name(species, stage)
         if self.key != stage_name:

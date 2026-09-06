@@ -52,6 +52,41 @@ class CigarettePack(Item):
 
         self._fill_with_cigarettes()
 
+    def return_appearance(self, looker, **kwargs):
+        """Look at the pack — and repair it first if it is misbranded.
+
+        `at_object_creation` runs DURING `create_object`, before the
+        spawner applies the prototype's attributes, so the fill below
+        read the defensive defaults and every pack shipped neutral
+        cigarettes. Live, all ten Noir packs in the colony held
+        `tobacco_neutral` (#2430). The fill is idempotent, so it never
+        corrected itself.
+
+        Repairing on look means the pack fixes itself the first time
+        anybody examines it, with no migration and no reliance on a hook
+        the spawner has already outrun.
+        """
+        self._ensure_correct_fill()
+        return super().return_appearance(looker, **kwargs)
+
+    def _ensure_correct_fill(self):
+        """Refill the pack if it is empty or holding the wrong substance.
+
+        Only ever replaces cigarettes that are still IN the pack — one
+        already taken out is somebody's property and is left alone.
+        """
+        want = self.db.substance
+        if not want:
+            return
+        wrong = [c for c in self.contents
+                 if c.db.substance is not None and c.db.substance != want]
+        if not wrong and self.contents:
+            return
+        for cig in wrong:
+            cig.delete()
+        if not self.contents:
+            self._fill_with_cigarettes()
+
     def _fill_with_cigarettes(self):
         """Spawn ``self.db.capacity`` cigarettes into the pack with
         the pack's substance stamped on each.  No-op when the pack
