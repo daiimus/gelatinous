@@ -132,7 +132,15 @@ def spawn_witness(location: Any) -> Any | None:
     except Exception:  # noqa: BLE001 — flavour never blocks the spawn
         pass
     witness.db.is_npc = True   # the canonical NPC marker (absence = PC)
-    witness.db.tokens = randint(*WITNESS_TOKENS)          # §5.2 pockets
+    # The PROPERTY, not `db.tokens`. `Character.tokens` is an
+    # `AttributeProperty(category="shop")`, and a bare `db.tokens` is a
+    # DIFFERENT ROW that nothing reads -- `CmdTheft` already carries a
+    # comment calling it "an uncategorized ghost ledger... money stolen
+    # there never existed". The reader was fixed; these two spawners
+    # that write it were not, so 40 marks walked around with 12,728
+    # credits `pickpocket` could not see, while `@civilians` help text
+    # promised "carrying 100-500 tokens (muggable)" (#2426).
+    witness.tokens = randint(*WITNESS_TOKENS)         # §5.2 pockets
     witness.db.is_witness = True
     # Tagged as well as flagged: the stranded-witness sweep runs on the
     # 45s heartbeat and used to walk the WHOLE object table to find these

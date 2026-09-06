@@ -534,7 +534,15 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     npc.db.is_npc = True   # the canonical NPC marker (absence = PC)
     npc.db.role = role
     npc.tags.add(CIV_TAG, category=CIV_TAG_CATEGORY)
-    npc.db.tokens = randint(*TOKEN_RANGE)
+    # The PROPERTY, not `db.tokens`. `Character.tokens` is an
+    # `AttributeProperty(category="shop")`, and a bare `db.tokens` is a
+    # DIFFERENT ROW that nothing reads -- `CmdTheft` already carries a
+    # comment calling it "an uncategorized ghost ledger... money stolen
+    # there never existed". The reader was fixed; these two spawners
+    # that write it were not, so 40 marks walked around with 12,728
+    # credits `pickpocket` could not see, while `@civilians` help text
+    # promised "carrying 100-500 tokens (muggable)" (#2426).
+    npc.tokens = randint(*TOKEN_RANGE)
     persona = dict(spec["persona"])
     # Role registers (tone/explicitness directives) live OUT of the repo —
     # a ServerConfig dict, set live, merged at spawn (the Sable pattern:
