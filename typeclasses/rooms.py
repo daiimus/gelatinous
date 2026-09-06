@@ -475,6 +475,18 @@ class Room(ObjectParent, DefaultRoom):
             if content_parts:
                 return " ".join(content_parts)
         
+        # Let an object re-derive its line before we read it. A blood
+        # pool's age ladder was written once at bleed time and never
+        # re-evaluated, so stains stayed "fresh" for days (#2595). The
+        # room already does this for a corpse's decay key; this is the
+        # same hook, offered to anything that wants it.
+        refresh = getattr(obj, "refresh_integration_desc", None)
+        if callable(refresh):
+            try:
+                refresh()
+            except Exception:  # noqa: BLE001 — a stale line never hides a room
+                pass
+
         # Fall back to basic integration description if no sensory data
         integration_desc = obj.db.integration_desc if obj.db.integration_desc is not None else ""
         if integration_desc:

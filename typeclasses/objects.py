@@ -718,6 +718,31 @@ class BloodPool(Object):
             return f"{parts[0]} and {parts[1]}"
         return ", ".join(parts[:-1]) + f", and {parts[-1]}"
 
+    def refresh_integration_desc(self):
+        """Re-age the room-facing line if the age band has moved on.
+
+        `_update_description` writes the age ladder ONCE, at bleed time,
+        and its only other caller is a partial solvent clean. Nothing
+        re-evaluated it as time passed, so every pool froze at age ~0:
+        live, 31 of 38 pools were 179 hours old and still reading "Fresh
+        crimson stains glisten wetly" (#2595).
+
+        Recomputed at the READ rather than on a ticker -- a pool is a
+        prop that only matters when somebody is in the room to see it,
+        and the age ladder is four buckets, so re-deriving costs less
+        than scheduling would. Writes only when the text actually
+        changes, so a room full of old stains is a comparison and no
+        database write.
+
+        Mirrors `Corpse._refresh_decay_key_if_changed`, which the room
+        already calls for the same reason.
+        """
+        if not self.db.bleeding_incidents:
+            return
+        before = self.db.integration_desc
+        self._update_description()
+        return self.db.integration_desc != before
+
     def _update_description(self):
         """Update object description like graffiti system."""
         if not self.db.bleeding_incidents:
