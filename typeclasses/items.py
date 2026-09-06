@@ -2629,9 +2629,32 @@ def detach_items_to_appendage(character, appendage, containers):
     """
     # Issue #356 Phase 2: species-aware hand-side mapping.
     from world.anatomy import get_species_sever_hand_by_container
-    sever_hand_by_container = get_species_sever_hand_by_container(
+    sever_hand_by_container = dict(get_species_sever_hand_by_container(
         getattr(getattr(character, "db", None), "species", None)
-    )
+    ))
+
+    # PER-CHARACTER OVERLAY (ANATOMY_AUGMENTS_SPEC §3.4, §7).
+    #
+    # The species table lists only the anatomy the species is born with
+    # -- for a human, the four arm/hand entries. An INSTALLED grasping
+    # augment is not in it, so `hands_to_clear` came back empty and a
+    # severed prehensile tail dropped nothing: the weapon it was holding
+    # silently stayed in generic inventory (#2438).
+    #
+    # §7 rules that static anatomy reads go through the per-character
+    # overlay. That was done for `grasping_containers` and
+    # `severable_containers` and missed here -- so an augmented limb was
+    # severable but not droppable, and the spec's own promise that "the
+    # existing severance subtraction handles it with no new code" was
+    # only true for born anatomy.
+    #
+    # A grasping container is its own slot key in `held_items` (the
+    # tail's slot is "tail"), so it maps to itself; the loop below
+    # already tries both the shorthand and the canonical form.
+    grasp = getattr(character, "grasping_containers", None)
+    if callable(grasp):
+        for container in grasp():
+            sever_hand_by_container.setdefault(container, container)
 
     # Accept legacy single-string + new iterable signatures.
     if isinstance(containers, str):
