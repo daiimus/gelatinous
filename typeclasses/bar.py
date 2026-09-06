@@ -402,18 +402,49 @@ class BarCounter(Seating, Item):
     def is_bartender(self, char):
         """True if `char` may work and manage this bar.
 
-        Game staff (Builder+) can always work and manage any bar — they keep the
-        place running regardless of who owns it. Otherwise: the owner, anyone on
-        the staff list, or — while no ownership is configured (v1) — anyone
-        present.
+        THE JOB SYSTEM DECIDES, not a hand-authored owner field. No bar in
+        the colony has ever had an `owner` set, so the v1 fallback below
+        ("while no ownership is configured, anyone present") was the rule
+        in practice everywhere — and once the butcher gig closed the till
+        loop, that meant anyone could walk up to a staffed counter and
+        empty its register (#2921).
+
+        `post_for`'s docstring already named the intended reading:
+        "`keeper_on_duty` is the one reading of 'is this the person
+        working here right now', SHARED WITH THE TILL and the souls
+        planner so none of them can disagree." The till was the one that
+        never asked. It does now.
+
+        In order:
+
+        * game staff (Builder+) — they keep the place running;
+        * whoever is standing this counter's shift, per `keeper_on_duty`;
+        * an explicit `owner` or `staff` entry, if one is ever set;
+        * an UNBOUND counter — no shift slots and no keeper — is the
+          vending tier, where whoever is standing there serves. That is
+          the same answer `post_for` and `_counter_open` give, so a prop
+          with no job structure behind it still works for players.
         """
         if self._is_staff(char):
             return True
+
         owner = self.db.owner
         staff = self.db.staff or []
-        if owner is None and not staff:
+        if char is owner or char in staff:
             return True
-        return char is owner or char in staff
+
+        try:
+            from world.souls.posts import keeper_on_duty
+            if keeper_on_duty(self) is char:
+                return True
+        except Exception:  # noqa: BLE001 — a bad post never opens the till
+            pass
+
+        # Unbound: no shifts, no keeper, nobody's job. Whoever is here.
+        if not (self.db.post_slots or self.db.post_keeper is not None):
+            return owner is None and not staff
+
+        return False
 
     def get_display_things(self, looker, **kwargs):
         # The bar's contents (drinks, loaded ingredients) are shown by

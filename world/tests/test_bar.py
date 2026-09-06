@@ -523,10 +523,17 @@ class TestPosePayload(BaseEvenniaTest):
 class TestBarStaffAccess(BaseEvenniaTest):
     """Staff (Builder+) can work/manage any bar; ownership still gates others."""
 
-    def _bar(self, owner=None, staff=None):
+    def _bar(self, owner=None, staff=None, post_slots=None,
+             post_keeper=None):
         b = MagicMock()
         b.db.owner = owner
         b.db.staff = staff or []
+        # EXPLICIT. On a bare MagicMock these are auto-created truthy
+        # attributes, so an "unowned" fixture silently looked like a
+        # shift-staffed counter once `is_bartender` started asking the
+        # job system (#2921). Unbound by default: no shifts, no keeper.
+        b.db.post_slots = post_slots
+        b.db.post_keeper = post_keeper
         b._is_staff = barmod.BarCounter._is_staff  # real staticmethod
         return b
 
@@ -551,9 +558,23 @@ class TestBarStaffAccess(BaseEvenniaTest):
         bar = self._bar(owner=owner)
         self.assertTrue(self._is_bartender(bar, owner))
 
-    def test_unowned_allows_anyone(self):
+    def test_unbound_counter_allows_anyone(self):
+        """The vending tier: no shifts, no keeper, nobody's job. Same
+        answer `post_for` and `_counter_open` give."""
         bar = self._bar()
         self.assertTrue(self._is_bartender(bar, self._char(is_staff=False)))
+
+    def test_a_shift_staffed_counter_refuses_a_stranger(self):
+        """#2921: the job system decides. A counter with shifts belongs
+        to whoever is standing them, not to whoever walked in."""
+        bar = self._bar(post_keeper="Ottilie Krug",
+                        post_slots={"day": {"keeper": None}})
+        self.assertFalse(self._is_bartender(bar, self._char(is_staff=False)))
+
+    def test_staff_still_work_a_shift_staffed_counter(self):
+        bar = self._bar(post_keeper="Ottilie Krug",
+                        post_slots={"day": {"keeper": None}})
+        self.assertTrue(self._is_bartender(bar, self._char(is_staff=True)))
 
     def test_staff_check_failure_is_safe(self):
         bar = self._bar(owner=object())
