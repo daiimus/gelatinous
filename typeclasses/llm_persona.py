@@ -135,52 +135,65 @@ def build_persona(npc) -> dict:
     # model invents stock ("sushi pork") and meats she's never carried.
     cart_menu = None
     buys = None
-    find_block = getattr(npc, "_find_block", None)
-    if callable(find_block):
+    # OFF THE POST, like the bar above. This used to call
+    # `npc._find_block()`, a method build 143 deleted along with the
+    # `Butcher` class when every body was retyped to `LLMNpc`. The
+    # `callable(...)` gate then made the whole block dead, so `cart_menu`
+    # and `buys` were permanently None and Ottilie invented stock, prices
+    # and which species she takes -- the exact failure these lines exist
+    # to prevent (#2427). `NPC_PLATFORM_SPEC` lists all three of
+    # `_find_bar`/`_find_counter`/`_find_block` as migrations to
+    # `service.post_for()`; only the bar was done, which is why bars
+    # ground correctly and nobody noticed.
+    block = post
+    if block is None:
+        find_block = getattr(npc, "_find_block", None)
+        block = find_block() if callable(find_block) else None
+    if block is not None:
         try:
             from world.butchery import ACCEPTED_BUTCHER_SPECIES
             buys = sorted(ACCEPTED_BUTCHER_SPECIES)
-            block = find_block()
-            if block is not None:
-                stock = block.db.item_inventory or {}
-                prices = block.db.prototype_inventory or {}
-                from evennia.prototypes.prototypes import search_prototype
-                entries = []
-                for proto_key, count in stock.items():
-                    if int(count or 0) <= 0:
-                        continue
-                    protos = search_prototype(proto_key)
-                    name = (protos[0].get("key") if protos else None) or proto_key
-                    price = prices.get(proto_key)
-                    entries.append(f"{name} ({price} tokens, {count} left)")
-                cart_menu = entries   # [] = sold out; rendered explicitly
+            stock = block.db.item_inventory or {}
+            prices = block.db.prototype_inventory or {}
+            from evennia.prototypes.prototypes import search_prototype
+            entries = []
+            for proto_key, count in stock.items():
+                if int(count or 0) <= 0:
+                    continue
+                protos = search_prototype(proto_key)
+                name = (protos[0].get("key") if protos else None) or proto_key
+                price = prices.get(proto_key)
+                entries.append(f"{name} ({price} tokens, {count} left)")
+            cart_menu = entries   # [] = sold out; rendered explicitly
         except Exception:  # noqa: BLE001 — persona building never breaks on trade
             cart_menu, buys = None, None
 
     # The shopkeeper's real shelf, same grounding principle as the cart:
     # without it the keeper invents stock and prices.
     shop_menu = None
-    find_counter = getattr(npc, "_find_counter", None)
-    if callable(find_counter):
+    # Same migration as the cart above (#2427).
+    counter = post
+    if counter is None:
+        find_counter = getattr(npc, "_find_counter", None)
+        counter = find_counter() if callable(find_counter) else None
+    if counter is not None:
         try:
-            counter = find_counter()
-            if counter is not None:
-                from evennia.prototypes.prototypes import search_prototype
-                inv = counter.db.prototype_inventory or {}
-                stock = counter.db.item_inventory or {}
-                infinite = bool(counter.db.is_infinite)
-                entries = []
-                for proto_key, price in inv.items():
-                    protos = search_prototype(proto_key)
-                    name = (protos[0].get("key") if protos else None) or proto_key
-                    if infinite:
-                        entries.append(f"{name} ({price} tokens)")
-                    else:
-                        count = int(stock.get(proto_key, 0) or 0)
-                        if count > 0:
-                            entries.append(f"{name} ({price} tokens, "
-                                           f"{count} left)")
-                shop_menu = entries
+            from evennia.prototypes.prototypes import search_prototype
+            inv = counter.db.prototype_inventory or {}
+            stock = counter.db.item_inventory or {}
+            infinite = bool(counter.db.is_infinite)
+            entries = []
+            for proto_key, price in inv.items():
+                protos = search_prototype(proto_key)
+                name = (protos[0].get("key") if protos else None) or proto_key
+                if infinite:
+                    entries.append(f"{name} ({price} tokens)")
+                else:
+                    count = int(stock.get(proto_key, 0) or 0)
+                    if count > 0:
+                        entries.append(f"{name} ({price} tokens, "
+                                       f"{count} left)")
+            shop_menu = entries
         except Exception:  # noqa: BLE001 — persona building never breaks on trade
             shop_menu = None
 
