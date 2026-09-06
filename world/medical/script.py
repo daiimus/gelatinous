@@ -425,7 +425,19 @@ class MedicalScript(DefaultScript):
                 existing_pool = obj
                 break
         
-        sleeve_uid = self.obj.db.sleeve_uid if self.obj.db.sleeve_uid is not None else None
+        # THE PROPERTY. `sleeve_uid` is an
+        # `AttributeProperty(category="identity")`, so `.db.sleeve_uid`
+        # reads a different row and is always None on a Character --
+        # which is why all 326 bleeding incidents in the live database
+        # recorded `sleeve_uid=None` and not one carried a real UID
+        # (#2420). The forensic source-count then fell into its legacy
+        # branch and de-duplicated on the raw character key instead of
+        # the body-identity axis, so two bleeders sharing a key read as
+        # one source.
+        #
+        # `death_progression.py` already documents this exact trap and
+        # reads the property correctly; this site did not.
+        sleeve_uid = getattr(self.obj, "sleeve_uid", None)
 
         # Forensic Recognition Engine (PR-E) data prep: snapshot the
         # bleeder's current identity signature alongside the legacy
