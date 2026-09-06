@@ -680,6 +680,17 @@ class Character(
         except Exception:  # noqa: BLE001
             pass
 
+        # ...and any operation being performed ON this body. The
+        # surgeon's channel breaks when the SURGEON is hit or moved, but
+        # it is on the surgeon -- a patient dying under the knife would
+        # otherwise leave the procedure running to completion on a
+        # corpse (#2926).
+        try:
+            from world.medical.procedures import interrupt_procedure
+            interrupt_procedure(self, reason="the patient died")
+        except Exception:  # noqa: BLE001 — death never blocks on this
+            pass
+
         # Mark death as processed IMMEDIATELY using db (persistent) to prevent ANY race conditions
         self.db.death_processed = True
         
