@@ -652,7 +652,17 @@ class MedicalState:
         return total_pain
         
     def calculate_blood_loss_rate(self):
-        """Calculate total blood loss per round from all bleeding conditions."""
+        """Total blood loss PER MINUTE from all bleeding conditions.
+
+        Informational only — nothing bills blood from this. It is the
+        raw severity-derived sum and does NOT consult `stabilized` or
+        `tourniqueted`, so it reports what the wounds would do
+        unattended. `BleedingCondition.tick_effect` is what actually
+        subtracts, and it honours both brakes (#2417).
+
+        The docstring used to say "per round", which is part of how this
+        came to be subtracted flat, once per call.
+        """
         total_loss = sum(condition.get_blood_loss_rate() for condition in self.conditions)
         return total_loss
         
@@ -906,10 +916,28 @@ class MedicalState:
         # Update pain level
         self.pain_level = self.calculate_total_pain()
         
-        # Update blood loss
-        blood_loss_rate = self.calculate_blood_loss_rate()
-        if blood_loss_rate > 0:
-            self.blood_level = max(0.0, self.blood_level - blood_loss_rate)
+        # NO BLOOD LOSS HERE. `BleedingCondition.tick_effect` is the one
+        # that bills it, and it is the only one that does it correctly:
+        # it scales by ELAPSED MINUTES, and it returns early for a
+        # stabilized or tourniqueted location.
+        #
+        # This subtraction did none of that. It treated a PER-MINUTE rate
+        # (`CONDITION_CADENCE_SPEC` §5) as a flat per-call amount, and it
+        # consulted neither brake -- so a tourniquet spec'd as "limb-only
+        # instant full hold at any severity" merely halved the bleed, and
+        # a wound dressing spec'd as "full stop at the location" did the
+        # same. `MedicalScript.at_repeat` calls `process()` and THEN
+        # `update_vital_signs()`, so every tick was billed twice.
+        #
+        # Worse, `update_vital_signs` is not on the tick alone: it runs
+        # from `apply_anatomical_damage`, every surgical step, every
+        # severance and every substance dose. A bleeding character lost a
+        # full minute of blood on each incoming hit inside a 6-second
+        # round (#2417).
+        #
+        # Removing it cannot leave bleeding unbilled: a condition landing
+        # starts the medical script (`start_medical_script`), and
+        # `tick_effect` is what that script runs.
             
         # Update consciousness based on multiple factors
         base_consciousness = self.calculate_body_capacity("consciousness")
