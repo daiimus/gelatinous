@@ -222,7 +222,8 @@ class TestSpawn(TestCase):
         self.assertEqual(npc.db.reaction, "comply")
         self.assertEqual(npc.db.reports, "fast")
         self.assertTrue(npc.db.is_npc)   # canonical marker (absence = PC)
-        self.assertTrue(TOKEN_RANGE[0] <= npc.db.tokens <= TOKEN_RANGE[1])
+        # The PROPERTY, not the ghost row `db.tokens` (#2426).
+        self.assertTrue(TOKEN_RANGE[0] <= npc.tokens <= TOKEN_RANGE[1])
         self.assertTrue(npc.db.llm_driven)
         self.assertEqual(npc.db.llm_persona["archetype"], "colonist")
         npc.tags.add.assert_called_once_with("civilian", category="director")

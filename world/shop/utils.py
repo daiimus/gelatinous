@@ -116,6 +116,15 @@ def calculate_shop_price(base_value, markup_percent=0):
 def validate_purchase(buyer, price):
     """
     Validate if buyer can afford purchase.
+
+    .. warning::
+       UNUSED, AND IT READS THE WRONG WALLET. This and its siblings
+       ``deduct_tokens``/``add_tokens`` have no call sites anywhere in
+       the repo, and they operate on ``db.tokens`` -- an uncategorised
+       row that nothing in the game reads. The real wallet is the
+       ``Character.tokens`` AttributeProperty, category ``"shop"``.
+       Writing through these would recreate #2426, where 40 NPCs held
+       12,728 credits `pickpocket` could not see. Use the property.
     
     Args:
         buyer: Character object with db.tokens

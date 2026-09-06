@@ -77,7 +77,11 @@ class TestSpawnWitness(TestCase):
         nouns = [CIVILIAN_ROLES[r]["persona"]["name"].split(" ", 1)[1]
                  for r in DEFAULT_WITNESS_ROLES]
         self.assertTrue(any(key.endswith(n) for n in nouns), key)
-        self.assertTrue(WITNESS_TOKENS[0] <= w.db.tokens <= WITNESS_TOKENS[1])
+        # The PROPERTY. This asserted `db.tokens`, the uncategorised
+        # ghost row nothing in the game reads -- so it passed while 40
+        # live marks carried 12,728 credits `pickpocket` could not see
+        # (#2426).
+        self.assertTrue(WITNESS_TOKENS[0] <= w.tokens <= WITNESS_TOKENS[1])
         self.assertTrue(w.db.is_witness)
         self.assertTrue(w.db.is_npc)   # canonical marker (absence = PC)
         self.assertIn("walkie-talkie", w.look_place)  # the visible tell
