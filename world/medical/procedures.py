@@ -270,9 +270,39 @@ def open_incision_locations(target) -> list[str]:
 
 
 def is_procedure_active(target) -> bool:
-    """True when ``target`` has a procedure in-flight."""
+    """True when ``target`` has a procedure in-flight.
+
+    Compares the persisted deadline against the clock instead of merely
+    asking whether the record exists. The record is persistent; the
+    `evennia_delay` that clears it is `persistent=False`, so a reload
+    inside the 6-30s window dropped the resolver and left the flag set
+    FOREVER. `_reject_if_busy` then refused every surgical verb on that
+    patient with "is already partway through a procedure", and on a
+    corpse or an unconscious patient there was no recovery path at all
+    (#2419).
+
+    `CONDITION_CADENCE_SPEC` §6.3 is explicit and shipped: "`utils.delay`
+    is for ephemera only... Anything that must survive a reload uses a
+    Script, a TickerHandler subscription, or a persisted deadline
+    timestamp swept at server start." This was a persisted deadline with
+    no sweep. Reading it against the clock is the cheapest form of that
+    sweep -- it needs no startup hook and no migration, and a patient
+    wedged by a past reload frees themselves the next time anyone asks.
+
+    A record without a usable `started_at`/`duration_s` is treated as
+    stale rather than eternal: an unreadable deadline is exactly the
+    case that produced a permanent lock.
+    """
     state = _state(target)
-    return state.get("active_procedure") is not None
+    record = state.get("active_procedure")
+    if record is None:
+        return False
+    try:
+        started = float(record.get("started_at"))
+        duration = float(record.get("duration_s"))
+    except (TypeError, ValueError):
+        return False
+    return time.time() < started + duration
 
 
 #: In-memory map of ``target.dbref`` → ``on_complete`` callable.
