@@ -46,6 +46,17 @@ class _BlackoutCase(EvenniaTest):
         super().setUp()
         self.char = self.char1
         self.char.location = self.room1
+        # An ORDINARY character. `char1` ships with `developer` in this
+        # harness, and `apply_death_state` / `apply_unconscious_state`
+        # deliberately let staff bypass the lockout cmdsets so they can
+        # dig themselves out of a state. That bypass was DEAD until
+        # #2591 -- it was built on `locks.check(obj, "perm(Builder)")`,
+        # which is always False -- so these tests were exercising the
+        # player path while holding a staff character, and passing
+        # because the guard did not work. With the guard live, staff
+        # correctly keep their commands and the assertions below would
+        # be measuring the bypass instead of the lockout.
+        self.char.permissions.remove("developer")
 
     def go_under(self):
         """`apply_unconscious_state` no-ops unless the character really

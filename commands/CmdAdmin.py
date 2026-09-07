@@ -315,19 +315,26 @@ class CmdTestDeath(Command):
         # Staff protection: use Evennia's native permission system
         if target != caller:
             # Check if target has any staff permissions
-            if (target.locks.check(target, "perm(Builder)") or 
-                target.locks.check(target, "perm(Admin)") or 
-                target.locks.check(target, "perm(Developer)")):
+            # `check_permstring`, not `locks.check(obj, "perm(...)")`
+            # (#2591). `LockHandler.check`'s second argument is an ACCESS
+            # TYPE looked up in `self.locks`; "perm(Builder)" is a
+            # LOCKSTRING, no object carries a lock keyed that, so the
+            # lookup missed and returned `default=False`. Every rank
+            # guard here was dead -- including the @murder
+            # rank-protection block, which could never be reached.
+            if (target.check_permstring("Builder") or 
+                target.check_permstring("Admin") or 
+                target.check_permstring("Developer")):
                 
                 # Use Evennia's permission hierarchy - higher permissions can act on lower ones
                 # If caller doesn't have at least the same permission level as target, block it
-                target_is_developer = target.locks.check(target, "perm(Developer)")
-                target_is_admin = target.locks.check(target, "perm(Admin)")
-                target_is_builder = target.locks.check(target, "perm(Builder)")
+                target_is_developer = target.check_permstring("Developer")
+                target_is_admin = target.check_permstring("Admin")
+                target_is_builder = target.check_permstring("Builder")
                 
-                caller_is_developer = caller.locks.check(caller, "perm(Developer)")
-                caller_is_admin = caller.locks.check(caller, "perm(Admin)")
-                caller_is_builder = caller.locks.check(caller, "perm(Builder)")
+                caller_is_developer = caller.check_permstring("Developer")
+                caller_is_admin = caller.check_permstring("Admin")
+                caller_is_builder = caller.check_permstring("Builder")
                 
                 # Block if target outranks caller
                 if target_is_developer and not caller_is_developer:
@@ -530,19 +537,19 @@ class CmdTestUnconscious(Command):
         # Staff protection: use Evennia's native permission system
         if target != caller:
             # Check if target has any staff permissions
-            if (target.locks.check(target, "perm(Builder)") or 
-                target.locks.check(target, "perm(Admin)") or 
-                target.locks.check(target, "perm(Developer)")):
+            if (target.check_permstring("Builder") or 
+                target.check_permstring("Admin") or 
+                target.check_permstring("Developer")):
                 
                 # Use Evennia's permission hierarchy - higher permissions can act on lower ones
                 # If caller doesn't have at least the same permission level as target, block it
-                target_is_developer = target.locks.check(target, "perm(Developer)")
-                target_is_admin = target.locks.check(target, "perm(Admin)")
-                target_is_builder = target.locks.check(target, "perm(Builder)")
+                target_is_developer = target.check_permstring("Developer")
+                target_is_admin = target.check_permstring("Admin")
+                target_is_builder = target.check_permstring("Builder")
                 
-                caller_is_developer = caller.locks.check(caller, "perm(Developer)")
-                caller_is_admin = caller.locks.check(caller, "perm(Admin)")
-                caller_is_builder = caller.locks.check(caller, "perm(Builder)")
+                caller_is_developer = caller.check_permstring("Developer")
+                caller_is_admin = caller.check_permstring("Admin")
+                caller_is_builder = caller.check_permstring("Builder")
                 
                 # Block if target outranks caller
                 if target_is_developer and not caller_is_developer:

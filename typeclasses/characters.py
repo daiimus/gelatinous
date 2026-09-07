@@ -63,6 +63,28 @@ def _humanize_hand(canonical):
     return canonical.replace("_", " ")
 
 
+def _is_staff(obj) -> bool:
+    """Is ``obj`` a staff-permissioned character?
+
+    GUARDED, and that matters (#2591). `check_permstring` also exists on
+    Scripts (both inherit `TypedObject`), but its implementation reaches
+    for `is_superuser`, which a Script does not have — and death
+    progression passes its own Script as `from_obj` when it messages the
+    dying. An unguarded call raises `AttributeError` out of
+    `Character.msg`, which broke all 16 death-progression lifecycle
+    tests the first time I made this change.
+
+    The old `locks.check(obj, "perm(Builder)")` hid that: it was always
+    False, so a Script sender fell through harmlessly. Turning a dead
+    guard into a live one exposes every caller that was only ever safe
+    because the guard did nothing.
+    """
+    try:
+        return bool(obj.check_permstring("Builder"))
+    except Exception:  # noqa: BLE001 — a sender that cannot answer is not staff
+        return False
+
+
 class Character(
     ArmorMixin, ClothingMixin, AppearanceMixin, ObjectParent, DefaultCharacter
 ):
@@ -263,7 +285,14 @@ class Character(
             return
             
         # Allow messages from staff (for admin commands, but not social)
-        if hasattr(from_obj, 'locks') and from_obj.locks.check(from_obj, "perm(Builder)"):
+        # `check_permstring`, not `locks.check(obj, "perm(...)")`
+        # (#2591). `LockHandler.check`'s second argument is an ACCESS
+        # TYPE looked up in `self.locks` -- "perm(Builder)" is a
+        # LOCKSTRING, no object has a lock keyed that, so the lookup
+        # missed and returned the `default=False`. Every staff guard
+        # built this way was dead for everyone, superusers included on
+        # the non-bypass paths.
+        if _is_staff(from_obj):
             # Even staff social messages should be blocked for immersion
             # But allow admin command messages through
             if not self._is_social_message(text, kwargs):
@@ -791,7 +820,7 @@ class Character(
             pass
             
         # Check if character has builder/developer permissions
-        if not force_test and self.locks.check(self, "perm(Builder)"):
+        if not force_test and self.check_permstring("Builder"):
             return  # Staff bypass cmdset restrictions
         
         # Remove current default cmdset and replace with unconscious cmdset
@@ -836,7 +865,7 @@ class Character(
         self.remove_unconscious_state()
         
         # Check if character has builder/developer permissions
-        if not force_test and self.locks.check(self, "perm(Builder)"):
+        if not force_test and self.check_permstring("Builder"):
             # Staff bypass cmdset restrictions unless force_test=True
             pass
         else:
