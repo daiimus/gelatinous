@@ -41,6 +41,24 @@ WRECKED_DESC = (
     "nothing now."
 )
 
+def wrecked_sensory_for(structure):
+    """The wreck's sensory layer, naming the structure it belongs to.
+
+    The literal below hardcoded "antenna mast" (#2559), so a branded
+    `AWE Sentinel-9 repeater mast` and a `derelict repeater` were both
+    described in player prose as a generic mast. The key is what the
+    room already calls the thing, so it is what the wreck should call
+    it too.
+    """
+    name = str(getattr(structure, "key", None) or "antenna mast")
+    return {
+        "visual": (f"A wrecked |c{name}|n lists against its cut guy "
+                   f"lines, feedline torn loose. The air where its "
+                   f"carrier hum used to sit is just air."),
+    }
+
+
+#: Kept for the generic case and for anything reading the constant.
 WRECKED_SENSORY = {
     "visual": ("A wrecked |cantenna mast|n lists against its cut guy "
                "lines, feedline torn loose. The air where its carrier "
@@ -77,25 +95,50 @@ def find_breachable(caller, name):
 
 
 def wreck_structure(structure):
-    """Flip to wrecked: stash the authored prose, install the wreck."""
+    """Flip to wrecked: stash the authored prose, install the wreck.
+
+    Refuses to run on a structure that is ALREADY wrecked (#2570).
+    Sabotage is check-then-act across a ninety-second channel, so two
+    saboteurs on one mast both passed the guard and both completed — and
+    the second wreck stashed the FIRST WRECK'S PROSE as the structure's
+    authored appearance. Mending then "restored" the wreck text,
+    permanently. The channel is per-character; nothing locked the
+    structure.
+    """
     db = structure.db
+    if db.intact is False:
+        return False
     db.intact_desc = db.desc
     db.intact_sensory = db.sensory_contributions
     db.desc = WRECKED_DESC
-    db.sensory_contributions = dict(WRECKED_SENSORY)
+    db.sensory_contributions = wrecked_sensory_for(structure)
     db.intact = False
+    return True
 
 
 def mend_structure(structure):
-    """Flip to intact: restore the stashed prose (fail-soft if absent)."""
+    """Flip to intact: restore whatever was stashed, including nothing.
+
+    The restore used to be gated on the stash being TRUTHY (#2558). A
+    structure with no authored `sensory_contributions` stashes `None`,
+    so the restore was skipped — while the wreck prose had been
+    installed unconditionally and `db.intact` was set back to `True`.
+    The result was a mast that is intact and relaying and reads as
+    wrecked to every player who looks at it, with no way back: mending
+    again does nothing, because it is already "intact".
+
+    Gated on being WRECKED instead. Restoring a `None` stash is the
+    correct outcome — it means the structure genuinely had none.
+    """
     db = structure.db
-    if db.intact_desc:
-        db.desc = db.intact_desc
-        db.intact_desc = None
-    if db.intact_sensory:
-        db.sensory_contributions = db.intact_sensory
-        db.intact_sensory = None
+    if db.intact is True:
+        return False          # nothing was stashed; do not clobber
+    db.desc = db.intact_desc
+    db.intact_desc = None
+    db.sensory_contributions = db.intact_sensory
+    db.intact_sensory = None
     db.intact = True
+    return True
 
 
 class CmdSabotage(Command):
@@ -129,7 +172,15 @@ class CmdSabotage(Command):
         from world.channeled import begin_channel
 
         def _complete():
-            wreck_structure(target)
+            # Re-read at COMPLETION, not just at the start (#2570):
+            # ninety seconds is long enough for somebody else to have
+            # brought it down, and `wreck_structure` refuses a second
+            # pass — but the messaging must not claim a felling that did
+            # not happen.
+            if not wreck_structure(target):
+                caller.msg(f"You cut the last line, but the {target.key} "
+                           f"is already down — somebody beat you to it.")
+                return
             caller.msg(f"The last guy line parts and the {target.key} "
                        "comes down with a groan of steel. Whatever it "
                        "carried dies with it.")
@@ -189,7 +240,12 @@ def try_repair_structure(caller, args):
     from world.channeled import begin_channel
 
     def _complete():
-        mend_structure(target)
+        # Same re-read as sabotage (#2570): somebody may have mended it
+        # while this repair was running.
+        if not mend_structure(target):
+            caller.msg(f"You reach for the {target.key}, but it is "
+                       f"already standing and sound.")
+            return
         caller.msg(f"You true the {target.key} back against fresh guy "
                    "lines and re-seat the feedline. It hums.")
         msg_room_identity(
