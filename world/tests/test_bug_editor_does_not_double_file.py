@@ -22,12 +22,16 @@ is keyed on `_CMD_NOMATCH` with `_CMD_NOINPUT` as its alias, so
 **everything except the literal "no" or "n" lands in the yes branch** —
 a bare Enter included.
 
-Fixed by documenting it truthfully and naming `:q!` as the cancel,
-rather than by overriding the editor: this codebase does not build
-custom layers over Evennia internals. `BUG_COMMAND_SPEC.md` asserts the
-outright-cancel behaviour in four places and is therefore still ahead of
-the code — that gap is called out on the issue for a ruling, since
-closing it means overriding core.
+Fixed by naming `:q!` as the cancel, rather than by overriding the
+editor: this codebase does not build custom layers over Evennia
+internals.
+
+`BUG_COMMAND_SPEC.md` asserted the outright-cancel behaviour in four
+places. **The spec was wrong, not the implementation** — updated to
+describe Evennia's standard editor keys (owner ruling, 2026-09-06:
+*"update the spec to just use the evennia standard commands"*). The last
+class here pins the two together, because a spec and a help string
+drifting apart is the entire defect.
 
 **#2526 — the daily cap was check-then-act across a network call.** The
 counter was incremented in the completion callback, on the far side of
@@ -170,3 +174,38 @@ class TestEvenniaStillNeedsTheTruthyReturn(EvenniaTest):
         src = inspect.getsource(eveditor)
         self.assertIn('("no", "n")', src)
         self.assertIn("save_buffer()", src)
+
+
+
+class TestTheSpecMatchesTheEditor(EvenniaTest):
+    """Spec and code drifting apart IS the defect (#2525), so they are
+    pinned to each other rather than each to itself."""
+
+    def _spec(self):
+        import pathlib
+        root = pathlib.Path(__file__).resolve().parents[2]
+        return (root / "specs" / "BUG_COMMAND_SPEC.md").read_text(
+            errors="ignore")
+
+    def test_the_spec_no_longer_calls_them_synonyms(self):
+        self.assertNotIn(":q or :q! - Cancel without submitting",
+                         self._spec())
+
+    def test_the_spec_names_the_real_cancel(self):
+        self.assertIn(":q! - Cancel without submitting", self._spec())
+
+    def test_the_spec_says_the_editor_is_stock(self):
+        """The reason `:q` is not changed to cancel."""
+        self.assertIn("stock Evennia", self._spec())
+
+    def test_the_spec_records_what_bare_q_does(self):
+        self.assertIn("Save before quitting?", self._spec())
+
+    def test_the_help_string_and_the_spec_agree(self):
+        import pathlib
+        root = pathlib.Path(__file__).resolve().parents[2]
+        code = (root / "commands" / "CmdBug.py").read_text(errors="ignore")
+        spec = self._spec()
+        for text, where in ((":q!", "cancel"), (":wq", "save")):
+            self.assertIn(text, code, f"help lost the {where} key")
+            self.assertIn(text, spec, f"spec lost the {where} key")
