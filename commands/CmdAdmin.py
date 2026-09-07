@@ -680,10 +680,17 @@ class CmdPeace(Command):
             splattercast.msg("@peace failed: Caller has no location.")
             return
 
-        # Find all combat handlers on this location
-        from world.combat.constants import COMBAT_SCRIPT_KEY
+        # Every ACTIVE handler MANAGING this location (#2543).
+        #
+        # `location.scripts.all()` finds a handler only on its HOST room,
+        # and a handler manages a LIST of rooms — so an admin standing in
+        # the non-hosting half of a cross-room firefight was told there
+        # was no combat to end while the handler kept ticking rounds in
+        # front of them. It also had no `is_active` filter, so a stopped
+        # handler still lying on the room counted as combat.
+        from world.combat.handler import find_combat_handlers
 
-        handlers = [script for script in location.scripts.all() if script.key == COMBAT_SCRIPT_KEY]
+        handlers = find_combat_handlers(location)
         if not handlers:
             caller.msg(f"|yNo combat to end in {location.key}.|n")
             splattercast.msg(f"@peace: No combat to end in {location.key}.")

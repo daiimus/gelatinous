@@ -73,6 +73,32 @@ from .actions import (
 )
 
 
+def find_combat_handlers(location):
+    """Every ACTIVE handler managing ``location``, without creating one.
+
+    A `CombatHandler` is *hosted* on one room but *manages* a list of
+    them, so "is there combat here?" has two possible answers and only
+    one is right. `location.scripts.all()` finds a handler only on its
+    HOST room — `@peace` used that, and so told an admin standing in the
+    non-hosting half of a cross-room firefight that there was no combat
+    to end while the handler kept ticking rounds in front of them
+    (#2543).
+
+    `managed_rooms` starts as ``[self.obj]`` and grows when handlers
+    merge for cross-room ranged combat. Every other consumer asks the
+    question this way.
+    """
+    from evennia.scripts.models import ScriptDB
+    found = []
+    active = ScriptDB.objects.filter(db_key=COMBAT_SCRIPT_KEY,
+                                     db_is_active=True)
+    for script in active:
+        managed = script.db.managed_rooms
+        if managed and location in managed:
+            found.append(script)
+    return found
+
+
 def get_or_create_combat(location):
     """
     Get an existing combat handler for a location or create a new one.
@@ -92,15 +118,10 @@ def get_or_create_combat(location):
     # First, check if 'location' is already managed by ANY active CombatHandler
     # This requires iterating through all scripts, which can be slow.
     # A better way might be a global list of active combat handlers, but for now:
-    from evennia.scripts.models import ScriptDB
-    active_handlers = ScriptDB.objects.filter(db_key=COMBAT_SCRIPT_KEY, db_is_active=True)
-
-    for handler_script in active_handlers:
-        # Ensure it's our CombatHandler type and has managed_rooms
-        if handler_script.db.managed_rooms is not None:
-            if location in (handler_script.db.managed_rooms or []):
-                splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_GET: Location {location.key} is already managed by active handler {handler_script.key} (on {handler_script.obj.key}). Returning it.")
-                return handler_script
+    # Same question, one implementation (#2543).
+    for handler_script in find_combat_handlers(location):
+        splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_GET: Location {location.key} is already managed by active handler {handler_script.key} (on {handler_script.obj.key}). Returning it.")
+        return handler_script
     
     # If not managed by an existing handler, check for an inactive one on THIS location
     for script in location.scripts.all():
