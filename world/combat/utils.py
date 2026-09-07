@@ -668,6 +668,8 @@ def remove_combatant(handler, char):
         handler: The combat handler instance
         char: The character to remove from combat
     """
+    from world.combat.proximity import is_in_proximity
+
     from .constants import (
         DB_COMBATANTS, DB_CHAR, DB_TARGET_DBREF
     )
@@ -760,8 +762,13 @@ def remove_combatant(handler, char):
                 if potential_target_dbref == get_character_dbref(other_char):
                     ranged_attackers.append(potential_target_char)
                     
-                    # Check if they're also in proximity for melee priority
-                    if hasattr(other_char.ndb, NDB_PROXIMITY) and potential_target_char in other_char.ndb.in_proximity_with:
+                    # Check if they're also in proximity for melee
+                    # priority. The `hasattr` guard was a no-op -- it is
+                    # always True on an ndb holder -- so this raised
+                    # TypeError on `x in None` for any combatant whose
+                    # proximity set the post-reload sweep never built,
+                    # inside the round tick (#2487).
+                    if is_in_proximity(other_char, potential_target_char):
                         proximity_attackers.append(potential_target_char)
             
             # Smart targeting logic based on weapon type

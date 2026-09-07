@@ -15,6 +15,15 @@ Functions:
 from .constants import NDB_PROXIMITY
 from .debug import log_debug
 
+# NOTE (#2487): there are no `hasattr(char.ndb, ...)` guards in this
+# module, on purpose. `obj.ndb` is a `DbHolder` whose `__getattribute__`
+# returns the handler's `get()` -- None for a missing key -- rather than
+# raising, so `hasattr` is True for EVERY name and gates nothing. The
+# real test is `isinstance(..., set)`, which is what each read does. Two
+# call sites elsewhere trusted the hasattr with no isinstance behind it
+# and raised `TypeError: argument of type 'NoneType' is not iterable`
+# inside the combat round tick.
+
 
 def initialize_proximity(character):
     """
@@ -26,7 +35,7 @@ def initialize_proximity(character):
     Returns:
         bool: True if initialization was needed
     """
-    if not hasattr(character.ndb, NDB_PROXIMITY) or not isinstance(getattr(character.ndb, NDB_PROXIMITY), set):
+    if not isinstance(getattr(character.ndb, NDB_PROXIMITY), set):
         setattr(character.ndb, NDB_PROXIMITY, set())
         log_debug("PROXIMITY", "INIT", f"Initialized for {character.key}")
         return True
@@ -82,10 +91,10 @@ def break_proximity(char1, char2):
         return
     
     # Remove from each other's proximity sets
-    if hasattr(char1.ndb, NDB_PROXIMITY) and isinstance(getattr(char1.ndb, NDB_PROXIMITY), set):
+    if isinstance(getattr(char1.ndb, NDB_PROXIMITY), set):
         getattr(char1.ndb, NDB_PROXIMITY).discard(char2)
     
-    if hasattr(char2.ndb, NDB_PROXIMITY) and isinstance(getattr(char2.ndb, NDB_PROXIMITY), set):
+    if isinstance(getattr(char2.ndb, NDB_PROXIMITY), set):
         getattr(char2.ndb, NDB_PROXIMITY).discard(char1)
     
     log_debug("PROXIMITY", "BREAK", f"{char1.key} <-> {char2.key}")
@@ -98,16 +107,13 @@ def clear_all_proximity(character):
     Args:
         character: Character to clear proximity for
     """
-    if not hasattr(character.ndb, NDB_PROXIMITY):
-        return
-    
     proximity_set = getattr(character.ndb, NDB_PROXIMITY)
     if not isinstance(proximity_set, set):
         return
     
     # Remove this character from all others' proximity
     for other_char in list(proximity_set):
-        if hasattr(other_char.ndb, NDB_PROXIMITY) and isinstance(getattr(other_char.ndb, NDB_PROXIMITY), set):
+        if isinstance(getattr(other_char.ndb, NDB_PROXIMITY), set):
             getattr(other_char.ndb, NDB_PROXIMITY).discard(character)
     
     # Clear this character's proximity
@@ -125,9 +131,6 @@ def get_proximity_list(character):
     Returns:
         list: List of characters in proximity
     """
-    if not hasattr(character.ndb, NDB_PROXIMITY):
-        return []
-    
     proximity_set = getattr(character.ndb, NDB_PROXIMITY)
     if not isinstance(proximity_set, set):
         return []
@@ -147,9 +150,6 @@ def is_in_proximity(char1, char2):
         bool: True if characters are in proximity
     """
     if char1 == char2:
-        return False
-    
-    if not hasattr(char1.ndb, NDB_PROXIMITY):
         return False
     
     proximity_set = getattr(char1.ndb, NDB_PROXIMITY)
@@ -199,9 +199,6 @@ def cleanup_invalid_proximity(character):
     Args:
         character: Character to clean up proximity for
     """
-    if not hasattr(character.ndb, NDB_PROXIMITY):
-        return
-    
     proximity_set = getattr(character.ndb, NDB_PROXIMITY)
     if not isinstance(proximity_set, set):
         return
@@ -228,9 +225,6 @@ def sync_proximity_bidirectional(character):
     Args:
         character: Character to sync proximity for
     """
-    if not hasattr(character.ndb, NDB_PROXIMITY):
-        return
-    
     proximity_set = getattr(character.ndb, NDB_PROXIMITY)
     if not isinstance(proximity_set, set):
         return

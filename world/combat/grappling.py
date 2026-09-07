@@ -409,10 +409,16 @@ def resolve_grapple_join(char_entry, combatants_list, handler):
         char.msg(f"{capitalize_first(get_display_name_safe(current_grappler, char))} is not properly registered in combat.")
         return
     
-    # Check proximity
-    if not hasattr(char.ndb, NDB_PROXIMITY):
-        setattr(char.ndb, NDB_PROXIMITY, set())
-    if target not in getattr(char.ndb, NDB_PROXIMITY):
+    # Check proximity. `hasattr(obj.ndb, anything)` is ALWAYS True in
+    # Evennia -- `DbHolder.__getattribute__` returns the handler's
+    # `get()`, which is None for a missing key, and hasattr reports True
+    # whenever getattr doesn't raise. So the initialize-if-missing branch
+    # here could never run, the set was never created, and
+    # `target not in None` raised TypeError (#2487). Routed through
+    # `is_in_proximity`, which does the isinstance check that the
+    # hasattr was standing in for.
+    from world.combat.proximity import is_in_proximity
+    if not is_in_proximity(char, target):
         char.msg(f"You need to be in melee proximity with {get_display_name_safe(target, char)} to contest the grapple.")
         return
     
