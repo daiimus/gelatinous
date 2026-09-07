@@ -218,7 +218,16 @@ def derive_presentation(name):
     for reading, words in (("femme", FEMME_KEYWORDS),
                            ("masc", MASC_KEYWORDS)):
         for word in words:
-            if re.search(r"\b" + re.escape(word), low):
+            # BOTH ends, as `derive_rung` does ninety lines down (#2478).
+            # With only a leading boundary every keyword matched as a
+            # PREFIX, so "bra" claimed brass knuckles, a strut brace and
+            # the brass-toed boots that the comment above `NOT_MARKED`
+            # names as the motivating case — it was never actually
+            # fixed. A phrase blacklist treats symptoms; it can never be
+            # complete against a missing boundary, and every future name
+            # beginning bra-, slip-, tie-, top- would have inherited the
+            # same wrong reading.
+            if re.search(r"\b" + re.escape(word) + r"\b", low):
                 return (reading,)
     return ()
 
