@@ -442,7 +442,13 @@ class CmdDefuse(Command):
             remaining_time = "N/A"
         else:
             # Live grenades: time pressure difficulty
-            remaining_time = getattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
+            # `or 0`, not a getattr default (#2548): an ndb miss returns
+            # None, and `10 - None` is a TypeError. Reachable after a
+            # reload, which clears all ndb while `pin_pulled` persists.
+            # The sibling read at :409 guards with an explicit
+            # `is None` test; this one had nothing.
+            remaining_time = getattr(grenade.ndb, NDB_COUNTDOWN_REMAINING,
+                                     None) or 0
             base_difficulty = 15  # Base difficulty
             time_pressure = max(0, 10 - remaining_time)  # Gets harder as time runs out
             total_difficulty = base_difficulty + time_pressure
@@ -673,6 +679,9 @@ class CmdDefuse(Command):
                     grenade.attributes.remove("detonation_deadline")
                 except Exception:  # noqa: BLE001 — #505 dud fuse is spent
                     pass
+                # A spent fuse is a SAFE grenade (#2539).
+                grenade.db.pin_pulled = False
+                setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
                 if grenade.location:
                     grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=grenade.key))
                 return

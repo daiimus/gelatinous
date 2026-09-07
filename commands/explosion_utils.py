@@ -183,6 +183,16 @@ def check_rigged_grenade(character, exit_obj):
                     rigged_grenade.attributes.remove('detonation_deadline')
                 except Exception:  # noqa: BLE001
                     pass
+                # A spent fuse is a SAFE grenade (#2539). The four dud
+                # paths dropped the deadline and returned, leaving
+                # `pin_pulled = True` on an object they neither exploded
+                # nor deleted -- so it could never be re-armed, never
+                # defused, and still read ACTIVE. Both defuse-success
+                # handlers already clear it exactly this way, and
+                # EXPLOSIVE_BASE ships `pin_pulled: False` as the safe
+                # state.
+                rigged_grenade.db.pin_pulled = False
+                setattr(rigged_grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
                 if rigged_grenade.location:
                     rigged_grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=rigged_grenade.key))
                 return
@@ -536,6 +546,10 @@ def explode_standalone_grenade(grenade):
                 grenade.attributes.remove('detonation_deadline')
             except Exception:  # noqa: BLE001
                 pass
+            # A spent fuse is a SAFE grenade (#2539) -- see the note in
+            # `explode_rigged_grenade`.
+            grenade.db.pin_pulled = False
+            setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Grenade {grenade} is a dud")
             if grenade.location:
                 grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=grenade.key))
@@ -941,6 +955,9 @@ def trigger_auto_defuse_explosion(grenade):
                 grenade.attributes.remove('detonation_deadline')
             except Exception:  # noqa: BLE001
                 pass
+            # A spent fuse is a SAFE grenade (#2539).
+            grenade.db.pin_pulled = False
+            setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
             if grenade.location:
                 grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=grenade.key))
             return
