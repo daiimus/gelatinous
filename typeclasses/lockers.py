@@ -216,8 +216,25 @@ class LockerBank(Item):
                       if renewing else
                       "A locker's yours for the week; it answers your sleeve now."))
         if caller.location:
-            caller.location.msg_contents(
-                f"{caller.get_display_name(caller)} leases a locker.",
+            # `msg_room_identity`, not `msg_contents` with a name the
+            # renter renders for THEMSELVES (#2612).
+            # `get_display_name(caller)` is the SELF case — it returns
+            # the character's real key ("Self-perception — always own
+            # real name") — and this pushed that string to every
+            # bystander. Every other fixture verb in the repo
+            # (`bar.py`, `terminals.py`) broadcasts through
+            # `msg_room_identity` so each observer gets the name or
+            # sdesc THEY know.
+            #
+            # Same leak as #2600, reached through the recognition API's
+            # self-branch rather than a raw attribute — which is what
+            # made it survive review: the code looks like it uses the
+            # identity system.
+            from world.identity_utils import msg_room_identity
+            msg_room_identity(
+                location=caller.location,
+                template="{actor} leases a locker.",
+                char_refs={"actor": caller},
                 exclude=[caller])
 
     def set_open(self, caller, opened):

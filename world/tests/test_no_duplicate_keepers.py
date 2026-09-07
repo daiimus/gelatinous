@@ -101,12 +101,30 @@ class TestTheInsuranceRefusesTheLiving(EvenniaCommandTest):
         self.assertIsNone(posts._living_body("dispatch_petra"))
 
     def test_a_dead_body_does_not_block_the_payout(self):
+        """Death is the `is_dead()` METHOD, not `db.is_dead`.
+
+        This test set the attribute and had been failing since #2881,
+        which made `_is_dead` read the method precisely because
+        `db.is_dead` is a row **zero objects carry** — so all three
+        guards built on it never fired. Setting it here asserted the
+        behaviour that fix removed.
+        """
+        from unittest import mock
         twin = self.char2
         twin.db.blueprint_key = "dispatch_petra"
         twin.db.is_npc = True
-        twin.db.is_dead = True
         twin.location = self.room1
-        self.assertIsNone(posts._living_body("dispatch_petra"))
+        with mock.patch.object(type(twin), "is_dead", return_value=True):
+            self.assertIsNone(posts._living_body("dispatch_petra"))
+
+    def test_a_living_body_does_block_it(self):
+        """The control the above needs: without the death, the same
+        body is found."""
+        twin = self.char2
+        twin.db.blueprint_key = "dispatch_petra"
+        twin.db.is_npc = True
+        twin.location = self.room1
+        self.assertIs(posts._living_body("dispatch_petra"), twin)
 
     def test_a_living_keeper_is_never_resleaved(self):
         post = self.obj1
