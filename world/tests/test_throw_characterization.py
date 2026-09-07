@@ -713,11 +713,34 @@ class TestGrenadeDeflection(TestCase):
 
     @patch("world.combat.utils.roll_stat", return_value=12)
     @patch("world.combat.throwing.msg_room_identity")
-    def test_deflection_bonus_raises_threshold(self, mock_room, mock_roll):
-        """deflection_bonus 0.30 → threshold 16; roll 12 now fails."""
+    def test_deflection_bonus_lowers_threshold(self, mock_room, mock_roll):
+        """deflection_bonus 0.30 → threshold 4; roll 12 succeeds.
+
+        This test used to assert the opposite — *"threshold 16; roll 12
+        now fails"* — and passed, because it characterised the
+        inversion rather than the intent (#2493). The prototype comments
+        were the giveaway all along: `0.30` is annotated as a bonus, and
+        a bonus that makes you fail a roll you would otherwise pass is
+        not a bonus.
+        """
         melee = make_obj("pipe", deflection_bonus=0.30)
         grenade, dest, caller, target = self._setup(
             wielding={"right": melee}
+        )
+        with patch("world.combat.throwing.perform_grenade_deflection",
+                   return_value=True) as mock_perform:
+            result = throwing.check_grenade_deflection(grenade, dest, caller)
+        self.assertTrue(result)
+        mock_perform.assert_called_once()
+
+    @patch("world.combat.utils.roll_stat", return_value=12)
+    @patch("world.combat.throwing.msg_room_identity")
+    def test_a_bad_weapon_raises_the_threshold(self, mock_room, mock_roll):
+        """The other half of the same ruling: a NEGATIVE bonus makes it
+        harder. -0.50 → threshold 20, and a roll of 12 fails."""
+        chainsaw = make_obj("chainsaw", deflection_bonus=-0.50)
+        grenade, dest, caller, target = self._setup(
+            wielding={"right": chainsaw}
         )
         with patch("world.combat.throwing.perform_grenade_deflection") as mock_perform:
             result = throwing.check_grenade_deflection(grenade, dest, caller)
