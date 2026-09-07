@@ -42,7 +42,15 @@ class CmdCoordSeed(default_cmds.MuxCommand):
         @coordseed             - seed from the PINNED origin room (0,0,0)
         @coordseed/check       - dry run: report what would happen, write nothing
         @coordseed/origin      - pin YOUR CURRENT ROOM as the canonical origin
-        @coordseed/clear       - remove coordinates from every room
+        @coordseed/clear       - preview what clearing would destroy
+        @coordseed/clear/confirm  - actually clear (irreversible for rooms
+                                    the seed walk cannot reach)
+
+    Switches are matched case-insensitively, and an UNRECOGNISED switch
+    aborts rather than being ignored (#2573). That matters here because
+    `/check` is a safety and the default is the write: a typo used to
+    mean "no dry run", so `@coordseed/Check` seeded 1,069 live rooms and
+    reported "Seeded".
 
     Walks cardinal exits (north/south/east/west, the diagonals, up/down)
     breadth-first from the pinned origin, assigning one coordinate unit
@@ -63,16 +71,67 @@ class CmdCoordSeed(default_cmds.MuxCommand):
     key = "@coordseed"
     locks = "cmd:perm(Builders) or perm(Developers)"
     help_category = "Building"
+    switch_options = ("check", "origin", "clear", "confirm")
 
     def func(self):
         caller = self.caller
-        switches = self.switches or []
+
+        # Lower-cased, because Evennia PRESERVES switch case and
+        # `switch_options` compares the raw token — `/Check` matched
+        # nothing (#2573).
+        switches = [str(sw).lower() for sw in (self.switches or [])]
+
+        # And an unknown switch ABORTS rather than being ignored.
+        # Evennia's own handling only prints "Extra switch ignored" and
+        # carries on, which is the wrong polarity for a command whose
+        # safety flag is opt-in and whose default is a 1,069-room write:
+        # a typo would remove the guard rather than lose a feature.
+        unknown = [sw for sw in switches if sw not in self.switch_options]
+        if unknown:
+            caller.msg(
+                f"|rUnrecognised switch(es):|n /{', /'.join(unknown)}. "
+                f"Nothing was changed. Valid: "
+                f"/{', /'.join(self.switch_options)}."
+            )
+            return
 
         if "clear" in switches:
             rooms = all_coordinate_rooms()
+            # What the seed walk could put back, so the preview can say
+            # what is genuinely one-way (#2577). Coordinates come from
+            # three writers — the walk, direct stamping (`@airfill`,
+            # build scripts) and runtime movers (the elevator and crane
+            # cars) — and only the first is reproducible.
+            origin = pinned_origin()
+            recoverable = set()
+            if origin is not None:
+                try:
+                    assignments, _contra = seed_coordinates(origin)
+                    recoverable = set(assignments)
+                except Exception:  # noqa: BLE001 — a preview never breaks
+                    recoverable = set()
+            orphans = [r for r in rooms if r not in recoverable]
+
+            if "confirm" not in switches:
+                caller.msg(
+                    f"|y@coordseed/clear would strip coordinates from "
+                    f"{len(rooms)} room(s).|n\n"
+                    f"  the seed walk could restore: {len(recoverable)}\n"
+                    f"  |rone-way, nothing can restore: {len(orphans)}|n\n"
+                    f"Rooms reached only by non-cardinal exits (in, out, "
+                    f"elevator) or by no exit at all are never visited by "
+                    f"the walk, and rooms stamped directly by @airfill or "
+                    f"a build script are not either.\n"
+                    f"Run |w@coordseed/clear/confirm|n to do it anyway."
+                )
+                return
+
             for room in rooms:
                 clear_xyz(room)
-            caller.msg(f"Cleared coordinates from {len(rooms)} room(s).")
+            caller.msg(
+                f"Cleared coordinates from {len(rooms)} room(s) — "
+                f"{len(orphans)} of them unrecoverable by the seed walk."
+            )
             return
 
         if "origin" in switches:
