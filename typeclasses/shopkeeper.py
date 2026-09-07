@@ -131,10 +131,25 @@ class ShopContainer(DefaultObject):
         quantity = self.db.item_inventory.get(prototype_key, 0)
         return quantity > 0
     
-    def _off_shift_deflection(self):
+    def _off_shift_deflection(self, buyer=None):
         """An off-shift keeper standing at their own counter says so out
         loud, and names who has the shift. Returns the line the buyer
-        sees, or None when nobody is here to say it."""
+        sees, or None when nobody is here to say it.
+
+        ``buyer`` is the observer the RETURNED narration is rendered for
+        (#2600). It used to interpolate `speaker.key` — the NPC's real
+        name — straight to a buyer who may never have met them, and read
+        as the key even for a buyer who HAD given them a nickname. Every
+        other place an NPC is shown to a player goes through
+        `get_display_name(observer)`.
+
+        The line the keeper SAYS still names the holder plainly, and
+        deliberately: that is an NPC choosing to tell you a colleague's
+        name out loud, which is one of the ways a name is meant to be
+        learned. Speech content is not identity-rendered anywhere in this
+        codebase, and it is said to the whole room, so there is no single
+        observer to render it for.
+        """
         try:
             from world.souls.posts import (current_shift,
                                            off_duty_keepers_present,
@@ -154,7 +169,9 @@ class ShopContainer(DefaultObject):
                 line = (f"I'm off, and nobody's got the {shift}. "
                         f"Counter's shut till morning.")
             speaker.execute_cmd(f"say {line}")
-            return f"{speaker.key} isn't working this shift."
+            who = (speaker.get_display_name(buyer) if buyer is not None
+                   else speaker.key)
+            return f"{who} isn't working this shift."
         except Exception:  # noqa: BLE001 — a shut counter must still refuse
             return None
 
@@ -184,7 +201,7 @@ class ShopContainer(DefaultObject):
                 # somebody else's shift, they answer for it themselves and
                 # point you at whoever's on — a person saying "I'm off"
                 # beats a piece of furniture saying nothing (#2146).
-                spoken = self._off_shift_deflection()
+                spoken = self._off_shift_deflection(buyer)
                 if spoken:
                     return False, spoken
                 return False, (self.db.post_closed_msg
