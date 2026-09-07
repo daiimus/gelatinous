@@ -268,6 +268,26 @@ class LockerBank(Item):
                              nofound_string=f"You aren't carrying '{name}'.")
         if not item:
             return
+
+        # The same two refusals `drop` carries (#2611). `stash` resolves
+        # against `caller.contents`, which includes WORN garments and
+        # integrated cyberware, so without these you could file the coat
+        # you have on — or a bolted-in limb — into a locker across town.
+        #
+        # The third item that report lists, the hand write-back, is
+        # already handled below: it was fixed in #2457 and the issue
+        # predates that.
+        if item.db.integrated:
+            caller.msg(
+                f"{item.get_display_name(caller)} is part of your "
+                f"body — retract it instead."
+            )
+            return
+        if hasattr(caller, "is_item_worn") and caller.is_item_worn(item):
+            caller.msg("You can't stash something you're wearing. "
+                       "Remove it first.")
+            return
+
         # `move_hooks=False` (kept, so stashing stays quiet) skips
         # `Character.at_object_leave`, so the hand slot is released here
         # by hand. Without this the item sits in the locker and the

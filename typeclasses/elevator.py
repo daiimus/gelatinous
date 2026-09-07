@@ -44,6 +44,47 @@ class ElevatorCar(IndoorRoom):
     - ``db.moving`` / ``db.target_floor``: in-flight state
     """
 
+    def at_pre_object_receive(self, moved_obj, source_location, **kwargs):
+        """Refuse anyone stepping in from a landing the car is not at.
+
+        The doors-are-shut rule lived ONLY in
+        `ElevatorDoorExit.at_traverse`, so any exit into the car with a
+        different typeclass was an ungated door. Eight of them existed —
+        the Brackett Arms landings for floors 8-15 carried plain
+        `Exit`s, and walking `elevator` from those floors put you inside
+        the car wherever it happened to be (#2610).
+
+        Enforced on the CAR because the car is the thing being entered:
+        one gate, no matter how many doors get built onto it.
+
+        Deliberately narrow. It refuses only when the source is a
+        landing **of this shaft** and the car is not docked there, so
+        every other arrival still works: staff teleports, spawns, an
+        object put in by a script, and — importantly — occupants riding
+        the car, who never re-enter because the room moves around them.
+        """
+        # Duck-typed, NOT `isinstance(entry, (list, tuple))`. `db.floors`
+        # comes back as a `_SaverList` of `_SaverList`s, and those are
+        # list-LIKE but not list SUBCLASSES — the isinstance test is
+        # False for every entry, so the landing set came out empty and
+        # this gate silently allowed everything. Same trap as #2701 /
+        # #2465 / #2468 / #2438 / #2582 / #2676.
+        landings = set()
+        for entry in (self.db.floors or []):
+            try:
+                landings.add(entry[0])
+            except (TypeError, IndexError, KeyError):
+                continue
+        if source_location in landings and not car_docked(self,
+                                                          source_location):
+            try:
+                moved_obj.msg(DOORS_SHUT_MSG)
+            except Exception:  # noqa: BLE001 — not every mover can be messaged
+                pass
+            return False
+        return super().at_pre_object_receive(moved_obj, source_location,
+                                             **kwargs)
+
     def at_object_creation(self):
         super().at_object_creation()
         self.db.floors = []
