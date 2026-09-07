@@ -1343,13 +1343,27 @@ class LLMNpcMixin:
     #: Words that never START a pose clause as a verb (determiners,
     #: pronouns, prepositions, conjunctions, common adverbs) — skip them
     #: so "the glass", "her eyes", "slowly turns" aren't mis-conjugated.
-    _NOT_A_LEADING_VERB = frozenset((
+    #: Words that are never the verb at the head of a pose.
+    #:
+    #: Built with `" ".join(...)`, not `tuple.__str__()` (#2583). The
+    #: comma-separated literal is a TUPLE, and `__str__()` renders its
+    #: REPR — quotes, commas and parentheses included — so splitting
+    #: that produced tokens like `('the`, `our',`, `'one` and
+    #: `barely')`. Ten real stopwords fell out and ten pieces of junk
+    #: took their place.
+    #:
+    #: The set still had 57 entries either way, which is exactly why it
+    #: looked right. What it cost was every NPC pose beginning with one
+    #: of the ten — "thes rag", "stills watching him", "ands turns" —
+    #: because the conjugator saw an unrecognised leading word and
+    #: welded an -s onto it.
+    _NOT_A_LEADING_VERB = frozenset(" ".join((
         "the a an this that these those her his their its my your our",
         "one both all some no every each either neither",
         "and then but so or nor as like with without into onto over under",
         "at on in to for from before after through across around",
         "still slowly slow quietly quiet just already almost barely",
-    ).__str__().split())
+    )).split())
 
     def _conjugate_action(self, action):
         """Guarantee verb agreement in a pose. The action renders as
