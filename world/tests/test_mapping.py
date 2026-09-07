@@ -61,7 +61,12 @@ class TestExportMap(BaseEvenniaTest):
                                   f"#{sky.id}")}
         self.assertIn(("north", "walk"), kinds)
         self.assertIn(("south", "door"), kinds)
-        self.assertTrue(kinds[("south", "door")]["door"]["locked"])
+        # A door is still TYPED as a door -- the atlas draws ways by
+        # kind -- but its live lock state must not leave the game. This
+        # used to assert the opposite; `export_map` feeds two
+        # unauthenticated public pages, so shipping it meant anyone with
+        # the URL could read which homes were locked (#2682).
+        self.assertNotIn("door", kinds[("south", "door")])
         self.assertIn(("east", "edge"), kinds)
         edge = kinds[("east", "edge")]["edge"]
         self.assertEqual(edge["fall_distance"], 1)
