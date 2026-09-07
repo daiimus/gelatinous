@@ -573,7 +573,71 @@ def _can_third_party_clothing(caller, target):
     return check_consent(caller, target, "dress")
 
 
-def _resolve_clothing_target(caller, target_phrase):
+def pick_worn(phrase, worn):
+    """The ONE worn item ``phrase`` names, or ``None``.
+
+    The filters this replaces were ``[it for it in worn if phrase in
+    it.key.lower()]`` — a substring test that kept EVERY hit and ignored
+    aliases (#2517). `undress bob shirt` stripped every garment whose
+    name contained "shirt", not the one the player named, and an item
+    addressed by its alias was not found at all — which matters because
+    every manufactured item carries a brand, so keys are long branded
+    strings and aliases are what players type.
+
+    Exact key or alias first, so a precise name is never beaten by a
+    longer garment that merely contains it.
+    """
+    wanted = (phrase or "").strip().lower()
+    if not wanted:
+        return None
+
+    def aliases_of(obj):
+        try:
+            return [str(a).lower() for a in obj.aliases.all()]
+        except Exception:  # noqa: BLE001 — stubs without an alias handler
+            return []
+
+    pool = [it for it in worn if it]
+    for item in pool:
+        if wanted == str(item.key).lower() or wanted in aliases_of(item):
+            return item
+    for item in pool:
+        if wanted in str(item.key).lower():
+            return item
+    for item in pool:
+        if any(wanted in alias for alias in aliases_of(item)):
+            return item
+    return None
+
+
+def _is_corpse(target) -> bool:
+    """A corpse, by type.
+
+    `isinstance`, not a duck-type: every `hasattr` on a MagicMock is
+    True, and this predicate is reachable from tests that pass mocks.
+    """
+    try:
+        from typeclasses.corpse import Corpse
+    except Exception:  # noqa: BLE001
+        return False
+    return isinstance(target, Corpse)
+
+
+def _corpse_garments(target):
+    """What a corpse is "wearing": anything in its contents with
+    coverage.
+
+    That is the corpse's real model — `_build_corpse_clothing_coverage_map`
+    already renders every item in `contents` that declares `coverage` as
+    covering the body. `get_worn_items` is deliberately narrower (only
+    disguise-essential items, because that is all the identity signature
+    consumes), so it is the wrong list to undress from.
+    """
+    return [item for item in target.contents
+            if getattr(item, "db", None) is not None and item.db.coverage]
+
+
+def _resolve_clothing_target(caller, target_phrase, quiet=False):
     """Resolve a third-party clothing target with identity-layer
     obfuscation.
 
@@ -634,9 +698,16 @@ def _resolve_clothing_target(caller, target_phrase):
         obj for obj in location.contents
         if not isinstance(obj, Character)
     ]
+    # `quiet` matters for the two-argument form (#2517): `undress bob
+    # jacket` asks greedily for a target named "bob jacket" first, which
+    # is GUARANTEED to fail because the phrase contains the item word.
+    # Stage 3 was the only stage that spoke, so every use of the
+    # documented form printed `Could not find "bob jacket".` one line
+    # before succeeding.
     if not non_character_candidates:
-        return caller.search(raw, candidates=[], quiet=False)
-    return caller.search(raw, candidates=non_character_candidates)
+        return caller.search(raw, candidates=[], quiet=quiet)
+    return caller.search(raw, candidates=non_character_candidates,
+                         quiet=quiet)
 
 
 class CmdDress(Command):
@@ -704,6 +775,8 @@ class CmdDress(Command):
         from typeclasses.items import Appendage
         if isinstance(target, Appendage):
             success, message = self._dress_appendage(target, item)
+        elif _is_corpse(target):
+            success, message = self._dress_corpse(target, item)
         elif hasattr(target, "wear_item"):
             success, message = self._dress_character(target, item)
         else:
@@ -762,6 +835,20 @@ class CmdDress(Command):
         if not success:
             item.move_to(self.caller, quiet=True)
         return success, message
+
+    def _dress_corpse(self, target, item):
+        """Put a garment on a corpse (#2519).
+
+        A corpse has no `worn_items` map and no `wear_item` — moving the
+        garment into its contents IS dressing it, because
+        `_build_corpse_clothing_coverage_map` renders every item there
+        that declares coverage. The gate used to refuse this outright
+        and tell the player the corpse "is conscious and would resist",
+        while the command's own help offered `dress corpse in burial
+        shroud` as an example.
+        """
+        item.move_to(target, quiet=True)
+        return True, ""
 
     def _dress_appendage(self, target, item):
         """Worn-on-severed-appendage path.  Match the item's
@@ -828,7 +915,10 @@ class CmdUndress(Command):
         # Greedy on target first — multi-word targets like
         # ``severed left arm`` work.  Only narrow if the whole
         # phrase doesn't resolve.
-        target = _resolve_clothing_target(caller, args)
+        # The greedy pass is SILENT: it is expected to fail whenever an
+        # item was named, and its error contradicted the success that
+        # followed (#2517).
+        target = _resolve_clothing_target(caller, args, quiet=True)
         item_phrase = None
         if target is None:
             tokens = args.rsplit(" ", 1)
@@ -839,6 +929,10 @@ class CmdUndress(Command):
                 if target is not None:
                     item_phrase = maybe_item
         if target is None:
+            # Nothing resolved either way — say so once, about the whole
+            # phrase, rather than staying silent because the greedy pass
+            # was quiet.
+            _resolve_clothing_target(caller, args)
             return
 
         if not _can_third_party_clothing(caller, target):
@@ -852,6 +946,8 @@ class CmdUndress(Command):
         from typeclasses.items import Appendage
         if isinstance(target, Appendage):
             removed = self._undress_appendage(target, item_phrase)
+        elif _is_corpse(target):
+            removed = self._undress_corpse(target, item_phrase)
         elif hasattr(target, "get_worn_items"):
             removed = self._undress_character(target, item_phrase)
         else:
@@ -917,8 +1013,9 @@ class CmdUndress(Command):
             return []
 
         if item_phrase:
-            phrase = item_phrase.lower()
-            worn = [it for it in worn if phrase in it.key.lower()]
+            # The item the player NAMED, by key or alias (#2517).
+            chosen = pick_worn(item_phrase, worn)
+            worn = [chosen] if chosen else []
             if not worn:
                 return []
 
@@ -927,6 +1024,26 @@ class CmdUndress(Command):
             success, _msg = target.remove_item(item)
             if success:
                 removed.append(item)
+        return removed
+
+    def _undress_corpse(self, target, item_phrase):
+        """Take a garment off a corpse and return the removed list.
+
+        The mirror of `_dress_corpse`: out of `contents`, into the
+        caller's hands. `_undress_character` would have raised
+        AttributeError here — `Corpse` has no `remove_item` — which is
+        the latent half #2519 warned about when the gate was opened.
+        """
+        garments = _corpse_garments(target)
+        if not garments:
+            return []
+        if item_phrase:
+            chosen = pick_worn(item_phrase, garments)
+            garments = [chosen] if chosen else []
+        removed = []
+        for item in garments:
+            item.move_to(self.caller, quiet=True)
+            removed.append(item)
         return removed
 
     def _undress_appendage(self, target, item_phrase):
@@ -944,10 +1061,9 @@ class CmdUndress(Command):
                     all_items.append(item)
 
         if item_phrase:
-            phrase = item_phrase.lower()
-            all_items = [
-                it for it in all_items if phrase in it.key.lower()
-            ]
+            # The item the player NAMED, by key or alias (#2517).
+            chosen = pick_worn(item_phrase, all_items)
+            all_items = [chosen] if chosen else []
         if not all_items:
             return []
 
