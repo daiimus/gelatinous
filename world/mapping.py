@@ -98,8 +98,23 @@ def export_map():
                     edge[attr] = int(val) if not isinstance(val, str) \
                         else val
             entry["edge"] = edge
-        elif kind == "door":
-            entry["door"] = {"locked": ex.db.door_locked is True}
+        # NO LOCK STATE. A door is still typed `kind: "door"` -- the
+        # atlas draws ways by kind -- but whether it is locked RIGHT NOW
+        # does not leave the game.
+        #
+        # `export_map()` feeds both public atlas pages
+        # (`web/website/urls.py`: "the colony atlas — public shop
+        # window"), and `atlas_view` carries no authentication. So every
+        # door's live lock state was readable by anyone with the URL,
+        # logged out, joined to room names and coordinates: 470 doors,
+        # 324 of them locked, 348 touching private residences. You could
+        # read which homes were open without walking a street (#2682).
+        #
+        # Nothing consumed it. Neither `scripts/atlas/template.html` nor
+        # `template3d.html` mentions `door` or `locked` anywhere -- the
+        # field was shipped and never read -- so this costs no feature.
+        # If a STAFF map ever wants it, that view can read the exits
+        # directly rather than routing it through the public payload.
         links.append(entry)
     links.sort(key=lambda l: (l["from"], l["to"], l["key"]))
 
