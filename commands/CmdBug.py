@@ -159,6 +159,21 @@ class CmdBug(MuxCommand):
         else:
             account.db.bug_report_count = (account.db.bug_report_count or 0) + 1
     
+    def refund_report_count(self, account):
+        """Give back a slot reserved for a report that never landed.
+
+        The counter is taken at the rate-limit check rather than after
+        the POST (#2526), so a failed submission has to hand it back.
+        Never goes below zero, and never touches a counter that has
+        already rolled over to a new day -- that quota is not this
+        report's to refund.
+        """
+        today = datetime.now(timezone.utc).date()
+        if account.db.bug_report_date != today:
+            return
+        account.db.bug_report_count = max(
+            0, (account.db.bug_report_count or 0) - 1)
+
     def get_time_until_reset(self, account):
         """Get human-readable time until rate limit resets."""
         now = datetime.now(timezone.utc)
@@ -641,7 +656,17 @@ class CmdBug(MuxCommand):
             caller.msg("  - Steps to reproduce (if possible)")
             caller.msg("\n|yEditor Commands:|n")
             caller.msg("  |w:w|n or |w:wq|n - Save and submit bug report")
-            caller.msg("  |w:q|n or |w:q!|n - Cancel without submitting")
+            # `:q` and `:q!` are NOT synonyms in Evennia's editor
+            # (#2525). With an unsaved buffer -- which is every real use
+            # of this command -- `:q` asks "Save before quitting?" and
+            # its SaveYesNoCmdSet treats everything except the literal
+            # "no"/"n" as yes, a bare Enter included. So `:q` was
+            # documented as cancelling while it filed the report.
+            # Documented truthfully rather than overridden: this world
+            # does not build custom layers over Evennia internals.
+            caller.msg("  |w:q!|n - Cancel without submitting")
+            caller.msg("  |w:q|n - Quit (asks whether to submit first; "
+                       "anything but |wn|n means yes)")
             caller.msg("  |w:h|n - Show editor help")
             caller.msg("\n|yOpening editor...|n\n")
             
@@ -661,13 +686,19 @@ class CmdBug(MuxCommand):
                     caller.msg("|yBug report cancelled.|n")
                     return
                 
-                # Check rate limit
+                # Check rate limit, and RESERVE the slot in the same
+                # breath (#2526). The counter used to be incremented in
+                # the completion callback, on the far side of an
+                # off-thread POST, so every submission that started
+                # before the first one landed saw the same count and
+                # passed. Refunded below if the POST fails.
                 account = caller.account
                 if not cmd_instance.check_rate_limit(account):
                     remaining_time = cmd_instance.get_time_until_reset(account)
                     caller.msg("|rYou've reached the daily limit of 30 bug reports.|n")
                     caller.msg(f"The limit resets in {remaining_time}.")
                     return
+                cmd_instance.increment_report_count(account)
                 
                 # Get environment context
                 context = cmd_instance.gather_context(caller)
@@ -688,8 +719,7 @@ class CmdBug(MuxCommand):
                     if success:
                         issue_url = result.get('html_url', '')
 
-                        # Increment bug report counter
-                        cmd_instance.increment_report_count(account)
+                        # The slot was already taken at the check above.
                         limit = getattr(settings, 'BUG_REPORT_DAILY_LIMIT', 30)
                         remaining = limit - (account.db.bug_report_count or 0)
 
@@ -701,6 +731,9 @@ class CmdBug(MuxCommand):
                         else:
                             caller.msg(f"You have {remaining} bug reports remaining today.")
                     else:
+                        # Refund the reserved slot: a report that never
+                        # reached GitHub should not cost the player one.
+                        cmd_instance.refund_report_count(account)
                         error_msg = result
                         caller.msg(f"\n|rFailed to create bug report:|n {error_msg}")
                         caller.msg("|yPlease try again in a moment. If the problem persists, contact staff.|n")
@@ -710,6 +743,13 @@ class CmdBug(MuxCommand):
                     "Failed to create bug report due to an internal "
                     "error. Please try again or contact staff.",
                 )
+                # Evennia clears `_unsaved` only on a TRUTHY savefunc
+                # return (`eveditor.py:save_buffer`). Every path here
+                # returned None, so the buffer stayed dirty forever and
+                # a second `:w` filed the whole report again (#2524).
+                # The early returns above stay falsy on purpose: nothing
+                # was submitted, so the buffer really is still unsaved.
+                return True
             
             def _quit_callback(caller):
                 """Called when the player quits the editor."""
