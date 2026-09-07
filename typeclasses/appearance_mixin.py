@@ -785,21 +785,39 @@ class AppearanceMixin:
     def _location_is_inorganic(self, location):
         """True when ``location`` is cybernetic chrome (#516 review).
 
-        Reads the medical organs at the container: any organ flagged
-        ``inorganic`` makes the whole location render as metal rather
-        than flesh (no skintone; gunmetal wrap).  Matches by container
-        or display_location so surface keys line up with bulk organs.
+        Chrome you can SEE. Two things had to change (#2587):
+
+        **It matched on ``container`` as well as ``display_location``.**
+        ``container`` is the anatomical region an organ lives *inside*;
+        ``display_location`` is the surface it renders on. Accepting
+        either conflated *"there is chrome visible here"* with *"there
+        is chrome somewhere in here"* — so Jericho Black III's chrome
+        jaw (container ``head``, display ``face``) turned the whole
+        **head** gunmetal as well as the face.
+
+        **And ``display_location`` DEFAULTS to ``container``**
+        (``core.py``: ``data.get("display_location") or self.container``),
+        so dropping the container match alone would not have been
+        enough: a cyber heart reads ``display_location == "chest"`` and
+        would still have chromed the chest it is buried in.
+
+        The discriminator for that already exists —
+        ``diagnose._is_internal_organ``: *"lives in a body cavity and
+        has no separate surface display"*. Reused rather than
+        re-derived, so "is this organ visible from outside" has one
+        answer.
         """
+        from world.medical.diagnose import _is_internal_organ
+
         state = getattr(self, "medical_state", None)
         organs = getattr(state, "organs", None) if state else None
         if not organs:
             return False
         for organ in organs.values():
-            if location not in (
-                getattr(organ, "container", None),
-                getattr(organ, "display_location", None),
-            ):
+            if location != getattr(organ, "display_location", None):
                 continue
+            if _is_internal_organ(organ):
+                continue          # buried in a cavity; nothing shows
             data = getattr(organ, "data", None)
             if data and data.get("inorganic"):
                 return True
