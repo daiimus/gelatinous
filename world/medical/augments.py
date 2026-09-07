@@ -55,12 +55,56 @@ def iter_abilities(character):
 
 def find_ability(character, name):
     """Return ``(organ, spec)`` for the named ability, or
-    ``(None, None)``."""
+    ``(None, None)``.
+
+    The FIRST host, which is the right answer for reading a spec or
+    asking whether an ability is deployed — :func:`find_ability_hosts`
+    keeps every host's state identical. Use that one to WRITE.
+    """
     wanted = (name or "").strip().lower()
     for organ, ability_name, spec in iter_abilities(character):
         if ability_name.lower() == wanted:
             return organ, spec
     return None, None
+
+
+def find_ability_hosts(character, name):
+    """Every living organ hosting the named ability.
+
+    An ability can seat into more than one organ: a prototype's
+    ``flesh_containers`` names each host, and the install loop in
+    ``procedures.py`` seats the ability into all of them. ``NAILZ``
+    declares both hands, and its own prose is unambiguous about being
+    one thing — *"five per hand, both hands"*, *"ten carbide blades"*,
+    *"your hands are just hands again"*.
+
+    ``find_ability`` returned the first host and the toggles wrote to
+    that organ alone, so the second hand's claws could never be reached
+    and half the install was permanently inert (#2483).
+    """
+    wanted = (name or "").strip().lower()
+    return [organ for organ, ability_name, _spec
+            in iter_abilities(character)
+            if ability_name.lower() == wanted]
+
+
+def _mirror_ability_state(hosts, name, source):
+    """Give every host of one ability the same runtime state.
+
+    One ability is one thing even when it lives in two hands, so
+    "deployed" and the weapon it points at must not differ between them.
+
+    Severance is deliberately NOT mirrored: ``retract_all_hardware`` and
+    ``carry_hardware_to_appendage`` walk organs themselves and clear the
+    hand they are given, so losing a hand leaves the other one's blades
+    out — which is what the prototype's own comment says should happen.
+    """
+    for host in hosts or ():
+        state = _ability_state(host, name)
+        if state is source:
+            continue
+        state.clear()
+        state.update(source)
 
 
 # ---------------------------------------------------------------------
@@ -91,15 +135,19 @@ def toggle_ability(character, name) -> str:
     if callable(getattr(character, "is_unconscious", None)) and character.is_unconscious():
         return "You are unconscious."
 
+    # Every organ carrying this ability, not just the first: one tray
+    # claws both hands (#2483).
+    hosts = find_ability_hosts(character, name)
+
     ability_type = spec.get("type")
     if ability_type == "integrated_weapon":
-        return _toggle_integrated_weapon(character, organ, name, spec)
+        return _toggle_integrated_weapon(character, organ, name, spec, hosts)
     if ability_type == "natural_weapon":
-        return _toggle_natural_weapon(character, organ, name, spec)
+        return _toggle_natural_weapon(character, organ, name, spec, hosts)
     if ability_type == "voice_modulator":
-        return _toggle_voice_modulator(character, organ, name, spec)
+        return _toggle_voice_modulator(character, organ, name, spec, hosts)
     if ability_type == "blindsight":
-        return _toggle_blindsight(character, organ, name, spec)
+        return _toggle_blindsight(character, organ, name, spec, hosts)
     return f"{name} doesn't respond. (unknown ability type {ability_type!r})"
 
 
@@ -132,7 +180,7 @@ def _ability_state(organ, name) -> dict:
     return store.setdefault(name, {})
 
 
-def _toggle_integrated_weapon(character, organ, name, spec) -> str:
+def _toggle_integrated_weapon(character, organ, name, spec, hosts=()) -> str:
     from world.identity_utils import msg_room_identity
 
     state = _ability_state(organ, name)
@@ -193,6 +241,7 @@ def _toggle_integrated_weapon(character, organ, name, spec) -> str:
         weapon.location = character
         character.hands = {slot: weapon}
         state["deployed"] = True
+        _mirror_ability_state(hosts, name, state)
         _persist(character)
 
         deploy_msg = spec.get("deploy_msg") or (
@@ -229,6 +278,7 @@ def _toggle_integrated_weapon(character, organ, name, spec) -> str:
         if weapon.location == character:
             weapon.location = None  # folded back inside the arm
     state["deployed"] = False
+    _mirror_ability_state(hosts, name, state)
     _persist(character)
 
     retract_msg = spec.get("retract_msg") or (
@@ -248,7 +298,7 @@ def _toggle_integrated_weapon(character, organ, name, spec) -> str:
     return retract_msg
 
 
-def _toggle_natural_weapon(character, organ, name, spec) -> str:
+def _toggle_natural_weapon(character, organ, name, spec, hosts=()) -> str:
     """Toggle a natural cyberweapon (#526 M4 — the claws family).
 
     Unlike integrated weapons, natural weapons never touch the hand
@@ -266,6 +316,7 @@ def _toggle_natural_weapon(character, organ, name, spec) -> str:
         if weapon is None:
             return f"{name} grinds and fails — no hardware found."
         state["deployed"] = True
+        _mirror_ability_state(hosts, name, state)
         _persist(character)
         msg = spec.get("deploy_msg") or (
             f"The {weapon.key} extend with a wet metallic whisper."
@@ -283,6 +334,7 @@ def _toggle_natural_weapon(character, organ, name, spec) -> str:
         return msg
 
     state["deployed"] = False
+    _mirror_ability_state(hosts, name, state)
     _persist(character)
     weapon = _find_weapon(state)
     weapon_name = weapon.key if weapon else name
@@ -301,7 +353,7 @@ def _toggle_natural_weapon(character, organ, name, spec) -> str:
     return msg
 
 
-def _toggle_voice_modulator(character, organ, name, spec) -> str:
+def _toggle_voice_modulator(character, organ, name, spec, hosts=()) -> str:
     """Toggle a voice modulator (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4.2).
 
     The voice-disguise parallel to a worn mask: while engaged it sets
@@ -315,6 +367,7 @@ def _toggle_voice_modulator(character, organ, name, spec) -> str:
     if not state.get("deployed"):
         state["deployed"] = True
         character.db.voice_modulator_active = True
+        _mirror_ability_state(hosts, name, state)
         _persist(character)
         return spec.get("deploy_msg") or (
             "Your voice modulator hums to life — your next words will carry "
@@ -323,13 +376,14 @@ def _toggle_voice_modulator(character, organ, name, spec) -> str:
 
     state["deployed"] = False
     character.db.voice_modulator_active = False
+    _mirror_ability_state(hosts, name, state)
     _persist(character)
     return spec.get("retract_msg") or (
         "Your voice modulator powers down — your own voice returns."
     )
 
 
-def _toggle_blindsight(character, organ, name, spec) -> str:
+def _toggle_blindsight(character, organ, name, spec, hosts=()) -> str:
     """Toggle a combat targeting / sonar suite — "blindsight".
 
     Sets ``character.db.blindsight_active``, which `world.combat.capacity`
@@ -344,6 +398,7 @@ def _toggle_blindsight(character, organ, name, spec) -> str:
     if not state.get("deployed"):
         state["deployed"] = True
         setattr(character.db, BLINDSIGHT_FLAG, True)
+        _mirror_ability_state(hosts, name, state)
         _persist(character)
         return spec.get("deploy_msg") or (
             "Your targeting suite spins up — the world goes to wireframe and "
@@ -352,6 +407,7 @@ def _toggle_blindsight(character, organ, name, spec) -> str:
 
     state["deployed"] = False
     setattr(character.db, BLINDSIGHT_FLAG, False)
+    _mirror_ability_state(hosts, name, state)
     _persist(character)
     return spec.get("retract_msg") or (
         "Your targeting suite powers down; the firing solutions fade."
