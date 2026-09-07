@@ -13,8 +13,21 @@ from world.grammar import with_article
 
 from typeclasses.furniture import Seating
 
-#: Leading prepositions a player may type ("sit DOWN ON the stool").
-_LEAD = re.compile(r"^(down\s+|back\s+)?(on|in|at|onto|into)\s+", re.I)
+#: Leading particles and prepositions a player may type: "sit DOWN",
+#: "sit DOWN ON the stool", "lie BACK IN the couch", "sit ON the stool".
+#:
+#: The preposition is OPTIONAL (#2578). It used to be required, so
+#: `down` was only stripped when something followed it — and bare
+#: `sit down` / `lie down`, the most natural phrasings and the exact
+#: words this command uses to describe itself, were handed through as a
+#: furniture NAME. No seat is called "down", so every one of them failed
+#: with *"You don't see 'down' to sit on here."*
+#:
+#: With the particle stripped the argument is empty, which already means
+#: "the nearest free seat" — so `sit down` behaves as bare `sit`, which
+#: is what a player typing it means.
+_LEAD = re.compile(
+    r"^(?:(?:down|back)\b\s*)?(?:(?:on|in|at|onto|into)\b\s+)?", re.I)
 
 
 def _verb(posture):
