@@ -857,7 +857,25 @@ class Character(
     def remove_unconscious_state(self):
         """
         Remove unconscious command restrictions by restoring the normal default cmdset.
+
+        Only narrates if the character was ACTUALLY unconscious (#2542).
+        This is called unconditionally by `@heal`, under a comment
+        calling it "an expected no-op" — it is not a no-op, it broadcasts
+        *"X regains consciousness."* to the whole room. `@heal here` in a
+        room of eight awake people emitted eight of them.
+
+        The signal is whether the unconscious cmdset was the default,
+        which is the same thing `apply_unconscious_state` installs. The
+        cmdset removal and the `override_place` clear stay
+        unconditional: those genuinely are idempotent.
         """
+        was_unconscious = False
+        try:
+            was_unconscious = self.cmdset.has("unconscious_cmdset",
+                                              must_be_default=True)
+        except Exception:  # noqa: BLE001 — a missing handler is "not unconscious"
+            was_unconscious = False
+
         try:
             # Remove current default cmdset (should be unconscious cmdset)
             self.cmdset.remove_default()
@@ -875,8 +893,9 @@ class Character(
             self.override_place == "unconscious and motionless."):
             self.override_place = None
         
-        # Notify recovery - but only if character is not dead
-        if not self.is_dead():
+        # Notify recovery — only if they were actually under (#2542),
+        # and never if they are dead.
+        if was_unconscious and not self.is_dead():
             if self.location:
                 msg_room_identity(
                     location=self.location,
