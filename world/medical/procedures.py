@@ -305,6 +305,15 @@ def is_procedure_active(target) -> bool:
     return time.time() < started + duration
 
 
+class SurgicalKitRequired(RuntimeError):
+    """Raised by :func:`start_procedure` when the actor has no
+    instruments. The spec is unqualified — HEALTH_AND_SUBSTANCE_SYSTEM_SPEC
+    §"Procedure Verb Set": *"Four verbs, all gated on a surgical kit in
+    inventory"* — and the kit was deliberately repurposed into a tool
+    prerequisite, so this is the constraint rather than a side effect.
+    """
+
+
 #: In-memory map of ``target.dbref`` → ``on_complete`` callable.
 #: Populated by :func:`start_procedure` when an ``on_complete`` hook
 #: is provided; consumed by :func:`_resolve_procedure_callback` after
@@ -338,7 +347,28 @@ def start_procedure(
     (``world.medical.charts.commence_chart``) to chain successive
     steps back-to-back.  Stored in-memory only; interruption clears
     it (chain dies on combat / disconnect / death).
+
+    Raises:
+        SurgicalKitRequired: the actor has no instruments suiting the
+            target. Enforced here, at the single funnel, rather than at
+            each caller — the seven standalone verbs in ``CmdSurgical``
+            check first and never reach this, but the ``operate`` chart
+            door reached the resolvers with no instrument check at any
+            stage, so a character carrying NOTHING could chart
+            ``incise chest`` → ``harvest heart`` → Commence and extract
+            an organ bare-handed (#2545).
+
+            `commence_chart` already handles this exception — its
+            except block reads *"Dispatch failure (e.g. surgeon dropped
+            their kit between chart authoring and commence)"*, marks the
+            step FAILED and advances. The handler was written for a
+            check that did not exist.
     """
+    from world.medical.utils import find_surgical_kit, instruments_wanted
+    if find_surgical_kit(actor, target) is None:
+        raise SurgicalKitRequired(
+            f"needs {instruments_wanted(target)} to {verb}")
+
     duration = PROCEDURE_DURATIONS.get(verb, 6)
     record = {
         "verb": verb,

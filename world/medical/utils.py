@@ -1318,3 +1318,34 @@ def get_medical_status_description(medical_state):
     
     # Good health with minor issues
     return ("HEALTHY", "|g")
+
+def find_surgical_kit(caller, target=None):
+    """Return instruments in ``caller``'s inventory that suit *target*.
+
+    Instruments are species-specific for the same reason supplies are:
+    a chassis takes a tool roll, a person takes a surgical kit. Passing
+    no target keeps the old species-blind behaviour, so any caller not
+    yet updated is unchanged rather than broken (#2278).
+
+    Lives here rather than in ``commands/CmdSurgical.py`` because
+    ``world.medical.procedures`` needs it too (#2545) and `world`
+    importing `commands` would be a layering inversion.
+    """
+    for obj in caller.contents:
+        attrs = getattr(obj, "attributes", None)
+        if attrs is None:
+            continue
+        if attrs.get("medical_type") != "surgical_treatment":
+            continue
+        if target is not None and not serves_species(obj, target)[0]:
+            continue
+        return obj
+    return None
+
+
+def instruments_wanted(target):
+    """What to tell somebody holding the wrong bag. Naming the article
+    matters: "you need a surgical kit" while they ARE holding a
+    surgical kit is the least useful refusal we could write."""
+    species = getattr(getattr(target, "db", None), "species", None)
+    return "a tool roll" if species == "robot" else "a surgical kit"

@@ -40,6 +40,14 @@ class _OperationCase(EvenniaTest):
         self.patient = self.char2
         for c in (self.surgeon, self.patient):
             c.location = self.room1
+        # `start_procedure` requires instruments (#2545). These tests are
+        # about INTERRUPTION, so the surgeon is equipped and the premise
+        # -- an operation is underway -- actually holds.
+        from evennia import create_object
+        kit = create_object("typeclasses.items.Item",
+                            key="a surgical kit", location=self.surgeon)
+        kit.attributes.add("medical_type", "surgical_treatment")
+        self.kit = kit
 
     def begin(self, verb="incise"):
         return procedures.start_procedure(
