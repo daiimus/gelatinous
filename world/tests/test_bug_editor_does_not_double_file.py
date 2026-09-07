@@ -113,9 +113,11 @@ class TestTheHelpTellsTheTruth(EvenniaTest):
     def test_it_names_the_real_cancel(self):
         self.assertIn("|w:q!|n - Cancel without submitting", self._source())
 
-    def test_it_warns_that_bare_q_asks(self):
+    def test_it_no_longer_advertises_bare_q_at_all(self):
+        """Corrected, not annotated: the line names the key that
+        cancels and says nothing about the one that doesn't."""
         body = self._source()
-        self.assertIn("asks whether to submit first", body)
+        self.assertNotIn('caller.msg("  |w:q|n', body)
 
 
 class TestTheCallbackAcknowledgesTheSave(EvenniaTest):
