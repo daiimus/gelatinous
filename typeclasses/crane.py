@@ -18,6 +18,7 @@ import re
 from time import monotonic
 
 from typeclasses.items import AnsweringFixture
+from world.grammar import ordinal
 
 
 class CraneConsole(AnsweringFixture):
@@ -116,7 +117,7 @@ class CraneConsole(AnsweringFixture):
                 # tired caller can mean differently (#2217).
                 floor = max(self.MIN_FLOOR, min(self.MAX_FLOOR, int(floor)))
                 self.ndb.pending = (floor, monotonic())
-                self._answer(f"That puts her at the {floor}th. Confirm?",
+                self._answer(f"That puts her at the {ordinal(floor)}. Confirm?",
                              speaker=operator)
                 return
             self.ndb.pending = None
@@ -295,13 +296,13 @@ class CraneConsole(AnsweringFixture):
 
         if target_z == old_z:
             if self._cooled_down():
-                self._answer(f"Copy. She's already sitting at the {floor}th.",
+                self._answer(f"Copy. She's already sitting at the {ordinal(floor)}.",
                              speaker=operator)
             return
 
         rising = target_z > old_z
         # a beat of chatter, then the car actually moves
-        self._answer(f"Copy, the {floor}th. Bringing her "
+        self._answer(f"Copy, the {ordinal(floor)}. Bringing her "
                      f"{'up' if rising else 'down'} — mind the swing.",
                      speaker=operator)
         delay(2.0, self._drive, car, target_z, floor, operator)
@@ -312,8 +313,8 @@ class CraneConsole(AnsweringFixture):
         # the copy and the landing does not narrate the landing
         who = self._operator() or None
         if floor == self.QOC_FLOOR:
-            self._answer(f"The {floor}th — level with the Queen's roof. "
+            self._answer(f"The {ordinal(floor)} — level with the Queen's roof. "
                          f"Step lively.", speaker=who)
         else:
-            self._answer(f"Held at the {floor}th. Watch your footing.",
+            self._answer(f"Held at the {ordinal(floor)}. Watch your footing.",
                          speaker=who)
