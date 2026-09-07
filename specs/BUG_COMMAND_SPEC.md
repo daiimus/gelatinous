@@ -236,7 +236,7 @@ Now provide detailed information:
 
 Editor Commands:
   :w or :wq - Save and submit bug report
-  :q or :q! - Cancel without submitting
+  :q! - Cancel without submitting
   :h - Show editor help
 
 Opening editor...
@@ -364,7 +364,7 @@ Bug report cancelled.
 Opening editor...
 
 > This is my bug description
-> :q
+> :q!
 
 Bug report cancelled.
 ```
@@ -398,11 +398,30 @@ The command uses Evennia's EvMenu system for the interactive workflow:
 - EvEditor opens with 0.1s delay after menu closes to avoid input capture
 
 ### EvEditor Integration
-Multi-line editor for bug descriptions:
+Multi-line editor for bug descriptions. **The editor is stock Evennia
+and its commands are Evennia's** — this command supplies callbacks, not
+key bindings, and does not subclass or override `EvEditor` (#2525).
+
 - `loadfunc`: Returns empty string (blank buffer)
-- `savefunc`: Creates GitHub issue if description valid (min 10 chars)
+- `savefunc`: Creates GitHub issue if description valid (min 10 chars).
+  **Returns a truthy value on submit**, which is the only thing that
+  clears the editor's `_unsaved` flag — without it a second `:w` files
+  the report again (#2524)
 - `quitfunc`: Shows cancellation message only if save wasn't called
 - Uses flag `caller.ndb._bug_editor_saved` to track save state
+
+**Editor keys, as Evennia defines them:**
+
+| key | effect |
+|---|---|
+| `:w` / `:wq` | save — submits the report |
+| `:q!` | quit without saving — cancels |
+| `:q` | quit; with an unsaved buffer this **prompts** *"Save before quitting?"*, and `SaveYesNoCmdSet` treats everything except a literal `no`/`n` as yes — a bare Enter included |
+
+An earlier version of this spec described `:q` and `:q!` as synonyms
+that both cancel. They are not, and the code never did that; the spec
+was wrong, not the implementation. Making `:q` cancel outright would
+mean overriding a core Evennia class, which this project does not do.
 
 ### Dependencies
 - `evennia.commands.default.muxcommand.MuxCommand` - For switch support
@@ -524,7 +543,7 @@ if not hasattr(settings, 'GITHUB_TOKEN') or not settings.GITHUB_TOKEN:
 - [x] Category selection menu displays all options
 - [x] EvEditor opens and accepts multi-line input
 - [x] EvEditor :wq saves and submits report
-- [x] EvEditor :q cancels without submitting
+- [x] EvEditor :q! cancels without submitting
 - [x] Rate limiting enforces 30/day limit
 - [x] Rate limit resets at midnight UTC
 - [x] GitHub link is returned and functional
@@ -561,8 +580,11 @@ if not hasattr(settings, 'GITHUB_TOKEN') or not settings.GITHUB_TOKEN:
 
 # Test 4: Cancel in editor
 @bug
-# Complete workflow but type :q instead of :wq
+# Complete workflow but type :q! instead of :wq
 # Expected: "Bug report cancelled" message only
+#
+# NOTE: :q is NOT a synonym for :q!. With an unsaved buffer it prompts
+# "Save before quitting?" and submits on anything but a literal no/n.
 
 # Test 5: Rate limiting
 # Create 30 reports rapidly
