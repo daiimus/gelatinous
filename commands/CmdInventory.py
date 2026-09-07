@@ -788,9 +788,16 @@ class CmdGive(Command):
                 caller.msg(f"Your hands are full. You need a free hand to give {item.get_display_name(caller)}.")
                 return
             
-            # Wield the item first (wield_item returns a status message)
+            # Wield the item first, then ask the HANDS whether it
+            # worked (#2516). `wield_item` returns a player-facing
+            # sentence, and two of its refusals contain the word
+            # "wield" -- "You can't wield something you're wearing" and
+            # "You're already wielding X in your left hand" -- so the
+            # old substring test reported success on exactly the cases
+            # it existed to catch. `give jacket to bob` while WEARING
+            # the jacket got through, transferring from an empty slot.
             wield_result = caller.wield_item(item, caller_free_hand)
-            if "wield" not in wield_result.lower():
+            if not caller.is_wielding(item, caller_free_hand):
                 caller.msg(f"Failed to prepare {item.get_display_name(caller)} for giving: {wield_result}")
                 return
             
@@ -1057,7 +1064,9 @@ class CmdWrest(Command):
         caller_wield_result = caller.wield_item(target_object, caller_hand)
         
         # Verify the transfer worked
-        if "wield" not in caller_wield_result.lower():
+        # Ground truth, not a substring of the reply (#2516) -- two of
+        # `wield_item`'s refusals contain the word "wield".
+        if not caller.is_wielding(target_object, caller_hand):
             # Something went wrong: give it back to the hand it came out
             # of, through the same door that took it.
             target_object.move_to(target, quiet=True)
