@@ -84,7 +84,24 @@ class CraneConsole(AnsweringFixture):
 
     def _handle(self, speech, speaker, kwargs):
         low = speech.lower()
-        if not self._mentions(low, self._ADDRESS):
+
+        # A read-back is answered, not re-addressed (owner ruling,
+        # 2026-09-06: "a bare confirm should work -- it's literally the
+        # frequency for the crane"). The address gate below used to run
+        # first, and no word in `_CONFIRM` is in `_ADDRESS`, so a caller
+        # answering "confirmed" got silence and the read-back expired
+        # unanswered 45 seconds later. The one prompt that exists for
+        # safety was the one that ignored "yes" (#2472).
+        #
+        # Being on band 27.0 IS the addressing. The window is 45 seconds
+        # and only opens after this crane asked a question, so the cost
+        # is that somebody else's stray "yeah" on-band inside it will
+        # confirm -- accepted deliberately over a prompt nobody can
+        # answer the way people actually answer a radio.
+        pending = self._pending_floor()
+        confirming = pending is not None and self._is_confirmation(low)
+
+        if not confirming and not self._mentions(low, self._ADDRESS):
             return                       # band chatter, not an order
 
         operator = self._operator()
@@ -100,10 +117,9 @@ class CraneConsole(AnsweringFixture):
             return
 
         # A confirmation answers the read-back, not the parser: "yes"
-        # carries no floor of its own, so it has to be resolved against
-        # what was last offered.
-        pending = self._pending_floor()
-        if pending is not None and self._is_confirmation(low):
+        # carries no floor of its own, so it is resolved against what was
+        # last offered. Decided above, before the address gate.
+        if confirming:
             self.ndb.pending = None
             self._run_crane(pending, car, operator)
             return
