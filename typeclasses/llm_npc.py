@@ -1015,6 +1015,26 @@ class LLMNpcMixin:
         # would address the walls (the Rook's sealed studio taught us this).
         # When the model ALSO called the radio tool, that call carries the
         # transmission and speech stays room-side flavour.
+        # NOTE (#2585): `aired` collapses two facts — "the model chose
+        # not to transmit" and "the transmission was ATTEMPTED AND
+        # FAILED" — and both take the false branch, so a failed
+        # transmit drops the words into `say`/`emote`.
+        #
+        # Deliberately NOT changed here, because the two intents in the
+        # tree disagree and it is a design call:
+        #
+        #   * the comment above says "never room-say, which would
+        #     address the walls (the Rook's sealed studio taught us
+        #     this)"
+        #   * `test_llm_npc.TestRadioRepliesAir` asserts the fallback and
+        #     explains it: "harmless in a sealed room, correct for a
+        #     device-snatched unit standing in a crowd"
+        #
+        # The half of #2585 that is unambiguous — a guard NARROWER than
+        # the command it guards, which turned six organ-only security
+        # units away before `xmit` could route them — is fixed in
+        # `_transmit_words`. Those six now transmit, so the leak that
+        # actually fired in the live game is closed either way.
         aired = False
         if (mode in ("radio", "radio_ambient", "broadcast")
                 and turn["speech"] and tool != "radio"):
@@ -1223,8 +1243,15 @@ class LLMNpcMixin:
         words = filter_for_duty(self, words)
         if not words:
             return False
-        from world.radio import active_transmit_radio
-        if active_transmit_radio(self) is None:
+        # The gate must match what `xmit` ITSELF accepts (#2585).
+        # `active_transmit_radio` sees worn / held / seated devices only,
+        # but `xmit` falls back to a BUILT-IN COMMS ORGAN — which is how
+        # a security unit keys up. Six live units are organ-only, so
+        # every one of them was turned away here and had its dispatch
+        # traffic room-said instead.
+        from world.radio import active_transmit_radio, comms_organ_frequency
+        if (active_transmit_radio(self) is None
+                and not comms_organ_frequency(self)):
             return False          # no device: stay mute, don't say-leak
         self.execute_cmd(f"xmit {words}")
         return True
