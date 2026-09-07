@@ -63,6 +63,22 @@ class CmdSpawnMob(Command):
     key = "@spawnmob"
     locks = "cmd:perm(Builders) or perm(Developers)"
 
+    #: The switches this command understands. Declared so an unknown one
+    #: is REFUSED rather than swallowed (#2569): the old parser was five
+    #: `if`s with no `else` and no validation, so `/rt Fido` silently
+    #: spawned a HUMAN and reported success, and a bare `@spawnmob/`
+    #: created a live Character whose key was "/".
+    VALID_SWITCHES = ("blank", "rat", "robot", "synth", "secbot")
+
+    #: Which species each switch selects. A mapping rather than a chain
+    #: of `if`s, so adding one cannot forget the validation.
+    _SPECIES = {
+        "rat": "rat",
+        "robot": "robot",
+        "synth": "synthetic_humanoid",
+        "secbot": "robot",
+    }
+
     def func(self):
         caller = self.caller
 
@@ -73,20 +89,27 @@ class CmdSpawnMob(Command):
         species = "human"
         if raw_args.startswith('/'):
             parts = raw_args[1:].split(None, 1)
-            if parts:
-                switches = [s.lower() for s in parts[0].split('/') if s]
-                if "blank" in switches:
-                    blank = True
-                if "rat" in switches:
-                    species = "rat"
-                if "robot" in switches:
-                    species = "robot"
-                if "synth" in switches:
-                    species = "synthetic_humanoid"
-                if "secbot" in switches:
-                    secbot = True
-                    species = "robot"
-                raw_args = parts[1] if len(parts) > 1 else ""
+            switches = ([s.lower() for s in parts[0].split('/') if s]
+                        if parts else [])
+            if not switches:
+                caller.msg("Usage: @spawnmob[/switch] [<name>]. A bare "
+                           "'/' is not a switch.")
+                return
+            unknown = [sw for sw in switches
+                       if sw not in self.VALID_SWITCHES]
+            if unknown:
+                caller.msg(
+                    f"|rUnrecognised switch(es):|n /{', /'.join(unknown)}. "
+                    f"Nothing was spawned. Valid: "
+                    f"/{', /'.join(self.VALID_SWITCHES)}."
+                )
+                return
+            blank = "blank" in switches
+            secbot = "secbot" in switches
+            for switch in switches:
+                if switch in self._SPECIES:
+                    species = self._SPECIES[switch]
+            raw_args = parts[1] if len(parts) > 1 else ""
 
         # Assign sex with chance of ambiguity
         sex = choice(["male", "female"])
