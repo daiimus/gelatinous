@@ -2103,6 +2103,25 @@ class Character(
     #     "right_hand": [glove_obj]
     # }
 
+    def is_wielding(self, item, hand=None):
+        """Is ``item`` actually in this character's hand right now?
+
+        The ground truth, for callers that need to know whether a
+        `wield_item` call SUCCEEDED. Its return value is a player-facing
+        sentence, and two of its refusals contain the word "wield" —
+        *"You can't wield something you're wearing"* and *"You're
+        already wielding X in your left hand"* — so sniffing the message
+        for that substring reports success on exactly the cases it
+        exists to catch (#2516).
+
+        ``hand`` may be a canonical key or a shorthand; omit it to ask
+        about any hand.
+        """
+        current = self.hands or {}
+        if hand is None:
+            return any(held is item for held in current.values())
+        return current.get(_canonical_hand(hand)) is item
+
     def wield_item(self, item, hand="right"):
         """Wield ``item`` in ``hand``.
 
