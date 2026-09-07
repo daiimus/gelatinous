@@ -182,3 +182,95 @@ class TestItReusesTheExistingDiscriminator(EvenniaTest):
         end = body.index("def _deployed_module_longdesc", start)
         self.assertNotIn('getattr(organ, "container", None),',
                          body[start:end])
+
+
+class TestEveryInorganicPrototypeClassifiesRight(EvenniaTest):
+    """The whole catalogue, pinned — because the visible/hidden split is
+    decided by whether a prototype bothers to set `display_location`,
+    and a new implant that forgets it becomes silently invisible.
+
+    Owner question, 2026-09-07: *"we have two kinds of cyber jaw — one
+    should definitely be visible, right?"* Both are, and both show on
+    the **face**: `CYBER_JAW` (the chassis) and `JAWZ` (the fang module
+    that seats into it). What #2587 removed was those also chroming the
+    whole HEAD.
+
+    Measured across all 13 inorganic organ prototypes:
+
+    ```
+    VISIBLE  cybernetic jaw          head    -> face
+    VISIBLE  Jawz                    head    -> face
+    VISIBLE  cybernetic left/right eye, left/right ear
+    VISIBLE  voice modulator         head    -> face
+    VISIBLE  shotgun / integrated shotgun / targeting processor
+    HIDDEN   cybernetic heart        chest   -> chest
+    HIDDEN   cybernetic left/right kidney  abdomen -> abdomen
+    ```
+    """
+
+    def _specs(self):
+        import world.prototypes as protos
+        out = {}
+        for value in vars(protos).values():
+            if not isinstance(value, dict):
+                continue
+            for attr in (value.get("attrs") or []):
+                if (isinstance(attr, (list, tuple)) and len(attr) >= 2
+                        and attr[0] == "organ_spec"
+                        and isinstance(attr[1], dict)
+                        and attr[1].get("inorganic")):
+                    out[str(value.get("key"))] = attr[1]
+        return out
+
+    @staticmethod
+    def _hidden(spec):
+        from world.medical.diagnose import _INTERNAL_CONTAINERS
+        container = spec.get("container")
+        display = spec.get("display_location") or container
+        return container in _INTERNAL_CONTAINERS and display == container
+
+    def test_the_catalogue_is_the_expected_size(self):
+        self.assertEqual(len(self._specs()), 13)
+
+    def test_both_cyber_jaws_are_visible(self):
+        specs = self._specs()
+        for key in ("cybernetic jaw", "Jawz"):
+            self.assertIn(key, specs)
+            self.assertFalse(self._hidden(specs[key]), f"{key} reads hidden")
+
+    def test_both_cyber_jaws_show_on_the_face(self):
+        specs = self._specs()
+        for key in ("cybernetic jaw", "Jawz"):
+            self.assertEqual(specs[key].get("display_location"), "face")
+
+    def test_eyes_ears_and_voice_are_visible(self):
+        specs = self._specs()
+        for key in ("cybernetic left eye", "cybernetic right eye",
+                    "cybernetic left ear", "cybernetic right ear",
+                    "voice modulator"):
+            self.assertIn(key, specs)
+            self.assertFalse(self._hidden(specs[key]), f"{key} reads hidden")
+
+    def test_the_viscera_are_hidden(self):
+        specs = self._specs()
+        for key in ("cybernetic heart", "cybernetic left kidney",
+                    "cybernetic right kidney"):
+            self.assertIn(key, specs)
+            self.assertTrue(self._hidden(specs[key]), f"{key} reads visible")
+
+    def test_nothing_in_a_cavity_forgot_its_display_location(self):
+        """The failure mode for a NEW implant: a visible one seated in
+        head / chest / abdomen / back / neck that omits
+        `display_location` inherits the container and vanishes."""
+        from world.medical.diagnose import _INTERNAL_CONTAINERS
+        suspects = []
+        for key, spec in self._specs().items():
+            if (spec.get("container") in _INTERNAL_CONTAINERS
+                    and not spec.get("display_location")):
+                suspects.append(key)
+        self.assertEqual(
+            sorted(suspects),
+            ["cybernetic heart", "cybernetic left kidney",
+             "cybernetic right kidney"],
+            "a new implant in a cavity has no display_location — it will "
+            "render as invisible; give it one if it should show")
