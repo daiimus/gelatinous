@@ -124,40 +124,96 @@ class _AbilityCase(EvenniaTest):
 
 
 class TestLosingTheOrganSwitchesTheEffectOff(_AbilityCase):
-    def test_blindsight_flag_is_cleared_on_harvest(self):
-        from world.combat.capacity import BLINDSIGHT_FLAG
+    """Blindsight and the modulator are read off the ORGAN (#2484), so
+    every way of losing it ends the effect — including the one that
+    calls no teardown hook at all."""
+
+    def blindsight(self):
+        from world.combat.capacity import _blindsight_active
+        return _blindsight_active(self.char1)
+
+    def modulated(self):
+        from world.voice import is_voice_modulated
+        return is_voice_modulated(self.char1)
+
+    def test_blindsight_ends_on_harvest(self):
         from world.medical.augments import (park_organ_hardware,
                                             toggle_ability)
         organ = self.seat("eyez", "blindsight")
         toggle_ability(self.char1, "eyez")
-        self.assertTrue(getattr(self.char1.db, BLINDSIGHT_FLAG))
+        self.assertTrue(self.blindsight())
         park_organ_hardware(self.char1, organ)
-        self.assertFalse(getattr(self.char1.db, BLINDSIGHT_FLAG))
+        self.assertFalse(self.blindsight())
 
-    def test_voice_modulator_flag_is_cleared_on_harvest(self):
+    def test_the_modulator_ends_on_harvest(self):
         from world.medical.augments import (park_organ_hardware,
                                             toggle_ability)
         organ = self.seat("modulate", "voice_modulator")
         toggle_ability(self.char1, "modulate")
-        self.assertTrue(self.char1.db.voice_modulator_active)
+        self.assertTrue(self.modulated())
         park_organ_hardware(self.char1, organ)
-        self.assertFalse(self.char1.db.voice_modulator_active)
+        self.assertFalse(self.modulated())
 
-    def test_severance_clears_it_too(self):
-        from world.combat.capacity import BLINDSIGHT_FLAG
+    def test_severance_ends_it_too(self):
         from world.medical.augments import (carry_hardware_to_appendage,
                                             toggle_ability)
         from evennia import create_object
-        organ = self.seat("eyez", "blindsight")
+        self.seat("eyez", "blindsight")
         toggle_ability(self.char1, "eyez")
+        self.assertTrue(self.blindsight())
         limb = create_object("typeclasses.items.Appendage", key="a head",
                              location=self.room1)
         carry_hardware_to_appendage(self.char1, ["head"], limb)
-        self.assertFalse(getattr(self.char1.db, BLINDSIGHT_FLAG))
+        self.assertFalse(self.blindsight())
 
-    def test_an_ability_with_no_character_flag_is_left_alone(self):
-        """Natural weapons keep their state on the organ only — the
-        helper must not invent a flag for them."""
+    def test_a_module_destroyed_in_place_ends_it(self):
+        """The third route, and the one that ran NO cleanup code: the
+        module is shot to 0 HP while the limb stays attached. Nothing is
+        harvested, nothing is severed, so neither parking hook fires —
+        and `iter_abilities` then skips the dead organ, so the toggle
+        that could have cleared a flag answers "you have no cyberware to
+        command". A cached flag was welded on for good."""
+        organ = self.seat("eyez", "blindsight")
+        from world.medical.augments import toggle_ability
+        toggle_ability(self.char1, "eyez")
+        self.assertTrue(self.blindsight())
+        organ.current_hp = 0
+        self.char1.medical_state = self.char1.medical_state
+        self.assertFalse(self.blindsight())
+
+    def test_a_modulator_destroyed_in_place_ends_it(self):
+        organ = self.seat("modulate", "voice_modulator")
+        from world.medical.augments import toggle_ability
+        toggle_ability(self.char1, "modulate")
+        self.assertTrue(self.modulated())
+        organ.current_hp = 0
+        self.char1.medical_state = self.char1.medical_state
+        self.assertFalse(self.modulated())
+
+    def test_the_toggle_really_does_refuse_a_dead_organ(self):
+        """Pinning the reason route 3 was unrecoverable, so the fix is
+        not mistaken for redundant with the toggle."""
+        organ = self.seat("eyez", "blindsight")
+        from world.medical.augments import toggle_ability
+        toggle_ability(self.char1, "eyez")
+        organ.current_hp = 0
+        self.char1.medical_state = self.char1.medical_state
+        self.assertIn("no cyberware", toggle_ability(self.char1, "eyez"))
+
+    def test_a_second_host_keeps_the_effect_running(self):
+        """One ability can seat into two organs (#2483); losing one must
+        not switch off the other."""
+        self.seat("eyez", "blindsight", container="head")
+        organ_b = self.seat("eyez", "blindsight", container="chest")
+        from world.medical.augments import (park_organ_hardware,
+                                            toggle_ability)
+        toggle_ability(self.char1, "eyez")
+        park_organ_hardware(self.char1, organ_b)
+        self.assertTrue(self.blindsight())
+
+    def test_an_ability_with_no_character_effect_is_left_alone(self):
+        """Natural weapons keep their state on the organ only — parking
+        one must not raise."""
         from world.medical.augments import park_organ_hardware
         organ = self.seat("nailz", "natural_weapon", container="right_hand")
         park_organ_hardware(self.char1, organ)   # must not raise

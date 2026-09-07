@@ -2693,9 +2693,10 @@ CYBER_LEG = {
 # --- Voice modulator → voice disguise (the audio parallel to a mask) ---
 # A jaw-hardpoint module (JAWZ pattern): seats into a CYBER_JAW's slot,
 # rebuilds the jaw so talking/eating survive, and adds a toggleable
-# `modulate` ability.  Engaging it sets `voice_modulator_active`, which
-# shifts the voice signature to a different UID so listeners no longer
-# recognise the voice (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4.2).
+# `modulate` ability.  While engaged, `world.voice.is_voice_modulated`
+# reads the deployed state off this module and shifts the voice signature
+# to a different UID, so listeners no longer recognise the voice
+# (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4.2).
 # Needs a cyber jaw to mount into; installation requires a surgeon.
 VOICE_MODULATOR = {
     "key": "voice modulator",

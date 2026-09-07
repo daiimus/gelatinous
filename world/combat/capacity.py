@@ -103,12 +103,25 @@ def _has_override(character, condition_type: str) -> bool:
 # which is the *full-vision* seam. Set as a db flag by the targeting-processor
 # augment ability. (CAPACITY_CONSUMERS spec — enhancer seam; user-decided
 # combat-only 2026-06-20, "maybe enhance toward full perception later".)
-BLINDSIGHT_FLAG = "blindsight_active"
+#: The ability *type* a targeting-processor organ spec declares.
+BLINDSIGHT_ABILITY = "blindsight"
 
 
 def _blindsight_active(character) -> bool:
-    db = getattr(character, "db", None)
-    return bool(getattr(db, BLINDSIGHT_FLAG, False)) if db is not None else False
+    """Derived from the organ, not cached on the character (#2484).
+
+    This used to read ``character.db.blindsight_active``, a second copy
+    of a fact the organ already held. Every path that took the organ
+    away had to remember to clear it, and the one that destroys the
+    module in place -- combat damage to a max_hp 10 forearm module,
+    with the arm still attached -- runs no teardown code at all. The
+    flag stayed set, ``iter_abilities`` started skipping the dead organ,
+    and the toggle that could have cleared it answered "you have no
+    cyberware to command". Permanent, unremovable free accuracy on a
+    body with no working hardware.
+    """
+    from world.medical.augments import has_deployed_ability
+    return has_deployed_ability(character, BLINDSIGHT_ABILITY)
 
 
 def sight_hit_factor(character, is_ranged: bool) -> float:

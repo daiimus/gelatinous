@@ -356,17 +356,17 @@ def _toggle_natural_weapon(character, organ, name, spec, hosts=()) -> str:
 def _toggle_voice_modulator(character, organ, name, spec, hosts=()) -> str:
     """Toggle a voice modulator (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4.2).
 
-    The voice-disguise parallel to a worn mask: while engaged it sets
-    ``character.db.voice_modulator_active``, which shifts the voice signature
-    to a different UID (``world.voice.get_voice_signature``) so listeners no
-    longer recognise the voice (and the discernment determination re-rolls
+    The voice-disguise parallel to a worn mask: while engaged,
+    ``world.voice.is_voice_modulated`` reads the deployed state off this
+    organ and shifts the voice signature to a different UID
+    (``world.voice.get_voice_signature``), so listeners no longer
+    recognise the voice (and the discernment determination re-rolls
     against the new presentation). Covert by design — engaging it draws no room
     message; only the change in voice when the wearer next speaks is observable.
     """
     state = _ability_state(organ, name)
     if not state.get("deployed"):
         state["deployed"] = True
-        character.db.voice_modulator_active = True
         _mirror_ability_state(hosts, name, state)
         _persist(character)
         return spec.get("deploy_msg") or (
@@ -375,7 +375,6 @@ def _toggle_voice_modulator(character, organ, name, spec, hosts=()) -> str:
         )
 
     state["deployed"] = False
-    character.db.voice_modulator_active = False
     _mirror_ability_state(hosts, name, state)
     _persist(character)
     return spec.get("retract_msg") or (
@@ -386,18 +385,15 @@ def _toggle_voice_modulator(character, organ, name, spec, hosts=()) -> str:
 def _toggle_blindsight(character, organ, name, spec, hosts=()) -> str:
     """Toggle a combat targeting / sonar suite — "blindsight".
 
-    Sets ``character.db.blindsight_active``, which `world.combat.capacity`
-    honours to restore combat aim even when the eyes are gone. Combat-only:
-    it does NOT restore perception (rooms / faces stay dark) — that's the
-    separate full-vision seam. (CAPACITY_CONSUMERS spec; user-decided
-    combat-only 2026-06-20.)
+    `world.combat.capacity` reads the deployed state off this organ and
+    restores combat aim even when the eyes are gone. Combat-only: it does
+    NOT restore perception (rooms / faces stay dark) — that's the separate
+    full-vision seam. (CAPACITY_CONSUMERS spec; user-decided combat-only
+    2026-06-20.)
     """
-    from world.combat.capacity import BLINDSIGHT_FLAG
-
     state = _ability_state(organ, name)
     if not state.get("deployed"):
         state["deployed"] = True
-        setattr(character.db, BLINDSIGHT_FLAG, True)
         _mirror_ability_state(hosts, name, state)
         _persist(character)
         return spec.get("deploy_msg") or (
@@ -406,7 +402,6 @@ def _toggle_blindsight(character, organ, name, spec, hosts=()) -> str:
         )
 
     state["deployed"] = False
-    setattr(character.db, BLINDSIGHT_FLAG, False)
     _mirror_ability_state(hosts, name, state)
     _persist(character)
     return spec.get("retract_msg") or (
@@ -430,6 +425,38 @@ def get_active_natural_weapon(character):
         if weapon is not None:
             return weapon
     return None
+
+
+def has_deployed_ability(character, ability_type) -> bool:
+    """Is an ability of this TYPE deployed on a living organ?
+
+    The general form of :func:`get_active_natural_weapon`, and the
+    single source of truth for the two abilities whose effect is a
+    character-wide state rather than an item: blindsight
+    (``world.combat.capacity``) and the voice modulator
+    (``world.voice``).
+
+    Both used to record the fact TWICE — once here on the organ, once
+    as a flag on the character, because that is where the consumers
+    read it. Every teardown path then had to remember to clear the
+    second copy, and one of them could not: a forearm module shot to
+    0 HP while the arm stays attached calls no teardown hook at all.
+    Nothing ran, and :func:`iter_abilities` then skipped the dead organ
+    — so the toggle answered "you have no cyberware to command" and the
+    flag could never be switched off again. Permanent free accuracy
+    with no eyes and no hardware, or a permanent stranger's voice
+    (#2484, after #2580 closed the harvest and severance routes).
+
+    Derived, there is no second copy to strand: a dead organ stops
+    matching and the effect ends on its own, whichever way it died.
+    """
+    for organ, name, spec in iter_abilities(character):
+        if spec.get("type") != ability_type:
+            continue
+        store = getattr(organ, "ability_state", None) or {}
+        if (store.get(name) or {}).get("deployed"):
+            return True
+    return False
 
 
 def _find_weapon(state):
@@ -480,50 +507,6 @@ def _persist(character):
 # ---------------------------------------------------------------------
 
 
-def _character_flag_for(ability_type):
-    """The CHARACTER-level flag an ability type writes, if any.
-
-    Two of the four toggleable abilities record the same fact twice —
-    once on the organ (``ability_state["deployed"]``) and once on the
-    character, because that is where the consumers read it
-    (``world.voice.get_voice_signature``,
-    ``world.combat.capacity``). The normal toggle-off clears both; the
-    organ-LOSS hooks cleared only the organ half (#2580), so losing the
-    limb while the ability was engaged left the effect on permanently —
-    full accuracy with no eyes and no hardware — and the toggle refused
-    to switch it off, because the organ it looks for was gone.
-    """
-    from world.combat.capacity import BLINDSIGHT_FLAG
-    return {
-        "voice_modulator": "voice_modulator_active",
-        "blindsight": BLINDSIGHT_FLAG,
-    }.get(ability_type)
-
-
-def _clear_character_effect(character, organ, name):
-    """Drop the character-level flag for ``name``, if losing this organ
-    means nothing is driving it any more.
-
-    Checked across the REMAINING living hosts rather than cleared
-    outright: an ability can be seated in more than one organ (#2483),
-    and losing one of a pair must not switch off the other.
-    """
-    data = getattr(organ, "data", None) or {}
-    spec = (data.get("abilities") or {}).get(name) or {}
-    flag = _character_flag_for(spec.get("type"))
-    if not flag:
-        return
-    for other, other_name, _spec in iter_abilities(character):
-        if other is organ or other_name.lower() != str(name).lower():
-            continue
-        if (_ability_state(other, other_name) or {}).get("deployed"):
-            return          # another host still has it running
-    try:
-        setattr(character.db, flag, False)
-    except Exception:  # noqa: BLE001 — losing a limb never fails on this
-        pass
-
-
 def park_organ_hardware(character, organ) -> None:
     """Retract and park one organ's ability hardware (#526 M3).
 
@@ -548,7 +531,6 @@ def park_organ_hardware(character, organ) -> None:
             if weapon.location == character:
                 weapon.location = None
         ability_state["deployed"] = False
-        _clear_character_effect(character, organ, name)
     if held_changed:
         character.held_items = held
 
@@ -579,4 +561,3 @@ def carry_hardware_to_appendage(character, chain, appendage) -> None:
             if weapon is not None and weapon.location is not appendage:
                 weapon.location = appendage
             ability_state["deployed"] = False
-            _clear_character_effect(character, organ, name)
