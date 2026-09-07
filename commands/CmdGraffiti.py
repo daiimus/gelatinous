@@ -125,6 +125,11 @@ class CmdGraffiti(Command):
         completion; an interruption lands the letters finished so far with
         the ellipsis truncation (an interrupted tag is evidence). Paint
         deducts at resolution, pro-rata."""
+        # `.strip()` matters: the parser strips quotes but not the space
+        # inside them, so `spray "   " with can` used to store a
+        # three-space tag — truthy, so it passed this guard — and a wall
+        # holding one could never be cleaned again (#2444).
+        message = message.strip() if message else message
         if not message:
             self.caller.msg("You need to specify a message to spray.")
             return
