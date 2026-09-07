@@ -960,29 +960,33 @@ class Character(
             try:
                 splattercast = get_splattercast()
                 
-                # Find stopped medical script and restart it
-                medical_scripts = self.scripts.get("medical_script")
-                stopped_scripts = [s for s in medical_scripts if not s.is_active]
-                
-                if stopped_scripts:
-                    stopped_scripts[0].start()
-                    splattercast.msg(f"REVIVAL_RESTART: Restarted medical script for {self.key}")
-                    
+                # Two doors onto one decision, and only one of them
+                # guarded (#2461). This branch looked for a STOPPED
+                # medical script and created a fresh one when it found
+                # none — but `stop()` DELETES a script, so a stopped one
+                # can never be found and the create path was the only
+                # one ever taken. A medic who revives a patient whose
+                # treatment already restarted the ticker (treatments.py,
+                # procedures.py and medical/utils.py all call
+                # `start_medical_script`) left the body carrying TWO
+                # persistent MedicalScripts: doubled bleed/pain prose to
+                # the player and the room, a second blood pool every
+                # minute, and — because the healing clock is per-script
+                # ndb — wounds knitting at twice the designed rate.
+                #
+                # `start_medical_script` is the guarded door: it returns
+                # the running script instead of making a second one.
+                # CONDITION_CADENCE_SPEC §1.4 is "one MedicalScript per
+                # wounded character".
+                from world.medical.script import start_medical_script
+                script = start_medical_script(self)
+                if script is not None:
+                    splattercast.msg(f"REVIVAL_SCRIPT: Medical script live for {self.key}")
+
                     # Force immediate processing to overcome start_delay
                     from evennia.utils import delay
-                    delay(0.1, stopped_scripts[0].at_repeat)
-                    splattercast.msg(f"REVIVAL_IMMEDIATE: Forced immediate medical processing for {self.key}")
-                else:
-                    # Create new script if none exists
-                    from world.medical.script import MedicalScript
-                    from evennia import create_script
-                    script = create_script(MedicalScript, obj=self, autostart=True)
-                    splattercast.msg(f"REVIVAL_CREATE: Created new medical script for {self.key}")
-                    
-                    # Force immediate processing for new script too
-                    from evennia.utils import delay
                     delay(0.1, script.at_repeat)
-                    splattercast.msg(f"REVIVAL_IMMEDIATE_NEW: Forced immediate medical processing for new script for {self.key}")
+                    splattercast.msg(f"REVIVAL_IMMEDIATE: Forced immediate medical processing for {self.key}")
             except Exception as e:
                 splattercast.msg(f"REVIVAL_ERROR: Failed to restart medical script for {getattr(self, 'key', '?')}: {e}")
         

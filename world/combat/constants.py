@@ -339,6 +339,22 @@ NDB_AIMING_AT = "aiming_at"
 NDB_AIMED_AT_BY = "aimed_at_by"
 NDB_AIMING_DIRECTION = "aiming_direction"
 
+# The PERSISTED tells those volatile fields drive. Aim state lives in
+# ndb and dies with the process; `override_place` is a db attribute and
+# does not — so after a reload the tell is still showing while every
+# clear site is gated on the ndb that is gone, and `aim stop` answers
+# "you're not aiming at anything" (#2482). `sweep_stranded_aim_tells`
+# in `world.combat.utils` reconciles them at server start, and needs to
+# recognise a tell it did not write, so the strings are named here
+# rather than repeated as literals at seven call sites.
+AIM_TELL = "aiming carefully at {aim_target}."
+SHOWDOWN_TELL = "locked in a deadly showdown."
+
+
+def aim_direction_tell(direction):
+    """The tell for aiming down an exit rather than at a person."""
+    return f"aiming carefully to the {direction}."
+
 # Throw/grenade system fields
 NDB_FLYING_OBJECTS = "flying_objects"
 NDB_PROXIMITY_UNIVERSAL = "proximity"  # Universal proximity system for grenades

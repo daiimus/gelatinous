@@ -29,6 +29,7 @@ from world.combat.constants import (
     MSG_AIM_WHO_WHAT, MSG_AIM_SELF_TARGET, MSG_GRAPPLE_ESCAPE_VIOLENT_SWITCH,
     MSG_STOP_NOT_AIMING, NDB_PROXIMITY,
     NDB_COMBAT_HANDLER, NDB_AIMING_AT, NDB_AIMED_AT_BY, NDB_AIMING_DIRECTION,
+    AIM_TELL, SHOWDOWN_TELL, aim_direction_tell,
     DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET, DB_IS_YIELDING,
     COMBAT_ACTION_DISARM,
     COMBAT_ACTION_GRAPPLE_INITIATE, COMBAT_ACTION_GRAPPLE_JOIN,
@@ -539,7 +540,7 @@ class CmdAim(Command):
                 setattr(caller.ndb, NDB_AIMING_DIRECTION, direction)
                 
                 # Set override_place for directional aiming with proper grammar
-                caller.override_place = f"aiming carefully to the {direction}."
+                caller.override_place = aim_direction_tell(direction)
                 
                 # Debug: Verify the direction was set
                 splattercast.msg(f"AIM_DEBUG: Set aiming_direction to '{direction}' for {caller.key}")
@@ -692,7 +693,7 @@ class CmdAim(Command):
                 setattr(caller.ndb, NDB_AIMING_DIRECTION, direction)
                 
                 # Set override_place for directional aiming with proper grammar
-                caller.override_place = f"aiming carefully to the {direction}."
+                caller.override_place = aim_direction_tell(direction)
                 
                 # Debug: Verify the direction was set
                 splattercast.msg(f"AIM_DEBUG: Set aiming_direction to '{direction}' for {caller.key}")
@@ -792,11 +793,11 @@ class CmdAim(Command):
         
         if target_aiming_at == aimer:
             # Mutual showdown - both characters get the special override_place
-            aimer.override_place = "locked in a deadly showdown."
-            target.override_place = "locked in a deadly showdown."
+            aimer.override_place = SHOWDOWN_TELL
+            target.override_place = SHOWDOWN_TELL
         else:
             # Normal aiming
-            aimer.override_place = "aiming carefully at {aim_target}."
+            aimer.override_place = AIM_TELL
 
     def _clear_aim_override_place(self, aimer, target):
         """
@@ -807,15 +808,15 @@ class CmdAim(Command):
             target: The character they were aiming at
         """
         # Check if they were in a mutual showdown
-        if (aimer.override_place == "locked in a deadly showdown." and 
-            target.override_place == "locked in a deadly showdown."):
+        if (aimer.override_place == SHOWDOWN_TELL and 
+            target.override_place == SHOWDOWN_TELL):
             # They were in a showdown - clear aimer's place, check if target should revert to normal aiming
             aimer.override_place = ""
             
             # If target is still aiming at aimer, revert them to normal aiming
             target_still_aiming = getattr(target.ndb, NDB_AIMING_AT, None)
             if target_still_aiming == aimer:
-                target.override_place = "aiming carefully at {aim_target}."
+                target.override_place = AIM_TELL
             else:
                 # Target isn't aiming at anyone, clear their place too
                 target.override_place = ""
