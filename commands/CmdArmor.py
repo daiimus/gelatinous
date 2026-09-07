@@ -861,19 +861,13 @@ class CmdArmorRepair(Command):
         if try_repair_structure(caller, self.args.strip()):
             return
 
-        # Parse arguments
-        armor_name = args[0]
-        repair_type = "standard"  # standard, field, or full
-        tool_name = None
-
-        # Check for repair type modifiers
-        if len(args) > 1:
-            if args[1].lower() == "field":
-                repair_type = "field"
-            elif args[1].lower() == "full":
-                repair_type = "full"
-            elif args[1].lower() == "with" and len(args) > 2:
-                tool_name = " ".join(args[2:])
+        armor_name, repair_type, tool_name = self.parse_repair_args(args)
+        if not armor_name:
+            caller.msg(
+                "Repair what? Usage: repair <armor> [with <tool>]"
+                " or repair <armor> [field/full]"
+            )
+            return
 
         # Find the armor item
         armor_item = self._find_repairable_armor(caller, armor_name)
@@ -889,6 +883,51 @@ class CmdArmorRepair(Command):
 
         # Perform the repair
         self._attempt_repair(caller, armor_item, repair_type, repair_tool)
+
+    @staticmethod
+    def parse_repair_args(args):
+        """``["plate", "carrier", "full"]`` -> ``("plate carrier", "full", None)``.
+
+        Read from the END, not from ``args[1]`` (#2521). The modifier
+        used to be looked for at ``args[1]`` only, and every piece of
+        armour the game ships has a MULTI-WORD name — "plate carrier",
+        "ceramic trauma plates", "black leather combat boots". So
+        ``args[1]`` was the second word of the armour NAME:
+
+        * ``repair plate carrier full`` silently degraded to a standard
+          repair — 25% restoration instead of 60%, with no hint that
+          "full" had been dropped.
+        * ``repair plate carrier with sewing kit`` never set
+          ``tool_name``, so the tool bonus of up to +12 went unapplied —
+          and on failure the player was told *"perhaps you need better
+          tools"* while holding the right one.
+
+        ``armor_name`` also used to be ``args[0]``, so the lookup was
+        partial-matching a single token while the rest of the phrase was
+        being mined for a modifier that was not there.
+
+        Returns ``(armor_name, repair_type, tool_name)``.
+        """
+        parts = list(args)
+        repair_type = "standard"  # standard, field, or full
+        tool_name = None
+
+        # "... with <tool>" — after the LAST "with", so an armour named
+        # "vest with straps" survives.
+        lowered = [w.lower() for w in parts]
+        if "with" in lowered:
+            idx = len(lowered) - 1 - lowered[::-1].index("with")
+            if idx + 1 < len(parts):
+                tool_name = " ".join(parts[idx + 1:])
+                parts = parts[:idx]
+
+        # A TRAILING "field"/"full" is the repair type, so a "field
+        # jacket" keeps its name.
+        if parts and parts[-1].lower() in ("field", "full"):
+            repair_type = parts[-1].lower()
+            parts = parts[:-1]
+
+        return " ".join(parts).strip(), repair_type, tool_name
 
     def _find_repairable_armor(self, caller, armor_name):
         """Find armor item that can be repaired."""
