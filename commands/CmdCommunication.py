@@ -42,14 +42,18 @@ class CmdSay(Command):
 
     key = "say"
     aliases = ['"']
+    # Without this the `"` alias only matches with a SPACE after it, so
+    # `"hello` -- the commonest speech idiom in MUDs, and what this
+    # game's own help advertises -- matched no command at all (#2529).
+    # `Command.match` tests `arg_regex` against the remainder of the raw
+    # input, and the default `^[ /]|\n|$` fails on `hello`. Evennia's own
+    # CmdSay carries exactly this line for exactly this reason.
+    arg_regex = None
     locks = "cmd:all()"
     help_category = "Social"
 
     def func(self):
         caller = self.caller
-        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4).
-        from world.stealth import break_stealth
-        break_stealth(caller)
 
         if not self.args:
             caller.msg("Say what?")
@@ -60,6 +64,15 @@ class CmdSay(Command):
         if not location:
             caller.msg("You have no location to speak in.")
             return
+
+        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4) —
+        # SPEAKING does, not typing. `break_stealth` is not a test, it is
+        # the reveal: it clears `db.hidden`, pushes every occupant to
+        # ALERT and narrates the emergence to the room. Called before the
+        # guards, a mistyped command blew your cover for an action that
+        # never happened, and nothing re-hides on an error path (#2530).
+        from world.stealth import break_stealth
+        break_stealth(caller)
 
         # Actor sees their own message; the room hears it through the shared
         # speech backbone (per-observer attribution, hearing-gated content,
@@ -87,10 +100,6 @@ class CmdTo(Command):
 
     def func(self):
         caller = self.caller
-        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4).
-        from world.stealth import break_stealth
-        break_stealth(caller)
-
         args = (self.args or "").strip()
         parts = args.split(None, 1)
         if len(parts) < 2 or not parts[1].strip():
@@ -106,6 +115,15 @@ class CmdTo(Command):
         target = caller.search(target_str)
         if not target:
             return  # search() already sent the error message
+
+        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4) —
+        # SPEAKING does, not typing. `break_stealth` is not a test, it is
+        # the reveal: it clears `db.hidden`, pushes every occupant to
+        # ALERT and narrates the emergence to the room. Called before the
+        # guards, a mistyped command blew your cover for an action that
+        # never happened, and nothing re-hides on an error path (#2530).
+        from world.stealth import break_stealth
+        break_stealth(caller)
 
         # `to <radio>, <message>` transmits over the device (RADIO_COMMS_SPEC):
         # the directed-speech verb, retargeted at a comm device you carry —
@@ -263,15 +281,14 @@ class CmdEmote(Command):
 
     key = "emote"
     aliases = [":", "pose"]
+    # As with `say` above: without this, `:waves` matched nothing and
+    # only `: waves` worked (#2529). Evennia's CmdPose does the same.
+    arg_regex = None
     locks = "cmd:all()"
     help_category = "Social"
 
     def func(self):
         caller = self.caller
-        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4).
-        from world.stealth import break_stealth
-        break_stealth(caller)
-
         if not self.args:
             caller.msg("What do you want to emote?")
             return
@@ -281,6 +298,15 @@ class CmdEmote(Command):
         if not location:
             caller.msg("You have no location to emote in.")
             return
+
+        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4) —
+        # SPEAKING does, not typing. `break_stealth` is not a test, it is
+        # the reveal: it clears `db.hidden`, pushes every occupant to
+        # ALERT and narrates the emergence to the room. Called before the
+        # guards, a mistyped command blew your cover for an action that
+        # never happened, and nothing re-hides on an error path (#2530).
+        from world.stealth import break_stealth
+        break_stealth(caller)
 
         # Gather room occupants for character reference matching.
         # Filter on get_sdesc (Character-only) — Exits and items also
@@ -342,10 +368,6 @@ class CmdDotPose(Command):
 
     def func(self) -> None:
         caller = self.caller
-        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4).
-        from world.stealth import break_stealth
-        break_stealth(caller)
-
         # Extract the emote text from raw_string.
         # raw_string looks like ".lean back." — strip the leading "."
         raw = self.raw_string
@@ -369,6 +391,15 @@ class CmdDotPose(Command):
         if not location:
             caller.msg("You have no location to emote in.")
             return
+
+        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4) —
+        # SPEAKING does, not typing. `break_stealth` is not a test, it is
+        # the reveal: it clears `db.hidden`, pushes every occupant to
+        # ALERT and narrates the emergence to the room. Called before the
+        # guards, a mistyped command blew your cover for an action that
+        # never happened, and nothing re-hides on an error path (#2530).
+        from world.stealth import break_stealth
+        break_stealth(caller)
 
         # Gather room occupants for character reference matching.
         # Filter on get_sdesc (Character-only) — Exits and items also
