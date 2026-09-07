@@ -56,9 +56,25 @@ def at_server_start():
         from evennia.utils import logger
         logger.log_trace("Channel tell sweep failed.")
 
+    # #2482: the aim tell is the third thing the comment below names and
+    # the one it never rebuilt. `override_place` persists, `ndb.aiming_at`
+    # does not, and every clear site is gated on the ndb — so `aim stop`
+    # refused to clear a tell that was still showing.
+    try:
+        from world.combat.utils import sweep_stranded_aim_tells
+        cleared = sweep_stranded_aim_tells()
+        if cleared:
+            from evennia.utils import logger
+            logger.log_info(f"Aim tell sweep: {cleared} stranded tell(s) "
+                            f"cleared.")
+    except Exception:  # noqa: BLE001 — a broken sweep must not stop the boot
+        from evennia.utils import logger
+        logger.log_trace("Aim tell sweep failed.")
+
     # Combat re-link sweep: handler entries survive a reload in db, but
     # ALL ndb state dies with the process — handler refs, melee
-    # proximity, aim. Without this, any melee fight that crosses a
+    # proximity, aim (aim is swept just above). Without this, any
+    # melee fight that crosses a
     # reload wedges forever: both sides immortal behind an empty
     # proximity set while the ticker burns rounds, and the command
     # layer thinks nobody is fighting.

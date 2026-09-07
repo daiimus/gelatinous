@@ -23,7 +23,7 @@ from world.combat.constants import (
     DEBUG_PREFIX_ATTACK, DEBUG_FAILSAFE, DEBUG_SUCCESS, DEBUG_FAIL,
     DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET, DB_IS_YIELDING,
     NDB_PROXIMITY, NDB_COMBAT_HANDLER, NDB_AIMING_AT, NDB_AIMED_AT_BY,
-    NDB_AIMING_DIRECTION, )
+    NDB_AIMING_DIRECTION, AIM_TELL, SHOWDOWN_TELL, )
 from commands._identity_targeting import resolve_character_target
 from world.combat.handler import get_or_create_combat
 from world.combat.messages import get_combat_message
@@ -663,15 +663,15 @@ class CmdStop(Command):
         """
         # Check if they were in a mutual showdown
         if (hasattr(aimer, 'override_place') and hasattr(target, 'override_place') and
-            aimer.override_place == "locked in a deadly showdown." and 
-            target.override_place == "locked in a deadly showdown."):
+            aimer.override_place == SHOWDOWN_TELL and 
+            target.override_place == SHOWDOWN_TELL):
             # They were in a showdown - clear aimer's place, check if target should revert to normal aiming
             aimer.override_place = ""
             
             # If target is still aiming at aimer, revert them to normal aiming
             target_still_aiming = getattr(target.ndb, NDB_AIMING_AT, None)
             if target_still_aiming == aimer:
-                target.override_place = "aiming carefully at {aim_target}."
+                target.override_place = AIM_TELL
             else:
                 # Target isn't aiming at anyone, clear their place too
                 target.override_place = ""

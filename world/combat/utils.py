@@ -514,6 +514,59 @@ def clear_aim_state(character):
     log_debug("AIM", "CLEAR", "Cleared aim state", character)
 
 
+def sweep_stranded_aim_tells():
+    """Clear aim tells left showing by a reload. Returns the count.
+
+    Aim lives in ``ndb`` and dies with the process; the tell it writes
+    is ``override_place``, a db attribute, and does not. Every clear
+    site is gated on the ndb — ``aim stop`` and ``stop aiming`` both
+    read ``ndb.aiming_at`` first and answer "you're not aiming at
+    anything" when it is gone — so a reload mid-aim left the character
+    described as taking careful aim, permanently, with no path back
+    (#2482).
+
+    The combat re-link sweep's own comment already names aim as one of
+    the three things that die with the process. It rebuilt the other
+    two.
+
+    Nothing can be legitimately aiming at server start, because every
+    ndb in the game has just been discarded; the ndb check below is
+    belt-and-braces so this stays correct if it is ever called from a
+    live server. Only the three tells aim writes are recognised, so a
+    placement set by anything else is left alone.
+    """
+    from evennia.objects.models import ObjectDB
+
+    from world.combat.constants import (AIM_TELL, SHOWDOWN_TELL,
+                                        aim_direction_tell)
+
+    prefix = aim_direction_tell("")[:-1]        # "aiming carefully to the "
+    cleared = 0
+    # `override_place` is an AttributeProperty in the `description`
+    # CATEGORY (`typeclasses/characters.py`), which is a different row
+    # from a bare `db.override_place` -- filtering on the key alone
+    # matches nothing.
+    for obj in ObjectDB.objects.filter(
+            db_attributes__db_key="override_place",
+            db_attributes__db_category="description").distinct():
+        try:
+            tell = obj.override_place or ""
+            if not tell:
+                continue
+            if not (tell in (AIM_TELL, SHOWDOWN_TELL)
+                    or tell.startswith(prefix)):
+                continue
+            ndb = getattr(obj, "ndb", None)
+            if ndb is not None and (getattr(ndb, NDB_AIMING_AT, None)
+                                    or getattr(ndb, NDB_AIMING_DIRECTION, None)):
+                continue                        # still aiming: not stranded
+            obj.override_place = ""
+            cleared += 1
+        except Exception:  # noqa: BLE001 — one bad row never stops the sweep
+            continue
+    return cleared
+
+
 def clear_mutual_aim(char1, char2):
     """
     Clear any mutual aiming relationships between two characters.
