@@ -656,17 +656,12 @@ class CmdBug(MuxCommand):
             caller.msg("  - Steps to reproduce (if possible)")
             caller.msg("\n|yEditor Commands:|n")
             caller.msg("  |w:w|n or |w:wq|n - Save and submit bug report")
-            # `:q` and `:q!` are NOT synonyms in Evennia's editor
-            # (#2525). With an unsaved buffer -- which is every real use
-            # of this command -- `:q` asks "Save before quitting?" and
-            # its SaveYesNoCmdSet treats everything except the literal
-            # "no"/"n" as yes, a bare Enter included. So `:q` was
-            # documented as cancelling while it filed the report.
-            # Documented truthfully rather than overridden: this world
-            # does not build custom layers over Evennia internals.
+            # `:q!`, not `:q` (#2525). They are not synonyms in Evennia's
+            # editor: with an unsaved buffer -- every real use of this
+            # command -- `:q` asks "Save before quitting?" and treats
+            # anything but a literal "no"/"n" as yes, so it FILED the
+            # report the old line said it cancelled.
             caller.msg("  |w:q!|n - Cancel without submitting")
-            caller.msg("  |w:q|n - Quit (asks whether to submit first; "
-                       "anything but |wn|n means yes)")
             caller.msg("  |w:h|n - Show editor help")
             caller.msg("\n|yOpening editor...|n\n")
             

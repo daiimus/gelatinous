@@ -143,7 +143,6 @@ class Exit(DefaultExit):
                     old_aim_target.msg(f"{traversing_object.get_display_name(old_aim_target)} stops aiming at you as they move.")
                 
                 # Get weapon name for better messaging
-                hands = getattr(traversing_object, "hands", {})
                 from world.combat.utils import get_wielded_weapon
                 weapon = get_wielded_weapon(traversing_object)
                 weapon_name = weapon.key if weapon else "weapon"
@@ -160,7 +159,6 @@ class Exit(DefaultExit):
                 del traversing_object.ndb.aiming_direction
                 
                 # Get weapon name for better messaging
-                hands = getattr(traversing_object, "hands", {})
                 from world.combat.utils import get_wielded_weapon
                 weapon = get_wielded_weapon(traversing_object)
                 weapon_name = weapon.key if weapon else "weapon"
@@ -355,6 +353,14 @@ class Exit(DefaultExit):
                 grappled_victim_obj.move_to(target_location, quiet=True, move_hooks=False)
 
                 # Check for rigged grenades after drag movement (same as normal traversal)
+                #
+                # THE GRAPPLER ONLY, and deliberately (owner ruling, #2466).
+                # Whoever is dragging the body does the check; the dragged
+                # body defers to them, because they are not the one doing the
+                # traversal. The asymmetry with `check_auto_defuse` below is
+                # therefore intended, not an oversight: defusing is something
+                # either party can notice, but tripping a rigged exit belongs
+                # to whoever actually walked through it.
                 from commands.explosion_utils import check_rigged_grenade, check_auto_defuse
                 check_rigged_grenade(traversing_object, self)
 
