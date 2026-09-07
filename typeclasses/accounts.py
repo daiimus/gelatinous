@@ -238,7 +238,33 @@ class Account(DefaultAccount):
         - Auto-puppeting single characters
         - Starting character creation for new accounts
         - Handling archived characters
+
+        Overriding the PUPPETING is the reason; overriding the rest was
+        an accident (#2613). Evennia's default does three things before
+        it puppets — restore saved protocol flags, send the ``logged_in``
+        OOB message, and post *"|G{key} connected|n"* to the connect
+        channel — and replacing the method wholesale dropped all three.
+        `at_disconnect` is NOT overridden, so its matching red line still
+        posts: MudInfo held **2,847 disconnects and zero connects**, in
+        the channel whose job is telling staff who is on.
+
+        Done here rather than via `super()` deliberately: the default
+        ends by auto-puppeting, and calling it would run that a second
+        time alongside the custom logic below.
         """
+        # -- the non-puppeting preamble of Evennia's default (#2613) --
+        protocol_flags = self.attributes.get("_saved_protocol_flags", {})
+        if session and protocol_flags:
+            session.update_flags(**protocol_flags)
+        if session:
+            session.msg(logged_in={})
+        try:
+            self._send_to_connect_channel(f"|G{self.key} connected|n")
+        except Exception:  # noqa: BLE001 — an announcement never blocks a login
+            from evennia.utils import logger
+            logger.log_trace(
+                f"connect-channel announcement failed for {self.key}")
+
         # Split the account's sleeves on the tag index — one query, and the
         # archived list is reused below for the last_character restore.
         active_chars, archived_sleeves = self._sleeves_split()

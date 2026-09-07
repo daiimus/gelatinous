@@ -214,7 +214,14 @@ class CmdRemove(Command):
             removed_items = []
             for item in worn_items:
                 success, message = caller.remove_item(item)
-                if success:
+                # A garment that TORE APART is not one you removed
+                # (#2596). `_perish` deletes it and narrates the tear
+                # itself; naming it here would print "You remove: a
+                # coverall" for an object that no longer exists.
+                # `item.key` still reads after `delete()` — the cached
+                # value survives — so the object's `pk` is the only
+                # honest test.
+                if success and getattr(item, "pk", 1) is not None:
                     removed_items.append(item.key)
 
             if removed_items:
@@ -320,7 +327,12 @@ class CmdRemove(Command):
             success, message = caller.remove_item(
                 item, on_committed=_broadcast_action,
             )
-        caller.msg(message)
+        # `remove_item` returns an EMPTY message when the garment tore
+        # apart rather than coming off (#2596) — `_perish` has already
+        # told the wearer and the room. Printing it would be a blank
+        # line under the tear.
+        if message:
+            caller.msg(message)
 
 
 class CmdRollUp(Command):
@@ -1022,7 +1034,8 @@ class CmdUndress(Command):
         removed = []
         for item in worn:
             success, _msg = target.remove_item(item)
-            if success:
+            # a torn garment is not taken (#2596)
+            if success and getattr(item, "pk", 1) is not None:
                 removed.append(item)
         return removed
 
