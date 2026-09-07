@@ -8,6 +8,7 @@ whether you're NOTICED.
 
 from evennia import Command
 
+from world.grammar import capitalize_first
 from world.stealth import (
     active_search, attempt_hide, break_stealth,
 )
@@ -49,8 +50,8 @@ class CmdHide(Command):
         caller.msg("You slip out of sight.")
         for observer in kept:
             observer.msg(
-                f"{caller.get_display_name(observer)} tries to melt out of "
-                f"sight — but you keep track of them."
+                f"{capitalize_first(caller.get_display_name(observer))} "
+                f"tries to melt out of sight — but you keep track of them."
             )
 
     def _stash(self, phrase):
@@ -198,8 +199,8 @@ class CmdSearch(Command):
                 f"You spot {char.get_display_name(caller)} lurking here."
             )
             char.msg(
-                f"{caller.get_display_name(char)}'s eyes find you — "
-                f"you've been spotted."
+                f"{capitalize_first(caller.get_display_name(char))}'s "
+                f"eyes find you — you've been spotted."
             )
         for obj in found_objs:
             caller.msg(
