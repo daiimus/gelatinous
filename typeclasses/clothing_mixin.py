@@ -449,6 +449,22 @@ class ClothingMixin:
             except Exception:  # noqa: BLE001 — a bad hook never blocks undress
                 pass
 
+        # The hook may have DESTROYED the garment (#2596). Single-use
+        # issue clothing tears rather than folds, and `_perish` both
+        # narrates that — "tears along its welded seams" — and calls
+        # `delete()`. Reporting "You remove a coverall." afterwards told
+        # the player they had folded away an object that no longer
+        # exists, one line below being told it came apart.
+        #
+        # Empty message rather than a substitute one: `_perish` has
+        # already said what happened, to the wearer and to the room, and
+        # the callers in `CmdClothing` only print a non-empty message.
+        # `getattr(..., 1)`, so a stub without a `pk` reads as SURVIVED
+        # rather than destroyed — `test_clothing_broadcast_order` drives
+        # this with a `_FakeItem`, and a bare `item.pk` raised there.
+        if getattr(item, "pk", 1) is None:
+            return True, ""
+
         return True, f"You remove {with_article(item.key)}."
 
     def is_item_worn(self, item):
