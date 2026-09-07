@@ -167,7 +167,10 @@ class CmdJump(Command):
         
         # Check if someone is already jumping on this grenade
         if getattr(explosive.ndb, "sacrifice_in_progress", False):
-            current_hero = getattr(explosive.ndb, "current_hero", "someone")
+            # `or`, not a getattr default -- an ndb miss returns None
+            # (#2548), which would have put the literal "None" in the line.
+            current_hero = (getattr(explosive.ndb, "current_hero", None)
+                            or "someone")
             if hasattr(current_hero, 'key'):
                 hero_name = get_display_name_safe(current_hero, self.caller)
             else:

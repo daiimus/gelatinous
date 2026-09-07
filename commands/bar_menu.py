@@ -324,7 +324,8 @@ def _process_save_name(caller, raw_string, **kwargs):
 
 
 def node_save_taste(caller, raw_string, **kwargs):
-    name = getattr(caller.ndb, "_bar_save_name", "house mix")
+    # `or`, not a getattr default -- an ndb miss returns None (#2548).
+    name = getattr(caller.ndb, "_bar_save_name", None) or "house mix"
     text = (
         f"{HEAD}Describe how {name} tastes.|n\n"
         f"  {MUTED}Press enter to use the composed flavour, or write your own "
@@ -335,7 +336,8 @@ def node_save_taste(caller, raw_string, **kwargs):
 
 def _process_save_taste(caller, raw_string, **kwargs):
     bar = getattr(caller.ndb, "_bar_menu", None)
-    name = getattr(caller.ndb, "_bar_save_name", "house mix")
+    # `or`, not a getattr default -- an ndb miss returns None (#2548).
+    name = getattr(caller.ndb, "_bar_save_name", None) or "house mix"
     taste = raw_string.strip() or None
     ings = _loaded(bar)
     if not ings:
