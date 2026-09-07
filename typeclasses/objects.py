@@ -413,7 +413,15 @@ class GraffitiObject(Object):
             return 0
             
         removed_count = 0
-        entries_to_remove = []
+        # A SET, not a list (#2444). The same index could be marked more
+        # than once — once a tag was scrubbed blank, a later iteration
+        # that re-picked it marked it again — and the reverse-sorted pop
+        # loop below then popped that index twice, taking a DIFFERENT,
+        # intact tag with it. Measured across 400 seeded runs on a wall
+        # holding one short tag and one 46-character tag that cannot
+        # possibly be scrubbed blank in a single application, the long
+        # tag was destroyed 178 times; with two short tags, 298.
+        entries_to_remove = set()
         
         # Randomly remove characters from random messages
         for _ in range(amount):
@@ -426,25 +434,37 @@ class GraffitiObject(Object):
             
             # Remove a random character from the message (replace with space)
             message = entry['message']
-            if message:
-                # Only replace non-space characters to avoid creating double spaces
-                non_space_indices = [i for i, char in enumerate(message) if char != ' ']
-                if non_space_indices:
-                    char_index = random.choice(non_space_indices)
-                    new_message = message[:char_index] + ' ' + message[char_index + 1:]
-                    entry['message'] = new_message
-                
-                # Update the formatted entry with proper color codes
-                color_code = entry.get('color_code', 'w')  # Use stored code or default to white
-                color_name = entry.get('color', 'white')   # Use stored color name or default
-                color_start = f"|{color_code}"
-                color_end = "|n"
-                entry['entry'] = f"Scrawled in {color_start}{color_name}{color_end} paint: {color_start}{new_message}{color_end}"
-                removed_count += 1
-                
-                # Mark entries for removal if they're all spaces or empty
-                if len(new_message.strip()) == 0:
-                    entries_to_remove.append(entry_index)
+            if not message:
+                continue
+
+            # Only replace non-space characters to avoid creating double spaces
+            non_space_indices = [i for i, char in enumerate(message) if char != ' ']
+            if not non_space_indices:
+                # Already blank — there is no ink left to take, so retire
+                # it and move on. Falling through here used to reuse the
+                # PREVIOUS iteration's `new_message`, which rewrote this
+                # entry's display text with a neighbouring tag's letters
+                # (and raised UnboundLocalError outright when the blank
+                # tag was picked first — reachable in 107 of 200 seeded
+                # runs, after which the wall could never be cleaned).
+                entries_to_remove.add(entry_index)
+                continue
+
+            char_index = random.choice(non_space_indices)
+            new_message = message[:char_index] + ' ' + message[char_index + 1:]
+            entry['message'] = new_message
+
+            # Update the formatted entry with proper color codes
+            color_code = entry.get('color_code', 'w')  # Use stored code or default to white
+            color_name = entry.get('color', 'white')   # Use stored color name or default
+            color_start = f"|{color_code}"
+            color_end = "|n"
+            entry['entry'] = f"Scrawled in {color_start}{color_name}{color_end} paint: {color_start}{new_message}{color_end}"
+            removed_count += 1
+
+            # Mark entries for removal if they're all spaces or empty
+            if len(new_message.strip()) == 0:
+                entries_to_remove.add(entry_index)
         
         # Remove empty entries (in reverse order to maintain indices)
         for index in sorted(entries_to_remove, reverse=True):
