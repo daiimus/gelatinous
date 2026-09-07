@@ -233,7 +233,18 @@ class Character(
         
         Dead characters receive only essential messages for immersive death experience.
         This catches ALL messages to characters, including combat, explosives, admin commands.
+
+        The curtain marks its own traffic with ``death_curtain=True``
+        rather than being recognised by its punctuation (#2469).  The
+        previous test was ``'▓' in text``, which is true of the opening
+        frames and false of the trailing drip, the final blank frames
+        and the cause-of-death line — so the animation cut out partway
+        and the dying player was never told what killed them.  The flag
+        is popped here and never reaches ``super()``: an unknown kwarg
+        would be sent to the client as an out-of-band outputfunc.
         """
+        is_curtain = bool(kwargs.pop("death_curtain", False))
+
         # If not dead, use normal messaging
         if not self.is_dead():
             return super().msg(text=text, from_obj=from_obj, session=session, **kwargs)
@@ -242,14 +253,14 @@ class Character(
         if not text:
             return
             
-        # Block most system messages (from_obj=None), but allow death curtain animations
+        # The curtain speaks for the death itself, whatever a given
+        # frame happens to contain.
+        if is_curtain:
+            return super().msg(text=text, from_obj=from_obj, session=session, **kwargs)
+
+        # Block system messages (combat, explosives, medical, etc.)
         if not from_obj:
-            # Allow death curtain animations (contains block characters)
-            if '▓' in str(text):
-                return super().msg(text=text, from_obj=from_obj, session=session, **kwargs)
-            else:
-                # Block other system messages (combat, explosives, medical, etc.)
-                return
+            return
             
         # Allow messages from staff (for admin commands, but not social)
         if hasattr(from_obj, 'locks') and from_obj.locks.check(from_obj, "perm(Builder)"):
@@ -259,10 +270,6 @@ class Character(
                 return super().msg(text=text, from_obj=from_obj, session=session, **kwargs)
             else:
                 return
-            
-        # Allow death progression messages from curtain of death
-        if hasattr(from_obj, 'key') and 'curtain' in str(from_obj.key).lower():
-            return super().msg(text=text, from_obj=from_obj, session=session, **kwargs)
             
         # Allow death progression script messages
         if hasattr(from_obj, 'key') and 'death_progression' in str(from_obj.key).lower():

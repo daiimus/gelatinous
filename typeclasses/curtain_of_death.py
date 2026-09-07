@@ -244,7 +244,10 @@ class DeathCurtain:
                     victim_msg = f"|rYour body succumbs to {death_cause}. The end draws near...|n"
                 else:
                     victim_msg = f"|rYour body fails you. The end draws near...|n"
-                self.character.msg(victim_msg)
+                # Flagged, not punctuated (#2469): this line carries no
+                # block characters, so the old content-sniffing filter
+                # ate it and nobody ever learned what killed them.
+                self.character.msg(victim_msg, death_curtain=True)
             
             # Don't send initial "dying from" message to observers - 
             # we'll send a combined death message later
@@ -257,7 +260,8 @@ class DeathCurtain:
         if self.current_frame < len(self.frames):
             # Send current frame to the dying character
             if self.character:
-                self.character.msg(self.frames[self.current_frame])
+                self.character.msg(self.frames[self.current_frame],
+                                   death_curtain=True)
             
             self.current_frame += 1
             
