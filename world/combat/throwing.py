@@ -75,8 +75,21 @@ def is_explosive(obj):
 
 
 def is_melee_weapon(obj):
-    """Check if object is a melee weapon suitable for deflection."""
-    # Melee weapons are those that are NOT ranged (default is melee)
+    """Is this something you could actually bat a grenade away with?
+
+    "Not ranged" was the whole test, and EVERY item defaults to melee
+    (the brawl-with-anything design), so a lit cigarette deflected
+    grenades exactly as well as a baseline weapon (#2493).
+
+    The discriminator is the ``("weapon", "type")`` tag from the weapon
+    base prototypes — the same one `get_wielded_weapon` settled on in
+    #516, and for the same reason: `db.weapon_type` is useless because
+    every item carries "melee" at creation. Reused rather than
+    re-derived so "is this a weapon" has one answer.
+    """
+    tags = getattr(obj, "tags", None)
+    if tags is None or not tags.has("weapon", category="type"):
+        return False
     return not bool(obj.db.is_ranged)
 
 
@@ -654,14 +667,20 @@ def check_grenade_deflection(grenade, destination, thrower):
     # Roll Motorics skill
     motorics_roll = roll_stat(target, 'motorics')
 
-    # Base difficulty threshold (higher = easier)
+    # Base difficulty, and the weapon makes it EASIER (#2493).
+    #
+    # Success is `roll >= threshold`, so a higher threshold is harder —
+    # and the bonus used to be ADDED, which inverted every weapon in the
+    # table against its own prototype comment. The tennis racket, marked
+    # "BEST deflection weapon!", needed a 20 and was impossible; the
+    # chainsaw, marked "chainsaws are terrible for defense", sat at 0 and
+    # always worked. Subtracting is what the comments describe.
     base_threshold = 10  # Moderate difficulty
     weapon_bonus = melee_weapon.db.deflection_bonus if melee_weapon.db.deflection_bonus is not None else 0.0
 
-    # Convert weapon bonus to threshold modifier (0.30 bonus = +6 to
-    # threshold)
+    # 0.30 bonus = 6 points OFF the threshold
     threshold_modifier = int(weapon_bonus * 20)
-    final_threshold = base_threshold + threshold_modifier
+    final_threshold = base_threshold - threshold_modifier
 
     splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: {target} Motorics deflection: rolled {motorics_roll} vs threshold {final_threshold}")
 
