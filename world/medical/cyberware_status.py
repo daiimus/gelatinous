@@ -169,9 +169,14 @@ def render_system(character) -> str:
             where = "both hands"
         else:
             where = " · ".join(sorted(h.replace("_", " ") for h in hosts))
+        # Read the GROUP, not the first host it happened to meet
+        # (#2483). `entry["organ"]` is fixed by `setdefault` to whichever
+        # host came first, so a line reading "both hands" reported one
+        # hand's state for both. Claws out in either hand is claws out.
         state = (
             "|rDEPLOYED|n"
-            if _ability_state(entry["organ"], aname).get("deployed")
+            if any(_ability_state(o, aname).get("deployed")
+                   for o in (entry.get("organs") or [entry["organ"]]))
             else "retracted"
         )
         # An implant is only as good as the flesh it is bolted to, so the
