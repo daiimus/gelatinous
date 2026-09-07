@@ -661,8 +661,21 @@ class BloodPool(Object):
             self.delete()  # Remove like cleaned graffiti
             return cleaned_volume, f"The blood stains have been successfully cleaned away."
         else:
-            # Partial cleaning
-            incidents_removed = max(1, len(self.db.bleeding_incidents) // 2)
+            # Partial cleaning — which must LEAVE something (#2601).
+            #
+            # `max(1, n // 2)` is 1 when n is 1, so a single-incident
+            # pool lost its only incident on a FAILED roll — and
+            # `_update_description` deletes an empty pool. The stain
+            # vanished while the player was told "traces remain", which
+            # is the failure branch reporting the success outcome.
+            total = len(self.db.bleeding_incidents)
+            incidents_removed = min(max(1, total // 2), max(0, total - 1))
+            if incidents_removed <= 0:
+                # Nothing can be taken without emptying it, so nothing
+                # is: a failed scrub on a single stain is a failed
+                # scrub, and says so.
+                return 0, ("You work at the stain with solvent, but it "
+                           "resists you.")
             removed_incidents = self.db.bleeding_incidents[:incidents_removed]
             self.db.bleeding_incidents = self.db.bleeding_incidents[incidents_removed:]
             

@@ -378,6 +378,7 @@ class CmdGraffiti(Command):
         graffiti_cleaned = False
         blood_cleaned = False
         cleaned_items = []
+        blood_resisted = []
         
         # Clean graffiti if present
         if has_graffiti:
@@ -399,6 +400,12 @@ class CmdGraffiti(Command):
                     if cleaned_volume > 0:
                         blood_cleaned = True
                         cleaned_items.append("|Rblood stains|n")
+                    elif clean_result:
+                        # A scrub that took nothing off still HAPPENED
+                        # (#2601). Without this the failure fell through
+                        # to "doesn't seem to affect anything here",
+                        # which reads as "there is no blood here".
+                        blood_resisted.append(clean_result)
         
         # Generate messages based on what was cleaned
         if graffiti_cleaned or blood_cleaned:
@@ -440,6 +447,15 @@ class CmdGraffiti(Command):
             
             delay(3, delayed_message)
             
+        elif blood_resisted:
+            for line in blood_resisted:
+                self.caller.msg(line)
+            msg_room_identity(
+                location=self.caller.location,
+                template="{actor} scrubs at a stain with solvent.",
+                char_refs={"actor": self.caller},
+                exclude=[self.caller],
+            )
         else:
             self.caller.msg("The solvent doesn't seem to affect anything here.")
             msg_room_identity(
