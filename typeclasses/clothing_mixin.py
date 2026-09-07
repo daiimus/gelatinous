@@ -98,16 +98,10 @@ class ClothingMixin:
         if not item.is_wearable():
             return False, "That item can't be worn."
 
-        # Auto-unwield if currently held (move to inventory)
-        hands = getattr(self, 'hands', {})
-        for hand, held_item in hands.items():
-            if held_item == item:
-                hands[hand] = None
-                item.move_to(self, quiet=True)  # Move to inventory
-                self.hands = hands    # Save updated hands
-                break
-
-        # Validate item is in inventory (now that we've unwielded if needed)
+        # Validate item is in inventory. A WIELDED item is already in
+        # `self.contents` -- `wield_item` refuses otherwise -- so this
+        # holds whether or not the garment is in hand, which is what
+        # lets the unwield move below the conflict check (#2599).
         if item.location != self:
             return False, "You're not carrying that item."
 
@@ -247,9 +241,33 @@ class ClothingMixin:
 
             return False, error_msg
 
-        # No conflicts - proceed with wearing.  If the item contributes to
-        # the identity signature, wrap the mutation so observers in the
-        # room get an unmasking-moment broadcast for any UID transition.
+        # No conflicts. Only NOW take it out of the hand (#2599).
+        #
+        # This used to happen 140 lines earlier, before the layer
+        # conflicts were evaluated at all — so a refused `wear` left the
+        # garment unwielded. A player holding a jacket types `wear
+        # jacket` while already wearing something at that layer, is
+        # correctly told it conflicts, and the jacket is now in their
+        # inventory rather than their hand. Every hand-slot consumer
+        # (`get_wielded_weapon`, `inventory`, the throw / hide / give
+        # matchers) then sees an empty hand for an action that was
+        # refused, and re-wielding is a second command the player has no
+        # reason to know they need.
+        #
+        # The write-back is the correct PR-H2 form and is unchanged —
+        # this was never a #2536 desync. The hand state was persisted
+        # faithfully, to the wrong value.
+        hands = getattr(self, 'hands', {})
+        for hand, held_item in hands.items():
+            if held_item == item:
+                hands[hand] = None
+                item.move_to(self, quiet=True)  # Move to inventory
+                self.hands = hands    # Save updated hands
+                break
+
+        # If the item contributes to the identity signature, wrap the
+        # mutation so observers in the room get an unmasking-moment
+        # broadcast for any UID transition.
         from world.identity import apply_signature_change
 
         is_essential = getattr(item, "disguise_essential", False)
