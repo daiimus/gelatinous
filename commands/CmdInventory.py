@@ -1035,14 +1035,22 @@ class CmdWrest(Command):
         return success
 
     def _execute_transfer(self, caller, target, target_object, caller_hand, target_hand):
-        """Execute the actual object transfer using the same method as disarm."""
-        # Get target's hands dictionary
-        target_hands = getattr(target, 'hands', {})
-        
-        # Remove object from target's hand (like disarm does)
-        target_hands[target_hand] = None
-        
-        # Move object to caller's inventory first (like disarm does with move_to location)
+        """Execute the actual object transfer using the same method as disarm.
+
+        The target's hand is released by ``Character.at_object_leave``
+        off the move below — one invariant rather than an obligation on
+        every call site (#2468). This used to assign into
+        ``target.hands``, which is a derived view rebuilt on every read,
+        so the assignment did nothing; the move is what actually worked
+        (#2489, #2536).
+
+        Putting it BACK is the part the invariant cannot do for us. The
+        restore path assigned into that same throwaway view, so a wrest
+        that won the contest and then failed to wield left the victim
+        with the item in their pocket and an empty hand — they were
+        disarmed by an attempt that failed.
+        """
+        # Move object to caller's inventory (releases the target's hand)
         target_object.move_to(caller, quiet=True)
         
         # Then wield the object in caller's hand
@@ -1050,9 +1058,10 @@ class CmdWrest(Command):
         
         # Verify the transfer worked
         if "wield" not in caller_wield_result.lower():
-            # Something went wrong, try to restore target's state
-            target_hands[target_hand] = target_object
+            # Something went wrong: give it back to the hand it came out
+            # of, through the same door that took it.
             target_object.move_to(target, quiet=True)
+            target.wield_item(target_object, target_hand)
             caller.msg(f"Transfer failed: {caller_wield_result}")
             return False
         
