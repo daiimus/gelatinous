@@ -446,7 +446,8 @@ is the content lift) → per-effector resolver (manipulation/moving).
    - **2b ✅ SHIPPED — voice memory + recognition.** The apparent-UID /
      `recognition_memory` parallel in `world/voice.py`: `get_voice_signature`
      (salted on `sleeve_uid`, so everyone has a stable recognisable voice + a
-     `voice_modulator_active` slot that, like a mask, changes the UID),
+     modulator slot that, like a mask, changes the UID — derived from the
+     deployed jaw module, not a character flag, #2484),
      `get_apparent_voice_uid`, and a `voice_memory` AttributeProperty on the
      Character with `remember_voice`/`forget_voice`/`get_assigned_voice_name`.
      `remember <target>`/`forget <target>` now teach/clear the voice alongside
@@ -518,8 +519,10 @@ locomotion restored, no special-case needed:
 - `CYBER_LEFT_EYE` / `CYBER_RIGHT_EYE` → `sight` (single-organ, head sub-organ).
 - `CYBER_LEFT_EAR` / `CYBER_RIGHT_EAR` → `hearing`.
 - `CYBER_LEG` → `moving` (side-agnostic `augment_organs` chassis).
-- `VOICE_MODULATOR` → a jaw-hardpoint module toggling `voice_modulator_active`
-  (the voice-disguise; shifts the voice UID so recognition fails). `/modulate`.
+- `VOICE_MODULATOR` → a jaw-hardpoint module hosting a `voice_modulator`
+  ability (the voice-disguise; shifts the voice UID so recognition fails).
+  `/modulate`. `world/voice.py` `is_voice_modulated` reads the deployed state
+  off the organ, so destroying or losing the module ends the disguise (#2484).
 
 The `*_override` conditions (`sight_override`/`hearing_override`/`moving_override`/
 `manipulation_override`) remain a distinct **enhancer** seam — for an augment that
@@ -527,10 +530,12 @@ grants a sense *without* the organ, where replacement doesn't apply.
 
 - **Combat blindsight ✅ SHIPPED** (decided 2026-06-20: combat-only, "enhance to
   full perception later"). `TARGETING_PROCESSOR` forearm-hardpoint module → a
-  toggleable `blindsight` ability (`/blindsight`) sets `db.blindsight_active`,
-  which `world/combat/capacity.py` `sight_hit_factor` honours to restore combat
-  aim with the eyes gone. **Combat-only by construction:** it's a separate flag
-  from `sight_override`, so `can_see` (perception/recognition) stays false —
+  toggleable `blindsight` ability (`/blindsight`), which
+  `world/combat/capacity.py` `sight_hit_factor` honours to restore combat aim
+  with the eyes gone — read off the organ via `has_deployed_ability`, so a
+  destroyed module ends it (#2484). **Combat-only by construction:** it's a
+  separate seam from `sight_override`, so `can_see` (perception/recognition)
+  stays false —
   rooms and faces remain dark. A future fuller-sense suite would set the real
   `sight_override` to also light up perception. Tests: `test_blindsight.py`.
 

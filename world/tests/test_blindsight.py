@@ -15,7 +15,7 @@ Run via::
 from types import SimpleNamespace
 from unittest import TestCase
 
-from world.combat.capacity import sight_hit_factor, BLINDSIGHT_FLAG
+from world.combat.capacity import sight_hit_factor, _blindsight_active
 from world.perception import can_see
 from world.medical.augments import _toggle_blindsight
 
@@ -34,12 +34,24 @@ class _Med:
 class _Char:
     def __init__(self, sight=1.0, blindsight=False):
         self.key = "P"
-        self.db = SimpleNamespace(blindsight_active=blindsight)
+        self.db = SimpleNamespace()
         self.medical_state = _Med(sight)
+        self.organ = _Organ("blindsight", "blindsight")
+        self.medical_state.organs = {"suite": self.organ}
+        if blindsight:
+            _toggle_blindsight(self, self.organ, "blindsight", {})
 
 
 class _Organ:
-    def __init__(self):
+    """A living host organ. `iter_abilities` needs `current_hp`,
+    `data["abilities"]` and `ability_state` — a bare object with only
+    `ability_state` looks like a body with no cyberware at all now that
+    the effect is derived from the organ (#2484)."""
+
+    def __init__(self, ability, ability_type, hp=10):
+        self.current_hp = hp
+        self.container = "head"
+        self.data = {"abilities": {ability: {"type": ability_type}}}
         self.ability_state = {}
 
 
@@ -62,20 +74,32 @@ class BlindsightIsCombatOnlyTests(TestCase):
 
 
 class BlindsightToggleTests(TestCase):
-    def test_toggle_sets_and_clears_flag(self):
-        ch, organ = _Char(), _Organ()
-        self.assertFalse(getattr(ch.db, BLINDSIGHT_FLAG))
+    def test_toggle_engages_and_disengages(self):
+        ch = _Char()
+        organ = ch.organ
+        self.assertFalse(_blindsight_active(ch))
 
         _toggle_blindsight(ch, organ, "blindsight", {})
-        self.assertTrue(getattr(ch.db, BLINDSIGHT_FLAG))
+        self.assertTrue(_blindsight_active(ch))
         self.assertTrue(organ.ability_state["blindsight"]["deployed"])
 
         _toggle_blindsight(ch, organ, "blindsight", {})
-        self.assertFalse(getattr(ch.db, BLINDSIGHT_FLAG))
+        self.assertFalse(_blindsight_active(ch))
         self.assertFalse(organ.ability_state["blindsight"]["deployed"])
 
+    def test_a_destroyed_module_stops_driving_it(self):
+        """No teardown hook runs when the module is simply shot out, so
+        derivation is the only thing that ends the effect (#2484)."""
+        ch = _Char()
+        _toggle_blindsight(ch, ch.organ, "blindsight", {})
+        self.assertTrue(_blindsight_active(ch))
+        ch.organ.current_hp = 0
+        self.assertFalse(_blindsight_active(ch))
+        self.assertAlmostEqual(sight_hit_factor(ch, is_ranged=True), 1.0)
+
     def test_custom_messages(self):
-        ch, organ = _Char(), _Organ()
+        ch = _Char()
+        organ = ch.organ
         spec = {"deploy_msg": "ON", "retract_msg": "OFF"}
         self.assertEqual(_toggle_blindsight(ch, organ, "blindsight", spec), "ON")
         self.assertEqual(_toggle_blindsight(ch, organ, "blindsight", spec), "OFF")

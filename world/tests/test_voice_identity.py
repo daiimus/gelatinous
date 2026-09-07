@@ -13,6 +13,8 @@ Run via::
 
 from unittest import TestCase
 
+from types import SimpleNamespace
+
 from world.voice import (
     DEFAULT_VOICE_DESCRIPTIONS,
     DEFAULT_VOICE_ENDINGS,
@@ -39,10 +41,9 @@ from world.voice import (
 
 
 class _FakeDB:
-    def __init__(self, description=None, ending=None, modulated=False):
+    def __init__(self, description=None, ending=None):
         self.voice_description = description
         self.voice_ending = ending
-        self.voice_modulator_active = modulated
         # Evennia's db handler returns None for unset attributes; the discern
         # cache relies on that.
         self.voice_discern_cache = None
@@ -52,6 +53,9 @@ class _FakeMedicalState:
     def __init__(self, talking=1.0, sight=1.0, hearing=1.0, conditions=None):
         self._caps = {"talking": talking, "sight": sight, "hearing": hearing}
         self._conditions = conditions or {}
+        # `is_voice_modulated` reads the deployed state off the jaw
+        # module itself (#2484), so a fake body needs organs to have one.
+        self.organs = {}
 
     def calculate_body_capacity(self, name):
         return self._caps.get(name, 1.0)
@@ -65,17 +69,31 @@ class _FakeChar:
                  medical=True, sleeve_uid="sleeve-1", modulated=False,
                  sight=1.0, hearing=1.0, intellect=10, resonance=10,
                  dbref="#1", conditions=None, key="Speaker"):
-        self.db = _FakeDB(description, ending, modulated)
+        self.db = _FakeDB(description, ending)
         self.medical_state = (
             _FakeMedicalState(talking, sight, hearing, conditions)
             if medical else None
         )
+        self.set_modulated(modulated)
         self.sleeve_uid = sleeve_uid
         self.voice_memory = {}
         self.intellect = intellect
         self.resonance = resonance
         self.dbref = dbref
         self.key = key
+
+    def set_modulated(self, on):
+        """Seat (or unseat) a deployed voice modulator in a jaw module."""
+        state = self.medical_state
+        if state is None:
+            return
+        if not on:
+            state.organs.pop("jaw_module", None)
+            return
+        state.organs["jaw_module"] = SimpleNamespace(
+            current_hp=14, container="head",
+            data={"abilities": {"modulate": {"type": "voice_modulator"}}},
+            ability_state={"modulate": {"deployed": True}})
 
     def get_display_name(self, looker=None, **kwargs):
         return self.key
@@ -209,7 +227,7 @@ class VoiceRecognitionTests(TestCase):
         speaker = _FakeChar("gravelly", "drawl", sleeve_uid="spk")
         remember_voice(observer, speaker, "Bob")
         # Same person switches on a modulator → unknown voice.
-        speaker.db.voice_modulator_active = True
+        speaker.set_modulated(True)
         self.assertIsNone(get_assigned_voice_name(observer, speaker))
 
     def test_cannot_remember_voiceless_target(self):

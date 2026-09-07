@@ -193,11 +193,18 @@ def voice_phrase(char: Any, language: str = "Common") -> str | None:
 def is_voice_modulated(char: Any) -> bool:
     """True if a voice modulator is masking this character's voice.
 
-    The cyber-disguise parallel to a visual mask (§4.2). No augment sets this
-    yet; the flag is honoured now so the modulator is pure content later.
+    The cyber-disguise parallel to a visual mask (§4.2). Derived from the
+    jaw module itself: ``VOICE_MODULATOR`` seats a ``voice_modulator``
+    ability into a cyber jaw, and ``/modulate`` deploys it.
+
+    Read off the organ rather than a ``character.db`` flag, because a
+    flag has to be cleared by everything that can take the module away —
+    and a module destroyed in place clears nothing, which welded the
+    disguise on permanently (#2484). A destroyed organ simply stops
+    matching here.
     """
-    db = getattr(char, "db", None)
-    return bool(getattr(db, "voice_modulator_active", False)) if db is not None else False
+    from world.medical.augments import has_deployed_ability
+    return has_deployed_ability(char, "voice_modulator")
 
 
 def get_voice_signature(char: Any) -> tuple:

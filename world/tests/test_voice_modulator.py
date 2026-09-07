@@ -25,34 +25,54 @@ from world.voice import (
 
 
 class _Organ:
-    def __init__(self):
+    """A living host organ. `iter_abilities` needs `current_hp`,
+    `data["abilities"]` and `ability_state` — a bare object with only
+    `ability_state` looks like a body with no cyberware at all now that
+    the effect is derived from the organ (#2484)."""
+
+    def __init__(self, ability, ability_type, hp=10):
+        self.current_hp = hp
+        self.container = "head"
+        self.data = {"abilities": {ability: {"type": ability_type}}}
         self.ability_state = {}
 
 
 class _Char:
     def __init__(self, sleeve_uid="s1"):
-        self.db = SimpleNamespace(voice_modulator_active=False)
+        self.db = SimpleNamespace()
         self.sleeve_uid = sleeve_uid
         self.voice_memory = {}
+        self.organ = _Organ("modulate", "voice_modulator")
+        self.medical_state = SimpleNamespace(organs={"jaw": self.organ})
 
 
 class VoiceModulatorToggleTests(TestCase):
-    def test_toggle_sets_and_clears_flag(self):
-        char, organ = _Char(), _Organ()
+    def test_toggle_engages_and_disengages(self):
+        char = _Char()
+        organ = char.organ
         self.assertFalse(is_voice_modulated(char))
 
         _toggle_voice_modulator(char, organ, "modulate", {})
-        self.assertTrue(char.db.voice_modulator_active)
         self.assertTrue(is_voice_modulated(char))
         self.assertTrue(organ.ability_state["modulate"]["deployed"])
 
         _toggle_voice_modulator(char, organ, "modulate", {})
-        self.assertFalse(char.db.voice_modulator_active)
         self.assertFalse(is_voice_modulated(char))
         self.assertFalse(organ.ability_state["modulate"]["deployed"])
 
+    def test_a_destroyed_module_gives_the_voice_back(self):
+        """The disguise used to be welded on: the module dies in place,
+        no teardown hook runs, and the toggle can no longer find it
+        (#2484)."""
+        char = _Char()
+        _toggle_voice_modulator(char, char.organ, "modulate", {})
+        self.assertTrue(is_voice_modulated(char))
+        char.organ.current_hp = 0
+        self.assertFalse(is_voice_modulated(char))
+
     def test_custom_messages_used(self):
-        char, organ = _Char(), _Organ()
+        char = _Char()
+        organ = char.organ
         spec = {"deploy_msg": "DEPLOY!", "retract_msg": "RETRACT!"}
         self.assertEqual(
             _toggle_voice_modulator(char, organ, "modulate", spec), "DEPLOY!"
@@ -62,7 +82,8 @@ class VoiceModulatorToggleTests(TestCase):
         )
 
     def test_modulation_changes_voice_uid(self):
-        char, organ = _Char(), _Organ()
+        char = _Char()
+        organ = char.organ
         bare = get_apparent_voice_uid(char)
         _toggle_voice_modulator(char, organ, "modulate", {})
         masked = get_apparent_voice_uid(char)
@@ -70,7 +91,8 @@ class VoiceModulatorToggleTests(TestCase):
 
     def test_modulation_defeats_recognition(self):
         observer = _Char(sleeve_uid="obs")
-        speaker, organ = _Char(sleeve_uid="spk"), _Organ()
+        speaker = _Char(sleeve_uid="spk")
+        organ = speaker.organ
         # Learn the speaker's natural voice...
         remember_voice(observer, speaker, "Bob")
         self.assertEqual(get_assigned_voice_name(observer, speaker), "Bob")
