@@ -34,6 +34,25 @@ def is_conscious(target) -> bool:
     medical state is treated as conscious — we only take the free-action
     path when helplessness is affirmative, matching the conservative
     polarity of the old per-command gates."""
+    # A corpse is affirmatively dead, not unknown (#2519). It stores
+    # its state as `medical_state_at_death` rather than `medical_state`,
+    # so it used to fall through the no-readable-state branch below and
+    # be treated as AWAKE — which made every third-party verb tell the
+    # player that a corpse "is conscious and would resist". `frisk`
+    # carried a local carve-out for exactly this; the answer belongs
+    # here, where all six consumers read it.
+    #
+    # `isinstance`, not `hasattr`: this function is exercised with
+    # MagicMocks throughout `test_consent`, and every `hasattr` on a
+    # mock is True — a duck-type check here reported EVERY mocked target
+    # as a corpse and broke six existing tests.
+    try:
+        from typeclasses.corpse import Corpse
+        if isinstance(target, Corpse):
+            return False
+    except Exception:  # noqa: BLE001 — import failure means "not a corpse"
+        pass
+
     medical_state = getattr(target, "medical_state", None)
     if medical_state is None:
         return True
