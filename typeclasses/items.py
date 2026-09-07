@@ -650,10 +650,17 @@ class Item(ObjectParent, DefaultObject):
         
         return None
     
-    def at_delete(self):
+    def at_object_delete(self):
         """
-        Called when item is deleted/destroyed.
+        Called just before this item is deleted.
         Handles cleanup for remote detonator explosive tracking.
+
+        `at_object_delete`, not `at_delete` (#2590). Evennia's
+        `DefaultObject.delete` calls `at_object_delete()`; `at_delete` is
+        not a hook it has ever called, so this handler never ran and
+        detonators were left holding references to deleted explosives.
+        Returning the super()'s value matters — a False return VETOES
+        the deletion.
         """
         # If this item is an explosive scanned by a detonator, remove it from the detonator's list
         if self.db.scanned_by_detonator:
@@ -667,7 +674,7 @@ class Item(ObjectParent, DefaultObject):
                     except ValueError:
                         pass  # Already removed
         
-        super().at_delete()
+        return super().at_object_delete()
 
 
 class Document(Item):
@@ -1240,10 +1247,13 @@ class RemoteDetonator(Item):
         self.validate_scanned_list()
         return len(self.db.scanned_explosives)
     
-    def at_delete(self):
+    def at_object_delete(self):
         """
-        Called when detonator is destroyed.
+        Called just before this detonator is deleted.
         Clears scanned_by_detonator reference on all linked explosives.
+
+        See the note on `Item.at_object_delete` (#2590): `at_delete` is
+        not an Evennia hook, so this never ran.
         """
         if self.db.scanned_explosives:
             from evennia.utils.search import search_object
@@ -1255,7 +1265,7 @@ class RemoteDetonator(Item):
                     if explosive_obj.db.scanned_by_detonator is not None:
                         explosive_obj.db.scanned_by_detonator = None
         
-        super().at_delete()
+        return super().at_object_delete()
 
 
 class Organ(Item):

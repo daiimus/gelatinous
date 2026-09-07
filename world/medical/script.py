@@ -118,7 +118,20 @@ class MedicalScript(DefaultScript):
         changes propagate to every live script on the next reload.
         """
         if self.interval != MEDICAL_TICK_INTERVAL:
-            self.restart(interval=MEDICAL_TICK_INTERVAL)
+            # `start(interval=...)`, not `restart(...)` (#2592). No
+            # Evennia Script has `restart`; the old call raised
+            # AttributeError out of `at_start`, which is the hook the
+            # start machinery runs while bringing a persisted script
+            # back up. #2592 reported only the death-progression copy;
+            # this is the sibling, and it is the more consequential one
+            # — this is the tick that runs bleeding.
+            #
+            # Calling `start()` from inside `at_start` DOES re-enter the
+            # hook once (`_start_task` invokes it at scripts.py:254),
+            # but the second pass finds the interval already correct and
+            # does not call `start()` again — so it terminates after one
+            # extra pass rather than recursing. Verified by test.
+            self.start(interval=MEDICAL_TICK_INTERVAL)
 
     def at_script_creation(self):
         """Called when script is first created."""
