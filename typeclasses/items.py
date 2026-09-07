@@ -118,6 +118,21 @@ class Item(ObjectParent, DefaultObject):
     # Plate size compatibility (small, medium, large, extra_large)
     plate_size = AttributeProperty("", autocreate=True)
 
+    # Which body locations each plate slot protects, e.g.
+    # {"front": ["chest"], "left_side": ["abdomen"]}.
+    #
+    # Declared here so `getattr(item, "plate_slot_coverage", {})` can
+    # reach it (#2581). It was the one member of this family with NO
+    # AttributeProperty — written only by the prototype, so it landed as
+    # a plain DB row, and Evennia typeclasses do not fall through to DB
+    # attributes on a plain `getattr`. Three consumers read it that way
+    # and always saw `{}`, so their per-slot filter never fired.
+    #
+    # Uncategorised, exactly like its five siblings above, so it reads
+    # the SAME row the prototype already wrote — no migration, and the
+    # live carriers' existing mappings become visible immediately.
+    plate_slot_coverage = AttributeProperty({}, autocreate=True)
+
     # ===================================================================
     # DISGUISE SYSTEM ATTRIBUTES
     # ===================================================================
