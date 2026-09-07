@@ -162,7 +162,21 @@ class DeathProgressionScript(DefaultScript):
             self.stop()
             return
         if self.interval != DEATH_PROGRESSION_CHECK_INTERVAL:
-            self.restart(interval=DEATH_PROGRESSION_CHECK_INTERVAL)
+            # `start(interval=...)`, not `restart(...)` (#2592). No
+            # Evennia Script has a `restart` method — `DefaultScript`
+            # exposes start / stop / pause / unpause, and `start` is
+            # documented as "Start/Unpause timer component, optionally
+            # with new values", which is exactly this. The old call was
+            # an AttributeError, so the #501 Phase 2 guarantee that a
+            # persisted script never trusts persisted config was
+            # guaranteed to raise the first time it was needed.
+            #
+            # Calling `start()` from inside `at_start` DOES re-enter the
+            # hook once (`_start_task` invokes it at scripts.py:254),
+            # but the second pass finds the interval already correct and
+            # does not call `start()` again — so it terminates after one
+            # extra pass rather than recursing. Verified by test.
+            self.start(interval=DEATH_PROGRESSION_CHECK_INTERVAL)
             
         # Log start of death progression with configurable duration
         splattercast = get_splattercast()
