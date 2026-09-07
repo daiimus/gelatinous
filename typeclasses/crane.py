@@ -83,7 +83,7 @@ class CraneConsole(AnsweringFixture):
 
     def _handle(self, speech, speaker, kwargs):
         low = speech.lower()
-        if not any(a in low for a in self._ADDRESS):
+        if not self._mentions(low, self._ADDRESS):
             return                       # band chatter, not an order
 
         operator = self._operator()
@@ -128,7 +128,7 @@ class CraneConsole(AnsweringFixture):
         # OR anything number-ish, so a bad-enough typo still gets a reply.
         number_ish = (bool(re.search(r"\d", low))
                       or self._fuzzy_number(low, 2) is not None)
-        if (number_ish or any(w in low for w in self._INTENT)) \
+        if (number_ish or self._mentions(low, self._INTENT)) \
                 and self._cooled_down():
             self._answer("Say again — which floor? Anywhere from the "
                          "2nd to the 17th.", speaker=operator)
@@ -209,6 +209,26 @@ class CraneConsole(AnsweringFixture):
 
     # -- reading the order -----------------------------------------------
 
+    @staticmethod
+    def _mentions(low, words):
+        """Whole-word match against a word list, tolerating a plural.
+
+        These lists were plain substring tests, and ``"top" in "stop"``
+        is True — so **"crane, stop"** parsed as a named destination,
+        returned ``(MAX_FLOOR, False)``, skipped the read-back guard
+        that only relative orders get, and drove the container (a room,
+        with people standing in it) to the top of the mast (#2440). An
+        emergency stop was the one phrase most likely to be shouted and
+        the one phrase that bypassed the safety.
+
+        The relative and numeric branches were already ``\b``-anchored;
+        only these lists drifted. The optional ``s`` keeps "the cranes",
+        "operators" and "docked" addressing the crane the way they
+        always did.
+        """
+        return any(re.search(rf"\b{re.escape(w)}s?\b", low)
+                   for w in words)
+
     def _parse_floor(self, low, car):
         """The floor an order asks for, and whether it was RELATIVE.
 
@@ -240,11 +260,11 @@ class CraneConsole(AnsweringFixture):
             return cur_floor + sign * step, True
 
         # named destinations — these are the ones players reach for
-        if any(w in low for w in ("dock", "docked", "ground", "street level",
-                                  "bottom", "second", "2nd", "boarding")):
+        if self._mentions(low, ("dock", "docked", "ground", "street level",
+                                "bottom", "second", "2nd", "boarding")):
             return self.MIN_FLOOR, False
-        if any(w in low for w in ("top", "topmost", "highest", "the top",
-                                  "seventeenth", "seventeen", "17th")):
+        if self._mentions(low, ("top", "topmost", "highest", "the top",
+                                "seventeenth", "seventeen", "17th")):
             return self.MAX_FLOOR, False
         if "queen" in low or "crossing" in low or "the level" in low:
             return self.QOC_FLOOR, False
