@@ -635,7 +635,14 @@ class Room(ObjectParent, DefaultRoom):
         """
         sightings = []
         
-        for exit_obj in self.exits:
+        # `_visible_exits(looker)`, not raw `self.exits` (#2588). That is
+        # this file's single secret-door gate, and its docstring states
+        # the guarantee: a `view:false()` exit "stays out of the exit
+        # prose entirely". `get_custom_exit_display` honours it; this
+        # walker did not, so the game's one view-locked hatch was named
+        # in player prose by anybody standing beyond it — two renderers
+        # onto the same exit set, one carrying the gate.
+        for exit_obj in self._visible_exits(looker):
             destination = exit_obj.destination
             if not destination:
                 continue
@@ -807,7 +814,19 @@ class Room(ObjectParent, DefaultRoom):
         # Get components to determine what sections exist
         things = self.get_display_things(looker, **kwargs)
         characters = self.get_display_characters(looker, **kwargs)
-        desc = self.db.desc or ""
+        # The RENDERED description, not the raw attribute (#2586).
+        #
+        # The `{desc}` slot in `appearance_template` is filled by
+        # `get_display_desc(looker)`, which since the five-senses work
+        # returns the visual layer joined with each authored auditory /
+        # olfactory / tactile / atmospheric layer. Matching a rendered
+        # line against `db.desc` therefore failed for every room that
+        # has any sense layer at all, and the blank line after the
+        # description was silently dropped.
+        try:
+            desc = self.get_display_desc(looker, **kwargs) or ""
+        except Exception:  # noqa: BLE001 — formatting never breaks a look
+            desc = self.db.desc or ""
         
         lines = appearance.split('\n')
         result = []
