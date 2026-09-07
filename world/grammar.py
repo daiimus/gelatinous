@@ -703,3 +703,23 @@ def placement_clause(raw_input: str) -> str:
     if text and not text.endswith((".", "!", "?", '"', "'")):
         text += "."
     return text
+
+
+def ordinal(number: int) -> str:
+    """``3`` -> ``"3rd"``.
+
+    The crane's radio voice and the container's own prose both wrote
+    ``f"the {floor}th"`` unconditionally, so the two lowest floors on the
+    Boiler Run mast announced themselves as *"the 2th"* and *"the 3th"*
+    — including in the read-back that asks a caller to confirm a move
+    with people standing in the car (#2472, #2446).
+
+    Teens are the whole difficulty: 11, 12 and 13 take ``th`` despite
+    ending in 1, 2 and 3, and 111/112/113 do too.
+    """
+    n = int(number)
+    if 10 <= abs(n) % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(abs(n) % 10, "th")
+    return f"{n}{suffix}"

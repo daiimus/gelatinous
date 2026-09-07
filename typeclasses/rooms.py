@@ -1324,6 +1324,7 @@ class CraneContainer(Room):
         """Send the car to floor ``z`` (a z-coordinate, ``MIN_Z``..
         ``MAX_Z``), carrying its occupants, and rewire its exits for the
         new height. Returns the clamped level."""
+        from world.grammar import ordinal
         from world.spatial import set_xyz
 
         z = max(self.MIN_Z, min(self.MAX_Z, int(z)))
@@ -1377,7 +1378,7 @@ class CraneContainer(Room):
                        "out of easy reach; leaping for it is a bad idea")
             self.db.desc = (
                 f"A battered Longhaul shipping container slung on the crane's "
-                f"cable at the {floor}th floor, wind pushing it in slow "
+                f"cable at the {ordinal(floor)} floor, wind pushing it in slow "
                 f"circles. {aim[0].upper() + aim[1:]}. Straight down the "
                 f"cable is the dig.")
 
@@ -1388,7 +1389,7 @@ class CraneContainer(Room):
             self.msg_contents(
                 f"The container {verb} with a groan of cable and motor, the "
                 f"city sliding past the open doors, and settles at the "
-                f"{z + 1}th floor.")
+                f"{ordinal(z + 1)} floor.")
         return z
 
     def _skin_column(self, z):
