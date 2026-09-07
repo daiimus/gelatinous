@@ -126,6 +126,21 @@ class CmdOrder(Command):
         # other spoken line, and the whole serve path — menu, off-menu
         # mixing, price, till, emote — is reached exactly the way a patron
         # who knew the tender's name would reach it (#2342).
+        # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4).
+        # `order` is the FOURTH open-speech door — #2530 wired say / to /
+        # emote / .pose and this one was missed. It routes arbitrary
+        # player text through the same `broadcast_speech` backbone, so a
+        # hidden patron could speak aloud to the whole room and stay
+        # hidden. The spec exempts exactly one speech verb, `whisper`,
+        # and says nothing about `order`; the comment above already
+        # calls this directed speech.
+        #
+        # Below every guard, per #2530: `break_stealth` is the reveal,
+        # not a test, so a mistyped order must not blow your cover for
+        # something that never happened.
+        from world.stealth import break_stealth
+        break_stealth(caller)
+
         from world.speech import broadcast_speech
         caller.msg(f'You say to {tender.get_display_name(caller)}, "{speech}"')
         broadcast_speech(caller, speech, location, target=tender)
