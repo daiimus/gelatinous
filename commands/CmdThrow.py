@@ -435,7 +435,12 @@ class CmdThrow(Command):
 
         elif self.throw_type == "at_target" and target:
             # Cross-room targeting
-            aim_direction = getattr(self.caller.ndb, NDB_AIMING_DIRECTION, "that direction")
+            # `or`, not a getattr default (#2548): `obj.ndb` returns a
+            # DbHolder whose `__getattribute__` RETURNS None for a missing
+            # key rather than raising, so getattr's third argument is
+            # unreachable and the fallback string never appeared.
+            aim_direction = (getattr(self.caller.ndb, NDB_AIMING_DIRECTION,
+                                     None) or "that direction")
             template = MSG_THROW_ORIGIN_TARGETED_CROSS.format(
                 thrower="{actor}", object=object_name, direction=aim_direction)
 
@@ -444,7 +449,12 @@ class CmdThrow(Command):
                 thrower="{actor}", object=object_name)
 
         else:  # fallback
-            aim_direction = getattr(self.caller.ndb, NDB_AIMING_DIRECTION, "nearby")
+            # Same trap (#2548). This one was visible: with no aim set,
+            # `aim_direction` was None, the `== "nearby"` test failed, and
+            # a bare `throw rock` broadcast "Jorge throws a rock None"
+            # instead of the spec'd "tosses a rock nearby".
+            aim_direction = (getattr(self.caller.ndb, NDB_AIMING_DIRECTION,
+                                     None) or "nearby")
             if aim_direction == "nearby":
                 template = MSG_THROW_ORIGIN_HERE.format(
                     thrower="{actor}", object=object_name)

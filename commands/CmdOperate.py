@@ -1142,7 +1142,8 @@ def _process_install_donor(caller, raw_string, **kwargs):
 
 def _node_install_side(caller, raw_string, **kwargs):
     """Side picker for side-agnostic chassis (#526 M2)."""
-    donor_key = getattr(caller.ndb, "_operate_install_donor", "?")
+    # `or`, not a getattr default -- an ndb miss returns None (#2548).
+    donor_key = getattr(caller.ndb, "_operate_install_donor", None) or "?"
     text = (
         f"\n|wInstall {donor_key} — pick the side|n\n\n"
         f"{donor_key} mounts on either side:\n\n"
@@ -1185,7 +1186,8 @@ def _process_install_side(caller, raw_string, **kwargs):
 
 def _node_install_location(caller, raw_string, **kwargs):
     target = caller.ndb._operate_target
-    donor_key = getattr(caller.ndb, "_operate_install_donor", "?")
+    # `or`, not a getattr default -- an ndb miss returns None (#2548).
+    donor_key = getattr(caller.ndb, "_operate_install_donor", None) or "?"
     donor_item = getattr(caller.ndb, "_operate_install_donor_item", None)
 
     if donor_item is None:
