@@ -1389,6 +1389,30 @@ class Character(
                     {"actor": self},
                     exclude=[self],
                 )
+                # Stand up before leaving the grid (#2579).
+                #
+                # This is a DIRECT assignment to `location`, not a
+                # `move_to`, so `at_post_move` never fires — and
+                # `at_post_move` is where posture is cleared. The
+                # furniture module's own docstring promises "moving
+                # auto-stands you"; that was true of movement and false
+                # of logout, so a seat stayed occupied by a body that
+                # was no longer in the world. Two characters were
+                # holding one when this was found, and the capacity
+                # guard counts them, so a disconnect could hold a chair
+                # against everyone else indefinitely.
+                #
+                # It also matters to consent: `is_restrained()` reads
+                # `db.furniture`, and that is one of the free-action
+                # paths in the trust gate.
+                #
+                # Only on UNPUPPET, so an NPC that must stay seated to
+                # do its job — the Rook needs the broadcast chair to
+                # transmit — is untouched.
+                if self.db.furniture or (
+                        self.db.posture and self.db.posture != "standing"):
+                    self._clear_posture()
+
                 self.db.prelogout_location = self.location
                 self.location = None
 
