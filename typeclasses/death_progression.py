@@ -516,11 +516,29 @@ class DeathProgressionScript(DefaultScript):
             except Exception:  # noqa: BLE001 — the imprint never blocks death
                 pass
 
+            # The LIVE cause, not the attribute (#2593).
+            #
+            # `character.db.death_cause` is not written until the corpse
+            # is built ten lines below, so this read was always ahead of
+            # both writers: a first death emitted "(unknown)". And
+            # because nothing clears the attribute, a character who died
+            # a SECOND time emitted the PREVIOUS death's cause — worse
+            # than unknown, because it is confidently wrong.
+            #
+            # `get_death_cause()` derives it from the medical state,
+            # which is exactly what the corpse constructor calls, so the
+            # signal and the corpse now agree. The stale attribute is
+            # deliberately NOT used as a fallback: "unknown" is honest,
+            # last death's cause is not.
             try:
                 from world import wsis
+                try:
+                    cause = character.get_death_cause()
+                except Exception:  # noqa: BLE001 — unreadable state
+                    cause = None
                 wsis.emit("death", character.location,
                           note=f"{getattr(character, 'key', '?')} "
-                               f"({(character.db.death_cause or 'unknown')})")
+                               f"({cause or 'unknown'})")
             except Exception:  # noqa: BLE001 — never block a death
                 pass
 
