@@ -551,6 +551,28 @@ def _relay_points(frequency, exclude_device, origin_xyz, origin_range):
     return out
 
 
+#: Evennia's `DEFAULT_HOME`. Not a place — the room deleted things fall
+#: into. A radio there is an orphan, not a receiver (#2655).
+_ORPHANAGE_ID = 2
+
+
+def _in_orphanage(obj: Any) -> bool:
+    """Is this thing sitting in (or held by someone in) `DEFAULT_HOME`?
+
+    Follows the real `location` chain rather than `_grid_room`, which
+    returns only grid-resident rooms and therefore answers None for
+    exactly the place being tested (#2655).
+    """
+    seen = 0
+    node = obj
+    while node is not None and seen < 5:
+        if getattr(node, "id", None) == _ORPHANAGE_ID:
+            return True
+        node = getattr(node, "location", None)
+        seen += 1
+    return False
+
+
 def _reception_fraction(origin_xyz, origin_range, relays, listener_obj):
     """Best-path distance/reach fraction for a receiver. The link is
     RECIPROCAL: a mast-backed station hears at mast range, so the
@@ -563,10 +585,32 @@ def _reception_fraction(origin_xyz, origin_range, relays, listener_obj):
     if origin_xyz is None:
         return 0.0
     xyz = _antenna_site(listener_obj)
+    room = None
     if xyz is None:
         room = _grid_room(listener_obj)
         xyz = get_xyz(room) if room is not None else None
     if xyz is None:
+        # OFF-GRID FAILS OPEN, EXCEPT THE ORPHANAGE.
+        #
+        # "Range never silences rooms the coordinate grid doesn't cover"
+        # is right for an authored interior. It is wrong for `#2`, which
+        # is not a place: it is Evennia's `DEFAULT_HOME`, where deleted
+        # things land. Eighteen orphaned handhelds sit there, so every
+        # emergency transmission graded Limbo as PERFECT reception and
+        # delivered into the junk drawer (#2655).
+        #
+        # Only the orphanage is excluded, not off-grid generally --
+        # anywhere someone authored deliberately keeps failing open.
+        # Walk the real location chain, NOT `_grid_room`: that returns
+        # only rooms ON the grid, so for anything in Limbo it answers
+        # None and this check never ran. A radio can also be held by
+        # someone standing there, so follow the chain up a few links.
+        if _in_orphanage(listener_obj):
+            # Infinitely far, not None: two of the three callers feed
+            # this straight to `_clarity_for_fraction` (which grades
+            # anything past the fuzzy band as "gone") and the third
+            # compares `fraction <= 1.0`. A None would TypeError there.
+            return float("inf")
         return 0.0
     rx_reach = _effective_tx_range(listener_obj, xyz)
     link = max(float(origin_range), float(rx_reach), 1.0)
@@ -793,22 +837,48 @@ def _deliver(speaker: Any, message: str, frequency: str,
             pass
 
 
+def _perceives(obj) -> bool:
+    """Is this thing a person, and so able to hear a grille?
+
+    `world.emote._perceives` is the definition; imported rather than
+    copied so the audience of a pose and the audience of a radio cannot
+    disagree about who is in the room.
+    """
+    from world.emote import _perceives as _emote_perceives
+    return _emote_perceives(obj)
+
+
 def _grille_audience(holder: Any) -> list:
     """Who hears a receiving walkie's grille. A radio carried by someone
-    fans to their whole room (holder included); one lying in a room fans to
-    that room's contents. Strictly typed (isinstance list) so a mock or
-    malformed location degrades to holder-only, never to silence."""
+    fans to the PEOPLE in their room (holder included); one lying in a
+    room fans to the people in it. Strictly typed (isinstance list) so a
+    mock or malformed location degrades to holder-only, never to silence.
+
+    People, not objects. This used to return `list(contents)` — every
+    item, corpse, organ and blood pool in the room — and `_collect` then
+    filtered on `hasattr(listener, "msg")`, which excludes NOTHING
+    because every typeclassed Evennia object has `.msg`. It read as a
+    safety filter, which is why it survived.
+
+    Live, that made every 911MHz transmission fan to 627 objects of
+    which 35 were people: 18 orphaned radios sit in Limbo, and Limbo
+    holds 592 things. Each one cost a render (#2655).
+
+    Same duck-type and same reasoning as `world/emote.py::_perceives`
+    (#2788), which cut a pose from 2,036 renders to 75 for exactly this
+    reason. Reused rather than re-derived so the two cannot drift.
+    """
     if holder is None:
         return []
     room = getattr(holder, "location", None)
     contents = getattr(room, "contents", None) if room is not None else None
     if isinstance(contents, (list, tuple)):          # carried: holder's room
-        audience = list(contents)
+        audience = [o for o in contents if _perceives(o)]
         if holder not in audience:
             audience.append(holder)
         return audience
     contents = getattr(holder, "contents", None)
     if (isinstance(contents, (list, tuple))
             and not hasattr(holder, "hands")):       # on the floor of a room
-        return list(contents)
+        return [o for o in contents if _perceives(o)]
     return [holder]                                   # fallback: holder only
