@@ -76,6 +76,15 @@ class UnconsciousCmdSet(CmdSet):
     key = "unconscious_cmdset"
     priority = 0  # Same as normal CharacterCmdSet since this replaces it entirely
     no_exits = True  # Prevent exit traversal when unconscious
+    # Evennia gates object-supplied cmdsets on `no_objs`, INDEPENDENTLY
+    # of `no_exits` -- the latter only filters ExitCmdSet out of the
+    # object sets it has already decided to merge (cmdhandler.py:421).
+    # Without this, every command a fixture in the room provides still
+    # merged in, so an unconscious character at a bar counter could
+    # order a drink aloud, empty the till, and work a locker (#2528).
+    # The docstring says "no actions" three times; this is the flag that
+    # means it.
+    no_objs = True
     
     def at_cmdset_creation(self):
         """
@@ -112,6 +121,9 @@ class DeathCmdSet(CmdSet):
     key = "death_cmdset"
     priority = 0  # Same as normal CharacterCmdSet since this replaces it entirely
     no_exits = True  # Prevent exit traversal when dead
+    # See UnconsciousCmdSet above (#2528): `no_exits` does not imply
+    # `no_objs`, and a corpse-to-be should not be working the till.
+    no_objs = True
     
     def at_cmdset_creation(self):
         """
