@@ -62,6 +62,29 @@ class Exit(DefaultExit):
         """
         return self.get_display_desc(looker, **kwargs)
 
+    def _traverse(self, traversing_object, target_location):
+        """Run the traversal and report whether it actually happened.
+
+        Evennia's `DefaultExit.at_traverse` returns **None on both
+        success and failure** — it branches internally on `move_to` and
+        neither branch returns anything. The only way a subclass can
+        know is to re-read the location (#2594).
+
+        A refused move is not an edge case: `Character.at_pre_move`
+        refuses while channeling (CHANNELED_ACTIONS_SPEC §2.2 — *channels
+        prevent movement*), and a bounced escortee refuses too. Both are
+        ordinary, spec-mandated events, and surgery became a channel in
+        #2926, so this fires whenever anyone tries to walk out of an
+        operation.
+
+        Treated as failure when the location did not change — which is
+        exactly what `move_to` leaves behind when `at_pre_move` returns
+        False, since it bails before touching the location.
+        """
+        before = traversing_object.location
+        super().at_traverse(traversing_object, target_location)
+        return traversing_object.location is not before
+
     def at_traverse(self, traversing_object, target_location):
         splattercast = get_splattercast()
         
@@ -331,8 +354,15 @@ class Exit(DefaultExit):
                 )
                 splattercast.msg(f"DRAG: {traversing_object.key} is dragging {grappled_victim_obj.key} from {old_location.key} to {target_location.key} via {self.key}.")
 
-                # Perform moves: grappler first, then victim quietly
-                super().at_traverse(traversing_object, target_location) 
+                # Perform moves: grappler first, then victim quietly.
+                # If the grappler's own move is REFUSED, nothing below
+                # may run — the victim would otherwise be teleported
+                # alone into a room the grappler never reached (#2594).
+                if not self._traverse(traversing_object, target_location):
+                    splattercast.msg(
+                        f"DRAG: {traversing_object.key}'s move was refused; "
+                        f"{grappled_victim_obj.key} stays put.")
+                    return
                 # A channel does not survive being hauled through a door.
                 # Movement is wired as BLOCKED (`at_pre_move` refuses while
                 # channeling), but this call passes `move_hooks=False` and skips
@@ -421,8 +451,13 @@ class Exit(DefaultExit):
                 splattercast.msg(f"{traversing_object.key} tried to move via exit '{self.key}' while in combat. Drag conditions not met (grappling: {bool(grappled_victim_obj)}, yielding: {is_yielding}, targeted_by_others_not_victim: {is_targeted_by_others_not_victim}).")
                 return  # Block movement
 
-        # Not in combat, standard traversal
-        super().at_traverse(traversing_object, target_location)
+        # Not in combat, standard traversal. Everything below is a
+        # POST-move consequence, so none of it may run when the move was
+        # refused (#2594): wiping `temp_place` would clear a posture the
+        # character still holds, and `check_rigged_grenade` would
+        # detonate a trap in the room they never left.
+        if not self._traverse(traversing_object, target_location):
+            return
         
         # Clear temporary character placement on room change
         if hasattr(traversing_object, 'temp_place'):
