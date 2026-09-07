@@ -39,6 +39,48 @@ def _strip_color_codes(text):
     return re.sub(r'\|.', '', text)
 
 
+def _fit_row(content, width=48):
+    """Pad or clip one box row to `width` VISIBLE characters (#2522).
+
+    The descriptive stat rows were built with a hardcoded `:<12` field
+    inside a 48-wide box. `:<12` pads but never truncates, and two of
+    the 104 entries in `STAT_DESCRIPTORS` are 13 characters —
+    `"Uncomfortable"` (resonance 25-30) and `"Knowledgeable"`
+    (intellect 85-90) — so those rows rendered 49 characters into a
+    48-wide box.
+
+    `_center_text` left-pads each line from its own stripped length, so
+    it propagated the overflow rather than masking it: the right border
+    sat a column out and the offending row was misaligned relative to
+    the four around it.
+
+    Measured by length WITHOUT colour codes, because the vitals row
+    carries them inline and `str.ljust` would count them.
+    """
+    visible = _strip_color_codes(content)
+    if len(visible) <= width:
+        return content + " " * (width - len(visible))
+    # Too long: clip by visible characters. Colour codes are copied
+    # through rather than counted, and any that remain after the clip
+    # are appended so a row can never leave a colour unclosed.
+    out, seen, i = [], 0, 0
+    while i < len(content) and seen < width:
+        if content[i] == "|" and i + 1 < len(content):
+            out.append(content[i:i + 2])
+            i += 2
+            continue
+        out.append(content[i])
+        seen += 1
+        i += 1
+    while i < len(content):
+        if content[i] == "|" and i + 1 < len(content):
+            out.append(content[i:i + 2])
+            i += 2
+        else:
+            i += 1
+    return "".join(out)
+
+
 def _center_text(text, width=None, session=None):
     """Center text using same approach as curtain_of_death.py for consistency."""
     if width is None:
@@ -316,25 +358,33 @@ class CmdStats(Command):
             motorics_content = f"              Motorics:   {motorics_display}"
             
             # Pad each line to exactly 48 characters
-            grit_line = grit_content.ljust(48)
-            resonance_line = resonance_content.ljust(48)
-            intellect_line = intellect_content.ljust(48)
-            motorics_line = motorics_content.ljust(48)
+            grit_line = _fit_row(grit_content)
+            resonance_line = _fit_row(resonance_content)
+            intellect_line = _fit_row(intellect_content)
+            motorics_line = _fit_row(motorics_content)
         else:
-            # Standard format for descriptive mode - centered stats
-            grit_line = f"              Grit:       {grit_display:<12}          "
-            resonance_line = f"              Resonance:  {resonance_display:<12}          "
-            intellect_line = f"              Intellect:  {intellect_display:<12}          "
-            motorics_line = f"              Motorics:   {motorics_display:<12}          "
+            # Standard format for descriptive mode - centered stats.
+            # Fitted rather than padded to a fixed field (#2522): two
+            # descriptors are 13 characters and broke the box border.
+            grit_line = _fit_row(f"              Grit:       {grit_display}")
+            resonance_line = _fit_row(f"              Resonance:  {resonance_display}")
+            intellect_line = _fit_row(f"              Intellect:  {intellect_display}")
+            motorics_line = _fit_row(f"              Motorics:   {motorics_display}")
 
         # Add vitals formatting to match other GRIM descriptors
         if show_numeric:
             # For numeric mode, vitals should follow the same pattern as other stats
             vitals_content = f"              Vitals:     {vitals_display}"
-            vitals_line = vitals_content.ljust(48)
+            vitals_line = _fit_row(vitals_content)
         else:
             # Standard format for descriptive mode - centered vitals
-            vitals_line = f"              Vitals:     {vitals_color}{vitals_display:<12}{COLOR_SUCCESS}          "
+            # Same fitter: every return from
+            # `get_medical_status_description` is <= 11 chars today, so
+            # this row does not overflow yet — one longer status string
+            # would have armed it (#2522).
+            vitals_line = _fit_row(
+                f"              Vitals:     {vitals_color}{vitals_display}"
+                f"{COLOR_SUCCESS}")
 
         # Fixed format to exactly 48 visible characters per row
         rating_block = "\n".join(
@@ -1820,7 +1870,15 @@ class CmdSkintone(Command):
     This creates visual distinction between your character's body/skin
     descriptions and clothing descriptions.
 
-    Available tones: porcelain, pale, fair, light, medium, olive, tan, brown, dark, deep
+    Organic tones: porcelain, pale, fair, light, golden, tan, olive,
+    brown, rich
+
+    Synthetic tones: alabaster, ashen, slate, pewter, jade, lilac,
+    cobalt, chrome
+
+    `@skintone list` prints the set your species can actually take —
+    that listing is generated from the species registry and is the
+    authority; this one is prose (#2523).
 
     Examples:
       @skintone tan
