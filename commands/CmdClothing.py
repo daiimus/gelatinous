@@ -924,6 +924,13 @@ class CmdDress(Command):
         shroud` as an example.
         """
         item.move_to(target, quiet=True)
+        # Tell the corpse this one is WORN (#2460). The coverage map is
+        # filtered by `worn_at_death` now, so a corpse carrying that
+        # record would render a freshly-dressed shroud as loose loot
+        # and show the body underneath it.
+        marker = getattr(target, "mark_worn", None)
+        if callable(marker):
+            marker(item)
         return True, ""
 
     def _dress_appendage(self, target, item):

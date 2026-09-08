@@ -9,6 +9,24 @@ Extracted from typeclasses/characters.py in Phase 4 refactoring.
 """
 
 
+def body_number_for(gender):
+    """Grammatical number for a body's braced verbs (#321, #2460).
+
+    Braced verbs follow the PRONOUN's number: singular for he / she,
+    plural for singular-they. Without it a neutral sleeve renders "They
+    holds themselves" instead of "They hold themselves".
+
+    Stated once because it is asked in three places — the room render,
+    the `describe short` PREVIEW, and the corpse renderer — and the
+    preview was the one that never asked, so it defaulted to singular
+    and showed authors a reading the game would never produce. The
+    preview is the authoring surface the spec advertises, so an author
+    could "correct" correct prose into broken prose.
+    """
+    return "singular" if (gender or "").lower() in ("male", "female") \
+        else "plural"
+
+
 class AppearanceMixin:
     """
     Mixin class providing appearance and longdesc methods.
@@ -629,11 +647,7 @@ class AppearanceMixin:
             # for singular-they.  Without this, neutral sleeves render
             # "They holds themselves" instead of "They hold themselves"
             # (issue #321).
-            body_number = (
-                "singular"
-                if (self.gender or "").lower() in ("male", "female")
-                else "plural"
-            )
+            body_number = body_number_for(self.gender)
             processed_desc = self._process_description_variables(
                 self.db.desc, looker,
                 force_third_person=True, apply_skintone=False,

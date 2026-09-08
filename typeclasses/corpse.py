@@ -475,16 +475,53 @@ class Corpse(IdentityBearerMixin, Item):
 
         return descriptions
     
+    def mark_worn(self, item):
+        """Record *item* as worn ON this corpse (#2460).
+
+        `dress <corpse> in <garment>` works by moving the garment into
+        the corpse's contents and letting the coverage map render it.
+        Once that map is filtered by `worn_at_death`, a corpse that
+        HAS a record would silently refuse to show anything dressed
+        onto it afterwards — so the dressing path has to say so.
+
+        No record means the map still renders contents-wide, so there
+        is nothing to record and this is a no-op.
+        """
+        worn = self.db.worn_at_death
+        if worn is None or not item or not item.id:
+            return
+        if item.id not in worn:
+            self.db.worn_at_death = list(worn) + [item.id]
+
     def _build_corpse_clothing_coverage_map(self):
         """Build a map of body locations covered by clothing items in corpse."""
         coverage_map = {}
         
-        # Get clothing items from corpse contents
+        # WORN, not merely CARRIED (#2460). This admitted any object
+        # with a truthy `db.coverage` — which is every garment in the
+        # pack. A jacket taken off before dying, a looted coat, a
+        # newly-bought shirt: all read as worn on the body, and all
+        # suppressed the preserved longdescs underneath them. The
+        # docstring on `get_worn_items` assumed contents == worn, which
+        # stops being true the moment anything unworn is carried.
+        #
+        # `worn_at_death` is stamped by the death transfer at the last
+        # moment the truth exists, as ids so the record survives the
+        # items being looted away.
+        #
+        # FALLS BACK to the old contents-wide behaviour when there is no
+        # record: corpses made before this landed, and any other
+        # creation path, still render as they did rather than suddenly
+        # rendering naked.
+        worn_ids = getattr(self.db, "worn_at_death", None)
         clothing_items = []
         for item in self.contents:
             # Check if item appears to be clothing (has coverage attribute)
-            if item.db.coverage:
-                clothing_items.append(item)
+            if not item.db.coverage:
+                continue
+            if worn_ids is not None and item.id not in worn_ids:
+                continue
+            clothing_items.append(item)
         
         # For each clothing item, map its coverage to body locations
         for item in clothing_items:
