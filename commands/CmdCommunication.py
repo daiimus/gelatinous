@@ -81,6 +81,39 @@ class CmdSay(Command):
         broadcast_speech(caller, speech, location)
 
 
+def search_present(caller, phrase):
+    """`caller.search`, then the presence gate (#2452).
+
+    `whisper` and `to` resolved targets through the RAW search — the
+    ungated door. `Character.search` runs the identity pipeline into
+    `world/search.py:identity_match_characters`, which filters on
+    `_has_identity` and self-exclusion and has no `can_perceive` clause
+    anywhere. So a hidden character the caller is Unaware of was a live
+    match, and `whisper "x" to man` answered *'You whisper to a lanky
+    man, "x"'* while `look` still omitted them entirely.
+
+    That is a **zero-cost, unlimited hidden-presence detector**: no
+    search roll is made or spent, nothing is contested, and whisper does
+    not break the whisperer's own stealth. It also handed over the exact
+    sdesc. The gated sibling `resolve_character_target` has carried
+    `filter_present` all along; these two commands simply never used it,
+    and they cannot switch to it wholesale because they must also target
+    objects (`to <radio>`, `to <crate>`).
+
+    The refusal is Evennia's own no-match wording, verbatim. A DIFFERENT
+    message would still be an oracle — "that name resolves but I won't
+    tell you about it" is exactly the fact being protected.
+    """
+    target = caller.search(phrase)
+    if not target:
+        return None                    # search() already reported it
+    from world.perception import can_perceive
+    if not can_perceive(caller, target):
+        caller.msg(f"Could not find '{phrase}'.")
+        return None
+    return target
+
+
 def addressable(caller, target):
     """Can *caller* direct speech at *target*? (#3029)
 
@@ -165,9 +198,10 @@ class CmdTo(Command):
             caller.msg("You have no location to speak in.")
             return
 
-        target = caller.search(target_str)
+        target = search_present(caller, target_str)
         if not target:
-            return  # search() already sent the error message
+            return  # already reported — a miss and a hidden target read
+                    # identically to the caller, deliberately
 
         if not addressable(caller, target):
             caller.msg(
@@ -288,7 +322,7 @@ class CmdWhisper(Command):
             return
 
         # Resolve target via identity-aware search
-        target = caller.search(target_str)
+        target = search_present(caller, target_str)
         if not target:
             return  # search() already sent error message
 
@@ -333,6 +367,16 @@ class CmdWhisper(Command):
             if not hasattr(observer, "msg"):
                 continue
             if is_hidden_from(caller, observer):
+                continue
+            # ...and the same question about the TARGET (#2452). The
+            # loop asked only whether the observer could perceive the
+            # WHISPERER, then rendered the target's name unconditionally.
+            # Resolution now refuses a target the CALLER cannot perceive,
+            # which closes the common case upstream — but caller and
+            # bystander can differ: an ALERT whisperer may legitimately
+            # address someone an Unaware bystander still cannot see, and
+            # that bystander must not be handed their sdesc.
+            if is_hidden_from(target, observer):
                 continue
             if not can_see(observer):
                 continue

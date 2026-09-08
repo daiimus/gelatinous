@@ -1340,6 +1340,23 @@ class Character(
 
         return f"{name} ({with_article(sdesc)})"
 
+    def _unaware_of_me(self):
+        """Observers here who cannot perceive me — the exclude list a
+        broadcast about ME owes when I am hidden (#2452).
+
+        Mirrors the movement announcements (`announce_move_from` /
+        `announce_move_to`), which have carried this gate all along.
+        The session-lifecycle hooks did not, which is a gap in the
+        Phase-3 leak sweep rather than a declared bypass: the shipped
+        banner enumerates "move announcements" and not the
+        puppet/unpuppet pair.
+        """
+        if self.db.hidden is not True or not self.location:
+            return []
+        from world.stealth import is_hidden_from
+        return [obs for obs in self.location.contents
+                if obs is not self and is_hidden_from(self, obs)]
+
     def at_post_puppet(self, **kwargs):
         """Look at the room and announce our waking, without the meta lines.
 
@@ -1367,11 +1384,17 @@ class Character(
             else:
                 template = "{actor} stirs as consciousness returns."
 
+            # A hidden character coming back is still hidden: db.hidden
+            # is persistent and survives the session, and `at_pre_puppet`
+            # restores location by direct assignment, so `at_pre_move`
+            # (the one place a walk-off breaks stealth) never fires.
+            # Un-gated, observers got a NAMED line from someone still
+            # absent from the room listing.
             msg_room_identity(
                 self.location,
                 template,
                 {"actor": self},
-                exclude=[self],
+                exclude=[self] + self._unaware_of_me(),
             )
 
     def at_post_unpuppet(self, account=None, session=None, **kwargs):
@@ -1386,12 +1409,16 @@ class Character(
             if self.location:
                 from world.identity_utils import msg_room_identity
 
+                # Quitting must not retroactively blow concealment —
+                # un-gated, hiding and then disconnecting handed every
+                # observer the hider's sdesc, including the ones `look`
+                # had been correctly omitting them from all along.
                 msg_room_identity(
                     self.location,
                     "{actor} goes still, eyes emptying to static; the "
                     "vacant sleeve is quietly gone.",
                     {"actor": self},
-                    exclude=[self],
+                    exclude=[self] + self._unaware_of_me(),
                 )
                 # Stand up before leaving the grid (#2579).
                 #
