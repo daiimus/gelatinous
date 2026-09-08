@@ -1184,7 +1184,15 @@ class SkyRoom(Room):
     def at_object_creation(self):
         """Set default attributes for sky rooms."""
         super().at_object_creation()
-        self.db.crowd_base_level = 1
+        # Nobody loiters in mid-air (#2443). This was 1, so every
+        # SkyRoom built by a script sailed past the `== 0` disable gate
+        # and drew from the open-air STREET pool -- a character hanging
+        # in "In the Air" read lines about haulers, gutters and
+        # chit-hustlers, printed by the auto-look the moment they
+        # landed. `@airfill` had been writing 0 by hand with the comment
+        # "nobody loiters in mid-air" since it was written; that is the
+        # intent, and this is where it belongs.
+        self.db.crowd_base_level = 0
         self.db.outside = True
         self.db.is_sky_room = True
         self.db.type = "sky"

@@ -980,6 +980,20 @@ INTERIOR_ROOM_TYPES = {
     'bar', 'interior', 'venue', 'cantina', 'lounge',
 }
 
+#: Room types with no population to draw on, whatever a builder wrote on
+#: the room (#2443). `sky` is the jump/fall lattice -- "In the Air".
+#:
+#: This is a floor, not a profile. `get_crowd_messages` falls back to
+#: 'default' for any profile it doesn't recognise, so a "no crowd here"
+#: pool cannot be expressed as one -- an unpeopled type has to be
+#: answered before a pool is chosen at all.
+UNPEOPLED_ROOM_TYPES = {'sky'}
+
+
+def room_type_is_unpeopled(room_type):
+    """True when nothing should ever read as a crowd in this room type."""
+    return str(room_type or "").lower() in UNPEOPLED_ROOM_TYPES
+
 
 def crowd_profile_for_room_type(room_type):
     """Map a ``room.type`` to a crowd profile

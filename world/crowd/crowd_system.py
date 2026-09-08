@@ -84,6 +84,17 @@ class CrowdSystem:
         Returns:
             int: Final crowd level (0+)
         """
+        # Some rooms have no population to draw on at all (#2443).
+        # Gated HERE rather than in `get_crowd_description`, because the
+        # level is not only prose: `world/director/witness.py` rolls
+        # witness chance off it and `world/stealth.py` grants a
+        # concealment bonus off it. A sky room at base 1 therefore
+        # supplied bystanders who could have seen a crime committed in
+        # mid-air, and a crowd for a falling character to blend into.
+        from .crowd_messages import room_type_is_unpeopled
+        if room_type_is_unpeopled(getattr(room, "type", None)):
+            return 0
+
         # Start with room's base crowd level (default 0)
         # Use AttributeProperty which handles defaults automatically
         base_level = room.crowd_base_level or 0
