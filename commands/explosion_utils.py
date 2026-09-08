@@ -619,9 +619,13 @@ def explode_standalone_grenade(grenade):
                     holder = stuck_to_armor.location
                     splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Stuck armor worn by: {holder.key}")
                 else:
-                    # Armor is on ground - get room for explosion
-                    room = get_explosion_room(grenade)
-                    splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Stuck armor on ground in: {room.key if room else 'unknown'}")
+                    # Armor is on the ground. The room is resolved at the
+                    # broadcast below rather than here (#2549) — this
+                    # call's result used to be read only by the debug
+                    # line and thrown away.
+                    splattercast.msg(
+                        f"{DEBUG_PREFIX_THROW}_DEBUG: Stuck armor on ground in: "
+                        f"{getattr(get_explosion_room(grenade), 'key', 'unknown')}")
 
             # SECOND: Check if grenade is directly in character inventory
             elif isinstance(grenade.location, Character):
@@ -685,19 +689,34 @@ def explode_standalone_grenade(grenade):
         else:
             # Normal room explosion
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Handling normal room explosion")
-            if grenade.location:
+            # ADDRESS THE ROOM, NOT WHATEVER THE GRENADE IS SITTING IN
+            # (#2549). `grenade.location` is the ROOM only when the
+            # grenade is lying loose. A sticky grenade's location is the
+            # ARMOR it is stuck to, so a grenade on armor lying on the
+            # ground broadcast into that item's (empty) contents: no
+            # explosion line in the room and no adjacent-room warning,
+            # while the damage still landed.
+            #
+            # `get_explosion_room` exists for exactly this and walks
+            # grenade -> armor -> character/room. It was already being
+            # CALLED forty lines up, in the stuck-on-the-ground branch —
+            # and its result was used once, inside a debug string, and
+            # then discarded.
+            from world.combat.utils import get_explosion_room
+            blast_room = get_explosion_room(grenade) or grenade.location
+            if blast_room:
                 explosion_msg = MSG_GRENADE_EXPLODE_ROOM.format(grenade=grenade.key)
-                splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Standalone explosion sending message to room {grenade.location}: {explosion_msg}")
+                splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Standalone explosion sending message to room {blast_room}: {explosion_msg}")
 
                 # Debug: Show room occupants (characters only, both PCs and NPCs)
                 from typeclasses.characters import Character
-                room_characters = [char.key for char in grenade.location.contents if isinstance(char, Character)]
+                room_characters = [char.key for char in blast_room.contents if isinstance(char, Character)]
                 splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Room occupants: {room_characters}")
 
-                grenade.location.msg_contents(explosion_msg)
+                blast_room.msg_contents(explosion_msg)
                 # Notify adjacent rooms
-                notify_adjacent_rooms_of_explosion(grenade.location)
-                splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: Standalone explosion message sent to {grenade.location}")
+                notify_adjacent_rooms_of_explosion(blast_room)
+                splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: Standalone explosion message sent to {blast_room}")
             else:
                 splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Standalone explosion - grenade has no location")
 

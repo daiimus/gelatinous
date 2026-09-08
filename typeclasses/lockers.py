@@ -334,6 +334,31 @@ class LockerBank(Item):
                 f"clear it before the house empties it into lost property. "
                 + self._contents_line(caller))
 
+    def get_display_things(self, looker, **kwargs):
+        """Say nothing about the compartments (#2621).
+
+        The bank's own docstring promises each lease a hidden
+        compartment others "can never reach — or even see". The
+        compartments are plain `Item`s carrying only a `get:false()`
+        lock — which keeps hands off and does nothing about eyes — and
+        this class did not override the default enumeration, so
+        `look lockers` answered
+
+            You see: two locker compartments
+
+        to anybody. That is not only the promise broken: the COUNT
+        leaks how many lockers are let, which is a fact about other
+        people's tenancy.
+
+        `BarCounter` — named as the model in this module's own opening
+        docstring — suppresses the same listing for the same reason
+        (`typeclasses/bar.py`). It was not copied.
+
+        A lessee still sees their own contents: `return_appearance`
+        appends `_contents_line` for them, and only for them.
+        """
+        return ""
+
     def return_appearance(self, looker, **kwargs):
         self._prune()
         base = super().return_appearance(looker, **kwargs)
