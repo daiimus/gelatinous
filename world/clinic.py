@@ -127,8 +127,19 @@ def draw_supply(by, proto_key):
     bottomless draw only works AT the post — a doctor met off-duty at a
     bar treats with whatever is actually in their pockets, like anyone
     else."""
+    # The bottomless draw is a POST perk, so no post means no draw
+    # (#2474). This read `post is not None and by.location != post`,
+    # which skipped the location test entirely for anyone whose
+    # `soul_post` is None — inverted-permissive for exactly the callers
+    # it should be strictest about, since a post-holder standing at
+    # their post is the only case the docstring sanctions.
+    #
+    # Checked against the world before tightening: 78 objects carry a
+    # `soul_post`, the clinic keeper among them. One (`the Rook`) has
+    # the attribute set to None, and is correctly refused — a sealed-
+    # basement DJ has no clinic stock to draw on.
     post = getattr(by.db, "soul_post", None)
-    if post is not None and by.location != post:
+    if post is None or by.location != post:
         return None
     try:
         from evennia.prototypes.spawner import spawn
@@ -210,7 +221,18 @@ def build_install_chart(by, patient, what):
     cyber = _draw(by, proto_key)
     if not cyber:
         return None
-    _draw(by, "SURGICAL_KIT")   # incise checks for a kit on the surgeon
+    # A KIT IS A REQUIREMENT, NOT A CONSUMABLE (#2474). `incise` CHECKS
+    # FOR a kit; nothing spends it. `draw_supply` spawns
+    # unconditionally, so every install minted a fresh one and the
+    # surgeon accumulated them — nine on Jericho Black III when this was
+    # filed, eight of them with consecutive object ids.
+    #
+    # `find_surgical_kit` is the same predicate the procedure gate uses,
+    # so "do I need to draw one" and "will incise accept it" cannot
+    # answer differently.
+    from world.medical.utils import find_surgical_kit
+    if find_surgical_kit(by, patient) is None:
+        _draw(by, "SURGICAL_KIT")
     try:
         from world.medical import charts as chart_lib
         from world.medical.procedures import resolve_augment_declaration
