@@ -123,9 +123,34 @@ def roll_treatment(actor, target_difficulty: int, item_rating: int,
     station_bonus = (int(getattr(station.db, "treatment_bonus", 0) or 0)
                      if station else 0)
     total = roll + int(skill) + int(item_rating) + station_bonus
-    if total >= WOUND_CARE_SUCCESS_THRESHOLD:
+    # GRADE AGAINST THE TARGET WE WERE HANDED (#2500).
+    #
+    # This used to compare `total` to the two fixed module constants and
+    # echo `target_difficulty` back in the result dict unread. So the
+    # whole wound-care difficulty chain -- base + severity ladder +
+    # internal-depth modifier -- was computed by
+    # `calculate_treatment_difficulty`, threaded through
+    # `apply_wound_care`, passed in here, and used for nothing. Every
+    # wound graded at 18 regardless of how bad it was or how deep.
+    #
+    # `constants.py` states the intended math in its own header:
+    #
+    #     target = WOUND_CARE_BASE_DIFFICULTY + severity_modifier
+    #              + depth_modifier
+    #
+    # The partial band keeps the spread the two thresholds already
+    # encode (18 - 12 = 6), so no new number is invented here: the
+    # relationship comes from the file, and the file calls the
+    # magnitudes "placeholders for early playtesting".
+    #
+    # What changes in play: a Minor external wound is now target 12
+    # rather than 18, and a Critical internal one is 26. That spread is
+    # the entire point of a severity ladder that until now did nothing.
+    partial_band = WOUND_CARE_SUCCESS_THRESHOLD - WOUND_CARE_PARTIAL_THRESHOLD
+    target_difficulty = int(target_difficulty)
+    if total >= target_difficulty:
         outcome = SUCCESS
-    elif total >= WOUND_CARE_PARTIAL_THRESHOLD:
+    elif total >= target_difficulty - partial_band:
         outcome = PARTIAL
     else:
         outcome = FAILURE

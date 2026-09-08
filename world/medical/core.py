@@ -1002,7 +1002,32 @@ class MedicalState:
         # Pain penalty
         pain_penalty = 0.0
         if self.pain_level > PAIN_UNCONSCIOUS_THRESHOLD:
-            pain_penalty = (self.pain_level - PAIN_UNCONSCIOUS_THRESHOLD) * PAIN_CONSCIOUSNESS_MODIFIER
+            # NORMALISE (#2501). `PAIN_CONSCIOUSNESS_MODIFIER` is
+            # authored on the 0-100 PAIN scale and was multiplied
+            # straight into a 0.0-1.0 CONSCIOUSNESS value, so what
+            # should be a graded drowsiness curve was a cliff two pain
+            # points wide: lucid at 80, at the unconsciousness line at
+            # 81.4, floored at 82.
+            #
+            # Every sibling term in this expression is already 0-1 —
+            # `blood_penalty` normalises explicitly on the next line,
+            # `ConsciousnessSuppressionCondition` defaults to 0.15, and
+            # renal failure caps at 0.6 with a comment saying it "can't
+            # alone instantly zero consciousness". Pain was the one
+            # outlier, and the one that could.
+            #
+            # Divided here rather than re-authoring the constant to
+            # 0.005: this keeps the knob's stated meaning ("half of the
+            # excess pain") on the scale it is written in, and puts the
+            # conversion where the sibling conversion already is. The
+            # resulting curve is gentle — total pain is an uncapped sum
+            # over conditions, so it takes a badly wounded body to
+            # approach the line — and whether that magnitude is right
+            # is a balance question, not this fix.
+            pain_penalty = (
+                (self.pain_level - PAIN_UNCONSCIOUS_THRESHOLD)
+                * PAIN_CONSCIOUSNESS_MODIFIER / 100.0
+            )
             
         # Blood loss penalty
         blood_penalty = max(0.0, (100.0 - self.blood_level) / 100.0)
