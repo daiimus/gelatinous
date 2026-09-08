@@ -223,8 +223,20 @@ def _match_sdesc(target: object, query: str) -> bool:
     if query_words and all(qw in sdesc_words for qw in query_words):
         return True
 
-    # Also try matching against just the keyword if set
-    keyword = getattr(target, "sdesc_keyword", None)
+    # Also try matching against just the keyword if set — the APPARENT
+    # one (#2451). This read the raw `sdesc_keyword`, which `appear`
+    # never touches: Viktor runs `appear woman`, presents as "brawny
+    # woman in a black trenchcoat" with the word "droog" nowhere in
+    # sight, and `look droog` still landed on him. Anyone who met him
+    # undisguised could confirm the disguised figure was the same person
+    # by trying his old keyword, with no pierce roll spent.
+    #
+    # Note this clause is DEAD WEIGHT when no override is active — the
+    # real keyword is already a word of the sdesc, so the word-boundary
+    # test above has matched. Its only live effect was the disguised
+    # case, i.e. the one case it had to get right.
+    from world.identity import apparent_axes
+    keyword = apparent_axes(target)[2]
     if keyword and query_lower == keyword.lower():
         return True
 

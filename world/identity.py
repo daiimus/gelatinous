@@ -155,6 +155,39 @@ PHYSICAL_DESCRIPTOR_TABLE: dict[str, dict[str, str]] = {
 }
 
 
+def apparent_axes(char):
+    """The (height, build, keyword) an observer actually SEES.
+
+    Presentation overrides win over the real axes, exactly as
+    :meth:`Character.get_sdesc` consumes them. Stated once here because
+    the same leak has now been found three times through three doors:
+    #2806 (the LLM address handle), and the search-keyword fallback and
+    emote char-ref candidates of #2451. Reading the base attributes
+    anywhere an OBSERVER-facing handle is built exposes the body under
+    the mask.
+
+    Returns raw axes, not a composed sdesc — callers compose what they
+    need. The keyword falls back to the gender default, so it is never
+    empty for a character with a gender.
+    """
+    # Imported inside: this module is imported by `world.grammar`'s
+    # consumers and the name is not bound at module scope here.
+    from world.grammar import DEFAULT_SDESC_KEYWORDS
+
+    db = getattr(char, "db", None)
+
+    def _over(name):
+        return getattr(db, name, None) if db is not None else None
+
+    height = _over("height_override") or getattr(char, "height", None)
+    build = _over("build_override") or getattr(char, "build", None)
+    keyword = (_over("keyword_override")
+               or getattr(char, "sdesc_keyword", None)
+               or DEFAULT_SDESC_KEYWORDS.get(
+                   getattr(char, "gender", "neutral"), "person"))
+    return height, build, keyword
+
+
 def get_physical_descriptor(height: str, build: str) -> str:
     """Look up the physical descriptor for a height/build combination.
 
@@ -729,21 +762,13 @@ def get_short_sdesc(char, article: bool = True) -> str:
     # handle this function exists to provide — an LLM NPC addressing "the
     # stocky droog" got "the portly droog", the body under the mask
     # (#2806). The docstring's own example is the override value.
-    db = getattr(char, "db", None)
     descriptor = ""
-    height = (getattr(db, "height_override", None) if db is not None else None) \
-        or getattr(char, "height", None)
-    build = (getattr(db, "build_override", None) if db is not None else None) \
-        or getattr(char, "build", None)
+    height, build, keyword = apparent_axes(char)
     if height and build:
         try:
             descriptor = get_physical_descriptor(height, build)
         except (KeyError, AttributeError):
             descriptor = ""
-    keyword = ((getattr(db, "keyword_override", None) if db is not None else None)
-               or getattr(char, "sdesc_keyword", None)
-               or DEFAULT_SDESC_KEYWORDS.get(
-                   getattr(char, "gender", "neutral"), "person"))
     core = compose_sdesc(descriptor, keyword).strip() if descriptor else keyword
     if not core:
         return getattr(char, "key", "someone")

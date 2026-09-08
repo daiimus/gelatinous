@@ -799,6 +799,16 @@ class _WiringFakeItem:
         self._coverage = coverage
         self.key = key
         self.location = None
+        # `get_worn_items` filters deleted rows with `itm and itm.pk`, so
+        # a stand-in without one raises AttributeError. That happened
+        # inside `wear_item` during SETUP of
+        # `test_remove_essential_invokes_broadcast` — before its patches
+        # and before its assertion — so the essential-item unmasking
+        # broadcast this class exists to pin was never actually
+        # exercised. The non-essential sibling passed because
+        # `apply_signature_change` only recomputes the uid for an
+        # ESSENTIAL item, so it never reached the filter.
+        self.pk = 1
 
     def is_wearable(self) -> bool:
         return True

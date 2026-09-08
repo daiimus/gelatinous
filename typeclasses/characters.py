@@ -1834,6 +1834,23 @@ class Character(
         room = self.location
         room_contents = room.contents if room else []
 
+        # Presence gate (stealth spec §7) — the LAST unswept enumeration
+        # path (#2451). `resolve_character_target` has always filtered
+        # here; this door never did, so a hidden character stayed
+        # targetable by sdesc through every command that resolves a name
+        # the ordinary way: `look gaunt man`, `give card to gaunt man`,
+        # `remember gaunt man as X`. The multimatch disambiguation
+        # listing below would enumerate them by display name too.
+        #
+        # Scoped to the identity pipeline deliberately. `bypass` is set
+        # for `candidates=` / `location=` / `global_search=` / dbref
+        # queries — the doors internal and administrative code uses —
+        # so this gates the player-types-a-name path and leaves
+        # machinery that legitimately needs a specific object alone.
+        # Hidden is concealment, never invulnerability.
+        from world.perception import filter_present
+        room_contents = filter_present(self, room_contents)
+
         identity_matches = identity_match_characters(
             self, query, room_contents
         )
