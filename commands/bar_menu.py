@@ -25,8 +25,8 @@ from world.bar import (
     INGREDIENT_CATALOG,
     bar_stock,
     make_drink,
-    make_drink_from_recipe,
     make_ingredient,
+    plate_or_mix,
     project_mix,
 )
 
@@ -372,7 +372,12 @@ def _process_pick(caller, raw_string, **kwargs):
     menu = (bar.db.menu if bar else None) or []
     if choice.isdigit() and 1 <= int(choice) <= len(menu):
         recipe = menu[int(choice) - 1]
-        drink = make_drink_from_recipe(recipe, location=bar)
+        # Same conversion as `prepare` (#2531) — a `proto` entry is
+        # plated, not mixed. See `world.bar.plate_or_mix`.
+        drink = plate_or_mix(recipe, bar)
+        if drink is None:
+            caller.msg("|rThat one won't come together right now.|n")
+            return "node_top"
         caller.execute_cmd(
             f"emote {recipe.get('craft', 'builds the drink')}, and sets "
             f"{with_article(drink.key)} on {bar.key}."
