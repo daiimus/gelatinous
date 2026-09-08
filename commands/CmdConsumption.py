@@ -30,7 +30,8 @@ class ConsumptionCommand(Command):
     """
     
     def get_item_and_target(self, args, allow_body_location=False,
-                            require_medical=True):
+                            require_medical=True,
+                            item_phrase=None, target_phrase=None):
         """
         Parse command arguments to get item and target.
         
@@ -42,6 +43,17 @@ class ConsumptionCommand(Command):
                 #475 made the delivery-method tag their real gate —
                 a bottle of rotgut is drinkable without being a
                 medical item (#487).
+            item_phrase / target_phrase (str): Pre-split phrases from a
+                caller that ALREADY knows the boundary (#2454). This
+                parser splits on whitespace and takes `parts[0]` as the
+                item and `rest[0]` as the target, so it can only ever
+                see single-word names. `CmdApply` partitions correctly
+                on " on " and then used to re-flatten the halves back
+                into one string, throwing the boundary away: "apply
+                gauze bandages on stout woman" became "gauze bandages
+                stout woman", the item resolved as "gauze" and the
+                TARGET as "bandages". Passing the phrases through keeps
+                what the caller already worked out.
             
         Returns:
             dict: Contains item, target, body_location, errors
@@ -54,23 +66,33 @@ class ConsumptionCommand(Command):
             "errors": []
         }
         
-        if not args:
+        if not args and not item_phrase:
             result["errors"].append(f"Usage: {self.key} <item> [target]")
             return result
-            
+
+        # A caller that already knows the boundary hands it over intact
+        # (#2454) rather than round-tripping through the whitespace
+        # split below, which cannot represent a multi-word name.
+        if item_phrase:
+            item_name = item_phrase.strip()
+            rest = [target_phrase.strip()] if (target_phrase or "").strip() else []
+            parts = None
+        else:
+            parts = args.split()
+
         # Parse arguments
-        parts = args.split()
+        if parts is not None:
         # Keep an ordinal prefix attached to its noun ("2nd mug", "second mug")
         # so the search's ordinal handling (ObjectParent.get_search_query_
         # replacement) can resolve it, instead of splitting the ordinal off as
         # the item and the noun as a (bogus) target.
-        ordinal_words = getattr(caller, "ORDINAL_WORDS", {})
-        if len(parts) > 1 and parts[0].lower() in ordinal_words:
-            item_name = f"{parts[0]} {parts[1]}"
-            rest = parts[2:]
-        else:
-            item_name = parts[0]
-            rest = parts[1:]
+            ordinal_words = getattr(caller, "ORDINAL_WORDS", {})
+            if len(parts) > 1 and parts[0].lower() in ordinal_words:
+                item_name = f"{parts[0]} {parts[1]}"
+                rest = parts[2:]
+            else:
+                item_name = parts[0]
+                rest = parts[1:]
 
         # Find the item
         item = caller.search(item_name, location=caller, quiet=True)
@@ -493,12 +515,18 @@ class CmdApply(ConsumptionCommand):
                 tname, _, location = target_phrase.partition("'s ")
                 target_phrase = tname.strip()
                 location = location.strip().replace(" ", "_")
-            args = f"{item_phrase.strip()} {target_phrase}"
+            args = None      # the halves are passed through intact
         else:
+            item_phrase = target_phrase = None
             args = raw
 
-        # Hand off to the legacy item/target parser.
-        result = self.get_item_and_target(args)
+        # Hand off to the legacy item/target parser — with the boundary
+        # preserved when we already found one (#2454).
+        result = self.get_item_and_target(
+            args,
+            item_phrase=item_phrase,
+            target_phrase=target_phrase,
+        )
         if result["errors"]:
             caller.msg(result["errors"][0])
             return

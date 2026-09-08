@@ -749,8 +749,17 @@ class ResolveSuture(TestCase):
         # renderer picked.
         from world.medical.procedures import _resolve_suture
         self.target.db.sutured_stumps = ["right_arm"]  # legacy shape
+        # BOTH arms are severed (#2454). This fixture severed only the
+        # left, which made the legacy `right_arm` record STALE — and
+        # #2770 later taught `normalize_sutured_stumps` to prune a
+        # suture for a location that is no longer severed, because the
+        # renderer consults this map before any decay-derived stage and
+        # a leftover entry made the NEXT amputation there render as
+        # already-bandaged. So the prune was correctly deleting the very
+        # entry this test asserts is migrated: the test contradicted a
+        # deliberate later fix rather than catching a defect.
         for organ in self.target.medical_state.organs.values():
-            if organ.container == "left_arm":
+            if organ.container in ("left_arm", "right_arm"):
                 organ.current_hp = 0
                 organ.wound_stage = "severed"
         open_incision(self.target, "left_arm", surgeon=self.actor)

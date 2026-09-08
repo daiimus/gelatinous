@@ -162,6 +162,23 @@ class CmdEscort(Command):
         target = _resolve_present_character(caller, args)
         if target is None:
             return
+        if getattr(target.db, "escorting", None) is caller:
+            # MUTUAL ESCORT (#2454). Nothing checked this direction:
+            # this command guarded `caller.db.escorting == target` and
+            # the follow-inverse below, never `target.db.escorting ==
+            # caller`. Two people with mutual `escort` trust could each
+            # lead the other, and the next step either took recursed
+            # `at_pre_move` until the interpreter stack blew — a
+            # RecursionError in the player's face and BOTH of them
+            # wedged, since every later move re-triggered it.
+            # `usher_escortee` now refuses re-entrantly as the
+            # structural backstop; this is the door where a person can
+            # be told why.
+            caller.msg(
+                f"{target.get_display_name(caller)} is already leading "
+                f"you — you can't lead each other."
+            )
+            return
         if caller.db.following == target:
             caller.msg("You're following them — you can't also lead them.")
             return
