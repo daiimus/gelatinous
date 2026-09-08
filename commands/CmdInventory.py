@@ -424,6 +424,22 @@ class CmdDrop(Command):
         return None
 
 
+def _clear_stash_state(item):
+    """Forget that *item* was ever stashed (#2476).
+
+    `db.hidden` is the flag and `db.stash_roll` is the difficulty a
+    searcher had to beat. Both belong to a hiding PLACE, not to the
+    object, so an item in someone's hand should carry neither.
+    """
+    try:
+        if item.db.hidden is not None:
+            del item.db.hidden
+        if item.db.stash_roll is not None:
+            del item.db.stash_roll
+    except Exception:  # noqa: BLE001 — a pickup never fails on this
+        pass
+
+
 def _release_from_worn_ledger(holder, item):
     """Drop *item* from *holder*'s ``db.worn_items`` ledger, if it keeps
     one (severed appendages do; #2456).
@@ -661,6 +677,15 @@ class CmdGet(Command):
         # `_build_worn_items_line` has no prune of its own.
         _release_from_worn_ledger(from_container, item)
 
+        # A found item stops being a stash (#2476). `active_search`
+        # clears `hidden` for everyone when the roll beats it, but
+        # nothing cleared `stash_roll` — so an item picked up after a
+        # search carried the original hider's difficulty around, and
+        # dropping it somewhere else re-armed a hiding place nobody
+        # worked for. Cleared on the way into a hand, where the object
+        # demonstrably stops being hidden.
+        _clear_stash_state(item)
+
         # Try to put it in a free hand.  PR-H2: snapshot + mutate +
         # setter assignment for the derived hands view.
         hands_snapshot = dict(caller.hands)
@@ -725,9 +750,25 @@ class CmdGet(Command):
                 return
     
     def _find_item_in_room(self, caller, itemname):
-        """Search for an item in the room using Evennia's search system."""
+        """Search for an item in the room using Evennia's search system.
+
+        Stashed items are not offered (#2476). `stash` drops the item in
+        the room, flags `db.hidden` and freezes the hider's craft into
+        `db.stash_roll` — the difficulty a searcher has to beat. The room
+        already refuses to RENDER a hidden object (`rooms.py`), but `get`
+        searched raw contents, so anyone who could name the item lifted
+        the contraband with no roll at all and the stash_roll was
+        bypassed entirely.
+
+        Filtered here rather than refused in `_can_be_taken`, so the
+        answer is the same "You don't see a 'X' here." the room already
+        gives: a refusal that named the item would confirm it was there,
+        which is the thing being hidden.
+        """
         # Get room contents excluding the caller
-        room_candidates = [obj for obj in caller.location.contents if obj != caller]
+        room_candidates = [obj for obj in caller.location.contents
+                           if obj != caller
+                           and getattr(obj.db, "hidden", False) is not True]
         if not room_candidates:
             caller.msg(f"You don't see a '{itemname}' here.")
             return None

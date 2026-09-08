@@ -862,8 +862,6 @@ class Corpse(IdentityBearerMixin, Item):
         """Called when an object is moved to this corpse."""
         super().at_object_receive(moved_obj, source_location, **kwargs)
         # Clear any cached appearance data since contents changed
-        if hasattr(self.ndb, 'cached_appearance'):
-            delattr(self.ndb, 'cached_appearance')
         
         # Debug logging removed to reduce noise
     
@@ -871,8 +869,6 @@ class Corpse(IdentityBearerMixin, Item):
         """Called when an object leaves this corpse."""
         super().at_object_leave(moved_obj, target_location, **kwargs)
         # Clear any cached appearance data since contents changed
-        if hasattr(self.ndb, 'cached_appearance'):
-            delattr(self.ndb, 'cached_appearance')
 
         # If a disguise-essential item was looted, the corpse's
         # signature has shifted: the previously-snapshot

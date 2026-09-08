@@ -715,6 +715,19 @@ layer_damage_reduction = round(remaining_damage * final_reduction_percent)
 2. **Penetration Mechanics**: Armor-piercing weapons and ammunition
 3. **Ballistic Trajectories**: Angle-dependent armor effectiveness
 4. **Armor Profiles**: Different effectiveness vs range/weapon types
+5. **Weakness Exploitation**: an attacker who knows a plate's seam,
+   joint or damaged section reduces that layer's effectiveness for the
+   hit. **UNBUILT.** `_calculate_armor_damage_reduction` once read a
+   `weakness_exploited` key off each armour layer and subtracted it from
+   the layer's reduction — but nothing in the codebase ever wrote that
+   key, so the subtraction was always `- 0.0` and the `(-N%)` it fed
+   into the combat debug line could never render. The dead read was
+   removed in #2473 and the idea recorded here instead, because a no-op
+   that looks like a mechanic reads to the next person as a shipped
+   feature that is quietly broken. Building it needs a source of truth
+   for *what* a weakness is (armour condition? a called shot? a
+   recognised seam on a specific prototype?), which is the part that
+   was never designed.
 
 ### Quality of Life
 
