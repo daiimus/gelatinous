@@ -182,27 +182,33 @@ class Room(ObjectParent, DefaultRoom):
                 except Exception:
                     pass
 
-                if corpse.check_complete_decay():
-                    # Drop items to room
-                    for item in list(corpse.contents):
-                        try:
-                            item.move_to(self, quiet=True)
-                        except Exception as e:
-                            # Deliberate (#469) — but a failed rescue
-                            # means the item is destroyed with the
-                            # corpse, so it is audit-logged.
-                            from world.combat.debug import get_splattercast
-                            get_splattercast().msg(
-                                f"CORPSE_DECAY_ITEM_LOST: {item.key} "
-                                f"in {corpse.key}: {e}"
-                            )
-                    
-                    # Log and delete
-                    from world.combat.debug import get_splattercast
-                    splattercast = get_splattercast()
-                    splattercast.msg(f"CORPSE_DECAY_JIT: {corpse.key} decayed on room entry to {self.key}")
-                    
-                    corpse.delete()
+                # NO AUTO-REAPER (#2450). This deleted any corpse
+                # older than 14 days on the next character entry,
+                # dumping whatever was still on the body loose on the
+                # floor. DEATH_AND_SLEEVE_LIFECYCLE_SPEC §7 is a dated
+                # owner design decision to the contrary: "Persistence is
+                # intentional — remains are world-state, not garbage
+                # (design decision, 2026-07-04). There is deliberately
+                # no auto-reaper. A corpse decays to skeletal and STAYS
+                # until something in the world removes it."
+                #
+                # The two consequences the spec names are exactly what
+                # the timer destroyed: uncollected remains as
+                # environmental storytelling ("the harder the room is to
+                # reach, the longer the story persists"), and cleanup as
+                # an economic loop rather than a background task — the
+                # corpse-disposal gig, deferred at §9 step 4, which will
+                # bring its own threshold when it is built.
+                #
+                # Measured live at the time of the fix: six corpses aged
+                # 18.8-19.4 days, every one already past the threshold
+                # and returning True, surviving only because nobody had
+                # walked into those rooms. Two hospital rooftops and a
+                # hull-top — the hard-to-reach case the design is built
+                # around. They would have vanished on the next footstep.
+                #
+                # The key refresh above STAYS: decaying to skeletal is
+                # wanted, it is only the terminal delete that is not.
             except Exception:
                 # Deliberate guard (#469): just-in-time decay cleanup
                 # runs on room entry — a broken corpse must never block

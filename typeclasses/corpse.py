@@ -834,9 +834,11 @@ class Corpse(IdentityBearerMixin, Item):
         """
         # Lifecycle event (deletes the corpse) — acceptable mutation;
         # not a "render" side effect.
-        if self._handle_complete_decay():
-            return None
-
+        # The second reaper door (#2450) used to sit here: `look
+        # <remains>` deleted the corpse and then returned None, so
+        # the player saw literally nothing before it vanished. Both
+        # doors are gone — DEATH_AND_SLEEVE_LIFECYCLE_SPEC §7 says
+        # remains persist until something in the world removes them.
         stage = self.get_decay_stage()
 
         # Build appearance similar to character with preserved longdesc data.
@@ -1036,30 +1038,10 @@ class Corpse(IdentityBearerMixin, Item):
         
         return admin_info
     
-    def check_complete_decay(self):
-        """Check if corpse should be completely decayed and cleaned up."""
-        elapsed = time.time() - self.db.creation_time
-        
-        # 2 weeks for complete decay and cleanup
-        complete_decay_time = 1209600  # 2 weeks in seconds
-        
-        return elapsed > complete_decay_time
-    
-    def _handle_complete_decay(self):
-        """Handle complete decay - drop items and remove corpse (called when looked at)."""
-        if not self.check_complete_decay():
-            return False
-            
-        # Drop all items to the room
-        if self.location:
-            for item in self.contents:
-                item.move_to(self.location, quiet=True)
-                
-        # Log the decay completion
-        from world.combat.debug import get_splattercast
-        splattercast = get_splattercast()
-        splattercast.msg(f"CORPSE_DECAY: {self.key} completely decayed and removed from {self.location}")
-            
-        # Remove the corpse
-        self.delete()
-        return True
+    # `check_complete_decay` / `_handle_complete_decay` were REMOVED
+    # (#2450). They implemented a 14-day auto-reaper that
+    # DEATH_AND_SLEEVE_LIFECYCLE_SPEC §7 explicitly says does not
+    # exist. Left in place they are a loaded gun for the next caller
+    # to rediscover. The deferred corpse-disposal gig (§9 step 4) is
+    # what removes remains, and it will bring its own threshold and
+    # its own actor.
