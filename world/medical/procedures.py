@@ -905,6 +905,26 @@ def _resolve_install(actor, target, *, organ_item, location: str,
             )
             return
 
+    # The guard the three sibling resolvers have and this one did not
+    # (#2507). `_resolve_install_limb`, `_resolve_install_module` and
+    # `_resolve_install_augment` all refuse a target with no medical
+    # state and return WITHOUT consuming the item. This one wrapped its
+    # install block in `if state is not None:` further down and then
+    # fell straight through it — reporting success, broadcasting to the
+    # room, and DELETING the organ.
+    #
+    # Corpses and severed parts are admitted targets by design (the
+    # module docstring says so, and `_is_body_container` passes them
+    # because they carry organ snapshots), so a surgeon could feed a
+    # harvested heart into a corpse, be told it worked, and watch the
+    # heart cease to exist.
+    state = getattr(target, "medical_state", None)
+    if state is None or not getattr(state, "organs", None):
+        actor.msg(
+            f"The {organ_item.key} needs a living body to install into."
+        )
+        return
+
     result = roll_procedure(actor, target)
     outcome = result["outcome"]
 
@@ -918,51 +938,49 @@ def _resolve_install(actor, target, *, organ_item, location: str,
         )
         return
 
-    # Success / partial: organ installs.  Living target: the slot's
-    # organ is rebuilt or restored, and any organ-bound conditions
-    # from the harvested item attach to it.
-    state = getattr(target, "medical_state", None)
-    if state is not None:
-        organ_name = organ_item.db.organ_name
-        organ = state.organs.get(organ_name)
+    # Success / partial: organ installs.  The slot's organ is rebuilt
+    # or restored, and any organ-bound conditions from the harvested
+    # item attach to it. `state` is guaranteed live by the guard above.
+    organ_name = organ_item.db.organ_name
+    organ = state.organs.get(organ_name)
 
-        # Spec-carrying install (#526 M1): when the item carries an
-        # organ spec, the item IS the organ — rebuild the slot with
-        # the item's nature.  Same canonical name (capacity tables
-        # key by name; theming lives in prose), new spec: a
-        # cybernetic heart installs into the "heart" slot as
-        # inorganic chrome.  Items without a spec (legacy harvests,
-        # plain biological organs) keep the HP-restore behavior on
-        # the existing slot organ.
-        from evennia.utils.dbserialize import deserialize
-        item_spec = deserialize(getattr(organ_item.db, "organ_spec", None) or {})
-        if item_spec:
-            from world.medical.core import Organ
-            organ = Organ(organ_name, organ_data=dict(item_spec))
-            organ.medical_state = state
-            state.organs[organ_name] = organ
+    # Spec-carrying install (#526 M1): when the item carries an
+    # organ spec, the item IS the organ — rebuild the slot with
+    # the item's nature.  Same canonical name (capacity tables
+    # key by name; theming lives in prose), new spec: a
+    # cybernetic heart installs into the "heart" slot as
+    # inorganic chrome.  Items without a spec (legacy harvests,
+    # plain biological organs) keep the HP-restore behavior on
+    # the existing slot organ.
+    from evennia.utils.dbserialize import deserialize
+    item_spec = deserialize(getattr(organ_item.db, "organ_spec", None) or {})
+    if item_spec:
+        from world.medical.core import Organ
+        organ = Organ(organ_name, organ_data=dict(item_spec))
+        organ.medical_state = state
+        state.organs[organ_name] = organ
 
-        if organ is not None:
-            # Reset HP based on harvested condition.
-            condition_hp = {
-                "pristine": organ.max_hp,
-                "damaged": int(organ.max_hp * 0.6),
-                "putrid": int(organ.max_hp * 0.3),
-            }
-            organ.current_hp = condition_hp.get(
-                organ_item.db.condition or "pristine", organ.max_hp,
-            )
-            organ.wound_stage = None if organ.current_hp == organ.max_hp else "fresh"
-            # Attach organ-bound conditions from the harvested item.
-            # Deliberate data-tolerance guard (#469): a corrupt or
-            # legacy condition dict skips that condition, never the
-            # install.
-            for condition_dict in (organ_item.db.organ_conditions or []):
-                try:
-                    from world.medical.conditions import deserialize_condition
-                    organ.conditions.append(deserialize_condition(condition_dict))
-                except Exception as exc:
-                    _log_guarded_failure("install_condition_deserialize", target, exc)
+    if organ is not None:
+        # Reset HP based on harvested condition.
+        condition_hp = {
+            "pristine": organ.max_hp,
+            "damaged": int(organ.max_hp * 0.6),
+            "putrid": int(organ.max_hp * 0.3),
+        }
+        organ.current_hp = condition_hp.get(
+            organ_item.db.condition or "pristine", organ.max_hp,
+        )
+        organ.wound_stage = None if organ.current_hp == organ.max_hp else "fresh"
+        # Attach organ-bound conditions from the harvested item.
+        # Deliberate data-tolerance guard (#469): a corrupt or
+        # legacy condition dict skips that condition, never the
+        # install.
+        for condition_dict in (organ_item.db.organ_conditions or []):
+            try:
+                from world.medical.conditions import deserialize_condition
+                organ.conditions.append(deserialize_condition(condition_dict))
+            except Exception as exc:
+                _log_guarded_failure("install_condition_deserialize", target, exc)
 
     seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["install"])
 

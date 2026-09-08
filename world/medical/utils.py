@@ -777,13 +777,34 @@ def serves_species(item, target, looker=None):
     )
 
 
+def _uses_left(item) -> int:
+    """How many uses ``item`` has, read the way ``consume_use`` reads it.
+
+    Missing means ONE, not zero — settled in #2812 after the medical
+    wrapper and the decrement core disagreed and an item was usable on
+    one side of the wall and already spent on the other. The coercion
+    also covers a stored `None`, which made the bare `uses_left <= 0`
+    comparison raise TypeError.
+    """
+    attrs = getattr(item, "attributes", None)
+    if attrs is None:
+        return 0
+    try:
+        return int(attrs.get("uses_left", 1) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def can_be_used(item):
     """Check if this medical item can still be used."""
     if not is_medical_item(item):
         return False
     
-    uses_left = item.attributes.get("uses_left", 1)
-    return uses_left > 0
+    # Same read as `consume_use`, coercion included (#2513): a stored
+    # `None` makes the bare comparison raise, and the two sides of this
+    # wall must not disagree about what a missing or unreadable value
+    # means. Missing means ONE (settled in #2812).
+    return _uses_left(item) > 0
 
 
 def use_item(item):
@@ -804,7 +825,7 @@ def use_item(item):
     if not is_medical_item(item):
         return {"success": False, "destroyed": False, "message": "Item is not a medical item"}
 
-    uses_left = item.attributes.get("uses_left", 1)
+    uses_left = _uses_left(item)
     if uses_left <= 0:
         return {"success": False, "destroyed": False, "message": "Item is already empty"}
 
@@ -824,6 +845,16 @@ def use_item(item):
             loc.msg_contents(f"{item_name} crumbles away, now empty.")
 
     outcome = consume_use(item, on_destroy=_broadcast_destroyed)
+    # READ the refusal (#2513). This branched only on `destroyed`, so a
+    # `consume_use` that declined — writing nothing — was reported back
+    # to the caller as `{"success": True}` with a fabricated uses
+    # message. The two guards agree on the default now, so the reachable
+    # refusal is an item with no readable `attributes` surface; taking
+    # the decrement core at its word costs nothing and means the two
+    # cannot silently drift apart again.
+    if not outcome["success"]:
+        return {"success": False, "destroyed": False,
+                "message": f"{item_name} has nothing left to use."}
     if outcome["destroyed"]:
         return {
             "success": True,
