@@ -336,8 +336,24 @@ class CmdJump(Command):
                 # Move caller to explosive's location and inherit ALL its proximity relationships
                 from world.combat.proximity import establish_proximity
                 
-                # Get everyone currently in proximity to the explosive
-                explosive_proximity = getattr(explosive.ndb, NDB_PROXIMITY, set())
+                # Get everyone currently in proximity to the explosive.
+                #
+                # TWO defects in one line (#2453). It read NDB_PROXIMITY
+                # ("in_proximity_with", the COMBAT relationship) while a
+                # grenade's blast list lives on NDB_PROXIMITY_UNIVERSAL
+                # ("proximity") — two systems with confusingly similar
+                # names. And `getattr(obj.ndb, key, default)` NEVER
+                # returns the default: Evennia's DbHolder answers None
+                # for a missing key, so the `set()` was decoration and
+                # the truthiness test below always failed.
+                #
+                # Net effect: the hero's documented proximity
+                # inheritance — the whole point of throwing yourself on
+                # a grenade — was a silent no-op every time.
+                from world.combat.constants import NDB_PROXIMITY_UNIVERSAL
+                explosive_proximity = (
+                    getattr(explosive.ndb, NDB_PROXIMITY_UNIVERSAL, None)
+                    or [])
                 if explosive_proximity:
                     for char in list(explosive_proximity):
                         if char != self.caller and hasattr(char, 'location') and char.location:
