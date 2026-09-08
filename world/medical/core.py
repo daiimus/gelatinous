@@ -667,8 +667,36 @@ class MedicalState:
         Returns the number of organs that needed healing.
         """
         healed = 0
-        for organ in self.organs.values():
+        # A harvested organ is ABSENT, and the docstring above already
+        # promises healing "does not ... resurrect harvested-out modules
+        # (which would duplicate their abilities)" (#2455). The code
+        # only skipped the `severed` tombstone — but severance writes
+        # that stage into the death-time SNAPSHOT, which corpses have
+        # and living characters do not. `_mark_organ_removed` stamps a
+        # LIVING target's harvested organ `injury_type="harvested"`,
+        # `wound_stage="fresh"`, so it fell straight through to the
+        # restore below: a staff `@heal` or revive put a shotgun module
+        # back at full HP inside someone while the extracted item was
+        # still in the ripper's hands, and `iter_abilities` (which gates
+        # on HP alone) started yielding its abilities again.
+        #
+        # `injury_type` is the durable marker: `suture` moves a
+        # harvested organ's wound_stage from "fresh" to "treated" and
+        # deliberately leaves the injury_type alone, so the stage cannot
+        # carry this and the type can. `removed_organs` is consulted as
+        # a second source because it is the authoritative record and
+        # survives anything that rewrites the organ row.
+        removed = set()
+        character = getattr(self, "character", None)
+        if character is not None:
+            removed = set(
+                getattr(getattr(character, "db", None), "removed_organs", None)
+                or ()
+            )
+        for name, organ in self.organs.items():
             if organ.wound_stage == "severed":
+                continue
+            if organ.injury_type == "harvested" or name in removed:
                 continue
             if organ.current_hp < organ.max_hp:
                 healed += 1
