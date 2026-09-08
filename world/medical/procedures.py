@@ -1077,7 +1077,7 @@ def _resolve_install(actor, target, *, organ_item, location: str,
         from world.medical.core import Organ
         organ = Organ(organ_name, organ_data=dict(item_spec))
         organ.medical_state = state
-        state.organs[organ_name] = organ
+        state.add_organ(organ_name, organ)
 
     if organ is not None:
         # Reset HP based on harvested condition.
@@ -1709,12 +1709,12 @@ def _resolve_install_augment(actor, target, *, organ_item, location: str,
         name for name, organ in state.organs.items()
         if getattr(organ, "container", None) in declared_containers
     ]:
-        del state.organs[organ_name]
+        state.remove_organ(organ_name)
 
     for organ_name, spec in augment_organs.items():
         organ = Organ(organ_name, organ_data=dict(spec))
         organ.medical_state = state
-        state.organs[organ_name] = organ
+        state.add_organ(organ_name, organ)
 
     # Surface the new anatomy (§3.6).  ``augment_longdesc`` is one
     # entry (the tail) or a list of entries (the arm restores
@@ -2051,7 +2051,7 @@ def _resolve_install_module(actor, target, *, organ_item, location: str,
     from world.medical.core import Organ
     organ = Organ(hardpoint_name, organ_data=spec)
     organ.medical_state = state
-    state.organs[hardpoint_name] = organ
+    state.add_organ(hardpoint_name, organ)
     condition_hp = {
         "pristine": organ.max_hp,
         "damaged": int(organ.max_hp * 0.6),
@@ -2222,7 +2222,7 @@ def _resolve_install_limb(actor, target, *, organ_item, location: str,
             n for n, o in state.organs.items()
             if getattr(o, "container", None) == container
         ]:
-            del state.organs[oname]
+            state.remove_organ(oname)
 
     for name, odata in organs_data.items():
         spec = odata.get("data") if hasattr(odata, "get") else None
@@ -2249,7 +2249,7 @@ def _resolve_install_limb(actor, target, *, organ_item, location: str,
                 reset_state[ability_name] = {"deployed": False}
         organ.ability_state = reset_state
         organ.medical_state = state
-        state.organs[name] = organ
+        state.add_organ(name, organ)
 
     # Restore the limb's longdesc prose (carried on the appendage at
     # sever time — apply_living_sever_overlay).
@@ -2706,7 +2706,7 @@ def reset_body_preserving_augments(char) -> int:
         new_state = char.medical_state  # property rebuilds from species
         for organ in preserved:
             organ.medical_state = new_state
-            new_state.organs[organ.name] = organ
+            new_state.add_organ(organ.name, organ)
         save = getattr(char, "save_medical_state", None)
         if callable(save):
             save()

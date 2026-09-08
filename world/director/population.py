@@ -105,7 +105,7 @@ def factory_fit_armament(mob: Any, side: str = "right") -> None:
     spec = _fmt(dict(ROBOT_SHOTGUN_MODULE_SPEC))
     organ_name = "integrated_shotgun_module"
     state = mob.medical_state
-    state.organs[organ_name] = Organ(organ_name, organ_data=spec)
+    state.add_organ(organ_name, Organ(organ_name, organ_data=spec))
     mob.save_medical_state()
 
 
@@ -119,7 +119,7 @@ def factory_fit_comms(mob: Any, side: str = "left") -> None:
     spec = {k: (v.replace("{side}", side) if isinstance(v, str) else v)
             for k, v in dict(ROBOT_COMMS_MODULE_SPEC).items()}
     state = mob.medical_state
-    state.organs["comms_module"] = Organ("comms_module", organ_data=spec)
+    state.add_organ("comms_module", Organ("comms_module", organ_data=spec))
     mob.save_medical_state()
 
 

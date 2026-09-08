@@ -15,25 +15,53 @@ from world.medical.constants import MEDICAL_TICK_INTERVAL
 # ---------------------------------------------------------------------
 
 
+def _healing_organs(medical_state) -> list:
+    """Every organ this tick would actually restore HP to.
+
+    ONE predicate, because there used to be two and they disagreed
+    (#2495). `_has_healing_work` kept the script alive on
+    `dressing_rate > 0`; `_process_healing` did the work only when
+    `_hp_per_tick(rate) > 0`. With `WOUND_HEALING_DIVISOR = 5` and
+    `WOUND_HEALING_FLOOR_HP_PER_TICK = 0`, a rate of 1-4 gives
+    `4 // 5 = 0` — so an organ in that band satisfied the keep-alive
+    test and failed the do-the-work test, leaving a medical script that
+    ticked forever, healed nothing, and never deleted itself.
+
+    No shipped item produces such a rate today; the lowest
+    `wound_healing` value in the game is exactly 5 and the cliff is
+    below 5, so the margin is one step.
+
+    Note which way this resolves: a rate of 1-4 now DRESSES a wound
+    without healing it, and the script stops rather than idling. If
+    weak dressings should inch a wound back instead,
+    `WOUND_HEALING_FLOOR_HP_PER_TICK` is the lever — that is a balance
+    decision, and this is a correctness fix.
+    """
+    out = []
+    organs = getattr(medical_state, "organs", None) or {}
+    for organ in organs.values():
+        if not getattr(organ, "stabilized", False):
+            continue
+        rate = getattr(organ, "dressing_rate", 0) or 0
+        if rate <= 0:
+            continue
+        if organ.current_hp >= organ.max_hp:
+            continue
+        if _hp_per_tick(rate) <= 0:
+            continue
+        out.append(organ)
+    return out
+
+
 def _has_healing_work(medical_state) -> bool:
-    """True when any organ has stabilized + dressed wound that still
-    needs HP recovery.
+    """True when this tick would restore HP to something.
 
     Used by ``MedicalScript`` to decide whether to keep ticking after
     all active conditions are gone — a freshly-dressed wound on an
     otherwise-healthy character needs the tick to fire even with
     zero conditions on the medical state.
     """
-    organs = getattr(medical_state, "organs", None) or {}
-    for organ in organs.values():
-        if not getattr(organ, "stabilized", False):
-            continue
-        if getattr(organ, "dressing_rate", 0) <= 0:
-            continue
-        if organ.current_hp >= organ.max_hp:
-            continue
-        return True
-    return False
+    return bool(_healing_organs(medical_state))
 
 
 def _hp_per_tick(dressing_rate: int) -> int:
@@ -65,18 +93,8 @@ def _process_healing(character, medical_state, elapsed_minutes=1.0) -> list:
     automatically via the ``Organ.heal`` code path.
     """
     healed = []
-    organs = getattr(medical_state, "organs", None) or {}
-    for organ in organs.values():
-        if not getattr(organ, "stabilized", False):
-            continue
-        rate = getattr(organ, "dressing_rate", 0)
-        if rate <= 0:
-            continue
-        if organ.current_hp >= organ.max_hp:
-            continue
-        hp_per_minute = _hp_per_tick(rate)
-        if hp_per_minute <= 0:
-            continue
+    for organ in _healing_organs(medical_state):
+        hp_per_minute = _hp_per_tick(getattr(organ, "dressing_rate", 0) or 0)
         progress = getattr(organ, "dressing_progress", 0.0) or 0.0
         progress += hp_per_minute * elapsed_minutes
         whole = int(progress)

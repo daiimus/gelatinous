@@ -512,10 +512,12 @@ class MedicalState:
         
         # Cached death verdict (issue #462).  ``None`` = stale,
         # recomputed lazily by :meth:`is_dead`.  Invalidated by the
-        # ``blood_level`` / ``Organ.current_hp`` setters and by
-        # condition add/remove — every input that can flip the
-        # verdict.  Defined before the vital-sign assignments below
-        # so the ``blood_level`` property setter can touch it.
+        # ``blood_level`` / ``Organ.current_hp`` setters, by condition
+        # add/remove, and by :meth:`add_organ` / :meth:`remove_organ` —
+        # the organ dict was the input the old wording claimed to cover
+        # and did not (#2494).  Defined before the vital-sign
+        # assignments below so the ``blood_level`` property setter can
+        # touch it.
         self._cached_is_dead = None
 
         # Vital signs
@@ -523,9 +525,6 @@ class MedicalState:
         self.pain_level = 0.0     # Current pain accumulation
         self.consciousness = 1.0  # Current consciousness level (0.0 to 1.0)
 
-        # Cache for expensive calculations
-        self._capacity_cache = {}
-        self._cache_dirty = True
         
         # Initialize default human organs
         self._initialize_default_organs()
@@ -567,9 +566,70 @@ class MedicalState:
         self._cached_is_dead = None
 
     def _invalidate_derived_state(self):
-        """Mark all derived caches stale after a medical mutation."""
+        """Mark the derived death verdict stale after a mutation.
+
+        There used to be a second cache here — `_capacity_cache`, gated
+        on `_cache_dirty`. `_cache_dirty` was initialised True and set
+        True in five places and False in NONE, so
+        `if not self._cache_dirty and ...` could never pass: the early
+        return was unreachable and the dict was a write-only store that
+        grew and was never read (#2494).
+
+        Deleted rather than repaired. `_cached_is_dead` already absorbs
+        the hot path it was meant to protect — `Character.msg` calls
+        `is_dead()` on every message — and a capacity cache that DID
+        work would have made the stale-verdict half of #2494 worse,
+        because stale capacities would then be served too.
+        """
         self._cached_is_dead = None
-        self._cache_dirty = True
+
+    def add_organ(self, organ_name, organ):
+        """Seat an organ, and let the derived state know (#2494).
+
+        Nine sites wrote `state.organs[name] = organ` directly and
+        `procedures.py` contains no invalidation call at all — grep it
+        for `_invalidate_derived_state`, `_cached_is_dead` or
+        `_cache_dirty` and you get nothing.
+
+        The contract stated twice in this file — "invalidated by the
+        `blood_level` / `Organ.current_hp` setters and by condition
+        add/remove, every input that can flip the verdict" — was wrong
+        about "every". `_compute_is_dead` reads four CAPACITIES, and a
+        capacity is computed from the organs present, so seating one
+        changes the verdict without touching any tracked input.
+
+        Confirmed by repro, in the direction that matters: destroy a
+        heart (blood_pumping 0.0, verdict True, cached by the next
+        message), seat a fresh one, and capacity goes back to 1.0 while
+        `is_dead()` keeps answering True. That is the clinic's cyber-
+        heart install leaving the patient reading dead.
+
+        Constructing the organ does not save it either: `Organ.__init__`
+        sets `current_hp`, but `organ.medical_state` is assigned on the
+        FOLLOWING line, so the setter's invalidation is a no-op against
+        a `None` state.
+        """
+        self.organs[organ_name] = organ
+        if getattr(organ, "medical_state", None) is None:
+            organ.medical_state = self
+        self._invalidate_derived_state()
+
+    def remove_organ(self, organ_name):
+        """Take an organ out of the body, and invalidate.
+
+        Note for anyone chasing the other direction: a missing organ
+        currently reads as FULL capacity (a body with no heart still
+        scores 1.0 blood_pumping), so removal alone does not move the
+        verdict. Harvest does not use this path — `_mark_organ_removed`
+        zeroes the organ's HP instead, which the capacity math does
+        read. This exists so the two dict-deleting callers (augment
+        install clearing a container, reattach clearing a stump) cannot
+        leave a stale verdict behind when they seat the replacement.
+        """
+        organ = self.organs.pop(organ_name, None)
+        if organ is not None:
+            self._invalidate_derived_state()
+        return organ
 
     def get_organ(self, organ_name):
         """Get organ by name, or ``None`` when the body doesn't have it.
@@ -625,7 +685,6 @@ class MedicalState:
         self.pain_level = 0.0
         self.consciousness = 1.0
         self._cached_is_dead = None
-        self._cache_dirty = True
         return healed
 
     def location_severable_by_organ(self, location):
@@ -691,10 +750,9 @@ class MedicalState:
 
         Returns:
             float: 0.0 to 1.0 representing the organ-only capacity
-            floor, clamped and cached until ``_cache_dirty`` flips.
+            floor, clamped.
         """
-        if not self._cache_dirty and capacity_name in self._capacity_cache:
-            return self._capacity_cache[capacity_name]
+
 
         # Issue #356 follow-up: species-aware capacity wiring.  A
         # rat's "moving" references hindleg/hindpaw bones, not human
@@ -743,7 +801,6 @@ class MedicalState:
         capacity_level = max(0.0, min(1.0, capacity_level))
 
         # Cache the result
-        self._capacity_cache[capacity_name] = capacity_level
         return capacity_level
 
     def _resolve_capacity_contribution(
@@ -959,7 +1016,6 @@ class MedicalState:
         self.consciousness = max(0.0, base_consciousness - pain_penalty - blood_penalty - consciousness_suppression_penalty)
 
         # Mark cache as dirty after vital sign updates
-        self._cache_dirty = True
 
     def _update_renal_failure(self):
         """Spawn / clear the RenalFailure condition from ``blood_filtration``.
@@ -1025,7 +1081,6 @@ class MedicalState:
             for condition in new_conditions:
                 self.add_condition(condition)
         
-        self._cache_dirty = True
         return was_destroyed
         
     def _create_conditions_from_damage(self, damage_amount, injury_type, location):
