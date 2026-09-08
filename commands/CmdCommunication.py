@@ -116,6 +116,25 @@ class CmdTo(Command):
         if not target:
             return  # search() already sent the error message
 
+        # Keying a handset is a HANDS/ATTENTION act, and `xmit`, `tune`
+        # and the power toggle all refuse while channeling
+        # (`CmdRadio.py:87, 151, 208`). `to <radio>, ...` reaches the
+        # same `world.radio.transmit`, which enforces only powered and
+        # tuned — the real guards live in the commands, and this one had
+        # drifted (#2446 §2). Mid-`sabotage` (90s) or mid-`repair`
+        # (180s) you could not key your handset with `xmit`, but `to
+        # walkie, all clear` went out fine.
+        #
+        # Placed BEFORE `break_stealth` deliberately: #2530 established
+        # that a refused command must not blow your cover for an action
+        # that never happened, and a channeling refusal is exactly that.
+        # Radio branch only — ordinary directed speech is not hands.
+        from world.radio import is_radio as _is_radio
+        if _is_radio(target):
+            from world.channeled import refuse_if_channeling
+            if refuse_if_channeling(caller):
+                return
+
         # Speaking gives you away (STEALTH_AND_DETECTION_SPEC §6.4) —
         # SPEAKING does, not typing. `break_stealth` is not a test, it is
         # the reveal: it clears `db.hidden`, pushes every occupant to

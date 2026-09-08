@@ -32,12 +32,29 @@ class CrowdSystem:
             'dead-end': -0.5,  # Can reduce crowd below base
         }
         
-        # Weather effects on crowd levels
+        # Weather effects on crowd levels.
+        #
+        # KEYED AGAINST `WEATHER_INTENSITY` (#2446 §5) — it wasn't. This
+        # table defined `heavy_rain`, which is not a weather type and so
+        # could never be selected, and omitted `light_rain` and
+        # `foggy_rain`, which both are. Those two real weathers
+        # therefore contributed nothing at all: not to crowd prose, and
+        # not to the witness roll or the stealth concealment bonus that
+        # read the same level. `test_crowd_weather_keys` now pins the
+        # two vocabularies to each other so this cannot drift again.
+        #
+        # The two new magnitudes are interpolated from the ladders
+        # already here (fog -0.2/-0.7/-1.2, snow -0.3/-0.8/-2.0):
+        # `light_rain` mirrors `soft_snow`, and `foggy_rain` takes rain's
+        # -0.5 plus the fog penalty, landing on `heavy_fog`'s -0.7.
+        # PROVISIONAL — no system in this game has had its balance pass
+        # yet, so treat these as shaped-right, not tuned.
         self.weather_modifiers = {
             'clear': 0.2,
             'overcast': 0.0,
+            'light_rain': -0.3,
             'rain': -0.5,
-            'heavy_rain': -1.0,
+            'foggy_rain': -0.7,
             'torrential_rain': -1.5,
             'soft_snow': -0.3,
             'hard_snow': -0.8,
