@@ -34,6 +34,7 @@ from __future__ import annotations
 import random
 import time
 from typing import Optional
+from uuid import uuid4
 
 from evennia.utils import delay as evennia_delay
 from world.grammar import capitalize_first
@@ -314,6 +315,26 @@ class SurgicalKitRequired(RuntimeError):
     """
 
 
+class ProcedureInProgress(RuntimeError):
+    """Raised by :func:`start_procedure` when the patient already has a
+    procedure running (#2509).
+
+    ``active_procedure`` is a single slot. Any new ``start_procedure``
+    overwrote it, and the resolution callback re-read the slot with no
+    identity check — so it resolved whatever was in there when it fired,
+    not the record its own timer was created for. A 6-second incise
+    could resolve an 18-second harvest twelve seconds early.
+
+    The gate existed. `is_procedure_active` was called by the seven
+    standalone verbs and NOT by the ``operate`` chart door, so a second
+    surgeon (or the chart runner) could start on a patient someone else
+    was already inside. Enforced here at the single funnel, the same way
+    :class:`SurgicalKitRequired` is, rather than left to each caller to
+    remember — that is what the caller-side version of this check
+    already failed at once.
+    """
+
+
 #: In-memory map of ``target.dbref`` → ``on_complete`` callable.
 #: Populated by :func:`start_procedure` when an ``on_complete`` hook
 #: is provided; consumed by :func:`_resolve_procedure_callback` after
@@ -369,22 +390,36 @@ def start_procedure(
         raise SurgicalKitRequired(
             f"needs {instruments_wanted(target)} to {verb}")
 
+    if is_procedure_active(target):
+        raise ProcedureInProgress(
+            f"{getattr(target, 'key', 'the patient')} is already partway "
+            f"through a procedure")
+
     duration = PROCEDURE_DURATIONS.get(verb, 6)
+    # An identity for THIS record, so the resolution that fires can tell
+    # whether the slot still holds the record it was created for (#2509).
+    token = uuid4().hex
     record = {
         "verb": verb,
         "actor_dbref": getattr(actor, "dbref", None),
         "started_at": time.time(),
         "duration_s": duration,
+        "token": token,
         "kwargs": dict(kwargs),
     }
     state = _state(target)
     state["active_procedure"] = record
     target.db.surgical_state = state
 
-    if on_complete is not None:
-        dbref = getattr(target, "dbref", None)
-        if dbref:
+    dbref = getattr(target, "dbref", None)
+    if dbref:
+        if on_complete is not None:
             _PROCEDURE_COMPLETE_HOOKS[dbref] = on_complete
+        else:
+            # A standalone verb carries no hook, and leaving a previous
+            # one in the map meant an unrelated procedure could fire
+            # someone else's chart chain (#2512).
+            _PROCEDURE_COMPLETE_HOOKS.pop(dbref, None)
 
     # SURGERY IS A CHANNELED ACT (#2926, owner ruling: "if someone
     # starts shooting while you're operating on someone — operation
@@ -405,7 +440,7 @@ def start_procedure(
     # runner's back-to-back steps each open a fresh channel without
     # refusing themselves.
     def _channel_done():
-        _resolve_procedure_callback(target)
+        _resolve_procedure_callback(target, token=token)
 
     def _channel_broken(fraction, _target=target, _verb=verb):
         interrupt_procedure(_target, reason="interrupted")
@@ -431,6 +466,7 @@ def start_procedure(
             duration,
             _resolve_procedure_callback,
             target,
+            token,
             persistent=False,
         )
     return record
@@ -479,7 +515,7 @@ def interrupt_procedure(target, reason: str = "interrupted") -> Optional[dict]:
     return record
 
 
-def _resolve_procedure_callback(target) -> None:
+def _resolve_procedure_callback(target, token=None) -> None:
     """Fire when a staged procedure's delay elapses.
 
     Re-reads the active procedure off ``target.db.surgical_state``,
@@ -487,15 +523,37 @@ def _resolve_procedure_callback(target) -> None:
     and dispatches to the verb-specific resolver.  Resolution is
     intentionally idempotent: if the active_procedure was cleared in
     the meantime (interrupted, manually cancelled), we no-op.
+
+    ``token`` identifies the record this call was scheduled FOR (#2509).
+    `record is None` covered interruption but not OVERWRITE: the slot is
+    single, any new `start_procedure` replaced it, and this callback
+    resolved whatever it found. A short verb's timer could therefore
+    resolve a long verb's record early — and the timer handle is
+    discarded, so nothing can cancel a stale one. The overlap itself is
+    refused at the funnel now; this is the second lock, because the
+    handle is still unreachable and a stale timer will still fire.
     """
     state = _state(target)
     record = state.get("active_procedure")
     if record is None:
         return  # interrupted / already resolved
+    if token is not None and record.get("token") != token:
+        return  # not our record any more — a later procedure holds the slot
     # Clear the slot first so a resolver-triggered side effect can't
     # re-enter.
     state["active_procedure"] = None
     target.db.surgical_state = state
+
+    # Take the chart hook OFF the map now, not after the resolver.
+    #
+    # The comment below used to promise it was "cleared from the map
+    # regardless"; two of this function's returns sat above the pop, and
+    # a resolver that raised skipped it too. A leaked hook survived
+    # every later `start_procedure` that omitted one, then fired on some
+    # unrelated procedure — handing a dead surgeon's chart to whoever
+    # happened to be operating on that patient next (#2512).
+    dbref = getattr(target, "dbref", None)
+    hook = _PROCEDURE_COMPLETE_HOOKS.pop(dbref, None) if dbref else None
 
     from evennia.objects.models import ObjectDB
     actor_dbref = record.get("actor_dbref")
@@ -519,20 +577,17 @@ def _resolve_procedure_callback(target) -> None:
         return
     resolver(actor, target, **kwargs)
 
-    # Fire the chart-runner advancement hook if one's registered.
-    # Cleared from the map regardless so a re-entered chain doesn't
-    # double-fire.  Errors swallowed so a buggy hook can't break
-    # the procedure resolution it's tacked onto.
-    dbref = getattr(target, "dbref", None)
-    if dbref:
-        hook = _PROCEDURE_COMPLETE_HOOKS.pop(dbref, None)
-        if hook is not None:
-            # Deliberate callback isolation (#469): a broken completion
-            # hook must not crash the chart that just finished.
-            try:
-                hook(target, actor)
-            except Exception as exc:
-                _log_guarded_failure("procedure_complete_hook", target, exc)
+    # Fire the chart-runner advancement hook, already removed from the
+    # map above so a re-entered chain can't double-fire.  Errors
+    # swallowed so a buggy hook can't break the procedure resolution
+    # it's tacked onto.
+    if hook is not None:
+        # Deliberate callback isolation (#469): a broken completion
+        # hook must not crash the chart that just finished.
+        try:
+            hook(target, actor)
+        except Exception as exc:
+            _log_guarded_failure("procedure_complete_hook", target, exc)
 
 
 # ---------------------------------------------------------------------
