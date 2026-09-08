@@ -81,12 +81,65 @@ class CmdSay(Command):
         broadcast_speech(caller, speech, location)
 
 
+def addressable(caller, target):
+    """Can *caller* direct speech at *target*? (#3029)
+
+    One rule for every target, which is the point. `to` had no
+    reachability rule at all for ordinary objects — `caller.search`
+    resolves the room plus your whole inventory, so you could address a
+    crate on the floor or something buried in a pocket — and a bespoke
+    extra restriction for radios bolted on top of that. Two answers to
+    one question, and the radio one was the odd shape.
+
+    The rule: **you can address what is out where you or the room can
+    see it.**
+
+    * anything in the room — people, corpses, a console, a crate;
+    * anything on your person that is OUT: held in a hand, or worn.
+
+    What that excludes is the pocket. An item merely carried is not
+    addressable, and that is what settles the radio case without a word
+    about radios: a pocketed handset is not held and not worn, so `to`
+    refuses it exactly as `xmit` already does (`active_transmit_radio`:
+    *"a radio merely carried in a pocket can receive but not be spoken
+    through"*).
+
+    The dispatch-board seam falls out too. It used to need naming — `to`
+    special-cased `seated_base_station` — but a board you are seated at
+    is in the room, so the general rule already covers it and the
+    special case is gone.
+    """
+    if target is None:
+        return False
+    location = getattr(caller, "location", None)
+    target_location = getattr(target, "location", None)
+    if location is not None and target_location is location:
+        return True
+    if target_location is not caller:
+        return False
+    # On your person — but only what is out.
+    try:
+        if any(held is target for held in (caller.hands or {}).values()):
+            return True
+    except Exception:  # noqa: BLE001 — no hands, not held
+        pass
+    try:
+        return bool(caller.is_item_worn(target))
+    except Exception:  # noqa: BLE001 — no clothing model, not worn
+        return False
+
+
 class CmdTo(Command):
     """
     Speak aloud, directed at someone in the room.
 
     Usage:
         to <target> <message>
+
+    You can address anyone in the room, anything in it, and anything you
+    are holding or wearing — but not something stowed in a pocket; take
+    it out first. Aimed at a radio you are holding or wearing — or the
+    console you are seated at — this transmits.
 
     Like ``say``, but pointed at one person — everyone present still hears it.
     The target is addressed directly ("... says to you, ..."); onlookers see
@@ -115,6 +168,13 @@ class CmdTo(Command):
         target = caller.search(target_str)
         if not target:
             return  # search() already sent the error message
+
+        if not addressable(caller, target):
+            caller.msg(
+                f"{target.get_display_name(caller)} is stowed away — "
+                f"you'd have to hold it or wear it to speak to it."
+            )
+            return
 
         # Keying a handset is a HANDS/ATTENTION act, and `xmit`, `tune`
         # and the power toggle all refuse while channeling
@@ -147,13 +207,26 @@ class CmdTo(Command):
         # `to <radio>, <message>` transmits over the device (RADIO_COMMS_SPEC):
         # the directed-speech verb, retargeted at a comm device you carry —
         # or the dispatch board you're seated at (the desk seam).
-        from world.radio import is_radio, seated_base_station, transmit
+        # SPEAKING AT a radio and TRANSMITTING THROUGH one are different
+        # acts, and only the second needs the device in your hands
+        # (#3029). `addressable` above already settled the pocket for
+        # every target alike — a stowed handset never reaches here. What
+        # is left is the operating rule, and it is no longer written out
+        # a second time: `can_transmit_through` is the same worn / held /
+        # seated-board answer `xmit` gets from `active_transmit_radio`,
+        # so the picker and the judge cannot drift apart again.
+        #
+        # This is why a base station in the room is addressable but not
+        # transmittable-through while you stand: the desk seam is that
+        # you take the chair.
+        from world.radio import can_transmit_through, is_radio, transmit
         if is_radio(target):
-            if (target not in caller.contents
-                    and target is not seated_base_station(caller)):
-                caller.msg(f"You aren't carrying "
-                           f"{target.get_display_name(caller)} — and you'd "
-                           f"have to take the seat to work a console.")
+            if not can_transmit_through(caller, target):
+                caller.msg(
+                    f"You'd have to be holding or wearing "
+                    f"{target.get_display_name(caller)} to speak through "
+                    f"it — or take the seat to work a console."
+                )
                 return
             transmit(caller, speech, target, overt=True)   # spoken openly
             return

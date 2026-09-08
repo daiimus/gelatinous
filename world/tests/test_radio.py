@@ -456,18 +456,43 @@ class TestCommands(TestCase):
         self.assertIn("nothing to switch",
                       cmd.caller.msg.call_args.args[0])
 
-    def test_to_retarget_transmits(self):
+    def _to_with(self, dev, **on_person):
+        """Drive `to <radio> <message>` with the set placed somewhere on
+        the caller; `on_person` says how it is carried."""
         from commands.CmdCommunication import CmdTo
-        dev = _radio(freq="447")
         caller = MagicMock()
         caller.location = MagicMock()
         caller.contents = [dev]
+        dev.location = caller
+        caller.hands = on_person.get("hands", {})
+        caller.get_worn_items = lambda *a, **k: on_person.get("worn", [])
+        caller.is_item_worn = lambda item: item in on_person.get("worn", [])
         caller.search.return_value = dev
-        cmd = CmdTo(); cmd.caller = caller; cmd.args = "walkie, on my way"
+        cmd = CmdTo(); cmd.caller = caller; cmd.args = "walkie on my way"
         with patch("world.stealth.break_stealth"), \
                 patch("world.radio.transmit") as tx:
             cmd.func()
+        return caller, tx
+
+    def test_to_retarget_transmits(self):
+        """A set IN YOUR HAND. This used to pass with the radio merely in
+        `caller.contents` -- that is, in a pocket -- which is exactly the
+        rule #3029 overturned: `to` accepted what `xmit` refused."""
+        dev = _radio(freq="447")
+        caller, tx = self._to_with(dev, hands={"right_hand": dev})
         tx.assert_called_once_with(caller, "on my way", dev, overt=True)
+
+    def test_a_worn_set_transmits_too(self):
+        """`active_transmit_radio` prefers WORN over held; the judge must
+        not disagree with the picker."""
+        dev = _radio(freq="447")
+        caller, tx = self._to_with(dev, worn=[dev])
+        tx.assert_called_once_with(caller, "on my way", dev, overt=True)
+
+    def test_a_pocketed_set_does_not(self):
+        dev = _radio(freq="447")
+        _caller, tx = self._to_with(dev)
+        tx.assert_not_called()
 
 
 class TestCommsOrgan(TestCase):

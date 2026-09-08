@@ -117,6 +117,29 @@ def _held_radios(char: Any) -> list:
     return out
 
 
+def can_transmit_through(char: Any, radio: Any) -> bool:
+    """May *char* speak through *this* set? (#3029)
+
+    `xmit` PICKS a device (:func:`active_transmit_radio`); `to <radio>
+    <message>` is handed one and has to judge it. Both questions have
+    one answer — worn, held, or the board you are seated at — and they
+    had drifted: `CmdTo` accepted anything in `caller.contents`, pocket
+    included, so a handset that refused `xmit` transmitted happily
+    through `to`, rendering "says into the radio" for a device that was
+    not in a hand.
+
+    Stated once here so the picker and the judge cannot diverge again.
+    The seat is not a formality: `seated_base_station` exists because a
+    standing visitor does not key the colony's dispatch voice by
+    brushing past the desk.
+    """
+    if char is None or radio is None:
+        return False
+    if radio in _worn_radios(char) or radio in _held_radios(char):
+        return True
+    return radio is seated_base_station(char)
+
+
 def active_transmit_radio(char: Any) -> Optional[Any]:
     """The device a ``transmit`` defaults to: a WORN radio first, then a HELD
     one, then the DISPATCH BOARD the character is seated at (a powered base

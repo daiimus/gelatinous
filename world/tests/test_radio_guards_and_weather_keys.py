@@ -101,8 +101,18 @@ class TestChannelingBlocksBothDoors(EvenniaCommandTest):
     def setUp(self):
         super().setUp()
         self.char1.location = self.room1
-        self.radio = create_object("typeclasses.objects.Object",
+        # HELD and a real radio (#3029). This fixture used to leave the
+        # set in `caller.contents` -- a pocket -- and patch `is_radio`
+        # to always-true. Both were wrong: `to` no longer transmits
+        # through a pocketed set, and an always-true `is_radio` makes an
+        # empty hand read as a radio inside `_held_radios`.
+        self.radio = create_object("typeclasses.items.Item",
                                    key="a walkie", location=self.char1)
+        self.radio.db.is_radio = True
+        self.radio.db.radio_on = True
+        self.radio.db.frequency = "447"
+        self.char1.wield_item(self.radio, "right_hand")
+        assert self.char1.is_wielding(self.radio), "fixture never held it"
 
     def _to(self, args):
         from commands.CmdCommunication import CmdTo
@@ -115,9 +125,7 @@ class TestChannelingBlocksBothDoors(EvenniaCommandTest):
                      return_value=True)
 
     def test_a_channeling_character_cannot_key_the_handset(self):
-        with self._channeling(), \
-                patch("world.radio.is_radio", return_value=True), \
-                patch("world.radio.transmit") as sent:
+        with self._channeling(), patch("world.radio.transmit") as sent:
             self._to("walkie all clear")
         sent.assert_not_called()
 
@@ -125,7 +133,6 @@ class TestChannelingBlocksBothDoors(EvenniaCommandTest):
         """#2530: a refused command must not reveal you for an action
         that never happened."""
         with self._channeling(), \
-                patch("world.radio.is_radio", return_value=True), \
                 patch("world.stealth.break_stealth") as revealed:
             self._to("walkie all clear")
         revealed.assert_not_called()
@@ -133,7 +140,6 @@ class TestChannelingBlocksBothDoors(EvenniaCommandTest):
     def test_an_unencumbered_character_still_transmits(self):
         with patch("world.channeled.refuse_if_channeling",
                    return_value=False), \
-                patch("world.radio.is_radio", return_value=True), \
                 patch("world.radio.transmit") as sent:
             self._to("walkie all clear")
         sent.assert_called_once()
@@ -143,7 +149,6 @@ class TestChannelingBlocksBothDoors(EvenniaCommandTest):
         scoped to the radio branch."""
         self.char2.location = self.room1
         with self._channeling(), \
-                patch("world.radio.is_radio", return_value=False), \
                 patch("world.stealth.break_stealth") as revealed:
             self._to("Char2 you still there")
         revealed.assert_called_once()
