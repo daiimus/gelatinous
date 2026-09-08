@@ -644,12 +644,26 @@ def commence_chart(target, actor) -> Optional[dict]:
         # finalises the chart status if none remain.
         commence_chart(target_arg, actor_arg)
 
-    from world.medical.procedures import start_procedure
+    from world.medical.procedures import (ProcedureInProgress,
+                                          start_procedure)
     try:
         start_procedure(
             target, verb=verb, actor=actor,
             on_complete=_advance, **resolved_args,
         )
+    except ProcedureInProgress as exc:
+        # Someone else is already inside this patient (#2509). The chart
+        # door never called `is_procedure_active` — the seven standalone
+        # verbs did and this one did not — so the runner would overwrite
+        # the other surgeon's record and let one timer resolve the
+        # other's work. Refused at the funnel now; the step is marked and
+        # the chain STOPS rather than advancing, because every later step
+        # in a chart assumes the earlier ones landed.
+        step["status"] = FAILED
+        step["outcome"] = f"patient busy: {exc}"
+        chart["status"] = ABORTED
+        save_chart(target, chart)
+        return step
     except Exception as exc:
         # Dispatch failure (e.g. surgeon dropped their kit between
         # chart authoring and commence).  Mark the step failed and
