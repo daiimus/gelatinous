@@ -331,6 +331,43 @@ def mark_running_step_failed(target, outcome: str) -> bool:
 # ===================================================================
 
 
+def requeue_stranded_steps(target, chart: dict) -> bool:
+    """Put a step back in the queue if nothing is actually running it.
+
+    Returns True when the chart was changed.
+
+    A chart step goes RUNNING when it is dispatched and comes out of
+    RUNNING only when its procedure resolves, fails, or is interrupted.
+    The procedure timer is NOT persistent -- `start_procedure` says so
+    -- and there is no medical sweep at server start, so a reload
+    mid-step left the step RUNNING with nothing left to finish it.
+
+    `pending_steps` only ever returned PENDING, so the stranded step was
+    invisible to the resume path and could never be re-run; the surgeon
+    re-commenced onto the step AFTER it, silently skipping (say) the
+    incision that the harvest depended on (#2510).
+
+    Read against the live procedure slot rather than swept at boot, for
+    the same reason `is_procedure_active` reads its deadline against the
+    clock (#2419): no startup hook, no migration, and a chart wedged by
+    a past reload frees itself the next time anyone opens it.
+    """
+    steps = chart.get("steps") or []
+    if not any(s.get("status") == RUNNING for s in steps):
+        return False
+    from world.medical.procedures import is_procedure_active
+    if is_procedure_active(target):
+        return False            # genuinely running right now
+    changed = False
+    for step in steps:
+        if step.get("status") == RUNNING:
+            step["status"] = PENDING
+            changed = True
+    if changed and chart.get("status") == ABORTED:
+        chart["status"] = IN_PROGRESS
+    return changed
+
+
 def pending_steps(chart: dict) -> list:
     """Return the ordered list of pending steps in ``chart``."""
     return [
@@ -531,6 +568,10 @@ def commence_chart(target, actor) -> Optional[dict]:
     if chart is None:
         return None
 
+    if requeue_stranded_steps(target, chart):
+        save_chart(target, chart)
+        chart = get_chart(target)
+
     pending = pending_steps(chart)
     if not pending:
         chart["status"] = COMPLETED
@@ -631,14 +672,26 @@ def commence_chart(target, actor) -> Optional[dict]:
                 if pending_result is not None:
                     state["pending_step_result"] = None
                     target_db.surgical_state = state
-        # Find the step that was running, attach the result, and
-        # mark it done.
+        # Close the step this hook was created FOR, by id (#2510).
+        #
+        # This used to take the first step whose status was RUNNING,
+        # never consulting `step["id"]` sitting right here in the
+        # enclosing scope. That is correct only while exactly one step
+        # is ever RUNNING — and the module's own comment describes what
+        # makes a second one: "process restart mid-chain -- hook is
+        # in-memory only, chain dies but chart state persists". The
+        # stranded step then absorbed the NEXT step's result and was
+        # marked done, while the step that actually ran stayed running.
+        step_id = step.get("id")
         for s in latest.get("steps") or ():
-            if s.get("status") == RUNNING:
-                if pending_result is not None:
-                    s["result"] = pending_result
-                s["status"] = DONE
-                break
+            if s.get("status") != RUNNING:
+                continue
+            if step_id is not None and s.get("id") != step_id:
+                continue
+            if pending_result is not None:
+                s["result"] = pending_result
+            s["status"] = DONE
+            break
         save_chart(target_arg, latest)
         # Recursive advancement — runs the next pending step, or
         # finalises the chart status if none remain.
