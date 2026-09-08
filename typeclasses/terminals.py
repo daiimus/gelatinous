@@ -130,9 +130,35 @@ class SleeveDispenser(Item):
             if alias not in self.aliases.all():
                 self.aliases.add(alias)
 
+    #: The buttons this machine answers to. A bare `press dispenser`
+    #: (arg None) is the object itself and always issues.
+    BUTTONS = ("issue", "kit", "dispense", "decant", "press", "button")
+
     def at_press(self, presser, arg=None):
         from evennia.prototypes.spawner import spawn
         from world.identity_utils import msg_room_identity
+
+        # ANSWER ONLY TO OUR OWN BUTTONS (#2616). This ignored `arg`
+        # entirely and returned True on every path, so in the
+        # Decantation Chamber — the new-character spawn room, where this
+        # is the only pressable — any `press <typo>` dispensed a kit and
+        # reported success.
+        #
+        # The house contract is that a machine returns False for a label
+        # that is not one of its buttons: `RentalTerminal` ends
+        # `return False  # not one of this machine's buttons`, the
+        # elevator car "only answers to its own name", and `CmdPress`
+        # walks the pressables relying on exactly that to know when to
+        # try the next one. A machine that always says yes swallows the
+        # usage message a bad press should produce — and it makes the
+        # label tier of `_press_pressable` untrustworthy for everything
+        # else in the room (#2608).
+        if arg:
+            low = arg.strip().lower()
+            names = [self.key.lower()] + [a.lower()
+                                          for a in self.aliases.all()]
+            if low not in self.BUTTONS and low not in names:
+                return False
 
         issued = []
         for proto_key in self.ISSUE:

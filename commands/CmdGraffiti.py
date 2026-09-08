@@ -491,9 +491,15 @@ class CmdPress(Command):
         """Execute the press command."""
         if getattr(self, "cmdstring", "").lower() == "call":
             # `call` = press the call button here (elevator shorthand);
-            # any trailing words ("call elevator") are just as welcome
+            # any trailing words ("call elevator") are just as welcome.
+            #
+            # Pressed BY NAME, not by routing "call" through the label
+            # tier (#2608). The shorthand means "press that object", and
+            # a synthetic label is not that: it would offer "call" to
+            # every machine in the room as if it were a button they
+            # might own. `_press_by_name` does tiers 1 and 3 only.
             self.args = "call"
-            if not self._press_pressable():
+            if not self._press_by_name("call"):
                 self.caller.msg("There's no call button here.")
             return
 
@@ -534,12 +540,56 @@ class CmdPress(Command):
                 return bool(obj.at_press(self.caller, button))
         return False
 
+    def _press_by_name(self, name):
+        """Press the object called *name* — exact match, then partial.
+
+        The name half of `_press_pressable`, without the label tier, for
+        callers that mean "press that thing" rather than "push that
+        button" (#2608).
+        """
+        location = self.caller.location
+        if not location:
+            return False
+        low = name.strip().lower()
+        pressables = [obj for obj in location.contents
+                      if obj.db.pressable is True
+                      and hasattr(obj, "at_press")]
+
+        def _names(obj):
+            return [obj.key.lower()] + [a.lower() for a in obj.aliases.all()]
+
+        for obj in pressables:
+            if low in _names(obj):
+                return bool(obj.at_press(self.caller, None))
+        for obj in pressables:
+            if any(low in name_ for name_ in _names(obj)):
+                return bool(obj.at_press(self.caller, None))
+        return False
+
     def _press_pressable(self):
         """Route `press <arg>` to a pressable object in the room.
 
-        Match by the object's name/aliases first (`press call button`),
-        then offer the raw arg to each pressable's `at_press` as a label
-        (`press 2` on an elevator panel). Returns True when handled.
+        Three tiers, in this order (#2608):
+
+        1. an EXACT name or alias — `press kiosk` means press the kiosk;
+        2. the machine's own button labels — `press rent`, `press 2`;
+        3. a PARTIAL name — `press rental`, still forgiving.
+
+        The middle tier used to come last, and tier 1 used to accept a
+        substring. `rent` is a substring of `rental terminal`, which is
+        the key of all three live kiosks — so the documented
+        `press rent` resolved as "press the kiosk itself", arrived at
+        `at_press(presser, None)`, and read STATUS instead of claiming a
+        cube. `press confirm` and `press rent 3b` do not substring-match
+        the key, so only the exact phrasing the class docstring
+        advertises was broken.
+
+        Splitting exact from partial keeps the forgiveness — `press
+        rental` still presses the terminal — while letting a machine's
+        own verbs win over a loose match on its name. Tier 2 is only
+        trustworthy because a machine returns False for a label that is
+        not one of its buttons; `SleeveDispenser` did not, which is
+        #2616 and fixed alongside this.
         """
         arg = self.args.strip()
         location = self.caller.location
@@ -551,13 +601,19 @@ class CmdPress(Command):
         if not pressables:
             return False
         low = arg.lower()
-        for obj in pressables:
-            names = [obj.key.lower()] + [a.lower() for a in obj.aliases.all()]
-            if low in names or any(low in name for name in names):
+
+        def _names(obj):
+            return [obj.key.lower()] + [a.lower() for a in obj.aliases.all()]
+
+        for obj in pressables:                       # 1. exact name
+            if low in _names(obj):
                 return bool(obj.at_press(self.caller, None))
-        for obj in pressables:
+        for obj in pressables:                       # 2. its own buttons
             if obj.at_press(self.caller, arg):
                 return True
+        for obj in pressables:                       # 3. partial name
+            if any(low in name for name in _names(obj)):
+                return bool(obj.at_press(self.caller, None))
         return False
 
     def _press_spray_can(self, color_part, can_part):
