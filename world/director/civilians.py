@@ -652,6 +652,22 @@ def purge_civilians(role: str | None = None) -> int:
 # beside report_crime; timings let the attack land first)
 # --------------------------------------------------------------------------
 
+def _has_memory(being: Any) -> bool:
+    """Does this body carry a soul, i.e. somewhere for a feeling to go?
+
+    The canonical check, matching `world/director/assignment.py:250`,
+    `world/director/routines.py:196` and `world/souls/posts.py:220`.
+    Deliberately NOT `hasattr(db, 'thoughts')` — an opinion store
+    autocreates on write, so that would answer True for a PC and start
+    stamping opinion rows onto player characters.
+    """
+    try:
+        from world.souls.engine import SOUL_TAG
+        return bool(being.tags.get(SOUL_TAG[0], category=SOUL_TAG[1]))
+    except Exception:  # noqa: BLE001 — no tags, no soul
+        return False
+
+
 def react_to_attack(victim: Any, attacker: Any) -> None:
     """Role-shaped reaction when *victim* is attacked — an ESCALATION LADDER,
     not a stateless one-shot (the old form re-fired the same reaction on
@@ -678,22 +694,43 @@ def react_to_attack(victim: Any, attacker: Any) -> None:
     the prompt, the model owns the words)."""
     from evennia.utils import delay
     reaction = getattr(getattr(victim, "db", None), "reaction", None)
-    if not reaction:
-        return  # not a role-bearing NPC — none of our business
 
     # Being attacked is the strongest thing a person can do to your read on
-    # them (#2388). Recorded BEFORE the ladder runs, so it lands even if the
-    # reaction itself fails, and as a WOUND so it fades over days rather than
-    # hours. The per-key stack cap keeps a long fight from flooding the log
+    # them (#2388). Recorded as a WOUND so it fades over days rather than
+    # hours; the per-key stack cap keeps a long fight from flooding the log
     # with one grudge repeated forty times.
-    try:
-        from world.identity import get_apparent_uid
-        from world.souls import thoughts
-        thoughts.add_opinion(victim, get_apparent_uid(attacker),
-                             "attacked_me", -0.60,
-                             note="they put hands on me", wound=True)
-    except Exception:  # noqa: BLE001 — a feeling must never break combat
-        pass
+    #
+    # AHEAD OF THE ELIGIBILITY GATE (#2436). The comment used to say this
+    # landed "BEFORE the ladder runs, so it lands even if the reaction
+    # itself fails" — true of the ladder, but it sat AFTER `if not
+    # reaction: return`, and `db.reaction` is written in exactly one
+    # place: the generated-civilian ROLES table. No blueprint sets it.
+    #
+    # Measured live: of 78 souled NPCs, 40 carry `db.reaction` and 38 do
+    # not — and the 38 are the NAMED CAST (Sable, Vesper, Sully, Petra,
+    # Ottilie, Ezra, Bellows...), precisely the characters whose WHO line
+    # reads `thoughts.opinion_of`. The courtesy write (+0.08) has no such
+    # gate and reached them fine, so opinion was a ONE-WAY RATCHET
+    # UPWARD for the whole cast: thanking Sable moved her read on you,
+    # stabbing her did not.
+    #
+    # The question this write asks is "does this victim have a memory",
+    # not "does this victim have a scripted flee/comply/resist ladder".
+    # Soul-tag OR reaction, so the set can only ever widen: today all 40
+    # reaction-bearers are soul-tagged, and a future non-souled one must
+    # not silently lose the write.
+    if reaction or _has_memory(victim):
+        try:
+            from world.identity import get_apparent_uid
+            from world.souls import thoughts
+            thoughts.add_opinion(victim, get_apparent_uid(attacker),
+                                 "attacked_me", -0.60,
+                                 note="they put hands on me", wound=True)
+        except Exception:  # noqa: BLE001 — a feeling must never break combat
+            pass
+
+    if not reaction:
+        return  # no scripted ladder — the memory above is all we owe
 
     def _cmd(command):
         try:
