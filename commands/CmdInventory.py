@@ -335,58 +335,17 @@ class CmdDrop(Command):
             caller.msg("You aren't carrying or holding that.")
             return
 
-        # Integrated cyberware (#516) is bolted to your skeleton —
-        # it leaves the body by severance or surgery, not gravity.
-        if obj.db.integrated:
-            caller.msg(
-                f"{obj.get_display_name(caller)} is part of your "
-                f"body — retract it instead."
-            )
-            return
-
-        # Check if item is currently worn
-        if hasattr(caller, 'is_item_worn') and caller.is_item_worn(obj):
-            caller.msg("You can't drop something you're wearing. Remove it first.")
-            return
-
-        # If it's wielded, remove it from the hand.  PR-H2:
-        # ``caller.hands`` is now a derived view, so we snapshot,
-        # mutate the snapshot, then assign through the setter to
-        # persist via the held_items backing store.
-        was_wielded = False
-        hand_name = None
-        hands_snapshot = dict(caller.hands)
-        for hand, item in hands_snapshot.items():
-            if item == obj:
-                hands_snapshot[hand] = None
-                caller.hands = hands_snapshot
-                was_wielded = True
-                hand_name = hand
-                break
-
-        # Canonical "item lands on ground" pipeline — move + gravity
-        # + proximity scaffolding.  Caller-specific proximity is added
-        # below since CmdDrop wants the dropper themselves listed as
-        # near the dropped object.
-        # The item's own drop hook, which nothing was calling (#2456).
-        # This game's `drop` replaced Evennia's, and Evennia's was the
-        # only caller of `at_drop` — so single-use issue clothing
-        # survived being let go of, and a fresh sleeve could press the
-        # dispenser and drop the jumpsuit in a loop for an unbounded
-        # pile of free Thawn-Harrison kit. `_perish`'s own docstring
-        # says that is what it exists to prevent, and its two-verb
-        # signature ("off" / "loose") was written for both doors; only
-        # the `remove` one was live.
+        # One implementation of the four guards, shared with
+        # `hide <object>` so the two doors onto "this leaves my person
+        # and lands here" cannot drift apart again (#2561).
         item_name = obj.get_display_name(caller)
-        try:
-            obj.at_drop(caller)
-        except Exception:  # noqa: BLE001 — a broken hook never eats the drop
-            pass
-        if not obj.pk:
-            return          # it tore in the hand; `_perish` said so
+        ok, refusal, hand_name = release_to_ground(caller, obj)
+        if not ok:
+            if refusal:
+                caller.msg(refusal)
+            return          # refused, or it perished and said so
+        was_wielded = hand_name is not None
 
-        from commands.combat.jump import drop_to_room
-        drop_to_room(obj, caller.location)
         proximity_list = getattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL, [])
         if caller not in proximity_list:
             proximity_list.append(caller)
@@ -422,6 +381,63 @@ class CmdDrop(Command):
                 return result[0] if isinstance(result, list) else result
         
         return None
+
+
+def release_to_ground(caller, obj):
+    """The four guards every "this leaves my person and lands here" path
+    owes, in one place (#2561).
+
+    Returns ``(ok, refusal, hand_name)``. ``refusal`` is the line to show
+    when ``ok`` is False; ``hand_name`` is the slot it came out of, or
+    None. Prose is the CALLER's job — `drop` and `hide <object>` say
+    different things about the same act.
+
+    The guards, and why each one is not optional:
+
+    1. **integrated** — cyberware is bolted to the skeleton and leaves
+       the body by severance or surgery, not gravity;
+    2. **worn** — a garment comes off before it goes down;
+    3. **hand write-back** — `caller.hands` is a DERIVED view, so it has
+       to be snapshotted, mutated and assigned through the setter or the
+       held_items store keeps pointing at an item lying on the floor.
+       That desync has now been found four times (PR-H2 family);
+    4. **`at_drop` + `drop_to_room`** — the item's own hook (single-use
+       kit perishes rather than stockpiling) and then the canonical
+       landing pipeline, which applies gravity and proximity.
+
+    `hide <object>` carried NONE of them: it resolved anything in
+    `caller.contents` — which holds worn clothing and held weapons alike
+    — and moved it out with a bare `move_to`. One word, no guards.
+    """
+    if obj.db.integrated:
+        return (False,
+                f"{obj.get_display_name(caller)} is part of your body — "
+                f"retract it instead.", None)
+
+    if hasattr(caller, "is_item_worn") and caller.is_item_worn(obj):
+        return (False,
+                "You can't put down something you're wearing. Remove it "
+                "first.", None)
+
+    hand_name = None
+    hands_snapshot = dict(caller.hands)
+    for hand, item in hands_snapshot.items():
+        if item == obj:
+            hands_snapshot[hand] = None
+            caller.hands = hands_snapshot
+            hand_name = hand
+            break
+
+    try:
+        obj.at_drop(caller)
+    except Exception:  # noqa: BLE001 — a broken hook never eats the drop
+        pass
+    if not obj.pk:
+        return (False, None, hand_name)   # it perished; `_perish` spoke
+
+    from commands.combat.jump import drop_to_room
+    drop_to_room(obj, caller.location)
+    return (True, None, hand_name)
 
 
 def _clear_stash_state(item):

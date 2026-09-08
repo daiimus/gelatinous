@@ -64,6 +64,13 @@ class CmdFollow(Command):
                 f"You're already following {target.get_display_name(caller)}."
             )
             return
+        # Switching leaders goes through the SAME door as `stop
+        # following` (#2572). This used to be a bare re-assignment, so
+        # the person you were following was never told you had left
+        # them — you simply stopped arriving behind them, and the only
+        # writer of this attribute outside `sever_follow` was here.
+        if caller.db.following:
+            sever_follow(caller)
         caller.db.following = target
         caller.msg(f"You fall in behind {target.get_display_name(caller)}.")
         target.msg(f"{caller.get_display_name(target)} falls in behind you.")

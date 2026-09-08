@@ -206,6 +206,13 @@ class TestHideCommand(TestCase):
         caller = _char(motorics=3, room=room)
         item = MagicMock()
         item.get_display_name = lambda looker=None, **k: "a shiv"
+        # `hide <object>` now runs the same guards as `drop` (#2561),
+        # and on a bare MagicMock every guard reads TRUE -- `db.
+        # integrated` alone refuses the stash. A stand-in for a loose
+        # shiv has to actually say it is loose.
+        item.db.integrated = False
+        caller.is_item_worn.return_value = False
+        caller.hands = {}
         caller.search.return_value = item
         cmd = CmdHide()
         cmd.caller = caller
