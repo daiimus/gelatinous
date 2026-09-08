@@ -140,6 +140,28 @@ class CmdSneak(Command):
         if exit_obj is None:
             caller.msg(f"There's no way '{args}' from here.")
             return
+        # DON'T PAY THE CONTEST FOR A MOVE THAT CANNOT HAPPEN (#2563).
+        #
+        # The hide below has to come BEFORE the move — that is the point
+        # of the comment: witnesses in the room you are LEAVING get their
+        # contest, so they can keep track of your exit. But the old order
+        # discovered whether the move was even possible only afterwards,
+        # by comparing locations, and returned with no rollback. A
+        # refused traversal left you silently hidden with every watcher's
+        # awareness already rolled and stamped, from an action that did
+        # not happen.
+        #
+        # The cheap half is checkable up front: a locked or unusable exit
+        # is refused here, before anything is rolled.
+        try:
+            passable = exit_obj.access(caller, "traverse")
+        except Exception:  # noqa: BLE001 — an unreadable lock is not a refusal
+            passable = True
+        if not passable:
+            caller.msg("You can't get through that way.")
+            return
+
+        was_hidden = bool(caller.db.hidden)
         if not caller.db.hidden:
             # sneaking implies hiding: contest in the CURRENT room first,
             # so witnesses here may keep track of your exit
@@ -150,6 +172,14 @@ class CmdSneak(Command):
         finally:
             caller.ndb.sneaking = None
         if caller.location is location:
+            # Refused by something `access` cannot see — combat, an
+            # aim-lock, a sky edge. Put back what we can: the hidden
+            # flag. The awareness stamps already written cannot be
+            # unrolled, and that is worth knowing rather than pretending
+            # otherwise — but at least the state a player can observe
+            # matches the action that failed.
+            if not was_hidden:
+                caller.db.hidden = False
             caller.msg("You can't get through that way.")
             return
         kept = attempt_hide(caller, sneak=True)
@@ -182,11 +212,28 @@ class CmdSearch(Command):
         if not caller.location:
             return
         from world.identity_utils import msg_room_identity
+        from world.stealth import is_hidden_from
+
+        # ONLY PEOPLE WHO CAN PERCEIVE YOU SEE YOU SEARCHING (#2562).
+        # `msg_room_identity` does no perception filtering — it walks
+        # `location.contents`, skips the exclude set, and messages
+        # everyone else. So a HIDDEN character running `search` announced
+        # themselves to the very observers who cannot see them, and
+        # stayed hidden afterwards, so those same observers still could
+        # not target or even list the person they had just been told
+        # about.
+        #
+        # `is_hidden_from` is the display gate the rest of the codebase
+        # uses for exactly this question — `CmdCommunication` filters a
+        # whisper's bystanders on it, because a whisper is a visual
+        # event. So is a search.
+        unseen_by = [obj for obj in caller.location.contents
+                     if obj is not caller and is_hidden_from(caller, obj)]
         msg_room_identity(
             location=caller.location,
             template="{actor} searches the area carefully.",
             char_refs={"actor": caller},
-            exclude=[caller],
+            exclude=[caller] + unseen_by,
         )
         found_chars, found_objs = active_search(caller)
         from world.stealth import search_hidden_exits
