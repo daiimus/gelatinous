@@ -186,6 +186,44 @@ def seed_skills(designation):
     return out
 
 
+def ensure_manifest(char, inherit_from=None):
+    """Stamp this person's manifest record if they have none (#3033).
+
+    Owner ruling 2026-09-08: **players get a manifest.** Before this the
+    roll lived inside one telnet menu node (``respawn_finalize_template``)
+    rather than in any shared creation path, so it never ran for a first
+    character by any door — measured live, 0 of 57 PC sleeves had a
+    designation while every souled NPC did, and `score` printed
+    "Designation: NONE ON FILE" to every player in the game.
+
+    **The record belongs to the PERSON, not the body.** A designation is
+    a service record: resleeving does not issue you a new one. So a
+    flash clone inherits from the body it replaces rather than rolling
+    again — otherwise one player's thirty-three sleeves would carry
+    thirty-three different careers. Lineage is `db.stack_id` (shared
+    across a person's sleeves; `sleeve_uid` is per-body).
+
+    Idempotent by design: it is the creation path AND the backfill, and
+    a character who already has a designation is left exactly alone.
+
+    Returns True when it wrote something.
+    """
+    if char is None or char.db.designation:
+        return False
+
+    source = inherit_from
+    if source is not None and source.db.designation:
+        char.db.designation = dict(source.db.designation)
+        skills = source.db.skills
+        char.db.skills = dict(skills) if skills else seed_skills(
+            char.db.designation)
+        return True
+
+    char.db.designation = roll_designation()
+    char.db.skills = seed_skills(char.db.designation)
+    return True
+
+
 def check_value(char, skill):
     """skill + (governing stats averaged, cantable) — the owner's
     formula. Returns None for a rating this character does not hold;
