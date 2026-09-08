@@ -212,6 +212,39 @@ def resolve_cyberware(what):
     return None, None
 
 
+def _organ_slot_container(patient, cyber):
+    """Where on THIS patient the organ being replaced already lives.
+
+    Mirrors `_resolve_install`: the slot is found by `organ_name`, and
+    its `container` is the place to open. Returns None when the patient
+    has no such organ, which is a real answer — you cannot replace a
+    heart in a body that has no heart slot.
+    """
+    organ_name = getattr(getattr(cyber, "db", None), "organ_name", None) \
+        or getattr(cyber, "key", None)
+    if not organ_name or patient is None:
+        return None
+    try:
+        from world.medical.procedures import get_organ_snapshot
+        organs = (get_organ_snapshot(patient) or {}).get("organs") or {}
+    except Exception:  # noqa: BLE001 — an unreadable body has no slot
+        return None
+    slot = organs.get(organ_name)
+    if slot is None or not hasattr(slot, "get"):
+        return None
+    return slot.get("container") or None
+
+
+def _discard(item):
+    """Undo a draw that led nowhere, so a failed request does not leave
+    stock in the surgeon's pockets."""
+    try:
+        if item and item.pk:
+            item.delete()
+    except Exception:  # noqa: BLE001 — a stuck delete is not worth a crash
+        pass
+
+
 def build_install_chart(by, patient, what):
     """Draw the cyberware + a kit, resolve its mount point, and lay out
     the incise → install → suture chart on the patient."""
@@ -231,14 +264,42 @@ def build_install_chart(by, patient, what):
     # so "do I need to draw one" and "will incise accept it" cannot
     # answer differently.
     from world.medical.utils import find_surgical_kit
+    drawn_kit = None
     if find_surgical_kit(by, patient) is None:
-        _draw(by, "SURGICAL_KIT")
+        drawn_kit = _draw(by, "SURGICAL_KIT")
     try:
         from world.medical import charts as chart_lib
         from world.medical.procedures import resolve_augment_declaration
         decl = resolve_augment_declaration(cyber.db, side=side) or {}
         anchor = decl.get("anchor") or decl.get("container")
         if not anchor:
+            # ASK THE PATIENT, not the part (#2455). A LIMB augment
+            # declares where it bolts on (`augment_anchor`), but a
+            # REPLACEMENT ORGAN does not and never did: its mount point
+            # is wherever the organ it replaces already sits on this
+            # body. That is exactly what the working door does —
+            # `_resolve_install` looks `organ_name` up in the patient's
+            # own organ snapshot and takes that slot's container.
+            #
+            # Reading only the item meant 5 of the 7 words in
+            # CLINIC_CYBERWARE (heart, eye, ear, kidney, jaw) resolved
+            # to None and bailed here: the NPC gave no spoken reply, no
+            # surgery was laid out, and the request evaporated in
+            # silence — while every attempt left a spawned cyber organ
+            # in the doctor's pockets with no cleanup path. Only
+            # CYBER_ARM and CYBERNETIC_TAIL carry an anchor, which is
+            # why the one test of this bridge drives "cyber arm left"
+            # and stayed green.
+            anchor = _organ_slot_container(patient, cyber)
+        if not anchor:
+            # Genuinely nothing to mount it to — a body with no slot for
+            # this organ. Put back everything THIS request drew rather
+            # than pocketing it in silence. The kit only goes back if we
+            # were the ones who drew it: a kit the surgeon already had
+            # is theirs, and #2474 established a kit is a requirement
+            # rather than a consumable.
+            _discard(cyber)
+            _discard(drawn_kit)
             return None
         # DO NOT CLOBBER SOMEBODY ELSE'S SURGERY. `save_chart` writes
         # `db.medical_chart` wholesale, while the operate menu's

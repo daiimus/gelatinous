@@ -506,6 +506,25 @@ def _list_organs(target):
         getattr(getattr(target, "db", None), "removed_organs", None)
         or ()
     )
+    # The SAME two exclusions the typed `harvest` verb applies
+    # (CmdSurgical.py:418-421). Two doors onto one decision, and only
+    # one of them refused (#2455):
+    #
+    # * a container that has been SEVERED leaves tombstones behind —
+    #   `sever_character_body` keeps every organ of the departed limb in
+    #   `medical_state.organs` at 0 HP / wound_stage "severed", while a
+    #   copy travels in the Appendage's own snapshot. Offering those
+    #   again meant the stump yielded a SECOND, identical set of the
+    #   organs and modules that already left with the limb — duplicated
+    #   chrome, and chrome is exactly what the Ripper appraisal and the
+    #   parts trade are priced on.
+    # * a 0-HP organ is pulped, and `harvest` has always refused it.
+    #
+    # The picker is the whole gate: `_parse_pick` matches only what is
+    # listed here, so free-typing in the menu cannot get past it.
+    severed_locs = set(
+        getattr(getattr(target, "db", None), "severed_locations", None) or []
+    )
     out = []
     for name, data in organs.items():
         if name in removed:
@@ -513,6 +532,10 @@ def _list_organs(target):
         if not hasattr(data, "get"):
             continue
         container = data.get("container") or "?"
+        if container in severed_locs:
+            continue
+        if (data.get("current_hp") or 0) <= 0:
+            continue
         out.append((name, container))
     out.sort(key=lambda nc: (nc[1], nc[0]))
     return out
