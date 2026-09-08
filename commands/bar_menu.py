@@ -124,11 +124,25 @@ METHOD_CRAFT = {
 }
 
 
-def _pour(caller, bar, *, name=None, method=None):
+def _pour(caller, bar, *, name=None, method=None, recipe=None):
     """Make the loaded mix into a drink on the bar; consume the ingredients.
 
     ``method`` drives only the craft narration (no mechanical effect); defaults
     to the recognized classic's suggested method, else 'build'.
+
+    ``recipe``, when given, is the menu entry this pour IS — the branding
+    flow's celebratory first glass (#2532). Without it that glass was
+    built from the projection alone, so it differed from every later
+    order of the same drink in three ways at once: the taste the
+    bartender had just been prompted to write was dropped for the
+    composed default, the desc read "a freshly-mixed drink" instead of
+    "a house pour", and the recipe's `order_keywords` were never applied
+    as aliases — so the first one could not be ordered by the names the
+    menu advertises.
+
+    Serving the saved entry rather than re-deriving it means the first
+    glass is the same object every later glass will be, by construction
+    rather than by keeping two code paths in step.
     """
     ings = _loaded(bar)
     if not ings:
@@ -136,13 +150,20 @@ def _pour(caller, bar, *, name=None, method=None):
         return None
     proj = project_mix(ings)
     method = method or proj.get("method") or "build"
-    drink_name = name or proj["name"]
-    taste = proj["taste"]
-    desc = f"a freshly-mixed drink — {proj['flavour']}" if proj["flavour"] else "a freshly-mixed drink"
-    drink = make_drink(
-        name=drink_name, desc=desc, effects=proj["effects"], sips=3,
-        taste=taste, location=bar,
-    )
+    if recipe is not None:
+        drink = plate_or_mix(recipe, bar)
+        if drink is None:
+            caller.msg("|rThat one won't come together right now.|n")
+            return None
+    else:
+        drink_name = name or proj["name"]
+        taste = proj["taste"]
+        desc = (f"a freshly-mixed drink — {proj['flavour']}"
+                if proj["flavour"] else "a freshly-mixed drink")
+        drink = make_drink(
+            name=drink_name, desc=desc, effects=proj["effects"], sips=3,
+            taste=taste, location=bar,
+        )
     for i in ings:
         i.delete()
     caller.execute_cmd(
@@ -345,9 +366,11 @@ def _process_save_taste(caller, raw_string, **kwargs):
         return "node_top"
     proj = project_mix(ings)
     method = proj.get("method") or "build"
-    _save_recipe(bar, name, proj=proj, taste=taste, method=method)
-    # Branding pours the first one, in the suggested method.
-    _pour(caller, bar, name=name, method=method)
+    recipe = _save_recipe(bar, name, proj=proj, taste=taste, method=method)
+    # Branding pours the first one, in the suggested method — and pours
+    # THE SAVED RECIPE, so the celebratory glass is identical to every
+    # later order rather than a near-miss of it (#2532).
+    _pour(caller, bar, name=name, method=method, recipe=recipe)
     base = f" ({proj['cocktail']})" if proj["cocktail"] else ""
     caller.msg(f"{HEAD}Saved {name}{base} to the menu.|n It's now orderable.")
     return "node_top"
