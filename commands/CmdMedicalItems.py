@@ -63,7 +63,15 @@ class CmdListMedItems(Command):
             status_str = f" ({', '.join(status_parts)})" if status_parts else ""
             
             caller.msg(f"  {item.get_display_name(caller)}{status_str}")
-            caller.msg(f"    Type: {medical_type.replace('_', ' ').title()}")
+            # A bare "Type: " with nothing after it is what 13 of the
+            # 101 live medical items rendered (#2568) — cyberware is
+            # `is_medical_item` but carries no `medical_type`, and
+            # `get_medical_type` returns "" for it. Say what it is
+            # instead of trailing off.
+            if medical_type:
+                caller.msg(f"    Type: {medical_type.replace('_', ' ').title()}")
+            else:
+                caller.msg("    Type: Implant (not a consumable)")
             
             # Show item description
             desc = item.db.desc or "No description."
@@ -153,7 +161,22 @@ class CmdRefillMedItem(Command):
             caller.msg(f"{item.get_display_name(caller)} is not a medical item.")
             return
             
-        # Refill the item
+        # Refill the item.
+        #
+        # An item with no `uses_left` is not a consumable — it is the
+        # cyberware that is `is_medical_item` without being something
+        # you spend (#2568). Defaulting the pair to 0/1 and refilling
+        # INVENTED a use counter on a surgical implant, after which
+        # `medlist` read "1/∞ uses": the display's `!= "∞"` gate only
+        # suppresses the line while BOTH attributes are absent, so
+        # writing one broke the other surface too.
+        if item.attributes.get("uses_left") is None:
+            caller.msg(
+                f"{item.get_display_name(caller)} isn't something you "
+                f"refill — it has no charges to begin with."
+            )
+            return
+
         uses_left = item.attributes.get("uses_left", 0)
         max_uses = item.attributes.get("max_uses", 1)
         

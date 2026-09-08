@@ -223,10 +223,29 @@ def validate_name(name):
         if word in name_lower:
             return (False, "That name is not allowed.")
     
-    # Check uniqueness
+    # Check uniqueness against the name AS STORED (#2550).
+    #
+    # This asked for `db_key__iexact="First Last"`. Nothing is ever
+    # stored under that: `build_name_from_death_count` appends a Roman
+    # numeral, so the first sleeve is keyed "First Last I". The two
+    # differ by construction, so the friendly in-menu check could never
+    # fire against a telnet-created character — and the collision
+    # surfaced 1300 lines later as a raw exception string at the
+    # confirmation node.
+    #
+    # Compared on the BASE name, using the same regex
+    # `build_name_from_death_count` strips with, so "First Last" is
+    # taken whether the existing sleeve is I, II or XIV. A prefix query
+    # narrows the scan; the numeral test is what decides.
     from typeclasses.characters import Character
+    wanted = name.strip().lower()
     if Character.objects.filter(db_key__iexact=name).exists():
         return (False, "That name is already taken.")
+    for other in Character.objects.filter(db_key__istartswith=f"{name} "):
+        match = re.match(r'^(.+?)\s+([IVXLCDM]+)$', other.db_key.strip(),
+                         re.IGNORECASE)
+        if match and match.group(1).strip().lower() == wanted:
+            return (False, "That name is already taken.")
     
     return (True, None)
 
@@ -1589,6 +1608,18 @@ __________________________________________________________________
         return None
         
     except Exception as e:
+        # A name collision is the one failure a player can DO something
+        # about, so it gets its own message and a route back to the name
+        # prompt (#2550). Everything else keeps the old behaviour.
+        text = str(e).lower()
+        if "already exists" in text or "unique" in text or "taken" in text:
+            caller.msg(
+                "|rThat name was taken while you were deciding. Pick "
+                "another and we'll carry the rest through.|n"
+            )
+            from world.combat.debug import get_splattercast
+            get_splattercast().msg(f"CHARCREATE_NAME_TAKEN: {e}")
+            return "first_char_name_first"
         # Error - show message and return to confirmation
         caller.msg(f"|rError creating character: {e}|n")
         from world.combat.debug import get_splattercast
