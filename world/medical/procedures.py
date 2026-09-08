@@ -690,6 +690,51 @@ def roll_procedure(actor, target, *, conscious_modifier: bool = True) -> dict:
 # ---------------------------------------------------------------------
 
 
+def _seed(state, condition) -> None:
+    """Add a seeded condition through the canonical door (#2506).
+
+    Both seeders appended straight to ``state.conditions``, which is the
+    list and not the door. ``MedicalState.add_condition`` does four more
+    things, and every one of them mattered here:
+
+    * the archived-character guard;
+    * ``_invalidate_derived_state()`` — conditions can disable an organ
+      outright, so they are a death-verdict input and the cached verdict
+      must go;
+    * ``condition.start_condition(character)``, which is what STARTS the
+      medical script — both ``PainCondition`` and ``InfectionCondition``
+      inherit ``requires_ticker = True``;
+    * ``save_medical_state()``, the only thing that writes it down.
+
+    So a botched procedure's infection neither progressed nor survived a
+    reload. On a patient who already had conditions it ticked anyway (the
+    running script walks the whole list), and after any unrelated reload
+    it came alive by itself, because ``load_medical_state`` re-runs
+    ``start_condition``. That intermittency is why it read as working.
+
+    The rest of the codebase already uses this door —
+    ``substances/registry.py``, ``CmdAdmin.py``, ``characters.py``. This
+    file was the outlier, and it had copied ONE of ``add_condition``'s
+    guards inline rather than calling the function that has them all.
+    """
+    adder = getattr(state, "add_condition", None)
+    if not callable(adder):
+        state.conditions.append(condition)   # a state shape with no door
+        return
+    try:
+        adder(condition)
+    except Exception as exc:  # noqa: BLE001
+        # Guarded the way `apply_vital_consequences` guards each of its
+        # steps, and for the same reason it gives: "safe on test stubs
+        # that lack one or more of the surfaces". `add_condition`
+        # appends BEFORE it starts the ticker, so a body without a
+        # `.scripts` handler still ends up carrying the condition —
+        # a partial surface must not abort the procedure that seeded it.
+        _log_guarded_failure("condition_seed", None, exc)
+        if condition not in state.conditions:
+            state.conditions.append(condition)
+
+
 def seed_infection(target, location: str, severity: int = FAILURE_INFECTION_SEVERITY) -> None:
     """Add a location-bound infection condition to ``target``.
 
@@ -702,14 +747,16 @@ def seed_infection(target, location: str, severity: int = FAILURE_INFECTION_SEVE
     state = getattr(target, "medical_state", None)
     if state is None or not hasattr(state, "conditions"):
         return
-    # Synthetics don't go septic (the inorganic-graft analog) — no infection.
+    # Synthetics don't go septic (the inorganic-graft analog) — no
+    # infection. `add_condition` carries this same guard; kept here so
+    # the early return is visible at the call site.
     if getattr(state, "is_infection_immune", None) and state.is_infection_immune():
         return
     try:
         from world.medical.conditions import InfectionCondition
     except ImportError:
         return
-    state.conditions.append(InfectionCondition(severity, location))
+    _seed(state, InfectionCondition(severity, location))
 
 
 def seed_pain(target, location: Optional[str], severity: int) -> None:
@@ -735,7 +782,7 @@ def seed_pain(target, location: Optional[str], severity: int) -> None:
         from world.medical.conditions import PainCondition
     except ImportError:
         return
-    state.conditions.append(PainCondition(severity, location))
+    _seed(state, PainCondition(severity, location))
 
 
 # ---------------------------------------------------------------------
@@ -799,6 +846,23 @@ def _resolve_incise(actor, target, *, location: str, **_) -> None:
             f"{location.replace('_', ' ')} is gashed but not properly "
             f"opened."
         )
+
+    # FLUSH (#2508). `_apply_collateral_damage` writes live `Organ`
+    # objects -- 2 HP off everything in the location on a partial, 3 on
+    # a failure -- and nothing here persisted it or re-read vitals.
+    #
+    # `save_medical_state` is the only persistence path and
+    # `MedicalScript.at_repeat` never calls it, so a reload restored
+    # those organs to their pre-incise HP while `db.surgical_state`,
+    # written by `open_incision`, DID survive: an open incision on
+    # undamaged anatomy.
+    #
+    # And repeated failed incises can take a vital organ to 0. Nothing
+    # on this path fired `at_death` or started a script, which is the
+    # "walking dead" state `_mark_organ_removed`'s own comment goes out
+    # of its way to prevent. Every sibling resolver flushes; these two
+    # were the gaps.
+    apply_vital_consequences(target)
 
 
 def _resolve_harvest(actor, target, *, organ_name: str, location: str,
@@ -1201,6 +1265,14 @@ def _resolve_suture(actor, target, *, location: Optional[str] = None,
             char_refs={"actor": actor, "patient": target},
             exclude=[actor, target] if target is not actor else [actor],
         )
+
+    # FLUSH (#2508). This sets `organ.wound_stage = "treated"` and never
+    # wrote it down, while `target.db.sutured_stumps` on the line above
+    # DOES persist -- so after a reload the wound renderer reverted the
+    # harvested organs to "fresh" ("still wet and red") while
+    # `sutured_stumps` said they were closed. Two records of the same
+    # act, disagreeing.
+    apply_vital_consequences(target)
 
 
 def _resolve_amputate(actor, target, *, location: str, **_) -> None:
