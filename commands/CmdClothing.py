@@ -717,9 +717,25 @@ def _resolve_clothing_target(caller, target_phrase, quiet=False):
     # documented form printed `Could not find "bob jacket".` one line
     # before succeeding.
     if not non_character_candidates:
-        return caller.search(raw, candidates=[], quiet=quiet)
-    return caller.search(raw, candidates=non_character_candidates,
-                         quiet=quiet)
+        match = caller.search(raw, candidates=[], quiet=quiet)
+    else:
+        match = caller.search(raw, candidates=non_character_candidates,
+                              quiet=quiet)
+    # UNWRAP, as stage 2 already does. `search(quiet=True)` returns a
+    # LIST; only the loud form returns an object. Stage 3 returned it
+    # raw, so the greedy first pass in `undress`/`dress` -- which is
+    # always quiet -- handed every room target back as a one-element
+    # list (#2475).
+    #
+    # That is what actually made `undress corpse` refuse. The consent
+    # gate was fixed to recognise a Corpse (#2519), but a list is not a
+    # Corpse: `is_conscious` fell through to "no readable medical
+    # state, assume awake", the caller was told the corpse "is
+    # conscious and would resist", and building that very message then
+    # raised AttributeError on `list.get_display_name`.
+    if isinstance(match, (list, tuple)):
+        return match[0] if match else None
+    return match
 
 
 class CmdDress(Command):

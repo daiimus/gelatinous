@@ -1995,9 +1995,20 @@ class Appendage(Item):
         # PR-H3 since the sever pipeline only registers items whose
         # coverage was fully contained in the severed cluster, but
         # the dedup is defensive for future expansion.
+        # Prune as we read (#2456). `ClothingMixin.get_worn_items` heals
+        # dangling refs; the appendage ledger had no equivalent, so an
+        # entry whose object was deleted deserialized to None, went into
+        # `seen`, and then raised AttributeError on
+        # `None.get_display_name` — inside `return_appearance`, so
+        # LOOKING at the limb crashed. An item that has left the limb by
+        # any door is likewise no longer worn on it.
         seen = []
         for loc_items in worn.values():
             for item in (loc_items or []):
+                if item is None or not getattr(item, "pk", None):
+                    continue
+                if item.location is not self:
+                    continue
                 if item not in seen:
                     seen.append(item)
         if not seen:
