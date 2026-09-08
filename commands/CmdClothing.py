@@ -801,12 +801,55 @@ class CmdDress(Command):
             return
 
         from typeclasses.items import Appendage
+        # SNAPSHOT BEFORE MUTATING (#2520). Every first-person verb in
+        # this file captures per-observer display names before touching
+        # `worn_items` and broadcasts with `pre_resolved_refs`; the two
+        # THIRD-PARTY doors did neither. Dressing someone in a
+        # disguise-essential garment shifts THEIR sdesc, so a broadcast
+        # composed afterwards names the target by the identity the mask
+        # just gave them — "X dresses a masked stranger in a balaclava"
+        # — instead of by who the room was looking at a moment ago.
+        #
+        # `_dress_character` was given an `on_committed` hook for
+        # exactly this, documented as being "so the caller can interpose
+        # an action broadcast before the mutation fires any
+        # identity-shift recognition messages". It was plumbed and never
+        # passed.
+        item_name_d = item.get_display_name(caller)
+        char_refs = {"actor": caller, "target": target}
+        pre_resolved = _snapshot_actor_names(caller, char_refs)
+        action_template = f"{{actor}} dresses {{target}} in {item_name_d}."
+
+        def _broadcast_action():
+            msg_room_identity(
+                location=caller.location,
+                template=action_template,
+                char_refs=char_refs,
+                exclude=[caller, target],
+                pre_resolved_refs=pre_resolved,
+            )
+
+        broadcast_done = False
         if isinstance(target, Appendage):
             success, message = self._dress_appendage(target, item)
         elif _is_corpse(target):
             success, message = self._dress_corpse(target, item)
         elif hasattr(target, "wear_item"):
-            success, message = self._dress_character(target, item)
+            if getattr(item, "disguise_essential", False):
+                # Essential: route the action through the unmask so
+                # observers get one combined line, the way `CmdWear`
+                # does for the first-person case.
+                success, message = self._dress_character(
+                    target, item,
+                    action_template=action_template,
+                    action_char_refs=char_refs,
+                    action_pre_resolved_refs=pre_resolved,
+                    action_exclude=[caller, target],
+                )
+            else:
+                success, message = self._dress_character(
+                    target, item, on_committed=_broadcast_action)
+            broadcast_done = True
         else:
             caller.msg(
                 f"You can't dress {target.get_display_name(caller)}."
@@ -817,7 +860,6 @@ class CmdDress(Command):
             caller.msg(message)
             return
 
-        item_name_d = item.get_display_name(caller)
         target_name_d = target.get_display_name(caller)
         caller.msg(f"You dress {target_name_d} in {item_name_d}.")
         if (
@@ -829,12 +871,10 @@ class CmdDress(Command):
                 f"{caller.get_display_name(target)} dresses you in "
                 f"{item.get_display_name(target)}."
             )
-        msg_room_identity(
-            location=caller.location,
-            template=f"{{actor}} dresses {{target}} in {item_name_d}.",
-            char_refs={"actor": caller, "target": target},
-            exclude=[caller, target],
-        )
+        if not broadcast_done:
+            # Appendages and corpses have no `wear_item` and no identity
+            # to shift, so they broadcast here as before.
+            _broadcast_action()
         # LLM NPC perception (#954): being dressed is tactile and personal.
         try:
             from world.llm.observation import (
@@ -849,7 +889,9 @@ class CmdDress(Command):
         except Exception:  # noqa: BLE001 — perception never breaks the verb
             pass
 
-    def _dress_character(self, target, item, *, on_committed=None):
+    def _dress_character(self, target, item, *, on_committed=None,
+                         action_template=None, action_char_refs=None,
+                         action_pre_resolved_refs=None, action_exclude=None):
         """Move the item into ``target``'s inventory and call its
         existing ``wear_item`` method.  On failure, roll the item
         back to the caller so it isn't orphaned on a target that
@@ -859,7 +901,13 @@ class CmdDress(Command):
         can interpose an action broadcast before the mutation fires
         any identity-shift recognition messages."""
         item.move_to(target, quiet=True)
-        success, message = target.wear_item(item, on_committed=on_committed)
+        success, message = target.wear_item(
+            item, on_committed=on_committed,
+            action_template=action_template,
+            action_char_refs=action_char_refs,
+            action_pre_resolved_refs=action_pre_resolved_refs,
+            action_exclude=action_exclude,
+        )
         if not success:
             item.move_to(self.caller, quiet=True)
         return success, message
@@ -971,6 +1019,19 @@ class CmdUndress(Command):
             )
             return
 
+        # SNAPSHOT BEFORE THE REMOVAL LOOP (#2520). Taking a
+        # disguise-essential garment OFF shifts the target's sdesc just
+        # as putting one on does, so a broadcast composed afterwards
+        # names them by the identity the unmasking revealed rather than
+        # the one the room had been looking at.
+        #
+        # Undress removes a LIST through `remove_item`, so unlike
+        # `dress` there is no single mutation to interpose on; the
+        # snapshot plus `pre_resolved_refs` on the existing broadcast is
+        # the faithful equivalent.
+        undress_refs = {"actor": caller, "target": target}
+        undress_pre_resolved = _snapshot_actor_names(caller, undress_refs)
+
         from typeclasses.items import Appendage
         if isinstance(target, Appendage):
             removed = self._undress_appendage(target, item_phrase)
@@ -1015,8 +1076,9 @@ class CmdUndress(Command):
         msg_room_identity(
             location=caller.location,
             template=f"{{actor}} undresses {{target}}.",
-            char_refs={"actor": caller, "target": target},
+            char_refs=undress_refs,
             exclude=[caller, target],
+            pre_resolved_refs=undress_pre_resolved,
         )
         # LLM NPC perception (#954): being stripped is VERY personal.
         try:
