@@ -186,6 +186,78 @@ class TestUndressSnapshotsToo(_ClothingCase):
         self.assertEqual(shirt.location, self.char1)
 
 
+class TestTheSnapshotIsActuallyUsed(_ClothingCase):
+    """Stronger than source inspection, using the pattern
+    `test_clothing_broadcast.py` already established for this helper:
+    watch the calls rather than read the file.
+
+    Asserts the three things that make the fix real — the snapshot
+    covers the TARGET as well as the actor, it is taken BEFORE the
+    mutation, and the broadcast is handed that exact snapshot.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.char2.location = self.room1
+        self.char1.location = self.room1
+
+    def test_the_snapshot_covers_the_target_not_just_the_actor(self):
+        seen = {}
+        real = None
+
+        def _spy(caller, char_refs):
+            seen.update(char_refs)
+            return {k: {} for k in char_refs}
+
+        with self.consenting(), \
+                mock.patch("commands.CmdClothing._snapshot_actor_names",
+                           side_effect=_spy):
+            self.garment("a wool cap")
+            self.call(CmdDress(), f"{self.char2.key} in cap",
+                      caller=self.char1)
+        self.assertIn("actor", seen)
+        self.assertIn("target", seen)
+        self.assertIs(seen["target"], self.char2)
+
+    def test_the_snapshot_happens_before_the_mutation(self):
+        order = []
+        with self.consenting(), \
+                mock.patch("commands.CmdClothing._snapshot_actor_names",
+                           side_effect=lambda c, r: order.append("snapshot") or {}), \
+                mock.patch.object(type(self.char2), "wear_item",
+                                  side_effect=lambda *a, **k: (
+                                      order.append("mutate") or (True, "ok"))):
+            self.garment("a wool cap")
+            self.call(CmdDress(), f"{self.char2.key} in cap",
+                      caller=self.char1)
+        self.assertEqual(order[:2], ["snapshot", "mutate"])
+
+    def test_the_broadcast_receives_that_snapshot(self):
+        token = {"actor": {}, "target": {}}
+        with self.consenting(), \
+                mock.patch("commands.CmdClothing._snapshot_actor_names",
+                           return_value=token), \
+                mock.patch("commands.CmdClothing.msg_room_identity") as say:
+            self.garment("a wool cap")
+            self.call(CmdDress(), f"{self.char2.key} in cap",
+                      caller=self.char1)
+        passed = [c.kwargs.get("pre_resolved_refs") for c in say.call_args_list]
+        self.assertIn(token, passed,
+                      "the broadcast did not use the snapshot")
+
+    def test_undress_hands_its_snapshot_over_too(self):
+        token = {"actor": {}, "target": {}}
+        item = self.garment("a wool cap", holder=self.char2)
+        self.char2.wear_item(item)
+        with self.consenting(), \
+                mock.patch("commands.CmdClothing._snapshot_actor_names",
+                           return_value=token), \
+                mock.patch("commands.CmdClothing.msg_room_identity") as say:
+            self.call(CmdUndress(), self.char2.key, caller=self.char1)
+        passed = [c.kwargs.get("pre_resolved_refs") for c in say.call_args_list]
+        self.assertIn(token, passed)
+
+
 class TestTheBrandingPourServesItsRecipe(EvenniaCommandTest):
     def test_pour_accepts_the_recipe(self):
         import inspect
