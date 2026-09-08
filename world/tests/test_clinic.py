@@ -89,6 +89,12 @@ class TestDoctorPatientTargeting(BaseEvenniaTest):
         from typeclasses.furniture import AutoDoc
         doc = create_object("typeclasses.llm_npc.LLMNpc", key="Doc",
                             location=self.room1)
+        # A POST-HOLDER STANDING AT THEIR POST. `draw_supply` is a
+        # post perk since #2474 — no post, no bottomless stock —
+        # and these fixtures never gave the doctor one, so every
+        # draw returned None and eight tests here have been red
+        # ever since. Production is right; the fixture was stale.
+        doc.db.soul_post = self.room1
         pod = create_object(AutoDoc, key="autodoc", location=self.room1)
         patient = create_object("typeclasses.characters.Character", key="Pat",
                                 location=self.room1)
@@ -100,6 +106,12 @@ class TestDoctorPatientTargeting(BaseEvenniaTest):
     def test_patient_falls_back_to_speaker(self):
         doc = create_object("typeclasses.llm_npc.LLMNpc", key="Doc2",
                             location=self.room1)
+        # A POST-HOLDER STANDING AT THEIR POST. `draw_supply` is a
+        # post perk since #2474 — no post, no bottomless stock —
+        # and these fixtures never gave the doctor one, so every
+        # draw returned None and eight tests here have been red
+        # ever since. Production is right; the fixture was stale.
+        doc.db.soul_post = self.room1
         speaker = create_object("typeclasses.characters.Character", key="Spk2",
                                 location=self.room1)
         self.assertEqual(worldclinic.patient_for(doc, speaker), speaker)   # no AutoDoc, no patient
@@ -124,6 +136,12 @@ class TestDoctorInstall(BaseEvenniaTest):
     def test_resolve_cyberware_sides(self):
         doc = create_object("typeclasses.llm_npc.LLMNpc", key="Doc3",
                             location=self.room1)
+        # A POST-HOLDER STANDING AT THEIR POST. `draw_supply` is a
+        # post perk since #2474 — no post, no bottomless stock —
+        # and these fixtures never gave the doctor one, so every
+        # draw returned None and eight tests here have been red
+        # ever since. Production is right; the fixture was stale.
+        doc.db.soul_post = self.room1
         self.assertEqual(worldclinic.resolve_cyberware("right eye")[0], "CYBER_RIGHT_EYE")
         self.assertEqual(worldclinic.resolve_cyberware("a new heart")[0],
                          "CYBERNETIC_HEART")
@@ -135,6 +153,12 @@ class TestDoctorInstall(BaseEvenniaTest):
         from world.medical import charts as chart_lib
         doc = create_object("typeclasses.llm_npc.LLMNpc", key="Doc4",
                             location=self.room1)
+        # A POST-HOLDER STANDING AT THEIR POST. `draw_supply` is a
+        # post perk since #2474 — no post, no bottomless stock —
+        # and these fixtures never gave the doctor one, so every
+        # draw returned None and eight tests here have been red
+        # ever since. Production is right; the fixture was stale.
+        doc.db.soul_post = self.room1
         patient = create_object("typeclasses.characters.Character", key="Pat4",
                                 location=self.room1)
         chart = worldclinic.build_install_chart(doc, patient, "cyber arm left")
@@ -166,6 +190,12 @@ class TestTheInstallStepCarriesTheSide(BaseEvenniaTest):
     def _pair(self, n):
         doc = create_object("typeclasses.llm_npc.LLMNpc", key=f"Doc{n}",
                             location=self.room1)
+        # A POST-HOLDER STANDING AT THEIR POST. `draw_supply` is a
+        # post perk since #2474 — no post, no bottomless stock —
+        # and these fixtures never gave the doctor one, so every
+        # draw returned None and eight tests here have been red
+        # ever since. Production is right; the fixture was stale.
+        doc.db.soul_post = self.room1
         patient = create_object("typeclasses.characters.Character",
                                 key=f"Pat{n}", location=self.room1)
         return doc, patient
@@ -220,6 +250,12 @@ class TestTheClinicDoesNotClobberASurgery(BaseEvenniaTest):
     def _pair(self, n):
         doc = create_object("typeclasses.llm_npc.LLMNpc", key=f"Doc{n}",
                             location=self.room1)
+        # A POST-HOLDER STANDING AT THEIR POST. `draw_supply` is a
+        # post perk since #2474 — no post, no bottomless stock —
+        # and these fixtures never gave the doctor one, so every
+        # draw returned None and eight tests here have been red
+        # ever since. Production is right; the fixture was stale.
+        doc.db.soul_post = self.room1
         patient = create_object("typeclasses.characters.Character",
                                 key=f"Pat{n}", location=self.room1)
         return doc, patient

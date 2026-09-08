@@ -87,8 +87,13 @@ def _sealant(uses_left=3):
     }
 
     class _Attrs:
-        def get(self, key):
-            return attrs_store.get(key)
+        def get(self, key, default=None):
+            # Production calls `attrs.get("uses_left", 1)`. This stub
+            # took no default, so `_consume_use` raised TypeError and
+            # five tests here have been erroring on master. A stub that
+            # is NARROWER than the interface it stands in for fails the
+            # moment production uses the part it left out.
+            return attrs_store.get(key, default)
 
         def add(self, key, value):
             attrs_store[key] = value
@@ -116,8 +121,13 @@ def _gauze():
     }
 
     class _Attrs:
-        def get(self, key):
-            return attrs_store.get(key)
+        def get(self, key, default=None):
+            # Production calls `attrs.get("uses_left", 1)`. This stub
+            # took no default, so `_consume_use` raised TypeError and
+            # five tests here have been erroring on master. A stub that
+            # is NARROWER than the interface it stands in for fails the
+            # moment production uses the part it left out.
+            return attrs_store.get(key, default)
 
         def add(self, key, value):
             attrs_store[key] = value
