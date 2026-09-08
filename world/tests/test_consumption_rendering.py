@@ -292,9 +292,17 @@ class TestOrdinalItemParse(TestCase):
         caller = MagicMock()
         caller.ORDINAL_WORDS = {"first": 1, "second": 2, "1st": 1, "2nd": 2}
         caller._searched = []
+        # The stub used to answer EVERY query with a hit. Harmless when
+        # the parser only ever searched one candidate; wrong now that it
+        # scans longest-first (#2458), because "pill alice" would
+        # "match" and swallow the target. A real `caller.search` matches
+        # keys and aliases, so the stub names what the caller is
+        # actually carrying.
+        caller._carrying = {"pill", "2nd mug", "second rotgut", "mug",
+                            "rotgut"}
         def fake_search(q, location=None, quiet=False):
             caller._searched.append(q)
-            return [MagicMock()]
+            return [MagicMock()] if q in caller._carrying else []
         caller.search = fake_search
         cmd.caller = caller
         return cmd, caller
@@ -315,7 +323,9 @@ class TestOrdinalItemParse(TestCase):
         with patch("commands.CmdConsumption.resolve_character_target",
                    return_value=MagicMock()) as rct:
             cmd.get_item_and_target("pill alice", require_medical=False)
-        self.assertEqual(caller._searched, ["pill"])
+        # Longest-first: "pill alice" is probed and missed, then "pill"
+        # hits and "alice" is left as the target.
+        self.assertEqual(caller._searched, ["pill alice", "pill"])
         rct.assert_called_once()
         self.assertEqual(rct.call_args[0][1], "alice")
 
