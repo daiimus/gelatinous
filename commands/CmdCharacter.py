@@ -230,6 +230,47 @@ def get_stat_tier_info(stat_name, numeric_value):
         'numeric_value': numeric_value
     }
 
+def _staff_view(cmd) -> bool:
+    """Does THIS invocation carry staff powers?
+
+    Checked on the CALLER, not on `cmd.account` (#2518). Two reasons:
+
+    * `cmd.account` is ``None`` for an account-less caller — an NPC
+      running ``score`` — and the unconditional
+      ``self.account.check_permstring`` this replaces raised
+      AttributeError on the way past.
+    * reading the account directly ignores ``@quell``, which exists so a
+      builder can play without staff powers. Every other staff path in
+      this file goes through ``resolve_admin_target`` and does not have
+      this problem.
+
+    Uses the ``perm()`` lock idiom rather than
+    ``caller.check_permstring`` — the same string ``CmdDescribe`` uses
+    forty lines down in this file. That distinction is not cosmetic and
+    it cost a live regression: a character puppeted by a Developer
+    account carries only ``player`` on the OBJECT, so
+    ``caller.check_permstring("Builder")`` is False and my first version
+    locked staff out of ``@stats <target>`` entirely. The lockfunc
+    resolves through the puppeting account, and honours ``@quell``,
+    which is exactly the behaviour wanted.
+
+    Only ``Builder`` is tested: the permission hierarchy is
+    ``Guest, Player, Helper, Builder, Admin, Developer`` (confirmed
+    against the running settings), so a Developer satisfies it and the
+    old two-term check was redundant rather than broader.
+
+    Guarded the way ``typeclasses.characters._is_staff`` is, and for the
+    same reason — ``check_permstring`` reaches for ``is_superuser``,
+    which not every sender has.
+    """
+    try:
+        return bool(cmd.caller.locks.check_lockstring(
+            cmd.caller,
+            f"dummy:perm({PERM_BUILDER}) or perm_above({PERM_BUILDER})"))
+    except Exception:  # noqa: BLE001 — a caller that cannot answer is not staff
+        return False
+
+
 class CmdStats(Command):
     """
     Access your GEL-MST psychophysical evaluation report.
@@ -275,13 +316,34 @@ class CmdStats(Command):
                 switches = [s.lower() for s in switch_part.split('/') if s]
 
         if args:
-            if (
-                self.account.check_permstring(PERM_BUILDER)
-                or self.account.check_permstring(PERM_DEVELOPER)
-            ):
-                matches = search_object(args.strip(), exact=False)
-                if matches:
-                    target = matches[0]
+            if _staff_view(self):
+                # `resolve_admin_target` filters to Characters and does
+                # the room-identity pass first; the raw
+                # `search_object(exact=False)` this replaces was global,
+                # partial-matching and TYPECLASS-UNFILTERED, so
+                # `@stats bar` took a BarCounter and died four lines
+                # later on `target.grit` (#2518). Reproduced live before
+                # fixing.
+                found = resolve_admin_target(caller, args.strip())
+                if found is None:
+                    # And it had no else: a miss left `target` as the
+                    # caller, so a staffer who mistyped a name was shown
+                    # their OWN sheet with the header of someone else's
+                    # request and no indication anything had gone wrong.
+                    # `resolve_admin_target` excludes the CALLER (its
+                    # identity phase runs with allow_self=False), which
+                    # is pre-existing to the shared helper — so name
+                    # yourself and you get a miss. Bare `stats` is the
+                    # answer, and the message says so rather than
+                    # leaving a staffer guessing.
+                    caller.msg(
+                        f"No character matches '{args.strip()}'. "
+                        f"(Use |wstats|n on its own for your own sheet.)")
+                    return
+                target = found
+            else:
+                caller.msg("You can only check your own evaluation.")
+                return
 
         grit = target.grit
         resonance = target.resonance
@@ -295,10 +357,7 @@ class CmdStats(Command):
         motorics_desc = get_stat_descriptor("motorics", motorics)
         
         # Check if caller has admin permissions for detailed view
-        show_numeric = (
-            self.account.check_permstring(PERM_BUILDER) or 
-            self.account.check_permstring(PERM_DEVELOPER)
-        ) and "numeric" in switches
+        show_numeric = _staff_view(self) and "numeric" in switches
         
         # Get medical status using medical terminology
         if hasattr(target, 'medical_state') and target.medical_state:
