@@ -219,6 +219,47 @@ def is_grappled(combat_handler, character):
     return False
 
 
+def release_existing_grapple(grappler_entry, combatants_list,
+                             splattercast=None):
+    """Let go of whoever this grappler is already holding (#2486).
+
+    A grappler can only hold one person: `DB_GRAPPLING_DBREF` is a single
+    field. The three live resolvers — initiate, join and takeover — all
+    assigned it without reading it first, so a second grapple silently
+    replaced the first and left victim #1 with a `grappled_by` pointing
+    at somebody who was no longer holding them. `validate_grapple_action`
+    then refused that victim's actions with "you can't do that while
+    grappled by C" — pinned by a phantom.
+
+    `establish_grapple` has the guard, and refuses outright. It is also
+    unreachable: repo-wide it has exactly one non-definition occurrence,
+    an unused import. Releasing rather than refusing is the smaller
+    change — it keeps every action the command layer already accepts,
+    where refusing would remove the ability to switch grapple targets
+    mid-fight, which is a design call nobody has made.
+    """
+    if not grappler_entry:
+        return None
+    current = grappler_entry.get(DB_GRAPPLING_DBREF)
+    if not current:
+        return None
+    grappler_entry[DB_GRAPPLING_DBREF] = None
+    victim = get_character_by_dbref(current)
+    if victim is None:
+        return None
+    victim_entry = next(
+        (e for e in combatants_list if e.get(DB_CHAR) == victim), None)
+    if victim_entry and victim_entry.get(DB_GRAPPLED_BY_DBREF) == \
+            get_character_dbref(grappler_entry.get(DB_CHAR)):
+        victim_entry[DB_GRAPPLED_BY_DBREF] = None
+    if splattercast is not None:
+        holder = grappler_entry.get(DB_CHAR)
+        splattercast.msg(
+            f"GRAPPLE_RELEASE: {getattr(holder, 'key', '?')} lets go of "
+            f"{victim.key} to take a new hold.")
+    return victim
+
+
 def validate_grapple_action(combat_handler, character, action_name):
     """
     Validate if a character can perform an action while grappled/grappling.
@@ -294,6 +335,9 @@ def resolve_grapple_initiate(char_entry, combatants_list, handler):
     if attacker_roll > defender_roll:
         # Success
         # NOTE: Strict > means ties favor the defender. This is intentional.
+        # Let go of anyone already held (#2486) — one grappler, one
+        # victim, and this field is where that is enforced.
+        release_existing_grapple(char_entry, combatants_list, splattercast)
         char_entry[DB_GRAPPLING_DBREF] = get_character_dbref(target)
         target_entry[DB_GRAPPLED_BY_DBREF] = get_character_dbref(char)
         
@@ -431,6 +475,9 @@ def resolve_grapple_join(char_entry, combatants_list, handler):
     if new_grappler_roll > current_grappler_roll:
         # New grappler wins - they take over the grapple
         # NOTE: Strict > means ties favor the current grappler (defender). This is intentional.
+        # Let go of anyone already held (#2486) — one grappler, one
+        # victim, and this field is where that is enforced.
+        release_existing_grapple(char_entry, combatants_list, splattercast)
         char_entry[DB_GRAPPLING_DBREF] = get_character_dbref(target)
         char_entry[DB_IS_YIELDING] = True
         
@@ -547,6 +594,9 @@ def resolve_grapple_takeover(char_entry, combatants_list, handler):
         victim_entry[DB_GRAPPLED_BY_DBREF] = None
         
         # Step 2: Establish new grapple (C grapples A)
+        # Let go of anyone already held (#2486) — one grappler, one
+        # victim, and this field is where that is enforced.
+        release_existing_grapple(char_entry, combatants_list, splattercast)
         char_entry[DB_GRAPPLING_DBREF] = get_character_dbref(target)
         target_entry[DB_GRAPPLED_BY_DBREF] = get_character_dbref(char)
         
@@ -786,11 +836,29 @@ def validate_and_cleanup_grapple_state(handler):
                     expected_dbref = get_character_dbref(char)
                     
                     if grappler_grappling_dbref != expected_dbref:
-                        # Broken cross-reference
-                        splattercast.msg(f"GRAPPLE_CLEANUP: {char.key} claims to be grappled by {grappler.key}, but {grappler.key} doesn't have matching grappling reference. Fixing cross-reference.")
-                        # Fix the grappler's grappling reference
-                        grappler_index = next(j for j, e in enumerate(combatants_list) if e.get(DB_CHAR) == grappler)
-                        combatants_list[grappler_index][DB_GRAPPLING_DBREF] = expected_dbref
+                        # ONE AUTHORITY, AND IT IS `grappling` (#2486).
+                        #
+                        # This used to rewrite the GRAPPLER's `grappling`
+                        # to point back here, while branch 1 above
+                        # rewrites the VICTIM's `grappled_by` — each
+                        # taking its own side as ground truth. With two
+                        # victims both claiming the same grappler, both
+                        # branches fired on every pass, the last entry
+                        # visited won, and `cleanup_needed` was True
+                        # forever: the handler rewrote `db.combatants`
+                        # every round for the rest of the fight without
+                        # ever converging.
+                        #
+                        # `grappling` is a single field and cannot be
+                        # duplicated; `grappled_by` can be, and that is
+                        # exactly the corruption. So the claim that does
+                        # not match is the one that is wrong, and it is
+                        # CLEARED rather than propagated. Neither branch
+                        # used to clear anything, which is why a
+                        # one-grappler-two-victims state was a fixed
+                        # point the validator flailed at indefinitely.
+                        splattercast.msg(f"GRAPPLE_CLEANUP: {char.key} claims to be grappled by {grappler.key}, but {grappler.key} is not grappling them. Clearing the orphaned hold.")
+                        combatants_list[i][DB_GRAPPLED_BY_DBREF] = None
                         cleanup_needed = True
     
     # Save changes directly — no re-read to avoid TOCTOU race.
