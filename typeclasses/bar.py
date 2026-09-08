@@ -261,7 +261,18 @@ class CmdBarClear(Command):
             return
         clutter = [
             o for o in bar.contents
-            if getattr(o.db, "is_drink", False) or getattr(o.db, "is_ingredient", False)
+            if getattr(o.db, "is_drink", False)
+            or getattr(o.db, "is_ingredient", False)
+            # PLATED DISHES TOO (#2459). A mixed drink carries
+            # `db.is_drink`, but a dish spawned from its prototype
+            # carries neither attribute — it is marked by TAGS
+            # (`("food", "item_type")` / `("eat", "delivery_method")`),
+            # which is the only thing separating food from drink in this
+            # catalogue. So `clean`/`wipe` was the counter's one tidy
+            # verb and it could not pick up a plate: abandoned dishes
+            # accumulated on the bar with no way to clear them.
+            or o.tags.has("food", category="item_type")
+            or o.tags.has("drink", category="item_type")
         ]
         if not clutter:
             caller.msg(f"{bar.get_display_name(caller)} is already clean.")

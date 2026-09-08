@@ -175,10 +175,26 @@ def serve_from_board_cart(post, speech, patron, by, addressed=False):
 
 
 def _check_stock(post, arg, patron, by):
-    """What is actually on this counter's shelf."""
+    """What is actually on this counter's shelf.
+
+    SOLD-OUT LINES ARE NOT ON OFFER (#2459). `shelf_of` lists every
+    `prototype_inventory` key, which is right for MATCHING — you want a
+    sold-out dish to match so the counter can say "out" — and wrong for
+    the keeper's own answer to "what have you got". A butcher would
+    offer rat tail stew and then refuse to sell it, which reads as the
+    NPC lying rather than as an empty tray.
+
+    The finite test mirrors `serve_from_shelf`'s exactly, so the tool
+    and the till cannot disagree about what is available.
+    """
     if post is None:
         return "no counter to check"
-    names = [display for _, display, _ in shelf_of(post)]
+    stock = post.db.item_inventory or {}
+    finite = not post.db.is_infinite
+    names = [
+        display for proto_key, display, _ in shelf_of(post)
+        if not finite or int(stock.get(proto_key, 0) or 0) > 0
+    ]
     return ("On the shelf: " + ", ".join(names) + ".") if names \
         else "The shelf is empty."
 
