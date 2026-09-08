@@ -521,7 +521,14 @@ def _do_advance_move(
             f"{target_room.key}."
         )
 
-        # Move both characters
+        # Move both characters. Proximity is cleared for the MOVER
+        # because combat does not traverse an exit and so never reaches
+        # the cleanup in `Exit.at_traverse` (#2490). The dragged victim
+        # is deliberately exempt, exactly as `at_traverse` exempts one:
+        # they stay adjacent to the person dragging them, and the pair
+        # is re-established two lines down.
+        from world.combat.proximity import clear_proximity_on_room_change
+        clear_proximity_on_room_change(char)
         char.move_to(target_room)
         grappled_victim.move_to(
             target_room, quiet=True, move_hooks=False
@@ -543,7 +550,11 @@ def _do_advance_move(
             exclude=[char, grappled_victim],
         )
     else:
-        # Normal single character movement
+        # Normal single character movement. Same reason as above: this
+        # is a direct `move_to`, so nothing else drops the proximity
+        # links to the room being left (#2490).
+        from world.combat.proximity import clear_proximity_on_room_change
+        clear_proximity_on_room_change(char)
         char.move_to(target_room)
 
     # Check for rigged grenades after successful movement
@@ -919,6 +930,9 @@ def _resolve_charge_cross_room(
         # NOTE: Strict > means ties favor the target (defender).
         # This is intentional.
         exit_to_use = exits_to_target[0]
+        # Cross-room charge is a direct `move_to` too (#2490).
+        from world.combat.proximity import clear_proximity_on_room_change
+        clear_proximity_on_room_change(char)
         char.move_to(target_room)
 
         # Release grapple if holding someone

@@ -514,6 +514,43 @@ def get_unified_explosion_proximity(grenade):
                         unified_list.append(related_char)
                         splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: Added {related_char.key if hasattr(related_char, 'key') else str(related_char)} from {character.key}'s character proximity")
 
+        # A BLAST DOES NOT REACH ANOTHER ROOM (#2490).
+        #
+        # The merge above pulls in everyone linked by COMBAT proximity
+        # to anyone in the grenade's own list — deliberately, so the
+        # human-shield mechanic works regardless of when the grapple was
+        # established relative to the grenade landing. But it is
+        # transitive and it never asked where those people are standing,
+        # and the damage loop's only guard is `hasattr(character,
+        # 'msg')` — "is this a character?".
+        #
+        # Combat proximity accumulates cross-room ghosts of its own
+        # (advance / charge / drag all move with a direct `move_to`), so
+        # the two defects composed: A and B fight in the bar over a live
+        # grenade, A advances to the back room still linked to B, the
+        # grenade goes off, and A takes chest damage through a wall —
+        # along with anyone still linked to A.
+        #
+        # The code right after the damage loop sends the observer
+        # message to `character.location`, so it already knew the victim
+        # might be elsewhere. It just never asked whether they should
+        # have been hit.
+        from world.combat.explosives import get_explosion_room
+        blast_room = get_explosion_room(grenade)
+        if blast_room is not None:
+            # Fail-open on an unreadable location, matching this
+            # function's own degradation stance below: a slightly wide
+            # blast beats a blast that fails to resolve.
+            in_room = [c for c in unified_list
+                       if getattr(c, "location", None) in (blast_room, None)]
+            dropped = [c for c in unified_list if c not in in_room]
+            if dropped:
+                splattercast.msg(
+                    f"{DEBUG_PREFIX_THROW}_DEBUG: dropped "
+                    f"{[getattr(c, 'key', str(c)) for c in dropped]} — "
+                    f"not in {blast_room.key}")
+            unified_list = in_room
+
         splattercast.msg(f"{DEBUG_PREFIX_THROW}_DEBUG: get_unified_explosion_proximity - final list: {[char.key if hasattr(char, 'key') else str(char) for char in unified_list]}")
         return unified_list
 

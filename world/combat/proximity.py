@@ -12,7 +12,7 @@ Functions:
 - Proximity cleanup on movement
 """
 
-from .constants import NDB_PROXIMITY
+from .constants import NDB_PROXIMITY, NDB_PROXIMITY_UNIVERSAL
 from .debug import log_debug
 
 # NOTE (#2487): there are no `hasattr(char.ndb, ...)` guards in this
@@ -119,6 +119,42 @@ def clear_all_proximity(character):
     # Clear this character's proximity
     proximity_set.clear()
     log_debug("PROXIMITY", "CLEAR_ALL", f"Cleared for {character.key}")
+
+
+def clear_proximity_on_room_change(character):
+    """Drop every proximity link when a character changes room by a path
+    that is not an exit traversal (#2490).
+
+    `Exit.at_traverse` is the ONLY place this cleanup lived, and combat
+    does not traverse exits — `advance`, a cross-room `charge` and a
+    grapple drag all call `char.move_to(target_room)` directly.
+
+    Those paths hand-roll the traversal side effects and got three of
+    four: both `_do_advance_move` and `_resolve_charge_cross_room`
+    re-implement aim clearing, the rigged-grenade check and auto-defuse,
+    and neither clears proximity. An incomplete compensation list rather
+    than an oversight — somebody enumerated what traversal does and
+    missed an item.
+
+    The residue is a cross-room proximity ghost: A and B fighting in the
+    bar, A advances to the back room, and A keeps a live proximity link
+    to B in a room A is no longer in.
+
+    Clears both sets, on both sides, the way `at_traverse` does:
+    `NDB_PROXIMITY` (melee) and `NDB_PROXIMITY_UNIVERSAL` (grenades and
+    other room-anchored hazards).
+    """
+    clear_all_proximity(character)
+
+    universal = getattr(character.ndb, NDB_PROXIMITY_UNIVERSAL, None)
+    if not isinstance(universal, list) or not universal:
+        return
+    for obj in list(universal):
+        other = getattr(getattr(obj, "ndb", None), NDB_PROXIMITY_UNIVERSAL, None)
+        if isinstance(other, list) and character in other:
+            other.remove(character)
+    setattr(character.ndb, NDB_PROXIMITY_UNIVERSAL, [])
+    log_debug("PROXIMITY", "CLEAR_ON_MOVE", f"Cleared for {character.key}")
 
 
 def get_proximity_list(character):
