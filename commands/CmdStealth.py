@@ -65,7 +65,22 @@ class CmdHide(Command):
         if not caller.location:
             return
         from random import randint
-        item.move_to(caller.location, quiet=True)
+
+        # THE SAME GUARDS `drop` OWES (#2561). This used to be a bare
+        # `move_to`, and `caller.search(phrase, location=caller)`
+        # searches `caller.contents` — which holds worn clothing and
+        # held weapons alike. So `hide <garment>` stashed something you
+        # were wearing, `hide <weapon>` left the hand slot still
+        # pointing at an item now lying on the floor (the fourth
+        # instance of the PR-H2 derived-view desync), and integrated
+        # cyberware could be posted out of your own arm. One word, no
+        # guards.
+        from commands.CmdInventory import release_to_ground
+        ok, refusal, _hand = release_to_ground(caller, item)
+        if not ok:
+            if refusal:
+                caller.msg(refusal)
+            return
         item.db.hidden = True
         # The stash quality is rolled once, at stash time — the hider's
         # craft frozen into the hiding spot for later searches to beat.

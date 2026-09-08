@@ -45,7 +45,19 @@ def followers_of(leader, room):
 
 
 def sever_follow(follower, silent=False):
-    """Drop a follow link (both parties notified unless silent)."""
+    """Drop a follow link (both parties AND the room notified unless silent).
+
+    The room half matters because every ESTABLISHMENT is broadcast — the
+    room is told "{actor} falls in behind {target}" — while no release
+    ever was (#2572). Bystanders watched people fall in behind each other
+    and never watched anyone peel off, so the coupling a room had seen
+    form was, as far as anyone standing there could tell, permanent.
+
+    Broadcast only when the two are still in the same room: after a
+    follower loses the trail they are a room apart, and there is no
+    single room that witnessed the parting. Those paths pass
+    ``silent=True`` anyway and say something more specific.
+    """
     leader = follower.db.following
     follower.db.following = None
     if silent or not _valid(leader):
@@ -55,6 +67,17 @@ def sever_follow(follower, silent=False):
         leader.msg(f"{follower.get_display_name(leader)} stops following you.")
     except Exception:  # noqa: BLE001 — notification is best-effort
         pass
+    if follower.location and follower.location is leader.location:
+        try:
+            from world.identity_utils import msg_room_identity
+            msg_room_identity(
+                location=follower.location,
+                template="{actor} stops following {target}.",
+                char_refs={"actor": follower, "target": leader},
+                exclude=[follower, leader],
+            )
+        except Exception:  # noqa: BLE001 — notification is best-effort
+            pass
 
 
 def bring_followers(leader, source_location):
