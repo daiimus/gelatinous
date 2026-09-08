@@ -24,7 +24,12 @@ HIT_WEIGHT_COMMON = 25                # Arms, legs, major limbs
 
 # Pain/Consciousness Modifiers
 PAIN_UNCONSCIOUS_THRESHOLD = 80       # High pain causes unconsciousness
-PAIN_CONSCIOUSNESS_MODIFIER = 0.5     # How much pain affects consciousness
+#: How much excess pain affects consciousness, expressed on the 0-100
+#: PAIN scale. `update_vital_signs` divides by 100 to land it on the
+#: 0.0-1.0 consciousness scale — it used to multiply it in raw, which
+#: made the unconsciousness curve a cliff two pain points wide (#2501).
+#: Magnitude is a balance question; the units are not.
+PAIN_CONSCIOUSNESS_MODIFIER = 0.5
 
 # ===================================================================
 # TREATMENT SUCCESS MODIFIERS
