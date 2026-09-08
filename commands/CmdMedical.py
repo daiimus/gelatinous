@@ -238,7 +238,14 @@ class CmdMedicalInfo(Command):
         table.add_row("Consciousness", f"{medical_state.consciousness * 100:.1f}%")
         
         # Counts
-        damaged_organs = sum(1 for organ in medical_state.organs.values() if organ.current_hp < organ.max_hp)
+        # Count what the engine calls impaired, not what lost HP
+        # (#2533) — otherwise a body whose organs are condition-disabled
+        # reports "Damaged Organs: 0" while the medic is looking at a
+        # dying patient.
+        damaged_organs = sum(
+            1 for organ in medical_state.organs.values()
+            if organ.current_hp < organ.max_hp
+            or organ.get_functionality_percentage() < 1.0)
         table.add_row("Damaged Organs", str(damaged_organs))
         table.add_row("Active Conditions", str(len(medical_state.conditions)))
         
@@ -254,19 +261,40 @@ class CmdMedicalInfo(Command):
 
         for organ_name, organ in medical_state.organs.items():
             hp_str = f"{organ.current_hp}/{organ.max_hp}"
-            
-            if organ.current_hp == organ.max_hp:
+
+            # STATUS IS FUNCTION, NOT HP (#2533). Organ function is a
+            # two-input calculation in this engine — HP AND the
+            # conditions bound to that organ — and this read only the
+            # first. So an organ the model rates 0% functional, disabled
+            # outright by a condition, was presented to the medic as
+            # "Healthy" because its HP was untouched. A medic reads this
+            # table to decide what to treat.
+            #
+            # `get_functionality_percentage` is the engine's own answer
+            # and multiplies the HP-driven base by each condition's
+            # modifier; `is_functional` is its boolean sibling. Neither
+            # had a caller outside `core.py` and the tests.
+            functional = organ.get_functionality_percentage()
+
+            if organ.current_hp <= 0:
+                if organ.wound_stage == "severed":
+                    # The 0-HP tombstone of a severed limb is the stump
+                    # record, not in-place destruction (#516 review).
+                    status = "|xSevered|n"
+                else:
+                    status = "|RDestroyed|n"
+            elif not organ.is_functional():
+                # HP intact, condition-disabled: the case the HP ladder
+                # could not express at all.
+                status = "|RDisabled|n"
+            elif functional >= 1.0:
                 status = "|gHealthy|n"
-            elif organ.current_hp > organ.max_hp * 0.5:
+            elif functional > 0.5:
                 status = "|yDamaged|n"
-            elif organ.current_hp > 0:
-                status = "|rSeverely Damaged|n"
-            elif organ.wound_stage == "severed":
-                # The 0-HP tombstone of a severed limb is the stump
-                # record, not in-place destruction (#516 review).
-                status = "|xSevered|n"
             else:
-                status = "|RDestroyed|n"
+                status = "|rSeverely Damaged|n"
+
+            hp_str = f"{hp_str} ({functional * 100:.0f}%)"
                 
             table.add_row(get_organ_display_name(organ_name, species).title(), hp_str, status, organ.container)
             
