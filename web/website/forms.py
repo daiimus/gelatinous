@@ -8,6 +8,8 @@ and Cloudflare Turnstile verification.
 import re
 
 from django import forms
+
+from world.identity import BUILDS, HEIGHTS
 from evennia.web.website.forms import (
     CharacterForm as EvenniaCharacterForm,
     AccountForm as EvenniaAccountForm
@@ -149,9 +151,28 @@ class CharacterForm(EvenniaCharacterForm):
         })
     )
     
+    # The web form did not ask for these, and nothing downstream filled
+    # them in (#2449). `height` and `build` are what `get_sdesc` composes
+    # a stranger-facing description from, and its fallback when either is
+    # missing is `return self.key` — the player's REAL NAME, shown to
+    # every stranger in the room, permanently. Sourced from the same
+    # `world.identity` tuples the telnet chargen menu enumerates, so the
+    # two doors cannot offer different vocabularies.
+    height = forms.ChoiceField(
+        choices=[(h, h.capitalize()) for h in HEIGHTS],
+        initial="average",
+        help_text="How tall this sleeve reads to a stranger.",
+    )
+    build = forms.ChoiceField(
+        choices=[(b, b.capitalize()) for b in BUILDS],
+        initial="average",
+        help_text="How this sleeve is put together.",
+    )
+
     class Meta(EvenniaCharacterForm.Meta):
         # Extend parent's fields with our custom fields
-        fields = ('first_name', 'last_name', 'sex', 'desc', 'grit', 'resonance', 'intellect', 'motorics')
+        fields = ('first_name', 'last_name', 'sex', 'height', 'build', 'desc',
+                  'grit', 'resonance', 'intellect', 'motorics')
     
     def clean_first_name(self):
         """Validate first name format."""
@@ -170,16 +191,23 @@ class CharacterForm(EvenniaCharacterForm):
         """
         cleaned_data = super().clean()
         
-        # Check name uniqueness (matching MUD path's validate_name() logic)
+        # Uniqueness: CALL the MUD's validator rather than reimplementing
+        # "matching MUD path's validate_name() logic" (#2449).
+        #
+        # The copy here compared the un-numeraled "First Last" against
+        # `db_key`, and nothing is ever stored under that — every sleeve
+        # is keyed with a Roman numeral. So this never saw the telnet
+        # sleeve "Jorge Jackson I" and happily let a second player take
+        # the same lineage name, while `charcreate.validate_name` (fixed
+        # in #2550 to compare BASE names) blocked the reverse. Two doors,
+        # two answers, on a name that has to be unique across both.
         first_name = cleaned_data.get('first_name')
         last_name = cleaned_data.get('last_name')
         if first_name and last_name:
-            full_name = f"{first_name} {last_name}"
-            from typeclasses.characters import Character
-            if Character.objects.filter(db_key__iexact=full_name).exists():
-                raise forms.ValidationError(
-                    f"The name '{full_name}' is already taken. Please choose a different name."
-                )
+            from commands.charcreate import validate_name
+            is_valid, error = validate_name(f"{first_name} {last_name}")
+            if not is_valid:
+                raise forms.ValidationError(error)
         
         # IntegerField should have already converted these to int
         # If a field failed validation, it won't be in cleaned_data

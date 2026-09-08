@@ -61,6 +61,22 @@ Decant Sleeve
               </div>
               
               <div class="form-field my-3">
+                {{ form.height.label_tag }}
+                {{ form.height | addclass:"form-control" }}
+                {% if form.height.help_text %}
+                <small class="form-text text-muted">{{ form.height.help_text|safe }}</small>
+                {% endif %}
+              </div>
+
+              <div class="form-field my-3">
+                {{ form.build.label_tag }}
+                {{ form.build | addclass:"form-control" }}
+                {% if form.build.help_text %}
+                <small class="form-text text-muted">{{ form.build.help_text|safe }}</small>
+                {% endif %}
+              </div>
+
+              <div class="form-field my-3">
                 {{ form.desc.label_tag }}
                 {{ form.desc | addclass:"form-control" }}
                 {% if form.desc.help_text %}

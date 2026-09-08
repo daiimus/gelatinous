@@ -277,7 +277,14 @@ class CharacterCreateView(EvenniaCharacterCreateView):
         # Extract name components and build full name
         first_name = form.cleaned_data['first_name']
         last_name = form.cleaned_data['last_name']
-        charname = f"{first_name} {last_name}"
+        # Every sleeve carries a Roman numeral — the first is
+        # "First Last I" (WEB_RESPAWN_CHARACTER_CREATION_SPEC, #50).
+        # This path was the ONLY creation site in the codebase that
+        # skipped the helper (#2449), so a web sleeve was keyed
+        # "First Last" and its first death renamed the clone straight to
+        # "First Last II" with no "I" having ever existed.
+        from commands.charcreate import build_name_from_death_count
+        charname = build_name_from_death_count(f"{first_name} {last_name}", 1)
         
         # Extract other form data
         description = form.cleaned_data.get('desc', '')
@@ -321,6 +328,16 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             
             # Set sex (using AttributeProperty)
             character.sex = sex
+
+            # Identity axes (#2449). Without BOTH of these `get_sdesc`
+            # falls through to `return self.key` and every stranger in
+            # the room reads the player's real name instead of "a lanky
+            # man" — permanently, in room contents, look, combat lines
+            # and every `msg_room_identity` broadcast. The telnet door
+            # has always set them; this one never did, and nothing
+            # downstream backfills.
+            character.height = form.cleaned_data['height']
+            character.build = form.cleaned_data['build']
             
             # Set Stack/clone tracking (matching telnet charcreate.py)
             import uuid
@@ -329,6 +346,15 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             character.db.original_creation = time.time()
             character.db.current_sleeve_birth = time.time()
             character.unarchive_character()   # attribute + sleeve-tag index in sync
+
+            # The one-shot decant scene (#2449). Every other creation
+            # point sets this — template respawn, flash clone, telnet
+            # first character — and NEW_PLAYER_EXPERIENCE_SPEC says it is
+            # "set at every creation point incl. web". Only this path was
+            # silent, so the one player the scene was written for, a
+            # brand-new website registration, got the routine re-login
+            # line instead.
+            character.db.decant_announce_pending = True
             # death_count defaults to 1 via AttributeProperty in Character class
             
             # WEB-CREATED CHARACTERS: Make invisible until puppeted
