@@ -147,7 +147,50 @@ def usher_escortee(leader, destination):
 
     exit_obj = _exit_to(leader.location, destination)
     if exit_obj is None:
-        return True  # teleport-style move: no doorway to usher through
+        return True
+
+    # RE-ENTRANCY GUARD (#2454). A escorting B while B escorts A made
+    # any movement recurse until the interpreter stack blew: A's
+    # `at_pre_move` ushers B, B's `at_pre_move` ushers A, and neither
+    # can reach `move_to`'s actual relocation until its escortee has
+    # already moved — so no state changes between iterations and the
+    # early-outs above are all false. The player got a RecursionError
+    # traceback and BOTH characters were wedged, since every later move
+    # by either re-triggered it.
+    #
+    # The FOLLOW direction is safe and the author knew it:
+    # `bring_followers` runs from `at_post_move` AFTER the leader has
+    # arrived, and only moves followers still in the SOURCE room, so
+    # each hop empties that room. Escort is the exact inverse —
+    # pre-move, before anyone has left — and never got the equivalent
+    # reasoning.
+    #
+    # Refusing the RE-ENTRANT move (rather than allowing it) is what
+    # makes each party move exactly once: the inner call is cancelled,
+    # the escortee completes its own move, and the outer frame then
+    # moves the leader normally.
+    # STRICT `is True`, the same idiom `is_hidden_from` uses on
+    # `db.hidden`. Two reasons, both load-bearing: Evennia's DbHolder
+    # returns None for a missing ndb key rather than the getattr
+    # default, and a MagicMock stand-in auto-creates the attribute as a
+    # truthy Mock — so a plain truthiness test fires on every test
+    # fixture and refuses ordinary escorts.
+    if getattr(leader.ndb, "ushering_escortee", None) is True:
+        return False
+    setattr(leader.ndb, "ushering_escortee", True)
+    try:
+        return _usher(leader, escortee, exit_obj, destination)
+    finally:
+        try:
+            delattr(leader.ndb, "ushering_escortee")
+        except Exception:  # noqa: BLE001 — a missing flag is already clear
+            pass
+
+
+def _usher(leader, escortee, exit_obj, destination):
+    """Send the escortee through, then report whether the leader may
+    follow. Split out so the re-entrancy flag above has a single scope
+    to wrap."""
     escortee.execute_cmd(exit_obj.key)
     if escortee.location is not destination:
         # The escortee bounced (lock, state). Ushering someone through a
