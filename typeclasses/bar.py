@@ -29,7 +29,6 @@ from world.shop.utils import format_currency
 from world.bar import (
     DEFAULT_BAR_SNACKS,
     bar_stock,
-    make_drink_from_recipe,
     match_recipe,
     plate_or_mix,
     resolve_drink,
@@ -211,7 +210,22 @@ class CmdBarPrepare(Command):
                 f"can't make it from what's in stock."
             )
             return
-        drink = make_drink_from_recipe(recipe, location=bar)
+        # PLATE OR MIX (#2531). `plate_or_mix` exists because a menu
+        # entry naming a `proto` must be PLATED — the real prototype
+        # spawned — rather than mixed into a drink, and
+        # `make_drink_from_recipe` has no `proto` branch at all: it
+        # reads name/desc/effects/sips/taste/order_keywords, none of
+        # which a plated entry supplies. So the Snailery's three plated
+        # dishes came out of this door as hollow fake drinks that `eat`
+        # refuses and `drink` accepts.
+        #
+        # #2342 converted the NPC serve path and left the two hands-on
+        # doors a tender actually uses. This module already IMPORTED
+        # `plate_or_mix` and then did not call it.
+        drink = plate_or_mix(recipe, bar)
+        if drink is None:
+            caller.msg("|rThat one won't come together right now.|n")
+            return
         craft = recipe.get("craft", "builds the drink")
         caller.execute_cmd(
             f"emote {craft}, and sets {with_article(drink.key)} on {bar.key}."
