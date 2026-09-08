@@ -108,10 +108,28 @@ def process_corpse(post, by, corpse, giver):
     if not (giver and giver.pk):
         payout = 0
     if block:
-        payout = min(payout, till)
+        # BUY WHAT YOU CAN PAY FOR (#2479). `payout = min(payout, till)`
+        # clipped the PRICE and `stock_cuts(dict(yields))` stocked the
+        # UNCLIPPED yield, so a till at the floor of 5 paid 5 for a
+        # carcass worth 12 and received all 12 tokens' worth of stock —
+        # reachable at exactly the boundary the floor exists to guard.
+        #
+        # Clipping the goods instead of the money keeps the author's
+        # stated intent ("pay what I can") and makes the two sides
+        # match. The block stays trading rather than refusing, which
+        # matters because its till refills from selling that stock.
+        bought, spent = _affordable(yields, till)
+        payout = spent
         block.db.register = till - payout
         # the produce becomes SHOP STOCK — buyable, finite, real
-        block.stock_cuts(dict(yields))
+        block.stock_cuts(dict(bought))
+        short = [(k, c - dict(bought).get(k, 0)) for k, c in yields
+                 if c - dict(bought).get(k, 0) > 0]
+        if short:
+            by.execute_cmd(
+                "emote sets a few cuts aside, unpaid for — the till "
+                "won't stretch to the whole animal today."
+            )
     else:
         # blockless butcher: spawn the cuts loose where she stands
         for key, count in yields:
@@ -131,6 +149,29 @@ def process_corpse(post, by, corpse, giver):
         f"emote breaks the carcass down with a few practiced strokes — "
         f"{cuts_text} to the cook-pot — and {pay_text}."
     )
+
+def _affordable(yields, till):
+    """Split a yield into what *till* can actually pay for (#2479).
+
+    Returns ``(bought, spent)`` where *bought* is a list of
+    ``(product_key, count)`` and *spent* is its exact cost. Walks the
+    cuts cheapest-first so a short till buys the most animal it can
+    rather than blowing the whole register on one premium cut.
+    """
+    remaining = int(till or 0)
+    bought = []
+    for key, count in sorted(yields, key=lambda kc: RAT_PRODUCTS[kc[0]]["buy"]):
+        price = RAT_PRODUCTS[key]["buy"]
+        if price <= 0:
+            bought.append((key, count))
+            continue
+        take = min(count, remaining // price)
+        if take > 0:
+            bought.append((key, take))
+            remaining -= take * price
+    spent = sum(RAT_PRODUCTS[k]["buy"] * c for k, c in bought)
+    return bought, spent
+
 
 def _butcher_yields(by, corpse, decay):
     """Walk the rat butchery table against the corpse's real condition.

@@ -96,7 +96,28 @@ class CrowdSystem:
             total_level += self.room_type_modifiers[room_type]
         
         # Add character-based scaling (0.5 per character, so 2 chars = +1 level)
-        characters = [obj for obj in room.contents if hasattr(obj, 'has_account') and obj.has_account]
+        #
+        # COUNT BODIES, NOT LOGINS (#2497). This filtered on
+        # `has_account`, which Evennia documents as "will only return
+        # CONNECTED accounts" — so it admitted exactly one population,
+        # players currently logged in, and excluded every NPC as well as
+        # any linkdead player still standing in the room. The variable
+        # was called `characters` and the comment said "per character",
+        # which is what made it read as correct.
+        #
+        # That is not cosmetic: this module's own docstring says crowd
+        # level feeds witness chance (`world/director/witness.py`) and
+        # the stealth concealment bonus (`world/stealth.py`). With 16
+        # NPC souls living a 24/7 clock, the overwhelming majority of
+        # bodies in any room were the ones not counted — so a street
+        # packed with people had nobody to see a crime and nowhere to
+        # disappear into.
+        #
+        # Same duck-type `world.emote._perceives` uses, imported rather
+        # than re-derived so the audience of a pose and the population of
+        # a street cannot drift apart.
+        from world.emote import _perceives
+        characters = [obj for obj in room.contents if _perceives(obj)]
         character_bonus = len(characters) * 0.5
         total_level += character_bonus
         
