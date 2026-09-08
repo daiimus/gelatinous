@@ -141,6 +141,20 @@ def _make_social_cmd(
 
             args = self.args.strip() if self.args else ""
 
+            # A POSE IS A POSE (#2462). These eight broadcast a visible
+            # action to the room, and the umbrella verbs that do the same
+            # thing — `emote`, `.`, `say`, `to` — all break stealth. A
+            # hider could `nod`, `wave`, `shrug` at somebody and stay
+            # concealed while the room watched them do it.
+            #
+            # AFTER the argument checks above and before any broadcast,
+            # matching #2530: a refused command must not blow your cover
+            # for an action that never happened. The solo form needs no
+            # arguments, so the only refusal ahead of it is the
+            # no-location guard.
+            from world.stealth import break_stealth
+            break_stealth(caller)
+
             if not args:
                 # --- Solo form ---
                 caller.msg(f"You {verb}.")

@@ -1190,9 +1190,14 @@ def render_emote(
         rendered = render_emote_for_observer(tokens, actor, observer)
         # An embedded quote rides the shared speech rails: hearing listeners get
         # the words, and a listener the emote points at counts as addressed.
-        payload = speech_payload(
-            observer, actor, words, addressed=(id(observer) in referenced)
-        )
+        addressed = id(observer) in referenced
+        payload = speech_payload(observer, actor, words, addressed=addressed)
+        # SAME FALLBACK `render_dot_pose` SETS (#2462). `speech_payload`
+        # builds itself around the spoken WORDS, so a wordless emote
+        # comes back without the key at all — and an NPC reacts to
+        # `addressed`. `.point at bartender` was heard; `emote points at
+        # the bartender` was not, for want of one line the sibling has.
+        payload.setdefault("addressed", addressed)
         observer.msg(text=rendered, type="pose", from_obj=actor, **payload)
 
 

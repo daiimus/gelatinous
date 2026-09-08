@@ -647,7 +647,11 @@ class AppearanceMixin:
             # for singular-they.  Without this, neutral sleeves render
             # "They holds themselves" instead of "They hold themselves"
             # (issue #321).
-            body_number = body_number_for(self.gender)
+            # Apparent too, or the number disagrees with the pronoun
+            # the line above renders: a neutral character presenting as
+            # a woman would read "She hold themselves still".
+            from world.identity import get_apparent_gender
+            body_number = body_number_for(get_apparent_gender(self))
             processed_desc = self._process_description_variables(
                 self.db.desc, looker,
                 force_third_person=True, apply_skintone=False,
@@ -775,7 +779,15 @@ class AppearanceMixin:
             'male': 'male', 'female': 'female',
             'neutral': 'plural', 'nonbinary': 'plural', 'other': 'plural',
         }
-        character_gender = gender_mapping.get(self.gender, 'plural')
+        # THE PRONOUN FOLLOWS THE DISGUISE (#2462). This read the
+        # character's REAL gender, so a man presenting as "a brawny
+        # woman" was still described with "his" — the prose gave the
+        # wearer away on a plain `look`, with no pierce roll spent.
+        # `get_apparent_gender` is the same derivation the rest of the
+        # identity layer uses.
+        from world.identity import get_apparent_gender
+        character_gender = gender_mapping.get(
+            get_apparent_gender(self), 'plural')
         possessive = self._get_pronoun('possessive', character_gender)
         name_possessive = f"{self.get_display_name(looker)}'s"
 
@@ -1120,7 +1132,12 @@ class AppearanceMixin:
             'other': 'plural',
         }
 
-        character_gender = gender_mapping.get(self.gender, 'plural')
+        # Apparent, not real (#2462) — see the note on the worn-desc
+        # renderer above. Braced pronoun tokens in a longdesc go out to
+        # observers, so they have to read as the presentation does.
+        from world.identity import get_apparent_gender
+        character_gender = gender_mapping.get(
+            get_apparent_gender(self), 'plural')
 
         # Simple template variable mapping (like {color})
         variables = {
