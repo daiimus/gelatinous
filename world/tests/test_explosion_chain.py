@@ -231,6 +231,12 @@ class TestInHandsExplosion(EvenniaTest):
         bystander = make_victim("bystander")
         grenade = make_grenade(blast_damage=10, damage_type="blast")
         grenade.location = self.char1
+        # A bystander is shielded because they are IN THE ROOM with the
+        # holder. `make_victim` gives an arbitrary MagicMock location,
+        # which was fine while nothing read it — the blast list is
+        # filtered by room now (#2490), so the fixture has to say where
+        # this person is standing.
+        bystander.location = self.char1.location
         grenade.ndb = Bag(**{NDB_PROXIMITY_UNIVERSAL: [bystander]})
 
         with patch.object(self.char1, "take_damage"), \
