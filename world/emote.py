@@ -394,18 +394,23 @@ def build_char_candidates(
             if sdesc not in [n for n, _rc in names]:
                 names.append((sdesc, False))
 
+        # Steps 4-6 build handles out of the character's AXES, and they
+        # must be the APPARENT axes (#2451). Reading the raw ones let a
+        # character presenting as "a brawny woman" be addressed in a pose
+        # as `gaunt droog`, `droog` or `Gaunt` — strings that appear
+        # nowhere in what anyone in the room can see. The pose was
+        # accepted and rendered, which told the poser (and everyone
+        # reading the emote) that the disguised figure was the person
+        # they knew. Same defect as the search-keyword fallback, through
+        # a second door.
+        from world.identity import apparent_axes
+        height, build, keyword = apparent_axes(char)
+
         # 4. Descriptor + keyword only (no feature clause)
         descriptor = None
-        height = getattr(char, "height", None)
-        build = getattr(char, "build", None)
         if height and build:
             try:
                 descriptor = get_physical_descriptor(height, build)
-                keyword = getattr(char, "sdesc_keyword", None)
-                if not keyword:
-                    keyword = DEFAULT_SDESC_KEYWORDS.get(
-                        getattr(char, "gender", "neutral"), "person"
-                    )
                 short_sdesc = compose_sdesc(descriptor, keyword)
                 if short_sdesc not in [n for n, _rc in names]:
                     names.append((short_sdesc, False))
@@ -413,11 +418,6 @@ def build_char_candidates(
                 descriptor = None
 
         # 5. Keyword only
-        keyword = getattr(char, "sdesc_keyword", None)
-        if not keyword:
-            keyword = DEFAULT_SDESC_KEYWORDS.get(
-                getattr(char, "gender", "neutral"), "person"
-            )
         if keyword and keyword not in [n for n, _rc in names]:
             names.append((keyword, False))
 
