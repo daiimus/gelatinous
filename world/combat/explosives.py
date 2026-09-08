@@ -57,11 +57,29 @@ def check_grenade_human_shield(proximity_list, combat_handler=None):
     splattercast = get_splattercast()
     damage_modifiers: dict = {}
 
-    # If no combat handler provided, try to find one from the characters
+    # Find a character who ACTUALLY HAS a handler (#2491).
+    #
+    # This used to guard on `hasattr(char.ndb, NDB_COMBAT_HANDLER)`, and
+    # `hasattr` on an Evennia `ndb` is ALWAYS True: `DbHolder.
+    # __getattribute__` returns None for a missing key rather than
+    # raising. So the loop matched on its first iteration every time,
+    # assigned `proximity_list[0]`'s handler — None, whenever that
+    # character was not fighting — and broke.
+    #
+    # The guard three lines down then returned an empty modifier dict
+    # and the whole human-shield mechanic was skipped: the grappler who
+    # should have been shielded took full damage, the victim who should
+    # have absorbed double took normal, and `send_grenade_shield_
+    # messages` never fired, so there was no narration either. Silent
+    # and symmetric, which is why it survived.
+    #
+    # All four call sites rely on this discovery path; none passes a
+    # handler.
     if not combat_handler and proximity_list:
         for char in proximity_list:
-            if hasattr(char.ndb, NDB_COMBAT_HANDLER):
-                combat_handler = getattr(char.ndb, NDB_COMBAT_HANDLER)
+            found = getattr(char.ndb, NDB_COMBAT_HANDLER, None)
+            if found:
+                combat_handler = found
                 break
 
     if not combat_handler:
@@ -428,7 +446,25 @@ def get_outermost_armor_at_location(character, hit_location: str):
     """
     Get the outermost armor piece at a specific body location.
 
-    Searches worn items for highest layer number at the hit location.
+    Searches WORN items for the highest layer at the hit location.
+
+    Two defects lived here (#2492), and both let a sticky grenade pick
+    the wrong garment:
+
+    * The docstring and the inline comment both said "worn", and the
+      loop walked ``character.contents`` — everything they CARRY. The
+      only filter was ``db.coverage``, which is a PROTOTYPE property: a
+      jacket declares its coverage whether it is worn, held, or loose
+      in a pocket. So a grenade could stick to a spare jacket in the
+      target's inventory, and ``establish_stick`` would then set
+      ``grenade.location = armor`` — a live grenade bonded to a carried
+      item rather than to what the person is wearing. The worn-state
+      API this ignored is right there: ``get_worn_items(location)``.
+
+    * It read ``item.db.layer``, bypassing the ``Item.layer`` property,
+      which falls back to ``world.style.derive_rung`` when nobody set
+      one explicitly. Every garment with a derived layer read as 0 — so
+      an outer coat and a shirt tied, and the FIRST one seen won.
 
     Args:
         character: The ``Character`` object.
@@ -447,18 +483,22 @@ def get_outermost_armor_at_location(character, hit_location: str):
     outermost_armor = None
     highest_layer = -1
 
-    # Check all worn items
-    for item in character.contents:
+    getter = getattr(character, "get_worn_items", None)
+    worn = getter(hit_location) if callable(getter) else []
+    for item in (worn or []):
         if not isinstance(item, Item):
             continue
 
-        # Check if item covers this location
+        # `get_worn_items(location)` already filtered by the worn
+        # registry; coverage is re-checked because the registry keys on
+        # the location it was WORN at and a multi-location garment
+        # should still answer for every location it covers.
         coverage = item.db.coverage or []
-        if not coverage or hit_location not in coverage:
+        if coverage and hit_location not in coverage:
             continue
 
-        # Check layer
-        layer = item.db.layer if item.db.layer is not None else 0
+        layer = item.layer
+        layer = 0 if layer is None else layer
         if layer > highest_layer:
             highest_layer = layer
             outermost_armor = item
