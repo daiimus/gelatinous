@@ -251,21 +251,142 @@ class TestAGrapplerHoldsOnePerson(_GrappleCase):
         self.assertIsNone(self.by_char(entries, self.c)[DB_GRAPPLING_DBREF])
 
 
-class TestTheResolversCallIt(EvenniaTest):
-    """Pinned: three resolvers, and the guard that should have covered
-    them lives on a function nobody calls."""
+class TestEveryResolverReleasesFirst(EvenniaTest):
+    """Scans BOTH files that take a grapple, and finds them by SHAPE.
 
-    def source(self):
+    The first version of this test counted one exact assignment string
+    in `grappling.py` — the file I happened to be editing — and asserted
+    the count was 3. It passed, and it was wrong: grappling has two
+    dispatch shapes, and the dict-shaped `{"type": "grapple"}` action
+    routes to `resolve_grapple_attempt` in `actions.py`, a fourth
+    resolver that took a grapple with no release. A pin scoped to the
+    file you are already looking at cannot tell you about the file you
+    are not.
+
+    This walks every line that assigns `DB_GRAPPLING_DBREF` to anything
+    other than `None` and requires a release call above it in the same
+    function.
+    """
+
+    FILES = (("world", "combat", "grappling.py"),
+             ("world", "combat", "actions.py"))
+
+    def takes(self):
+        """(file, line-number, enclosing def) for every grapple taken."""
+        import pathlib
+        import re
+        root = pathlib.Path(__file__).resolve().parents[2]
+        found = []
+        for parts in self.FILES:
+            path = root.joinpath(*parts)
+            fn = "?"
+            for i, line in enumerate(path.read_text(errors="ignore").split("\n")):
+                if re.match(r"^def \w+", line):
+                    fn = line.split("(")[0][4:]
+                if "DB_GRAPPLING_DBREF] = " in line and "None" not in line:
+                    found.append((parts[-1], i + 1, fn, line))
+        return found
+
+    def released_before(self, filename, lineno):
         import pathlib
         root = pathlib.Path(__file__).resolve().parents[2]
-        return (root / "world" / "combat" /
-                "grappling.py").read_text(errors="ignore")
+        path = next(root.joinpath(*p) for p in self.FILES if p[-1] == filename)
+        lines = path.read_text(errors="ignore").split("\n")
+        window = lines[max(0, lineno - 30):lineno]
+        return any("release_existing_grapple(" in w for w in window)
 
-    def test_every_assignment_is_preceded_by_a_release(self):
-        body = self.source()
-        takes = body.count(
-            "char_entry[DB_GRAPPLING_DBREF] = get_character_dbref(target)")
-        releases = body.count(
-            "release_existing_grapple(char_entry, combatants_list")
-        self.assertEqual(takes, releases)
-        self.assertEqual(takes, 3)
+    def test_the_scan_finds_more_than_one_file(self):
+        """Guards the guard: if the shape stops matching, this test
+        silently checks nothing."""
+        files = {t[0] for t in self.takes()}
+        self.assertIn("grappling.py", files)
+        self.assertIn("actions.py", files)
+
+    #: `establish_grapple` carries its own "already grappling" REFUSAL
+    #: instead, which is the other valid answer — and it is unreferenced
+    #: anyway (one non-definition occurrence repo-wide, an unused
+    #: import). Named explicitly so the exemption is a decision rather
+    #: than a hole.
+    REFUSES_INSTEAD = ("establish_grapple",)
+
+    def test_every_take_releases_first(self):
+        missing = [f"{f}:{n} in {fn}" for f, n, fn, _ in self.takes()
+                   if fn not in self.REFUSES_INSTEAD
+                   and not self.released_before(f, n)]
+        self.assertEqual(missing, [],
+                         f"grapple taken with no release: {missing}")
+
+    def test_the_exempt_one_really_does_refuse(self):
+        """If `establish_grapple` ever loses its guard, the exemption
+        above turns into a hole."""
+        import inspect
+
+        from world.combat import grappling
+        body = inspect.getsource(grappling.establish_grapple)
+        self.assertIn("MSG_ALREADY_GRAPPLING", body)
+
+    def test_the_release_helper_is_shared_not_copied(self):
+        """One implementation — a second copy is how the four resolvers
+        drifted apart in the first place."""
+        import pathlib
+        root = pathlib.Path(__file__).resolve().parents[2]
+        body = (root / "world" / "combat" / "actions.py").read_text(
+            errors="ignore")
+        self.assertIn(
+            "from world.combat.grappling import release_existing_grapple",
+            body)
+
+
+class TestTheDictShapedGrappleReleasesToo(_GrappleCase):
+    """Driven through `resolve_grapple_attempt` — the door the original
+    fix missed."""
+
+    def setUp(self):
+        super().setUp()
+        from world.combat.proximity import establish_proximity
+        establish_proximity(self.c, self.b)
+        for ch in (self.b, self.c, self.d):
+            ch.location = self.room1
+
+    def attempt(self, entries):
+        from unittest.mock import patch
+
+        from world.combat.actions import resolve_grapple_attempt
+        from world.combat.constants import DB_COMBAT_ACTION
+        handler = self.handler(entries)
+        handler.db.managed_rooms = [self.room1]
+        handler._are_characters_in_mutual_combat.return_value = False
+        grappler = self.by_char(entries, self.c)
+        grappler[DB_COMBAT_ACTION] = {"type": "grapple", "target": self.b}
+        # Explicit rolls. `_GrappleCase` sets no motorics, so both
+        # characters default to 1 and any max/min scheme ties — which
+        # ties favour the defender, so the grapple silently fails and
+        # the test proves nothing. That is how my first version of this
+        # passed against nothing at all.
+        with patch("world.combat.actions.randint", side_effect=[10, 1]):
+            resolve_grapple_attempt(handler, self.c, grappler, entries)
+        return entries
+
+    def test_the_first_victim_is_let_go(self):
+        entries = [self.entry(self.c, grappling=self.d),
+                   self.entry(self.d, grappled_by=self.c),
+                   self.entry(self.b)]
+        self.attempt(entries)
+        self.assertIsNone(self.by_char(entries, self.d)[DB_GRAPPLED_BY_DBREF],
+                          "D is still pinned by a phantom")
+
+    def test_and_the_new_hold_is_taken(self):
+        entries = [self.entry(self.c, grappling=self.d),
+                   self.entry(self.d, grappled_by=self.c),
+                   self.entry(self.b)]
+        self.attempt(entries)
+        self.assertEqual(self.by_char(entries, self.c)[DB_GRAPPLING_DBREF],
+                         get_character_dbref(self.b))
+        self.assertEqual(self.by_char(entries, self.b)[DB_GRAPPLED_BY_DBREF],
+                         get_character_dbref(self.c))
+
+    def test_a_grappler_holding_nobody_is_unaffected(self):
+        entries = [self.entry(self.c), self.entry(self.b), self.entry(self.d)]
+        self.attempt(entries)
+        self.assertEqual(self.by_char(entries, self.c)[DB_GRAPPLING_DBREF],
+                         get_character_dbref(self.b))

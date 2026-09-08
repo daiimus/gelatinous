@@ -305,6 +305,21 @@ def resolve_grapple_attempt(handler, char, entry, combatants_list):
         if attacker_roll > defender_roll:
             # NOTE: Strict > means ties favor the defender. This is
             # intentional.
+            #
+            # Let go of anyone already held first (#2486). This is the
+            # FOURTH resolver that takes a grapple, and the one the
+            # original fix missed: grappling has two dispatch shapes,
+            # the string actions (INITIATE / JOIN / TAKEOVER) that route
+            # into `grappling.py`, and this dict-shaped
+            # `{"type": "grapple"}` action routed here. A grappler can
+            # only hold one person -- `DB_GRAPPLING_DBREF` is a single
+            # field -- so taking a second victim through this door left
+            # the first one's `grappled_by` pointing at somebody who was
+            # no longer holding them, and `validate_grapple_action`
+            # refused that victim's actions with "you can't do that
+            # while grappled by X".
+            from world.combat.grappling import release_existing_grapple
+            release_existing_grapple(entry, combatants_list, splattercast)
             entry[DB_GRAPPLING_DBREF] = get_character_dbref(
                 action_target_char
             )
