@@ -758,6 +758,29 @@ class DeathProgressionScript(DefaultScript):
         
         # Transfer worn clothing items
         if hasattr(character, 'worn_items') and character.worn_items:
+            # WHAT WAS ACTUALLY WORN (#2460). Everything in `contents`
+            # moves onto the corpse a few lines up — worn kit and merely
+            # CARRIED kit alike — and then `worn_items` is cleared, so
+            # no record of the difference survived. The corpse's
+            # appearance path then admitted any object with a truthy
+            # `db.coverage`, which is every garment in the pack: a
+            # jacket you took off before dying still read as worn, and
+            # it suppressed the chest/back/abdomen/arm longdescs with
+            # it.
+            #
+            # Stored as ids rather than object references so the record
+            # survives the items being looted away, and captured BEFORE
+            # the clear below because this is the last moment the truth
+            # exists.
+            try:
+                corpse.db.worn_at_death = [
+                    itm.id
+                    for _loc, itms in (character.worn_items or {}).items()
+                    for itm in (itms or [])
+                    if itm and itm.id
+                ]
+            except Exception:  # noqa: BLE001 — a lost record is not a lost death
+                pass
             for location, items in character.worn_items.items():
                 for item in items[:]:  # Create a copy of the list to avoid modification during iteration
                     item.move_to(corpse, quiet=True)

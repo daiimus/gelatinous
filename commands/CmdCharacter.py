@@ -877,8 +877,16 @@ class CmdDescribe(Command):
         """Set the caller's main (short) description and show a preview."""
         caller.db.desc = text
         caller.msg("Set your short description.")
+        # The PREVIEW must render the way the room will (#2460). It
+        # omitted `number`, so it defaulted to singular and showed a
+        # neutral / nonbinary character "They holds themselves very
+        # still" while every actual `look` renders "They hold". Male and
+        # female are unaffected — both paths are singular — which is why
+        # it stayed hidden.
+        from typeclasses.appearance_mixin import body_number_for
         rendered = caller._process_description_variables(
-            text, caller, force_third_person=True
+            text, caller, force_third_person=True,
+            number=body_number_for(caller.gender),
         )
         caller.msg(f"|WPreview:|n |W{rendered}|n")
 
