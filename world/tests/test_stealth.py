@@ -427,6 +427,13 @@ class TestLeakSweep(TestCase):
         exit_obj.key = "north"
         room = MagicMock()
         room.exits = [exit_obj]
+        # Production walks `_visible_exits(looker)`, not `.exits`, since
+        # the secret-door gate landed (#2588). A bare MagicMock ITERATES
+        # EMPTY, so this fixture had been returning "" for every case —
+        # the "hidden is filtered" assertion passed vacuously and the
+        # ALERT assertion failed. The test stopped exercising the gate
+        # the moment production started reading a different attribute.
+        room._visible_exits = lambda looker: [exit_obj]
         sightings = Room.get_adjacent_character_sightings.__get__(room)
         with _uid_for(None):
             self.assertEqual(sightings(looker), "")

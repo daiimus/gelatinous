@@ -194,6 +194,30 @@ def resolve_character_in_rooms(
         if not room:
             continue
         candidates = list(room.contents)
+
+        # Presence gate (stealth spec §7), the same one the sibling
+        # `resolve_character_target` applies at :137 (#2447). This
+        # function did not, and `filter_present`'s own docstring calls
+        # itself "the single enumeration choke ... every path that lists
+        # 'who is here' for a looker filters through this." The Phase-3
+        # leak sweep enumerated the swept paths and named only the
+        # sibling; the cross-room helper was missed.
+        #
+        # Without it, `advance <guessed sdesc>` answered "A lean man is
+        # not in combat." for someone the caller is Unaware of — the
+        # refusal itself confirmed a hidden character existed AND
+        # rendered their sdesc, because `get_display_name` has no
+        # stealth branch. A presence oracle built out of an error
+        # message, and generic keywords ("man", "figure") make it
+        # workable. `attack` refuses these correctly; the two doors onto
+        # one decision had stopped reading the same line.
+        #
+        # Applied BEFORE the builder fallback, exactly as the sibling
+        # does: staff do not get a hidden-target list out of this door
+        # either.
+        from world.perception import filter_present
+        candidates = filter_present(caller, candidates)
+
         matches = identity_match_characters(caller, stripped, candidates)
         if not matches and is_builder:
             matches = _builder_key_matches(caller, stripped, candidates)
