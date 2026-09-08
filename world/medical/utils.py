@@ -950,13 +950,78 @@ def calculate_treatment_success(item, user, target, condition_type):
     }
 
 
+def _drop_condition(medical_state, condition) -> None:
+    """Remove a condition through the door (#2504).
+
+    Eight sites here called `list.remove()` directly.
+    `MedicalState.remove_condition` also calls
+    `_invalidate_derived_state()` — which clears `_cached_is_dead` — and
+    `condition.stop_condition()`, which stops the ticker.
+
+    `is_dead()`'s own docstring claims invalidation "rides the
+    `Organ.current_hp` / `blood_level` setters and condition add/remove,
+    covering every input". Removing behind its back left the cached
+    verdict stale, and this very function reads that cache further down
+    for its revival check — so a patient could be treated back over the
+    line and still answer dead, or the reverse.
+    """
+    remover = getattr(medical_state, "remove_condition", None)
+    if callable(remover):
+        remover(condition)
+        return
+    if condition in medical_state.conditions:
+        medical_state.conditions.remove(condition)
+
+
+def _touched(medical_state) -> None:
+    """A severity change is a death-verdict input too (#2504).
+
+    Every severity edit in `apply_medical_effects` is an in-place
+    mutation on the condition object, which no setter observes — so
+    nothing invalidated the cache for the case where the treatment
+    WORKED but did not remove the condition outright.
+    """
+    invalidate = getattr(medical_state, "_invalidate_derived_state", None)
+    if callable(invalidate):
+        invalidate()
+
+
+def _bleeds_at(medical_state, body_location):
+    """Bleeding conditions, narrowed to *body_location* when one was
+    named (#2502).
+
+    `bandage <body part> with <item>` resolves a location, prints prose
+    naming it, tells the room it was bandaged, and passes it down two
+    call layers — and `apply_medical_effects` accepted `**kwargs` and
+    never read it. The wound-care branch then treated whichever bleed
+    was FIRST IN LIST ORDER, wherever on the body it happened to be.
+
+    An unmatched location falls back to every bleed rather than to
+    none: refusing to treat because the phrasing missed is worse than
+    treating the wrong arm, and the caller has already told the player
+    it is bandaging them.
+    """
+    bleeds = [c for c in medical_state.conditions
+              if getattr(c, "condition_type", None) == "bleeding"]
+    if not body_location:
+        return bleeds
+    wanted = str(body_location).strip().lower().replace(" ", "_")
+    here = [c for c in bleeds
+            if str(getattr(c, "location", "") or "").lower() == wanted]
+    return here or bleeds
+
+
 def apply_medical_effects(item, user, target, **kwargs):
     """
     Apply the medical item's effects to the target.
     
     This handles the core medical treatment logic.
+
+    ``body_location`` (optional kwarg) narrows wound care to the bleed
+    at that location — see :func:`_bleeds_at` (#2502).
     """
     medical_type = get_medical_type(item)
+    body_location = kwargs.get("body_location")
     
     if not hasattr(target, 'medical_state'):
         return "Target has no medical state to treat."
@@ -976,8 +1041,9 @@ def apply_medical_effects(item, user, target, **kwargs):
                              if hasattr(c, 'condition_type') and c.condition_type == "bleeding"]
         for condition in bleeding_conditions[:2]:  # Reduce up to 2 bleeding conditions
             condition.severity = max(0, condition.severity - 3)
+            _touched(medical_state)
             if condition.severity <= 0:
-                medical_state.conditions.remove(condition)
+                _drop_condition(medical_state, condition)
         
         result_msg = f"Blood transfusion successful! Blood level increased from {old_level:.1f} to {medical_state.blood_level:.1f}."
         
@@ -987,8 +1053,9 @@ def apply_medical_effects(item, user, target, **kwargs):
                          if hasattr(c, 'condition_type') and c.condition_type == "pain"]
         for condition in pain_conditions[:3]:  # Reduce multiple pain sources
             condition.severity = max(0, condition.severity - 2)
+            _touched(medical_state)
             if condition.severity <= 0:
-                medical_state.conditions.remove(condition)
+                _drop_condition(medical_state, condition)
         
         result_msg = "Painkiller administered. Pain significantly reduced."
         
@@ -1003,8 +1070,7 @@ def apply_medical_effects(item, user, target, **kwargs):
         #   failure          -> severity -1 (you did *something*)
         # Any contact sets `treated`: residual flow slows to the
         # treated multiplier and the clot hazard doubles.
-        bleeding_conditions = [c for c in medical_state.conditions 
-                             if hasattr(c, 'condition_type') and c.condition_type == "bleeding"]
+        bleeding_conditions = _bleeds_at(medical_state, body_location)
         result_msg = "Wounds bandaged."
         for condition in bleeding_conditions[:1]:
             outcome = calculate_treatment_success(
@@ -1027,8 +1093,9 @@ def apply_medical_effects(item, user, target, **kwargs):
                 result_msg = "Clumsy bandaging — the bleeding slows, barely."
             condition.severity = max(0, condition.severity - reduction)
             condition.treated = True
+            _touched(medical_state)
             if condition.severity <= 0:
-                medical_state.conditions.remove(condition)
+                _drop_condition(medical_state, condition)
         
     elif medical_type == "fracture_treatment":
         # Splint treatment - heal damaged bones only (excludes destroyed bones)
@@ -1123,8 +1190,9 @@ def apply_medical_effects(item, user, target, **kwargs):
         healed_count = 0
         for condition in all_conditions[:3]:  # Heal up to 3 conditions
             condition.severity = max(0, condition.severity - 1)
+            _touched(medical_state)
             if condition.severity <= 0:
-                medical_state.conditions.remove(condition)
+                _drop_condition(medical_state, condition)
                 healed_count += 1
         
         result_msg = f"Stimpak administered. Rapid healing activated - {healed_count} conditions improved."
@@ -1135,8 +1203,9 @@ def apply_medical_effects(item, user, target, **kwargs):
                               if hasattr(c, 'condition_type') and c.condition_type == "infection"]
         for condition in infection_conditions[:2]:  # Clear multiple infections
             condition.severity = max(0, condition.severity - 3)
+            _touched(medical_state)
             if condition.severity <= 0:
-                medical_state.conditions.remove(condition)
+                _drop_condition(medical_state, condition)
         
         result_msg = "Antiseptic applied. Infections cleared and wounds sterilized."
     
@@ -1147,8 +1216,9 @@ def apply_medical_effects(item, user, target, **kwargs):
                                if hasattr(c, 'condition_type') and c.condition_type in ["breathing_difficulty", "suffocation"]]
         for condition in breathing_conditions[:2]:
             condition.severity = max(0, condition.severity - 2)
+            _touched(medical_state)
             if condition.severity <= 0:
-                medical_state.conditions.remove(condition)
+                _drop_condition(medical_state, condition)
         
         result_msg = "Oxygen administered. Breathing improved and consciousness stabilized."
     
@@ -1165,8 +1235,9 @@ def apply_medical_effects(item, user, target, **kwargs):
                                if hasattr(c, 'condition_type') and c.condition_type in ["breathing_difficulty", "lung_damage"]]
         for condition in breathing_conditions[:1]:
             condition.severity = max(0, condition.severity - 3)
+            _touched(medical_state)
             if condition.severity <= 0:
-                medical_state.conditions.remove(condition)
+                _drop_condition(medical_state, condition)
         
         result_msg = "Inhaler used. Respiratory function improved."
     
@@ -1189,8 +1260,9 @@ def apply_medical_effects(item, user, target, **kwargs):
                             if hasattr(c, 'condition_type') and c.condition_type in ["stress", "anxiety"]]
         for condition in stress_conditions[:1]:
             condition.severity = max(0, condition.severity - 2)
+            _touched(medical_state)
             if condition.severity <= 0:
-                medical_state.conditions.remove(condition)
+                _drop_condition(medical_state, condition)
         
         result_msg = "Medicinal herb smoked. Natural pain relief and calming effects."
     
