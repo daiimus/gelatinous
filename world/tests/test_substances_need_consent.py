@@ -143,3 +143,39 @@ class TestMultiWordNamesResolve(_DoseCase):
         self.street_drug()
         errors = " ".join(self.parse("hovercar woman")["errors"])
         self.assertIn("hovercar", errors)
+
+
+class TestTheCommandsOwnDocumentedExamples(_DoseCase):
+    """#2463 reported the same two defects independently, and named the
+    examples the command docstrings themselves advertise. Pinned here
+    with the real prototype keys."""
+
+    def test_inject_blood_bag_by_name(self):
+        """`inject blood bag Bob` — CmdInject's own docstring example.
+        Parsed as item 'blood', target 'bag'."""
+        item = self.street_drug("blood bag")
+        grant_trust(self.char2, self.char1, "heal")
+        result = self.parse("blood bag woman")
+        self.assertIs(result["item"], item)
+        self.assertIs(result["target"], self.char2)
+
+    def test_an_unrecognised_person_reads_as_a_wiry_man(self):
+        """The clinic builds `apply {item.key} on {display_name}`, and
+        an unrecognised person's display name starts with an article.
+        The old parser took the target token as 'a', which the
+        article-stripper reduced to nothing."""
+        self.street_drug("gauze bandages")
+        grant_trust(self.char2, self.char1, "heal")
+        result = self.parse("gauze bandages a stocky woman")
+        self.assertIs(result["target"], self.char2)
+
+    def test_medical_splint_is_three_words(self):
+        item = self.street_drug("medical splint")
+        self.assertIs(self.parse("medical splint")["item"], item)
+
+    def test_the_real_prototype_keys_are_multi_word(self):
+        """If these ever become single words the tests above stop
+        testing anything."""
+        from world.prototypes import BLOOD_BAG, GAUZE_BANDAGES, SPLINT
+        for proto in (BLOOD_BAG, GAUZE_BANDAGES, SPLINT):
+            self.assertIn(" ", proto["key"])
