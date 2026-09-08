@@ -1011,6 +1011,81 @@ def _bleeds_at(medical_state, body_location):
     return here or bleeds
 
 
+def _relieve_pain(medical_state, points: int) -> int:
+    """Take *points* of pain off the CONDITIONS, not off the aggregate.
+
+    `pain_level` is derived: `update_vital_signs` sets it to
+    `calculate_total_pain()`, a pure sum over the condition list with no
+    memory of a prior value. So an analgesic that wrote
+    `medical_state.pain_level -= 25` was erased on the next tick, or
+    immediately if the patient was hit (`apply_anatomical_damage` calls
+    `update_vital_signs` too). One message and no analgesia (#2505).
+
+    `PainCondition.get_pain_contribution()` returns `self.severity`
+    exactly, so a point of pain IS a point of severity and the old
+    numbers carry over unchanged -- no new balance was invented here.
+
+    Only PainConditions are relieved. A bleed contributes pain too
+    (`severity // 2`), but an analgesic does not close a wound, so its
+    residual pain stays -- which is also what makes "anaesthetise, then
+    operate" a real play: `seed_pain` is what surgery accumulates.
+
+    Returns the points actually relieved.
+    """
+    relieved = 0
+    for condition in list(medical_state.conditions):
+        if points <= 0:
+            break
+        if getattr(condition, "condition_type", None) != "pain":
+            continue
+        take = min(points, condition.severity)
+        condition.severity -= take
+        relieved += take
+        points -= take
+        _touched(medical_state)
+        if condition.severity <= 0:
+            _drop_condition(medical_state, condition)
+    return relieved
+
+
+def _ease_suppression(medical_state, steps: int = 1) -> bool:
+    """Lift consciousness the only way the recompute can hear.
+
+    `consciousness` is derived too -- base capacity minus pain, blood
+    and suppression penalties -- and none of those terms is "whatever
+    consciousness used to be". The supported channel is
+    `ConsciousnessSuppressionCondition`, whose
+    `get_consciousness_penalty()` `update_vital_signs` explicitly sums.
+    So raising consciousness means REMOVING suppression (#2505).
+    """
+    eased = False
+    for condition in list(medical_state.conditions):
+        if getattr(condition, "condition_type", None) != "consciousness_suppression":
+            continue
+        condition.severity = max(0, condition.severity - steps)
+        condition.consciousness_penalty = min(1.0, condition.severity * 0.15)
+        eased = True
+        _touched(medical_state)
+        if condition.severity <= 0:
+            _drop_condition(medical_state, condition)
+    return eased
+
+
+def _sedate(medical_state, severity: int, suppression_type: str) -> None:
+    """Put a patient under through the condition the recompute reads."""
+    try:
+        from world.medical.conditions import ConsciousnessSuppressionCondition
+    except ImportError:
+        return
+    adder = getattr(medical_state, "add_condition", None)
+    condition = ConsciousnessSuppressionCondition(
+        severity, suppression_type=suppression_type)
+    if callable(adder):
+        adder(condition)
+    else:
+        medical_state.conditions.append(condition)
+
+
 def apply_medical_effects(item, user, target, **kwargs):
     """
     Apply the medical item's effects to the target.
@@ -1210,8 +1285,11 @@ def apply_medical_effects(item, user, target, **kwargs):
         result_msg = "Antiseptic applied. Infections cleared and wounds sterilized."
     
     elif medical_type == "oxygen":
-        # Oxygen therapy - improves consciousness and breathing
-        medical_state.consciousness = min(1.0, medical_state.consciousness + 0.15)
+        # Oxygen therapy — improves consciousness and breathing.
+        # Consciousness is derived, so the lift has to come off the
+        # suppression term (#2505); a patient with nothing suppressing
+        # them is already as awake as their body allows.
+        _ease_suppression(medical_state)
         breathing_conditions = [c for c in medical_state.conditions 
                                if hasattr(c, 'condition_type') and c.condition_type in ["breathing_difficulty", "suffocation"]]
         for condition in breathing_conditions[:2]:
@@ -1223,9 +1301,12 @@ def apply_medical_effects(item, user, target, **kwargs):
         result_msg = "Oxygen administered. Breathing improved and consciousness stabilized."
     
     elif medical_type == "anesthetic":
-        # Anesthetic gas - reduces pain and consciousness
-        medical_state.pain_level = max(0, medical_state.pain_level - 25)
-        medical_state.consciousness = max(0.0, medical_state.consciousness - 0.10)
+        # Anesthetic gas — reduces pain and consciousness, through the
+        # two channels the recompute actually reads (#2505). The
+        # suppression condition decays on its own tick, so the
+        # anaesthetic now WEARS OFF instead of being erased.
+        _relieve_pain(medical_state, 25)
+        _sedate(medical_state, 1, "anesthesia")
         
         result_msg = "Anesthetic inhaled. Pain reduced but consciousness lowered."
     
@@ -1242,20 +1323,20 @@ def apply_medical_effects(item, user, target, **kwargs):
         result_msg = "Inhaler used. Respiratory function improved."
     
     elif medical_type == "gas":
-        # Medical gas treatment - various effects
-        medical_state.consciousness = min(1.0, medical_state.consciousness + 0.05)
+        # Medical gas treatment — various effects.
+        _ease_suppression(medical_state)
         result_msg = "Medical gas inhaled. Minor therapeutic effects applied."
     
     elif medical_type == "vapor":
         # Vaporized medicine - fast absorption
-        medical_state.pain_level = max(0, medical_state.pain_level - 10)
+        _relieve_pain(medical_state, 10)
         medical_state.blood_level = min(100, medical_state.blood_level + 5)
         
         result_msg = "Vaporized medicine inhaled. Rapid absorption achieved."
     
     elif medical_type == "herb":
         # Medicinal herb - natural pain relief
-        medical_state.pain_level = max(0, medical_state.pain_level - 15)
+        _relieve_pain(medical_state, 15)
         stress_conditions = [c for c in medical_state.conditions 
                             if hasattr(c, 'condition_type') and c.condition_type in ["stress", "anxiety"]]
         for condition in stress_conditions[:1]:
@@ -1268,18 +1349,46 @@ def apply_medical_effects(item, user, target, **kwargs):
     
     elif medical_type == "cigarette":
         # Medicinal cigarette - mild therapeutic effects
-        medical_state.pain_level = max(0, medical_state.pain_level - 8)
+        _relieve_pain(medical_state, 8)
         result_msg = "Medicinal cigarette smoked. Mild pain relief achieved."
     
     elif medical_type in ["medicinal_plant", "dried_medicine"]:
         # Dried medicinal substances - concentrated effects
-        medical_state.pain_level = max(0, medical_state.pain_level - 12)
-        medical_state.consciousness = min(1.0, medical_state.consciousness + 0.03)
+        _relieve_pain(medical_state, 12)
+        _ease_suppression(medical_state)
         
         result_msg = "Dried medicine smoked. Concentrated therapeutic effects applied."
     else:
         result_msg = f"Applied {medical_type.replace('_', ' ')} treatment."
     
+    # WRITE IT DOWN (#2503). Nothing in this function persisted
+    # anything: condition severities, `treated` flags,
+    # `organ.stabilized`, `organ.dressing_rate`, blood level -- all
+    # mutated on the in-memory MedicalState and never saved. Neither did
+    # the callers, nor `remove_condition`, nor the medical script's tick.
+    #
+    # Combat damage DOES save (`armor_mixin.take_damage` calls
+    # `save_medical_state` right after `apply_anatomical_damage`), so
+    # treatment was the asymmetric half: bandage a bleed from severity 6
+    # to 2, reload before anything else medical happens, and the
+    # character came back at 6 with `treated = False` -- the treatment
+    # and the item spent on it both gone.
+    #
+    # It closed only opportunistically: the next `add_condition` or
+    # organ-damage save writes the whole current `to_dict()`, so a
+    # player who happened to get shot afterwards inadvertently persisted
+    # their earlier bandaging. Whether a treatment survived a reload
+    # depended on whether something unrelated hurt you in the meantime.
+    #
+    # Placed BEFORE the revival check, so the state the check reads is
+    # the state on disk.
+    save = getattr(target, "save_medical_state", None)
+    if callable(save):
+        try:
+            save()
+        except Exception:  # noqa: BLE001 — a stub without the surface
+            pass
+
     # Check for immediate revival after any medical treatment
     death_scripts = target.scripts.get("death_progression")
     
