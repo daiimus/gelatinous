@@ -163,10 +163,38 @@ class TestProcessCorpse(TestCase):
         self.assertIn("counts 26 across the steel", emote)
 
     def test_payout_capped_by_till(self):
+        """The payout is still capped — but the STOCK is capped with it
+        now (#2479).
+
+        This used to assert `tokens == 10` and `register == 0`: the till
+        drained to nothing. That could not tell "capped and paid for
+        what it got" apart from "capped and got 26 tokens' worth for
+        10", which is what it was actually doing — `min(payout, till)`
+        clipped the price while `stock_cuts(dict(yields))` stocked the
+        unclipped yield.
+
+        The assertions below are the invariant that was missing rather
+        than the number that happened: never overspend, keep the change,
+        and receive exactly what was paid for.
+        """
+        from world.butchery import RAT_PRODUCTS
         corpse = _corpse(_rat_snapshot())
         b, block, giver = self._run(corpse, till=10)
-        self.assertEqual(giver.tokens, 10)
-        self.assertEqual(block.db.register, 0)
+
+        self.assertLessEqual(giver.tokens, 10, "spent more than the till")
+        self.assertLess(giver.tokens, 26, "fixture: this should be capped")
+        self.assertEqual(block.db.register, 10 - giver.tokens)
+
+        stocked = block.stock_cuts.call_args.args[0]
+        worth = sum(RAT_PRODUCTS[k]["buy"] * c for k, c in stocked.items())
+        self.assertEqual(worth, giver.tokens,
+                         "the block took stock it did not pay for")
+
+    def test_a_capped_sale_says_so(self):
+        corpse = _corpse(_rat_snapshot())
+        b, _block, _giver = self._run(corpse, till=10)
+        emotes = " ".join(c.args[0] for c in b.execute_cmd.call_args_list)
+        self.assertIn("won't stretch", emotes)
 
 
 class TestButcherArchetype(TestCase):
