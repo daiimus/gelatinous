@@ -326,6 +326,13 @@ def create_character_from_template(account, template, sex="ambiguous"):
     # Set sex
     char.sex = sex
     
+    # The manifest assigned everyone a berth, a department and a rating
+    # before the gateway died. It never stood up, nobody has used it in
+    # sixty-one years, and it is still the truest record of who this
+    # person was — so the envelope prints it (#3033).
+    from world.manifest import ensure_manifest
+    ensure_manifest(char)
+
     # Set identity attributes from template
     char.height = template.get('height')
     char.build = template.get('build')
@@ -482,6 +489,13 @@ def create_flash_clone(account, old_character):
     char.db.previous_clone_dbref = old_character.dbref
     
     # Stack ID (consciousness identifier)
+    # A designation is a SERVICE RECORD -- resleeving does not issue you
+    # a new one, so the clone carries the dead body's (#3033). Without
+    # `inherit_from` one player's thirty-three sleeves would read as
+    # thirty-three different careers.
+    from world.manifest import ensure_manifest
+    ensure_manifest(char, inherit_from=old_character)
+
     old_stack_id = old_character.db.stack_id
     if old_stack_id is not None:
         char.db.stack_id = old_stack_id
@@ -789,10 +803,10 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
         # rating before the gateway died. It never stood up, nobody has
         # used it in sixty-one years, and it is still the truest record
         # of who this person was — so the envelope prints it.
-        if not char.db.designation:
-            from world import manifest as manifest_mod
-            char.db.designation = manifest_mod.roll_designation()
-            char.db.skills = manifest_mod.seed_skills(char.db.designation)
+        # (The manifest is stamped inside
+        # `create_character_from_template` now — this node used to be the
+        # ONLY place it happened, which is why no first character ever
+        # got one.)
 
         spawn_location = get_spawn_location()
         if spawn_location and spawn_location != char.location:
@@ -1551,6 +1565,13 @@ def first_char_finalize(caller, raw_string, **kwargs):
         char.hair_style = hair_style
         # sdesc_keyword defaults via get_sdesc() based on gender
         
+        # The manifest assigned everyone a berth, a department and a
+        # rating before the gateway died (#3033). This path never
+        # stamped one, so `first_char_finalize` printed
+        # "MANIFEST: NO RECORD" to every new player in the game.
+        from world.manifest import ensure_manifest
+        ensure_manifest(char)
+
         # Set defaults
         # death_count starts at 1 via AttributeProperty in Character class
         char.unarchive_character()   # attribute + sleeve-tag index in sync

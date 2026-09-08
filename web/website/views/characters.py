@@ -355,6 +355,11 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             # brand-new website registration, got the routine re-login
             # line instead.
             character.db.decant_announce_pending = True
+
+            # The manifest (#3033) — same stamp every other creation
+            # path now makes, so a web sleeve is not a blank record.
+            from world.manifest import ensure_manifest
+            ensure_manifest(character)
             # death_count defaults to 1 via AttributeProperty in Character class
             
             # WEB-CREATED CHARACTERS: Make invisible until puppeted
