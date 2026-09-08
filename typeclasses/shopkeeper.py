@@ -160,11 +160,33 @@ class ShopContainer(DefaultObject):
             speaker = present[0]
             holder = on_duty_keeper(self)
             shift = current_shift()
+            # TWO LOOKUPS, MIRROR-IMAGE NAMES, DIFFERENT QUESTIONS —
+            # and a dead branch was the result (#2606).
+            #
+            #   on_duty_keeper(post)     -> who holds the running shift,
+            #                               wherever they are
+            #   keeper_on_duty(fixture)  -> who holds it AND is here
+            #
+            # There used to be a middle arm here, "I'm on in a bit",
+            # reached when `holder == speaker`. It could never run.
+            # `speaker` comes from `off_duty_keepers_present`, which only
+            # returns keepers of slots OTHER than the current shift; and
+            # this whole function is called under
+            # `if not any_keeper_present(self)`, which is
+            # `keeper_on_duty(...) is None`. If the holder of the
+            # running shift were the person standing here talking, that
+            # call would have found them and we would never have been
+            # entered.
+            #
+            # The line expressed something worth having — a keeper who
+            # is ON NEXT saying so — but that needs a next-shift
+            # predicate, and there isn't one: `current_shift` knows the
+            # order ("day", "swing", "night") but exposes no successor.
+            # Recorded here rather than left as an arm that reads live
+            # and never fires.
             if holder is not None and holder != speaker:
                 line = (f"I'm off. {holder.key} has the {shift} — "
                         f"they'll be along.")
-            elif holder is not None:
-                line = "I'm on in a bit. Come back and I'll serve you."
             else:
                 line = (f"I'm off, and nobody's got the {shift}. "
                         f"Counter's shut till morning.")

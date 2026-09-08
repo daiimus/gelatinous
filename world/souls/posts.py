@@ -84,7 +84,17 @@ def current_shift(hour=None):
 
 
 def on_duty_keeper(post, hour=None):
-    """Whoever holds the shift the clock is currently on, if anyone."""
+    """Whoever holds the shift the clock is currently on, if anyone.
+
+    NOT the same question as :func:`keeper_on_duty` fourteen lines down,
+    despite the mirror-image name. This one ignores WHERE they are; that
+    one requires them to be standing here. Code written as if they were
+    interchangeable produced a branch that could never execute (#2606).
+
+    If you are asking "can this counter serve me", you want
+    :func:`any_keeper_present`. If you are asking "whose shift is it",
+    you want this.
+    """
     slot = (post.db.post_slots or {}).get(current_shift(hour)) or {}
     keeper = slot.get("keeper")
     return keeper if keeper is not None and keeper.pk else None
@@ -107,6 +117,10 @@ def off_duty_keepers_present(post):
 
 def keeper_on_duty(fixture):
     """WHO is standing the shift that's actually RUNNING, or None.
+
+    NOT :func:`on_duty_keeper` — see the note there. That one answers
+    "whose shift is it" regardless of location; this one also requires
+    presence.
 
     Two conditions, and both matter: somebody must be here, and it must
     be their shift. Presence alone used to be enough, which meant a
