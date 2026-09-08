@@ -50,7 +50,19 @@ class ArmorMixin:
         except Exception:
             pass
 
-        if not isinstance(amount, int) or amount <= 0:
+        # A non-int used to deal ZERO and return (False, 0), which every
+        # caller reads as "survived, unharmed" -- no error, no log. All
+        # current callers coerce, but `blast_damage` is author-supplied
+        # PROTOTYPE data, so the day someone writes `2.5` the grenade
+        # stops working and nothing says why. Coerced instead of
+        # refused: a number is a number (#2473).
+        # `isinstance` first, so only NUMBERS are coerced: `int("4")`
+        # would also succeed, and a string reaching here means a caller
+        # bug that a silent success would hide.
+        if not isinstance(amount, (int, float)) or isinstance(amount, bool):
+            return (False, 0)
+        amount = int(amount)
+        if amount <= 0:
             return (False, 0)
 
         # Check for armor before applying damage
@@ -400,9 +412,16 @@ class ArmorMixin:
                 armor_type, injury_type, armor_rating
             )
 
-            # Apply weakness exploitation if present
-            weakness_penalty = armor_layer.get('weakness_exploited', 0.0)
-            final_reduction_percent = max(0.0, base_reduction_percent - weakness_penalty)
+            # `weakness_exploited` was READ here and written nowhere in
+            # the repo, so the penalty was always 0.0 and this line was
+            # `max(0.0, x - 0.0)` -- a no-op dressed as a mechanic, and
+            # the `(-N%)` it fed into the debug display could never
+            # render. MODULAR_ARMOR_SYSTEM_SPEC does not describe armour
+            # weakness at all. Removed rather than kept as a hook (#2473);
+            # the idea is recorded in the spec as unbuilt, which is a
+            # better place for it than a subtraction that pretends to
+            # work.
+            final_reduction_percent = base_reduction_percent
 
             # Use round() instead of int() to avoid losing effectiveness on low damage
             layer_damage_reduction = round(remaining_damage * final_reduction_percent)
@@ -417,8 +436,6 @@ class ArmorMixin:
             # Track for debug output
             if layer_damage_reduction > 0:
                 effectiveness_display = f"{final_reduction_percent * 100:.0f}%"
-                if weakness_penalty > 0:
-                    effectiveness_display += f"(-{weakness_penalty * 100:.0f}%)"
                 armor_debug_info.append(
                     f"{item.key}({effectiveness_display}={layer_damage_reduction}dmg)"
                 )

@@ -75,7 +75,16 @@ class ObjectParent:
                     f"release_slots failed for {self!r} in {self.location!r}")
         return super().at_object_delete()
 
-    # Ordinal word mapping for natural language search
+    # Ordinal word mapping for natural language search.
+    #
+    # CONSTRAINT ON ITEM NAMING (#2473): any query whose FIRST word is
+    # one of these is rewritten into Evennia's positional form, so
+    # `get first aid kit` searches for `aid kit-1`. That makes an item
+    # whose own name begins with an ordinal unsearchable by its name --
+    # "first aid kit", "second skin", "third rail". No prototype in the
+    # game does this today, and the natural-language win is worth the
+    # constraint, but the constraint is permanent and was invisible.
+    # Name around it, or drop the offending word from this map.
     ORDINAL_WORDS = {
         'first': 1, 'second': 2, 'third': 3, 'fourth': 4, 'fifth': 5,
         'sixth': 6, 'seventh': 7, 'eighth': 8, 'ninth': 9, 'tenth': 10,
