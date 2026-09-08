@@ -461,6 +461,39 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
         # across — which is what a fresh sleeve IS (#2706, #526).
         from world.medical.procedures import reset_body_preserving_augments
         reset_body_preserving_augments(npc)
+
+        # ...and out of the DEATH STATE, not just the medical one
+        # (#2450). `reset_body_preserving_augments` heals the flesh;
+        # it does not touch the three things `at_death` installed:
+        #
+        #   * `db.death_processed` — PERSISTENT, and `at_death` returns
+        #     early on it forever, so the restored keeper could be shot
+        #     to pieces and nothing would happen: no curtain, no corpse,
+        #     no second archive. They could never die again.
+        #   * DeathCmdSet as the DEFAULT cmdset (`add_default`, so it
+        #     survives a reload) — help/who/quit only, `no_exits=True`.
+        #     Souls act exclusively through `execute_cmd`, so the very
+        #     first thing this function does after installing them —
+        #     `emote is back at the post` — would be refused, and every
+        #     goal after it.
+        #   * `override_place = "lying motionless and deceased."`, which
+        #     would render under a keeper standing at their own counter.
+        #
+        # `remove_death_state` is the one door that undoes all three,
+        # and its only other callers are medical revival and a staff
+        # `@heal` — a human with staff perms, which is not something an
+        # automated resleeve can walk through.
+        try:
+            npc.remove_death_state()
+        except Exception:  # noqa: BLE001 — a stuck cmdset must not eat the resleeve
+            pass
+        # The archive flag and its tag are a separate store from the
+        # death state; `_archived_keeper` found this body BY being in
+        # Limbo, so it is archived by construction.
+        try:
+            npc.unarchive_character()
+        except Exception:  # noqa: BLE001
+            pass
     else:
         from world.npcs.blueprints import build_npc
         try:

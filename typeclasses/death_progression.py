@@ -1000,6 +1000,76 @@ class DeathProgressionScript(DefaultScript):
         # - Handle character naming, stats, description setup
 
 
+def sweep_wedged_deaths():
+    """Restart death progressions that a reload dropped (#2450).
+
+    The curtain chains ~60 frames with `delay(...)` — non-persistent by
+    construction, and the callback is a bound method of a plain object
+    that could not be persisted anyway — and ONLY its completion calls
+    `start_death_progression`. A reload inside that ~6s window (plus the
+    5s combat deferral) drops every pending call, and nothing re-checks
+    at boot.
+
+    What that leaves is not a half-death, it is a permanent one.
+    `db.death_processed` is PERSISTENT and `at_death` returns early on
+    it forever, so there is no retry. The body keeps DeathCmdSet as its
+    default (no look, no movement, `no_exits=True`), stays puppeted, and
+    lies in the room: no corpse is ever spawned, the sleeve is never
+    archived, and `at_post_login` sees one active character and
+    auto-puppets the wedged body straight back. Only a staff `@heal`
+    recovers it.
+
+    The house has fixed this exact shape twice at boot already —
+    grenade fuses (#505) and stranded channel tells (#2774). Death was
+    not covered.
+
+    **The predicate has to exclude a COMPLETED death, not just find an
+    unfinished one.** A finished progression moves the body to Limbo
+    (#2) and archives it, so `archived` and the Limbo location are what
+    separate "never started" from "already done". Restarting a
+    progression on a body that has already produced its corpse would
+    spawn a second one.
+
+    `start_death_progression` is idempotent (it returns any existing
+    script), so this is safe even if the predicate is generous.
+
+    Returns the number of progressions restarted.
+    """
+    from evennia.objects.models import ObjectDB
+
+    restarted = 0
+    for obj in ObjectDB.objects.filter(
+            db_attributes__db_key="death_processed").distinct():
+        try:
+            if not is_wedged_death(obj):
+                continue
+            start_death_progression(obj)
+            restarted += 1
+        except Exception:  # noqa: BLE001 — one bad row must not stop the sweep
+            continue
+    return restarted
+
+
+def is_wedged_death(obj) -> bool:
+    """True when *obj* died but its progression never started.
+
+    Split out from the sweep so the decision is testable on its own:
+    creating a real script inside `EvenniaTest` trips an Evennia harness
+    artifact (`at_start` cannot read its host during `scripts.add`),
+    which would otherwise make the whole sweep untestable.
+    """
+    if not obj or not obj.pk or not obj.db.death_processed:
+        return False
+    if obj.db.archived:
+        return False                          # already disposed of
+    location = obj.location
+    if location is None or getattr(location, "id", None) == 2:
+        return False                          # in Limbo = already done
+    if not hasattr(obj, "scripts"):
+        return False
+    return not obj.scripts.get("death_progression")
+
+
 def start_death_progression(character):
     """
     Start the death progression script for a character.
