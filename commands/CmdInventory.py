@@ -368,6 +368,23 @@ class CmdDrop(Command):
         # + proximity scaffolding.  Caller-specific proximity is added
         # below since CmdDrop wants the dropper themselves listed as
         # near the dropped object.
+        # The item's own drop hook, which nothing was calling (#2456).
+        # This game's `drop` replaced Evennia's, and Evennia's was the
+        # only caller of `at_drop` — so single-use issue clothing
+        # survived being let go of, and a fresh sleeve could press the
+        # dispenser and drop the jumpsuit in a loop for an unbounded
+        # pile of free Thawn-Harrison kit. `_perish`'s own docstring
+        # says that is what it exists to prevent, and its two-verb
+        # signature ("off" / "loose") was written for both doors; only
+        # the `remove` one was live.
+        item_name = obj.get_display_name(caller)
+        try:
+            obj.at_drop(caller)
+        except Exception:  # noqa: BLE001 — a broken hook never eats the drop
+            pass
+        if not obj.pk:
+            return          # it tore in the hand; `_perish` said so
+
         from commands.combat.jump import drop_to_room
         drop_to_room(obj, caller.location)
         proximity_list = getattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL, [])
@@ -375,7 +392,6 @@ class CmdDrop(Command):
             proximity_list.append(caller)
         
         # Send appropriate message based on whether it was wielded
-        item_name = obj.get_display_name(caller)
         if was_wielded:
             hand_display = hand_name.replace("_", " ")
             caller.msg(f"You release {item_name} from your {hand_display} and drop it.")
@@ -406,6 +422,34 @@ class CmdDrop(Command):
                 return result[0] if isinstance(result, list) else result
         
         return None
+
+
+def _release_from_worn_ledger(holder, item):
+    """Drop *item* from *holder*'s ``db.worn_items`` ledger, if it keeps
+    one (severed appendages do; #2456).
+
+    Characters are not reachable here — a person is refused as a
+    container — and corpses derive "worn" live from their contents, so
+    in practice this is the appendage case and a no-op everywhere else.
+    """
+    if holder is None:
+        return
+    try:
+        worn = holder.db.worn_items
+    except Exception:  # noqa: BLE001 — no ledger, nothing to prune
+        return
+    if not worn:
+        return
+    pruned = {}
+    changed = False
+    for location, entries in dict(worn).items():
+        kept = [entry for entry in (entries or []) if entry != item]
+        if len(kept) != len(entries or []):
+            changed = True
+        if kept:
+            pruned[location] = kept
+    if changed:
+        holder.db.worn_items = pruned
 
 
 class CmdGet(Command):
@@ -533,6 +577,34 @@ class CmdGet(Command):
         )
         if result:
             container = result[0] if isinstance(result, list) else result
+            # A PERSON is not a container (#2456). This path was built
+            # for corpses and packs -- the docstring's own example is
+            # `get jeans from corpse` -- and a corpse is safe because
+            # `Corpse.get_worn_items` derives "worn" live from its
+            # contents. A living character keeps a stored registry
+            # instead, so the same code that is correct on a corpse
+            # lifted worn and wielded gear straight off an awake,
+            # unwilling person: no contest, no consent grant, no crime
+            # event, and the victim went on rendering as wearing the
+            # jacket now in the thief's hand -- still counting toward
+            # coverage and toward the disguise signature, so a mask
+            # taken off a face left the Apparent UID unchanged.
+            #
+            # `get x from me` reached it with no second party at all:
+            # Character.search answers the literal `me` before
+            # candidates are consulted.
+            from typeclasses.characters import Character
+            if isinstance(container, Character):
+                if container is caller:
+                    caller.msg(
+                        "Take it off with |wremove|n, or just |wget|n "
+                        "it if it is loose.")
+                else:
+                    caller.msg(
+                        f"You would have to take that off "
+                        f"{container.get_display_name(caller)} — try "
+                        f"|wsteal|n, |wwrest|n or |wundress|n.")
+                return None
             return container
 
         caller.msg(f"You don't see a '{container_name}' here.")
@@ -568,6 +640,26 @@ class CmdGet(Command):
         """Give an item to the character, managing hands and inventory."""
         item_name = item.get_display_name(caller)
         container_name = from_container.get_display_name(caller) if from_container else None
+
+        # No grasping slots, no pickup -- but SAY so (#2456). Both loops
+        # below iterate `caller.hands`, so an empty view fell off the
+        # end of this method and the command produced no output and no
+        # effect: indistinguishable from a dropped connection. Two real
+        # cases reach it — both hands severed, and a species that
+        # declares no grasping containers (a rat). `CmdGive` already
+        # answers this state in words; `get` did not.
+        if not dict(caller.hands):
+            caller.msg(f"You have no hands to pick up {item_name} with.")
+            return
+
+        # A garment taken off a severed limb leaves that limb's ledger
+        # (#2456). `undress <limb> <item>` prunes `db.worn_items`; this
+        # door reaches the same physical contents through a resolver
+        # that knows nothing about it, so the limb went on describing a
+        # glove that was gone — and once the glove was deleted the
+        # dangling entry crashed `look` on the limb, because
+        # `_build_worn_items_line` has no prune of its own.
+        _release_from_worn_ledger(from_container, item)
 
         # Try to put it in a free hand.  PR-H2: snapshot + mutate +
         # setter assignment for the derived hands view.
