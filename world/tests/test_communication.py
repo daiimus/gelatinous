@@ -413,6 +413,14 @@ class TestCmdSay(TestCase):
         room = MagicMock()
         room.contents = room_contents
         caller.location = room
+        # Everyone listed as standing in the room has to SAY so.
+        # `to` now checks reachability (#3029), and a stand-in
+        # whose `.location` is an unrelated MagicMock is not in the
+        # room by any test the game can apply — the fixture was
+        # describing a room nobody was in. True of all five
+        # helpers, so all five are corrected.
+        for occupant in room_contents:
+            occupant.location = room
 
         cmd.func()
 
@@ -525,6 +533,14 @@ class TestCmdTo(TestCase):
         room = MagicMock()
         room.contents = room_contents
         caller.location = room
+        # Everyone listed as standing in the room has to SAY so.
+        # `to` now checks reachability (#3029), and a stand-in
+        # whose `.location` is an unrelated MagicMock is not in the
+        # room by any test the game can apply — the fixture was
+        # describing a room nobody was in. True of all five
+        # helpers, so all five are corrected.
+        for occupant in room_contents:
+            occupant.location = room
         if search_result is not None:
             caller.search = MagicMock(return_value=search_result)
 
@@ -628,6 +644,14 @@ class TestCmdWhisper(TestCase):
         room = MagicMock()
         room.contents = room_contents
         caller.location = room
+        # Everyone listed as standing in the room has to SAY so.
+        # `to` now checks reachability (#3029), and a stand-in
+        # whose `.location` is an unrelated MagicMock is not in the
+        # room by any test the game can apply — the fixture was
+        # describing a room nobody was in. True of all five
+        # helpers, so all five are corrected.
+        for occupant in room_contents:
+            occupant.location = room
 
         # Mock caller.search to return the target
         if search_result is not None:
@@ -774,6 +798,14 @@ class TestCmdEmote(TestCase):
         room = MagicMock()
         room.contents = room_contents
         caller.location = room
+        # Everyone listed as standing in the room has to SAY so.
+        # `to` now checks reachability (#3029), and a stand-in
+        # whose `.location` is an unrelated MagicMock is not in the
+        # room by any test the game can apply — the fixture was
+        # describing a room nobody was in. True of all five
+        # helpers, so all five are corrected.
+        for occupant in room_contents:
+            occupant.location = room
 
         cmd.func()
 
@@ -1006,6 +1038,14 @@ class TestCmdDotPose(TestCase):
         room = MagicMock()
         room.contents = room_contents
         caller.location = room
+        # Everyone listed as standing in the room has to SAY so.
+        # `to` now checks reachability (#3029), and a stand-in
+        # whose `.location` is an unrelated MagicMock is not in the
+        # room by any test the game can apply — the fixture was
+        # describing a room nobody was in. True of all five
+        # helpers, so all five are corrected.
+        for occupant in room_contents:
+            occupant.location = room
 
         cmd.func()
 
