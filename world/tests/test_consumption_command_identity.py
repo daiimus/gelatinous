@@ -38,10 +38,17 @@ class TestGetItemAndTargetIdentity(TestCase):
         cmd.key = "inject"
         cmd.caller = MagicMock()
         cmd.caller.location = MagicMock()
-        # caller.search is used for item lookup (location=caller) —
-        # leave it returning a usable medical item.
+        # caller.search is used for item lookup (location=caller). It
+        # must answer only for what the caller is CARRYING: the parser
+        # now scans longest-first (#2458), so a stub that hits on every
+        # query lets "morphine man" match as one item and swallows the
+        # target. A real search matches keys and aliases.
         item = MagicMock()
-        cmd.caller.search.return_value = [item]
+        carrying = {"morphine"}
+        cmd.caller.search.side_effect = (
+            lambda q, location=None, quiet=False:
+            [item] if q in carrying else []
+        )
         return cmd, item
 
     @patch("commands.CmdConsumption.is_medical_item", return_value=True)

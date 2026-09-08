@@ -53,6 +53,11 @@ class _ApplyCase(EvenniaCommandTest):
         self.char2.height = "average"
         self.char2.build = "stocky"
         self.char2.sdesc_keyword = "woman"
+        # Treating someone else now needs their trust (#2458). These
+        # tests are about the PARSER, so the consent question is
+        # answered once here rather than in every case.
+        from world.consent import grant_trust
+        grant_trust(self.char2, self.char1, "heal")
 
     def kit(self, key="gauze bandages"):
         """A REAL medical item. `is_medical_item` reads a TAG

@@ -70,6 +70,8 @@ class ConsumptionCommand(Command):
             result["errors"].append(f"Usage: {self.key} <item> [target]")
             return result
 
+        prefound = None   # a hit already paid for by the greedy scan
+
         # A caller that already knows the boundary hands it over intact
         # (#2454) rather than round-tripping through the whitespace
         # split below, which cannot represent a multi-word name.
@@ -82,20 +84,43 @@ class ConsumptionCommand(Command):
 
         # Parse arguments
         if parts is not None:
-        # Keep an ordinal prefix attached to its noun ("2nd mug", "second mug")
-        # so the search's ordinal handling (ObjectParent.get_search_query_
-        # replacement) can resolve it, instead of splitting the ordinal off as
-        # the item and the noun as a (bogus) target.
+            # Keep an ordinal prefix attached to its noun ("2nd mug",
+            # "second mug") so the search's ordinal handling
+            # (ObjectParent.get_search_query_replacement) can resolve
+            # it, instead of splitting the ordinal off as the item and
+            # the noun as a (bogus) target.
             ordinal_words = getattr(caller, "ORDINAL_WORDS", {})
             if len(parts) > 1 and parts[0].lower() in ordinal_words:
                 item_name = f"{parts[0]} {parts[1]}"
                 rest = parts[2:]
             else:
-                item_name = parts[0]
-                rest = parts[1:]
+                # LONGEST MATCH FIRST (#2458). This took `parts[0]` as
+                # the whole item name, so every multi-word name or
+                # authored alias was mis-read as item + target and the
+                # command answered with the item's OWN second word as a
+                # missing person: `drink fortified wine` → "Cannot find
+                # 'wine'.", `eat bowl of noodles` → "Cannot find 'of'."
+                # That covers most of the shipped catalogue — "old
+                # meridian", "opium cigarette", "pork bun", "rat tail
+                # stew", "pain meds", "tissue sealant" — including the
+                # commands' own documented examples.
+                #
+                # Greedy because the player typed the longer phrase on
+                # purpose: with both "gauze" and "gauze bandages" on
+                # them, `apply gauze bandages on X` means the latter.
+                item_name, rest = parts[0], parts[1:]
+                for take in range(len(parts), 0, -1):
+                    candidate = " ".join(parts[:take])
+                    found = caller.search(candidate, location=caller,
+                                          quiet=True)
+                    if found and len(found) == 1:
+                        item_name, rest = candidate, parts[take:]
+                        prefound = found      # don't search it twice
+                        break
 
         # Find the item
-        item = caller.search(item_name, location=caller, quiet=True)
+        item = prefound if prefound is not None else caller.search(
+            item_name, location=caller, quiet=True)
         if not item:
             result["errors"].append(f"You don't have '{item_name}'.")
             return result
@@ -113,7 +138,11 @@ class ConsumptionCommand(Command):
 
         # Parse target (if specified)
         if rest:
-            target_name = rest[0]
+            # The WHOLE remainder, not `rest[0]` (#2458). Sdescs are
+            # usually multi-word ("stout woman"), and taking only the
+            # first token made a real person unfindable by the name
+            # everyone in the room actually sees.
+            target_name = " ".join(rest).strip()
             if target_name.lower() in ["me", "myself", "self"]:
                 result["target"] = caller
             else:
@@ -124,6 +153,34 @@ class ConsumptionCommand(Command):
                     result["errors"].append(f"Cannot find '{target_name}'.")
                     return result
                 result["target"] = target
+
+                # CONSENT, for every substance and not just medicine
+                # (#2458). The gate lived inside
+                # `check_medical_requirements`, which the verbs only
+                # call `if is_medical_item(item)`. When #487/#498 made
+                # the delivery TAG the gate for non-medical consumables,
+                # that `if` took the consent check with it — so
+                # `inject guttervenom bob` landed 3 pain and sedation on
+                # a conscious, unrestrained, untrusting Bob with no
+                # refusal, while the identical act with a MEDICAL item
+                # was correctly refused. `chug`/`devour` were worse:
+                # they REJECT medical items outright, so their
+                # third-party path had no gate at all.
+                #
+                # Hoisted to this funnel because every consumption verb
+                # resolves its target here, so no verb can be added
+                # later that forgets. The medical path still calls its
+                # own check; asking twice costs one lookup and answers
+                # the same.
+                if target is not caller:
+                    from world.consent import check_consent
+                    if not check_consent(caller, target, "heal"):
+                        result["errors"].append(
+                            f"{target.get_display_name(caller)} is "
+                            f"conscious and would resist — they'd need "
+                            f"to trust you (or be restrained)."
+                        )
+                        return result
                 
         # Parse body location (for commands that support it)
         if allow_body_location and len(rest) > 1:
