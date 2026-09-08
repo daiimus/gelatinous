@@ -42,6 +42,21 @@ def at_server_start():
         from evennia.utils import logger
         logger.log_trace("Grenade fuse sweep failed.")
 
+    # #2450: a reload inside the ~6s death curtain dropped the
+    # non-persistent delay() chain that is the ONLY caller of
+    # start_death_progression, wedging the dier permanently —
+    # db.death_processed is persistent, so at_death never retries.
+    try:
+        from typeclasses.death_progression import sweep_wedged_deaths
+        restarted = sweep_wedged_deaths()
+        if restarted:
+            from evennia.utils import logger
+            logger.log_info(f"Death progression sweep: {restarted} "
+                            f"wedged death(s) restarted.")
+    except Exception:  # noqa: BLE001 — a broken sweep must not stop the boot
+        from evennia.utils import logger
+        logger.log_trace("Death progression sweep failed.")
+
     # #2774: a channel's tell lives in the PERSISTENT tier while the
     # record that manages it lives in ndb, so a reload mid-channel left
     # the actor described by the act forever, with no path back.
