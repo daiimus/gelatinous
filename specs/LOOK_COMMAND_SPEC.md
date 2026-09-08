@@ -146,7 +146,7 @@ The street continues to the west (w) and east (e).
 - ✅ **Sensory Categories**: Visual, auditory, olfactory, atmospheric weather contributions
 - ✅ **Intensity-Based Messages**: Weather types scaled by intensity (mild/moderate/intense/extreme)
 - ✅ **Time Period Variations**: Weather messages vary by time of day for atmospheric consistency
-- **Comprehensive Coverage**: All 17 weather types from `WEATHER_INTENSITY` mapping implemented
+- **Comprehensive Coverage**: All 19 weather types from `WEATHER_INTENSITY` mapping implemented
 - **Noir/Cinematic Style**: Adult-focused atmospheric descriptions with proper intensity scaling
 - **Formatting Integration**: Weather text displayed with |w (bold white) formatting
 - **Message Pool Architecture**: Extensive message pools following combat system patterns
@@ -163,6 +163,46 @@ The street continues to the west (w) and east (e).
 - Integration via `world/weather/weather_system.py` with proper |w formatting
 - Room integration through modified `return_appearance()` method in `typeclasses/rooms.py`
 - Weather appears directly in room description after base text, before characters/exits
+
+#### 8b. The weather DRIVER is UNBUILT — the ✅ above is the rendering layer only
+
+Everything ticked in §8 is what happens *once a weather is set*. **Nothing
+sets one.** Owner ruling, 2026-09-08 (#3028, raised from the audit as
+#2446 §4):
+
+> "This isn't done. Ultimately, there will be elements of the game like
+> mining, the terraformer, electrical usage, etc. and maybe even
+> pseudo-weather patterns that are seasonal but they'll all influence
+> the system. Weather isn't fully wired in yet."
+
+**Current state, measured:**
+- `WeatherSystem` is a bare module-global instance (`world/weather/__init__.py`)
+  holding `current_weather` in memory, initialised to `"clear"`.
+- `set_weather` has exactly one caller: the `@weather` admin command.
+- Nothing advances weather on a clock. There is no ticker and no progression.
+- So the colony runs permanently `clear` unless a builder sets it by hand,
+  and reverts at the next reload — which is every deploy.
+- 19 weather types and ~3,200 authored message lines across region and
+  time-of-day pools are therefore effectively unreachable in play.
+
+**This is a known gap, not a defect.** Do not "fix" it by adding
+persistence or a random weather ticker; both would pre-empt the design.
+
+**Prerequisites, per the ruling** — weather is meant to be an OUTPUT of
+colony systems, not an independent generator. It is gated on:
+- mining,
+- the terraformer,
+- electrical usage,
+- seasonal pseudo-weather patterns.
+
+Until those exist there is nothing for a weather driver to read. Consumers
+of weather (crowd density, and through it `world/director/witness.py` and
+`world/stealth.py`) should be understood as wired-but-unfed.
+
+**Related balance note:** `CrowdSystem.weather_modifiers` was corrected in
+#3027 to match the `WEATHER_INTENSITY` vocabulary, with a set-equality test
+pinning the two. Its magnitudes are shaped-right, not tuned — no system in
+this game has had its balance pass.
 
 ### 9. Crowd System ✅ 
 - **Population Density**: Crowd levels affecting room atmosphere based on room type, weather, and character presence
