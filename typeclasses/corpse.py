@@ -305,7 +305,7 @@ class Corpse(IdentityBearerMixin, Item):
         Symmetric ``left_*`` / ``right_*`` pairs collapse to a single
         plural line when both sides carry the same preserved longdesc
         and neither is covered by clothing — matching the living-
-        character collapse path (\``AppearanceMixin._build_paired_longdesc_collapse``\)
+        character collapse path (``AppearanceMixin._build_paired_longdesc_collapse``)
         so braced body-noun tokens (``{eyes}`` / ``{ears}`` / ...) render
         in plural form once, instead of leaking literal braces twice.
         """
