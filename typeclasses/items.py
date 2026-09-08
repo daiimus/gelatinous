@@ -1195,6 +1195,19 @@ class RemoteDetonator(Item):
             tuple: (success: bool, message: str)
         """
         # Validate capacity
+        # Prune dead dbrefs BEFORE counting (#2453). `at_object_delete`
+        # now fires (#2590 fixed the hook name), so the list stays clean
+        # in normal play — but a signature that predates that fix, or an
+        # explosive removed by a bulk operation, still wedges the gate:
+        # `scan` refuses with "Detonator at maximum capacity" on a device
+        # that is effectively empty. `validate_scanned_list` already runs
+        # on `detonate list` and `detonate all`, so the state self-heals
+        # on the two commands a player runs NEXT — but not on the one
+        # where the refusal happens.
+        try:
+            self.validate_scanned_list()
+        except Exception:  # noqa: BLE001 — a scan never fails on hygiene
+            pass
         if len(self.db.scanned_explosives) >= self.db.max_capacity:
             return False, f"Detonator at maximum capacity ({self.db.max_capacity} explosives)."
         

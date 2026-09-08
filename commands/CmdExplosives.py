@@ -667,87 +667,33 @@ class CmdDefuse(Command):
                 splattercast.msg(f"DEFUSE_FAILURE: {self.caller.key} failed to defuse {grenade.key} (no early detonation)")
 
     def trigger_early_explosion(self, grenade):
-        """Trigger early explosion from failed defuse attempt."""
-        # Reuse the explosion logic from CmdPull
-        # Note: Using character.take_damage() for medical system integration
+        """Early detonation from a failed defuse — the SAME resolver the
+        ordinary fuse uses (#2453).
 
-        try:
-            # Check dud chance
-            dud_chance = grenade.db.dud_chance if grenade.db.dud_chance is not None else 0.0
-            if random.random() < dud_chance:
-                try:
-                    grenade.attributes.remove("detonation_deadline")
-                except Exception:  # noqa: BLE001 — #505 dud fuse is spent
-                    pass
-                # A spent fuse is a SAFE grenade (#2539).
-                grenade.db.pin_pulled = False
-                setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
-                if grenade.location:
-                    grenade.location.msg_contents(MSG_GRENADE_DUD_ROOM.format(grenade=grenade.key))
-                return
+        This used to be a near-line-for-line copy of
+        `explosion_utils.explode_standalone_grenade` with one thing
+        missing: the holder branch. So a grenade fumbled in your OWN
+        HANDS exploded with `msg_contents` sent to the CHARACTER (which
+        fans out to their inventory, not the room), `Character.exits`
+        handed to the adjacent-room notifier (empty, so a silent no-op),
+        an empty proximity list, and `grenade.delete()`. You took no
+        damage, nobody was told anything, and no adjacent room heard it.
 
-            # Get blast damage
-            blast_damage = grenade.db.blast_damage if grenade.db.blast_damage is not None else 10
+        Fumbling a defuse on a live grenade in your hand was therefore
+        strictly SAFER than letting the fuse run out, which doubles
+        damage against the holder. THROW_COMMAND_SPEC marks both paths
+        shipped and parallel.
 
-            # Room explosion
-            if grenade.location:
-                grenade.location.msg_contents(MSG_GRENADE_EXPLODE_ROOM.format(grenade=grenade.key))
-                # Notify adjacent rooms
-                notify_adjacent_rooms_of_explosion(grenade.location)
-
-            # Get unified proximity list (includes current grappling relationships)
-            proximity_list = get_unified_explosion_proximity(grenade)
-
-            # Check for human shield mechanics
-            from world.combat.utils import check_grenade_human_shield
-            damage_modifiers = check_grenade_human_shield(proximity_list)
-
-            # Apply damage to all in proximity with human shield modifiers
-            for character in proximity_list:
-                if hasattr(character, 'msg'):  # Is a character
-                    # Apply damage modifier (0.0 for grapplers, 2.0 for victims, 1.0 for others)
-                    modifier = damage_modifiers.get(character, 1.0)
-                    final_damage = int(blast_damage * modifier)
-
-                    if final_damage > 0:
-                        damage_type = grenade.db.damage_type if grenade.db.damage_type is not None else 'blast'
-                        character.take_damage(final_damage, location="chest", injury_type=damage_type)
-                        character.msg(MSG_GRENADE_DAMAGE.format(grenade=grenade.key))
-                        if character.location:
-                            msg_room_identity(
-                                location=character.location,
-                                template=MSG_GRENADE_DAMAGE_ROOM.format(
-                                    victim="{target_char}", grenade=grenade.key
-                                ),
-                                char_refs={"target_char": character},
-                                exclude=[character],
-                            )
-                    # Note: Characters with 0.0 modifier (grapplers) take no damage and get no damage messages
-
-            # Handle chain reactions if enabled
-            if grenade.db.chain_trigger:
-                for obj in proximity_list:
-                    if (hasattr(obj, 'db') and
-                        obj.db.is_explosive and
-                        obj != grenade):
-
-                        # Trigger chain explosion
-                        if grenade.location:
-                            grenade.location.msg_contents(
-                                MSG_GRENADE_CHAIN_TRIGGER.format(grenade=obj.key))
-
-                        # Start immediate explosion timer
-                        utils.delay(0.5, self.trigger_early_explosion, obj)
-
-            # Clean up
-            grenade.delete()
-
-        except Exception as e:
-            # #469: log + raise — one-shot timer callback, same policy
-            # as the explosion_utils resolvers (#481).
-            splattercast = get_splattercast()
-            splattercast.msg(f"{DEBUG_PREFIX_THROW}_ERROR: Error in trigger_early_explosion: {e}")
-            raise
+        Two resolvers sharing damage/chain/dud logic almost exactly, and
+        only one of them ever grew the in-hands guard — they read as
+        complete side by side unless you diff them. So this delegates
+        rather than growing a second copy: `explode_standalone_grenade`
+        is a strict superset (dud, holder, stuck-to-armor, human shield,
+        room-filtered blast list, chain, delete), and one resolver
+        cannot drift from itself.
+        """
+        from commands.explosion_utils import explode_standalone_grenade
+        explode_standalone_grenade(grenade)
 
 
 # =============================================================================

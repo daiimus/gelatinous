@@ -88,12 +88,33 @@ class TestTheSafeStateMatchesTheDefuseHandlers(_GrenadeCase):
         return (root / relpath).read_text(errors="ignore")
 
     def test_every_dud_path_clears_the_pin(self):
-        """Four dud branches; each must clear. Counted, because three of
-        them live in one file and the fourth is easy to miss."""
-        utils = self._source("commands/explosion_utils.py")
-        cmd = self._source("commands/CmdExplosives.py")
-        self.assertGreaterEqual(utils.count("pin_pulled = False"), 4)
-        self.assertGreaterEqual(cmd.count("pin_pulled = False"), 2)
+        """DRIVEN, not counted (#2453).
+
+        This used to assert `source.count("pin_pulled = False") >= 2` in
+        `CmdExplosives.py`. When the early-detonation resolver stopped
+        carrying its own copy of the dud branch and delegated to
+        `explode_standalone_grenade` — one resolver instead of two — the
+        count dropped to 1 and the test failed, while the BEHAVIOUR was
+        unchanged and in fact better. Counting occurrences in one file
+        pins the shape of the code rather than what it does, and breaks
+        on exactly the refactors worth making.
+        """
+        from commands.explosion_utils import explode_standalone_grenade
+        nade = self.grenade()
+        explode_standalone_grenade(nade)
+        self.assertTrue(nade.pk, "a dud must survive")
+        self.assertFalse(nade.db.pin_pulled, "a dud must be safe to pick up")
+
+    def test_the_early_detonation_door_duds_safely_too(self):
+        """The second door onto the same act — the one that used to
+        carry the copy."""
+        from commands.CmdExplosives import CmdDefuse
+        nade = self.grenade()
+        cmd = CmdDefuse()
+        cmd.caller = self.char1
+        cmd.trigger_early_explosion(nade)
+        self.assertTrue(nade.pk)
+        self.assertFalse(nade.db.pin_pulled)
 
     def test_the_prototype_still_ships_the_safe_default(self):
         """`pin_pulled` is a TOP-LEVEL prototype key here, not an entry
