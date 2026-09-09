@@ -87,7 +87,14 @@ class MedicalCondition:
         self.severity = severity
         self.max_severity = severity  # Track original severity
         self.location = location
-        self.tick_interval = tick_interval  # Not used directly anymore, but kept for compatibility
+        # Retained in serialization and ignored at runtime -- a
+        # deliberate, spec-sanctioned decision, not an oversight:
+        # CONDITION_CADENCE_SPEC §7 says `tick_interval` "is retained
+        # in serialization for backward compatibility but ignored".
+        # The medical script samples EVERY condition at
+        # MEDICAL_TICK_INTERVAL and never consults this field; the
+        # per-condition values below (60/120/300) are inert (#2514).
+        self.tick_interval = tick_interval
         self.requires_ticker = True
         self.treated = False
         # CONDITION_CADENCE_SPEC (#501): when this condition last had

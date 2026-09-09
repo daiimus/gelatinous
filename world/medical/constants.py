@@ -113,10 +113,21 @@ WOUND_CARE_PARALLEL_CATEGORIES = (
 # tick walks stabilized organs and restores HP proportional to the
 # stored rating.
 
-#: HP restored per medical tick per dressing-rate point.  Integer
-#: division — a low-rated dressing (rating 1-4) lands at 0 HP/tick
-#: which models the wound staying stable but not actively healing.
-#: Tuned for the existing 12s medical tick.  Balance knob.
+#: HP restored per MINUTE of game time per dressing-rate point.
+#: Integer division — a low-rated dressing (rating 1-4) lands at
+#: 0 HP/min, which models the wound staying stable but not actively
+#: healing.  Balance knob.
+#:
+#: The rate is PER MINUTE, not per tick (#501).  ``script.py`` binds
+#: the result to ``hp_per_minute`` and multiplies it by elapsed
+#: minutes, so ``MEDICAL_TICK_INTERVAL`` only decides how often that
+#: is sampled — changing the tick does not change the healing rate.
+#: (The helper is still spelled ``_hp_per_tick`` for historical
+#: reasons; the name is the relic, not the maths.)  This line used
+#: to claim it was tuned for a medical tick five times faster than
+#: the real one — a fossil of the pre-#465 clock that would have led
+#: a balancer to size this knob 5x wrong, which is exactly how
+#: infection silently went 5x slow in #465 (#2514).
 WOUND_HEALING_DIVISOR = 5
 
 #: Minimum HP recovered per tick when any dressing is registered
@@ -210,7 +221,7 @@ BLEEDING_SEVERITY_LABELS = {
 CONSCIOUSNESS_RECOVERY_HAZARD_PER_MINUTE = {
     "knockout": 0.25,
     # Drink/drug sedation should sleep off, not strand the player — one severity
-    # drop (≈3 min at the 180s tick) is enough to regain consciousness; a few
+    # drop (≈2 min at 0.50 per minute) is enough to regain consciousness; a few
     # more clears the buzz. Raised from 0.15 so a blackout is a brief nap, not a
     # ~30-minute lockout (player-experience: blacking out is temporary).
     "sedative": 0.50,
@@ -220,8 +231,21 @@ CONSCIOUSNESS_RECOVERY_HAZARD_PER_MINUTE = {
 
 # Condition severity thresholds based on damage amounts
 BLEEDING_DAMAGE_THRESHOLDS = {
-    "severe": 20,     # >20 damage = severe bleeding (12s ticks)
-    "minor": 10       # >10 damage = minor bleeding (60s ticks)
+    # These are DAMAGE amounts, not cadences.  The trailing "(12s
+    # ticks)" / "(60s ticks)" notes were fossils of the abandoned
+    # per-condition interval design and described a two-tier
+    # cadence that has not existed since #465 (#2514).
+    #
+    # "severe" is PARKED, not dead.  It belongs to the Phase 3
+    # tactical tier (CONDITION_CADENCE_SPEC §1.6), which processes
+    # urgent conditions inside the combat handler's 6-second round
+    # and is explicitly "build when fire / severe-bleeding exist as
+    # content".  Nothing reads it today — conditions.py reads
+    # "minor" only.  Left in place so the tier has its threshold
+    # when it lands.  Do NOT wire it before the medical balance
+    # pass; no medical system has been tuned yet.
+    "severe": 20,     # >20 damage
+    "minor": 10,      # >10 damage
 }
 
 # Condition creation triggers by injury type
