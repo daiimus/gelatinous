@@ -1032,6 +1032,14 @@ class Character(
             self.ndb.death_processed = False
         if self.db.death_processed is not None:
             del self.db.death_processed
+        # And the killing blow that labelled that death (#2778).  It is
+        # PERSISTENT so the corpse pipeline can read it ninety seconds
+        # later, which means it also outlives a revival -- leaving a
+        # revived character's NEXT death labelled with the blow that
+        # killed them the first time.  Revival is the one place the old
+        # blow stops being true.
+        if self.db.death_blow is not None:
+            del self.db.death_blow
         
         # Notify revival
         if self.location:
