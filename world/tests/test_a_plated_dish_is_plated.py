@@ -104,7 +104,15 @@ class TestBothHandsOnDoorsUseIt(EvenniaTest):
 
     def test_the_raw_mixer_has_exactly_one_caller(self):
         """`make_drink_from_recipe` should now be reachable only through
-        the wrapper — that is what makes the doors agree."""
+        the wrapper — that is what makes the doors agree.
+
+        Asserted on WHERE the caller is, never on a line number. The
+        first version of this test pinned `bar.py:826`; an unrelated
+        edit above it in the same file shifted the call to 845 and the
+        test went red without anything it cares about having changed.
+        A line number is not the property under test — "exactly one
+        caller, and it lives inside `plate_or_mix`" is.
+        """
         import pathlib
         root = pathlib.Path(__file__).resolve().parents[2]
         callers = []
@@ -116,9 +124,23 @@ class TestBothHandsOnDoorsUseIt(EvenniaTest):
                 if ("make_drink_from_recipe(" in line
                         and "def " not in line
                         and not line.strip().startswith("#")):
-                    callers.append(f"{path.name}:{i}")
-        self.assertEqual(callers, ["bar.py:826"],
-                         f"unexpected direct callers: {callers}")
+                    callers.append((path, i))
+
+        where = [f"{p.name}:{i}" for p, i in callers]
+        self.assertEqual(len(callers), 1,
+                         f"expected one direct caller, got: {where}")
+
+        path, lineno = callers[0]
+        self.assertEqual(path.name, "bar.py", f"caller moved: {where}")
+
+        # ...and it is the wrapper that calls it. Walk back to the
+        # nearest preceding `def` rather than trusting an offset.
+        lines = path.read_text(errors="ignore").split("\n")
+        enclosing = next(
+            (ln.strip() for ln in reversed(lines[:lineno])
+             if ln.startswith("def ")), None)
+        self.assertEqual(enclosing, "def plate_or_mix(recipe, loc):",
+                         f"raw mixer is called from {enclosing}, not the wrapper")
 
     def test_both_doors_guard_the_none(self):
         """`plate_or_mix` can fail to spawn where the raw mixer never
