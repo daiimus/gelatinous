@@ -110,9 +110,28 @@ def match_recipe(order_text, menu):
     low = order_text.lower()
     for recipe in menu:
         for kw in recipe.get("order_keywords", (recipe.get("name", ""),)):
-            if kw and kw.lower() in low:
+            if kw and _keyword_in(kw, low):
                 return recipe
     return None
+
+
+def _keyword_in(keyword, low):
+    """Whole-word (or whole-phrase) presence of ``keyword`` in ``low``.
+
+    This used to be ``kw.lower() in low`` -- a raw substring test.  Every
+    live board is single-word keywords, and they are ordinary English:
+    ``black``, ``channel``, ``wash``, ``sober``, ``reactor``, ``shot``,
+    ``old``, ``last``, ``word`` ...  So "the blacksmith on Pessoa" bought
+    a mug of black recyc and "there was a blackout on nine" did too
+    (#2779).  A word boundary stops the inside-a-word hits.  It does NOT
+    stop a keyword used as a plain word in a remark ("I'm trying to stay
+    sober tonight"); that is ``resolve_order``'s job.
+    """
+    import re
+    kw = keyword.lower().strip()
+    if not kw:
+        return False
+    return re.search(r"(?<![a-z0-9'])" + re.escape(kw) + r"(?![a-z0-9'])", low) is not None
 
 
 # ---------------------------------------------------------------------------
@@ -864,11 +883,28 @@ def resolve_order(post, speech, addressed=False):
     recipe, _offmenu = resolve_drink(low, post)
     if not recipe:
         return None
+    has_cue = any(cue in low for cue in ORDER_CUES)
     if addressed:
-        return recipe
+        # Speaking TO the bartender used to be treated as proof of intent
+        # to order, so the only thing between a remark and a drink was
+        # the keyword match -- and "what channel is the Rook on?" bought
+        # a cup of channel fog, charged to the till (#2779).  Talking to
+        # the bartender is the normal way to use a bar; it deserves an
+        # intent test too, just a friendlier one than eavesdropping:
+        #   * an order cue is decisive, even with a question mark --
+        #     "can I get a rotgut?" is how people order;
+        #   * otherwise a question is a question, not an order;
+        #   * otherwise the line must be nothing but the order and its
+        #     filler -- "rotgut", "a rotgut please", "rotgut, thanks".
+        # "I'm trying to stay sober tonight" fails all three.
+        if has_cue:
+            return recipe
+        if "?" in low:
+            return None
+        return recipe if _bare_order(low, recipe) else None
     if "?" in low:
         return None
-    if any(cue in low for cue in ORDER_CUES) or _bare_order(low, recipe):
+    if has_cue or _bare_order(low, recipe):
         return recipe
     return None
 

@@ -124,10 +124,15 @@ class LLMNpcMixin:
         # down and carry on. Deliberately does NOT return — an introduction
         # still deserves a reply, so this records and falls through (#2390).
         self._note_introduction(speech, speaker)
+        # Thanks is courtesy, and courtesy ACCOMPANIES a request -- it does
+        # not replace one.  "a rotgut, thanks" and "cheers, pour me a
+        # rotgut" are orders; this used to return here, so the polite
+        # phrasing got a chin-tip and no drink while the rude one worked
+        # (#2815).  Record it, acknowledge it, and fall through -- exactly
+        # the shape `_note_introduction` takes for the same reason.
         if self._is_gratitude(speech):
             self._note_courtesy(speaker)
             self._acknowledge()
-            return True
         from world import service
         addressed = bool(kwargs.get("addressed"))
         # An overheard line must be plausibly aimed HERE before the post
