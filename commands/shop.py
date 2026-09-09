@@ -100,7 +100,19 @@ class CmdBuy(Command):
             else:
                 from world.shop.service import hand_over
                 hand_over(keeper, caller, item, price)
-            self._notify_merchant(caller, item, price, container)
+            # NO self-service notice here. `_notify_merchant` says
+            # "<buyer> bought <item> OFF THE SHELF", which is the whole
+            # point of it -- it exists to tell a merchant standing
+            # nearby about a sale that happened without them. This sale
+            # did not: the keeper just emoted pressing the thing into
+            # the buyer's hands.
+            #
+            # For an LLM keeper it does not merely print, it goes
+            # through `_observe_action` into the buffer their next turn
+            # reads, so every manned sale wrote a contradiction into the
+            # NPC's own memory. All four live merchant keepers are
+            # `llm_driven` with an observation buffer (Bellows, Ezra
+            # Vantomme, Auntie Lin, Nonna Escallier).
             return
 
         # Get custom messages from shop or use defaults
