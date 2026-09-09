@@ -80,22 +80,55 @@ class CigarettePack(Item):
             return
         wrong = [c for c in self.contents
                  if c.db.substance is not None and c.db.substance != want]
-        if not wrong and self.contents:
+        if wrong:
+            # ONE FOR ONE. Replacing the mis-branded ones and then
+            # topping the pack back up to `capacity` would hand a
+            # part-smoked pack more cigarettes than it had.
+            replace = len(wrong)
+            for cig in wrong:
+                cig.delete()
+            self._fill_with_cigarettes(count=replace)
             return
-        for cig in wrong:
-            cig.delete()
-        if not self.contents:
+        if self.contents:
+            return
+        # EMPTY. This is where the fill used to happen unconditionally,
+        # and it is why a pack could mint cigarettes: before #2935 the
+        # fill ran ONCE, from `at_object_creation`; moving the check
+        # into `return_appearance` made it run on every look, and
+        # "empty" cannot tell "never filled" -- the migration case this
+        # exists for -- from "a player smoked them all".
+        #
+        # `at_object_leave` normally crushes a pack as its last
+        # cigarette is drawn, but anything that empties one without
+        # firing that hook (a `move_hooks=False` move, a deferred
+        # delete that did not land) left a live empty pack that refilled
+        # itself on the next look. Measured: a 10-pack emptied by hand
+        # then looked at came back holding 10 again, and pack #4667 was
+        # sitting live at 0/10 waiting to do it.
+        #
+        # So remember the fill instead of inferring it from being
+        # non-empty.
+        if not self.db.filled_once:
             self._fill_with_cigarettes()
 
-    def _fill_with_cigarettes(self):
-        """Spawn ``self.db.capacity`` cigarettes into the pack with
-        the pack's substance stamped on each.  No-op when the pack
-        already contains cigarettes (idempotent across reloads)."""
-        if self.contents:
+    def _fill_with_cigarettes(self, count=None):
+        """Spawn cigarettes into the pack with the pack's substance
+        stamped on each.
+
+        ``count`` defaults to ``self.db.capacity`` -- a fresh pack. The
+        repair path passes the number it just deleted, so replacing
+        mis-branded cigarettes cannot top a part-smoked pack back up.
+
+        Marks the pack as filled, so a later look can tell "never
+        filled" from "emptied by a player"; inferring that from being
+        non-empty is what let a pack mint a fresh set on every look.
+        """
+        if count is None and self.contents:
             return
         proto_key = self.db.cigarette_prototype
         substance = self.db.substance
-        capacity = int(self.db.capacity or 0)
+        capacity = int(self.db.capacity or 0) if count is None else int(count)
+        self.db.filled_once = True
         for _ in range(capacity):
             spawned = spawn(proto_key)
             if not spawned:
