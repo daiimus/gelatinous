@@ -781,13 +781,59 @@ class DeathProgressionScript(DefaultScript):
         
         # Transfer inventory and worn items to corpse
         transferred_items = []
-        
+
+        # WHAT WAS ACTUALLY WORN (#2460), READ FIRST.
+        #
+        # This capture used to sit below the transfer loop, under a
+        # comment saying it ran "BEFORE the clear below because this is
+        # the last moment the truth exists". That stopped being true
+        # when #2912 gave `Character` an `at_object_leave` hook that
+        # releases hand and clothing slots for anything leaving the
+        # body -- a good invariant, and the loop below moves every item
+        # with default `move_hooks`, so `worn_items` is emptied AS THE
+        # LOOP RUNS. The capture then found an empty dict, its
+        # `and character.worn_items` guard went falsy, and the record
+        # was never written at all.
+        #
+        # `worn_at_death: None` means "no record, render contents-wide"
+        # (see `Corpse.note_dressed`), which is exactly the #2460
+        # behaviour: a coat you took off before dying reads as worn and
+        # suppresses the longdescs under it. Two commits, each correct
+        # alone, and nothing failed loudly.
+        #
+        # Ids rather than object references, so the record survives the
+        # items being looted away.
+        # DEDUPED, order preserved. `worn_items` is keyed by body
+        # LOCATION, so one garment appears once per slot it covers --
+        # a set of scrubs came back as the same id eight times. Harmless
+        # to the membership tests that read it, and still eight times
+        # the row for one garment; the record should say what it means.
+        worn_at_death = []
+        try:
+            worn_at_death = list(dict.fromkeys(
+                itm.id
+                for _loc, itms in (getattr(character, "worn_items", None)
+                                   or {}).items()
+                for itm in (itms or [])
+                if itm and itm.id
+            ))
+        except Exception:  # noqa: BLE001 — a lost record is not a lost death
+            worn_at_death = []
+
         # Transfer regular inventory items (contents) - this includes held items
         for item in character.contents:
             if item != corpse:  # Don't move the corpse itself
                 item.move_to(corpse, quiet=True)
                 transferred_items.append(f"{item.key} (#{item.dbref}) (inventory)")
         
+        # Written from the snapshot taken BEFORE the transfer loop.
+        # Deliberately outside the `and character.worn_items` guard
+        # below: that guard is now always falsy by this point, because
+        # the loop above released every slot on its way out, and it was
+        # what swallowed the write entirely.
+        if worn_at_death:
+            corpse.db.worn_at_death = worn_at_death
+
         # Transfer worn clothing items
         if hasattr(character, 'worn_items') and character.worn_items:
             # WHAT WAS ACTUALLY WORN (#2460). Everything in `contents`
@@ -800,19 +846,9 @@ class DeathProgressionScript(DefaultScript):
             # it suppressed the chest/back/abdomen/arm longdescs with
             # it.
             #
-            # Stored as ids rather than object references so the record
-            # survives the items being looted away, and captured BEFORE
-            # the clear below because this is the last moment the truth
-            # exists.
-            try:
-                corpse.db.worn_at_death = [
-                    itm.id
-                    for _loc, itms in (character.worn_items or {}).items()
-                    for itm in (itms or [])
-                    if itm and itm.id
-                ]
-            except Exception:  # noqa: BLE001 — a lost record is not a lost death
-                pass
+            # The record itself is written above, from a snapshot taken
+            # before the transfer loop. This branch now only sweeps up
+            # any worn item the contents loop did not already move.
             for location, items in character.worn_items.items():
                 for item in items[:]:  # Create a copy of the list to avoid modification during iteration
                     item.move_to(corpse, quiet=True)
