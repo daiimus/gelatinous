@@ -3303,7 +3303,16 @@ HOLOGRAPHIC_MERCHANT = {
     "desc": "A shimmering holographic projection of a merchant. The figure flickers slightly, clearly not real.",
     "attrs": [
         ("is_merchant", True),
-        ("is_holographic", True),
+        # CATEGORY "shop", because that is where it is READ.
+        # `is_holographic` is an `AttributeProperty(category="shop")` on
+        # `Character`, and the #2420/#2933 sweep moved the combat guard
+        # onto the property. A two-tuple here carries no category, so
+        # the flag landed in the uncategorised row while the guard read
+        # the "shop" one -- on a freshly spawned hologram, raw True and
+        # property False at the same time, so it took a swing like a
+        # real body. The category is part of the attribute's identity,
+        # not decoration.
+        ("is_holographic", True, "shop"),
         ("merchant_greeting", "Welcome to the shop. Browse my wares."),
     ],
     "locks": "get:false();puppet:false()",
