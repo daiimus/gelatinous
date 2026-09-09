@@ -29,6 +29,8 @@ across five modules. `species` is checked first and `source_species` is
 the fallback, so bodies and corpses keep answering off the field they
 already use.
 """
+import re
+
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaTest
 
@@ -157,6 +159,9 @@ class TestNoSurgicalSiteReadsTheRawFieldAnyMore(EvenniaTest):
         "world/medical/utils.py",
         "world/medical/severance.py",
         "world/medical/wounds/messages/__init__.py",
+        # Added after this pin failed to catch #3067's own miss in
+        # `_configure_harvested_item` -- the file was not listed at all.
+        "world/medical/procedures.py",
     )
 
     def test_they_go_through_the_accessor(self):
@@ -166,6 +171,12 @@ class TestNoSurgicalSiteReadsTheRawFieldAnyMore(EvenniaTest):
         for rel in self.FILES:
             body = (root / rel).read_text()
             for num, line in enumerate(body.splitlines(), 1):
-                if 'db", None), "species"' in line:
+                # TWO shapes, because the pin only knew one and the
+                # site it missed used the other: the one-step
+                # `getattr(getattr(x, "db", None), "species", None)`,
+                # and the two-step form that binds `..._db` first and
+                # then reads `getattr(source_db, "species", None)`.
+                if ('db", None), "species"' in line
+                        or re.search(r'getattr\(\w*db,\s*"species"', line)):
                     offenders.append(f"{rel}:{num}")
         self.assertEqual(offenders, [])
