@@ -165,9 +165,31 @@ class TestEvenniaIgnoresUnknownSwitches(EvenniaCommandTest):
 
 
 class TestTheCommandDeclaresItsSwitches(EvenniaCommandTest):
-    def test_all_four_are_declared(self):
-        self.assertEqual(set(CmdCoordSeed.switch_options),
-                         {"check", "origin", "clear", "confirm"})
+    def test_every_switch_it_handles_is_declared(self):
+        """DECLARED == HANDLED, not a fixed list.
+
+        This asserted the exact set `{check, origin, clear, confirm}`,
+        so adding `/force` -- a switch the command genuinely handles --
+        failed it, with the invariant intact. Same shape as the count
+        pin fixed in #3137: a test that fails when the thing it guards
+        is extended properly teaches people to edit the literal.
+
+        Both directions matter here, which is why the sets are compared
+        rather than one containment checked:
+          * handled but NOT declared -> the unknown-switch abort rejects
+            it, so the feature is unreachable;
+          * declared but NOT handled -> dead switch, silently ignored.
+        """
+        import inspect
+        import re
+        src = inspect.getsource(CmdCoordSeed.func)
+        handled = set(re.findall(r'"(\w+)"\s+(?:not\s+)?in\s+switches', src))
+        declared = set(CmdCoordSeed.switch_options)
+        self.assertTrue(handled, "no switch handling found at all")
+        self.assertEqual(
+            handled, declared,
+            f"handled-but-undeclared: {sorted(handled - declared)}; "
+            f"declared-but-dead: {sorted(declared - handled)}")
 
     def test_the_help_documents_confirm(self):
         self.assertIn("@coordseed/clear/confirm", CmdCoordSeed.__doc__)
