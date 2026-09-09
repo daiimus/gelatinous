@@ -639,14 +639,33 @@ def _corpse_garments(target):
     """What a corpse is "wearing": anything in its contents with
     coverage.
 
-    That is the corpse's real model — `_build_corpse_clothing_coverage_map`
-    already renders every item in `contents` that declares `coverage` as
-    covering the body. `get_worn_items` is deliberately narrower (only
-    disguise-essential items, because that is all the identity signature
-    consumes), so it is the wrong list to undress from.
+    ...filtered by `worn_at_death` where the corpse HAS that record.
+
+    The original reasoning was that
+    `_build_corpse_clothing_coverage_map` "already renders every item in
+    `contents` that declares `coverage` as covering the body", so
+    contents-wide was the corpse's real model. That was true only while
+    `worn_at_death` was never written -- the defect #3107 fixed. With
+    the record in place the map filters and this did not, so `undress`
+    offered a coat the corpse had been CARRYING, was never shown
+    wearing, and whose removal changed nothing in the description.
+
+    `get_worn_items` is still the wrong list (it is narrower on purpose
+    -- only disguise-essential items, because that is all the identity
+    signature consumes). The right question is the one the renderer
+    asks.
+
+    No record means contents-wide, exactly as `Corpse.note_dressed`
+    states: "No record means the map still renders contents-wide". A
+    corpse from before the record existed undresses as it renders.
     """
-    return [item for item in target.contents
-            if getattr(item, "db", None) is not None and item.db.coverage]
+    covered = [item for item in target.contents
+               if getattr(item, "db", None) is not None and item.db.coverage]
+    worn = getattr(getattr(target, "db", None), "worn_at_death", None)
+    if worn is None:
+        return covered
+    worn = set(worn)
+    return [item for item in covered if item.id in worn]
 
 
 def _resolve_clothing_target(caller, target_phrase, quiet=False):
