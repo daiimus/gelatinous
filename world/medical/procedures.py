@@ -2680,6 +2680,7 @@ def _configure_harvested_item(item, *, organ_name: str, condition: str,
     from world.anatomy import (
         get_organ_default_description,
         get_species_organ_name,
+        species_of,
     )
 
     item.db.organ_name = organ_name
@@ -2698,7 +2699,17 @@ def _configure_harvested_item(item, *, organ_name: str, condition: str,
     )
 
     # Species + decay-aware display key.
-    species = getattr(source_db, "species", None) or "human"
+    #
+    # Through the accessor (#3067), NOT the raw field. A DETACHED part
+    # -- a severed head or limb -- never carries `db.species`; it keeps
+    # what it was at sever time in `db.source_species`. This is the one
+    # site that stamps species onto the harvested item, so reading the
+    # raw field made every organ cut out of a severed part "human":
+    # `harvest brain from rat head` judged the head correctly against
+    # the rat table and then handed back a `human brain`, installable
+    # into a person. The command and the object disagreed about what it
+    # was, which is the exact split #3067 was filed to close.
+    species = species_of(source) or "human"
     item.db.source_species = species
 
     # Install-compatibility list — single-element for a freshly
