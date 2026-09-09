@@ -4886,11 +4886,16 @@ LAB_COAT = {
         ("category", "clothing"),
         ("worn_desc", "A {color}white|n lab coat hangs open to the knee off {their} shoulders, honestly stained and not apologised for. Pens are racked in the breast pocket in a row"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
-        ("layer", 4),  # ladder rung (world/style.py RUNGS) — build 090 settled one ladder
-        # and rewrote every spawned garment; this prototype was missed (#2464).
-                       # them, and dressing runs inner->outer, so at the
-                       # same layer one of the two silently fails to
-                       # wear — which is what a clinic aide did (#2381),
+        # LAYER 5, NOT the derived rung 4 (#3054 regression, reverted).
+        # `RUNGS` puts BOTH "labcoat" and "scrubs" on rung 4, so aligning
+        # this prototype to its derived rung put it on the same layer as
+        # MEDICAL_SCRUBS. Both cover `chest`/`back`/`abdomen`/thighs and
+        # dressing runs inner->outer, so at the same layer one of the two
+        # silently fails to wear — which is exactly what a clinic aide
+        # did in #2381, and what #3054 re-broke by trusting the ladder
+        # over the outfit. A lab coat goes OVER scrubs; until the ladder
+        # can say that, the prototype does.
+        ("layer", 5),
         ("color", "white"),
         ("material", "poly-cotton"),
         ("weight", 0.7),
