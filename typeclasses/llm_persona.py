@@ -145,8 +145,22 @@ def build_persona(npc) -> dict:
     # `_find_bar`/`_find_counter`/`_find_block` as migrations to
     # `service.post_for()`; only the bar was done, which is why bars
     # ground correctly and nobody noticed.
-    block = post
-    if block is None:
+    # ...but the CART belongs to the butcher, not to whoever stands a
+    # post. `block = post` is true of EVERY post, so this grounded all
+    # 49 posted NPCs as butchers: `buys` is assigned before any stock is
+    # read, and `cart_menu` came back `[]` rather than None -- and `[]`
+    # renders EXPLICITLY as "Your cart is SOLD OUT". Sully was told he
+    # buys animal carcasses and that his cart was empty; Ezra's pawn
+    # SHELF was handed to him a second time as a butcher's board.
+    #
+    # The bar half above degrades safely only because it reads a
+    # bar-shaped attribute (`post.db.menu`); these two read the post
+    # itself, so they need the archetype the service registry already
+    # declares. Same thing `job_of` means by "an off-duty vendor is not
+    # a vendor" -- an off-shift butcher loses cart grounding too.
+    archetype = (service.job_of(npc) or {}).get("archetype")
+    block = post if archetype == "butcher" else None
+    if block is None and archetype == "butcher":
         find_block = getattr(npc, "_find_block", None)
         block = find_block() if callable(find_block) else None
     if block is not None:
@@ -172,8 +186,8 @@ def build_persona(npc) -> dict:
     # without it the keeper invents stock and prices.
     shop_menu = None
     # Same migration as the cart above (#2427).
-    counter = post
-    if counter is None:
+    counter = post if archetype == "merchant" else None
+    if counter is None and archetype == "merchant":
         find_counter = getattr(npc, "_find_counter", None)
         counter = find_counter() if callable(find_counter) else None
     if counter is not None:

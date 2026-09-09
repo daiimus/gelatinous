@@ -45,12 +45,29 @@ class _PersonaCase(EvenniaTest):
         self.post = self.obj1
         self.post.location = self.room1
 
+    #: Which trade this keeper is standing. Subclasses set it.
+    #:
+    #: Added when the cart/shelf grounding was gated on the job
+    #: ARCHETYPE. Before that, `block = post` and `counter = post` were
+    #: true of every post, so these cases passed without declaring a
+    #: trade at all -- and so did all 49 posted NPCs in the live game,
+    #: which is how a bartender ended up being told he buys animal
+    #: carcasses and a pawnbroker had his shelf read back to him as a
+    #: butcher's board. A cart and a shelf are the same SHAPE
+    #: (`item_inventory` + `prototype_inventory`), so the archetype is
+    #: the only thing that can tell them apart.
+    ARCHETYPE = None
+
     def persona(self):
-        with mock.patch("world.service.post_for", return_value=self.post):
+        with mock.patch("world.service.post_for", return_value=self.post), \
+             mock.patch("world.service.job_of",
+                        return_value={"archetype": self.ARCHETYPE}):
             return llm_persona.build_persona(self.npc)
 
 
 class TestTheCartGroundsOnItsPost(_PersonaCase):
+    ARCHETYPE = "butcher"
+
     def setUp(self):
         super().setUp()
         self.post.db.item_inventory = {"test_chops": 3}
@@ -77,6 +94,8 @@ class TestTheCartGroundsOnItsPost(_PersonaCase):
 
 
 class TestTheShelfGroundsOnItsPost(_PersonaCase):
+    ARCHETYPE = "merchant"
+
     def setUp(self):
         super().setUp()
         from evennia.prototypes.prototypes import save_prototype
