@@ -65,6 +65,66 @@ def soul_hour(soul, hour_f):
     return (hour_f + shift_jitter_hours(soul)) % 24.0
 
 
+#: How long a keeper covers a counter past the end of their own shift
+#: before they give up and go home. Owner ruling 2026-09-08, asked as
+#: "In real life, someone would just cover until the next shift showed
+#: up, right? Or until they gave up and went home anyway."
+#:
+#: PROVISIONAL magnitude — no system here has had its balance pass. It
+#: only has to comfortably exceed the ±15 min schedule jitter, which is
+#: how late a relief can normally be; an hour says "they genuinely are
+#: not coming" rather than "they are running late".
+HOLDOVER_HOURS = 1.0
+
+
+def on_duty(soul, hour) -> bool:
+    """Is this soul working right now — INCLUDING covering past the end
+    of their own shift because nobody has relieved them?
+
+    `hour` is the soul's own jittered hour.
+
+    The counter's promise is "the counter never closes; the faces
+    change", but souls carry a ±15 min personal jitter while the counter
+    reads the colony clock raw. Left alone that produced two artifacts a
+    real workplace does not have: a venue dark for up to 30 minutes at
+    each change (outgoing leaves early by their own clock, incoming
+    arrives late by theirs), and a keeper accruing wages while her own
+    counter refused customers — one body giving two answers to "am I on
+    shift" (#2434).
+
+    A person does not walk out mid-customer because their watch says so.
+    They stay until relieved, and eventually they give up and go home.
+    That is what this models, and it closes both artifacts at once: the
+    counter stays lit because somebody is genuinely standing it, and
+    that somebody is genuinely working, so being paid is correct.
+
+    Stated once because the same question is asked in four places —
+    `duty_pressure`, `_desired_goal`, the wage beat, and the two
+    placement checks — and a holdover that only some of them believed in
+    would be worse than none.
+    """
+    post = soul.db.soul_post
+    if not post:
+        return False
+    sched = SCHEDULES.get(soul.db.soul_schedule or "day", SCHEDULES["day"])
+    if _in_block(hour, sched["work"]):
+        return True
+    return _holding_over(soul, hour, sched)
+
+
+def _holding_over(soul, hour, sched) -> bool:
+    """Covering: my shift ended recently and nobody has taken over."""
+    end = sched["work"][1]
+    since = (hour - end) % 24.0
+    if since <= 0 or since > HOLDOVER_HOURS:
+        return False
+    try:
+        from world.souls.posts import relief_has_arrived
+        return not relief_has_arrived(soul.db.soul_post)
+    except Exception:  # noqa: BLE001 — unreadable post: do not hold over
+        return False
+
+
 def duty_pressure(soul, hour):
     """Duty is a pure function of schedule + location — never stored.
     0.9 while your shift runs and you are not at your post; else 0.
@@ -72,8 +132,7 @@ def duty_pressure(soul, hour):
     post = soul.db.soul_post
     if not post:
         return 0.0
-    sched = SCHEDULES.get(soul.db.soul_schedule or "day", SCHEDULES["day"])
-    if not _in_block(hour, sched["work"]):
+    if not on_duty(soul, hour):
         return 0.0
     return 0.0 if soul.location == post else 0.9
 
@@ -208,7 +267,7 @@ def _desired_goal(soul, hour, exclude=()):
     # band 2: schedule
     sched = SCHEDULES[soul.db.soul_schedule or "day"]
     if soul.db.soul_post and "duty" not in exclude \
-            and _in_block(hour, sched["work"]):
+            and on_duty(soul, hour):
         return (2, "duty")
     if soul.db.soul_home and "rest" not in exclude \
             and _in_block(hour, sched["sleep"]) \
@@ -389,11 +448,11 @@ def think(soul, hour):
         post = soul.db.soul_post
         at_post = post is not None and (
             soul.location is post or soul.location is getattr(post, "location", None))
-        if not at_post or not _in_block(hour, sched["work"]):
+        if not at_post or not on_duty(soul, hour):
             _release_placement(soul)
 
     # shift release: work jobs end when the block does — PAYDAY
-    if job and job.get("goal") == "duty" and not _in_block(hour, sched["work"]):
+    if job and job.get("goal") == "duty" and not on_duty(soul, hour):
         from world.director.travel import stop_travel
         stop_travel(soul)                # a commute to a lapsed shift ends too
         soul.db.soul_job = None
@@ -548,7 +607,10 @@ class SoulsHeartbeat(DefaultScript):
         # of one soul's accrual — hardening spec law #2).
         sched = SCHEDULES.get(soul.db.soul_schedule or "day",
                               SCHEDULES["day"])
-        on_shift = bool(soul.db.soul_post) and _in_block(shour, sched["work"])
+        # A keeper covering past their own shift IS working, so the
+        # wage is correct — that half of #2434 closes by the holdover
+        # being real rather than by a special case in the till.
+        on_shift = on_duty(soul, shour)
         at_post = on_shift and soul.location == soul.db.soul_post
         job = soul.db.soul_job
         if at_post and job and job.get("goal") == "duty":
