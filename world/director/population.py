@@ -425,10 +425,28 @@ def get_dispatch_operator() -> Any | None:
     return operator
 
 
-def get_base_station() -> Any | None:
+def get_base_station(require_mast: bool = True) -> Any | None:
     """The dispatch room's live, powered console, or None (no room, no
     console, console off/broken = dispatch has no voice — the physical
-    gate: sabotage the console and the net goes quiet)."""
+    gate: sabotage the console and the net goes quiet).
+
+    `require_mast=False` returns the console even with its antenna
+    wrecked (#2442). A downed mast is a RANGE fact, not an existence
+    fact: `order_reaches`' own docstring says "the console transmits at
+    its mast-backed reach (wrecked mast = handheld range)", and
+    `_effective_tx_range` implements exactly that collapse. Returning
+    None for a downed mast made that collapse UNREACHABLE, because
+    `order_reaches` then fell into its fail-open branch — which is
+    doctrine for "no authored console" (a pre-radio world) and wrong
+    for "the console is right there with its antenna down".
+
+    The two halves also disagreed on air: `units_available(board)` is
+    passed the SEATED board, applies the collapse, and had the
+    dispatcher announcing "0 unit(s) available" while units rolled.
+
+    Callers asking "does dispatch have a voice at all" keep the default.
+    Callers computing REACH pass False and let range decide.
+    """
     from world.radio import is_powered, is_radio
     base = get_dispatch_room()
     if base is None:
@@ -437,8 +455,8 @@ def get_base_station() -> Any | None:
         if (getattr(getattr(obj, "db", None), "is_base_station", None) is True
                 and is_radio(obj) and is_powered(obj)):
             antenna = getattr(obj.db, "antenna", None)
-            if antenna is not None and getattr(
-                    getattr(antenna, "db", None), "intact", None) is not True:
+            if (require_mast and antenna is not None and getattr(
+                    getattr(antenna, "db", None), "intact", None) is not True):
                 return None   # mast down = dispatch has no voice
             return obj
     return None
