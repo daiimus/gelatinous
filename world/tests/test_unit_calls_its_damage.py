@@ -40,8 +40,21 @@ class TestItCallsItsOwnDamage(EvenniaCommandTest):
         self.assignment = _Assignment(self.room1)
 
     def _wreck(self):
+        # `condition_type`, NOT `type`. There is no `type` key on a
+        # stored condition -- `Condition.to_dict` writes
+        # `condition_type` and nothing in world/medical writes `type`.
+        # This fixture passed while the DETECTOR read the same wrong
+        # key; #2908 fixed the detector, which dropped the 0.35 bleeding
+        # term and left `health` pressure under `critical_for`, so
+        # `_mayday` returned early and the unit went off the air.
+        #
+        # Note what that did to the two NEGATIVE cases below: they
+        # assert `_cmd` is NOT called, and an undamaged-looking body
+        # satisfies them for free. Two tests kept passing while the
+        # three that matter failed. Same shape as #3095.
         self.unit.db.medical_state = {"conditions": [
-            {"type": "bleeding"}] + [{"type": "fracture"}] * 6}
+            {"condition_type": "bleeding"}]
+            + [{"condition_type": "fracture"}] * 6}
 
     def test_a_wrecked_unit_transmits(self):
         self._wreck()
