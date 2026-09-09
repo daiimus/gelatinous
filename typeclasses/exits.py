@@ -779,8 +779,12 @@ class Exit(DefaultExit):
         # without this, a character hidden from the room-level glance was still
         # named here, and concealment could be defeated by looking at the exit
         # instead of the room (stealth spec §7 — no leak through the doorway).
-        from world.perception import can_perceive
-
+        # The doorway glance is a VISUAL act (#2793).  `can_perceive` below
+        # handles concealment only; a blind looker examining the exit was
+        # still told who stood beyond it.  Same predicate as the room.
+        from world.perception import can_perceive, can_perceive_sense
+        if not can_perceive_sense(looker, "visual"):
+            return ""
         destination_characters = [
             char for char in destination_room.contents
             if char.is_typeclass("typeclasses.characters.Character")
