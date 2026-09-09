@@ -599,7 +599,8 @@ CODER_SOCKS = {
         # Basic clothing attributes
         ("coverage", ["left_foot", "right_foot", "left_shin", "right_shin", "left_thigh", "right_thigh"]),
         ("worn_desc", "Electric {color}rainbow|n socks stretch up {their} thighs, the prismatic pattern shot through with bioluminescent thread. The glow pulses slowly, apparently on its own schedule"),
-        ("layer", 1),  # Direct skin contact layer (underwear, thin socks)
+        ("layer", 0),  # ladder rung (world/style.py RUNGS) — build 090 settled one ladder
+        # and rewrote every spawned garment; this prototype was missed (#2464).
         ("color", "bright_magenta"),
         ("material", "synthetic"),
         ("weight", 0.2),  # Very light
@@ -652,7 +653,8 @@ DEV_HOODIE = {
         # Clothing attributes
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm"]),
         ("worn_desc", "A {color}black|n hoodie hangs loose and open off {their} shoulders, the green 'rm -rf /' across the chest lit from behind. LED thread runs data-stream patterns down the sleeves"),
-        ("layer", 3),  # Regular clothing layer
+        ("layer", 2),  # ladder rung (world/style.py RUNGS) — build 090 settled one ladder
+        # and rewrote every spawned garment; this prototype was missed (#2464).
         ("color", "black"),
         ("material", "cotton"),
         ("weight", 1.8),  # Moderate weight
@@ -4088,7 +4090,14 @@ LONGHAUL_CHRONO = {
         ("category", "clothing"),
         ("worn_desc", "A matte {color}gunmetal|n crew chrono rides {their} left wrist on a webbing strap, bezel scuffed from being knocked into things. The lume dots hold a faint green charge"),
         ("coverage", ["left_hand"]),
-        ("layer", 1),
+        ("layer", 1),  # DELIBERATE, not stale (#2464). `derive_rung` puts a
+        # chrono on rung 5 — but so are the work gloves, and both
+        # cover `left_hand`, so at 5 they are a same-layer conflict
+        # and you cannot wear a watch and gloves together. Rung 1
+        # slips it under. This is the "explicit layer always wins"
+        # escape hatch used exactly as designed; caught by wearing it
+        # in game, not by any test.
+        # and rewrote every spawned garment; this prototype was missed (#2464).
         ("color", "gunmetal"),
         ("material", "alloy"),
         ("weight", 0.1),
@@ -4298,7 +4307,8 @@ SYNTHWEAVE_SHEATH = {
         ("category", "clothing"),
         ("worn_desc", "A liquid-{color}black|n synthweave sheath is fitted down {their} body from shoulder to knee, close enough to show the line of them. The pearlescent sheen shifts and slides as {they move}"),
         ("coverage", ["chest", "back", "abdomen", "groin", "left_thigh", "right_thigh"]),
-        ("layer", 2),
+        ("layer", 1),  # ladder rung (world/style.py RUNGS) — build 090 settled one ladder
+        # and rewrote every spawned garment; this prototype was missed (#2464).
         ("color", "black"),
         ("material", "synthweave"),
         ("weight", 0.4),
@@ -4389,7 +4399,8 @@ SYNTH_COLLAR = {
         ("category", "clothing"),
         ("worn_desc", "A slim brushed-{color}silver|n collar sits close around {their} throat, narrow enough to read as jewellery until it catches the light. The clasp winks with each turn of the head"),
         ("coverage", ["neck"]),
-        ("layer", 1),
+        ("layer", 5),  # ladder rung (world/style.py RUNGS) — build 090 settled one ladder
+        # and rewrote every spawned garment; this prototype was missed (#2464).
         ("color", "silver"),
         ("material", "alloy"),
         ("weight", 0.1),
@@ -4868,7 +4879,8 @@ LAB_COAT = {
         ("category", "clothing"),
         ("worn_desc", "A {color}white|n lab coat hangs open to the knee off {their} shoulders, honestly stained and not apologised for. Pens are racked in the breast pocket in a row"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
-        ("layer", 5),  # OUTER than scrubs (4): a coat goes on over
+        ("layer", 4),  # ladder rung (world/style.py RUNGS) — build 090 settled one ladder
+        # and rewrote every spawned garment; this prototype was missed (#2464).
                        # them, and dressing runs inner->outer, so at the
                        # same layer one of the two silently fails to
                        # wear — which is what a clinic aide did (#2381),
