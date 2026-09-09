@@ -151,6 +151,26 @@ class DeathProgressionScript(DefaultScript):
             f"messages: {DEATH_PROGRESSION_MESSAGE_COUNT})"
         )
         
+    def at_server_start(self):
+        """Re-arm the timer on any boot that had no clean shutdown.
+
+        Same lifecycle gap as `MedicalScript` (#2938 / #3075): a Script's
+        timer is `ndb._task`, Evennia's `_pause_task` records
+        `db._paused_time` only if a task existed at shutdown, and
+        `_unpause_task` re-arms only if it is set.  A crash or kill
+        inside the death window therefore left this script
+        `db_is_active=True` with no timer -- the body dead, no corpse
+        ever spawned, the sleeve never processed, forever.
+        `sweep_wedged_deaths` cannot see that case: it restarts a
+        progression that never STARTED, and treats an existing script
+        row as proof the progression is running.
+
+        `start()` is idempotent, so on a clean reload -- where
+        `_unpause_task` has already re-armed -- this is a no-op.
+        Evennia's own hook, public API, no framework patch.
+        """
+        self.start()
+
     def at_start(self):
         """Called when script starts.
 
