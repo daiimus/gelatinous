@@ -310,6 +310,16 @@ def build_install_chart(by, patient, what):
         # RUNNING, because install_cyber commences immediately (#2801).
         existing = chart_lib.get_chart(patient)
         if existing and _chart_is_live(existing):
+            # Put back what this request drew, exactly as the no-anchor
+            # branch above does and for the same reason. This guard was
+            # added between the draws and their cleanup without either
+            # being read, so a second install request during a running
+            # surgery minted a cyber organ into the surgeon's pockets
+            # and abandoned it -- the #2474 accumulation (nine kits on
+            # Jericho Black III, eight with consecutive ids) coming back
+            # through a different door.
+            _discard(cyber)
+            _discard(drawn_kit)
             return None
         chart = chart_lib.new_chart(by)
         chart_lib.add_step(chart, "incise", {"location": anchor})
