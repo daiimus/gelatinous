@@ -169,6 +169,18 @@ class DeathProgressionScript(DefaultScript):
         `_unpause_task` has already re-armed -- this is a no-op.
         Evennia's own hook, public API, no framework patch.
         """
+        # ONLY re-arm a script that is supposed to be running.  Evennia
+        # calls this hook for INACTIVE scripts too (`manager.py`:
+        # `for script in self.filter(db_is_active=False): at_server_start()`),
+        # and an unconditional `start()` resurrected scripts that were
+        # deliberately stopped -- the medical tick stops-but-preserves on
+        # death "for potential revival", and that row came back ticking on
+        # the next reload.  `db_is_active` IS the "should be running"
+        # signal, so gating on it still catches the crash case this hook
+        # exists for (active, but no `ndb._task` after an unclean
+        # shutdown) while leaving deliberate stops alone.
+        if not self.db_is_active:
+            return
         self.start()
 
     def at_start(self):

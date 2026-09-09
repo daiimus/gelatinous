@@ -181,6 +181,18 @@ class MedicalScript(DefaultScript):
         CONDITION_CADENCE_SPEC Phase 3 and the heartbeat redesign it now
         records); this keeps the current carrier alive until then.
         """
+        # ONLY re-arm a script that is supposed to be running.  Evennia
+        # calls this hook for INACTIVE scripts too (`manager.py`:
+        # `for script in self.filter(db_is_active=False): at_server_start()`),
+        # and an unconditional `start()` resurrected scripts that were
+        # deliberately stopped -- the medical tick stops-but-preserves on
+        # death "for potential revival", and that row came back ticking on
+        # the next reload.  `db_is_active` IS the "should be running"
+        # signal, so gating on it still catches the crash case this hook
+        # exists for (active, but no `ndb._task` after an unclean
+        # shutdown) while leaving deliberate stops alone.
+        if not self.db_is_active:
+            return
         self.start()
 
     def at_script_creation(self):
@@ -587,6 +599,18 @@ class MedicalScript(DefaultScript):
         room = self.obj.location
         if not room:
             return
+        # BLOOD STAYS WHERE IT WAS SHED (#3079 follow-up).  The pending
+        # volume rides the script, but the flush used to read
+        # `self.obj.location` at flush TIME -- so a bleeder who walked
+        # between accumulating and flushing painted the previous room's
+        # blood in the new one.  Measured: 1.0 units shed in room A
+        # landed in room B.  Blood is forensic evidence; relocating it is
+        # worse than the write cost being saved.  So a room change flushes
+        # what is owed to the OLD room before accumulating for the new.
+        shed_in = self.ndb._pool_room
+        if shed_in is not None and shed_in != room:
+            self._flush_blood_pool(room=shed_in)
+        self.ndb._pool_room = room
         pending = float(self.ndb._pool_pending or 0.0) + float(severity)
         ticks = int(self.ndb._pool_ticks or 0) + 1
         self.ndb._pool_pending = pending
@@ -604,12 +628,18 @@ class MedicalScript(DefaultScript):
         if flush:
             self._flush_blood_pool()
 
-    def _flush_blood_pool(self):
-        """Write the accumulated volume to the room's pool as one incident."""
+    def _flush_blood_pool(self, room=None):
+        """Write the accumulated volume to a room's pool as one incident.
+
+        ``room`` defaults to where the body is now, but the caller passes
+        the room the blood was SHED in when the body has since moved.
+        """
         pending = float(self.ndb._pool_pending or 0.0)
-        room = getattr(self.obj, "location", None)
+        if room is None:
+            room = self.ndb._pool_room or getattr(self.obj, "location", None)
         self.ndb._pool_pending = 0.0
         self.ndb._pool_ticks = 0
+        self.ndb._pool_room = None
         if pending <= 0 or not room:
             return
 

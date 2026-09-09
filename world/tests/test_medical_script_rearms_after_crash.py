@@ -125,6 +125,37 @@ class TestTheHookIsIdempotent(_ScriptCase):
         self.assertTrue(self.running())
 
 
+class TestADeliberateStopIsNotResurrected(_ScriptCase):
+    """The regression the first version of this hook introduced.
+
+    Evennia calls `at_server_start` on INACTIVE scripts too --
+    `manager.py`: `for script in self.filter(db_is_active=False):
+    script.at_server_start()`. An unconditional `start()` therefore
+    resurrected scripts that had been stopped on purpose: the medical
+    tick stops-but-preserves on death "for potential revival", and that
+    row came back ticking on the next reload.
+
+    `db_is_active` IS the "should be running" signal, so the hook gates
+    on it -- which still catches the crash case (active, no task) that
+    the hook exists for.
+    """
+
+    def test_a_stopped_script_stays_stopped(self):
+        self.script.stop()
+        self.assertFalse(self.script.db_is_active)
+        self.script.at_server_start()
+        self.assertFalse(self.script.db_is_active)
+        self.assertFalse(self.running())
+
+    def test_and_the_crash_case_still_recovers(self):
+        """Vacuity guard: a hook that never re-arms anything would pass
+        the test above."""
+        self.crash()
+        self.assertTrue(self.script.db_is_active)
+        self.script.at_server_start()
+        self.assertTrue(self.running())
+
+
 class TestTheFullBootPath(_ScriptCase):
     """What `update_scripts_after_server_start` actually does, in
     order: unpause, then the hook."""

@@ -106,6 +106,23 @@ class TestTheDeathScriptRearms(EvenniaTest):
         self.assertFalse(is_wedged_death(self.body))
 
 
+class TestADeliberateStopIsNotResurrected(TestTheDeathScriptRearms):
+    """Same regression as the medical hook: Evennia calls this on
+    INACTIVE scripts too, so an unconditional `start()` would restart a
+    death progression that had been stopped on purpose."""
+
+    def test_a_stopped_death_script_stays_stopped(self):
+        self.script.stop()
+        self.script.at_server_start()
+        self.assertFalse(self.script.db_is_active)
+        self.assertFalse(_running(self.script))
+
+    def test_and_the_crash_case_still_recovers(self):
+        _crash(self.script)
+        self.script.at_server_start()
+        self.assertTrue(_running(self.script))
+
+
 class TestARevivedMedicalTickCannotDoubleFireDeath(EvenniaTest):
     def setUp(self):
         super().setUp()
