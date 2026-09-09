@@ -26,7 +26,7 @@ from world.medical.procedures import (
     get_organ_snapshot,
     has_incision,
     is_procedure_active,
-    open_incision_locations,
+    sutureable_locations,
     organs_at_location,
     start_procedure,
 )
@@ -1065,18 +1065,23 @@ class CmdSuture(Command):
             )
             return
 
-        open_locs = open_incision_locations(target)
+        # Ask what the RESOLVER can close, not just what is incised.
+        # `_resolve_suture` treats un-sutured amputation stumps as
+        # first-class sutureable and the `operate` picker offers them,
+        # so gating on open incisions alone refused, at the verb, the
+        # exact stitches the menu would go on to make (#2554).
+        open_locs = sutureable_locations(target)
         if not open_locs:
             caller.msg(
-                f"{target.get_display_name(caller)} has no open "
-                f"incisions to close."
+                f"{target.get_display_name(caller)} has nothing "
+                f"that needs closing."
             )
             return
 
         if location is not None and location not in open_locs:
             caller.msg(
                 f"{target.get_display_name(caller)}'s "
-                f"{location.replace('_', ' ')} isn't incised."
+                f"{location.replace('_', ' ')} has nothing to close."
             )
             return
 

@@ -265,6 +265,40 @@ def open_incision_locations(target) -> list[str]:
     return list(_state(target)["incisions"].keys())
 
 
+def untreated_stump_locations(target) -> set[str]:
+    """Severance cut points on ``target`` with no stitches yet.
+
+    One location per severance, after the head-cluster / limb-chain
+    collapse, minus anything already in ``sutured_stumps``.  These have
+    no open incision -- combat-driven amputation bypasses the
+    ``open_incision`` call in ``_resolve_amputate`` -- but they still
+    need a row of stitches.
+    """
+    from world.medical.severance import (
+        compute_cut_points, normalize_sutured_stumps,
+    )
+    return compute_cut_points(target) - set(normalize_sutured_stumps(target))
+
+
+def sutureable_locations(target) -> list[str]:
+    """Everything ``suture`` can actually close on ``target``.
+
+    ONE definition, because there used to be two that disagreed.
+    ``CmdSuture`` gated on ``open_incision_locations`` alone and refused
+    any target without an open incision, while ``_resolve_suture`` --
+    the code that verb dispatches into -- treats un-sutured amputation
+    stumps as first-class sutureable, and the ``operate`` picker offers
+    exactly those stumps.  So the same stitches went in through the
+    menu and were refused by the verb (#2554).
+
+    The union below is the resolver's own rule, read off its
+    ``set(closed_incisions) | untreated_stumps``, so the guard cannot
+    drift from what the resolver will actually do.
+    """
+    return sorted(set(open_incision_locations(target))
+                  | untreated_stump_locations(target))
+
+
 # ---------------------------------------------------------------------
 # Active procedure tracking (time delays)
 # ---------------------------------------------------------------------
@@ -1162,11 +1196,7 @@ def _resolve_suture(actor, target, *, location: Optional[str] = None,
     # (which bypasses the ``open_incision`` call in
     # ``_resolve_amputate``) and any prior amputation whose chart
     # step the picker can't infer from.
-    from world.medical.severance import (
-        compute_cut_points, normalize_sutured_stumps,
-    )
-    sutured = normalize_sutured_stumps(target)
-    untreated_stumps = compute_cut_points(target) - set(sutured)
+    untreated_stumps = untreated_stump_locations(target)
 
     if location is None:
         closed_incisions = close_all_incisions(target)

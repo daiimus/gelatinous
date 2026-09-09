@@ -323,6 +323,22 @@ class _OperateMenu(EvMenu):
         return nodetext
 
 
+def _clear_insert_point(caller):
+    """Forget any armed insertion point.
+
+    ONE definition, called from every place that must forget it, because
+    the flag used to be cleared in exactly one place -- the *success*
+    branch of ``_add_step_to_chart``.  Every abort route out of the
+    verb-pick flow (eleven of them, plus the ``ValueError`` return in
+    the consume path itself) carried it back to the top menu still
+    armed, so the surgeon's next "Add procedure step" silently inserted
+    at a stale position instead of appending, and could order a suture
+    before the incision it closes (#2552).
+    """
+    if hasattr(caller.ndb, "_operate_insert_before"):
+        delattr(caller.ndb, "_operate_insert_before")
+
+
 def _menu_exit(caller, menu):
     """Cleanup callback when the menu exits."""
     for attr in (
@@ -344,6 +360,12 @@ def _menu_exit(caller, menu):
 def _node_top(caller, raw_string, **kwargs):
     """Top-level node — render PATIENT/CHART/OPTIONS and route
     on input."""
+    # Reaching the top menu means the add-step flow is over, however it
+    # ended: consumed, cancelled, or bailed out of an empty list.  This
+    # is the one place every one of those routes passes through, which
+    # is why the clear lives here rather than at each abort site -- a
+    # twelfth abort route cannot reintroduce the bug (#2552).
+    _clear_insert_point(caller)
     target = getattr(caller.ndb, "_operate_target", None)
     if target is None:
         return "|rNo patient set; aborting.|n", None
@@ -792,6 +814,15 @@ def _pick_aliases(item, species=None):
     organ picker prints what this body calls a component, so the same
     words have to come back (#2276)."""
     from world.anatomy import get_organ_display_name
+    # THE PICKER TUPLE CONVENTION IS VALUE-FIRST: ``(value, label)``.
+    # This function reads ``item[0]`` as the thing the player is naming,
+    # so a picker that stores ``(label, value)`` hands it a rendered
+    # string full of colour codes and status tags instead. The suture
+    # picker did exactly that and matched against the label directly,
+    # so typing "stump" selected "suture all" and so did typing "n"
+    # (#2553); the install picker stored the same way, which silently
+    # broke the underscore form of every location name. Both are now
+    # value-first, like the donor / organ / location pickers.
     value = item[0] if isinstance(item, tuple) else item
     if not isinstance(value, str):
         # donor entries are ``(item_object, organ)``
@@ -1240,18 +1271,19 @@ def _node_install_location(caller, raw_string, **kwargs):
         )
         return "node_top"
 
-    # Picker entries: (label, location_value).  Tag shows whether
+    # Picker entries: (location_value, label) -- value first, per the
+    # convention documented on ``_pick_aliases``.  Tag shows whether
     # the slot is currently filled — surgeons can still pick an
     # occupied slot (the resolver replaces existing tissue) but the
     # tag warns them they're doing it.
     options_list = [
-        (f"{loc.replace('_', ' ')}  {MUTED}({tag})|n", loc)
+        (loc, f"{loc.replace('_', ' ')}  {MUTED}({tag})|n")
         for loc, tag in slots
     ]
     caller.ndb._operate_pickable = options_list
     listing = "\n".join(
         f"  {idx}. {label}"
-        for idx, (label, _val) in enumerate(options_list, start=1)
+        for idx, (_val, label) in enumerate(options_list, start=1)
     )
     text = (
         f"\n|wInstall {donor_key} — pick the location|n\n\n"
@@ -1279,9 +1311,9 @@ def _process_install_location(caller, raw_string, **kwargs):
     if pick is None:
         caller.msg("|rPick a number or location name.|n")
         return None
-    # Picker entries are ``(label, location)`` tuples — unpack the
+    # Picker entries are ``(location, label)`` tuples — unpack the
     # underlying location value before recording on the chart step.
-    location_value = pick[1] if isinstance(pick, tuple) else pick
+    location_value = pick[0] if isinstance(pick, tuple) else pick
     donor_key = getattr(caller.ndb, "_operate_install_donor", None)
     if not donor_key:
         caller.msg("|rDonor selection lost; please retry from the top.|n")
@@ -1296,6 +1328,13 @@ def _process_install_location(caller, raw_string, **kwargs):
 # ===================================================================
 # Suture picker
 # ===================================================================
+
+#: Picker value meaning "close everything", as opposed to one location.
+#: It is the single word a surgeon would type, NOT a sentence: the value
+#: is what ``_pick_aliases`` offers to the matcher, so a phrase like
+#: "all open incisions" made almost every letter a substring hit --
+#: typing "n" selected the whole-body suture (#2553).
+SUTURE_ALL = "all"
 
 
 def _node_suture_location(caller, raw_string, **kwargs):
@@ -1321,9 +1360,13 @@ def _node_suture_location(caller, raw_string, **kwargs):
     # Label each entry with its source so the surgeon can see at
     # a glance which are live state vs planned-by-chart vs already-
     # severed (combat or prior procedure).
+    # Entries are (value, label) -- value first, per the convention
+    # documented on ``_pick_aliases``.  Storing them label-first is
+    # what let "stump" and "n" both select "suture all" (#2553): the
+    # tags and colour codes in the label became matchable text.
     options_list = [
-        (f"|wall|n  {MUTED}(open + planned + stumps)|n",
-         "all open incisions"),
+        (SUTURE_ALL,
+         f"|wall|n  {MUTED}(open + planned + stumps)|n"),
     ]
     for loc in all_locs:
         humanized = loc.replace("_", " ")
@@ -1335,12 +1378,12 @@ def _node_suture_location(caller, raw_string, **kwargs):
         if loc in stump_locs:
             tags.append("stump")
         tag = f"{MUTED}({' + '.join(tags)})|n"
-        options_list.append((f"{humanized}  {tag}", loc))
+        options_list.append((loc, f"{humanized}  {tag}"))
 
     caller.ndb._operate_pickable = options_list
     listing = "\n".join(
         f"  {idx}. {label}"
-        for idx, (label, _val) in enumerate(options_list, start=1)
+        for idx, (_val, label) in enumerate(options_list, start=1)
     )
     text = (
         "\n|wSuture|n\n\n"
@@ -1367,26 +1410,26 @@ def _process_suture_location(caller, raw_string, **kwargs):
         return "node_top"
     if not raw:
         return None
-    options_list = caller.ndb._operate_pickable or []
-    # Numeric index.
-    if raw.isdigit():
-        idx = int(raw) - 1
-        if not (0 <= idx < len(options_list)):
-            caller.msg("|rOut of range.|n")
-            return None
-        _label, val = options_list[idx]
-    else:
-        # Substring against display label.
-        match = None
-        for label, val in options_list:
-            if raw.lower() in label.lower():
-                match = val
-                break
-        if match is None:
-            caller.msg("|rNo match.|n")
-            return None
-        val = match
-    args = {} if val == "all open incisions" else {"location": val}
+    # #2276's "never guess" ruling was applied to four pickers and
+    # missed this one, which re-implemented the pre-ruling algorithm
+    # inline: first substring match against the RENDERED LABEL wins.
+    # Because the label carries status tags and colour codes, typing
+    # "stump" selected "suture all" and so did typing "n" -- the
+    # surgeon got a whole-body suture they never asked for, with no
+    # error to notice (#2553).  Route it through the same guard as
+    # every other picker: a complete name wins, several candidates is
+    # a question, nothing is a refusal.
+    pick = _parse_pick(raw, caller.ndb._operate_pickable or [],
+                       _species_of_target(caller))
+    if isinstance(pick, _Several):
+        caller.msg(f"|wWhich did you mean?|n "
+                   f"{_name_picks(pick, _species_of_target(caller))}.")
+        return None
+    if pick is None:
+        caller.msg("|rPick a number or location name.|n")
+        return None
+    val = pick[0] if isinstance(pick, tuple) else pick
+    args = {} if val == SUTURE_ALL else {"location": val}
     _add_step_to_chart(caller, "suture", args)
     return "node_top"
 
@@ -1397,8 +1440,9 @@ def _add_step_to_chart(caller, verb: str, args: dict) -> None:
     Consults ``caller.ndb._operate_insert_before`` — when set by
     the edit-chart node's ``i <N>`` command, inserts the new step
     before the targeted step rather than appending.  The flag is
-    cleared after consumption so the next "Add procedure step"
-    invocation appends normally.
+    cleared after consumption -- and, since #2552, also on any route
+    back to the top menu, so an armed-then-cancelled insert cannot
+    leak into the next "Add procedure step".
 
     Creates the chart on demand if absent.  Persists immediately.
     """
@@ -1420,7 +1464,7 @@ def _add_step_to_chart(caller, verb: str, args: dict) -> None:
     if before_id is not None:
         caller.msg(f"|wStep inserted:|n {summary}")
         # Clear the insertion point so subsequent adds append.
-        delattr(caller.ndb, "_operate_insert_before")
+        _clear_insert_point(caller)
     else:
         caller.msg(f"|wStep added:|n {summary}")
 
