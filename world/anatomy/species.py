@@ -1386,6 +1386,20 @@ def _derive_robot(base: dict) -> dict:
         "left_metatarsals": "left foot servos",
         "right_metatarsals": "right foot servos",
     }
+
+    # Chassis vocabulary (#2803).  A pair-slot line whose predicate is a
+    # NOUN PHRASE ("{Their} {hands} {are} three-fingered manipulators")
+    # cannot be repaired by flexing the verb alone -- singularising
+    # `{are}` leaves "his right hand IS three-fingered manipulatorS".
+    # The noun has to flex too, so the words a robot line would brace
+    # are registered here.  Human's set is inherited from the base and
+    # says nothing about actuators.
+    robot["longdesc_flex_nouns"] = set(
+        base.get("longdesc_flex_nouns") or ()) | {
+        "manipulator", "grasper", "assembly", "strut",
+        "member", "intake", "piston", "housing",
+        "column", "stabilizer", "pad",
+    }
     return robot
 
 
