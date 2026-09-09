@@ -484,7 +484,23 @@ def start_procedure(
         from world.channeled import begin_channel
         started = begin_channel(
             actor, duration,
-            tell=f"working on {getattr(target, 'key', 'a patient')}",
+            # NO NAME. `override_place` is ONE string rendered verbatim
+            # to everyone in the room, with no per-observer identity
+            # pass -- which is what `msg_room_identity` provides
+            # everywhere else. `target.key` is the patient's TRUE NAME,
+            # so the tell published it straight through the disguise
+            # system:
+            #
+            #     stranger sees the patient as: 'a gaunt androog'
+            #     room line: A gaunt androog is working on Ivo Kestrelson
+            #
+            # The same line anonymised the SURGEON and named the
+            # PATIENT. A shared string cannot carry a per-observer
+            # identity, so it carries none -- which is also what the old
+            # `getattr(..., 'a patient')` fallback already said for a
+            # target with no key. Graffiti names nothing and breach
+            # names a DOOR; only this one named a person.
+            tell="working on a patient",
             on_complete=_channel_done, on_interrupt=_channel_broken,
             key="operating",
         )
