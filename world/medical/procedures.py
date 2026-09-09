@@ -952,6 +952,47 @@ def _resolve_harvest(actor, target, *, organ_name: str, location: str,
             decay_stage = "fresh"
     condition = ORGAN_CONDITION_BY_DECAY.get(decay_stage, "pristine")
 
+    # SKELETAL-STAGE GATE (#2816).  `ORGAN_CONDITION_BY_DECAY` maps
+    # "skeletal" to "refuse", and no organ has prose registered for that
+    # condition.  `world/anatomy/organs.py` says so in its own docstring
+    # and explains why it is safe: "The `refuse` condition (current
+    # skeletal-stage soft-tissue gate) is intentionally absent: skeletal
+    # corpses refuse soft-tissue harvest at the command gate, so no Organ
+    # instance ever reaches that condition with registered prose."
+    #
+    # There was no such gate.  Harvesting a liver from skeletal remains
+    # succeeded and produced a "desiccated liver" described as "It's a
+    # thing. Heavy enough to hurt if used wrong." -- the generic object
+    # fallback, not even the empty string the docstring implies.
+    #
+    # Gated HERE rather than in `CmdHarvest`, for the reason the incision
+    # check above already gives: chart-commenced harvests call
+    # `start_procedure` directly and would bypass a command-level gate.
+    # Bones are deliberately exempt -- they carry their own `desiccated`
+    # tier (#213) for the skeletal-stage bone harvest #227 anticipates,
+    # so this refuses soft tissue only and that feature can land without
+    # unpicking this.
+    if condition == "refuse":
+        from world.anatomy.organs import BONE_ORGANS
+        if organ_name not in BONE_ORGANS:
+            # Phrased without the target as subject: display names like
+            # "skeletal remains" read as plural and "remains is down to
+            # bone" is the kind of agreement bug this audit keeps finding.
+            actor.msg(
+                f"There is no {organ_name.replace('_', ' ')} left to take in "
+                f"{target.get_display_name(actor)} — nothing but bone."
+            )
+            from world.medical.charts import mark_running_step_failed
+            mark_running_step_failed(
+                target,
+                outcome=(
+                    f"{organ_name.replace('_', ' ')} long since gone — "
+                    f"skeletal remains"
+                ),
+            )
+            return
+        condition = "desiccated"
+
     # Outcome → condition fidelity.  Botched living-harvest produces
     # damaged organs even from a fresh body (placeholder failure rule
     # per design D: organ damage risk when harvesting from a conscious

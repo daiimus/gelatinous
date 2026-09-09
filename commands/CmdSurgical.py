@@ -393,8 +393,26 @@ class CmdHarvest(Command):
         severed_locs = set(
             getattr(target.db, "severed_locations", None) or []
         )
+        # Skeletal remains have no soft tissue left to offer (#2816).
+        # The resolver refuses these, so listing them invites the player
+        # to type a command that cannot succeed. Bones stay listed --
+        # they carry their own `desiccated` tier for #227.
+        skeletal = False
+        stage_getter = getattr(target, "get_decay_stage", None)
+        if callable(stage_getter):
+            try:
+                skeletal = stage_getter() == "skeletal"
+            except Exception:
+                skeletal = False
+        bones = frozenset()
+        if skeletal:
+            from world.anatomy.organs import BONE_ORGANS
+            bones = BONE_ORGANS
+
         harvestable = []
         for name, data in organs.items():
+            if skeletal and name not in bones:
+                continue
             # Duck-type rather than ``isinstance(data, dict)`` —
             # Evennia's ``_SaverDict`` wraps persisted snapshot
             # entries and isn't a dict subclass, so isinstance
