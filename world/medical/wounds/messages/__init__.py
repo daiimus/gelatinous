@@ -34,8 +34,11 @@ def species_pack(character):
     species = getattr(character, "species", None)
     if not isinstance(species, str):
         species = None
-    species = species or getattr(
-        getattr(character, "db", None), "species", None)
+    if not species:
+        # Wound prose renders on corpses and severed parts too, and a
+        # detached part keeps its species in `source_species` (#2546).
+        from world.anatomy import species_of
+        species = species_of(character)
     if not isinstance(species, str):
         return None
     return SPECIES_PACKS.get(species)

@@ -59,9 +59,9 @@ def _incision_required(organ_data: dict) -> bool:
 
 def _gerund(verb, target):
     """The patient's own word for what you are doing to them."""
+    from world.anatomy import species_of
     from world.medical.charts import gerund_for
-    return gerund_for(
-        verb, getattr(getattr(target, "db", None), "species", None))
+    return gerund_for(verb, species_of(target))
 
 
 def _find_surgical_kit(caller, target=None):
@@ -383,8 +383,12 @@ class CmdHarvest(Command):
         # organs whose container has been severed off (the heart in
         # an arm-severed body is fine; in a torso-severed body it
         # left with the torso), and drops destroyed organs.
-        from world.anatomy import get_organ_spec
-        species = getattr(getattr(target, "db", None), "species", None)
+        from world.anatomy import get_organ_spec, species_of
+        # A severed rat head kept `db.species = None` and was judged
+        # against the HUMAN table, which lists a harvestable brain the
+        # rat table does not -- so the same animal answered differently
+        # depending on which piece you were holding (#2546).
+        species = species_of(target)
         removed = set(getattr(target.db, "removed_organs", None) or [])
         severed_locs = set(
             getattr(target.db, "severed_locations", None) or []

@@ -221,9 +221,14 @@ def _render_patient_lines(caller, target) -> list[str]:
 
 def _species_of(target) -> str:
     """The patient's species, defaulted the way the rest of this
-    command already defaults it."""
-    return (getattr(getattr(target, "db", None), "species", None)
-            or "human")
+    command already defaults it.
+
+    Reads through ``world.anatomy.species_of``, so a DETACHED PART is
+    judged by the species it remembers in ``source_species`` rather
+    than falling through to human (#2546).
+    """
+    from world.anatomy import species_of
+    return species_of(target) or "human"
 
 
 def _render_chart_lines(chart: dict | None, species: str | None = None) -> list[str]:
@@ -632,9 +637,7 @@ def _list_install_locations(target, donor_item):
     the donor item.  The picker treats an empty list as "cannot
     install here" and routes the player back to the top.
     """
-    target_species = (
-        getattr(getattr(target, "db", None), "species", None) or "human"
-    )
+    target_species = _species_of(target)
     donor_db = getattr(donor_item, "db", None)
     if donor_db is None:
         return []
@@ -885,8 +888,7 @@ def _name_picks(items, species=None):
 
 def _species_of_target(caller):
     target = getattr(caller.ndb, "_operate_target", None)
-    return (getattr(getattr(target, "db", None), "species", None)
-            or "human")
+    return _species_of(target)
 
 
 # ===================================================================
@@ -945,7 +947,7 @@ def _list_severable_containers(target):
     organs declare ``severable_container`` (ANATOMY_AUGMENTS_SPEC
     §3.5)."""
     from world.anatomy import get_species_severable_containers
-    species = getattr(getattr(target, "db", None), "species", None)
+    species = _species_of(target)
     try:
         severable = set(get_species_severable_containers(species))
     except Exception:
@@ -1127,9 +1129,7 @@ def _process_install_donor(caller, raw_string, **kwargs):
     item_db = getattr(item, "db", None)
     if getattr(item_db, "augment_organs", None):
         target = caller.ndb._operate_target
-        target_species = (
-            getattr(getattr(target, "db", None), "species", None) or "human"
-        )
+        target_species = _species_of(target)
         compat = [
             s.lower() for s in (
                 getattr(item_db, "compatible_species", None)
@@ -1261,9 +1261,7 @@ def _node_install_location(caller, raw_string, **kwargs):
 
     slots = _list_install_locations(target, donor_item)
     if not slots:
-        target_species = (
-            getattr(getattr(target, "db", None), "species", None) or "human"
-        )
+        target_species = _species_of(target)
         caller.msg(
             f"|r{donor_key} can't install on this patient — "
             f"cross-species mismatch or no matching {target_species} "

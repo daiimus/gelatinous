@@ -66,9 +66,11 @@ from .species import (
     get_species_sever_hand_by_container,
     get_species_severed_chain_name,
     get_species_severed_head_locations,
+    species_of,
 )
 
 __all__ = (
+    "species_of",
     "BONE_ORGANS",
     "ORGAN_DISPLAY",
     "SEVERED_PART_DESCRIPTIONS",

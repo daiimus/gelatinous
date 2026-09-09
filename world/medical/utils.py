@@ -91,9 +91,10 @@ def _get_vital_locations(character):
     """
     # Issue #356 follow-up: species-aware capacity / organ lookups.
     from .constants import LETHAL_CAPACITY_NAMES
-    from world.anatomy import get_organ_spec, get_species_body_capacities
+    from world.anatomy import (get_organ_spec, get_species_body_capacities,
+                               species_of)
 
-    species = getattr(getattr(character, "db", None), "species", None)
+    species = species_of(character)
     body_capacities = get_species_body_capacities(species)
 
     vital_locations = set()
@@ -700,11 +701,20 @@ _SERVES_ANY_BODY = frozenset({"tourniquet"})
 
 
 def _species_of(target):
-    """The species to judge a supply against, defaulting to human."""
+    """The species to judge a supply against, defaulting to human.
+
+    Goes through ``world.anatomy.species_of`` for the db lookup, so a
+    DETACHED PART is judged by its ``source_species`` instead of
+    falling through to human -- a severed robot limb was being offered
+    supplies meant for flesh (#2546). The plain ``target.species``
+    property is still checked first, since some typeclasses expose it
+    directly.
+    """
+    from world.anatomy import species_of as _anatomy_species_of
     species = getattr(target, "species", None)
     if isinstance(species, str) and species:
         return species
-    species = getattr(getattr(target, "db", None), "species", None)
+    species = _anatomy_species_of(target)
     return species if isinstance(species, str) and species else "human"
 
 
@@ -1242,8 +1252,8 @@ def apply_medical_effects(item, user, target, **kwargs):
             actual_healed = organ.heal(heal_amount)
             
             if actual_healed > 0:
-                from world.anatomy import get_organ_display_name
-                species = getattr(getattr(target, "db", None), "species", None)
+                from world.anatomy import get_organ_display_name, species_of
+                species = species_of(target)
                 organ_display_name = get_organ_display_name(organ_name, species).title()
                 result_msg = f"Surgical procedure completed. {organ_display_name} healed for {actual_healed} HP ({organ.current_hp}/{organ.max_hp})."
             else:
@@ -1559,5 +1569,8 @@ def instruments_wanted(target):
     """What to tell somebody holding the wrong bag. Naming the article
     matters: "you need a surgical kit" while they ARE holding a
     surgical kit is the least useful refusal we could write."""
-    species = getattr(getattr(target, "db", None), "species", None)
-    return "a tool roll" if species == "robot" else "a surgical kit"
+    from world.anatomy import species_of
+    # Detached parts answer off `source_species` (#2546): a severed
+    # robot limb used to be told it needed a surgical kit.
+    return ("a tool roll" if species_of(target) == "robot"
+            else "a surgical kit")
