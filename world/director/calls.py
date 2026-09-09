@@ -230,7 +230,26 @@ def record_dispatch(call_id: int, units) -> None:
         calls = _load()
         for call in calls:
             if call.get("id") == call_id:
-                call["units"] = [getattr(u, "id", None) for u in (units or ())]
+                # A CALL MUST BE ABLE TO NAME WHAT IT SENT. This kept
+                # whatever `getattr(u, "id", None)` returned, and then
+                # judged the result by LENGTH -- so `[None]` (a truthy
+                # list) recorded a call as "rolling" with no id anyone
+                # could close it against, and `close_call` matches on
+                # unit ids.
+                #
+                # 8 of 12 live calls carried `units=[None]` and read
+                # `rolling` when this was filed, in a single burst; two
+                # rows away, ids 3 and 4 recorded `"no units"` with an
+                # empty list, which is the same ledger doing it right.
+                #
+                # The status now follows what was actually RECORDED
+                # rather than how long the list is. Deliberately not a
+                # liveness check -- whether the object still exists is a
+                # different and heavier question; this only asks that it
+                # can be named (#2893).
+                call["units"] = [uid for uid in
+                                 (getattr(u, "id", None) for u in (units or ()))
+                                 if uid]
                 call["status"] = "rolling" if call["units"] else "no units"
                 _save(calls)
                 return
