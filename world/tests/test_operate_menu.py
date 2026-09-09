@@ -90,10 +90,14 @@ class SutureLocationPicker(TestCase):
 
     def _picker_values(self, caller):
         # The ``"all"`` row is index 0; real picker options start at 1.
-        return [val for _label, val in caller.ndb._operate_pickable[1:]]
+        # Entries are (value, label) -- value first, per the convention
+        # on ``_pick_aliases``. They used to be stored the other way
+        # round, which is what let the picker match against the
+        # rendered label (#2553).
+        return [val for val, _label in caller.ndb._operate_pickable[1:]]
 
     def _picker_labels(self, caller):
-        return [label for label, _val in caller.ndb._operate_pickable[1:]]
+        return [label for _val, label in caller.ndb._operate_pickable[1:]]
 
     # -- Source: empty state -----------------------------------------
 
@@ -297,11 +301,17 @@ class SutureLocationPicker(TestCase):
         )
         caller = _make_caller(target)
         _node_suture_location(caller, "")
-        # First entry is "all" with value "all open incisions" — the
-        # sentinel ``_process_suture_location`` checks against to
-        # build a no-location step.
-        first_label, first_val = caller.ndb._operate_pickable[0]
-        self.assertEqual(first_val, "all open incisions")
+        # First entry is "all" — the sentinel
+        # ``_process_suture_location`` checks against to build a
+        # no-location step.  It is a single TOKEN, not a sentence:
+        # as the phrase "all open incisions" it was a substring of
+        # almost any letter the surgeon could type, so "n" selected
+        # a whole-body suture (#2553).
+        from commands.CmdOperate import SUTURE_ALL
+        first_val, first_label = caller.ndb._operate_pickable[0]
+        self.assertEqual(first_val, SUTURE_ALL)
+        self.assertNotIn(" ", first_val)
+        self.assertIn("all", first_label)
         self.assertIn("all", first_label)
 
 
