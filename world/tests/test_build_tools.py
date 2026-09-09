@@ -71,6 +71,29 @@ class TestDoorStates(TestCase):
                          "west locked, south closed, east open")
 
 
+class _RoomDB(SimpleNamespace):
+    """A room's `db` handler, which answers None for anything unset.
+
+    A bare `SimpleNamespace` raises AttributeError instead, so it is a
+    STRICTER object than the thing it stands in for -- and `fill_air_cell`
+    reads `neighbour.db.outside`, a flag these fixtures never set. On a
+    real room that read is None and the branch is simply not taken; on
+    the double it exploded, and the test had been red on clean master
+    since #1487 was filed.
+
+    Production is fine here: `db.outside` is None on a room that never
+    set it. The double was the only thing that could not answer.
+    """
+
+    def __getattr__(self, name):
+        if name.startswith("__") and name.endswith("__"):
+            # Dunders must still raise. A stub that answers None to
+            # `__deepcopy__`/`__iter__`/`__len__` breaks copy, pickle and
+            # truthiness in ways that look nothing like their cause.
+            raise AttributeError(name)
+        return None
+
+
 class TestAirFill(TestCase):
     """@airfill stamps the hand-proven parkour atom: SkyRoom + one-way
     fall edge + plain exits to roofs + edge/gap exits from roofs in."""
@@ -79,7 +102,7 @@ class TestAirFill(TestCase):
         index = {}
         for cell, sky in cells.items():
             room = MagicMock()
-            room.db = SimpleNamespace(is_sky_room=sky)
+            room.db = _RoomDB(is_sky_room=sky)
             room.exits = []
             index[cell] = room
         return index
@@ -124,13 +147,26 @@ class TestAirFill(TestCase):
             (1, 0, 0): False,      # street below it
         })
         roof = index[(0, 0, 1)]
+        # ...and SAY it is a roof. `fill_air_cell` links air to a
+        # neighbour only when that neighbour declares itself walkable
+        # outdoor surface -- `db.type == "rooftop"` or `db.outside is
+        # True` -- and the fixture only ever set `is_sky_room=False`.
+        # The cell was a rooftop in the comment and an anonymous room to
+        # the code.
+        #
+        # This was invisible while the double raised AttributeError on
+        # `outside` (#1487): the test died before reaching the branch,
+        # so "no west exit" never got a chance to be noticed. Fixing the
+        # double turned an ERROR into a FAILURE, which is how the real
+        # gap surfaced.
+        roof.db.type = "rooftop"
         made_exits = []
 
         def fake_create(tclass, key=None, aliases=None, location=None,
                         destination=None):
             obj = MagicMock()
             obj.key = key
-            obj.db = SimpleNamespace(is_sky_room="rooms" in tclass)
+            obj.db = _RoomDB(is_sky_room="rooms" in tclass)
             obj.exits = []
             if "exits" in tclass:
                 made_exits.append((location, key, destination,
