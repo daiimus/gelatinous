@@ -685,6 +685,40 @@ SPECIES_DEFINITIONS = {
     # the physiology is shared — only the skeletal organs and HP
     # values diverge.  Cannot wield items (no hand-side map), so
     # severance never pulls a weapon onto a detached forepaw.
+    # HARVEST AXIS (#3068).  Every species table must decide, per organ,
+    # whether it `can_be_harvested`.  The rule the human table follows
+    # and this one now mirrors: **soft viscera and sense organs yes;
+    # bone, spine, lungs and stomach no.**  Human harvests 12 of 28 on
+    # exactly that basis, and the 16 it refuses are the skeleton, the
+    # two spines, both lungs and the stomach.
+    #
+    # This table was authored in detail -- it carries `bone_type`,
+    # `can_be_destroyed` and `backup_available`, none of which human
+    # uses -- but the harvest axis was never applied to it, so rats had
+    # 25 organs and 0 harvestable.  Nothing refused rats structurally;
+    # the listing was empty purely because no organ carried the flag.
+    #
+    # An ABSENT key is indistinguishable from a decision, which is how
+    # this went unnoticed: severed rat parts used to fall back to the
+    # human table (#2546) and offered the human organ set, so the gap
+    # only showed on corpses.  If a future species should refuse an
+    # organ, write `can_be_harvested: False` explicitly, the way the
+    # human table does -- do not leave the key out.
+    #
+    # HARVEST ONLY -- deliberately no `can_be_replaced` here, even
+    # though human marks heart and liver replaceable.  `_resolve_install`
+    # (the plain biological-organ path) has NO species check whatsoever:
+    # only the augment and module resolvers consult
+    # `compatible_species`.  Demonstrated in play -- a harvested rat
+    # liver installs into a human whenever the surgical roll succeeds,
+    # and "the graft won't take" is `roll_procedure`'s failure branch,
+    # not a refusal.  Making rat organs replaceable would widen that
+    # hole rather than use it; tracked separately.
+    #
+    # `tail` is not on this axis at all: it is a SEVERABLE CONTAINER,
+    # so a rat tail is obtained with `sever` and arrives as a proper
+    # `rat tail` Appendage with its own prose.  `tail_vertebrae` is the
+    # bone inside it, and bones are not harvested here or in human.
     "rat": {
         "display_name": "rat",
 
@@ -787,26 +821,32 @@ SPECIES_DEFINITIONS = {
             # Head
             "brain":     {"container": "head", "max_hp": 5, "hit_weight": "very_rare",
                           "vital": True, "capacity": "consciousness",
-                          "contribution": "total"},
+                          "contribution": "total",
+                          "can_be_harvested": True},
             "left_eye":  {"container": "head", "display_location": "left_eye",
                           "max_hp": 4, "hit_weight": "rare",
                           "capacity": "sight", "contribution": "major",
-                          "disfiguring_if_lost": True},
+                          "disfiguring_if_lost": True,
+                          "can_be_harvested": True},
             "right_eye": {"container": "head", "display_location": "right_eye",
                           "max_hp": 4, "hit_weight": "rare",
                           "capacity": "sight", "contribution": "major",
-                          "disfiguring_if_lost": True},
+                          "disfiguring_if_lost": True,
+                          "can_be_harvested": True},
             "left_ear":  {"container": "head", "display_location": "left_ear",
                           "max_hp": 5, "hit_weight": "rare",
                           "capacity": "hearing", "contribution": "major",
-                          "disfiguring_if_lost": True},
+                          "disfiguring_if_lost": True,
+                          "can_be_harvested": True},
             "right_ear": {"container": "head", "display_location": "right_ear",
                           "max_hp": 5, "hit_weight": "rare",
                           "capacity": "hearing", "contribution": "major",
-                          "disfiguring_if_lost": True},
+                          "disfiguring_if_lost": True,
+                          "can_be_harvested": True},
             "jaw":       {"container": "head", "max_hp": 5, "hit_weight": "rare",
                           "capacities": ["eating"],
-                          "eating_contribution": "major"},
+                          "eating_contribution": "major",
+                          "can_be_harvested": True},
 
             # Neck
             "cervical_spine": {"container": "neck", "max_hp": 5,
@@ -818,7 +858,8 @@ SPECIES_DEFINITIONS = {
             # Chest / abdomen / back / groin — mammalian universals
             "heart":         {"container": "chest", "max_hp": 6,
                               "hit_weight": "uncommon", "vital": True,
-                              "capacity": "blood_pumping", "contribution": "total"},
+                              "capacity": "blood_pumping", "contribution": "total",
+                              "can_be_harvested": True},
             "left_lung":     {"container": "chest", "max_hp": 8,
                               "hit_weight": "uncommon", "capacity": "breathing",
                               "contribution": "major", "backup_available": True},
@@ -827,17 +868,20 @@ SPECIES_DEFINITIONS = {
                               "contribution": "major", "backup_available": True},
             "liver":         {"container": "abdomen", "max_hp": 8,
                               "hit_weight": "uncommon", "vital": True,
-                              "capacity": "digestion", "contribution": "total"},
+                              "capacity": "digestion", "contribution": "total",
+                              "can_be_harvested": True},
             "left_kidney":   {"container": "abdomen", "max_hp": 5,
                               "hit_weight": "uncommon",
                               "capacity": "blood_filtration",
                               "contribution": "major",
-                              "backup_available": True},
+                              "backup_available": True,
+                              "can_be_harvested": True},
             "right_kidney":  {"container": "abdomen", "max_hp": 5,
                               "hit_weight": "uncommon",
                               "capacity": "blood_filtration",
                               "contribution": "major",
-                              "backup_available": True},
+                              "backup_available": True,
+                              "can_be_harvested": True},
             "stomach":       {"container": "abdomen", "max_hp": 8,
                               "hit_weight": "uncommon",
                               "capacity": "digestion",

@@ -64,11 +64,25 @@ class TestThePremise(_PartCase):
         self.assertIsNone(old, "premise gone: something now sets db.species")
 
     def test_the_two_anatomy_tables_really_differ(self):
-        """If human and rat agreed about the brain there would be no
-        observable failure to fix."""
-        self.assertTrue(get_organ_spec("brain", "human").get("can_be_harvested"))
-        self.assertFalse(
-            (get_organ_spec("brain", "rat") or {}).get("can_be_harvested"))
+        """If human and rat agreed there would be no observable failure
+        to fix.
+
+        Originally this asserted the BRAIN differed -- rat brains were
+        not harvestable because the rat table had never been given the
+        harvest axis at all (0 of 25 organs). #3068 filled that in, so
+        the brain now agrees. The premise survives on a real anatomical
+        difference instead: rats have no `nose` and no `tongue`, so a
+        severed rat head judged against the human table still offers
+        organs the animal does not possess.
+        """
+        from world.anatomy import get_species_organs
+        human = {n for n, s in (get_species_organs("human") or {}).items()
+                 if (s or {}).get("can_be_harvested")}
+        rat = {n for n, s in (get_species_organs("rat") or {}).items()
+               if (s or {}).get("can_be_harvested")}
+        self.assertNotEqual(human, rat)
+        self.assertEqual(human - rat, {"nose", "tongue"})
+        self.assertNotIn("nose", get_species_organs("rat") or {})
 
 
 class TestTheAccessor(_PartCase):
