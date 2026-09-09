@@ -191,7 +191,46 @@ def recover_casualty(soul: Any, casualty: Any) -> bool:
         raise                        # a call-shape bug is not a policy
     except Exception:  # noqa: BLE001 — unreadable hold: leave it be
         return False
+    # BAND ARBITRATION, asked the same way the engine asks it.
+    #
+    # This function could never return True before #2899 (a one-argument
+    # call to a two-argument `is_grappled`, swallowed by a blanket
+    # except), so the write below had never run. Fixing the arity made
+    # it run -- and it sets `soul.db.soul_job` unconditionally, with no
+    # reference to the job the soul is already holding.
+    #
+    # `notice_casualty` is called from `think()` for every soul not in
+    # combat, and BEFORE the engine reads the job for arbitration. A
+    # unit dispatched to a call holds `respond` at BAND 0, precisely so
+    # "a unit does not wander off a call" (#2384), and the engine's rule
+    # is that preemption needs a STRICTLY lower band:
+    #
+    #     if desired and band < job_band:
+    #
+    # Writing the job directly walked around that, so a unit on its way
+    # to a crime that passed a downed unit dropped the call and carried
+    # the body home while dispatch still held the assignment.
+    #
+    # Checked BEFORE `soul_recovering` is stamped, or a refusal strands
+    # the marker and the unit can never recover anything again.
     from world.souls import actions
+    from world.souls.engine import _goal_band
+    current = soul.db.soul_job
+    # Duck-typed on `.get`, NOT `isinstance(current, dict)`: a stored
+    # job comes back as `_SaverDict`, which is dict-LIKE but not a dict
+    # SUBCLASS, so the isinstance test is False for every real job --
+    # the same trap as #2701/#2465/#2438.
+    #
+    # And the band is only trusted when it reads as a real int. A test
+    # double answers `.get` with another mock, and comparing that to an
+    # int raises; an unreadable band means "cannot judge this", so the
+    # guard stands aside rather than inventing a verdict.
+    getter = getattr(current, "get", None)
+    if callable(getter):
+        raw = getter("band", _goal_band(getter("goal")))
+        if isinstance(raw, int) and not isinstance(raw, bool):
+            if raw <= _goal_band("recover"):
+                return False
     soul.db.soul_recovering = casualty.id
     job = actions.plan_for(soul, "recover")
     if job is None:
