@@ -136,7 +136,7 @@ LONGDESCS_ROBOT: dict[str, list[str]] = {
     ],
     "ears": [
         "{Their} {ears} {are} flush audio grilles set where a person's would be, swiveling minutely toward sound.",
-        "{Their} {ears} {are} fine mesh intakes, filtering the room's noise into something the processor can parse.",
+        "{Their} {ears} {are} {an intake} of fine mesh, filtering the room's noise into something the processor can parse.",
         "{Their} {ears} {sit} as dark recessed ports, attentive to every shift in the ambient hum.",
         "{Their} {ears} {are} paired pickups behind perforated plates, tracking the faintest sound.",
         "{Their} {ears} {are} clogged with fine grey dust, the mesh long overdue for a purge.",
@@ -149,7 +149,7 @@ LONGDESCS_ROBOT: dict[str, list[str]] = {
         "Weather has stained the mesh of {their} {ears} a streaked brown that no cleaning lifts.",
     ],
     "arms": [
-        "{Their} {arms} {are} segmented actuator assemblies, cabling visible at every joint.",
+        "{Their} {arms} {are} {an assembly} of segmented actuators, cabling visible at every joint.",
         "{Their} {arms} {move} with a smooth servo-driven precision, never quite silent.",
         "{Their} {arms} {are} armored and scuffed, the plating gouged from heavy use.",
         "{Their} {arms} {hang} loose at {their} sides, the elbow servos ticking as they idle.",
@@ -164,9 +164,9 @@ LONGDESCS_ROBOT: dict[str, list[str]] = {
         "Stripped fasteners ring the access panels on {their} {arms}, forced open more than once.",
     ],
     "hands": [
-        "{Their} {hands} {are} three-fingered manipulators, the digits ending in worn grip pads.",
+        "{Their} {hands} {are} {a manipulator} with three fingers, the digits ending in worn grip pads.",
         "{Their} {hands} {flex} with a faint servo whine, each joint articulating independently.",
-        "{Their} {hands} {are} heavy alloy graspers, scratched bright at the fingertips.",
+        "{Their} {hands} {are} {a grasper} of heavy alloy, scratched bright at the fingertips.",
         "{Their} {hands} {carry} the scuffs of constant work, the grip surfaces polished smooth.",
         "{Their} {hands} {close} with deliberate mechanical care, precise and unhurried.",
         "{Their} {hands} {are} short one fingertip pad, the bare actuator tip still working fine.",
@@ -181,8 +181,8 @@ LONGDESCS_ROBOT: dict[str, list[str]] = {
 
     # Legs
     "thighs": [
-        "{Their} {thighs} {are} broad hydraulic struts, the pistons filmed with a sheen of fluid.",
-        "{Their} {thighs} {are} armored load-bearing members, dented along the leading edge.",
+        "{Their} {thighs} {are} {a strut}, broad and hydraulic, the {pistons} filmed with a sheen of fluid.",
+        "{Their} {thighs} {are} {a member}, armored and load-bearing, dented along the leading edge.",
         "{Their} {thighs} {flex} with a deep hydraulic sigh as the frame shifts its weight.",
         "{Their} {thighs} {carry} thick bundled cabling beneath scuffed protective plating.",
         "{Their} {thighs} {weep} a slow film of hydraulic fluid, the plating streaked dark below.",
@@ -195,8 +195,8 @@ LONGDESCS_ROBOT: dict[str, list[str]] = {
         "Heat has blistered the paint along {their} {thighs}, curling it up in brittle grey flakes.",
     ],
     "shins": [
-        "{Their} {shins} {are} reinforced strut housings, scarred and scraped from rough ground.",
-        "{Their} {shins} {are} bare actuator columns, the servos exposed and ticking.",
+        "{Their} {shins} {are} {a housing} of reinforced {struts}, scarred and scraped from rough ground.",
+        "{Their} {shins} {are} {a column} of bare actuators, the servos exposed and ticking.",
         "{Their} {shins} {carry} mismatched plating, one panel clearly a field repair.",
         "{Their} {shins} {are} caked with grime along the lower joints, the alloy showing through.",
         "{Their} {shins} {take} the worst of the street, dented and scraped from ankle to knee.",
@@ -209,8 +209,8 @@ LONGDESCS_ROBOT: dict[str, list[str]] = {
         "Weld slag beads the seam down {their} {shins}, never ground back after the repair.",
     ],
     "feet": [
-        "{Their} {feet} {are} broad splayed stabilizers, the soles worn smooth and bright.",
-        "{Their} {feet} {are} heavy magnetic pads, clicking faintly against the floor.",
+        "{Their} {feet} {are} {a stabilizer}, broad and splayed, the soles worn smooth and bright.",
+        "{Their} {feet} {are} {a pad} of heavy magnets, clicking faintly against the floor.",
         "{Their} {feet} {carry} the dents of hard use, the toe plates scraped to bare metal.",
         "{Their} {feet} {plant} with a solid mechanical certainty, distributing the frame's mass.",
         "{Their} {feet} {ring} against hard flooring, each step announcing the frame's weight.",
