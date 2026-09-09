@@ -44,6 +44,10 @@ CORRECTED = {
     "SYNTHWEAVE_SHEATH": 1,
     "SYNTH_COLLAR": 5,
     "LAB_COAT": 4,
+    # Moved by #3087's follow-up: scrubs are a shirt-and-trousers SET,
+    # so they belong on rung 1 with the suits, not on the outerwear
+    # rung where nothing could be worn over them.
+    "MEDICAL_SCRUBS": 1,
 }
 
 #: Deliberate overrides, left alone. `layer` explicitly beats the

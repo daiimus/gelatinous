@@ -297,14 +297,32 @@ RUNGS = {
         # proven by wearing one in game (#3054). All three watch
         # prototypes sit at 1, so derivation now agrees with them
         # instead of fighting them.
-        "watch", "chrono"),
+        "watch", "chrono",
+        # SCRUBS, off the outerwear rung for the same reason and by the
+        # same precedent as the watches above (#3054/#3087). Scrubs are
+        # a shirt-and-trousers SET -- the same shape as "suit" and
+        # "jumpsuit", which already live here -- but they sat on rung 4
+        # with the coats. Both `LAB_COAT` (rung 4) and
+        # `COMPANY_WINDBREAKER` (rung 3) are worn OVER them by the
+        # clinic aide, and neither could go on: a coat collided at the
+        # same rung, a windbreaker was refused as going under. Nothing
+        # can be worn over a base layer parked in the outerwear band.
+        #
+        # Moving the LADDER rather than pinning the prototype, because
+        # a pinned prototype is an override that fights derivation --
+        # which is exactly what #3054 set out to remove and what #3087
+        # (mine) wrongly reintroduced, breaking
+        # `test_prototype_layers_match_the_ladder` to fix
+        # `TestWardrobeLayering`. Only `MEDICAL_SCRUBS` derives from
+        # this word today.
+        "scrubs"),
     2: ("vest", "waistcoat", "hoodie", "sweater", "jumper", "cardigan",
         "glasses", "sunglasses", "shades", "mirrorshades", "mask",
         "respirator", "rebreather", "balaclava", "carrier", "lenses"),
     3: ("jacket", "windbreaker", "blazer", "harness", "hood", "slicker",
         "cut"),
     4: ("coat", "labcoat", "trench", "overcoat", "topcoat", "greatcoat",
-        "duster", "robe", "apron", "scrubs", "coverall", "parka",
+        "duster", "robe", "apron", "coverall", "parka",
         "bathrobe", "cloak", "poncho"),
     5: ("boot", "boots", "shoe", "shoes", "sneaker", "sneakers", "oxford",
         "oxfords", "wader", "waders", "sandal", "sandals", "loafer",
