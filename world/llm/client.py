@@ -50,6 +50,24 @@ BREAKER_COOLDOWN = 60.0
 _breaker = {}          # lane -> {"fails": int, "until": float}
 
 
+def _probe_deadline(lane) -> float:
+    """How long a claimed half-open probe may go unaccounted for.
+
+    Twice the lane's own request timeout: a probe that has not produced
+    a success or a failure by then was never dispatched, or its callback
+    was lost, and either way holding the lane shut on it is worse than
+    letting the next beat try.
+    """
+    if lane == "civic":
+        timeout = getattr(settings, "CIVIC_LLM_TIMEOUT", 10)
+    else:
+        timeout = getattr(settings, "LLM_GM_TIMEOUT", _DEFAULT_TIMEOUT)
+    try:
+        return float(timeout) * 2.0
+    except (TypeError, ValueError):       # a misconfigured timeout
+        return float(_DEFAULT_TIMEOUT) * 2.0
+
+
 def _lane_down(lane) -> bool:
     """Is this lane tripped? Half-opens once the cooldown elapses, so the
     lane heals itself the moment the sidecar comes back.
@@ -67,9 +85,33 @@ def _lane_down(lane) -> bool:
     if not state or state["fails"] < BREAKER_TRIP:
         return False
     if state.get("probing"):
-        return True                      # a probe is already in flight
+        if monotonic() < state.get("probing_until", 0.0):
+            return True                  # a probe is genuinely in flight
+        # ...and otherwise it was never flown. The claim is taken as a
+        # SIDE EFFECT of being asked, and it is released only by a
+        # transport result -- so the design assumes every caller that
+        # asks goes on to dispatch. Three in `typeclasses/llm_npc.py`
+        # do not: each calls `llm_enabled()` and then short-circuits on
+        # the NEXT term of the same condition
+        # (`... and not self._is_npc_speaker(speaker)`,
+        # `not llm_enabled() or self._is_npc_speaker(speaker)`, and a
+        # `_classify_speech` that matches neither branch). NPC-to-NPC
+        # speech is the common case with 78 souled NPCs.
+        #
+        # Nothing then released it, so `_lane_down` answered True
+        # forever, no further probe was allowed, and one transient
+        # sidecar blip took the LLM off for the life of the process --
+        # the half-open logic that exists to HEAL the lane holding it
+        # down instead.
+        #
+        # A deadline rather than a promise from the call sites:
+        # `llm_enabled()` is a question, and any future caller may ask
+        # it without sending. This keeps #2849's "exactly one in flight"
+        # for every probe that really is in flight.
+        state["probing"] = False
     if monotonic() >= state["until"]:
         state["probing"] = True
+        state["probing_until"] = monotonic() + _probe_deadline(lane)
         return False
     return True
 
@@ -79,6 +121,7 @@ def note_transport_failure(lane="gm"):
     from time import monotonic
     state = _breaker.setdefault(lane, {"fails": 0, "until": 0.0})
     state["probing"] = False       # the probe came back: allow the next one
+    state["probing_until"] = 0.0
     state["fails"] += 1
     state["until"] = monotonic() + BREAKER_COOLDOWN
     if state["fails"] == BREAKER_TRIP:
