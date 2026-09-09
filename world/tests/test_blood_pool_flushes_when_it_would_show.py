@@ -165,6 +165,48 @@ class TestUnwatchedFlushTriggers(_BleedCase):
         self.assertAlmostEqual(pool.db.total_volume, 1.5)
 
 
+class TestBloodStaysWhereItWasShed(_BleedCase):
+    """The regression batching introduced and this pins: the pending
+    volume rides the SCRIPT, so a flush that reads `self.obj.location`
+    paints the previous room's blood wherever the body has walked to.
+    Measured before the fix: 1.0 units shed in room A landed in room B.
+    Blood is forensic evidence -- relocating it is worse than the write
+    cost being saved."""
+
+    def other_room(self):
+        return create_object("typeclasses.rooms.Room", key="elsewhere")
+
+    def vol(self, room):
+        pools = self.pools(room)
+        return pools[0].db.total_volume if pools else 0
+
+    def test_walking_away_leaves_the_blood_behind(self):
+        body, script = self.bleeder(self.room2, severity=1)
+        elsewhere = self.other_room()
+        for _ in range(3):
+            script._create_blood_pool(0.5)      # 0.5 painted, 1.0 pending
+        body.location = elsewhere
+        script._create_blood_pool(0.5)
+        self.assertAlmostEqual(self.vol(self.room2), 1.5,
+                               msg="blood shed in room2 did not stay there")
+
+    def test_the_new_room_only_gets_what_bled_there(self):
+        body, script = self.bleeder(self.room2, severity=1)
+        elsewhere = self.other_room()
+        for _ in range(3):
+            script._create_blood_pool(0.5)
+        body.location = elsewhere
+        script._create_blood_pool(0.5)
+        script._create_blood_pool(0.5)
+        self.assertLessEqual(self.vol(elsewhere), 1.0)
+
+    def test_staying_put_is_unaffected(self):
+        body, script = self.bleeder(self.room2, severity=1)
+        for _ in range(_flush_ticks() + 1):
+            script._create_blood_pool(0.5)
+        self.assertAlmostEqual(self.vol(self.room2), 0.5 * (_flush_ticks() + 1))
+
+
 class TestForensicsReadsTheSameEvidence(_BleedCase):
     def test_the_batched_incident_carries_identity(self):
         body, script = self.bleeder(self.room2, severity=1)
