@@ -147,16 +147,31 @@ def _make_social_cmd(
             # hider could `nod`, `wave`, `shrug` at somebody and stay
             # concealed while the room watched them do it.
             #
-            # AFTER the argument checks above and before any broadcast,
-            # matching #2530: a refused command must not blow your cover
-            # for an action that never happened. The solo form needs no
-            # arguments, so the only refusal ahead of it is the
-            # no-location guard.
+            # BEFORE each broadcast and AFTER every refusal, matching
+            # #2530: a refused command must not blow your cover for an
+            # action that never happened.
+            #
+            # This used to sit here, above the branch, on the reasoning
+            # that "the solo form needs no arguments, so the only
+            # refusal ahead of it is the no-location guard". True of the
+            # SOLO form -- and the TARGETED form runs into two more
+            # refusals further down: the `Usage:` line when a keyword
+            # has no targeted template (`sigh at nobody`), and a failed
+            # `caller.search` (`wave xyzzy`). Both emerged the hider for
+            # a pose the room never saw:
+            #
+            #     > wave xyzzynotathing
+            #     You abandon any pretense of hiding.
+            #     Could not find 'xyzzynotathing'.
+            #
+            # The comment described the invariant; the call beneath it
+            # broke it. It is now made once per branch, next to the
+            # broadcast it is actually paying for.
             from world.stealth import break_stealth
-            break_stealth(caller)
 
             if not args:
                 # --- Solo form ---
+                break_stealth(caller)
                 caller.msg(f"You {verb}.")
                 msg_room_identity(
                     location,
@@ -177,6 +192,8 @@ def _make_social_cmd(
             if not target:
                 return  # search() already sent error
 
+            # Every refusal is behind us; the pose is going to happen.
+            break_stealth(caller)
             target_name = target.get_display_name(caller)
             caller.msg(
                 f"You {verb} {preposition} {target_name}."
