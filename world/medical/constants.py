@@ -181,6 +181,19 @@ ORGAN_REPAIR_PARTIAL_DENOMINATOR = 2
 # future tactical tier rides the combat handler, not this constant.)
 MEDICAL_TICK_INTERVAL = 60
 
+#: How many ticks a bleeder may accumulate blood-pool volume in memory
+#: before it is flushed to the room's pool object regardless of anything
+#: else (#3077).  A flush is 4 attribute writes on the room's pool plus a
+#: description rebuild, and was happening EVERY tick -- 72% of a bleeding
+#: tick's cost, 11 saves per tick, all bleeders in a room contending on
+#: one row.  Between checkpoints the volume rides ``ndb`` on the bleeder's
+#: script, so a hard kill loses at most this many ticks of one bleeder's
+#: contribution to the floor -- the same bounded-loss doctrine the souls
+#: wage checkpoint uses.  Flushes also happen immediately when a player
+#: is in the room, when the pending volume would change the pool's
+#: rendering band, and when the script stops.
+BLOOD_POOL_FLUSH_TICKS = 5
+
 # Downtime cap (spec §4.3): a single process() applies at most this
 # many minutes of effect, so reloads/crashes never bill players for
 # server downtime.  2x the expected sampling gap.

@@ -703,19 +703,31 @@ class BloodPool(Object):
                               key=lambda x: x['timestamp'])
         return _incident_age_hours(oldest_incident)
     
+    #: Rendering bands over ``total_volume``.  ONE definition: the
+    #: description reads it, and the medical tick reads it to decide
+    #: whether a pending flush would change what a player sees (#3077).
+    VOLUME_BANDS = (
+        (3, "small droplets"),
+        (10, "modest stains"),
+        (20, "significant pooling"),
+        (35, "extensive blood loss"),
+    )
+
+    @classmethod
+    def volume_band(cls, volume):
+        """Index of the band ``volume`` falls in (0..4)."""
+        volume = volume or 0
+        for idx, (ceiling, _label) in enumerate(cls.VOLUME_BANDS):
+            if volume <= ceiling:
+                return idx
+        return len(cls.VOLUME_BANDS)
+
     def get_volume_description(self):
         """Get description based on total blood volume."""
-        volume = self.db.total_volume or 0
-        if volume <= 3:
-            return "small droplets"
-        elif volume <= 10:
-            return "modest stains"
-        elif volume <= 20:
-            return "significant pooling"
-        elif volume <= 35:
-            return "extensive blood loss"
-        else:
-            return "massive carnage"
+        idx = self.volume_band(self.db.total_volume)
+        if idx < len(self.VOLUME_BANDS):
+            return self.VOLUME_BANDS[idx][1]
+        return "massive carnage"
     
     def get_age_description(self):
         """Get progressive description based on age of oldest blood."""
