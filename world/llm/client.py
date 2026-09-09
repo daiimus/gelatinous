@@ -24,6 +24,10 @@ from world.llm.prompt import TURN_SCHEMA
 _DEFAULT_URL = "http://host.docker.internal:8765/v1/chat/completions"
 _DEFAULT_TIMEOUT = 40          # warm 24B constrained gen ~17s/round; cover one round + headroom
 _DEFAULT_MAX_TOKENS = 160
+#: Used only when the setting is absent. The shipped value lives in
+#: `server/conf/settings.py` ("characterful but coherent"); this is the
+#: floor for a deployment that never set one.
+_DEFAULT_TEMPERATURE = 0.8
 
 
 # --------------------------------------------------------------------------
@@ -170,12 +174,27 @@ def request_turn(messages, on_turn, on_fail, schema=None):
     api_key = getattr(settings, "LLM_GM_API_KEY", "")
     timeout = getattr(settings, "LLM_GM_TIMEOUT", _DEFAULT_TIMEOUT)
     max_tokens = getattr(settings, "LLM_GM_MAX_TOKENS", _DEFAULT_MAX_TOKENS)
+    # READ THE DIAL. `LLM_GM_TEMPERATURE` had exactly one occurrence in
+    # the repo -- the line that defines it. Nothing imported it, and this
+    # module contained no reference to `temperature` in any form, so the
+    # field never reached the wire and every GM call ran at whatever
+    # default the backend happened to pick (#2769).
+    #
+    # Its siblings are all consumed a few lines up, which is what made
+    # the omission easy to miss: the file looks like it reads the whole
+    # `LLM_GM_*` block, and it read all of it but this.
+    #
+    # It matters more than a dead setting usually would -- the portable
+    # layer is meant to be backend-agnostic, and temperature is the knob
+    # most likely to differ between backends and the first one reached
+    # for when output register drifts.
+    temperature = getattr(settings, "LLM_GM_TEMPERATURE", _DEFAULT_TEMPERATURE)
 
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     body = {"messages": messages, "json_schema": schema or TURN_SCHEMA,
-            "max_tokens": max_tokens}
+            "max_tokens": max_tokens, "temperature": temperature}
     if model:
         body["model"] = model
 
