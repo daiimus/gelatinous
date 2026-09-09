@@ -203,9 +203,22 @@ class TestBloodHasOneDoor(_OperationCase):
         writer = re.compile(r"blood_level\s*=\s*max\([^)]*blood_level\s*-")
         offenders = []
         for path in sorted((root / "world" / "medical").glob("*.py")):
-            for i, line in enumerate(path.read_text(errors="ignore")
-                                     .splitlines(), 1):
+            lines = path.read_text(errors="ignore").splitlines()
+            for i, line in enumerate(lines, 1):
                 if writer.search(line):
-                    offenders.append(f"{path.name}:{i}")
-        self.assertEqual(offenders, ["conditions.py:282"],
-                         f"a second blood door reappeared: {offenders}")
+                    # WHERE, not which line. This used to assert
+                    # `["conditions.py:282"]`; #3064 edited comments in
+                    # the same file and shifted the writer to 289, so
+                    # the test went red without a second door appearing.
+                    # A line number is not the property under test --
+                    # "exactly one writer, and it is the bleeding tick"
+                    # is. Same trap as the raw-mixer pin fixed in #3090.
+                    enclosing = next(
+                        (ln.strip() for ln in reversed(lines[:i])
+                         if ln.lstrip().startswith("def ")), None)
+                    offenders.append(f"{path.name}::{enclosing}")
+        self.assertEqual(
+            offenders,
+            ["conditions.py::def tick_effect(self, character, "
+             "elapsed_minutes=1.0):"],
+            f"a second blood door reappeared: {offenders}")
