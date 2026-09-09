@@ -1348,6 +1348,38 @@ def _derive_robot(base: dict) -> dict:
 SPECIES_DEFINITIONS["robot"] = _derive_robot(SPECIES_DEFINITIONS["human"])
 
 
+def species_of(target) -> str | None:
+    """The species to judge this body BY.
+
+    ONE accessor, because the game stores this in two fields and the
+    callers were reading only one. Living characters and corpses carry
+    ``db.species`` (`death_progression` sets it on the corpse).
+    **Detached parts never do** -- limbs, heads and harvested organs
+    capture theirs at sever time into ``db.source_species``, and no
+    severed-part constructor writes ``db.species`` at all.
+
+    So every species lookup on a detached part returned ``None`` and
+    fell back to human, while the part's own name and description were
+    rendered from ``source_species``. The object and the command
+    disagreed about what it was: a severed rat head was described as a
+    rat and judged against the human anatomy table, which offers a
+    harvestable brain that the rat table does not (#2546). Measured
+    live: 43 severed parts, every one with ``db.species = None``,
+    including real rat heads.
+
+    ``species`` is checked first and ``source_species`` is the
+    fallback, so bodies and corpses keep answering off the field they
+    already use. Returns ``None`` when neither is set; callers that
+    need a concrete table apply their own ``or "human"`` default, as
+    they did before.
+    """
+    db = getattr(target, "db", None)
+    if db is None:
+        return None
+    return (getattr(db, "species", None)
+            or getattr(db, "source_species", None))
+
+
 def _resolve_species(species: str | None) -> dict:
     """Return the species definition, falling back to ``human``.
 

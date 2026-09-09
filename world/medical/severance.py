@@ -291,7 +291,12 @@ def compute_cut_points(target) -> set:
     if not severed_containers:
         return set()
 
-    species = getattr(getattr(target, "db", None), "species", None)
+    # `compute_cut_points` runs on corpses and APPENDAGES as much as on
+    # living bodies, and a detached part keeps its species in
+    # `source_species` -- reading only `db.species` collapsed a rat limb
+    # onto the human cluster/chain tables (#2546).
+    from world.anatomy import species_of
+    species = species_of(target)
 
     head_cluster = frozenset()
     if "head" in severed_containers:

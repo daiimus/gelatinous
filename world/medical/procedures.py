@@ -1635,9 +1635,8 @@ def _resolve_install_augment(actor, target, *, organ_item, location: str,
     # bypass CmdInstall's pre-dispatch gates.  ``compatible_species``
     # is the established cyberware convention; ``species_compat`` is
     # accepted for items spawned before the unification.
-    target_species = (
-        getattr(getattr(target, "db", None), "species", None) or "human"
-    )
+    from world.anatomy import species_of
+    target_species = species_of(target) or "human"
     compat = [
         s.lower() for s in (
             getattr(item_db, "compatible_species", None)
@@ -1877,9 +1876,8 @@ def _resolve_install_module(actor, target, *, organ_item, location: str,
         return
 
     # Species gate — chart-commenced installs bypass command gates.
-    target_species = (
-        getattr(getattr(target, "db", None), "species", None) or "human"
-    )
+    from world.anatomy import species_of
+    target_species = species_of(target) or "human"
     compat = [
         s.lower() for s in (
             getattr(item_db, "compatible_species", None) or []
@@ -2710,10 +2708,10 @@ def reset_body_preserving_augments(char) -> int:
     without this leaves `is_dead()` True, and any caller that checks
     aliveness will read the slot vacant again on the very next sweep.
     """
-    from world.anatomy import get_species_organs
+    from world.anatomy import get_species_organs, species_of
     from world.medical.core import is_augment_organ
 
-    species = getattr(getattr(char, "db", None), "species", None)
+    species = species_of(char)
     species_table = get_species_organs(species)
 
     preserved = []
