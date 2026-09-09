@@ -259,6 +259,36 @@ def designation_line(char):
     return f"{head} — {tail}" if tail else head
 
 
+def designation_rows(char):
+    """The same record as :func:`designation_line`, split into
+    ``(posting, vessel)`` for a sheet that has more than one line to
+    spend.
+
+    `score` was cramming rank, department AND vessel onto one 48-column
+    row and hard-truncating at 47, so a real character read
+    "Specialist, Signals & Survey — SBL-0092 Perpetu" — cut mid-word,
+    with the ship's name lost. Owner's call: separate it out.
+
+    Longest possible posting is "Specialist, Security & Marshal
+    Service" at 38, which fits a "Posting: " row exactly. The one-line
+    form stays for the places that genuinely have one line — the decant
+    envelope's MANIFEST stamp, `CmdSoul`, and the build script's
+    roster.
+
+    Either element is "" when the manifest never listed this person.
+    """
+    des = char.db.designation or {}
+    if not des:
+        return "", ""
+    rank = RANK_LABELS.get(des.get("rank"), "")
+    dept = DEPARTMENTS.get(des.get("dept"), "")
+    vessel = des.get("vessel") or ""
+    name = VESSELS.get(vessel, "")
+    posting = ", ".join(p for p in (rank, dept) if p)
+    berth = " ".join(p for p in (vessel, name) if p)
+    return posting, berth
+
+
 def rated_skills(char):
     """[(label, rating)] for what this character actually holds, best
     first. Only what they know: a sheet full of zeroes tells nobody
