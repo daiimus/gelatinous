@@ -1051,6 +1051,41 @@ def _resolve_harvest(actor, target, *, organ_name: str, location: str,
         )
 
 
+def _clear_removed_record(target, organ_name):
+    """A slot that has just been refilled is no longer a removed slot.
+
+    `db.removed_organs` is APPEND-ONLY: the harvest path adds a name and
+    nothing anywhere took one off. So it recorded "this slot was
+    harvested ONCE" while `MedicalState.full_heal` reads it as "this
+    slot is empty NOW" (#3047). Those diverge the moment a surgeon
+    installs a replacement, and measured with a control:
+
+        CONTROL: never harvested (must heal)          heart hp=15/15
+        slot previously harvested, organ present now  heart hp=1/15
+
+    A ripper takes your heart, the clinic fits a new one, and that new
+    heart can never be healed again by any path through `full_heal`.
+    The record outlived the condition it describes.
+
+    Called from the INSTALL resolvers only, deliberately not from
+    `add_organ`: organs are also seated during body construction and
+    `reset_body_preserving_augments`, and clearing there could hand
+    #3047 straight back -- the entire point of the second source is that
+    it survives a rewritten organ row. An install is different, because
+    a surgeon deliberately put an organ in that slot.
+
+    It also re-opens the slot to harvest, which is correct and is the
+    same reading the other three doors take (`CmdOperate`,
+    `CmdSurgical`, `_resolve_harvest` all gate on this list).
+    """
+    db = getattr(target, "db", None)
+    if db is None:
+        return
+    removed = list(getattr(db, "removed_organs", None) or ())
+    if organ_name in removed:
+        db.removed_organs = [n for n in removed if n != organ_name]
+
+
 def _resolve_install(actor, target, *, organ_item, location: str,
                      **_) -> None:
     """Resolve an ``install`` attempt: slot ``organ_item`` into
@@ -1153,6 +1188,7 @@ def _resolve_install(actor, target, *, organ_item, location: str,
         organ = Organ(organ_name, organ_data=dict(item_spec))
         organ.medical_state = state
         state.add_organ(organ_name, organ)
+        _clear_removed_record(target, organ_name)
 
     if organ is not None:
         # Reset HP based on harvested condition.
@@ -1798,6 +1834,7 @@ def _resolve_install_augment(actor, target, *, organ_item, location: str,
         organ = Organ(organ_name, organ_data=dict(spec))
         organ.medical_state = state
         state.add_organ(organ_name, organ)
+        _clear_removed_record(target, organ_name)
 
     # Surface the new anatomy (§3.6).  ``augment_longdesc`` is one
     # entry (the tail) or a list of entries (the arm restores
@@ -2134,6 +2171,7 @@ def _resolve_install_module(actor, target, *, organ_item, location: str,
     organ = Organ(hardpoint_name, organ_data=spec)
     organ.medical_state = state
     state.add_organ(hardpoint_name, organ)
+    _clear_removed_record(target, hardpoint_name)
     condition_hp = {
         "pristine": organ.max_hp,
         "damaged": int(organ.max_hp * 0.6),
