@@ -2174,8 +2174,23 @@ class CmdRemember(Command):
 
         # Find the target. A document somebody is HOLDING is a valid thing
         # to remember a face by, and `search` does not reach into hands.
-        target = caller.search(target_str, quiet=True)
-        target = target[0] if target else self._find_document(caller, target_str)
+        matches = caller.search(target_str, quiet=True)
+        if matches and len(matches) > 1:
+            # ASK, do not pick. `quiet=True` returns a LIST and hands back
+            # Evennia's messaging, so `matches[0]` silently committed the
+            # first body that answered to the typed word. This command
+            # writes into recognition memory -- the thing the whole
+            # identity layer reads to decide whether an observer gets a
+            # name -- so guessing does not fail loudly, it teaches a face
+            # under the wrong name and keeps answering that way.
+            #
+            # Re-run unquieted, exactly as the no-match branch below
+            # already does, so the player gets the standard "More than
+            # one match" list and disambiguates with an ordinal.
+            caller.search(target_str)
+            return
+        target = matches[0] if matches else self._find_document(caller,
+                                                                target_str)
         if not target:
             caller.search(target_str)   # re-run for its error messaging
             return
