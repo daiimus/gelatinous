@@ -411,6 +411,32 @@ def _mayday(npc: Any, assignment: Any) -> None:
               f"{getattr(where, 'key', 'the scene')}. {_MAYDAY_LINE}")
 
 
+def _arm_watch_timer(npc: Any, seconds: float, fn) -> None:
+    """Arm the legacy timer chain, but only when nothing else drives it.
+
+    `assign` already branches on who will drive the body: a SOULED
+    responder gets a `respond` job whose step calls `run_arrival` once
+    and `run_watch` EVERY BEAT, and `watch_once` was split out of
+    `_watch_tick` for exactly that -- "so something else can drive it
+    ... only who calls it, and how often, moves" (#2384).
+
+    Arming the chain as well gave a souled responder TWO drivers.
+    `watch_once` decrements `assignment.payload["watch_rounds"]`, so the
+    hold burned down at twice the intended rate, and two independent
+    paths decided to stand down: `_watch_tick` calls `resolve` itself
+    while the souls job separately advances its own step. Every
+    responder in the colony is souled -- `assign` says as much: "an
+    unsouled responder, nothing in the colony currently is".
+
+    Gated rather than deleted, because the unsouled door is still wired
+    in `assign` and the timer is its ONLY driver.
+    """
+    from world.director.assignment import _has_soul
+    if _has_soul(npc):
+        return
+    delay(seconds, fn, npc)
+
+
 def security_arrival(npc: Any, assignment: Any) -> None:
     """On-scene behavior for ``role == "security"``: scan, match, act.
 
@@ -437,7 +463,7 @@ def security_arrival(npc: Any, assignment: Any) -> None:
             _aim_lock(npc, suspect)
         assignment.payload["watch_rounds"] = WATCH_ROUNDS
         close_call_for(assignment, "detained", npc)
-        delay(WATCH_SECONDS, _watch_tick, npc)
+        _arm_watch_timer(npc, WATCH_SECONDS, _watch_tick)
         return
     # No hit on this incident — but is anyone here already on file?
     wanted_uid, flagged, entry = _scan_wanted(npc)
@@ -451,18 +477,18 @@ def security_arrival(npc: Any, assignment: Any) -> None:
                       "Hold your position.")
             _aim_lock(npc, flagged)
         assignment.payload["watch_rounds"] = WATCH_ROUNDS
-        delay(WATCH_SECONDS, _watch_tick, npc)
+        _arm_watch_timer(npc, WATCH_SECONDS, _watch_tick)
     elif confidence == "low":
         _cmd(npc, "say You there, Colonist. You fit a description. "
                   "State your business here.")
         close_call_for(assignment, "checked", npc)
-        delay(INVESTIGATE_SECONDS, resolve, npc)
+        _arm_watch_timer(npc, INVESTIGATE_SECONDS, resolve)
     else:
         _cmd(npc, "emote finds nothing that matches its report and "
                   "logs the scene.")
         # UNFOUNDED — the first consequence a false report has ever had.
         close_call_for(assignment, "unfounded", npc)
-        delay(INVESTIGATE_SECONDS, resolve, npc)
+        _arm_watch_timer(npc, INVESTIGATE_SECONDS, resolve)
 
 
 def watch_once(npc: Any) -> bool:
