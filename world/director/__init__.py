@@ -30,10 +30,24 @@ from world.director.intel import (
 from world.director.dispatch import (
     ROLE_RESPONDS_TO,
     WorldEvent,
-    dispatch,
     find_responders,
     raise_event,
 )
+# EXPORTED UNDER A DIFFERENT NAME. `from ... import dispatch` rebinds
+# the package attribute `world.director.dispatch` from the SUBMODULE to
+# the function, for the life of the process -- the submodule stays in
+# `sys.modules`, so nothing reloads it and nothing notices.
+#
+# It is armed rather than firing: every production caller uses
+# `from world.director.dispatch import X`, which resolves through
+# `sys.modules`. What it breaks is attribute access -- anyone writing
+# `from world.director import dispatch as dmod` by analogy with the
+# five `import world.director.<mod> as X` sites that already exist gets
+# a FUNCTION, and the ~30 `mock.patch("world.director.dispatch.*")`
+# targets only keep working because 3.12+ resolves patch targets with
+# `pkgutil.resolve_name` (importlib first). On the older getattr-first
+# resolver they raise AttributeError at patch time (#2754).
+from world.director.dispatch import dispatch as dispatch_event
 from world.director.crime import (
     CRIME_SEVERITY,
     report_crime,
@@ -65,7 +79,7 @@ __all__ = [
     "can_report",
     "clear_assignment",
     "clear_wanted_record",
-    "dispatch",
+    "dispatch_event",
     "find_responders",
     "get_assignment",
     "get_wanted_record",
