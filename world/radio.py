@@ -166,6 +166,33 @@ def seated_base_station(char: Any) -> Optional[Any]:
     furniture = getattr(getattr(char, "db", None), "furniture", None)
     if furniture is None:
         return None
+    # AND THEY HAVE TO BE AWAKE (#2442). RADIO_COMMS_SPEC §2.1 is
+    # explicit — "Dead/unconscious/absent operator = SILENCE" — and
+    # `radio_report` restates it: "No operator, no dispatch, and the
+    # colony finds out the hard way."
+    #
+    # Nothing clears `db.furniture` except changing rooms or `stand`,
+    # and being downed does neither. So you could choke the dispatcher
+    # unconscious, leave her in the chair, and the band went on
+    # classifying calls and rolling the security force: the traffic
+    # reaches her through this function, and `consider_radio_report`
+    # only ever tested its operator for `is None`. The single tell was
+    # that her spoken reply was silent.
+    #
+    # Checked HERE because this is the one door — dispatch hearing,
+    # `xmit` and `to <console>` all resolve the desk through it, so no
+    # consumer can be added later that forgets. Every other console
+    # verb already gates on consciousness (`items.py`, `dispatch.py`,
+    # `crane.py`); the dispatch decision itself had none.
+    # STRICT `is True`, the idiom this codebase uses on exactly this
+    # hazard: a MagicMock stand-in answers every predicate with a truthy
+    # Mock, so a plain truthiness test reads every test fixture as a
+    # corpse and empties the desk.
+    try:
+        if char.is_dead() is True or char.is_unconscious() is True:
+            return None
+    except Exception:  # noqa: BLE001 — no medical read: assume working
+        pass
     room = getattr(char, "location", None)
     if room is None or getattr(furniture, "location", None) is not room:
         return None
@@ -252,7 +279,14 @@ def order_reaches(unit: Any, console: Any = None) -> bool:
     try:
         if console is None:
             from world.director.population import get_base_station
-            console = get_base_station()
+            # WITHOUT the mast requirement (#2442). A wrecked mast means
+            # HANDHELD RANGE here — this function's own docstring says
+            # so — not "no console", and `get_base_station` collapsed
+            # the two by returning None for both. That fell into the
+            # fail-open below, which is doctrine for "no authored
+            # console" (a pre-radio world) and wrong for "the console is
+            # right there with its antenna down".
+            console = get_base_station(require_mast=False)
         if console is None:
             return True                    # pre-radio world: no gate
         if not is_powered(console):

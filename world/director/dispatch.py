@@ -120,7 +120,10 @@ def find_responders(event: WorldEvent) -> list:
         return []
     try:
         from world.director.population import get_base_station
-        console = get_base_station()
+        # Reach, not existence (#2442) — a wrecked mast collapses the
+        # console to handheld range rather than removing it, so the
+        # range layer gets to decide who an order actually reaches.
+        console = get_base_station(require_mast=False)
     except Exception:  # noqa: BLE001 — no population layer = no gate
         console = None
     ranked = []
