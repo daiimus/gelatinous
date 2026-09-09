@@ -21,7 +21,7 @@ from world.spatial import (
     seed_coordinates,
     set_xyz,
 )
-from world.spatial.coordinates import all_coordinate_rooms
+from world.spatial.coordinates import all_coordinate_rooms, get_xyz
 
 #: The tag pinning the world's canonical (0, 0, 0) room.
 ORIGIN_TAG = "coordseed_origin"
@@ -32,6 +32,71 @@ def pinned_origin():
     """The one pinned origin room, or None."""
     rooms = search_tag(ORIGIN_TAG, category=ORIGIN_TAG_CATEGORY)
     return rooms[0] if rooms else None
+
+
+def plan_diff(assignments):
+    """What the walk would CHANGE, and what it would land on top of.
+
+    `seed_coordinates` reports CONTRADICTIONS -- the same walk reaching
+    one room two ways with different results. It never compares its
+    answer against what is on disk, so `/check` could print a clean
+    report while the run underneath it moved rooms and stacked them
+    (#2755).
+
+    That gap is not academic. Against the world as it stands the walk
+    relocates 27 rooms and 18 of them land on a cell another room
+    already holds -- and two rooms sharing a cell means `distance()` 0
+    and `bearing()` "here" between places that are not the same place,
+    so signal range, dispatch facing and anything else keyed on
+    proximity silently read them as co-located.
+
+    The walk is not wrong; it is one of three writers of `db.xyz`
+    (itself, `@coordset`, and ~40 build scripts placing vertical
+    geometry by hand), and it is the only one that thinks it is alone.
+    Deciding who OWNS the attribute is an owner call and is not made
+    here -- this only makes the effect visible before it happens.
+
+    Returns ``(moved, collisions)``:
+      moved      [(room, current, target)] -- would change coordinate
+      collisions [(room, current, target, holders)] -- target cell is
+                 already held by somebody else
+    """
+    moved = []
+    for room, coord in assignments.items():
+        current = get_xyz(room)
+        if current is not None and tuple(current) != tuple(coord):
+            moved.append((room, tuple(current), tuple(coord)))
+
+    occupied = {}
+    for room in all_coordinate_rooms():
+        cell = get_xyz(room)
+        if cell is not None:
+            occupied.setdefault(tuple(cell), []).append(room)
+
+    collisions = []
+    for room, current, target in moved:
+        holders = [r for r in occupied.get(target, []) if r is not room]
+        if holders:
+            collisions.append((room, current, target, holders))
+    return moved, collisions
+
+
+def moving_rooms(rooms):
+    """Those of *rooms* whose coordinate is legitimately transient.
+
+    An elevator car and the crane container REWRITE their own `xyz` as
+    they travel, so their coordinate is only true at the instant it is
+    read. Seeding one is not drift being corrected -- it is a fixed
+    answer being stamped onto something that moves, and the next trip
+    overwrites it. Worth naming in a report rather than silently
+    counted among ordinary rooms.
+    """
+    out = []
+    for room in rooms:
+        path = (getattr(room, "typeclass_path", "") or "").lower()
+        if "elevator" in path or "crane" in path:
+            out.append(room)
+    return out
 
 
 class CmdCoordSeed(default_cmds.MuxCommand):
@@ -71,7 +136,7 @@ class CmdCoordSeed(default_cmds.MuxCommand):
     key = "@coordseed"
     locks = "cmd:perm(Builders) or perm(Developers)"
     help_category = "Building"
-    switch_options = ("check", "origin", "clear", "confirm")
+    switch_options = ("check", "origin", "clear", "confirm", "force")
 
     def func(self):
         caller = self.caller
@@ -160,6 +225,24 @@ class CmdCoordSeed(default_cmds.MuxCommand):
         assignments, contradictions = seed_coordinates(origin)
         dry = "check" in switches
 
+        # WHAT IT WOULD CHANGE, not just what it computed. The walk's
+        # own contradiction list only describes its internal
+        # consistency; it never looks at what is on disk, so a run that
+        # moves rooms onto each other previews as clean (#2755).
+        moved, collisions = plan_diff(assignments)
+        movers = moving_rooms(list(assignments))
+
+        if collisions and not dry and "force" not in switches:
+            caller.msg(
+                f"|rRefusing to seed: {len(collisions)} room(s) would land "
+                f"on a cell another room already holds.|n\n"
+                f"Two rooms in one cell read as distance 0 and bearing "
+                f"'here' to every proximity check in the game.\n"
+                f"Run |w@coordseed/check|n to see them, or "
+                f"|w@coordseed/force|n to do it anyway."
+            )
+            return
+
         if not dry:
             for room, coord in assignments.items():
                 set_xyz(room, *coord)
@@ -169,6 +252,40 @@ class CmdCoordSeed(default_cmds.MuxCommand):
             f"|g{verb} {len(assignments)} room(s)|n from the pinned origin "
             f"{origin.get_display_name(caller)} (0, 0, 0)."
         )
+
+        if moved:
+            caller.msg(
+                f"|y{len(moved)} room(s) would change coordinate|n"
+                if dry else
+                f"|y{len(moved)} room(s) changed coordinate|n"
+            )
+            for room, current, target in moved[:12]:
+                caller.msg(f"   {room.get_display_name(caller)} "
+                           f"{current} -> {target}")
+            if len(moved) > 12:
+                caller.msg(f"   ...and {len(moved) - 12} more")
+
+        if collisions:
+            caller.msg(
+                f"|r{len(collisions)} of those land on an OCCUPIED cell|n "
+                f"— two rooms in one cell read as distance 0 and bearing "
+                f"'here' to every proximity check."
+            )
+            for room, _current, target, holders in collisions[:12]:
+                held = ", ".join(h.get_display_name(caller) for h in holders)
+                caller.msg(f"   {room.get_display_name(caller)} -> {target} "
+                           f"(held by {held})")
+            if len(collisions) > 12:
+                caller.msg(f"   ...and {len(collisions) - 12} more")
+
+        if movers:
+            caller.msg(
+                f"|y{len(movers)} moving room(s) are in the walk|n — an "
+                f"elevator car or crane container rewrites its own "
+                f"coordinate as it travels, so seeding one stamps a fixed "
+                f"answer onto something that moves: "
+                + ", ".join(m.get_display_name(caller) for m in movers[:6])
+            )
 
         if contradictions:
             caller.msg(
