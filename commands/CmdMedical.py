@@ -118,10 +118,23 @@ class CmdDamageTest(Command):
         # Show medical status after damage
         medical_state = caller.medical_state  # Use property that loads from db
         if medical_state:
-            # Show current wounds
-            total_wounds = sum(len(wounds) for wounds in medical_state.to_dict().get('wounds', {}).values())
-            if total_wounds > 0:
-                caller.msg(f"|yYou now have {total_wounds} total wounds.|n")
+            # `to_dict()` emits organs / conditions / blood_level /
+            # pain_level / consciousness.  There has never been a
+            # `wounds` key, so the old `.get('wounds', {})` summed to 0
+            # and this line could never print (#2535).  Conditions are
+            # what damage actually generates -- bleeding, pain -- and
+            # damagetest surfaces them nowhere else; organ damage is
+            # enumerated separately just below.
+            conditions = getattr(medical_state, "conditions", None) or []
+            if conditions:
+                tally = {}
+                for condition in conditions:
+                    name = str(getattr(condition, "type", "unknown"))
+                    tally[name] = tally.get(name, 0) + 1
+                summary = ", ".join(f"{name} x{count}"
+                                    for name, count in sorted(tally.items()))
+                caller.msg(f"|yYou now have {len(conditions)} active "
+                           f"condition(s): {summary}.|n")
             
             # Show organ damage - organs are now Organ objects, not dicts
             from world.anatomy import get_organ_display_name
@@ -317,9 +330,18 @@ class CmdMedicalInfo(Command):
             # Handle both numeric and string severities
             if isinstance(condition.severity, (int, float)):
                 # Convert numeric severity to descriptive string
-                if condition.severity >= 20:
+                # The engine caps severity at 10 -- `min(10, ...)` in
+                # conditions.py -- so the old `>= 20` top rung was
+                # unreachable and the worst injury the game can inflict
+                # rendered one rung below the top (#2534).  10 is the
+                # engine's own Critical threshold: see
+                # `InfectionCondition.disables_organ_at_severity`,
+                # "Critical infection (severity >= 10)".  The 5 boundary
+                # is left alone -- HEALTH_AND_SUBSTANCE_SYSTEM_SPEC pins
+                # it as the tourniquet / self-clot line.
+                if condition.severity >= 10:
                     severity_str = "Critical"
-                elif condition.severity >= 10:
+                elif condition.severity >= 7:
                     severity_str = "Severe"
                 elif condition.severity >= 5:
                     severity_str = "Moderate"
