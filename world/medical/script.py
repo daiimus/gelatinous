@@ -242,8 +242,15 @@ class MedicalScript(DefaultScript):
                 self._create_blood_pool(total_bleeding_severity)
             
             # Remove ended conditions
+            # `remove_condition`, not a raw `list.remove` (#2544):
+            # `is_dead()` is read a few lines below and returns a CACHE
+            # that only `_invalidate_derived_state()` clears.  Nothing
+            # between here and there clears it -- `update_vital_signs`
+            # assigns `pain_level` and `consciousness`, which are plain
+            # attributes with no setter -- so an ended condition that
+            # changed a lethal capacity was invisible to that check.
             for condition in conditions_to_remove:
-                medical_state.conditions.remove(condition)
+                medical_state.remove_condition(condition)
                 splattercast.msg(f"MEDICAL_SCRIPT: Removed {condition.condition_type}")
 
             # PR-C (#307): healing tick.  Walk stabilized organs that

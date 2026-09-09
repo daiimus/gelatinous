@@ -8,6 +8,25 @@ from world.weather import weather_system
 from world.weather.weather_messages import WEATHER_INTENSITY
 from world.identity_utils import msg_room_identity
 
+
+def _severity_rank(condition):
+    """Sort key for "least severe first".
+
+    Condition severities are INTEGERS 1-10 -- every writer in
+    ``world/medical/conditions.py`` assigns one.  The string form
+    ("minor" / "moderate" / ...) survives only as the default argument
+    of ``Character.add_medical_condition``, which has no callers
+    repo-wide.  Map the legacy words onto the numeric ladder rather
+    than crash if one ever appears, using the same boundaries the
+    ``medinfo`` display uses (#2534).
+    """
+    value = getattr(condition, "severity", 0)
+    if isinstance(value, (int, float)):
+        return float(value)
+    return {"minor": 1.0, "moderate": 5.0,
+            "severe": 7.0, "critical": 10.0}.get(str(value).lower(), 0.0)
+
+
 class CmdHeal(Command):
     """
     Instantly heal a target character using the medical system.
@@ -220,11 +239,21 @@ class CmdHeal(Command):
                 conditions_to_heal = min(conditions_to_heal, len(matching_conditions))
                 
                 # Remove the conditions
-                for i in range(conditions_to_heal):
+                # `remove_condition`, NOT a raw `list.remove`. The raw
+                # call skips `_invalidate_derived_state()`, which is the
+                # only thing that clears `_cached_is_dead` -- and
+                # conditions feed `calculate_body_capacity`, so they are
+                # a real input to the death verdict. It also skips
+                # `condition.stop_condition()`, leaving the removed
+                # condition's ticker running against a state that no
+                # longer lists it. Both branches then STOP the medical
+                # script when the list empties, so nothing would ever
+                # recompute: reviving someone by removing the condition
+                # that killed them left them dead to the game (#2544).
+                for _i in range(conditions_to_heal):
                     if matching_conditions:
                         condition_key = matching_conditions.pop(0)
-                        if condition_key in medical_state.conditions:
-                            medical_state.conditions.remove(condition_key)
+                        medical_state.remove_condition(condition_key)
                 
                 # Stop medical script if no conditions remain
                 if not medical_state.conditions:
@@ -239,24 +268,21 @@ class CmdHeal(Command):
                 conditions_to_heal = min(amount, conditions_before)
                 conditions_removed = 0
                 
-                # Remove conditions (least severe first)
-                severity_order = {"minor": 1, "moderate": 2, "severe": 3, "critical": 4}
-                while conditions_removed < conditions_to_heal and medical_state.conditions:
-                    # Find least severe condition
-                    least_severe_condition = None
-                    least_severity = float('inf')
-                    
-                    for condition in medical_state.conditions:
-                        severity_value = severity_order.get(condition.severity, 0)
-                        if severity_value < least_severity:
-                            least_severity = severity_value
-                            least_severe_condition = condition
-                    
-                    if least_severe_condition:
-                        medical_state.conditions.remove(least_severe_condition)
-                        conditions_removed += 1
-                    else:
-                        break
+                # Remove conditions, least severe first.  The old
+                # `severity_order` table was keyed by STRINGS while
+                # every severity written by the engine is an INTEGER, so
+                # `.get()` missed on every lookup and scored everything
+                # 0.  `least_severity` started at `inf`: the first
+                # condition scored `0 < inf` and won, every later one
+                # scored `0 < 0` and lost.  The loop therefore always
+                # took the FIRST condition in list order -- the oldest,
+                # not the mildest -- which is the opposite of what it
+                # advertises and of what a staff member triaging a
+                # patient expects (#2544).
+                for condition in sorted(list(medical_state.conditions),
+                                        key=_severity_rank)[:conditions_to_heal]:
+                    medical_state.remove_condition(condition)
+                    conditions_removed += 1
                 
                 # Stop medical script if no conditions remain
                 if not medical_state.conditions:
@@ -581,8 +607,14 @@ class CmdTestUnconscious(Command):
                     if condition.condition_type == 'consciousness_suppression':
                         conditions_to_remove.append(condition)
                 
+                # Also `remove_condition` (#2544).  This branch happens
+                # to escape the stale-verdict bug because it assigns
+                # `blood_level` below and that setter invalidates -- but
+                # it still leaked the removed conditions' tickers, and
+                # relying on a later unrelated assignment is not a
+                # property the next edit should have to preserve.
                 for condition in conditions_to_remove:
-                    medical_state.conditions.remove(condition)
+                    medical_state.remove_condition(condition)
                 
                 # Restore consciousness to normal level
                 medical_state.consciousness = 1.0
