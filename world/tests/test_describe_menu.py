@@ -51,6 +51,27 @@ class _DB:
     skintone = None
     desc = ""
 
+    def __getattr__(self, name):
+        """Answer None for anything unset, as the real handler does.
+
+        Evennia's `db` handler returns None for an attribute that was
+        never set; this stub raised AttributeError instead, so it was a
+        STRICTER object than the thing it stands in for. Every time the
+        identity path grew a field it did not know about
+        (`keyword_override` was the one that bit) the test died on the
+        stub rather than on the code under test.
+
+        A test double that is harder to satisfy than production is not a
+        conservative choice -- it fails on changes that are not defects,
+        which is how a suite gets trained to ignore its own red.
+        """
+        if name.startswith("__") and name.endswith("__"):
+            # Dunders must still raise. A stub that answers None to
+            # `__deepcopy__`/`__iter__`/`__len__` breaks copy, pickle and
+            # truthiness in ways that look nothing like their cause.
+            raise AttributeError(name)
+        return None
+
 
 class _NDB:
     pass
