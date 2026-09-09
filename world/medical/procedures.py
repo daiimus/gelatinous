@@ -1292,6 +1292,19 @@ def _resolve_suture(actor, target, *, location: Optional[str] = None,
 
     just_treated = set(closed) & untreated_stumps
     if just_treated:
+        # The EXISTING record, re-read here. #3065 folded the old
+        #     sutured = normalize_sutured_stumps(target)
+        #     untreated_stumps = compute_cut_points(target) - set(sutured)
+        # into `untreated_stump_locations()`, which returns only the set
+        # difference -- and took the `sutured` binding with it while
+        # these two lines still needed it. Every suture that actually
+        # closed a stump raised `NameError: name 'sutured' is not
+        # defined`, which is the whole point of the verb for an amputee.
+        # Re-read rather than threaded out of the helper: the helper
+        # answers "what is still open", and this needs "what is already
+        # recorded", which are two questions.
+        from world.medical.severance import normalize_sutured_stumps
+        sutured = normalize_sutured_stumps(target)
         for loc in just_treated:
             sutured[loc] = outcome
         target.db.sutured_stumps = sutured
