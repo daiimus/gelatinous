@@ -72,5 +72,17 @@ class TestEveryPickerGotIt(EvenniaCommandTest):
         silently keep guessing, which is exactly the failure mode."""
         import inspect
         src = inspect.getsource(op)
-        self.assertEqual(src.count("isinstance(pick, _Several)"), 4)
-        self.assertEqual(src.count("pick = _parse_pick(raw,"), 4)
+        asks = src.count("isinstance(pick, _Several)")
+        picks = src.count("pick = _parse_pick(raw,")
+        # EQUAL, not four. The invariant is "every picker asks" -- one
+        # `_Several` check per `_parse_pick` site -- and pinning the
+        # COUNT meant that adding a fifth picker CORRECTLY, with its
+        # check, failed this test. It did: 5 != 4, with both counts at
+        # 5 and the invariant perfectly intact.
+        #
+        # A test that fails when the thing it guards is extended
+        # properly teaches people to edit the number, which is exactly
+        # how the next genuinely-missed site gets waved through.
+        self.assertTrue(picks, "no picker sites found at all")
+        self.assertEqual(asks, picks,
+                         f"{picks} pickers but {asks} ask -- a site guesses")

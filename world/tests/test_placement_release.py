@@ -79,6 +79,20 @@ class TestPlacementIsReconciled(EvenniaCommandTest):
         import inspect
         from world.souls import engine
         src = inspect.getsource(engine.think)
-        block = src[src.index("soul.db.placed_by_shift"):]
+        # JUST THE RECONCILER. Slicing to the end of `think` swept in
+        # the shift-release code below it, which asks `on_duty` too --
+        # so the check passed even with the reconciler's own shift test
+        # deleted. Caught by controlling the test: removing that call
+        # left it green, which is the same as not having the test.
+        start = src.index("soul.db.placed_by_shift")
+        end = src.index("_release_placement(soul)", start)
+        block = src[start:end]
         self.assertIn("at_post", block)
-        self.assertIn('_in_block(hour, sched["work"])', block)
+        # A SHIFT CHECK, not one spelling of it. This pinned the literal
+        # `_in_block(hour, sched["work"])`; the engine now asks
+        # `on_duty(soul, hour)` -- the same question, extracted into a
+        # helper -- and the test went red over a rename while the
+        # behaviour it guards was untouched.
+        self.assertTrue(
+            any(tok in block for tok in ("on_duty(", "_in_block(")),
+            "the reconciler no longer consults a shift predicate")
