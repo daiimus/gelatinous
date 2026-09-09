@@ -4090,13 +4090,12 @@ LONGHAUL_CHRONO = {
         ("category", "clothing"),
         ("worn_desc", "A matte {color}gunmetal|n crew chrono rides {their} left wrist on a webbing strap, bezel scuffed from being knocked into things. The lume dots hold a faint green charge"),
         ("coverage", ["left_hand"]),
-        ("layer", 1),  # DELIBERATE, not stale (#2464). `derive_rung` puts a
-        # chrono on rung 5 — but so are the work gloves, and both
-        # cover `left_hand`, so at 5 they are a same-layer conflict
-        # and you cannot wear a watch and gloves together. Rung 1
-        # slips it under. This is the "explicit layer always wins"
-        # escape hatch used exactly as designed; caught by wearing it
-        # in game, not by any test.
+        ("layer", 1),  # Watches live low (owner ruling 2026-08-30, #2433).
+        # At rung 5 a watch shares it with GLOVES and both cover
+        # `left_hand`, so the two cannot be worn together at all —
+        # found by wearing one in game (#3054). The ladder itself
+        # now puts watches at 1, so this agrees with derivation
+        # rather than overriding it.
         # and rewrote every spawned garment; this prototype was missed (#2464).
         ("color", "gunmetal"),
         ("material", "alloy"),
@@ -4144,7 +4143,15 @@ STOPPED_WATCH = {
         ("category", "clothing"),
         ("worn_desc", "An old {color}steel|n watch is buckled to {their} left wrist with the crystal frosted through with cracks. The hands stand perfectly still and have for some time"),
         ("coverage", ["left_hand"]),
-        ("layer", 5),
+        ("layer", 1),  # OWNER RULING 2026-08-30 (#2433): "Watches should
+        # just live on a low layer like underwear and eventually be
+        # transparent since they won't cover a hand." The other two
+        # watches were already at 1; this one was the outlier at 5.
+        #
+        # Not cosmetic: a watch at 5 shares that rung with GLOVES and
+        # both cover `left_hand`, so it is a same-layer conflict and
+        # you cannot wear a watch and gloves together at all. Proven
+        # by wearing one in game (#3054).
         # 1970-01-02 12:17 UTC -> 04:17 colony local; only {time} renders,
         # so the date it died stays unwritten
         ("clock_stopped", 130620),
