@@ -264,6 +264,22 @@ class WornItemsRendering(TestCase):
         stub = SimpleNamespace()
         stub.db = SimpleNamespace(worn_items=worn_dict)
         stub.get_display_name = lambda looker: "stub"
+        # The items have to look WORN ON THIS LIMB. `_build_worn_items_line`
+        # skips anything without a `pk` or whose `location` is not the
+        # appendage -- guards added by #2456, because a deleted item
+        # deserialised to None and crashed `return_appearance`, and
+        # "an item that has left the limb by any door is likewise no
+        # longer worn on it".
+        #
+        # These doubles carried neither, so every item was pruned and the
+        # renderer correctly returned "". The test had been asserting
+        # against a limb wearing nothing.
+        for _loc, items in (worn_dict or {}).items():
+            for item in items or []:
+                if not hasattr(item, "pk"):
+                    item.pk = id(item)
+                if not hasattr(item, "location"):
+                    item.location = stub
         # Bind the unbound method.
         stub._build_worn_items_line = (
             Appendage._build_worn_items_line.__get__(stub, type(stub))

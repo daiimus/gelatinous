@@ -17,32 +17,16 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from world.anatomy import (
-    format_condition_tagline,
-    prepend_condition_to_desc,
-)
+# `format_condition_tagline` is GONE, removed deliberately by #2848
+# ("kept for callers that do not exist" -- its only references were the
+# facade re-exporting it). Its tests went with it; this module could not
+# even be imported afterwards, so it had been contributing an ImportError
+# rather than coverage.
+#
+# `prepend_condition_to_desc` survives and has four real callers, so the
+# shim contract it guards is still worth pinning.
+from world.anatomy import prepend_condition_to_desc
 
-
-class TestFormatConditionTaglineReturnsEmpty(TestCase):
-    """Every condition returns the empty string now (no-op shim)."""
-
-    def test_pristine_empty(self):
-        self.assertEqual(format_condition_tagline("pristine"), "")
-
-    def test_damaged_empty(self):
-        self.assertEqual(format_condition_tagline("damaged"), "")
-
-    def test_putrid_empty(self):
-        self.assertEqual(format_condition_tagline("putrid"), "")
-
-    def test_desiccated_empty(self):
-        self.assertEqual(format_condition_tagline("desiccated"), "")
-
-    def test_none_empty(self):
-        self.assertEqual(format_condition_tagline(None), "")
-
-    def test_unknown_empty(self):
-        self.assertEqual(format_condition_tagline("phlegmatic"), "")
 
 
 class TestPrependConditionToDescReturnsDescUntouched(TestCase):
