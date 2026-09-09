@@ -105,8 +105,6 @@ def process_corpse(post, by, corpse, giver):
     # only `if giver and giver.pk` — with `_drop_from_hands` and
     # `corpse.delete()` in between — so a giverless or mid-transaction
     # deleted giver left the money nowhere (#2814).
-    if not (giver and giver.pk):
-        payout = 0
     if block:
         # BUY WHAT YOU CAN PAY FOR (#2479). `payout = min(payout, till)`
         # clipped the PRICE and `stock_cuts(dict(yields))` stocked the
@@ -120,6 +118,21 @@ def process_corpse(post, by, corpse, giver):
         # matters because its till refills from selling that stock.
         bought, spent = _affordable(yields, till)
         payout = spent
+        # ...and only NOW zero it for a giverless hand-over. This
+        # guard used to sit ABOVE the block, where `payout = spent`
+        # four lines down overwrote it: the register was debited and
+        # nobody was credited, so the money left the world -- exactly
+        # #2814, reintroduced by #2479 landing below a guard it did
+        # not read. The comment above says debit and credit sit under
+        # the same condition; the clip has to happen first, so the
+        # condition has to be applied after it.
+        #
+        # Reachable without anyone logging out: `on_receive` passes
+        # None unless the giver is a Character, so a script or fixture
+        # handing over a corpse arrives giverless -- and the 1.5s
+        # `delay` before the cleaver is real time a giver can die in.
+        if not (giver and giver.pk):
+            payout = 0
         block.db.register = till - payout
         # the produce becomes SHOP STOCK — buyable, finite, real
         block.stock_cuts(dict(bought))
@@ -136,6 +149,9 @@ def process_corpse(post, by, corpse, giver):
             for _ in range(count):
                 for cut in spawn(key):
                     cut.move_to(by.location, quiet=True, move_hooks=False)
+
+    if not (giver and giver.pk):
+        payout = 0          # blockless path, and belt-and-braces above
 
     _drop_from_hands(by, corpse)
     corpse.delete()
