@@ -85,6 +85,42 @@ def _is_staff(obj) -> bool:
         return False
 
 
+#: How the killing blow reads inside a death cause (#2778).  The words are
+#: chosen so the death-prose matcher's keywords -- "stab", "slash", "burn",
+#: and the location words "head" / "brain" -- appear in the composed
+#: string, which is what makes the authored per-injury prose reachable.
+#: `cut` and `laceration` are the edged wounds this game actually deals
+#: (44 call sites), so they read as a slash.  Types that are not a blow
+#: (`harvested`, `generic`) add nothing.
+_DEATH_BLOW_PHRASES = {
+    "stab": "a stab wound", "cut": "a slash", "laceration": "a slash",
+    "slash": "a slash", "bullet": "a gunshot", "blunt": "blunt trauma",
+    "blast": "a blast", "burn": "burns", "acid": "acid burns",
+    "severed": "a severing blow",
+}
+
+
+def _with_death_blow(cause, blow):
+    """``"blood loss"`` -> ``"blood loss from a stab wound to the chest"``.
+
+    The capacity cause says WHY the body stopped; the blow says WHAT did
+    it.  Both are true, and the curtain reads the whole phrase aloud
+    ("Your body succumbs to ...").  The blow is appended, not prepended,
+    so the physiology keywords keep their precedence in the prose
+    matcher: a stab that bleeds out still gets the blood-loss line, which
+    is specific prose, not the generic one.
+    """
+    try:
+        blow = dict(blow or {})
+    except (TypeError, ValueError):
+        return cause
+    phrase = _DEATH_BLOW_PHRASES.get(str(blow.get("injury_type") or "").lower())
+    if not phrase:
+        return cause
+    location = str(blow.get("location") or "").replace("_", " ").strip()
+    return f"{cause} from {phrase} to the {location}" if location else f"{cause} from {phrase}"
+
+
 class Character(
     ArmorMixin, ClothingMixin, AppearanceMixin, ObjectParent, DefaultCharacter
 ):
@@ -611,15 +647,16 @@ class Character(
             
             # Return first fatal condition found (in priority order)
             if blood_loss_fatal:
-                return "blood loss"
+                cause = "blood loss"
             elif blood_pumping <= 0:
-                return "heart failure"
+                cause = "heart failure"
             elif breathing <= 0:
-                return "respiratory failure"
+                cause = "respiratory failure"
             elif digestion <= 0:
-                return "organ failure"
+                cause = "organ failure"
             else:
-                return "critical injuries"
+                cause = "critical injuries"
+            return _with_death_blow(cause, self.db.death_blow)
                 
         except Exception:
             return "unknown causes"

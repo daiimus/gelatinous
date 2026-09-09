@@ -74,7 +74,7 @@ SPECIES_DEFINITIONS = {
         # renderer so a room pooled with blood from different species reads
         # as a visually distinguishable mixture.  Species without this field
         # fall back to human crimson via ``get_species_blood_color``.
-        "blood_color": {"name": "crimson", "code": "|R", "dried": "rust-brown"},
+        "blood_color": {"name": "crimson", "code": "|R", "dried": "rust-brown", "fluid": "blood"},
 
         # Per-location display strings.  Keys are canonical body-
         # location identifiers (matching ``container`` values in
@@ -1188,7 +1188,7 @@ def _derive_synthetic_humanoid(base: dict) -> dict:
 
     # Synthetic blood — a cool fluid, visually distinct from human crimson
     # (so mixed pools read as a mixture). "synth" is the short glance token.
-    synth["blood_color"] = {"name": "cobalt", "code": "|B", "dried": "slate"}
+    synth["blood_color"] = {"name": "cobalt", "code": "|B", "dried": "slate", "fluid": "blood"}
 
     # Synthetic tissue doesn't culture biological infection — the
     # species-level analog of an inorganic graft ("chrome doesn't go
@@ -1297,7 +1297,7 @@ def _derive_robot(base: dict) -> dict:
 
     # Hydraulic/coolant fluid — amber, visually distinct from blood so a
     # mixed pool reads as a mixture. Machines leak fluid, not blood.
-    robot["blood_color"] = {"name": "amber", "code": "|y", "dried": "tar-black"}
+    robot["blood_color"] = {"name": "amber", "code": "|y", "dried": "tar-black", "fluid": "hydraulic fluid"}
 
     # Machines don't culture biological infection — the species-level
     # analog of an inorganic graft ("chrome doesn't go septic", #516).
@@ -1451,7 +1451,7 @@ def _resolve_species(species: str | None) -> dict:
 
 
 #: Fallback when a species declares no ``blood_color`` (e.g. rat → red).
-_DEFAULT_BLOOD_COLOR = {"name": "crimson", "code": "|R", "dried": "rust-brown"}
+_DEFAULT_BLOOD_COLOR = {"name": "crimson", "code": "|R", "dried": "rust-brown", "fluid": "blood"}
 
 
 def get_species_blood_color(species: str | None) -> dict:

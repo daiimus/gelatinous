@@ -466,14 +466,18 @@ class MedicalScript(DefaultScript):
                 from world.anatomy import get_species_blood_color
                 blood = get_species_blood_color(species)
                 tint, cname = blood["code"], blood["name"]
+                # The NOUN follows the species too (#2778): the room prose
+                # four lines up already said "amber hydraulic fluid" for a
+                # robot while this told the robot it was bleeding blood.
+                fluid = blood.get("fluid", "blood")
                 if bleeding_severity <= 3:
-                    personal_parts.append(f"{tint}You feel warm blood trickling from your wounds.|n")
+                    personal_parts.append(f"{tint}You feel warm {fluid} trickling from your wounds.|n")
                 elif bleeding_severity <= 7:
-                    personal_parts.append(f"{tint}Blood flows freely from your wounds, leaving {cname} trails.|n")
+                    personal_parts.append(f"{tint}{fluid.capitalize()} flows freely from your wounds, leaving {cname} trails.|n")
                 elif bleeding_severity <= 12:
-                    personal_parts.append(f"{tint}You feel your life ebbing away as blood pours from your wounds.|n")
+                    personal_parts.append(f"{tint}You feel your life ebbing away as {fluid} pours from your wounds.|n")
                 else:  # 13+
-                    personal_parts.append(f"{tint}Your vision dims as life-blood gushes from grievous wounds.|n")
+                    personal_parts.append(f"{tint}Your vision dims as {fluid} gushes from grievous wounds.|n")
                 room_parts.append(room_template)
         
         # Add pain components if present (only for living characters)
