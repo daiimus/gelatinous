@@ -640,6 +640,16 @@ class Room(ObjectParent, DefaultRoom):
             str: Description of characters visible in adjacent rooms
         """
         sightings = []
+        # SIGHT, not just stealth (#2793).  `can_perceive` below is the
+        # presence gate -- "is that target concealed from this looker" --
+        # and its own docstring says so.  It never asked "can this looker
+        # see".  So a blinded character was told "You can't see a thing
+        # here" by `get_display_desc` and, in the same output, "Someone is
+        # to the north."  Same predicate the room description uses, so the
+        # two cannot disagree again.
+        from world.perception import can_perceive_sense
+        if not can_perceive_sense(looker, "visual"):
+            return ""
         
         # `_visible_exits(looker)`, not raw `self.exits` (#2588). That is
         # this file's single secret-door gate, and its docstring states
