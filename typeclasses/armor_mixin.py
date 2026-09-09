@@ -118,6 +118,18 @@ class ArmorMixin:
         unconscious = self.is_unconscious()
 
         if died:
+            # THE KILLING BLOW (#2778).  `get_death_cause` can only name
+            # which capacity hit zero; the death prose was authored
+            # against what DID the damage -- "stab", "slash", "head" --
+            # and nothing ever recorded that, so seven of nine authored
+            # lines were unreachable and a knife death read as generic
+            # "draws their final breath".  This is the one place both
+            # halves are in scope.  Persistent, because the corpse
+            # pipeline reads the cause up to ninety seconds later and a
+            # reload in between must not lose it.  First fatal blow wins.
+            if not self.db.death_blow:
+                self.db.death_blow = {"injury_type": injury_type,
+                                      "location": location}
             self.at_death()  # Direct call to main death handler
         elif unconscious:
             self._handle_unconsciousness()

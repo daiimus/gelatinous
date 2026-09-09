@@ -66,6 +66,13 @@ _DEATH_KEYWORD_ORDER = (
     "burn",
     "stab",
     "slash",
+    # Capacity causes the engine actually emits (#2778).  Listed AFTER the
+    # blow keywords so a recorded killing blow wins over the physiology
+    # phrase; "blood loss" and "heart failure" keep their place at the top
+    # because a stab that bleeds out reads best as bleeding out.
+    "respiratory failure",
+    "organ failure",
+    "critical injuries",
 )
 
 DEATH_CAUSE_TEMPLATES_BY_SPECIES: dict[str, dict[str, str]] = {
@@ -79,6 +86,9 @@ DEATH_CAUSE_TEMPLATES_BY_SPECIES: dict[str, dict[str, str]] = {
         "burn":          "|R{actor}'s charred form crumples to the ground.|n",
         "stab":          "|R{actor} gasps once, crimson flowing, then goes still.|n",
         "slash":         "|R{actor} gasps once, crimson flowing, then goes still.|n",
+        "respiratory failure": "|R{actor}'s chest heaves once more, then does not rise again.|n",
+        "organ failure":       "|R{actor} folds inward, skin gone grey, and is still.|n",
+        "critical injuries":   "|R{actor}'s ruined body gives out all at once.|n",
     },
     "rat": {
         # Rat-flavored overrides only where the human prose breaks.
@@ -88,6 +98,9 @@ DEATH_CAUSE_TEMPLATES_BY_SPECIES: dict[str, dict[str, str]] = {
         "heart failure": "|R{actor} stiffens, twitches once, then goes still.|n",
         "stab":          "|R{actor} squeaks once, body shuddering, then goes limp.|n",
         "slash":         "|R{actor} squeaks once, body shuddering, then goes limp.|n",
+        "respiratory failure": "|R{actor}'s flanks flutter, then stop.|n",
+        "organ failure":       "|R{actor} curls tight and goes cold.|n",
+        "critical injuries":   "|R{actor} is broken past moving and lies still.|n",
     },
     "synthetic_humanoid": {
         # Cobalt fluid; mechanical stillness rather than a final breath.
@@ -95,6 +108,9 @@ DEATH_CAUSE_TEMPLATES_BY_SPECIES: dict[str, dict[str, str]] = {
         "heart failure": "|B{actor}'s frame shudders once and powers down, still.|n",
         "stab":          "|B{actor} jerks, cobalt fluid venting, then goes inert.|n",
         "slash":         "|B{actor} jerks, cobalt fluid venting, then goes inert.|n",
+        "respiratory failure": "|B{actor}'s intake cycles stutter, then cease, the frame settling still.|n",
+        "organ failure":       "|B{actor}'s internals seize one by one until nothing moves.|n",
+        "critical injuries":   "|B{actor}'s frame fails at every joint at once and drops.|n",
     },
     "robot": {
         # Amber fluid; the unit powers down rather than draws a last breath.
@@ -104,6 +120,9 @@ DEATH_CAUSE_TEMPLATES_BY_SPECIES: dict[str, dict[str, str]] = {
         "brain":         "|y{actor}'s optics flicker out and the chassis drops, inert.|n",
         "stab":          "|y{actor} jerks, amber fluid venting, then goes inert.|n",
         "slash":         "|y{actor} jerks, amber fluid venting, then goes inert.|n",
+        "respiratory failure": "|y{actor}'s cooling cycle stalls and the chassis powers down, still.|n",
+        "organ failure":       "|y{actor}'s core reports cascade failure and every servo locks.|n",
+        "critical injuries":   "|y{actor}'s chassis buckles under accumulated damage and drops inert.|n",
     },
 }
 
