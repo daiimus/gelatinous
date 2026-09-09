@@ -205,7 +205,13 @@ STYLE_STATE_UNZIPPED = "unzipped"
 #   2  main garment   shirts, trousers, coveralls, dresses      (default)
 #   3  outer garment  jackets, aprons, harnesses, vests
 #   4  overcoat       long coats, ponchos
-#   5  outside all    footwear, headwear, gloves, masks, watches
+#   5  outside all    footwear, headwear, gloves, masks
+#
+# WATCHES MOVED to rung 1 (owner ruling 2026-08-30, #2433): they
+# "should just live on a low layer like underwear and eventually be
+# transparent since they won't cover a hand". At 5 a watch shared
+# the rung with gloves and both cover `left_hand`, so the two could
+# not be worn together at all.
 #
 # The range is 0..5 and has been since footwear was given its own layer
 # ("worn over trousers, never conflicts"). A linter asserting 1..4 predated

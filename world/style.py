@@ -288,7 +288,16 @@ RUNGS = {
         "stockings", "tights"),
     1: ("shirt", "tee", "t-shirt", "tshirt", "blouse", "henley", "tank",
         "top", "trousers", "pants", "jeans", "skirt", "dress",
-        "jumpsuit", "leggings", "suit", "wig", "bodysuit", "slip"),
+        "jumpsuit", "leggings", "suit", "wig", "bodysuit", "slip",
+        # WATCHES, off the accessory rung (owner ruling 2026-08-30,
+        # #2433): they "should just live on a low layer like underwear
+        # and eventually be transparent since they won't cover a hand".
+        # On rung 5 they shared it with GLOVES and both cover
+        # `left_hand`, so the two could not be worn together at all —
+        # proven by wearing one in game (#3054). All three watch
+        # prototypes sit at 1, so derivation now agrees with them
+        # instead of fighting them.
+        "watch", "chrono"),
     2: ("vest", "waistcoat", "hoodie", "sweater", "jumper", "cardigan",
         "glasses", "sunglasses", "shades", "mirrorshades", "mask",
         "respirator", "rebreather", "balaclava", "carrier", "lenses"),
@@ -302,7 +311,7 @@ RUNGS = {
         "heel", "heels", "slipper", "slippers", "clog", "clogs", "belt",
         "tie", "necktie", "scarf", "shawl", "bandana", "bandanna",
         "armband", "badge", "glove", "gloves", "hat", "cap", "helmet",
-        "choker", "garter", "garters", "watch", "chrono", "wrap",
+        "choker", "garter", "garters", "wrap",
         "collar", "earpiece", "goggles"),
 }
 
