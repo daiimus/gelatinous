@@ -115,6 +115,33 @@ def off_duty_keepers_present(post):
     return out
 
 
+def relief_has_arrived(post) -> bool:
+    """Is the CURRENT shift's keeper actually standing this counter?
+
+    Deliberately a RAW read of `post_slots` rather than a call to
+    :func:`keeper_on_duty` — that one now accepts a holdover, so asking
+    it here would be circular: "am I relieved?" would answer "yes,
+    by you".
+
+    Takes the post fixture OR the room it stands in, because the souls
+    engine holds `soul_post` as a room while everything here holds the
+    fixture.
+    """
+    fixture = post
+    if getattr(post, "db", None) is not None and not post.db.post_slots:
+        for obj in getattr(post, "contents", ()) or ():
+            if getattr(obj.db, "post_slots", None):
+                fixture = obj
+                break
+    slots = getattr(fixture.db, "post_slots", None) or {}
+    if not slots:
+        return False
+    room = _post_room(fixture)
+    slot = slots.get(current_shift()) or {}
+    keeper = slot.get("keeper")
+    return bool(keeper is not None and keeper.pk and keeper.location == room)
+
+
 def keeper_on_duty(fixture):
     """WHO is standing the shift that's actually RUNNING, or None.
 
@@ -148,7 +175,30 @@ def keeper_on_duty(fixture):
         if keeper is not None and keeper.pk and keeper.location == room:
             return keeper
     if slots:
-        return None               # a shift-staffed counter answers to the clock
+        # ...or by whoever is COVERING it (#2434). A keeper does not walk
+        # out mid-customer because their watch says so: they stay until
+        # relieved, and eventually give up and go home. So before the
+        # counter answers "closed", ask whether somebody from another
+        # shift is still standing here holding it open.
+        #
+        # This is what keeps "the counter never closes; the faces
+        # change" true across a shift boundary. Without it the ±15 min
+        # personal jitter left a venue dark for up to 30 minutes three
+        # times a day — the outgoing keeper gone early by their own
+        # clock, the incoming not yet due by theirs.
+        from world.souls.engine import on_duty, soul_hour
+        from world.gametime import colony_now
+        t = colony_now()
+        hour_f = t.hour + t.minute / 60.0
+        for shift, slot in slots.items():
+            keeper = slot.get("keeper")
+            if shift == now_shift or keeper is None or not keeper.pk:
+                continue
+            if keeper.location != room:
+                continue
+            if on_duty(keeper, soul_hour(keeper, hour_f)):
+                return keeper
+        return None
     legacy = fixture.db.post_keeper
     if legacy is not None and legacy.pk and legacy.location == room:
         return legacy
