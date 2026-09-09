@@ -7,7 +7,15 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from world.director import WorldEvent, dispatch, find_responders, travel_to
+# `dispatch_event`, not `dispatch`: the facade used to re-export the
+# function under its own name, which shadowed the submodule of that
+# name on the package (#2754).
+from world.director import (
+    WorldEvent,
+    dispatch_event as dispatch,
+    find_responders,
+    travel_to,
+)
 from world.director.dispatch import ROLE_RESPONDS_TO
 
 
