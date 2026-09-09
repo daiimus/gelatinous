@@ -408,7 +408,23 @@ def sweep(now=None):
             candidates = _eligible_candidates(room)
             if not candidates:
                 continue                             # the slot stays dark
-            _offer(candidates[0], post, room, shift)
+            # Offer DOWN THE LIST, and only spend the sweep on a real
+            # hire. `_offer` refuses a post the soul cannot walk to
+            # (#2332) -- a good rule that this caller did not know
+            # about, because it offered to the nearest candidate only
+            # and then returned whether or not anybody took it.
+            #
+            # Both orderings are deterministic (`_eligible_candidates`
+            # sorts on `(distance, id)`, `get_posts()` is a tag search),
+            # so the next sweep made the same offer to the same sealed-in
+            # soul and burned itself again -- forever, and taking every
+            # later dark post down with it. Measured at the time: 3 of
+            # 19 posts had a nearest candidate who could not reach them,
+            # one of them the Rook, who is exactly the soul #2332 was
+            # written about and who cannot leave his basement.
+            if not any(_offer(soul, post, room, shift)
+                       for soul in candidates):
+                continue                # nobody could take it; try the next
             if dirty:
                 post.db.post_slots = slots
             return                                   # one per sweep
@@ -687,9 +703,14 @@ def _offer(soul, post, room, shift):
     minutes forever, because nothing asked whether he could walk there
     (#2331). `_advertisers` learned this already; the job market had
     not.
+
+    Returns True if the soul took the job. The caller spends its one
+    hire per sweep on this call, so it has to be able to tell a hire
+    from a refusal -- when it could not, a single unroutable neighbour
+    ended the sweep and starved every other dark post in the colony.
     """
     if not _can_reach(soul, room):
-        return
+        return False
     soul.db.soul_job = {
         "goal": "claim", "band": 2, "at": 0,
         "steps": [
@@ -697,6 +718,7 @@ def _offer(soul, post, room, shift):
             {"do": "claim", "post": post.id, "shift": shift},
         ],
     }
+    return True
 
 
 def do_claim(soul, post, shift="day"):
