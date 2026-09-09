@@ -4869,7 +4869,11 @@ MEDICAL_SCRUBS = {
         ("category", "clothing"),
         ("worn_desc", "Autoclave-faded {color}teal|n scrubs hang loose on {their} frame, cut for moving fast and washing hot. The breast pocket is sprung from years of instruments riding in it"),
         ("coverage", ["chest", "back", "abdomen", "groin", "left_thigh", "right_thigh", "left_shin", "right_shin"]),
-        ("layer", 4),
+        # Rung 1 with the suits and jumpsuits: scrubs are a
+        # shirt-and-trousers SET, not outerwear. On rung 4 nothing
+        # could be worn over them -- a lab coat collided at the same
+        # rung, a windbreaker was refused for going under (#3087).
+        ("layer", 1),
         ("color", "teal"),
         ("material", "cotton blend"),
         ("weight", 0.5),
@@ -4886,16 +4890,15 @@ LAB_COAT = {
         ("category", "clothing"),
         ("worn_desc", "A {color}white|n lab coat hangs open to the knee off {their} shoulders, honestly stained and not apologised for. Pens are racked in the breast pocket in a row"),
         ("coverage", ["chest", "back", "abdomen", "left_arm", "right_arm", "left_thigh", "right_thigh"]),
-        # LAYER 5, NOT the derived rung 4 (#3054 regression, reverted).
-        # `RUNGS` puts BOTH "labcoat" and "scrubs" on rung 4, so aligning
-        # this prototype to its derived rung put it on the same layer as
-        # MEDICAL_SCRUBS. Both cover `chest`/`back`/`abdomen`/thighs and
-        # dressing runs inner->outer, so at the same layer one of the two
-        # silently fails to wear — which is exactly what a clinic aide
-        # did in #2381, and what #3054 re-broke by trusting the ladder
-        # over the outfit. A lab coat goes OVER scrubs; until the ladder
-        # can say that, the prototype does.
-        ("layer", 5),
+        # The derived rung, restored. #3087 (mine) pinned this to 5
+        # to dodge a collision with MEDICAL_SCRUBS -- which fixed
+        # `TestWardrobeLayering` and broke
+        # `test_prototype_layers_match_the_ladder`, because an
+        # explicit layer that disagrees with the ladder is exactly
+        # the drift #3054 was removing. The collision was never this
+        # garment's fault: SCRUBS were the ones on the wrong rung,
+        # and they have been moved (world/style.py).
+        ("layer", 4),
         ("color", "white"),
         ("material", "poly-cotton"),
         ("weight", 0.7),
