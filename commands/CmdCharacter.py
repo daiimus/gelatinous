@@ -395,9 +395,18 @@ class CmdStats(Command):
         # rated them for. Blank for anyone it never listed — synthetics
         # were never on one, which is its own kind of record.
         from world import manifest as manifest_mod
-        des_text = manifest_mod.designation_line(target)
-        designation_line_out = (f" {des_text[:47]}".ljust(48) if des_text
-                                else " Designation: NONE ON FILE".ljust(48))
+        # TWO ROWS, NOT ONE. The single line crammed rank, department
+        # and vessel into 48 columns and hard-truncated at 47, so a real
+        # sheet read "Specialist, Signals & Survey — SBL-0092 Perpetu" —
+        # cut mid-word with the ship's name lost. Labelled like the
+        # Subject and File Reference rows above them.
+        posting, berth = manifest_mod.designation_rows(target)
+        if posting or berth:
+            designation_rows_out = [f" Posting: {posting}"[:48].ljust(48)]
+            if berth:
+                designation_rows_out.append(f" Vessel:  {berth}"[:48].ljust(48))
+        else:
+            designation_rows_out = [" Designation: NONE ON FILE".ljust(48)]
         rating_lines = []
         for label, value in manifest_mod.rated_skills(target)[:6]:
             tier = manifest_mod.letter_for(value)
@@ -449,11 +458,14 @@ class CmdStats(Command):
         rating_block = "\n".join(
             f"{COLOR_SUCCESS}{BOX_VERTICAL}{row}{BOX_VERTICAL}{COLOR_NORMAL}"
             for row in rating_lines)
+        designation_block = "\n".join(
+            f"{COLOR_SUCCESS}{BOX_VERTICAL}{row}{BOX_VERTICAL}{COLOR_NORMAL}"
+            for row in designation_rows_out)
         string = f"""{COLOR_SUCCESS}{BOX_TOP_LEFT}{BOX_HORIZONTAL * 48}{BOX_TOP_RIGHT}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL} PSYCHOPHYSICAL EVALUATION REPORT               {BOX_VERTICAL}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL}{subject_line}{BOX_VERTICAL}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL}{file_ref_padded}{BOX_VERTICAL}{COLOR_NORMAL}
-{COLOR_SUCCESS}{BOX_VERTICAL}{designation_line_out}{BOX_VERTICAL}{COLOR_NORMAL}
+{designation_block}
 {COLOR_SUCCESS}{BOX_TEE_RIGHT}{BOX_HORIZONTAL * 48}{BOX_TEE_LEFT}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL}                                                {BOX_VERTICAL}{COLOR_NORMAL}
 {COLOR_SUCCESS}{BOX_VERTICAL}{grit_line}{BOX_VERTICAL}{COLOR_NORMAL}
