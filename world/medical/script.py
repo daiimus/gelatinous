@@ -151,6 +151,38 @@ class MedicalScript(DefaultScript):
             # extra pass rather than recursing. Verified by test.
             self.start(interval=MEDICAL_TICK_INTERVAL)
 
+    def at_server_start(self):
+        """Re-arm the timer on any boot that had no clean shutdown (#2938).
+
+        A Script's timer is ``ndb._task`` -- non-persistent by design.
+        Evennia restores it across a reload by *pausing* on the way down
+        (``_pause_task`` records ``db._paused_time``, but ONLY if a live
+        task existed) and *unpausing* on the way up (``_unpause_task``,
+        which is a no-op when ``_paused_time`` is None).  Any shutdown
+        that skips the pause -- a crash, a kill, the VM going away --
+        leaves the row ``db_is_active=True`` with no task, and every
+        subsequent clean reload no-ops on it.  Once inert, permanently
+        inert, with every DB field still reading healthy.
+
+        ``GLOBAL_SCRIPTS`` escape this because the server re-creates and
+        arms them from settings at every boot -- which is why
+        ``souls_heartbeat`` and ``director_routines`` kept ticking while
+        eight medical scripts sat dead for up to 77 days, four of them
+        holding sedations that should have cleared in minutes.
+
+        This is the hook Evennia provides for exactly this: it runs for
+        every active script at boot, AFTER ``_unpause_task``.  ``start()``
+        is idempotent -- it returns immediately if a task is already
+        running -- so on a clean reload this does nothing and after a
+        crash it is the recovery.  Public API only; the framework is not
+        patched.
+
+        Stopgap.  The carrier itself is the fragile part at scale (see
+        CONDITION_CADENCE_SPEC Phase 3 and the heartbeat redesign it now
+        records); this keeps the current carrier alive until then.
+        """
+        self.start()
+
     def at_script_creation(self):
         """Called when script is first created."""
         self.key = "medical_script"  # Use consistent key for searching

@@ -228,6 +228,45 @@ saying so.
   intervals for urgent conditions; the combat-handler tactical
   tier.  Both become bolt-ons under this design.
 
+* **Phase 3 carrier — TRIGGERED 2026-09-09.**  §1.4 said "revisit
+  only on operational pain"; this is it.  Eight per-object
+  `MedicalScript` rows were found `db_is_active=True` with no timer,
+  stale 9–77 days, four holding sedations that should have cleared
+  in minutes.  Root cause is Evennia's script lifecycle, not our
+  code: a Script's timer is `ndb._task`; `_pause_task` records
+  `db._paused_time` only if a task exists and `_unpause_task`
+  re-arms only if it is set, so any unclean shutdown leaves a
+  per-object script permanently inert.  `GLOBAL_SCRIPTS` are immune
+  (re-armed from settings every boot).  Stopgap shipped: an
+  `at_server_start` re-arm on `MedicalScript` (Evennia's own hook,
+  idempotent `start()`).
+
+  Re-benchmarked in-process the same day, which supersedes the
+  2026-06-11 figures in §1.4 (those measured the condition math
+  alone):
+
+  | | per body per tick |
+  |---|---|
+  | pain + suppression (long injury) | 6.5 ms, 2 attribute writes |
+  | bleeding | 25.1 ms, 6 writes — 72% is `_create_blood_pool` |
+  | wound + save + `scripts.add` | 7.5 ms |
+  | TickerHandler `add()` at N=1000 | 25 ms each; a 1000-burst = 13.9 s |
+
+  At 1,000 wounded bodies the current carrier costs 11–42% of the
+  reactor, and scripts created in one combat round are
+  phase-aligned, so a bloodbath is a spike every interval.
+  TickerHandler is confirmed O(N) per add and wrong for bursts.
+
+  **Decision: the Phase 3 carrier is a single `GLOBAL_SCRIPTS`
+  `medical_heartbeat` on the souls-engine pattern** — tag-indexed
+  bodies, `(beat + id) % SHARDS` phase offset, write-on-change with
+  bounded checkpoint, LOD on side effects only (the math is never
+  LOD-scaled: a body no player can see still bleeds out on
+  schedule).  Crash-safe by construction.  Not the ORM: a tag index
+  answers the only question the heartbeat asks.  Tracked in the
+  carrier issue; blood-pool write-on-threshold + LOD lands first,
+  inside the current carrier, and carries over unchanged.
+
 ## 9 · Test contract
 
 Phase 1 ships with:
