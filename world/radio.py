@@ -829,6 +829,25 @@ def _deliver(speaker: Any, message: str, frequency: str,
             # toggle help has promised this since P1). A carried radio fans
             # to the holder's room; one on the floor fans to its room.
             holder = radio.location
+            # A CONSOLE LISTENS ITSELF. `_grille_audience` returns
+            # PEOPLE (#2951, which cut a transmission from 627 renders
+            # to 35 and stays) -- right for a handset's grille, wrong
+            # for a radio-duty station, which is a Radio and so has
+            # neither `get_sdesc` nor `medical_state` and fails the
+            # person test. Its `location` is the room, so the audience
+            # came back as the people standing near it and the console
+            # itself was not in the list; it only ever received because
+            # the unfiltered `list(contents)` happened to include it.
+            #
+            # Live, the one instance is the Boiler Run crane console
+            # (#7399, powered, band 27.0) -- Ossie Trelane's crane,
+            # which could not be radio-controlled at all. Collected
+            # here, off the loop that already has it in hand, rather
+            # than by loosening `_perceives` into something that is no
+            # longer "is this a person".
+            if callable(getattr(radio, "_maybe_answer", None)):
+                _collect(radio, tagged=scanning, own=True,
+                         grade=grade, clarity=clarity)
             for listener in _grille_audience(holder):
                 _collect(listener, tagged=scanning, own=(listener is holder),
                          grade=grade, clarity=clarity)
