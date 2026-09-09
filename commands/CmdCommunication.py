@@ -187,11 +187,40 @@ class CmdTo(Command):
     def func(self):
         caller = self.caller
         args = (self.args or "").strip()
-        parts = args.split(None, 1)
-        if len(parts) < 2 or not parts[1].strip():
+        parts = args.split()
+        if len(parts) < 2:
             caller.msg("Usage: to <target> <message>")
             return
-        target_str, speech = parts[0], parts[1].strip()
+
+        # LONGEST TARGET FIRST. `args.split(None, 1)` took only the
+        # FIRST word as the target, so `to swing tender evening`
+        # addressed the swing tender correctly and then said "tender
+        # evening" — the second word of their name eaten into the
+        # message. Every multi-word sdesc in the game hits this, which
+        # is most of them.
+        #
+        # Found by playing, not by testing: the unit tests all used
+        # single-word targets. Same defect family as the consumption
+        # parser (#2458), in a command that has no delimiter to split
+        # on — so the boundary has to be discovered by asking who is
+        # actually there.
+        #
+        # The probe is QUIET so a miss says nothing; the winning phrase
+        # is then resolved loudly through `search_present` below, which
+        # keeps the presence gate and the error wording in one place.
+        # At least one word is always left for the message.
+        target_str, speech = parts[0], " ".join(parts[1:])
+        for take in range(len(parts) - 1, 0, -1):
+            candidate = " ".join(parts[:take])
+            found = caller.search(candidate, quiet=True)
+            if found and len(found) == 1:
+                target_str = candidate
+                speech = " ".join(parts[take:])
+                break
+        speech = speech.strip()
+        if not speech:
+            caller.msg("Usage: to <target> <message>")
+            return
 
         location = caller.location
         if not location:

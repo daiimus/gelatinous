@@ -542,7 +542,13 @@ class TestCmdTo(TestCase):
         for occupant in room_contents:
             occupant.location = room
         if search_result is not None:
-            caller.search = MagicMock(return_value=search_result)
+            # `search(quiet=True)` returns a LIST; the loud form
+            # returns the object. This stand-in answered with the
+            # object either way, which broke the moment `to` began
+            # probing quietly for a multi-word target.
+            def _search(query, quiet=False, **kwargs):
+                return [search_result] if quiet else search_result
+            caller.search = MagicMock(side_effect=_search)
 
         cmd.func()
 
