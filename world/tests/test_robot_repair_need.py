@@ -30,8 +30,16 @@ class TestDamageIsNotWear(EvenniaCommandTest):
     def test_it_is_derived_from_the_body_not_a_timer(self):
         """Same compute-on-read the walking wounded use — no snapshot,
         no decay, and treatment lowers it by actually healing."""
-        self.bot.db.medical_state = {"conditions": [{"type": "bleeding"},
-                                                    {"type": "fracture"}]}
+        # `condition_type`, NOT `type`. There is no `type` key on a
+        # stored condition -- `Condition.to_dict` writes
+        # `condition_type`, and nothing in world/medical writes `type`
+        # at all. This fixture passed only because the code it tested
+        # read the same wrong key (#2908 fixed that), so two faults
+        # cancelled out and the suite went green over a detector that
+        # was never reading the field it claimed to.
+        self.bot.db.medical_state = {
+            "conditions": [{"condition_type": "bleeding"},
+                           {"condition_type": "fracture"}]}
         self.assertGreater(needs_mod.pressure(self.bot, "health"), 0.4)
 
     def test_an_intact_unit_wants_nothing(self):

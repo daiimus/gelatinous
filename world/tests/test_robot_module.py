@@ -95,7 +95,15 @@ class TestFactoryFit(TestCase):
         mob = MagicMock()
         mob.medical_state.organs = {}
         factory_fit_armament(mob, side="right")
-        organ = mob.medical_state.organs["integrated_shotgun_module"]
+        # Read the organ off the `add_organ` CALL, not out of a
+        # pre-seeded dict. #3008 stopped writing `state.organs[name]`
+        # directly and went through `add_organ`, because seating an
+        # organ has to move the verdict and a raw dict write does not.
+        # A MagicMock records the call but never populates `organs`, so
+        # the old assertion raised KeyError against correct code.
+        name, organ = mob.medical_state.add_organ.call_args[0]
+        self.assertEqual(name, "integrated_shotgun_module")
+        self.assertEqual(organ.name, "integrated_shotgun_module")
         self.assertEqual(organ.data["container"], "right_arm")
         ability = organ.data["abilities"]["shotgun"]
         self.assertEqual(ability["slot"], "right_hand")
