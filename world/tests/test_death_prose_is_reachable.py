@@ -135,6 +135,39 @@ class TestTheKillingBlowIsRecorded(EvenniaTest):
         self.assertEqual(b.get_death_cause(), "blood loss")
 
 
+class TestRevivalClearsTheKillingBlow(EvenniaTest):
+    """`remove_death_state` is the revival path. `db.death_blow` is
+    PERSISTENT so the corpse pipeline can read it
+    ninety seconds later -- which means it also outlives a revival. A
+    revived character's next death was labelled with the blow that
+    killed them the first time."""
+
+    def _body(self):
+        b = create_object("typeclasses.characters.Character", key="a victim",
+                          location=self.room1)
+        b.msg = lambda text=None, **kw: None
+        return b
+
+    def test_the_blow_is_recorded_then_cleared_by_revival(self):
+        b = self._body()
+        b.take_damage(500, "chest", "stab")
+        self.assertEqual(dict(b.db.death_blow),
+                         {"injury_type": "stab", "location": "chest"})
+        b.remove_death_state()
+        self.assertFalse(b.db.death_blow)
+
+    def test_a_second_death_is_labelled_by_its_own_blow(self):
+        b = self._body()
+        b.take_damage(500, "chest", "stab")
+        b.remove_death_state()
+        b.medical_state.full_heal()
+        b.save_medical_state(); b._medical_state = None
+        b.take_damage(500, "chest", "bullet")
+        cause = b.get_death_cause()
+        self.assertIn("gunshot", cause)
+        self.assertNotIn("stab", cause)
+
+
 class TestTheBleedingNounFollowsTheSpecies(EvenniaTest):
     def _bleeder(self, species):
         from world.medical.conditions import BleedingCondition
