@@ -1,22 +1,88 @@
 # NPC Posts & Reincarnation Spec
 
-> **Status:** ✅ §P1 + §P2 + §P3 SHIPPED (2026-07-24) — the full ladder.
-> §P3: `snapshot_keeper_memory` hooks the NPC death-deletion branch (dossiers
-> + episodic memory copied onto the POST before the object dies); re-sleeve
-> restores-and-consumes the snapshot, successors never open it (retained as
-> GM archaeology). Remaining: §5 'later' items only (succession rumors,
-> grudges, vacancy crime) + registering more post fixtures in blueprint data. §P1: blueprints live for the
-> nine-strong named roster (`world/npcs/blueprints.py`) with
-> `build_npc`/`build_successor`/`verify_blueprint`, all nine verified MATCH
-> against the live originals. §P2: the posts watcher (`world/npcs/posts.py`)
-> rides the director heartbeat — vacancy stamping + shuttered fixture desc,
-> combat de-confliction, and policy reincarnation. **Owner-decided values:**
-> successor 24h / re-sleeve 8h; the till/stock are the POST's (successors
-> inherit); Del + Sully are INSTITUTIONS (re-sleeve) — the only forgettable
-> posts are Ottilie's cart and Ezra's counter. The cart is the live pilot
-> (fixture-bound, vacant desc, arrival line); other posts activate as their
-> fixtures get registered in blueprint data. §P3 (memory snapshot/restore at
-> death for re-sleeve) not built. Originally: Named NPCs
+> **Status:** ✅ §P1 + §P2 SHIPPED. §P3 (memory snapshot/restore at death
+> for re-sleeve) PARTLY built — the snapshot is written and read, but see
+> the drift note below.
+>
+> **CORRECTED 2026-09-08 (#2437).** This banner previously said "§P1 + §P2
+> + §P3 SHIPPED — the full ladder" in one sentence and "§P3 … not built"
+> in another, six lines apart. Four further claims were checked against
+> the code and were stale:
+>
+> * **The watcher does NOT live in `world/npcs/posts.py`.** That module is
+>   a 64-line retired stub; its own docstring explains that it once carried
+>   a second post watcher which disagreed with `world/souls/posts.py` about
+>   which fixture owned a post, so both acted and the bodies it rebuilt
+>   were never ensouled (#2132). There is one registry now, and the sweep
+>   rides the SOULS heartbeat.
+> * **Re-sleeve restores but does NOT consume.** `_try_resleave` reads
+>   `post_memory_snapshots[shift]` and never clears it. "Restores-and-
+>   consumes" describes an intent, not the code.
+> * **Vacancy is NOT visible.** `vacant_desc`, `arrival_successor` and
+>   `arrival_resleave` exist in blueprint fixture data with no reader
+>   anywhere; the desc-swap helpers were deleted. Owner ruling 2026-09-08:
+>   this stays UNBUILT on purpose — *"I view this as unwired. Eventually,
+>   we'll have an employment computer system and it'll have something to
+>   connect to."* The fixtures are kept for that system to connect to. Do
+>   not wire it before then, and do not delete the strings.
+> * **"Murder deletes social capital" is not what the code does** — see
+>   the drift note immediately below.
+>
+> **Owner-decided values (unchanged):** successor 24h / re-sleeve 8h; the
+> till/stock are the POST's (successors inherit); Del + Sully are
+> INSTITUTIONS (re-sleeve).
+
+## Succession: the drift since this spec was written (#2437)
+
+This spec sells a pillar — *"the new butcher doesn't know you're the
+ratcatcher… murder deletes social capital"* — implemented by
+`build_successor` rebuilding a stranger from the blueprint with empty
+dossiers. **`build_successor` has no production caller and never has.**
+What runs instead offers the vacant slot to the nearest idle SOUL.
+
+The souls layer arrived after this spec and changed the ground under it.
+Measured live 2026-09-08: 78 souls, 49 holding posts, 29 idle. Three
+replacement tiers now exist, and they match the owner's stated ideal —
+*"NPCs have a history/story with souls… souls occasionally generated to
+cover losses… some might be resleeves and be consistent"*:
+
+1. **Re-sleeve** — the same person returns, memories intact
+   (`_try_resleave`). Healthy.
+2. **Succession** — an idle soul takes the post (`_eligible_candidates`
+   → `do_claim`). Works mechanically.
+3. **Generation** — `world/souls/population.sweep` seeds new residents.
+   Exists.
+
+**Three gaps between that architecture and the ideal**, each tracked as
+its own issue rather than assumed:
+
+* **History barely accumulates, and only with players.** There are
+  exactly two writers of opinion in the tree: being attacked
+  (`react_to_attack`) and being spoken to by a player (`llm_npc`). Souls
+  never form opinions about EACH OTHER. Measured: 4 of 49 posted souls
+  have a single acquaintance; 0 of 29 idle souls have any. This is the
+  largest gap and it is independent of succession.
+* **The idle pool is the colony, not a labour reserve.** Those 29 are
+  gangers, scavvers, salarymen, hawkers, an addict, a DJ, a grower —
+  all with homes, one blueprinted. `_eligible_candidates` filters only
+  on has-no-post / not-mid-survival-task / not-a-robot and then sorts by
+  DISTANCE, so the butcher's block can go to a ganger.
+* **The generation loop cannot see that.** `SEED_TARGET_UNEMPLOYED = 2`
+  against an `unemployed_count` of 29, so it never fires — while the
+  labour reserve in the sense that matters is roughly zero. One counter
+  carries two meanings of "unemployed".
+
+**`build_successor` must not simply be wired.** It builds a genuine
+stranger (random name and face from the pools, same trade, empty
+dossiers) but never ENSOULS it — no soul tag, no needs, no schedule, no
+wage. Wiring it as-is reproduces #2132, where posts stood staffed by
+mannequins.
+
+The pillar is currently satisfied by accident: every idle soul happens
+to have zero acquaintances, so today's replacement IS a stranger. It
+breaks silently the first time a soul with history returns to the pool.
+
+> Originally: Named NPCs
 > (Ottilie, Del, Marta, Vesper…) currently die **permanently and
 > unreproducibly**: death → corpse → the character object is deleted (#1022),
 > dossiers and memories with it, and the NPC was hand-built in a shell session
