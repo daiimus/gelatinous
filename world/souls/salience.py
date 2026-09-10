@@ -306,6 +306,20 @@ def _work_courier(soul):
     # unreproducible): walk the list by a counter she keeps herself.
     n = int(soul.db.soul_runs_made or 0)
     room, counter, keeper = dests[n % len(dests)]
+    # AND THE CONSIGNOR'S PILE. The sweep above looks in the COURIER's
+    # hands; `_spawn_package` puts the parcel in the CLERK's, and says
+    # so — "A real parcel in the CONSIGNOR's hands, addressed onward."
+    # A run that never got as far as collecting left it there, and
+    # nothing swept the clerk. #2309's fix cleaned the one place the
+    # parcels are not: 72 of them on `#5161 Ezra Vantomme`, ids 14501
+    # to 17098, one per failed run, none ever removed (#3192).
+    #
+    # Before the spawn, so this run's own parcel is never the one
+    # destroyed — which is also what makes it safe if a second courier
+    # ever shares a consignor.
+    for stale in [o for o in clerk.contents
+                  if o.attributes.has("courier_package")]:
+        stale.delete()
     package = _spawn_package(clerk, room)
     if package is None:
         return
