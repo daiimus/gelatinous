@@ -30,6 +30,40 @@ from world.identity import (
 # CUSTOM EV MENU CLASS
 # =============================================================================
 
+#: EvMenu's built-in single-letter commands, all off.
+#:
+#: These are CONSTRUCTOR arguments. Every chargen node used to pass
+#: `"auto_help": False, "auto_look": False` inside its OPTION dicts — 42
+#: keys across 21 dicts — and the option homogeniser reads exactly four
+#: keys from an option dict (`key`, `desc`/`text`, `goto`, `exec`) and
+#: silently discards the rest. So the flags did nothing, and the
+#: defaults (all True) stood (#2551).
+#:
+#: `auto_quit` was not even among the keys being uselessly passed, so
+#: `q` was never addressed at all. It closed the menu at every node —
+#: including the final confirmation screen, which advertises exactly
+#: [Y] and [N] — and `_charcreate_exit_callback` DISCONNECTS a session
+#: with no sleeve yet, while `start_character_creation` resets
+#: `charcreate_data` on reconnect. One keystroke threw away the name,
+#: sex, height, build, hair and the whole 300-point G.R.I.M.
+#: distribution.
+#:
+#: `look` and `help` were swallowed the same way: the aliases are
+#: installed as menu-level commands that match BEFORE falling through
+#: to a node's `_default`, so they could not be used as chargen input
+#: either.
+#:
+#: Nothing is lost by turning them off. A player who genuinely wants to
+#: abandon chargen can close the connection; every node either lists
+#: its own options or takes free text, and unmatched input reaches the
+#: node instead of a builtin.
+_NO_MENU_BUILTINS = {
+    "auto_quit": False,
+    "auto_look": False,
+    "auto_help": False,
+}
+
+
 class CharCreateEvMenu(EvMenu):
     """
     Custom EvMenu that suppresses automatic option display.
@@ -607,7 +641,8 @@ def start_character_creation(account, is_respawn=False, old_character=None):
             "commands.charcreate",
             startnode="respawn_welcome",
             cmdset_mergetype="Replace",
-            cmd_on_exit=_charcreate_exit_callback
+            cmd_on_exit=_charcreate_exit_callback,
+            **_NO_MENU_BUILTINS,
         )
     else:
         # First character menu: custom creation
@@ -616,7 +651,8 @@ def start_character_creation(account, is_respawn=False, old_character=None):
             "commands.charcreate",
             startnode="first_char_welcome",
             cmdset_mergetype="Replace",
-            cmd_on_exit=_charcreate_exit_callback
+            cmd_on_exit=_charcreate_exit_callback,
+            **_NO_MENU_BUILTINS,
         )
 
 
@@ -752,25 +788,15 @@ Select biological sex for this sleeve:
     
     options = (
         {"key": "1",
-         "goto": ("respawn_finalize_template", {"sex": "male"}),
-         "auto_help": False,
-         "auto_look": False},
+         "goto": ("respawn_finalize_template", {"sex": "male"})},
         {"key": "2",
-         "goto": ("respawn_finalize_template", {"sex": "female"}),
-         "auto_help": False,
-         "auto_look": False},
+         "goto": ("respawn_finalize_template", {"sex": "female"})},
         {"key": "3",
-         "goto": ("respawn_finalize_template", {"sex": "ambiguous"}),
-         "auto_help": False,
-         "auto_look": False},
+         "goto": ("respawn_finalize_template", {"sex": "ambiguous"})},
         {"key": ("b", "back"),
-         "goto": "respawn_welcome",
-         "auto_help": False,
-         "auto_look": False},
+         "goto": "respawn_welcome"},
         {"key": "_default",
-         "goto": ("respawn_confirm_template", {"template_idx": template_idx}),
-         "auto_help": False,
-         "auto_look": False},
+         "goto": ("respawn_confirm_template", {"template_idx": template_idx})},
     )
     
     return text, options
@@ -1090,21 +1116,13 @@ Select biological sex:
     
     options = (
         {"key": "1",
-         "goto": ("first_char_height", {"sex": "male"}),
-         "auto_help": False,
-         "auto_look": False},
+         "goto": ("first_char_height", {"sex": "male"})},
         {"key": "2",
-         "goto": ("first_char_height", {"sex": "female"}),
-         "auto_help": False,
-         "auto_look": False},
+         "goto": ("first_char_height", {"sex": "female"})},
         {"key": "3",
-         "goto": ("first_char_height", {"sex": "ambiguous"}),
-         "auto_help": False,
-         "auto_look": False},
+         "goto": ("first_char_height", {"sex": "ambiguous"})},
         {"key": "_default",
-         "goto": "first_char_sex",
-         "auto_help": False,
-         "auto_look": False},
+         "goto": "first_char_sex"},
     )
     
     return text, options
@@ -1146,14 +1164,10 @@ Select your height:
         option_list.append({
             "key": str(i),
             "goto": ("first_char_build", {"height": h}),
-            "auto_help": False,
-            "auto_look": False,
         })
     option_list.append({
         "key": "_default",
         "goto": "first_char_height",
-        "auto_help": False,
-        "auto_look": False,
     })
 
     return text, tuple(option_list)
@@ -1191,14 +1205,10 @@ Select your build:
         option_list.append({
             "key": str(i),
             "goto": ("first_char_hair_color", {"build": b}),
-            "auto_help": False,
-            "auto_look": False,
         })
     option_list.append({
         "key": "_default",
         "goto": "first_char_build",
-        "auto_help": False,
-        "auto_look": False,
     })
 
     return text, tuple(option_list)
@@ -1239,21 +1249,15 @@ Select your hair color:
         option_list.append({
             "key": str(i),
             "goto": ("first_char_hair_style", {"hair_color": c}),
-            "auto_help": False,
-            "auto_look": False,
         })
     # Bald option
     option_list.append({
         "key": str(len(HAIR_COLORS) + 1),
         "goto": ("first_char_grim", {"hair_color": None, "hair_style": None}),
-        "auto_help": False,
-        "auto_look": False,
     })
     option_list.append({
         "key": "_default",
         "goto": "first_char_hair_color",
-        "auto_help": False,
-        "auto_look": False,
     })
 
     return text, tuple(option_list)
@@ -1295,14 +1299,10 @@ Select your hair style:
         option_list.append({
             "key": str(i),
             "goto": ("first_char_grim", {"hair_style": s}),
-            "auto_help": False,
-            "auto_look": False,
         })
     option_list.append({
         "key": "_default",
         "goto": "first_char_hair_style",
-        "auto_help": False,
-        "auto_look": False,
     })
 
     return text, tuple(option_list)
@@ -1493,17 +1493,11 @@ Create this character?
     
     options = (
         {"key": ("y", "yes"),
-         "goto": "first_char_finalize",
-         "auto_help": False,
-         "auto_look": False},
+         "goto": "first_char_finalize"},
         {"key": ("n", "no"),
-         "goto": "first_char_grim",
-         "auto_help": False,
-         "auto_look": False},
+         "goto": "first_char_grim"},
         {"key": "_default",
-         "goto": "first_char_confirm",
-         "auto_help": False,
-         "auto_look": False},
+         "goto": "first_char_confirm"},
     )
     
     return text, options
