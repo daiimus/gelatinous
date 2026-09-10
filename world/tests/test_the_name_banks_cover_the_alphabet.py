@@ -17,11 +17,9 @@ aggregate, so the guard is about SHAPE rather than about any name:
 X, Q and U genuinely thin out in the name space -- the male bank has no
 X and no Y -- so isolated gaps are allowed and only runs are not.
 
-Deliberately says nothing about the CONTENT of the entries. `LAST_NAMES`
-holds machine-generated particle x base cross-products ("O' Fischer",
-"St. Cruz", "von Silva") which #2639 governs; a well-formedness rule
-here would either have to be written around them or drag that issue's
-fix into this one.
+`TestNoBankIsAMachineProduct` below is the other half, added with #2639:
+a bank can also be the wrong SIZE for the wrong reason, padded out by a
+generated cross-product rather than written.
 """
 import string
 
@@ -97,3 +95,60 @@ class TestTheNameBanksCoverTheAlphabet(EvenniaTest):
     def test_the_banks_hold_no_duplicates(self):
         for name, bank in BANKS.items():
             self.assertEqual(len(bank), len(set(bank)), name)
+
+
+#: The 9 particles and 10 bases whose Cartesian product padded
+#: `LAST_NAMES` by 90 entries -- 18% of the bank (#2639).
+PARTICLES = ("Mac", "Mc", "O'", "St.", "de", "de la", "del", "van", "von")
+PRODUCT_BASES = ("Cruz", "Fischer", "Moreno", "Nieves", "Reyes", "Rivera",
+                 "Santos", "Schmidt", "Silva", "Vega")
+
+
+class TestNoBankIsAMachineProduct(EvenniaTest):
+    """A bank padded by a cross-product is not a bank of names.
+
+    90 of 496 `LAST_NAMES` entries were every particle crossed with
+    every base: `O' Fischer` (the Irish patronymic never takes a space),
+    `von Silva`, `de la Schmidt`, `MacNieves`. Worse, they had DISPLACED
+    their own bases -- only `Cruz` and `Santos` still appeared plain, so
+    the generator could produce `von Schmidt` but never `Schmidt`.
+
+    The authored particle surnames are correct and stay: `MacLeod`,
+    `McBride`, `McIntyre`, `de Jesus`, `O'Connor-Moore` -- closed or
+    correctly spaced. That contrast is what identified the 90 as
+    generated rather than written.
+    """
+
+    def test_the_bank_is_populated(self):
+        """Control: an empty bank contains no product either."""
+        self.assertGreater(len(LAST_NAMES), 300)
+
+    def test_the_cross_product_is_gone(self):
+        product = {f"{p} {b}" for p in PARTICLES for b in PRODUCT_BASES}
+        found = sorted(n for n in LAST_NAMES if n in product)
+        self.assertEqual(
+            found, [],
+            f"{len(found)} machine-generated particle x base surnames are "
+            f"back in the bank")
+
+    def test_no_particle_crosses_more_than_a_couple_of_bases(self):
+        """The shape, not the specific list: a particle attached to many
+        different surnames is a product, however it was spelled."""
+        for particle in PARTICLES:
+            attached = [n for n in LAST_NAMES
+                        if n.startswith(particle) and n != particle]
+            self.assertLess(
+                len(attached), 12,
+                f"{particle!r} is attached to {len(attached)} surnames "
+                f"({attached[:6]}…) — that reads as a generated product")
+
+    def test_the_bases_exist_plain(self):
+        """What the product had displaced."""
+        for base in PRODUCT_BASES:
+            self.assertIn(base, LAST_NAMES)
+
+    def test_the_authored_particle_names_survived(self):
+        """The fix must not take the correct ones with it."""
+        for name in ("MacLeod", "McBride", "McIntyre", "de Jesus",
+                     "O'Connor-Moore"):
+            self.assertIn(name, LAST_NAMES)
