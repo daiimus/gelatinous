@@ -23,6 +23,29 @@ if TYPE_CHECKING:
     from typeclasses.rooms import Room
 
 
+#: Every ``{placeholder}`` in a broadcast template, in source order.
+_PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
+
+#: Colour codes are markup, not prose -- they must not count as the
+#: text standing between a placeholder and the sentence before it.
+_COLOUR_CODE_RE = re.compile(r"\|\[?\w{1,3}")
+
+
+def _opens_a_sentence(template: str, pos: int) -> bool:
+    """Does the placeholder at ``pos`` sit at the start of a sentence?
+
+    True at the very start of the template, and after a ``.``, ``!`` or
+    ``?``. False mid-sentence, so "... techs peel {actor} out of the
+    gel" renders "an average man" rather than "An average man".
+
+    Judged on the TEMPLATE, not on the rendered text: where a sentence
+    begins is something the author decided, and it must not vary with
+    whose name lands in the gap.
+    """
+    prefix = _COLOUR_CODE_RE.sub("", template[:pos]).strip()
+    return not prefix or prefix[-1] in ".!?"
+
+
 def msg_room_identity(
     location: "Room",
     template: str,
@@ -79,26 +102,41 @@ def msg_room_identity(
     exclude_set = set(exclude) if exclude else set()
     pre_resolved_refs = pre_resolved_refs or {}
 
-    # Determine which placeholder appears first in the template
-    # so we can capitalize its display name for proper sentence casing.
-    # e.g. "|g{actor} grapples {target}!" → capitalize actor's sdesc
-    # so "a lanky man" becomes "A lanky man" at the sentence start.
-    first_placeholder: str | None = None
-    first_pos = len(template)
-    for placeholder in char_refs:
-        pos = template.find(f"{{{placeholder}}}")
-        if pos != -1 and pos < first_pos:
-            first_pos = pos
-            first_placeholder = placeholder
-
-    # Only capitalize when the placeholder actually sits at a sentence
-    # start. A template like "... techs peel {actor} out of the gel"
-    # must render "an average man", not "An average man". Colour codes
-    # before the placeholder don't count as prose.
-    if first_placeholder is not None:
-        prefix = re.sub(r"\|\[?\w{1,3}", "", template[:first_pos]).strip()
-        if prefix and prefix[-1] not in ".!?":
-            first_placeholder = None
+    # Plan the substitution ONCE, per OCCURRENCE rather than per name.
+    #
+    # This used to pick a single "first placeholder" by minimum position,
+    # then substitute it with an unbounded `str.replace`. Two things
+    # were wrong with that, and both were about what an author may
+    # safely write (#2641):
+    #
+    #   * `str.replace` has no count, so the capitalisation decided
+    #     about one occurrence was applied to EVERY occurrence:
+    #     "{actor} draws, and {actor} fires." rendered "A lanky man
+    #     draws, and A lanky man fires." A repeated reference could not
+    #     be written correctly at all.
+    #   * sentence-start-ness was tested for that one placeholder only,
+    #     so a later one opening a sentence was never considered:
+    #     "{actor} steps back. {target} does not." rendered its second
+    #     name lowercase, even though the guard right there reasons
+    #     about ".!?" as terminators.
+    #
+    # Walking occurrences in order removes the "first placeholder"
+    # concept entirely: each one gets its own verdict from the same
+    # prefix test. Planned outside the observer loop because the
+    # template is the same for everyone -- only the names differ.
+    segments: list[str] = []
+    plan: list[tuple[str, bool]] = []
+    cursor = 0
+    for match in _PLACEHOLDER_RE.finditer(template):
+        name = match.group(1)
+        if name not in char_refs:
+            # Not ours. Another consumer's placeholder ({item}, {side})
+            # passes through untouched, as it always has.
+            continue
+        segments.append(template[cursor:match.start()])
+        plan.append((name, _opens_a_sentence(template, match.start())))
+        cursor = match.end()
+    segments.append(template[cursor:])
 
     for observer in location.contents:
         if observer in exclude_set:
@@ -118,18 +156,29 @@ def msg_room_identity(
         if sessions is None or not sessions.count():
             continue
 
-        resolved = template
-        for placeholder, char in char_refs.items():
-            snapshot_for_placeholder = pre_resolved_refs.get(placeholder)
-            if (
-                snapshot_for_placeholder is not None
-                and observer in snapshot_for_placeholder
-            ):
-                display_name = snapshot_for_placeholder[observer]
-            else:
-                display_name = char.get_display_name(observer)
-            if placeholder == first_placeholder:
-                display_name = capitalize_first(display_name)
-            resolved = resolved.replace(f"{{{placeholder}}}", display_name)
+        # One resolution per character per observer, however many times
+        # the template names them -- `get_display_name` is the most
+        # expensive call on this path and a repeated placeholder must
+        # not pay for it twice.
+        resolved_names: dict[str, str] = {}
+        parts = [segments[0]]
+        for index, (placeholder, capitalize) in enumerate(plan):
+            display_name = resolved_names.get(placeholder)
+            if display_name is None:
+                snapshot_for_placeholder = pre_resolved_refs.get(placeholder)
+                if (
+                    snapshot_for_placeholder is not None
+                    and observer in snapshot_for_placeholder
+                ):
+                    display_name = snapshot_for_placeholder[observer]
+                else:
+                    display_name = char_refs[placeholder].get_display_name(
+                        observer
+                    )
+                resolved_names[placeholder] = display_name
+            parts.append(
+                capitalize_first(display_name) if capitalize else display_name
+            )
+            parts.append(segments[index + 1])
 
-        observer.msg(text=resolved, **kwargs)
+        observer.msg(text="".join(parts), **kwargs)
