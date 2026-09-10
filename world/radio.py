@@ -803,9 +803,29 @@ def _deliver(speaker: Any, message: str, frequency: str,
                            origin_range)
 
     def _collect(listener, *, tagged, own, grade, clarity):
-        if listener is None or listener is speaker or id(listener) in seen:
+        if listener is None or listener is speaker:
             return
         if not hasattr(listener, "msg"):
+            return
+        if id(listener) in seen:
+            # Already collected at another radio's grille. `own` is
+            # STICKY: if any radio in this fan-out is theirs, the traffic
+            # came to them, and which order the radios happened to be
+            # walked in must not decide that.
+            #
+            # Two powered radios in one room is enough to get it wrong.
+            # A courier standing in a dispatch office with a handset on
+            # her belt was collected by the CONSOLE first, at own=False,
+            # and her own radio then found her already seen and dropped
+            # the entry -- so she was told "A radio nearby" about traffic
+            # coming out of her own belt, and was ineligible to answer it
+            # (#2656).
+            if own:
+                for index, entry in enumerate(receivers):
+                    if entry[0] is listener and not entry[2]:
+                        receivers[index] = (entry[0], entry[1], True,
+                                            entry[3], entry[4])
+                        break
             return
         # No same-room suppression (decided 2026-07-07): a matching radio
         # beside the speaker DOES echo — with xmit's low voice, your own
@@ -862,11 +882,27 @@ def _deliver(speaker: Any, message: str, frequency: str,
         _collect(bot, tagged=False, own=True, grade=grade, clarity=clarity)
 
     # Single-answerer election: deterministic (lowest dbref) among LLM-driven
-    # receivers who actually got WORDS (a static-drowned unit can't answer).
+    # receivers who are ON THE NET and actually got WORDS (a static-drowned
+    # unit can't answer).
+    #
+    # `own` is the eligibility test, and it is the one this already
+    # computes: it means the traffic came to YOU -- you carry the handset,
+    # it is your comms organ, or you are a duty console listening to
+    # itself. The render forty lines down says as much, choosing between
+    # "Your radio" and "A radio nearby" off this same flag.
+    #
+    # Without it the pool was everyone at any grille, so proximity to
+    # someone else's handset put you on the net and dbref order then
+    # decided who spoke for the colony. Live on band 27.0 that elected
+    # Petra (#4955, dispatcher, carrying nothing) over Wren (#9084, a
+    # courier with a radio actually on her) purely because 4955 < 9084.
+    # Dbref order is a fine tie-break among eligible units and a poor way
+    # to decide WHO is eligible (#2656).
     elected = None
     try:
-        candidates = [l for l, _, _, grade, _ in receivers
-                      if grade in ("clear", "fuzzy")
+        candidates = [l for l, _, own, grade, _ in receivers
+                      if own
+                      and grade in ("clear", "fuzzy")
                       and getattr(getattr(l, "db", None), "llm_driven", False)
                       is True]
         if candidates:
