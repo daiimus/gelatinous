@@ -7,7 +7,11 @@ sdesc → apparent-UID → recognition memory. Voice is the same machine on a se
 axis — *"who do I hear?"* — so a known voice attributes a speaker even when the
 listener can't see them (blind, dark, around a corner).
 
-This module is the **data + composition** layer (slice 2a):
+This module is the whole voice layer — data and composition (slice 2a),
+recognition (2b) and the resolution chain (2c). It described itself as
+2a only for three slices after the other two shipped INSIDE it, while
+inline comments a few lines down referred to 2c in the present tense
+(#2645):
 
 * A **curated vocabulary** (bounded, like visual keywords — not free text) for
   the two voice slots a player sets: a **description** (the colour/timbre:
@@ -18,10 +22,13 @@ This module is the **data + composition** layer (slice 2a):
   production, so a low-``talking`` speaker has no usable signature — their
   voice renders as broken regardless of what they set. This is the first
   consumer of the ``talking`` capacity (otherwise blocked on the social system).
-
-Voice *recognition* (the memory/UID parallel) and the sight/hearing resolution
-chain are later slices (2b/2c); this layer is their prerequisite — you cannot
-recognise a voice that does not yet exist.
+* **Recognition** (slice 2b): `get_apparent_voice_uid`, `remember_voice`
+  and the voice half of recognition memory — the memory/UID parallel to
+  the visual channel. Composition is its prerequisite: you cannot
+  recognise a voice that does not exist.
+* **The resolution chain** (slice 2c): `attempt_voice_discern` and the
+  sight/hearing arbitration that lets a listener place a speaker they
+  cannot see.
 
 Vocabularies are illustrative/tunable (spec §11) and config-overridable, exactly
 like the visual-keyword sets.
