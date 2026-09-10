@@ -204,6 +204,7 @@ TIME_ACTIVITY = {
 WEATHER_POOLS = {
     'clear': {
         'visual': [
+            "hard light throws the street's grime into relief",
             "the sky stands open and cloudless over the prefab roofs",
             "the crater rim cuts a hard, clean line in the distance",
             "the grating is bone-dry, the gutters empty and idle",
@@ -242,7 +243,6 @@ WEATHER_POOLS = {
         'atmospheric': [
             "the dry spell has people out and in no hurry",
             "the gutters and drains sit idle and cracked-dry",
-            "hard light throws the street's grime into relief",
             "dust gathers undisturbed in the corners and seams",
             "the heat keeps the pace slow and the tempers short",
             "the cloudless calm leaves the street nowhere to hide",
@@ -250,6 +250,9 @@ WEATHER_POOLS = {
     },
     'overcast': {
         'visual': [
+            "the grey stretches the day into one long pause",
+            "nothing throws a shadow in the even grey",
+            "the flat light bleeds the colour out of the whole street",
             "a flat grey lid of cloud seals the sky from rim to rim",
             "the overcast hangs low and featureless above the roofs",
             "the light filters down even and shadowless",
@@ -284,11 +287,8 @@ WEATHER_POOLS = {
             "every surface feels slightly tacky with held moisture",
         ],
         'atmospheric': [
-            "the flat light bleeds the colour out of the whole street",
             "the street idles under the low, waiting cloud",
-            "nothing throws a shadow in the even grey",
             "the drains sit ready and the sky withholds",
-            "the grey stretches the day into one long pause",
             "the cloud lid leaves the street boxed and shut in",
         ],
     },
@@ -339,6 +339,8 @@ WEATHER_POOLS = {
     },
     'fog': {
         'visual': [
+            "the wet has made the grating slick and dark",
+            "the street gives out into grey a dozen paces off",
             "fog blurs the street to grey shapes and ringed lamps",
             "the far end of the block dissolves into murk",
             "each lamp wears a damp, glowing halo",
@@ -376,14 +378,13 @@ WEATHER_POOLS = {
         'atmospheric': [
             "fog runs in slow beads down every upright surface",
             "the lamps are reduced to soft, floating smears",
-            "the street gives out into grey a dozen paces off",
-            "the wet has made the grating slick and dark",
             "the mist drifts and pools between the buildings",
             "distance has stopped meaning much in the murk",
         ],
     },
     'rain': {
         'visual': [
+            "the street has gone slick and dark end to end",
             "rain falls straight and steady, pocking the puddles",
             "water spills off the eaves and sheets down the prefab faces",
             "the grating lies black and shining under the wet",
@@ -424,11 +425,11 @@ WEATHER_POOLS = {
             "water gets everywhere, hunting for the drains",
             "the gutters run brimming and noisy",
             "the dripping outlasts the worst of the fall by a long way",
-            "the street has gone slick and dark end to end",
         ],
     },
     'light_rain': {
         'visual': [
+            "thin films of water shine on the low grating",
             "a fine rain freckles the puddles and beads the rails",
             "the drizzle drifts more than it falls",
             "a thin wet sheen darkens the grating",
@@ -465,7 +466,6 @@ WEATHER_POOLS = {
         ],
         'atmospheric': [
             "the drizzle has slowed the street, not cleared it",
-            "thin films of water shine on the low grating",
             "the drains take the trickle without filling",
             "damp creeps slowly across every surface",
             "people loiter under the eaves in no real hurry",
@@ -474,6 +474,8 @@ WEATHER_POOLS = {
     },
     'soft_snow': {
         'visual': [
+            "everything looks briefly cleaner under the fresh fall",
+            "the cold has thinned the crowd to a few dark figures",
             "soft snow drifts down in slow, fat flakes",
             "white settles along the rails and dark ledges",
             "flakes wheel and tumble in the still air",
@@ -513,8 +515,6 @@ WEATHER_POOLS = {
             "the new coat takes the print of every footstep",
             "the street lies slow and hushed under the white",
             "snow banks soft against the windward walls",
-            "the cold has thinned the crowd to a few dark figures",
-            "everything looks briefly cleaner under the fresh fall",
         ],
     },
     'hard_snow': {
@@ -609,6 +609,7 @@ WEATHER_POOLS = {
     },
     'dry_thunderstorm': {
         'visual': [
+            "each flash throws hard shadows the length of the grating",
             "lightning forks across the cloud and not a drop falls",
             "the dry storm strobes the street stark and white",
             "thunderheads stack black and heavy over the rim",
@@ -645,7 +646,6 @@ WEATHER_POOLS = {
         ],
         'atmospheric': [
             "the dry storm has people eyeing the sky and the doors",
-            "each flash throws hard shadows the length of the grating",
             "dust streams down the street on the storm's breath",
             "the air pulls taut in the gaps between thunder",
             "the cloud grinds overhead and refuses to break",
@@ -699,6 +699,9 @@ WEATHER_POOLS = {
     },
     'gray_pall': {
         'visual': [
+            "grey ash settles slow and even over everything",
+            "the haze dulls the signs to faint, smeared glows",
+            "the pall coats every surface in a skin of grey grit",
             "a thick grey pall hangs over the street, dimming the lamps",
             "the haze blurs the near prefabs to soft grey blocks",
             "a film of particulate greys over every surface",
@@ -734,10 +737,7 @@ WEATHER_POOLS = {
             "the warm murk feels used and unclean",
         ],
         'atmospheric': [
-            "the pall coats every surface in a skin of grey grit",
             "people cross the murk with their mouths covered",
-            "the haze dulls the signs to faint, smeared glows",
-            "grey ash settles slow and even over everything",
             "the heavy air lies low and refuses to move",
             "the whole street wears a dull, soot-dimmed cast",
         ],
@@ -834,6 +834,7 @@ WEATHER_POOLS = {
     },
     'blind_fog': {
         'visual': [
+            "the street has shrunk to the few feet you can see",
             "the blind fog shuts sight down to less than arm's length",
             "the grating itself vanishes underfoot in the white",
             "nothing shows through the dense murk but the nearest shapes",
@@ -874,11 +875,11 @@ WEATHER_POOLS = {
             "the lamps disappear completely a few paces off",
             "the dense white has slicked the grating treacherous",
             "the fog stands so thick it seems to push inward",
-            "the street has shrunk to the few feet you can see",
         ],
     },
     'heavy_fog': {
         'visual': [
+            "the thick grey pools and drifts between the prefabs",
             "heavy fog closes the street to grey shapes within a few paces",
             "thick fog swallows the prefabs whole",
             "the lamps show only as drowned, floating haloes",
@@ -918,7 +919,6 @@ WEATHER_POOLS = {
             "moisture runs in sheets down every upright face",
             "the murk drowns the lamps a few paces off",
             "the slick fog beads cold on rail and grating",
-            "the thick grey pools and drifts between the prefabs",
             "the whole street has gone close and shut-in",
         ],
     },
@@ -1014,6 +1014,8 @@ WEATHER_POOLS = {
     },
     'foggy_rain': {
         'visual': [
+            "the street has gone close, grey, and dripping",
+            "the lamps drown to faint haloes in the wet grey",
             "rain falls through a clinging fog, doubling the grey",
             "fog and rain together close the street to a few paces",
             "the wet murk drowns the lamps to faint haloes",
@@ -1051,10 +1053,8 @@ WEATHER_POOLS = {
         'atmospheric': [
             "the fogged rain has slowed the street to almost nothing",
             "moisture sheets and beads on every surface at once",
-            "the lamps drown to faint haloes in the wet grey",
             "fog and runoff have slicked the grating treacherous",
             "the wet murk pools and drifts between the prefabs",
-            "the street has gone close, grey, and dripping",
         ],
     },
 }
