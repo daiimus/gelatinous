@@ -49,6 +49,37 @@ class CmdPatrol(default_cmds.MuxCommand):
     locks = "cmd:perm(Builders) or perm(Developers)"
     help_category = "Building"
 
+    #: Without this, `MuxCommand.parse` does not validate switches at
+    #: all, and an unrecognised one is simply dropped. Every branch in
+    #: `func` is a membership test with no `else`, so the fall-through
+    #: was the BARE form -- re-post this NPC to wherever the builder is
+    #: standing, overwriting `db.post`. `@patrol/stat bob` silently
+    #: moved bob's post instead of printing his status (#2565).
+    #:
+    #: Declaring the options also buys abbreviation: `/stat` now
+    #: resolves to `/status`, and an ambiguous prefix says so.
+    switch_options = ("base", "dispatch", "status", "clear", "beat", "auto")
+
+    def parse(self):
+        """Lower-case the switch, and remember that one was typed.
+
+        `MuxCommand` compares switches case-SENSITIVELY, so `/Status`
+        matches nothing even with `switch_options` declared: it is
+        reported as an extra switch, dropped, and `self.switches` comes
+        back empty -- indistinguishable in `func` from the bare form.
+        Two separate steps are needed, and neither is enough alone:
+
+        * fold the case here, so `/Status` and `/STATUS` work;
+        * record that a switch was TYPED, so `func` can refuse rather
+          than falling through when nothing survives validation.
+        """
+        raw = self.args or ""
+        self.typed_a_switch = raw.startswith("/")
+        if self.typed_a_switch:
+            head, sep, tail = raw.partition(" ")
+            self.args = head.lower() + sep + tail
+        super().parse()
+
     def _find_npc(self, name):
         npc = self.caller.search(name, global_search=True)
         if npc and not npc.is_typeclass(
@@ -187,6 +218,17 @@ class CmdPatrol(default_cmds.MuxCommand):
                 f"{npc.get_display_name(caller)} now walks: "
                 + ", ".join(r.get_display_name(caller) for r in beat)
                 + f" (base first, every loop; ~{HEARTBEAT_SECONDS}s a leg).")
+            return
+
+        # A switch was typed and none of it survived validation. Do NOT
+        # continue into the bare form below — that re-posts the NPC to
+        # this room, which is not remotely what a mistyped `/status`
+        # was asking for (#2565).
+        if getattr(self, "typed_a_switch", False) and not switches:
+            caller.msg(
+                "Unrecognised switch. @patrol takes: "
+                + ", ".join(f"/{opt}" for opt in self.switch_options)
+                + ". Bare `@patrol <npc>` posts them where you stand.")
             return
 
         # bare: post <npc> here
