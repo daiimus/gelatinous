@@ -311,7 +311,11 @@ LONGDESCS: dict[str, list[str]] = {
         "A long, vertical scar runs down the center of {their} abdomen, the line of an old surgery.",
         "{Their} stomach moves visibly with each breath, sucked in and out.",
         ("heavyset", "{Their} belly carries a relaxed, generous roundness with cheerful indifference."),
-        "{Their} abdomen is concave enough to suggest several missed meals.",
+        # TAGGED. Untagged, this landed in every body's pool and gave a
+        # heavyset NPC a concave abdomen (#2733). Its three neighbours
+        # making the same claim are already tagged; this one opted out
+        # of a mechanism that was right there.
+        ("slight", "{Their} abdomen is concave enough to suggest several missed meals."),
         "{Their} stomach holds the rounded weight of a person comfortable with food.",
         "{Their} abdomen carries the muscular ridges of someone who exercises with intent.",
         "A faded vertical scar low on the belly suggests an old appendectomy or similar.",
