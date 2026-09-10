@@ -1267,7 +1267,18 @@ class MedicalState:
             # Stop ticker if condition had one
             if hasattr(condition, 'stop_condition'):
                 condition.stop_condition()
-                
+
+            # ...and write it down, exactly as `add_condition` does
+            # twenty lines up ("Save medical state after adding
+            # condition to ensure persistence").
+            #
+            # This was the asymmetric twin: adding a condition persisted,
+            # removing one did not, so a condition cleared in memory came
+            # back on the next reload from whatever the last save held
+            # (#2739).
+            if self.character:
+                self.character.save_medical_state()
+
     def get_conditions_by_type(self, condition_type):
         """
         Get all conditions of a specific type.
