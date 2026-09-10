@@ -72,12 +72,33 @@ def _unit_on_scene(location: Any, perp: Any = None) -> Any | None:
                 continue
         except Exception:  # noqa: BLE001 — an odd body is not a witness
             continue
+        # THIS GATE HAS NEVER RUN. `can_see` takes ONE argument and was
+        # called with two, so every call raised `TypeError` straight
+        # into the bare `except` below — whose comment reads "no
+        # perception layer, still a witness". A security unit with
+        # destroyed optics positively identified a perpetrator, every
+        # time (#2668).
+        #
+        # The two-argument call says what the author meant, and it is
+        # two questions rather than one: can this unit see AT ALL, and
+        # can it perceive THIS perp. A hidden perp is not witnessed by
+        # somebody they are hidden from — the same presence gate the
+        # rest of the codebase applies, and the reason a bare
+        # `can_see(obj)` alone would not be enough.
+        #
+        # The import is what falls open now, not the call. A missing
+        # perception layer is a deployment fact and "still a witness" is
+        # the right answer to it; a TypeError is a bug, and swallowing
+        # one as an answer is how this survived.
         try:
-            from world.perception import can_see
-            if not can_see(obj, perp if perp is not None else obj):
+            from world.perception import can_perceive, can_see
+        except ImportError:  # noqa: BLE001 — no perception layer, still a witness
+            can_perceive = can_see = None
+        if can_see is not None:
+            if not can_see(obj):
                 continue
-        except Exception:  # noqa: BLE001 — no perception layer, still a witness
-            pass
+            if perp is not None and not can_perceive(obj, perp):
+                continue
         return obj
     return None
 
