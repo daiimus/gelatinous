@@ -25,6 +25,52 @@ from django.conf import settings
 from evennia import utils
 
 
+#: The login frame's width in visible columns.
+#:
+#: `NEW_PLAYER_EXPERIENCE_SPEC` §3 fixes 66 columns for the post-menu
+#: blocks, and the closing bar already matched it. The three TOP bars
+#: were 67, so the frame did not close: the bottom edge sat one column
+#: left of the top edge, on the first screen every player sees (#2752).
+FRAME_WIDTH = 66
+
+#: The shade the frame is drawn in, and the block at each end.
+_SHADE = "\u2592"
+_EDGE = "\u2588"
+
+#: How much of the header row is spent before the title.
+_INSET = 9
+
+
+def _rule():
+    """A closed bar exactly `FRAME_WIDTH` columns wide."""
+    return _EDGE + _SHADE * (FRAME_WIDTH - 2) + _EDGE
+
+
+def _titled_rule(markup, visible):
+    """A bar with a title inset, padded from the title's VISIBLE length.
+
+    The trailing shade run used to be a literal. It measured correctly
+    only because `len("Gelatinous Monster") + len("6.1.0")` happened to
+    land right — rename the server or bump Evennia and the header row
+    goes crooked. `markup` and `visible` are built from the same parts
+    by the caller so they cannot describe different strings.
+    """
+    for inset in (_INSET, 1):
+        lead = _EDGE + _SHADE * inset + " "
+        fill = FRAME_WIDTH - len(lead) - len(visible) - 2
+        if fill >= 1:
+            return f"{lead}{markup} " + _SHADE * fill + _EDGE
+
+    # Longer than the frame even with no inset. Keep the FRAME and trim
+    # the title: a bar that closes matters more than a name in full, and
+    # the alternative is the row growing past every other row again.
+    # The colour goes with it, because `markup` cannot be cut safely —
+    # a slice can land in the middle of a `|g` and print the code.
+    title = visible[:FRAME_WIDTH - 6]
+    return (_EDGE + _SHADE + " " + title + " "
+            + _SHADE * (FRAME_WIDTH - 5 - len(title)) + _EDGE)
+
+
 def connection_screen():
     """
     Dynamic connection screen that adjusts based on settings.
@@ -35,11 +81,18 @@ def connection_screen():
     else:
         create_line = "__ Create  : |rAccount creation disabled|n\n\nUse your email address to connect to your existing account."
     
+    version = utils.get_evennia_version("short")
+    rule = _rule()
+    header = _titled_rule(
+        f"|g{settings.SERVERNAME} SYSTEM|n :::: SIGNAL {version}|b",
+        f"{settings.SERVERNAME} SYSTEM :::: SIGNAL {version}",
+    )
+
     return f"""
 
-|b█▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█
-█▒▒▒▒▒▒▒▒▒ |g{settings.SERVERNAME} SYSTEM |n :::: SIGNAL {utils.get_evennia_version("short")} |b▒▒▒▒▒▒▒▒▒▒█
-█▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█|n
+|b{rule}
+{header}
+{rule}|n
 
 [ WARNING: Signal instability detected. ]
 [ Color bars desaturated. ]
@@ -60,5 +113,5 @@ Enter |whelp|n for more info. |wlook|n will re-show this screen.
 
 |w>>> END OF TE▒T PATTERN. BROADCAST WI▒L NOT RESUME WITHOUT PROMPT.|n
 
-|b█▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█|n
+|b{rule}|n
 """
