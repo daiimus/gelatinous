@@ -1087,8 +1087,29 @@ _NOT_A_NAME = {
 
 def _clean_intro_name(tail: str, require_capital: bool) -> str | None:
     """The name out of the tail of an introduction, or ``None``."""
-    # a name ends at punctuation: "I'm Marcus, and I need work"
-    tail = re.split(r"[.,!?;:—]|\band\b", tail, maxsplit=1)[0]
+    # A name ends at punctuation — "I'm Marcus, and I need work" — and
+    # at any word that starts saying something ELSE about the speaker.
+    #
+    # Only punctuation and "and" stopped it, so an ordinary
+    # self-introduction was stored verbatim as a name and a longer one
+    # was stored truncated mid-phrase by the four-word cap (#2649):
+    #
+    #     'my name is Marcus from Southside' -> 'Marcus from Southside'
+    #     "I'm Kade Vance of the Ash"        -> 'Kade Vance of the'
+    #
+    # The second is the worse of the two: a dangling "of the" is not a
+    # name anybody typed or meant. Stopping at the connective yields
+    # "Marcus" and "Kade Vance", which is what the punctuation branch
+    # already produces for "call me Doc, the medic".
+    #
+    # NOT added to `_NOT_A_NAME`, which rejects the whole match: that
+    # would make an NPC learn NOTHING from "my name is Marcus from
+    # Southside", and a short right answer beats no answer.
+    tail = re.split(
+        r"[.,!?;:—]"
+        r"|\b(?:and|from|of|at|in|on|with|for|to|by|out|over|down|near"
+        r"|who|that|which|but|so|because|since|working|running)\b",
+        tail, maxsplit=1)[0]
     words = [w.strip("'\"") for w in tail.split() if w.strip("'\"")][:4]
     if not words:
         return None
