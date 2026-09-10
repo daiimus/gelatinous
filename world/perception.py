@@ -93,18 +93,40 @@ def can_see(char: Any) -> bool:
     return sight >= SIGHT_PERCEPTION_THRESHOLD
 
 
+def hearing_multiplier(char: Any) -> float:
+    """*char*'s hearing as a ``0.0``–``1.0`` weight, override applied.
+
+    The graded companion to :func:`can_hear`, for consumers that weight a
+    roll by hearing rather than gating on it. Both read the capacity through
+    this one door so they cannot disagree about the same ear.
+
+    ``calculate_body_capacity`` is the **organ-only** floor — it consults no
+    condition, so a character whose organic hearing is destroyed reads
+    ``0.0`` even with cyber ears fitted. The override is what makes that
+    ``0.0`` mean "the flesh is gone", not "this character cannot hear", and
+    it has to be applied here rather than left to each caller. The combat
+    capacity consumers (:mod:`world.combat.capacity`) apply their sight /
+    moving / manipulation overrides the same way.
+
+    Returns:
+        ``1.0`` for a hearing override or no medical model, else the raw
+        capacity clamped to ``[0.0, 1.0]``.
+    """
+    if _has_condition(char, HEARING_OVERRIDE_CONDITION):
+        return 1.0
+    hearing = _read_capacity(char, "hearing")
+    if hearing is None:
+        return 1.0  # fail-open: no medical model, no penalty
+    return max(0.0, min(1.0, float(hearing)))
+
+
 def can_hear(char: Any) -> bool:
     """True if *char* can hear (enough ``hearing`` to receive a voice).
 
     Fails open with no medical model. A hearing-override condition (cyber ears)
     restores hearing regardless of organ state.
     """
-    if _has_condition(char, HEARING_OVERRIDE_CONDITION):
-        return True
-    hearing = _read_capacity(char, "hearing")
-    if hearing is None:
-        return True
-    return hearing >= HEARING_PERCEPTION_THRESHOLD
+    return hearing_multiplier(char) >= HEARING_PERCEPTION_THRESHOLD
 
 
 def can_smell(char: Any) -> bool:
