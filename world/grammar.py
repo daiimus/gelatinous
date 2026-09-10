@@ -88,6 +88,52 @@ MODALS: frozenset[str] = frozenset((
     "shall", "may", "ought", "need", "dare",
 ))
 
+#: Irregular PAST-tense forms, which never take an -s: "she went",
+#: "she said". English past tense is invariant across person and number,
+#: so these need conjugating exactly as much as a modal does — which is
+#: to say not at all.
+#:
+#: Regular past tense (`-ed`) was already safe; it is the irregular
+#: forms that end in d, t and e and read like base verbs, so the append
+#: rules claimed them: `went` -> `wents`, `said` -> `saids`, `took` ->
+#: `tooks`, in front of every observer while the actor's own view stayed
+#: correct (#2642).
+#:
+#: THE EXCLUSION RULE, which matters more than the list: a form is only
+#: here if it is NOT also a present-tense verb. English has a pile of
+#: invariant verbs whose past and present are spelled the same —
+#: `set`, `put`, `cut`, `hit`, `let`, `cost`, `hurt`, `shut`, `spread`,
+#: `read`, `bet`, `quit`, `shed` — and adding any of them would break
+#: the ordinary present-tense pose (".set the glass down" wants "sets").
+#: Same for forms that double as another verb's base: `saw` (to saw),
+#: `lay` (to place), `bore` (to drill), `ground` (to grind), `wound`
+#: (to injure), `founded`/`found`. When in doubt, leave it out: the
+#: cost of omission is one mangled word, and the cost of a wrong
+#: inclusion is every present-tense use of a common verb.
+IRREGULAR_PAST: frozenset[str] = frozenset((
+    # be / go / come / do
+    "went", "came", "became", "did",
+    # speech and thought
+    "said", "told", "spoke", "swore", "thought", "knew", "meant",
+    "understood", "taught",
+    # motion
+    "ran", "rose", "fell", "flew", "drove", "rode", "swam", "leapt",
+    "crept", "fled", "slid", "strode", "trod", "sprang", "sank", "swung",
+    "clung", "hung", "stood", "sat",
+    # hands
+    "took", "gave", "made", "held", "threw", "caught", "brought",
+    "bought", "sold", "paid", "kept", "left", "lost", "sent",
+    "spent", "built", "broke", "chose", "stole", "struck", "shook",
+    "drew", "tore", "wore", "wove", "wrung", "dug", "flung", "bent",
+    "lent", "bound",
+    # body and sense
+    "felt", "heard", "ate", "drank", "slept", "woke", "bled",
+    "wept", "bit", "hid", "shone", "grew", "blew", "froze", "sang",
+    "rang", "shot", "got", "forgot", "wrote", "met", "won", "began",
+    "fought", "sought", "dealt", "fed", "led", "sped", "swept", "spun",
+    "stuck", "stank", "shrank", "knelt", "spat", "forgave", "mistook",
+))
+
 #: Vowels used by the consonant-y rule.
 _VOWELS = frozenset("aeiou")
 
@@ -139,10 +185,33 @@ def conjugate_third_person(verb: str) -> str:
     # rules, so the sibilant rule cannot fire on an -s that is already a
     # conjugation. inflect leaves true base forms ("pass", "cross")
     # alone and reduces conjugated ones ("stands" → "stand").
+    # PAST TENSE IS ALREADY CORRECT FOR EVERY PERSON. "she went", "she
+    # said" — nothing to conjugate, exactly like a modal. The table
+    # above holds nine forms, all of them be/do/have, so every other
+    # irregular past came out with an -s stapled on: `went` -> `wents`,
+    # `said` -> `saids`, `took` -> `tooks` (#2642).
+    #
+    # Regular past tense was already safe by accident — `-ed` normalises
+    # or takes Rule 4 harmlessly at the render sites, and the LLM path
+    # filters `endswith("ed")` explicitly. It is the irregular forms
+    # that end in d, t and e and look like base verbs.
+    if lower in IRREGULAR_PAST:
+        return verb
+
     base = _engine.plural_verb(lower) or lower
     if base != lower:
         verb = _match_leading_case(base, verb)
         lower = base
+        # RE-CONSULT THE TABLE. The docstring says it "takes absolute
+        # precedence" and is "keyed by any form", and it was checked
+        # only against the RAW input — so a form that normalises INTO a
+        # table key still fell through to the append rules. `am` is the
+        # one `be` form the table forgot; it normalises toward `are` and
+        # then took Rule 4, giving `ares` (#2642).
+        if lower in IRREGULAR_VERBS:
+            conjugated = IRREGULAR_VERBS[lower]
+            return (conjugated.capitalize() if verb[:1].isupper()
+                    else conjugated)
 
     # Rule 1: Sibilant endings → +es
     if (
