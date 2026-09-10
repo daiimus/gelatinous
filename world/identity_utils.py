@@ -12,7 +12,7 @@ the full specification.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import re
 
@@ -21,6 +21,65 @@ from world.grammar import capitalize_first
 if TYPE_CHECKING:
     from typeclasses.characters import Character
     from typeclasses.rooms import Room
+
+
+#: Per-class memo for :func:`_hears_broadcasts` -- the answer depends only
+#: on the typeclass, and a busy room asks it once per object per message.
+_MSG_HOOKED: dict[type, bool] = {}
+
+
+def _implements_msg_hook(cls: type) -> bool:
+    """Does ``cls`` define its own ``at_msg_receive``?
+
+    Real Python functions only. A test double's auto-attribute is a Mock,
+    not a function, so a bare ``MagicMock`` observer is not mistaken for a
+    listening NPC.
+    """
+    cached = _MSG_HOOKED.get(cls)
+    if cached is None:
+        import inspect
+        from evennia.objects.objects import DefaultObject
+
+        hook = getattr(cls, "at_msg_receive", None)
+        cached = (inspect.isfunction(hook)
+                  and hook is not DefaultObject.at_msg_receive)
+        _MSG_HOOKED[cls] = cached
+    return cached
+
+
+def _hears_broadcasts(observer: Any) -> bool:
+    """Should this observer be rendered for at all?
+
+    Two ways to want a room broadcast:
+
+    * a **connected session** -- a player, who will read the text;
+    * an **``at_msg_receive`` override** -- an NPC or fixture, which acts
+      on the message rather than reading it.
+
+    The gate used to test only the first, justified by the claim that
+    "messages to session-less objects are discarded by Evennia anyway"
+    (#462). That is false, and backwards. ``DefaultObject.msg`` calls
+    ``at_msg_receive`` UNCONDITIONALLY and only consults sessions sixteen
+    lines later, to decide where the *text* goes -- which is the entire
+    mechanism ``LLMNpc`` is built on. Nothing was being discarded; by
+    skipping the call the gate created the discard it claimed to be
+    exploiting, and every LLM-driven NPC in the colony went blind to all
+    eight social emotes (#2640).
+
+    The performance motive behind #462 was sound and survives: items,
+    corpses, organs and blood pools have ``.msg`` and no hook, so they
+    still cost nothing. Only two classes in the codebase override
+    ``at_msg_receive`` -- ``LLMNpcMixin`` and ``AnsweringFixture`` -- and
+    both exist precisely to act on what they hear.
+    """
+    sessions = getattr(observer, "sessions", None)
+    if sessions is not None:
+        try:
+            if sessions.count():
+                return True
+        except Exception:  # noqa: BLE001 - a handler that won't answer
+            pass           #                is not a session
+    return _implements_msg_hook(type(observer))
 
 
 #: Every ``{placeholder}`` in a broadcast template, in source order.
@@ -143,17 +202,13 @@ def msg_room_identity(
             continue
         if not hasattr(observer, "msg"):
             continue
-        # Session gate (issue #462): only render for observers with a
-        # connected session.  Everything in a room has ``.msg`` —
-        # items, corpses, and the hundreds of NPCs a scene can hold —
-        # and per-observer display-name resolution is the most
-        # expensive render path in the game.  Messages to session-less
-        # objects are discarded by Evennia anyway.  When NPC AI grows
-        # message-driven perception, it should hook the action source
-        # (e.g. combat handler events), not this player-facing
-        # broadcast.
-        sessions = getattr(observer, "sessions", None)
-        if sessions is None or not sessions.count():
+        # Audience gate (#462, corrected by #2640): render for observers
+        # that will READ this (a connected session) or ACT on it (an
+        # `at_msg_receive` override). Everything in a room has `.msg` —
+        # items, corpses, organs, blood pools — and per-observer
+        # display-name resolution is the most expensive render path in
+        # the game, so the cheap majority is still skipped.
+        if not _hears_broadcasts(observer):
             continue
 
         # One resolution per character per observer, however many times
