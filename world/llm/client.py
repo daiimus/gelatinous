@@ -54,6 +54,54 @@ BREAKER_COOLDOWN = 60.0
 _breaker = {}          # lane -> {"fails": int, "until": float}
 
 
+def _shielded(handler, on_fail, what):
+    """Keep a CALLER's exception out of the transport errback.
+
+    `evennia.utils.run_async` wires the pair as
+    `deferred.addCallback(at_return)` then `deferred.addErrback(at_err)`
+    — sequentially, not as a pair. So anything the success callback
+    raises lands in the errback, which then records a transport failure
+    against the circuit breaker, logs it as "LLM backend call failed",
+    and runs the failure path AFTER the success path already ran.
+
+    Measured in the live log: 1,159 of 1,393 logged backend failures —
+    83.2% — were `AttributeError`, which is not a transport failure. The
+    remaining 234 were `ReadTimeout` and `ConnectionError`, which are
+    (#2727).
+
+    Three consequences, none of them cosmetic:
+
+    * the breaker trips on the game's own bugs and stops dispatching to
+      a backend that is answering fine;
+    * a real outage is invisible in a log that is 83% noise;
+    * `on_fail()` runs after `on_turn()` already produced a reply.
+
+    NOT a patch to `run_async`. The chain is Evennia's and the fix is to
+    hand it a callback that does not raise.
+
+    A handler that already called `on_fail` and THEN threw would see it
+    called twice. That is the pre-existing shape of every one of these
+    callbacks and is strictly better than a caller fault being counted
+    as an outage.
+    """
+    def _wrapped(result):
+        try:
+            return handler(result)
+        except Exception as err:  # noqa: BLE001 — this is the point
+            logger.log_err(
+                f"{what} handler raised [{type(err).__name__}]: {err} "
+                f"— the backend answered; this is caller-side.")
+            try:
+                logger.log_trace()
+            except Exception:  # noqa: BLE001 — diagnostics must not throw
+                pass
+            try:
+                on_fail()
+            except Exception:  # noqa: BLE001
+                pass
+    return _wrapped
+
+
 def _probe_deadline(lane) -> float:
     """How long a claimed half-open probe may go unaccounted for.
 
@@ -235,7 +283,9 @@ def request_turn(messages, on_turn, on_fail, schema=None):
                 pass
         on_fail()
 
-    run_async(_thread_fn, at_return=_at_return, at_err=_at_err)
+    run_async(_thread_fn,
+              at_return=_shielded(_at_return, on_fail, "LLM turn"),
+              at_err=_at_err)
 
 
 def _embed_url():
@@ -278,7 +328,9 @@ def request_embedding(text, on_done, on_fail):
         logger.log_err(f"LLM embedding call failed: {failure}")
         on_fail()
 
-    run_async(_thread_fn, at_return=_at_return, at_err=_at_err)
+    run_async(_thread_fn,
+              at_return=_shielded(_at_return, on_fail, "LLM embedding"),
+              at_err=_at_err)
 
 
 # --------------------------------------------------------------------------
@@ -337,7 +389,9 @@ def request_civic_line(instructions, prompt, on_reply, on_fail):
         logger.log_err(f"Civic LLM call failed: {failure}")
         on_fail()
 
-    run_async(_thread_fn, at_return=_at_return, at_err=_at_err)
+    run_async(_thread_fn,
+              at_return=_shielded(_at_return, on_fail, "Civic LLM"),
+              at_err=_at_err)
 
 
 def request_civic_verdict(instructions, prompt, schema, on_verdict, on_fail):
@@ -389,4 +443,6 @@ def request_civic_verdict(instructions, prompt, schema, on_verdict, on_fail):
         logger.log_err(f"Civic verdict call failed: {failure}")
         on_fail()
 
-    run_async(_thread_fn, at_return=_at_return, at_err=_at_err)
+    run_async(_thread_fn,
+              at_return=_shielded(_at_return, on_fail, "Civic verdict"),
+              at_err=_at_err)
