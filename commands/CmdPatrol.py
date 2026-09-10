@@ -80,6 +80,46 @@ class CmdPatrol(default_cmds.MuxCommand):
             self.args = head.lower() + sep + tail
         super().parse()
 
+    def _walkable_waypoint(self, npc, room, post, radius=None):
+        """Can this unit actually stand there, and get there on foot?
+
+        Both beat-producing branches need the same guarantee, so it
+        lives in one place. The other beat-producer in the codebase --
+        `spawn_civilian`'s haunt sampler -- already applies exactly
+        these filters, and `@patrol` applied none of them (#2566):
+
+        * a Room, not any object `search` happened to match. The local
+          in the `/beat` loop was even NAMED `room`; nothing enforced
+          it, so `@patrol/beat <bot> = Petra` wrote a CHARACTER into
+          `db.patrol_beat` and the pathfinder -- whose graph holds only
+          rooms -- could never match it.
+        * not a sky room. Those are all keyed "In the Air" by house
+          convention, so a radius sample around any elevated post can
+          pull one in, and no pedestrian belongs in the jump/fall
+          transit volume.
+        * reachable ON FOOT, WITH THIS UNIT AS THE TRAVERSER. Asking
+          lock-blind answers a different question from the walk:
+          `travel_to` calls `find_path_exits(..., traverser=npc)`, and
+          a locked private apartment that counts as reachable without
+          one gets sampled into the beat and then faults forever. That
+          cost one tobacconist 273 failed attempts at the same door
+          (#2711, #2714).
+
+        Quiet: returns a reason rather than messaging, so `/auto` can
+        filter a sample without narrating every rejection.
+        """
+        from world.spatial import is_reachable
+        if not room.is_typeclass("typeclasses.rooms.Room", exact=False):
+            return f"{room.get_display_name(self.caller)} isn't a room."
+        if getattr(room.db, "is_sky_room", False):
+            return (f"{room.get_display_name(self.caller)} is open air — "
+                    f"a patrol can't stand there.")
+        steps = (radius or 8) * 4
+        if not is_reachable(post, room, traverser=npc, max_steps=steps):
+            return (f"{room.get_display_name(self.caller)} isn't walkable "
+                    f"from the post.")
+        return None
+
     def _find_npc(self, name):
         npc = self.caller.search(name, global_search=True)
         if npc and not npc.is_typeclass(
@@ -198,6 +238,17 @@ class CmdPatrol(default_cmds.MuxCommand):
                 if not nearby:
                     caller.msg("No coordinate rooms within that radius.")
                     return
+                # Coordinate distance alone offers rooms no pedestrian
+                # belongs in. The civilian haunt sampler filters; this
+                # sampled raw (#2566).
+                nearby = [r for r in nearby
+                          if not self._walkable_waypoint(npc, r, post,
+                                                         radius)]
+                if not nearby:
+                    caller.msg("No WALKABLE rooms within that radius — "
+                               "everything nearby is open air or has no "
+                               "route on foot from the post.")
+                    return
                 beat = sample(nearby, min(4, len(nearby)))
             else:
                 beat = []
@@ -205,6 +256,13 @@ class CmdPatrol(default_cmds.MuxCommand):
                     room = caller.search(token.strip(), global_search=True)
                     if not room:
                         return  # search already messaged
+                    # `global_search` with no typeclass filter matched
+                    # anything at all — the NPC argument is type-checked
+                    # a few lines up and the waypoints were not (#2566).
+                    problem = self._walkable_waypoint(npc, room, post)
+                    if problem:
+                        caller.msg(problem + " Beat not set.")
+                        return
                     beat.append(room)
                 if not beat:
                     caller.msg("No rooms given.")
