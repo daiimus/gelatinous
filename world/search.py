@@ -247,6 +247,39 @@ def _match_sdesc(target: object, query: str) -> bool:
 # Main Matching API
 # =========================================================================
 
+def parse_target_query(query: str) -> tuple[int | None, str]:
+    """Split a targeting string into ``(ordinal, base_query)``.
+
+    Article FIRST, then ordinal. Both call sites used to do it the other
+    way round, and in that order the first step cancels the second:
+    `parse_ordinal("the 2nd man")` sees no LEADING ordinal, returns the
+    string untouched, and the article strip then yields `"2nd man"` —
+    matched against sdescs as a description, which no character has. So
+    `look the 2nd man` found nothing, and `Character.search` fell
+    through to the default Evennia search and produced a generic
+    not-found for someone standing in front of the player (#2661).
+
+    Writing "the" before a disambiguator is the natural phrasing, which
+    made this the form players were most likely to reach for in exactly
+    the situation ordinals exist to resolve.
+
+    Both steps existed and both worked; only the order was wrong. They
+    live in one function now so the two call sites cannot disagree about
+    it again.
+
+    Examples:
+        >>> parse_target_query("2nd man")
+        (2, 'man')
+        >>> parse_target_query("the 2nd man")
+        (2, 'man')
+        >>> parse_target_query("a third woman")
+        (3, 'woman')
+        >>> parse_target_query("the tall man")
+        (None, 'tall man')
+    """
+    return parse_ordinal(strip_leading_article(query))
+
+
 def identity_match_characters(
     searcher: "Character",
     query: str,
@@ -297,11 +330,8 @@ def identity_match_characters(
     if not query or not candidates:
         return []
 
-    # Parse ordinal
-    ordinal, base_query = parse_ordinal(query)
-
-    # Strip leading article
-    base_query = strip_leading_article(base_query)
+    # Article, then ordinal — see `parse_target_query` (#2661).
+    ordinal, base_query = parse_target_query(query)
 
     if not base_query:
         return []
@@ -395,8 +425,7 @@ def is_identity_match(
         # Not an identity-enabled object — always allow (items, exits)
         return True
 
-    _ordinal, base_query = parse_ordinal(query)
-    base_query = strip_leading_article(base_query)
+    _ordinal, base_query = parse_target_query(query)
 
     if not base_query:
         return False
