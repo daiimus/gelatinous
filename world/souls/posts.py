@@ -366,8 +366,20 @@ def sweep(now=None):
                     slot["keeper"] = None
                 dirty = True
                 continue
-            if now - float(slot["vacant_since"]) < int(
-                    post.db.post_delay or DEFAULT_DELAY):
+            # `is None`, not `or`. A builder asking for NO delay --
+            # re-staff the moment the slot goes dark -- wrote 0, which
+            # is falsy, so `or DEFAULT_DELAY` silently gave them the
+            # LONGEST delay instead, with no error and nothing in the
+            # log (#3093). Same shape as #2877's expiry-of-zero.
+            #
+            # Censused before changing: 19 posts carry a delay
+            # (259200 x10, 21600 x5, 86400 x2, 600 x2) and NONE is 0, so
+            # this changes no live cadence -- it stops the next builder
+            # who types 0 from getting six hours.
+            authored = post.db.post_delay
+            ripe_after = (DEFAULT_DELAY if authored is None
+                          else int(authored))
+            if now - float(slot["vacant_since"]) < ripe_after:
                 continue
             room = _post_room(post)
             if any(_in_combat(o) for o in room.contents
