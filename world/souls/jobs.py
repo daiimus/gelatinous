@@ -245,6 +245,47 @@ def _rung(g):
     return 1 if lay is None else int(lay)
 
 
+def _make_room_for(soul, garment) -> bool:
+    """Take off whatever is layered OVER `garment`'s coverage, put it
+    on, and put the outer pieces back.
+
+    `_shed_the_issue` already does exactly this, for the paper decant
+    issue alone. The general case was never written, and a body whose
+    only gap sits UNDER something it is already wearing could never
+    close it: #6106 Sam Fukuda's blueprint gives him layer-5 rubber
+    waders that stop at the thigh, so `groin` stayed bare, the
+    clothing system correctly refused every layer-1 pair of trousers
+    going under them, and `wardrobe_pressure` sat at 1.0 for good
+    (#3169).
+
+    Bounded and reversible: only garments whose coverage OVERLAPS and
+    whose rung is HIGHER come off, and if the wear still fails
+    everything goes straight back on. Nothing is removed that was not
+    re-offered.
+
+    Returns True when `garment` ended up worn.
+    """
+    covers = set(garment.attributes.get("coverage") or ())
+    if not covers:
+        return False
+    worn_now = list(dict.fromkeys(
+        g for items in (soul.worn_items or {}).values() for g in items))
+    blocking = [g for g in worn_now
+                if _rung(g) > _rung(garment)
+                and covers & set(g.attributes.get("coverage") or ())]
+    if not blocking:
+        return False        # something else is refusing it; not our case
+
+    for g in sorted(blocking, key=lambda g: -_rung(g)):
+        soul.remove_item(g)
+    ok, _why = soul.wear_item(garment)
+    # Outer layers go back on either way — a failed attempt must not
+    # leave the body barer than it found it.
+    for g in sorted((g for g in blocking if g.pk), key=_rung):
+        soul.wear_item(g)
+    return bool(ok)
+
+
 def _shed_the_issue(soul) -> bool:
     """Take the paper decant issue off so real clothes can go on.
 
@@ -633,6 +674,24 @@ def step_job(soul):
 
         wearable = sorted((o for o in soul.contents if _wearable(soul, o)),
                           key=_useful_first)
+        if not wearable and _bare:
+            # NOTHING WILL GO ON, AND SOMETHING IS STILL BARE. Before
+            # giving up, check whether the gap is merely UNDERNEATH
+            # what is already worn — `_wearable` asks `can_wear_now`,
+            # which refuses an under-layer, so a soul in that position
+            # looks to the planner exactly like a soul who owns nothing
+            # (#3169).
+            for candidate in sorted(
+                    (o for o in soul.contents
+                     if getattr(o, "is_wearable", None) and o.is_wearable()
+                     and not soul.is_item_worn(o)
+                     and (set(o.attributes.get("coverage") or ()) & _bare)),
+                    key=_rung):
+                if _make_room_for(soul, candidate):
+                    job["at"] = at + 1
+                    soul.db.soul_job = job
+                    soul.db.soul_job = None
+                    return False
         if not wearable:
             # shed the paper: real clothes REPLACE the issue rather than
             # layering over it (#2118). The issue TEARS coming off
