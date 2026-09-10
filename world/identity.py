@@ -504,10 +504,25 @@ def add_approved_keyword(
     if gender_list not in _GENDER_LIST_TO_KEY:
         return False, f"Invalid gender list {gender_list!r}."
 
-    kw_set = _load_gender_keyword_set(gender_list)
-    if keyword in kw_set:
-        return False, f"'{keyword}' is already in the {gender_list} list."
+    # EVERY list, not just the one being added to. This checked only
+    # `gender_list`, so the same keyword could be approved as both
+    # feminine and masculine — and `get_apparent_gender` resolves
+    # feminine-first, so the duplicate silently read female and the
+    # admin who approved it as masculine got a success message (#2650).
+    #
+    # The old error was accurate about what it had checked, which is
+    # exactly what made the gap easy to miss.
+    for other in _GENDER_LIST_TO_KEY:
+        if keyword in _load_gender_keyword_set(other):
+            if other == gender_list:
+                return False, (f"'{keyword}' is already in the "
+                               f"{gender_list} list.")
+            return False, (f"'{keyword}' is already in the {other} list. "
+                           f"Remove it from there first — a keyword in two "
+                           f"lists resolves to whichever is checked first, "
+                           f"silently.")
 
+    kw_set = _load_gender_keyword_set(gender_list)
     kw_set.add(keyword)
     ServerConfig.objects.conf(_GENDER_LIST_TO_KEY[gender_list], kw_set)
 

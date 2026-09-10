@@ -132,6 +132,34 @@ def department_of(char):
     return ((char.db.designation or {}).get("dept") or "") if char else ""
 
 
+#: Species that never held a berth on the crossing.
+#:
+#: The rule lived in ONE build script, spelled `startswith("synth")`, and
+#: a security robot walked straight through it: `#3258` is on record as
+#: a Specialist, Logistics & Stores aboard SBL-0117, which is a berth
+#: only a person can have held, and it renders on `@soul` and on the
+#: character's own record (#2670).
+#:
+#: A synthetic is excluded precisely because it did not travel as crew.
+#: A robot is the clearer case of the same rule, and a rat is clearer
+#: still. Stated here rather than in the caller so the next backfill,
+#: successor or arrival path inherits it instead of re-deriving it.
+NEVER_ON_THE_MANIFEST = ("synth", "robot", "rat")
+
+
+def travelled_as_crew(soul) -> bool:
+    """Could this body have held a slowboat berth?
+
+    An UNSET species is a person: most of the colony carries no species
+    attribute at all, and defaulting those out would empty the manifest
+    rather than clean it.
+    """
+    db = getattr(soul, "db", None)
+    species = (getattr(db, "species", None) or "").lower()
+    return not any(species.startswith(kind)
+                   for kind in NEVER_ON_THE_MANIFEST)
+
+
 def roll_designation(dept=None, rank=None):
     """A designation for somebody nobody authored. Never Command, and
     never Commander — both are reserved, and Command is meant to stay

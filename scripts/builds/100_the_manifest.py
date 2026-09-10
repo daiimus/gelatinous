@@ -40,8 +40,12 @@ for soul in engine.get_souls():
     if soul.db.designation:
         kept += 1
         continue
-    if (soul.db.species or "").lower().startswith("synth") \
-            or soul.key == "Vesper":
+    # The species rule lives in `world/manifest.py` now: spelled here as
+    # `startswith("synth")`, it let a security robot onto the manifest
+    # as a Specialist, Logistics & Stores (#2670). Vesper stays a named
+    # carve-out — she is a synthetic the rule already covers, and the
+    # comment at the top of this file says why she is called out.
+    if not manifest_mod.travelled_as_crew(soul) or soul.key == "Vesper":
         skipped += 1
         continue
     if soul.key in CAST:
