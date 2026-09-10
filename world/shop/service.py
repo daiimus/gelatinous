@@ -70,6 +70,33 @@ def match_shelf_order(counter, speech):
     return match_from_shelf(shelf_of(counter), speech)
 
 
+#: Words that are never an order TERM. "a can of lager" contributed `of`
+#: to its own word-set, so "get out of my way" -- no order cue at all --
+#: scored against every item on the shelf and came back "ambiguous",
+#: meaning the keeper asked which one you wanted (#2735).
+_SHELF_STOPWORDS = frozenset({
+    "a", "an", "the", "of", "and", "or", "with", "in", "on", "for", "to",
+    "some", "any", "my", "your", "that", "this", "it",
+})
+
+
+def _strip_cue(low):
+    """Remove the order cue from *low*, if one is present.
+
+    A word spent being the CUE cannot also be the ITEM. "can i get your
+    name?" matched a can of lager because `can i get` is a registered
+    cue AND `can` is the first word of the item's name -- so one word
+    did both jobs and a player making conversation bought a beer
+    (#2735).
+
+    Returns ``(remaining_text, matched_cue_or_None)``.
+    """
+    for cue in ORDER_CUES:
+        if cue in low:
+            return low.replace(cue, " ", 1), cue
+    return low, None
+
+
 def match_from_shelf(entries, speech):
     """Resolve speech against a shelf listing — conservative (an order
     cue or a bare order; a cue-less question is conversation) with
@@ -82,28 +109,37 @@ def match_from_shelf(entries, speech):
     low = " ".join((speech or "").lower().split())
     if not low:
         return None
-    words = re.findall(r"[a-z']+", low)
-    has_cue = any(cue in low for cue in ORDER_CUES)
+    body, cue = _strip_cue(low)
+    has_cue = cue is not None
     if "?" in low and not has_cue:
         return None
+    # Score on what is left AFTER the cue, and never on a stopword.
+    words = [w for w in re.findall(r"[a-z']+", body)
+             if w not in _SHELF_STOPWORDS]
     scored = []
     for proto_key, _display, item_words in entries:
+        terms = {t for t in item_words if t not in _SHELF_STOPWORDS}
         overlap = sum(1 for w in words
-                      if w in item_words or w.rstrip("s") in item_words)
+                      if w in terms or w.rstrip("s") in terms)
         if overlap:
             scored.append((overlap, proto_key, item_words))
     if not scored:
         return None
     scored.sort(reverse=True)
     best = scored[0]
+    # DOES THIS EVEN READ AS AN ORDER? Asked before ambiguity, not
+    # after. "can you tell me where the water is" tied `water` against
+    # `can` and returned "ambiguous", so the keeper asked which one the
+    # player wanted -- to a question that was not an order at all.
+    if not has_cue:
+        remainder = [w for w in words
+                     if w not in best[2] and w.rstrip("s") not in best[2]
+                     and w not in ORDER_FILLER]
+        if remainder:
+            return None
     if len(scored) > 1 and scored[1][0] == best[0]:
         return "ambiguous"
-    if has_cue:
-        return best[1]
-    remainder = [w for w in words
-                 if w not in best[2] and w.rstrip("s") not in best[2]
-                 and w not in ORDER_FILLER]
-    return best[1] if not remainder else None
+    return best[1]
 
 
 def serve_from_shelf(post, speech, patron, by, addressed=False,
