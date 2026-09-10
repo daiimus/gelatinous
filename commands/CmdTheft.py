@@ -227,3 +227,13 @@ class CmdPickpocket(Command):
     def _transfer(caller, target, amount):
         target.tokens = int(getattr(target, "tokens", 0) or 0) - amount
         caller.tokens = int(getattr(caller, "tokens", 0) or 0) + amount
+        try:
+            # Money that MOVED, which is what `coin` records — the
+            # audit's question is whether the economy circulates, and a
+            # lift circulates it (#2698). One line, from the loser's
+            # side, with the taker as `other`: two lines would double
+            # every theft in a census of the log.
+            from world.souls import audit
+            audit.coin(target, amount, "theft", other=caller)
+        except Exception:  # noqa: BLE001 — a log never blocks a lift
+            pass

@@ -977,6 +977,11 @@ def _fulfil_from_board(post, recipe, patron, by):
         return
     if price:
         patron.tokens = have - price
+    try:
+        from world.souls import audit
+        audit.coin(patron, price, "drink", other=bar)
+    except Exception:  # noqa: BLE001 — a log never blocks a sale
+        pass
         # Sale proceeds must not vanish from the economy — but only a
         # counter that KEEPS a till gets credited (the FoodCart lesson).
         if getattr(surface.db, "register", None) is not None:

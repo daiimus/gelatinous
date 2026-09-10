@@ -169,4 +169,11 @@ def run_tithe():
             swept += cut
     if swept:
         treasury.db.balance = int(treasury.db.balance or 0) + swept
+        # The last leg of the loop this module's header describes —
+        # "Treasury -> wages -> spending -> tills -> tithe -> treasury"
+        # — and the only one that had no record. `coin`'s docstring
+        # names fees and till deltas; wages and one courier fee were
+        # all it had ever logged (#2698).
+        from world.souls import audit
+        audit.coin(None, swept, "tithe")
     return swept

@@ -1092,6 +1092,11 @@ def step_job(soul):
         paid = False
         if can_pay:
             soul.tokens = int(soul.tokens or 0) - TREAT_FEE
+            try:
+                from world.souls import audit as _audit
+                _audit.coin(soul, TREAT_FEE, "treatment")
+            except Exception:  # noqa: BLE001 — a log never blocks a job
+                pass
             terminal.db.register = int(terminal.db.register or 0) + TREAT_FEE
             paid = True
         if paid:

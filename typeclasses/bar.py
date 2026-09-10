@@ -355,6 +355,11 @@ class CmdBarTill(Command):
 
         bar.db.register = held - take
         caller.tokens = int(getattr(caller, "tokens", 0) or 0) + take
+        try:
+            from world.souls import audit
+            audit.coin(caller, take, "till_take", other=self)
+        except Exception:  # noqa: BLE001 — a log never blocks a till
+            pass
 
         left = bar.db.register
         caller.msg(
