@@ -43,7 +43,8 @@ BUTCHER_TILL_FLOOR = 5
 #: ``world.food.FOOD_RECIPES``; raw-cut prose/tags on the prototypes.
 RAT_PRODUCTS = {
     "rat_tail":            {"name": "rat tail", "buy": 5},
-    "rat_chops":           {"name": "rat chops", "buy": 3},
+    "rat_chops":           {"name": "rat chops", "buy": 3,
+                            "plural": True},
     "rat_haunch":          {"name": "rat haunch", "buy": 3},
     "rat_offal":           {"name": "rat offal", "buy": 3,
                             "unit": "twist"},
@@ -54,6 +55,13 @@ RAT_PRODUCTS = {
 #: than pluralised. "3 rat offals" and "3 ground mystery meats" are both
 #: wrong; "3 twists of rat offal" is what she would say, and "twist" is
 #: the module's own word for it (see _RAT_OFFAL_ORGANS below).
+#:
+#: ``plural`` marks a name that is ALREADY plural. `with_article` reaches
+#: for an article on any name it does not recognise as pluralia tantum,
+#: and "chops" is not one -- a chop is a thing -- so the singular branch
+#: said "a rat chops" in a room-visible emote (#2688). The count > 1
+#: branch was already correct: `pluralize_noun("rat chops")` returns
+#: "rat chops", because inflect knows it is a plural already.
 
 #: Trunk organs whose average condition gates the chops yield -- a
 #: shotgun-shredded torso yields few or no center cuts.
@@ -295,6 +303,11 @@ def _render_cuts(yields):
                 phrase = with_article(f"{unit} of {name}")
         elif count > 1:
             phrase = f"{count} {pluralize_noun(name)}"
+        elif entry.get("plural"):
+            # No article on an already-plural name -- the same thing
+            # `with_article` does for "blue jeans", which it cannot work
+            # out for itself here (#2688).
+            phrase = name
         else:
             phrase = with_article(name)
         parts.append(phrase)
