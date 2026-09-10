@@ -859,6 +859,30 @@ class MedicalState:
         if bone_contribution_key and bone_contribution_key in capacity_data:
             return capacity_data[bone_contribution_key]
 
+        # The capacity's own blanket weight, applying to every organ it
+        # lists that has no more specific key above.
+        #
+        # This was declared 19 times across all four species and read by
+        # NOTHING: the two lookups above build `f"{organ_name}_..."` and
+        # `f"{bone_type}_..."`, so the literal string "organ_contribution"
+        # would only ever be constructed for an organ actually named
+        # "organ" (#2768).
+        #
+        # It was invisible because every declared value happens to equal
+        # what the fallback below produces anyway -- measured across all
+        # 19 declarations and the 35 organ/capacity pairs under them,
+        # ZERO disagree. So wiring it changes nothing today, which is
+        # exactly the point: the dial would have been silently dead at
+        # the moment someone first turned it, and the fallback it
+        # shadows is a coarse four-value string (total/major/moderate/
+        # minor = 1.0/0.5/0.25/0.05) with no way to express 0.4.
+        #
+        # Placed AFTER the specific keys so they still win: a blanket
+        # weight is the capacity's default for its organs, not an
+        # override of the ones named individually.
+        if "organ_contribution" in capacity_data:
+            return float(capacity_data["organ_contribution"])
+
         # Fall back to the organ's own declared contribution.
         contribution_key = organ.data.get(
             f"{capacity_name}_contribution", organ.contribution
