@@ -1554,6 +1554,72 @@ class Appendage(Item):
             return get_species_severed_chain_name(species, location, stage)
         return get_species_part_name(species, location, stage)
 
+    #: Which prose tier a decay stage reads as. The KEY advances through
+    #: `_DECAY_STAGES` (fresh / early / moderate / advanced / skeletal)
+    #: while the PROSE is registered against the coarser organ-condition
+    #: scale (pristine / damaged / putrid), so the two need relating or
+    #: they drift apart -- which is exactly what happened: 18 live parts
+    #: were named "skeletal" and still described a snout "still twitching
+    #: as if ready to sniff" (#2723).
+    _STAGE_CONDITION = {
+        "fresh": "pristine",
+        "early": "damaged",
+        "moderate": "damaged",
+        "advanced": "putrid",
+        "skeletal": "putrid",
+    }
+
+    def _refresh_decay_desc_if_seeded(self):
+        """Advance ``db.desc`` with the key, but only if nobody edited it.
+
+        The description is written once at sever time from the prose for
+        the condition THEN, and nothing re-derived it as the part rotted
+        — while `_refresh_decay_key_if_changed` advanced the name every
+        time a character walked in. A player looking at a skeletal rat
+        head read about a snout still twitching.
+
+        ONLY REWRITES THE UNTOUCHED SEEDED PROSE. It recomposes what the
+        part's originally-recorded `db.condition` would have produced and
+        rewrites only if that is still exactly what is stored, so a
+        hand-authored or admin-edited description is left alone. A staff
+        member who wrote prose for one specific severed hand does not
+        lose it to the decay clock.
+
+        Leaves `db.desc` alone when the new tier has no registered prose:
+        `get_severed_part_description` returns "" for an unregistered
+        (species, location, condition), and an empty desc reads worse
+        than a stale one.
+        """
+        from world.anatomy import (
+            get_severed_part_description,
+            prepend_condition_to_desc,
+        )
+        species = self.db.source_species or "human"
+        location = self.db.location_name or ""
+        seeded_condition = self.db.condition
+        if not location or not seeded_condition:
+            return
+        inorganic = bool(self.db.inorganic)
+        was = prepend_condition_to_desc(
+            seeded_condition,
+            get_severed_part_description(species, location, seeded_condition,
+                                         inorganic=inorganic),
+        )
+        if not was or (self.db.desc or "") != was:
+            return            # never seeded, or somebody has edited it
+        stage = self.get_decay_stage()
+        now_condition = self._STAGE_CONDITION.get(stage)
+        if not now_condition or now_condition == seeded_condition:
+            return
+        composed = prepend_condition_to_desc(
+            now_condition,
+            get_severed_part_description(species, location, now_condition,
+                                         inorganic=inorganic),
+        )
+        if composed:
+            self.db.desc = composed
+            self.db.condition = now_condition
+
     def _refresh_decay_key_if_changed(self):
         """Advance ``self.key`` to the current decay tier's name.
 
@@ -1578,6 +1644,19 @@ class Appendage(Item):
         new_key = self._current_decay_key()
         if new_key and new_key != self.key:
             self.key = new_key
+        # ...and the PROSE with it. The name advancing while the
+        # description stayed at sever-time freshness is #2723.
+        #
+        # Guarded: this runs from the room's decay hook on character
+        # ENTRY, so anything raising here would break walking into a
+        # room that happens to hold a severed limb. The cybernetic check
+        # above is wrapped for the same reason. A description that fails
+        # to advance is a stale sentence; an exception here is a door
+        # nobody can use.
+        try:
+            self._refresh_decay_desc_if_seeded()
+        except Exception:  # noqa: BLE001 — prose never blocks a room entry
+            pass
 
     def configure_from_sever(self, *, location_name, condition, corpse):
         """Populate forensic-chain fields immediately after spawn.

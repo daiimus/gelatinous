@@ -237,8 +237,13 @@ class TestAppendageDecay(TestCase):
         )
         limb.key = ""
         limb._DECAY_STAGES = Appendage._DECAY_STAGES
+        limb._STAGE_CONDITION = Appendage._STAGE_CONDITION
+        # `_refresh_decay_desc_if_seeded` too: the key refresh calls it
+        # now (#2723), and a stub that binds only half the method it is
+        # standing in for tests a shape production does not have.
         for name in ("get_decay_stage", "_current_decay_key",
-                     "_refresh_decay_key_if_changed"):
+                     "_refresh_decay_key_if_changed",
+                     "_refresh_decay_desc_if_seeded"):
             setattr(limb, name, getattr(Appendage, name).__get__(limb))
         return limb
 
