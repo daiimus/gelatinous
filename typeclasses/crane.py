@@ -344,7 +344,13 @@ class CraneConsole(AnsweringFixture):
         from evennia.utils import delay
 
         floor = max(self.MIN_FLOOR, min(self.MAX_FLOOR, int(floor)))
-        target_z = floor - 1
+        # THE CAR CLASS OWNS THE OFFSET (#2617). `floor - 1` was one of
+        # two copies of it, and the courier's end had no copy at all.
+        # Taken off the CLASS rather than the instance: an instance can
+        # be a mock or a differently-typed room, and a `getattr` on one
+        # answers with something callable that is not this conversion.
+        from typeclasses.rooms import CraneContainer
+        target_z = CraneContainer.z_of(floor)
         old_z = car.db.level or 1
 
         if target_z == old_z:

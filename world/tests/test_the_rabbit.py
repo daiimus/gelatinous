@@ -389,12 +389,20 @@ class TestSheAsksForTheCrane(EvenniaCommandTest):
         self.assertFalse(courier.call_the_crane(self.rabbit, 2))
 
     def test_she_keys_the_real_verb(self):
+        """This asserted `"12"` — the raw Z she was handed — and that
+        was the defect: the console parses HOUSE FLOORS, and z 12 is the
+        13th. She asked for the floor below the roof she was standing on
+        (#2617). The assertion is now against the car class's own
+        conversion rather than a literal, so the two ends cannot drift
+        apart again without this failing."""
+        from typeclasses.rooms import CraneContainer
         self._handset(on=True, freq="27.0")
         with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:
-            self.assertTrue(courier.call_the_crane(self.rabbit, 12))
+            self.assertTrue(courier.call_the_crane(self.rabbit,
+                                                   CraneContainer.QOC_Z))
         said = " ".join(c.args[0] for c in cmd.call_args_list)
         self.assertIn("xmit", said)
-        self.assertIn("12", said)
+        self.assertIn(str(CraneContainer.floor_of(CraneContainer.QOC_Z)), said)
 
     def test_she_switches_it_on_first(self):
         self._handset(on=False, freq="27.0")

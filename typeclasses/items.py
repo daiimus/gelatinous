@@ -832,12 +832,26 @@ class AnsweringFixture(Radio):
 
     @staticmethod
     def _is_machine(speaker):
-        """Loop guard: players talk, stations answer. Unit chatter, NPC
-        reports and our own acks are never answered, or the band fills
-        with machines talking to machines."""
+        """Loop guard: FIXTURES do not answer fixtures.
+
+        The right idea with the wrong predicate. This tested `is_npc` /
+        `llm_driven`, which is true of every souled body in the colony —
+        including the one courier whose JOB is to hail a fixture. Wren
+        carries a powered Magpie tuned to 27.0, keys it through the real
+        `xmit` verb, and the crane console discarded the transmission
+        here, before `_handle` ever ran. The Rabbit's delivery run
+        stalled at the crane every single time (#2619).
+
+        What would fill the band with machines talking to machines is a
+        STATION answering a station, and that is what this refuses now:
+        another answering fixture, or a base station. A person on a
+        radio is a person on a radio, whether or not a soul is driving
+        them — the whole point of `call_the_crane` is that the console
+        hears her exactly as it hears a player, with no back door, and
+        the operator can refuse or be absent.
+        """
         db = getattr(speaker, "db", None)
-        return (getattr(db, "is_npc", None) is True
-                or getattr(db, "llm_driven", None) is True
+        return (isinstance(speaker, AnsweringFixture)
                 or getattr(db, "is_base_station", None) is True)
 
     def _on_our_band(self, kwargs):
