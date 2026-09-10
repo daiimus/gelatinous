@@ -100,19 +100,45 @@ def make_drink_from_recipe(recipe, *, location=None):
 
 
 def match_recipe(order_text, menu):
-    """Find the first menu recipe whose order keywords appear in `order_text`.
+    """Find the menu recipe whose LONGEST order keyword is in `order_text`.
 
     `order_text` is the raw thing a patron said (e.g. "a rotgut, please").
     Returns the recipe dict or ``None``.
+
+    BEST match, not first. This scanned the board in order and returned
+    on the first hit, so a drink whose name contains another drink's
+    name could never be ordered by its own name: "Martini" is listed
+    before "Espresso Martini", "martini" is one of the latter's
+    keywords, and the shorter entry claimed the longer request. A patron
+    typed the name printed on the board, was served something else, and
+    was charged for it (#2684).
+
+    Scored on HOW MANY of a recipe's keywords the order contains, then
+    on how much of the order they account for. Counting first is what
+    makes it right rather than lucky: the live board keys Espresso
+    Martini as ["espresso", "martini"], so a longest-single-keyword rule
+    would pick it out of "espresso martini" only because "espresso" (8)
+    happens to be longer than "martini" (7) — and would still serve a
+    plain Martini to anyone ordering a hypothetical "Dry Martini". Two
+    keywords matched beats one, whatever they weigh.
+
+    Ties keep menu order, so "martini" on a board carrying both still
+    pours the plain one.
     """
     if not order_text or not menu:
         return None
     low = order_text.lower()
+    best = None                      # (matched count, matched chars, recipe)
     for recipe in menu:
-        for kw in recipe.get("order_keywords", (recipe.get("name", ""),)):
-            if kw and _keyword_in(kw, low):
-                return recipe
-    return None
+        hits = [kw.strip() for kw
+                in recipe.get("order_keywords", (recipe.get("name", ""),))
+                if kw and _keyword_in(kw, low)]
+        if not hits:
+            continue
+        score = (len(hits), sum(len(kw) for kw in hits))
+        if best is None or score > best[0]:
+            best = (score, recipe)
+    return best[1] if best else None
 
 
 def _keyword_in(keyword, low):
