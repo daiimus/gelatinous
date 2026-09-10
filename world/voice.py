@@ -41,7 +41,12 @@ from typing import Any
 
 # Per-sense capability checks live in world.perception (the perception module);
 # voice's speech-attribution chain consumes them.
-from world.perception import can_hear, can_see, _read_capacity
+from world.perception import (
+    _read_capacity,
+    can_hear,
+    can_see,
+    hearing_multiplier,
+)
 
 # Voice-UID digest size — matches the visual Apparent-UID convention
 # (``world.identity._APPARENT_UID_DIGEST_BYTES``) so the two axes read alike.
@@ -446,11 +451,13 @@ def attempt_voice_discern(observer: Any, target: Any) -> str | None:
         VOICE_DISCERN_FAMILIARITY_CAP,
     )
     penalty = VOICE_DISCERN_MODULATION_PENALTY if is_voice_modulated(target) else 0
-    # Hearing weights the observer's side — the capacity consumer. Fail open
-    # (full hearing) with no medical model.
-    hearing = _read_capacity(observer, "hearing")
-    if hearing is None:
-        hearing = 1.0
+    # Hearing weights the observer's side — the capacity consumer. Read it
+    # through the same door as the ``can_hear`` gate three lines up the call
+    # chain: ``_read_capacity`` reports the organ, which is 0.0 for destroyed
+    # ears whether or not chrome ones replaced them. Multiplying by that raw
+    # 0.0 meant a character who passed the gate on their cyber ears could
+    # then never place a voice, however well they knew it.
+    hearing = hearing_multiplier(observer)
     success = (obs_roll + familiarity) * hearing > (tgt_roll + penalty)
 
     if cacheable:
