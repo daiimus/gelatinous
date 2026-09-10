@@ -99,9 +99,14 @@ class CraneConsole(AnsweringFixture):
         # confirm -- accepted deliberately over a prompt nobody can
         # answer the way people actually answer a radio.
         pending = self._pending_floor()
-        confirming = pending is not None and self._is_confirmation(low)
+        # Refusal is read BEFORE confirmation, so a message carrying
+        # both cancels. Moving is the irreversible half (#2624).
+        refusing = pending is not None and self._is_refusal(low)
+        confirming = (pending is not None and not refusing
+                      and self._is_confirmation(low))
 
-        if not confirming and not self._mentions(low, self._ADDRESS):
+        if not confirming and not refusing \
+                and not self._mentions(low, self._ADDRESS):
             return                       # band chatter, not an order
 
         operator = self._operator()
@@ -119,6 +124,19 @@ class CraneConsole(AnsweringFixture):
         # A confirmation answers the read-back, not the parser: "yes"
         # carries no floor of its own, so it is resolved against what was
         # last offered. Decided above, before the address gate.
+        if refusing:
+            # Disarm, and SAY so — a read-back that is silently dropped
+            # leaves the caller not knowing whether they were heard.
+            self.ndb.pending = None
+            self._answer("Belayed. Say the floor again when you're "
+                         "ready.", speaker=operator)
+            floor, _relative = self._parse_floor(low, car)
+            if floor is None:
+                return
+            # ...unless they refused AND corrected in one breath, which
+            # is how a real correction sounds: "negative, the fourth".
+            # Fall through and read the new floor back.
+
         if confirming:
             self.ndb.pending = None
             self._run_crane(pending, car, operator)
@@ -174,9 +192,28 @@ class CraneConsole(AnsweringFixture):
             return None
         return floor
 
+    #: What counts as "belay that". The mirror of `_CONFIRM`, and
+    #: deliberately the WIDER of the two: nothing in this list moves a
+    #: room with people in it, so the cost of hearing a refusal that was
+    #: not meant is one repeated order, and the cost of missing one was
+    #: a read-back that stayed armed for 45 seconds — so a "negative"
+    #: followed by any stray "roger" on-band drove the car to the floor
+    #: that had just been refused (#2624).
+    #:
+    #: "no" earns its place despite appearing inside phrases like "no
+    #: problem, go ahead": a message carrying both is refused, which is
+    #: the safe direction, and the caller repeats themselves.
+    _DENY = ("negative", "belay", "cancel", "disregard", "abort",
+             "stand down", "hold off", "as you were", "no", "nope",
+             "wrong")
+
     def _is_confirmation(self, low):
         return any(re.search(rf"\b{re.escape(w)}\b", low)
                    for w in self._CONFIRM)
+
+    def _is_refusal(self, low):
+        return any(re.search(rf"\b{re.escape(w)}\b", low)
+                   for w in self._DENY)
 
     # -- finding the car -------------------------------------------------
 
@@ -324,10 +361,28 @@ class CraneConsole(AnsweringFixture):
         delay(2.0, self._drive, car, target_z, floor, operator)
 
     def _drive(self, car, target_z, floor, operator=None):
-        car.move_to_level(target_z)
-        # re-read the chair: an operator who left (or was dropped) between
-        # the copy and the landing does not narrate the landing
+        # THE CHAIR, BEFORE THE CAR. The invariant this module opens with
+        # is that "an unmanned crane must never drive itself: somebody
+        # could be standing in it", and it was enforced at HEAR time
+        # only. Two seconds pass between the copy and the drive; an
+        # operator who stands up, is dragged out or dies inside that beat
+        # has stopped being the operator, and the car moved anyway. The
+        # re-read below existed and only decided who NARRATES (#2624).
+        #
+        # Silence rather than an announcement: the console does not speak
+        # for itself, and an unmanned station going quiet is the
+        # consequence of a world operated by its people (owner ruling,
+        # 2026-08-22) — the same ruling `_handle` follows when nobody is
+        # in the cab to take the call.
         who = self._operator() or None
+        if who is None:
+            from evennia.utils import logger
+            logger.log_info(
+                f"CRANE_STALLED: {self.key} (#{self.id}) was ordered to "
+                f"the {ordinal(floor)} and the chair emptied before the "
+                f"drive. The car did not move.")
+            return
+        car.move_to_level(target_z)
         if floor == self.QOC_FLOOR:
             self._answer(f"The {ordinal(floor)} — level with the Queen's roof. "
                          f"Step lively.", speaker=who)
