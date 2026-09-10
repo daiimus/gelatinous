@@ -2141,7 +2141,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                     'longdesc': {},
                     'look_place': 'seated at the dispatch console, headset '
                                   'on, one eye on the board.',
-                    'temp_place': 'sitting on a the dispatch chair.',
+                    'temp_place': 'sitting on the dispatch chair.',
                     'voice': {'voice_description': 'smoky',
                               'voice_ending': 'rasp'},
                     'persona': {'archetype': 'colonist',
@@ -2575,7 +2575,7 @@ BLUEPRINTS["dispatch_kiro"] = {
     "longdesc": {},
     "look_place": ("forward at the dispatch console, both elbows down, "
                    "working the board like it owes him money."),
-    "temp_place": "sitting on a the dispatch chair.",
+    "temp_place": "sitting on the dispatch chair.",
     "voice": {"voice_description": "clipped", "voice_ending": "tenor"},
     "persona": {
         "archetype": "dispatcher",
@@ -2628,7 +2628,7 @@ BLUEPRINTS["dispatch_ines"] = {
     "longdesc": {},
     "look_place": ("very still at the dispatch console, headset around "
                    "her neck rather than on, listening to the room."),
-    "temp_place": "sitting on a the dispatch chair.",
+    "temp_place": "sitting on the dispatch chair.",
     "voice": {"voice_description": "mellow", "voice_ending": "murmur"},
     "persona": {
         "archetype": "dispatcher",
