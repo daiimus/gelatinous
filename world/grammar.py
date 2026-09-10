@@ -115,6 +115,11 @@ def conjugate_third_person(verb: str) -> str:
         Conjugated third-person singular form (e.g. "leans", "catches",
         "tries").
     """
+    # Same guard as `with_article`: `inflect` raises TypeCheckError on
+    # an empty string where `pluralize_noun` returns "" cleanly, and
+    # this function is fed verbs typed by players (#2643).
+    if not verb:
+        return verb
     lower = verb.lower()
 
     # A modal is already correct for every person and number.
@@ -400,6 +405,15 @@ _PLURALIA_TANTUM_NOUNS: frozenset[str] = frozenset({
 #: ``"stocky droog in blue jeans"`` is judged on ``"stocky droog"``.
 _PREP_BREAKS: tuple[str, ...] = (
     " in ", " with ", " wielding ", " wearing ", " holding ",
+    # PARTITIVE. "pair of slippers" is a PAIR — singular — and without
+    # this the head noun was read as "slippers", the phrase judged
+    # pluralia tantum, and the article suppressed: the clinic slippers
+    # announced themselves, were picked up and were worn with no
+    # article at all (#2643). Every other partitive key in the game
+    # ("a bowl of hand-pulled noodles", "pack of cigarettes") already
+    # carries its own article and so never reached this decision, which
+    # is why one item showed the defect and nothing else did.
+    " of ",
 )
 
 
@@ -419,12 +433,28 @@ def is_pluralia_tantum(noun_phrase: str) -> bool:
         ``True`` if the head noun is in :data:`_PLURALIA_TANTUM_NOUNS`,
         ``False`` otherwise.
     """
-    lower = noun_phrase.strip().lower()
-    for prep in _PREP_BREAKS:
-        idx = lower.find(prep)
-        if idx >= 0:
-            lower = lower[:idx]
-            break
+    # THROUGH `_visible`, like every other decision in this module. This
+    # was the one that read the raw string, and `with_article` hands it
+    # the raw key, so the same item answered differently depending on
+    # whether it carried colour markup — `pair of slippers` came back
+    # bare and `|wpair of slippers|n` came back with an article. That
+    # made the partitive defect above look intermittent rather than
+    # deterministic. `capitalize_first` and `get_article` were brought
+    # onto `_visible` in #2207; this call site was not (#2643).
+    lower = _visible(noun_phrase).strip().lower()
+
+    # EARLIEST occurrence in the string, not the first entry in the
+    # tuple. The docstring says "the first prepositional break" and the
+    # loop tested `" in "` first wherever it sat, so a trailing
+    # prepositional phrase cut the phrase at the wrong point: "stocky
+    # droog wearing jeans in the alley" was cut after "wearing jeans",
+    # the head noun read as "jeans", and the article deleted from the
+    # DROOG (#2648).
+    breaks = [i for i in (lower.find(prep) for prep in _PREP_BREAKS)
+              if i >= 0]
+    if breaks:
+        lower = lower[:min(breaks)]
+
     tokens = lower.split()
     return bool(tokens) and tokens[-1] in _PLURALIA_TANTUM_NOUNS
 
@@ -452,6 +482,12 @@ def with_article(noun_phrase: str, definite: bool = False) -> str:
     # noodles", "the free rail" — and prefixing another produced "a a
     # bowl of...". A phrase that already begins with an article keeps
     # the one it has.
+    # `inflect` raises TypeCheckError on an empty string, where
+    # `pluralize_noun` guards and returns "". This module takes strings
+    # from item keys and player-adjacent text; one of its three entry
+    # points guarding is not a policy (#2643).
+    if not noun_phrase:
+        return noun_phrase
     visible = _visible(noun_phrase)
     first = visible.strip().split(" ", 1)[0].lower() if visible else ""
     if first in ("a", "an", "the"):
