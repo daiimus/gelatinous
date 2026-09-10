@@ -157,6 +157,11 @@ def process_corpse(post, by, corpse, giver):
     corpse.delete()
     if giver and giver.pk:
         giver.tokens = int(getattr(giver, "tokens", 0) or 0) + payout
+        try:
+            from world.souls import audit
+            audit.coin(giver, payout, "carcass_sale")
+        except Exception:  # noqa: BLE001 — a log never blocks a sale
+            pass
 
     cuts_text = _render_cuts(yields)
     pay_text = (f"counts {payout} across the steel"

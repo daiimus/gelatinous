@@ -595,6 +595,12 @@ def _try_resleave(post, room, shift, slot, now) -> bool:
     balance = int(till.db.register or 0)
     if balance >= RESLEAVE_PREMIUM:
         till.db.register = balance - RESLEAVE_PREMIUM
+        try:
+            from world.souls import audit
+            audit.coin(None, RESLEAVE_PREMIUM, "resleeve_premium",
+                       other=till)
+        except Exception:  # noqa: BLE001 — a log never blocks a resleeve
+            pass
         provider = next((o for o in search_object("a Thawn-Harrison billing "
                                                   "terminal") if o.pk), None)
         if provider is not None:

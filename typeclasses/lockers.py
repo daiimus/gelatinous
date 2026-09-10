@@ -204,6 +204,11 @@ class LockerBank(Item):
                        f"short.")
             return
         caller.tokens -= RENT
+        try:
+            from world.souls import audit
+            audit.coin(caller, RENT, "locker_rent", other=self)
+        except Exception:  # noqa: BLE001 — a log never blocks a rental
+            pass
         now = time.time()
         leases = dict(self.db.leases or {})
         base = max(now, leases.get(uid, now))          # extend, don't reset

@@ -16,6 +16,22 @@ from evennia.prototypes.spawner import spawn
 from world.shop.utils import get_prototype_value, format_currency, calculate_shop_price
 
 
+def _audit_coin(who, amount, why, other=None):
+    """Record one money movement, and never let the record break the
+    sale.
+
+    `coin`'s docstring names "wages, purchases, fees, till deltas"; the
+    only emitters that existed were wages and one courier fee, so the
+    question the audit module was written to answer — *whether anybody
+    ever buys clothes* — could not be answered at all (#2698).
+    """
+    try:
+        from world.souls import audit
+        audit.coin(who, amount, why, other=other)
+    except Exception:  # noqa: BLE001 — a log never blocks a sale
+        pass
+
+
 class ShopContainer(DefaultObject):
     """
     A container that manages shop inventory using prototypes.
@@ -272,6 +288,7 @@ class ShopContainer(DefaultObject):
         
         # Deduct tokens
         buyer.tokens -= price
+        _audit_coin(buyer, price, "purchase", self)
         # ...and credit the shop's till when it keeps one — sale proceeds
         # must not vanish from the economy (the FoodCart lesson, promoted).
         if self.db.register is not None:
