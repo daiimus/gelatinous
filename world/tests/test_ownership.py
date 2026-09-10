@@ -47,10 +47,20 @@ class TestOwnershipSignals(BaseEvenniaTest):
 
     def test_a_legacy_puppet_lock_is_owned(self):
         """How characters were bound before `create_character()` — the
-        reason `@fixchar` exists."""
+        reason `@fixchar` exists.
+
+        Asserts the FAMILY rather than the exact label. Since #2683 the
+        signal resolves its token to a real account and reports
+        `puppet-lock` when it finds one, `puppet-lock-unresolved` when
+        it does not — and account 12 does not exist in the test
+        database. What this test is about is that a legacy lock counts
+        as a claim at all, which it still does."""
         self.body.locks.add("puppet:pid(12)")
         claims = ownership.owning_accounts(self.body)
-        self.assertIn("puppet-lock", [how for _who, how in claims])
+        self.assertTrue(
+            any(how.startswith("puppet-lock") for _who, how in claims),
+            f"a legacy puppet lock stopped counting: {claims}")
+        self.assertTrue(ownership.is_player_owned(self.body))
 
     def test_a_staff_lock_is_not_ownership(self):
         """`pperm(Developer)` names a permission, not a person — every
