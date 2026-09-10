@@ -105,6 +105,35 @@ BUILD_NEIGHBOURS = {
 }
 
 
+#: Lines that only fit one sex. The human catalogue's slots are flat
+#: LISTS, and `_eligible` filters on BUILD only, so these were offered to
+#: every body -- two male NPCs carried a C-section scar and a female NPC
+#: carried chest hair (#2731).
+#:
+#: A restriction map rather than sex-keyed slots. The keyed shape exists
+#: and the synth catalogue uses it, but `random_longdesc` resolves
+#: `entries.get(sex) or entries.get("any")` -- the sex pool REPLACES
+#: `any` rather than adding to it, a contract
+#: `test_random_longdesc_resolves_sex_pools` pins. Keying these two human
+#: slots would therefore leave every male body with exactly ONE chest
+#: line, unless ~20 neutral lines were duplicated into both pools; and
+#: reshaping the slots at all breaks four tests that read them as lists.
+#: Two lines do not justify either. The keyed shape stays right for a
+#: catalogue that is sex-specific throughout, which is what synth is.
+SEX_ONLY = {
+    "{Their} stomach bears the broad horizontal line of an old C-section "
+    "scar.": "female",
+    "The chest hair grows in a narrow strip and stops.": "male",
+}
+
+
+def _fits_sex(entry, sex):
+    """False when *entry* is prose for a sex this body is not."""
+    text = entry[1] if isinstance(entry, tuple) else entry
+    wants = SEX_ONLY.get(text)
+    return wants is None or wants == sex
+
+
 def _eligible(entries, build):
     """Lines this body could plausibly own.
 
@@ -158,6 +187,10 @@ def random_longdesc(slot: str, species=None, sex=None, build=None) -> str | None
             pool = [line for lines in entries.values() for line in lines]
         entries = pool
     entries = _eligible(entries, build)
+    # ...and drop prose that belongs to another body (#2731).
+    filtered = [e for e in entries if _fits_sex(e, sex)]
+    if filtered:
+        entries = filtered
     if not entries:
         return None
     return choice(entries)
