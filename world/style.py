@@ -207,6 +207,29 @@ NOT_MARKED = ("dress shirt", "dress trousers", "dress boots",
               "dress uniform", "slip-on", "slipper")
 
 
+def _names_it(word, low):
+    """Does `low` name `word` — allowing an ordinary English plural?
+
+    ONE helper for both matchers, which the two defects it fixes argue
+    for: they pulled in opposite directions in the same module, one too
+    loose and one too strict (#2657).
+
+    Both ends are bounded. With only a leading boundary every keyword
+    matched as a PREFIX, so "bra" claimed brass knuckles and brass-toed
+    boots (#2478). The plural suffix sits INSIDE the trailing boundary,
+    so "bra" still does not match "brass": after "bras" the next
+    character is a word character and the boundary fails.
+
+    A plural suffix and nothing more. Closed compounds — `trenchcoat`,
+    `longcoat` — deliberately still miss: matching a word at the END of
+    a longer token is linguistically right for English compound heads
+    but reopens the same door, because it makes "zebra" a bra. A
+    compound the tables should know belongs IN the tables.
+    """
+    import re
+    return bool(re.search(r"\b" + re.escape(word) + r"(?:s|es)?\b", low))
+
+
 def derive_presentation(name):
     """Which line this garment's cut reads as. Unmarked is neutral,
     which is most clothing and not a lesser answer."""
@@ -227,7 +250,7 @@ def derive_presentation(name):
             # complete against a missing boundary, and every future name
             # beginning bra-, slip-, tie-, top- would have inherited the
             # same wrong reading.
-            if re.search(r"\b" + re.escape(word) + r"\b", low):
+            if _names_it(word, low):
                 return (reading,)
     return ()
 
@@ -340,13 +363,17 @@ DEFAULT_RUNG = 1
 def derive_rung(name):
     """Which rung this garment's NAME puts it on, or None when nothing
     in the name claims it."""
-    import re
-
     low = (name or "").lower()
     best = None                       # (length, -rung) -> most specific
     for rung, words in RUNGS.items():
         for word in words:
-            if re.search(r"\b" + re.escape(word) + r"\b", low):
+            # PLURALS COUNT. The table lists singulars and the matcher
+            # demanded a whole-token match, so "grey work coveralls" —
+            # a live key on 17 objects — derived nothing and fell to
+            # `DEFAULT_RUNG` 1, where a coverall competed for layering
+            # with shirts and underwear instead of sitting over them.
+            # Same for "coats", "jackets", "aprons" (#2657).
+            if _names_it(word, low):
                 score = (len(word), -rung)
                 if best is None or score > best[0]:
                     best = (score, rung)
