@@ -52,11 +52,13 @@ def _post(key, room, shift="day"):
     post.key = key
     post.location = room
     post.db = SimpleNamespace(
-        # `post_delay=1`, NOT 0: the ripeness check reads
-        # `int(post.db.post_delay or DEFAULT_DELAY)`, and 0 is falsy, so
-        # a zero delay silently becomes the DEFAULT one and the slot
-        # never ripens. Cost an hour of chasing a fix that was already
-        # correct; the same `or`-swallows-zero shape as #2877.
+        # `post_delay=1` here for historical reasons: the ripeness
+        # check used to read `int(post.db.post_delay or DEFAULT_DELAY)`,
+        # so 0 was falsy and silently became the DEFAULT delay, and the
+        # slot never ripened. That cost an hour of chasing a fix that
+        # was already correct. Fixed in #3093 -- 0 now means 0 -- but
+        # this fixture is left at 1 because it is testing hiring, not
+        # ripeness, and rewriting it would only re-prove #3093.
         post_slots={shift: {"keeper": None, "vacant_since": 1.0}},
         post_policy="successor", post_delay=1, post_blueprints=None,
         post_blueprint=None, post_keeper=None, post_vacant_since=1.0,
