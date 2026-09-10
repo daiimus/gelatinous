@@ -857,6 +857,33 @@ def plan_for(soul, goal_need):
                     fit = _proto_affinity(proto_key, soul)
                     wares.append((-gain, -fit, price, proto_key))
                 helpful = [w for w in wares if w[0] < 0]
+                # DON'T BUY WHAT YOU ALREADY OWN AND CANNOT WEAR. The
+                # planner refuses to PICK a garment `can_wear_now` says
+                # no to (#2337), which empties `carried` and drops
+                # straight through to here — so a soul whose only gap
+                # is under something already worn bought a fresh copy
+                # of the identical garment every planning cycle. #6106
+                # Sam Fukuda accumulated 628 pairs of trousers that
+                # way, ids 9811 to 16850, one per cycle, none ever worn
+                # (#3169).
+                #
+                # A gap this soul is ALREADY carrying a garment for is
+                # not a gap shopping can close. Faulting is the honest
+                # answer, and the wear step now tries to re-layer
+                # before it gets here.
+                owned = set()
+                for held in soul.contents:
+                    check = getattr(held, "is_wearable", None)
+                    if not callable(check) or not check():
+                        continue
+                    if soul.is_item_worn(held):
+                        continue
+                    owned |= set(held.attributes.get("coverage") or ())
+                if owned:
+                    helpful = [
+                        w for w in helpful
+                        if (_proto_coverage(w[3]) or set()) & (missing - owned)
+                    ]
                 if not helpful:
                     continue      # nothing here closes the gap
                 _score, _fit, price, proto = min(helpful)
