@@ -316,6 +316,87 @@ def _resolve_advance_same_room(handler, char, target, splattercast):
         )
 
 
+def _holders_of(handler, char, grappled_victim=None):
+    """Who has hold of `char` — in the room, in melee, and ON them.
+
+    Intent, not just range. Someone standing in melee proximity while
+    fighting a third party has no claim on where you go; what pins you
+    is that they are attacking *you*, which lives on their combat entry
+    as their target. `_resolve_advance_cross_room` already draws this
+    exact line for the grapple-drag block a few lines up.
+
+    A grappled victim is excluded — you are holding them, they are not
+    holding you. `resolve_retreat` makes the same carve-out.
+    """
+    holders = []
+    for e in handler.db.combatants or []:
+        other = e.get(DB_CHAR)
+        if not other or other is char or other is grappled_victim:
+            continue
+        if other.location != char.location:
+            continue
+        if not is_in_proximity(char, other):
+            continue
+        if handler.get_target_obj(e) is char:
+            holders.append(other)
+    return holders
+
+
+def _break_away(handler, char, splattercast, grappled_victim=None):
+    """Contest a room-leaving move against whoever is holding `char`.
+
+    Returns True when the character is free to leave. Costs one opposed
+    roll against the highest motorics among the holders, ties favouring
+    the holder — the same shape and the same tie rule as every other
+    contest in this file. Rolled BEFORE the crossing roll, so a failed
+    break-away does not spend it.
+
+    Cross-room advance and charge previously rolled only against the
+    person they were advancing ON, who stands in the room being entered,
+    so the cheapest exit from a bad melee was to advance on someone
+    harmless next door (#3158).
+    """
+    holders = _holders_of(handler, char, grappled_victim)
+    if not holders:
+        return True
+
+    highest = max(get_numeric_stat(h, "motorics") for h in holders)
+    char_motorics = get_numeric_stat(char, "motorics")
+    char_roll = randint(1, max(1, char_motorics))
+    holder_roll = randint(1, max(1, highest))
+
+    splattercast.msg(
+        f"{DEBUG_PREFIX_HANDLER}_BREAK_AWAY: {char.key} "
+        f"(motorics:{char_motorics}, roll:{char_roll}) vs highest "
+        f"holder (motorics:{highest}, roll:{holder_roll})"
+    )
+
+    if char_roll > holder_roll:
+        return True
+
+    names = ", ".join(get_display_name_safe(h, char) for h in holders)
+    char.msg(
+        f"|rYou are engaged with {names} and cannot break away to "
+        f"leave the room.|n"
+    )
+    for holder in holders:
+        holder.msg(
+            f"|g{capitalize_first(get_display_name_safe(char, holder))} "
+            f"tries to break away from you and fails.|n"
+        )
+    msg_room_identity(
+        location=char.location,
+        template="|y{actor} tries to break away and fails.|n",
+        char_refs={"actor": char},
+        exclude=[char] + holders,
+    )
+    splattercast.msg(
+        f"{DEBUG_PREFIX_HANDLER}_BREAK_AWAY: {char.key} held by "
+        f"{[h.key for h in holders]}."
+    )
+    return False
+
+
 def _resolve_advance_cross_room(
     handler, char, target, entry, combatants_list, splattercast
 ):
@@ -400,6 +481,10 @@ def _resolve_advance_cross_room(
             f"|rYou cannot find a way to "
             f"{get_display_name_safe(target, char)}'s location.|n"
         )
+        return
+
+    # You cannot stroll out of a melee somebody has hold of (#3158).
+    if not _break_away(handler, char, splattercast, grappled_victim):
         return
 
     # Make opposed roll for movement
@@ -910,6 +995,15 @@ def _resolve_charge_cross_room(
 
     # Check if target has ranged weapon
     target_has_ranged = is_wielding_ranged_weapon(target)
+
+    # Same gate as cross-room advance (#3158). The disadvantage below
+    # is charge's own flavour on the CROSSING roll; the break-away is
+    # the same contest on both doors.
+    # A grappled victim is not holding YOU — same carve-out the advance
+    # door makes. Charge releases the grapple after a successful cross.
+    if not _break_away(handler, char, splattercast,
+                       handler.get_grappling_obj(entry)):
+        return
 
     # Charge uses disadvantage for cross-room
     char_motorics = get_numeric_stat(char, "motorics")
