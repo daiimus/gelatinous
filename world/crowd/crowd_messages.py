@@ -542,7 +542,7 @@ CROWD_MESSAGES = {
         'packed': {
             'visual': [
                 "the floor is jammed solid, everyone moving because there's no room not to",
-                "the crowd surges as one on the drop and you go where it goes",
+                "the crowd surges as one on the drop, a single mass with its own direction",
                 "arms stay up across the floor, locked there by the press as much as the beat",
                 "lasers cut a packed floor with no gap and no edge anywhere in it",
             ],
@@ -665,7 +665,7 @@ CROWD_MESSAGES['constabulary'] = {
             "someone in the press has clearly been waiting since yesterday",
         ],
         'tactile': [
-            "the crowd moves you; queueing is now a fiction",
+            "the crowd has its own momentum now, and queueing is a fiction",
             "shoulder to shoulder, folder to folder, no room to turn",
         ],
         'atmospheric': [
@@ -877,12 +877,12 @@ CROWD_MESSAGES['market'] = {
             "there's no air in the press that hasn't been through six other people first",
         ],
         'tactile': [
-            "the crush carries you — walking is a negotiation and standing still is a fight",
-            "bodies press from every side, and whatever's in your pockets is everyone's business",
+            "the crush has a current to it — walking is a negotiation and standing still is a fight",
+            "bodies press from every side, and this is the kind of press where pockets get emptied",
         ],
         'atmospheric': [
             "the market has crossed from trade into crush, and the smart vendors are already shuttering",
-            "the jam has its own slow current, and it decides where you go next",
+            "the jam has its own slow current, and it is stronger than anyone in it",
         ],
     },
 }
@@ -963,7 +963,7 @@ CROWD_MESSAGES['shop'] = {
             "there's no air in the little shop that hasn't queued for the counter itself",
         ],
         'tactile': [
-            "the crowd moves you whether you're in the queue or not",
+            "the crowd's drift pays no attention to where the queue is supposed to be",
         ],
         'atmospheric': [
             "a run on the shop — whatever's driving it, the shelves are emptying visibly",
