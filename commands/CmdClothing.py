@@ -335,6 +335,72 @@ class CmdRemove(Command):
             caller.msg(message)
 
 
+#: What a garment's style STATES are called, in the second and third
+#: person, and as a state to be "already" in.
+#:
+#: The style system is data-driven — `can_style_property_to` just checks
+#: membership in the garment's own `style_configs` — and the commands
+#: were not. They hard-coded the four canonical state names, so four
+#: live garments declared states no command could ever reach: the
+#: corporate blazer and the white lab coat close to `buttoned`/`open`,
+#: the necktie to `loosened`, and the tox-sealed slicker to
+#: `hood_up`/`hood_down` — where `hood_up` carries the garment's only
+#: head coverage, so its hood could never be raised (#2742).
+#:
+#: The prose comes from the STATE rather than from the command, because
+#: "you roll up the tox-sealed slicker" is the wrong sentence for
+#: raising a hood.
+_STYLE_PROSE = {
+    "rolled":    ("roll up", "rolls up", "rolled up"),
+    "loosened":  ("loosen", "loosens", "loosened"),
+    "hood_up":   ("raise the hood on", "raises the hood on", "hood up"),
+    "hood_down": ("lower the hood on", "lowers the hood on", "hood down"),
+    "zipped":    ("zip up", "zips up", "zipped up"),
+    "buttoned":  ("button up", "buttons up", "buttoned up"),
+    "unzipped":  ("unzip", "unzips", "unzipped"),
+    "open":      ("unbutton", "unbuttons", "unbuttoned"),
+    "normal":    ("straighten", "straightens", "straight"),
+}
+
+#: Returning to `normal` is named for what you are undoing, not for the
+#: state you land in: you unroll a rolled sleeve and straighten a
+#: loosened tie, and both end up `normal`.
+_RESTORE_PROSE = {
+    "rolled":   ("unroll", "unrolls", "unrolled"),
+    "loosened": ("straighten", "straightens", "straight"),
+}
+
+#: Each command's intent, as the state names that satisfy it in
+#: preference order. The first one the GARMENT declares wins. The
+#: canonical four are named through their constants so the two tables
+#: cannot drift apart from `world/combat/constants.py`.
+_ADJUST_TO = (STYLE_STATE_ROLLED, "loosened", "hood_up")
+_RESTORE_TO = (STYLE_STATE_NORMAL, "hood_down")
+_CLOSE_TO = (STYLE_STATE_ZIPPED, "buttoned")
+_OPEN_TO = (STYLE_STATE_UNZIPPED, "open")
+
+
+def _target_style_state(item, prop, wanted):
+    """The first of *wanted* this garment actually declares.
+
+    The garment's own `style_configs` is the authority. The commands
+    used to name the state themselves, which is why a garment calling
+    its states anything else was unreachable (#2742).
+    """
+    declared = (item.style_configs or {}).get(prop) or {}
+    for state in wanted:
+        if state in declared:
+            return state
+    return None
+
+
+def _style_prose(target_state, current_state):
+    """(second person, third person, already-adjective) for a change."""
+    if target_state == "normal" and current_state in _RESTORE_PROSE:
+        return _RESTORE_PROSE[current_state]
+    return _STYLE_PROSE.get(target_state, ("adjust", "adjusts", "adjusted"))
+
+
 class CmdRollUp(Command):
     """
     Roll up sleeves or similar adjustable clothing features.
@@ -375,29 +441,30 @@ class CmdRollUp(Command):
             caller.msg(f"You're not wearing '{self.args.strip()}'.")
             return
         
-        # Determine target state based on command
-        if self.cmdstring.lower() == "rollup":
-            target_state = STYLE_STATE_ROLLED
-            action = "roll up"
-        else:  # unroll
-            target_state = STYLE_STATE_NORMAL
-            action = "unroll"
-        
-        # Check if item supports adjustable property
+        # Ask the GARMENT what it can be adjusted TO, rather than
+        # naming a state and hoping it has one (#2742).
+        adjusting = self.cmdstring.lower() == "rollup"
+        wanted = _ADJUST_TO if adjusting else _RESTORE_TO
+
         if STYLE_ADJUSTABLE not in item.style_configs:
-            caller.msg(f"The {item.key} doesn't have anything to {action}.")
+            verb = "roll up" if adjusting else "unroll"
+            caller.msg(f"The {item.key} doesn't have anything to {verb}.")
             return
-        
-        # Check if already in target state
+
         current_state = item.get_style_property(STYLE_ADJUSTABLE)
-        if current_state == target_state:
-            if target_state == STYLE_STATE_ROLLED:
-                caller.msg(f"The {item.key} is already rolled up.")
-            else:
-                caller.msg(f"The {item.key} is already unrolled.")
+        target_state = _target_style_state(item, STYLE_ADJUSTABLE, wanted)
+        if target_state is None:
+            verb = "roll up" if adjusting else "unroll"
+            caller.msg(f"There's no way to {verb} the {item.key}.")
             return
-        
-        # Check if transition is valid (has both coverage and desc changes)
+
+        action, action_third, already = _style_prose(
+            target_state, current_state)
+
+        if current_state == target_state:
+            caller.msg(f"The {item.key} is already {already}.")
+            return
+
         if not item.can_style_property_to(STYLE_ADJUSTABLE, target_state):
             caller.msg(f"That wouldn't change anything about the {item.key}.")
             return
@@ -413,24 +480,14 @@ class CmdRollUp(Command):
         success = item.set_style_property(STYLE_ADJUSTABLE, target_state)
         
         if success:
-            if target_state == STYLE_STATE_ROLLED:
-                caller.msg(f"You roll up the {item.key}.")
-                msg_room_identity(
-                    location=caller.location,
-                    template=f"{{actor}} rolls up {_articled(item.key)}.",
-                    char_refs=char_refs,
-                    exclude=[caller],
-                    pre_resolved_refs=pre_resolved,
-                )
-            else:
-                caller.msg(f"You unroll the {item.key}.")
-                msg_room_identity(
-                    location=caller.location,
-                    template=f"{{actor}} unrolls {_articled(item.key)}.",
-                    char_refs=char_refs,
-                    exclude=[caller],
-                    pre_resolved_refs=pre_resolved,
-                )
+            caller.msg(f"You {action} the {item.key}.")
+            msg_room_identity(
+                location=caller.location,
+                template=f"{{actor}} {action_third} {_articled(item.key)}.",
+                char_refs=char_refs,
+                exclude=[caller],
+                pre_resolved_refs=pre_resolved,
+            )
         else:
             caller.msg(f"You can't {action} the {item.key}.")
 
@@ -483,41 +540,37 @@ class CmdZip(Command):
             caller.msg(f"You're not wearing '{self.args.strip()}'.")
             return
         
-        # Determine target state based on command
+        # The closure the GARMENT declares, preferring the one this
+        # command is named for. The corporate blazer and the white lab
+        # coat close to `buttoned`/`open`, which neither `zip` nor
+        # `button` could reach while the state was hard-coded (#2742).
         cmd = self.cmdstring.lower()
-        if cmd in ["zip", "button"]:
-            target_state = STYLE_STATE_ZIPPED
-            action = "zip up" if cmd == "zip" else "button up"
-            action_past = "zipped up" if cmd == "zip" else "buttoned up"
-        else:  # unzip, unbutton
-            target_state = STYLE_STATE_UNZIPPED
-            action = "unzip" if cmd == "unzip" else "unbutton"
-            action_past = "unzipped" if cmd == "unzip" else "unbuttoned"
-        
-        # Check if item supports closure property
+        closing = cmd in ("zip", "button")
+        wanted = _CLOSE_TO if closing else _OPEN_TO
+        if cmd in ("button", "unbutton"):
+            wanted = tuple(reversed(wanted))     # prefer buttoned / open
+
         if STYLE_CLOSURE not in item.style_configs:
-            if cmd in ["zip", "unzip"]:
+            if cmd in ("zip", "unzip"):
                 caller.msg(f"The {item.key} doesn't have a zipper.")
             else:  # button, unbutton
                 caller.msg(f"The {item.key} doesn't have buttons.")
             return
-        
-        # Check if already in target state
+
         current_state = item.get_style_property(STYLE_CLOSURE)
-        if current_state == target_state:
-            if target_state == STYLE_STATE_ZIPPED:
-                if cmd == "zip":
-                    caller.msg(f"The {item.key} is already zipped up.")
-                else:  # button
-                    caller.msg(f"The {item.key} is already buttoned up.")
-            else:  # UNZIPPED
-                if cmd == "unzip":
-                    caller.msg(f"The {item.key} is already unzipped.")
-                else:  # unbutton
-                    caller.msg(f"The {item.key} is already unbuttoned.")
+        target_state = _target_style_state(item, STYLE_CLOSURE, wanted)
+        if target_state is None:
+            caller.msg(f"There's no way to {'close' if closing else 'open'} "
+                       f"the {item.key}.")
             return
-        
-        # Check if transition is valid (has both coverage and desc changes)
+
+        action, action_past, already = _style_prose(
+            target_state, current_state)
+
+        if current_state == target_state:
+            caller.msg(f"The {item.key} is already {already}.")
+            return
+
         if not item.can_style_property_to(STYLE_CLOSURE, target_state):
             caller.msg(f"That wouldn't change anything about the {item.key}.")
             return
