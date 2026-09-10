@@ -16,13 +16,13 @@ Mirrors the contract in ``look_places.py`` for human mobs.
 from __future__ import annotations
 
 LOOK_PLACES_ROBOT: list[str] = [
-    "standing sentry against the wall, optics sweeping the room in slow arcs.",
+    "standing sentry against the nearest upright, optics sweeping in slow arcs.",
     "powered down to an idle, status lights pulsing a slow amber.",
     "rotating its head in measured increments to track every movement.",
     "planted squarely in the open, servos ticking as it holds position.",
     "running a slow diagnostic, panel lights cascading along its forearm.",
     "standing motionless, the faint hiss of its coolant cycle the only sound.",
-    "scanning the room with a thin sweep of sensor light.",
+    "scanning with a thin sweep of sensor light.",
     "shifting its weight from one foot to the other with a soft hydraulic sigh.",
     "waiting with the flat patience of a machine left on standby.",
     "tracking a passerby, lenses refocusing with a series of faint clicks.",
