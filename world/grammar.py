@@ -240,6 +240,45 @@ def conjugate_third_person(verb: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def conjugate_second_person(verb: str) -> str:
+    """The form that follows "you" — the mirror of
+    :func:`conjugate_third_person`.
+
+    English second person takes the plural form, which is what
+    `inflect`'s ``plural_verb`` gives: "leans" -> "lean", "is" -> "are",
+    "has" -> "have", "was" -> "were".
+
+    The actor's own pose line printed the typed verb VERBATIM while the
+    observer line conjugated it, so `.leans on the bar` showed the
+    player "You leans on the bar" and the room "…leans on the bar"
+    (#3197). One side of the renderer had already decided that typing
+    the `-s` form is ordinary — `conjugate_third_person`'s docstring
+    says ".stands back is an ordinary thing to type" — and the other
+    side never got the matching treatment.
+
+    Modals and irregular past tense pass through, exactly as they do for
+    the third person: "You could", "You went".
+
+    KNOWN WART, stated so it is not rediscovered as a new defect:
+    `inflect` normalises "focuses" to "focuse" rather than "focus". That
+    is pre-existing — `conjugate_third_person` runs the same
+    normalisation — but invisible there, because it re-appends an `s`
+    and lands back on the right string. Here it would show. It fires
+    only when a player types the `-es` form of a verb whose base ends in
+    `s`; the base form itself is unaffected, and checked against 40
+    candidate base forms nothing else is altered.
+    """
+    if not verb:
+        return verb
+    lower = verb.lower()
+    if lower in MODALS or lower in IRREGULAR_PAST:
+        return verb
+    base = _engine.plural_verb(lower) or lower
+    if base == lower:
+        return verb
+    return _match_leading_case(base, verb)
+
+
 def pluralize_noun(noun: str) -> str:
     """Return the plural form of a singular noun.
 

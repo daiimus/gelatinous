@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Sequence
 
 from world.grammar import (
     capitalize_first,
+    conjugate_second_person,
     conjugate_third_person,
     transform_pronoun,
 )
@@ -876,9 +877,20 @@ def render_for_observer(
                 actor_named = True
                 if is_actor:
                     # Actor self-view: "You lean" or "you lean" if
-                    # speech came first
+                    # speech came first.
+                    #
+                    # CONJUGATED, like the observer line. This printed
+                    # the typed verb verbatim on the assumption that a
+                    # player types the base form — and the observer
+                    # branch explicitly does not assume that, because
+                    # ".stands back is an ordinary thing to type". So
+                    # `.leans on the bar` showed the player "You leans"
+                    # while the room read correctly (#3197).
                     you = "You" if not has_prior_content else "you"
-                    parts.append(f"{you} {token.base_form}")
+                    said = (conjugate_second_person(token.base_form)
+                            if _should_conjugate(token.base_form)
+                            else token.base_form)
+                    parts.append(f"{you} {said}")
                 else:
                     # Observer: always capitalize_first on first mention
                     display_name = capitalize_first(
@@ -892,7 +904,10 @@ def render_for_observer(
             else:
                 # Subsequent verb — just conjugate (no name prepend)
                 if is_actor:
-                    parts.append(token.base_form)
+                    parts.append(
+                        conjugate_second_person(token.base_form)
+                        if _should_conjugate(token.base_form)
+                        else token.base_form)
                 else:
                     if _should_conjugate(token.base_form):
                         parts.append(
