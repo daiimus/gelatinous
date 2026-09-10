@@ -49,6 +49,31 @@ def _colorize_evennia(text):
     return "".join(colored)
 
 
+#: The sea is `▓` in the intact first frame and `█` once the curtain
+#: starts to drip. DEATH_CURTAIN_SPEC calls `█` the "character used
+#: during dripping" and asks for both to be blood-coloured.
+SEA_INTACT = "▓"
+SEA_DRIPPING = "█"
+
+
+def _sea_dripping(chars):
+    """Render a frame with the sea swapped to its dripping character.
+
+    This used to be `"".join(chars).center(curtain_width, "█")`, which
+    was the identity: `chars` is built at full curtain width and is only
+    ever mutated in place (characters replaced by spaces, never
+    removed), so `.center()` had nothing to pad and returned the string
+    unchanged. The two-tone effect the comment described — a dense `█`
+    sea collapsing out of a `▓` field — had never rendered once. 43
+    frames, zero `█` (#2628).
+
+    The result is not written back into `chars`: the trailing-drip pass
+    finds the sea with `c == "▓"`, and mutating it here would leave that
+    pass nothing to remove.
+    """
+    return "".join(SEA_DRIPPING if c == SEA_INTACT else c for c in chars)
+
+
 def _strip_color_codes(text):
     """
     Remove Evennia color codes to get the visible text length.
@@ -98,13 +123,13 @@ def curtain_of_death(text, width=None, session=None):
         right_padding = padding_needed - left_padding
         
         # Create colored padding blocks
-        left_blocks = _colorize_evennia("▓" * left_padding)
-        right_blocks = _colorize_evennia("▓" * right_padding)
+        left_blocks = _colorize_evennia(SEA_INTACT * left_padding)
+        right_blocks = _colorize_evennia(SEA_INTACT * right_padding)
         
         first_frame = left_blocks + text + right_blocks
     
     # For subsequent frames, work with a plain version for character removal
-    plain_padded = visible_text.center(curtain_width, "▓")
+    plain_padded = visible_text.center(curtain_width, SEA_INTACT)
     chars = list(plain_padded)
     
     # Build the "plan": a shuffled list of (index, drop-distance) pairs
@@ -115,7 +140,10 @@ def curtain_of_death(text, width=None, session=None):
     
     # Create dripping effect by removing characters in planned sequence
     # Process every 3rd character initially for the main text removal
-    text_chars = [i for i, c in enumerate(chars) if c not in [" ", "▓", "█"]]  # Track text chars from start
+    # The sea characters are excluded here; `chars` holds SEA_INTACT and
+    # the swap to SEA_DRIPPING happens at render time, so both are listed.
+    text_chars = [i for i, c in enumerate(chars)
+                  if c not in (" ", SEA_INTACT, SEA_DRIPPING)]
     
     for frame_num, (idx, _) in enumerate(plan[::3]):  # Skip every 3rd character to reduce frame count
         if chars[idx] == " ":  # Skip spaces
@@ -133,12 +161,12 @@ def curtain_of_death(text, width=None, session=None):
                     text_idx = text_chars.pop(random.randint(0, len(text_chars) - 1))
                     chars[text_idx] = " "
         
-        frame = "".join(chars).center(curtain_width, "█")  # Replace the sea with different char
-        frames.append(_colorize_evennia(frame))
+        frames.append(_colorize_evennia(_sea_dripping(chars)))
     
     # Clean up any remaining text characters more gently
     # Find all remaining non-space, non-block characters (the text)
-    remaining_text_chars = [i for i, c in enumerate(chars) if c not in [" ", "▓", "█"]]
+    remaining_text_chars = [i for i, c in enumerate(chars)
+                            if c not in (" ", SEA_INTACT, SEA_DRIPPING)]
     
     # More gradually remove remaining text in fewer frames since most should be gone
     text_removal_frames = 4  # Reduced since most text should already be removed
@@ -154,12 +182,11 @@ def curtain_of_death(text, width=None, session=None):
                 idx = remaining_text_chars.pop(random.randint(0, len(remaining_text_chars) - 1))
                 chars[idx] = " "
         
-        frame = "".join(chars).center(curtain_width, "█")
-        frames.append(_colorize_evennia(frame))
+        frames.append(_colorize_evennia(_sea_dripping(chars)))
 
     # Add several more frames of continued dripping
     # Create trailing drip effect - scattered blocks that continue falling
-    remaining_blocks = [i for i, c in enumerate(chars) if c == "▓"]    # Create 8-12 trailing frames with sparse dripping
+    remaining_blocks = [i for i, c in enumerate(chars) if c == SEA_INTACT]    # Create 8-12 trailing frames with sparse dripping
     trailing_frames = 12
     for frame_num in range(trailing_frames):
         # Gradually remove more blocks with each frame, but not all at once
@@ -181,9 +208,9 @@ def curtain_of_death(text, width=None, session=None):
                 remaining_blocks.remove(idx)
                 chars[idx] = " "
         
-        # Create sparse frame with remaining blocks
-        frame = "".join(chars)
-        frames.append(_colorize_evennia(frame))
+        # Create sparse frame with remaining blocks — still dripping,
+        # so still the dripping sea character.
+        frames.append(_colorize_evennia(_sea_dripping(chars)))
     
     # Add a few final empty frames for smooth transition
     for i in range(3):
