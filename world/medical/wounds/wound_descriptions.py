@@ -78,13 +78,24 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
     
     # Build format variables
     location_display = get_location_display_name(location, character)
+    # (organ_display below depends on it)
     # Humanize the organ token the same way location is humanized so
     # templates using {organ} render "left eye" instead of "left_eye".
     # Cheap str-level transform — organ-spec lookup is intentionally
     # avoided here to keep this renderer independent of the ORGANS
     # registry (the registry can grow species-specific entries in PR-G
     # without rippling into the wound-description pipeline).
-    organ_display = (organ or "").replace("_", " ") if organ else ""
+    # FALLS BACK TO THE LOCATION. `DESTROYED_BY_LOCATION` overlays are
+    # keyed by location and their prose says "{their} {organ}" — the
+    # face overlay, for instance — because at a sensory surface the
+    # organ IS the thing at that location. But a wound snapshot for a
+    # face carries no organ, so `{organ}` rendered empty and an autopsy
+    # read "has bisected their , leaving a deep ragged gash" (#2659).
+    #
+    # An empty token is never the right answer here: every template
+    # using `{organ}` is describing something, and the location is what
+    # that something is when no organ was named.
+    organ_display = (organ or location_display or "").replace("_", " ")
     format_vars = {
         'severity': INJURY_SEVERITY_MAP.get(severity, severity.lower()),
         'location': location_display,
