@@ -41,6 +41,16 @@ CROWD_INTENSITY = {
 }
 
 CROWD_MESSAGES = {
+    # MID-AIR: deliberately empty at every intensity. `get_crowd_messages`
+    # returns {} for a pool with no entry at the requested intensity, and
+    # `get_crowd_contributions` returns "" on an empty result -- so a sky
+    # room contributes nothing rather than borrowing the street's haulers
+    # and pickpockets (#2736).
+    #
+    # Present as a pool rather than absent, because an absent profile
+    # falls back to 'default' (`CROWD_MESSAGES.get(profile) or
+    # CROWD_MESSAGES['default']`), which is the bug this fixes.
+    'sky': {},
     'default': {
         'sparse': {
             'visual': [
@@ -995,6 +1005,11 @@ def room_type_is_unpeopled(room_type):
     return str(room_type or "").lower() in UNPEOPLED_ROOM_TYPES
 
 
+#: Room types that are volumes of air. Transit for jumps and falls; no
+#: crowd of any density, at any hour.
+SKY_ROOM_TYPES = {'sky', 'air'}
+
+
 def crowd_profile_for_room_type(room_type):
     """Map a ``room.type`` to a crowd profile
     ('default'|'interior'|'shop'|'market'|'nightclub'|'constabulary'|'residential')."""
@@ -1011,6 +1026,20 @@ def crowd_profile_for_room_type(room_type):
         return 'residential'
     if t in INTERIOR_ROOM_TYPES:
         return 'interior'
+    # MID-AIR HAS NO CROWD. `sky` is a first-class room type with 154
+    # instances and its own creation path, but it was registered in none
+    # of the sets above, so it fell through to `default` -- the OPEN-AIR
+    # STREET pool. A character in freefall was told a hauler crew was
+    # shouldering past them (#2736).
+    #
+    # Armed and firing, not merely possible: 84 of the 155 sky rooms
+    # carry `crowd_base_level=1`, so the layer really does draw for them.
+    #
+    # An EMPTY pool rather than an exclusion branch upstream, because it
+    # states the intent where the other profiles state theirs: there is
+    # no crowd in mid-air, and that is a fact about the room type.
+    if t in SKY_ROOM_TYPES:
+        return 'sky'
     return 'default'
 
 
@@ -1034,7 +1063,20 @@ def get_crowd_messages(crowd_level, message_category='all', profile='default'):
     if intensity == 'none':
         return {} if message_category == 'all' else []
 
-    pool = CROWD_MESSAGES.get(profile) or CROWD_MESSAGES['default']
+    # `in`, not `or`. An EMPTY profile is falsy, so `get(profile) or
+    # default` sent a deliberately-silent pool straight back to the
+    # street -- which is how the `sky` profile below was a no-op the
+    # first time it was added. A profile that is REGISTERED and empty
+    # means "no crowd here"; only an UNREGISTERED one should fall back.
+    # Same or-swallows-a-real-value shape as #3093.
+    pool = (CROWD_MESSAGES[profile] if profile in CROWD_MESSAGES
+            else CROWD_MESSAGES['default'])
+
+    if not pool:
+        # A registered but EMPTY profile means "no crowd here" -- mid-air.
+        # Answered before the intensity fallback, which assumes every
+        # pool has a 'packed' tier and raised KeyError on an empty one.
+        return {} if message_category == 'all' else []
 
     if intensity not in pool:
         intensity = 'packed'  # Fallback for very high crowd levels
