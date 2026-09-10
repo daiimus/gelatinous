@@ -24,6 +24,16 @@ from typeclasses.rooms import IndoorRoom
 DOOR_SECONDS = 3
 RIDE_SECONDS_PER_FLOOR = 6
 
+#: How long the car stands with its doors open before serving the next
+#: queued call.
+#:
+#: Not zero, and not merely "a moment". A walking NPC only gets a tick
+#: every `TRAVEL_STEP_DELAY` seconds (2.0), so a car that arrived and
+#: departed on the same beat would satisfy the queue while the person
+#: who called it was still standing on the landing — trading a dropped
+#: call for a missed one (#3173).
+DWELL_SECONDS = 5
+
 DOORS_SHUT_MSG = "The elevator doors are shut. Press the call button."
 CAR_MOVING_MSG = "The car is moving. Best wait for the doors."
 
@@ -96,6 +106,8 @@ class ElevatorCar(IndoorRoom):
         # are (shaft_x, shaft_y, landing_z) — the car sits IN the shaft at
         # its floor's height, never in the threshold room's cell.
         self.db.shaft_xy = None
+        #: Floors with a lit button, in press order (#3173).
+        self.db.call_queue = []
 
     def at_init(self):
         super().at_init()
@@ -106,6 +118,13 @@ class ElevatorCar(IndoorRoom):
             if target is None:
                 target = self.db.current_floor
             self._arrive(target, quiet=True)
+        elif self.db.call_queue:
+            # A car that was STANDING when the server went down still
+            # has lit buttons, and the `delay` that would have served
+            # them died with the reload. Without this the queue is a
+            # permanent record of people who never got picked up
+            # (#3173).
+            delay(DWELL_SECONDS, self._serve_queue)
 
     # ------------------------------------------------------------------
     # state
@@ -207,14 +226,19 @@ class ElevatorCar(IndoorRoom):
                 presser.msg("The reader beside the panel blinks |rred|n. "
                             "The button stays dark.")
             return False
-        if self.db.moving:
-            if presser:
-                presser.msg("The car is already in motion.")
-            return False
-        if idx == self.db.current_floor:
+        if idx == self.db.current_floor and not self.db.moving:
             if presser:
                 presser.msg("The doors are already open on that floor.")
             return False
+        if self.db.moving:
+            # Same queue as the landing buttons (#3173): a rider who
+            # picks a floor mid-journey is asking for a stop, not
+            # making a mistake.
+            self._enqueue(idx)
+            if presser:
+                presser.msg("The car is already in motion. The button "
+                            "stays lit.")
+            return True
         self._begin_move(idx)
         return True
 
@@ -226,21 +250,62 @@ class ElevatorCar(IndoorRoom):
                 presser.msg("The button clicks, dead. This shaft doesn't "
                             "serve this floor.")
             return False
-        if self.db.moving:
-            if presser:
-                presser.msg("Behind the doors, the mechanism is already "
-                            "in motion.")
-            return False
-        if idx == self.db.current_floor:
+        if idx == self.db.current_floor and not self.db.moving:
             if presser:
                 presser.msg("The doors are already open.")
             return False
+        if self.db.moving:
+            # QUEUE IT. A press while the car was in motion used to be
+            # thrown away, so the car never came and the caller stood
+            # at shut doors until their errand faulted. 45 souls share
+            # this shaft; any two of them wanting it inside one journey
+            # meant the second was stranded (#3173).
+            self._enqueue(idx)
+            if presser:
+                presser.msg("Behind the doors, the mechanism is already "
+                            "in motion. The button lights and stays lit.")
+            return True
         self._begin_move(idx)
         return True
 
     # ------------------------------------------------------------------
     # motion
     # ------------------------------------------------------------------
+
+    def _enqueue(self, idx):
+        """Register a floor to be served once the car is free.
+
+        FIFO, and deduplicated: two people pressing the same landing
+        button is one stop, not two. Persistent, because a reload
+        mid-journey would otherwise lose every lit button — and the
+        people waiting under them.
+        """
+        queue = list(self.db.call_queue or [])
+        if idx in queue:
+            return
+        queue.append(idx)
+        self.db.call_queue = queue
+
+    def _serve_queue(self):
+        """Take the next lit button, once the doors have stood open.
+
+        Called on a delay after `_arrive` rather than from it, so the
+        car actually WAITS at the floor it was called to. Entries for
+        the floor it is already standing at are dropped rather than
+        driven to, which is what keeps a repeated press from moving
+        anything.
+        """
+        if self.db.moving:
+            return
+        queue = list(self.db.call_queue or [])
+        while queue:
+            idx = queue.pop(0)
+            if idx == self.db.current_floor:
+                continue        # already here; the button is answered
+            self.db.call_queue = queue
+            self._begin_move(idx)
+            return
+        self.db.call_queue = []
 
     def _begin_move(self, target_idx):
         old_landing = self.current_landing()
@@ -288,6 +353,10 @@ class ElevatorCar(IndoorRoom):
             self.msg_contents("The car settles; the doors slide open.")
             landing.msg_contents("The elevator doors slide open with a "
                                  "pneumatic sigh.")
+        # Whoever is still waiting under a lit button gets served next,
+        # after the doors have stood open long enough to board (#3173).
+        if self.db.call_queue:
+            delay(DWELL_SECONDS, self._serve_queue)
 
 
 class ElevatorDoorExit(Exit):

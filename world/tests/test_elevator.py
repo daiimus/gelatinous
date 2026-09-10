@@ -26,12 +26,13 @@ def _car(floors, current=0, moving=False):
     car = MagicMock(name="car")
     car.db = SimpleNamespace(floors=floors, current_floor=current,
                              moving=moving, target_floor=None,
-                             floor_locks={}, shaft_xy=None)
+                             floor_locks={}, shaft_xy=None,
+                             call_queue=[])
     car.contents = []
     _bind(car, emod.ElevatorCar,
           "floor_index", "current_landing", "is_docked_at",
           "request_floor", "call_to", "_begin_move", "_arrive",
-          "_out_exit")
+          "_out_exit", "_enqueue", "_serve_queue")
     return car
 
 
@@ -82,10 +83,19 @@ class TestRide(TestCase):
         with patch.object(emod, "delay") as d:
             self.assertFalse(self.car.request_floor("13", rider))
             self.assertFalse(self.car.request_floor("1", rider))  # already here
-            self.car.db.moving = True
-            self.assertFalse(self.car.request_floor("2", rider))  # in motion
         d.assert_not_called()
-        self.assertEqual(rider.msg.call_count, 3)
+        self.assertEqual(rider.msg.call_count, 2)
+
+    def test_a_press_in_motion_is_queued_not_refused(self):
+        """This assertion used to read `assertFalse` — a press while the
+        car was moving was DISCARDED, and the caller stood at shut doors
+        until their errand faulted (#3173). A lit button is the point."""
+        rider = MagicMock()
+        self.car.db.moving = True
+        with patch.object(emod, "delay") as d:
+            self.assertTrue(self.car.request_floor("2", rider))
+        d.assert_not_called()               # not while it is moving
+        self.assertEqual(list(self.car.db.call_queue), [1])
 
     def test_arrival_repoints_the_out_exit(self):
         out = MagicMock(name="out")
@@ -123,9 +133,14 @@ class TestRide(TestCase):
             self.assertFalse(self.car.call_to(self.l1, caller))   # already open
             self.assertTrue(self.car.call_to(self.l2, caller))    # summons
         self.assertTrue(self.car.db.moving)
+        # Mid-ride: the button LIGHTS. It used to be discarded, so the
+        # car never came back for whoever pressed it (#3173).
         caller2 = MagicMock()
-        self.assertFalse(self.car.call_to(self.l1, caller2))      # mid-ride
-        self.assertIn("in motion", caller2.msg.call_args.args[0])
+        self.assertTrue(self.car.call_to(self.l1, caller2))
+        said = caller2.msg.call_args.args[0]
+        self.assertIn("in motion", said)
+        self.assertIn("stays lit", said)
+        self.assertEqual(list(self.car.db.call_queue), [0])
 
 
 class TestExitsGate(TestCase):
