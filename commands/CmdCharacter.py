@@ -2732,10 +2732,26 @@ class CmdForget(Command):
         caller.recognition_memory = memory
 
         from world.identity import invalidate_pierce_cache_for_sleeve
+        from world.voice import forget_voice, forget_voices_for_sleeve
 
         sleeve_uid = entry.get("real_sleeve_uid")
         if sleeve_uid:
             invalidate_pierce_cache_for_sleeve(caller, sleeve_uid)
+
+        # Forget their voice too, as the visible door does (#2652).  That
+        # door reads the current voice UID off the target; here there is no
+        # target, so the handle is the entry's sleeve — which every
+        # voice-memory entry carries.  Without this, `forget marcus` for
+        # someone who has walked out cleared the face and kept the voice,
+        # and they went on being named over the radio: the one channel
+        # where you cannot see the speaker, so voice attribution is the
+        # whole mechanism.
+        if sleeve_uid:
+            forget_voices_for_sleeve(caller, sleeve_uid)
+        elif old_name:
+            # Pre-schema entry with no sleeve recorded.  `remember` teaches
+            # both axes under one name, so the name is the surviving handle.
+            forget_voice(caller, name=old_name)
 
         caller.msg(
             f"You forget the name '{old_name}'. "
