@@ -253,8 +253,29 @@ def _desired_goal(soul, hour, exclude=()):
     # band 1: critical profile needs — ties break by PROFILE ORDER
     # (hunger before rest before social), never alphabetically: a soul
     # that is starving, exhausted, and lonely at once eats first
+    #
+    # WARDROBE IS NOT A BAND-1 NEED. It is in `profile_of` for 34 of the
+    # 40 ensouled bodies, so it was a band-1 candidate purely by being
+    # in the profile — inheriting the generic `CRITICAL` of 0.85 that
+    # nothing set for it specifically. Any pressure high enough to
+    # satisfy the band-2 arm below (>= 1.0) had already passed 0.85
+    # several lines up here, so that arm was unreachable and getting
+    # dressed was arbitrated alongside starving (#2699).
+    #
+    # The owner ruling the arm's own comment cites (2026-08-20) settles
+    # which of the two placements is intended: "under the survival band
+    # and over the schedule". Excluded here rather than by raising its
+    # `critical_for` above 1.0, because the profile tables also drive
+    # planning and a threshold nothing can reach would be a second way
+    # of saying the same thing.
+    #
+    # Band 3 is untouched, which is where an UPGRADE is elected:
+    # `PROVISIONAL_PRESSURE` is 0.60 against a soft threshold of 0.55,
+    # so a soul covered only by the paper decant issue still gets to go
+    # and find real clothes.
     crit = [(derived[n], -i, n) for i, n in enumerate(body)
-            if derived[n] >= needs_mod.critical_for(soul, n)]
+            if n != "wardrobe"
+            and derived[n] >= needs_mod.critical_for(soul, n)]
     if crit:
         return (1, max(crit)[2])
     # you get dressed before you go to work, but not before you stop
