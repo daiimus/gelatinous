@@ -425,6 +425,30 @@ def get_severed_part_description(species, location, condition, inorganic=False):
 
     species_table = SEVERED_PART_DESCRIPTIONS.get(species)
     if species_table is None:
+        # A REGISTERED species with no bank gets SILENCE, not somebody
+        # else's flesh. Only an unknown species falls back to human.
+        #
+        # `SEVERED_PART_DESCRIPTIONS` covers human and rat;
+        # `SPECIES_DEFINITIONS` registers four. So robot and
+        # synthetic_humanoid landed on the "unknown species" fallback and
+        # a severed robot head described itself as "a severed human head
+        # ... weeping a thin rim of blood" (#2725).
+        #
+        # Silence is the lesser wrong here, and it is the contract this
+        # function already documents -- "Callers should treat empty as
+        # 'no default desc available, fall back to whatever Evennia does
+        # next' rather than asserting". A missing sentence is a gap; a
+        # robot bleeding is a claim about the world that is false, and
+        # players act on prose. The severable limb containers already
+        # return "" for every species including human, so an empty
+        # answer here is an established shape rather than a new one.
+        #
+        # The human fallback is KEPT for a genuinely unknown species,
+        # where nothing better is available and a body of unknown make
+        # is most likely flesh.
+        from world.anatomy.species import SPECIES_DEFINITIONS
+        if species in SPECIES_DEFINITIONS:
+            return ""
         species_table = SEVERED_PART_DESCRIPTIONS.get("human", {})
     location_table = species_table.get(location)
     if not location_table:
