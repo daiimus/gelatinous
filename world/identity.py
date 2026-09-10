@@ -2071,6 +2071,22 @@ def _collect_unmasking_observers(char: Any) -> list:
     3. Must have a ``recognition_memory`` attribute (excludes items,
        exits, mobs without the identity surface).
     4. Must not be unconscious — perception requires awareness.
+    5. Must be able to SEE — an unmasking is a visual event.
+    6. Must actually perceive ``char`` — somebody hidden from you does
+       not reveal themselves to you by taking a mask off.
+
+    The last two were missing, and what this function returns is written
+    into PERSISTENT recognition memory: a blind character, or one the
+    unmasker was hidden from, gained a permanent link identifying both
+    presentations as the same person (#2647). The room-local filter is
+    the only kind of perception it modelled, and being in the room is
+    not the same as seeing what happens in it.
+
+    `can_see` and `can_perceive` both fail OPEN — no medical model, no
+    stealth surface, no exception — so nothing that merely lacks the
+    machinery is excluded. Only an affirmative "cannot" removes an
+    observer, which is the same polarity `is_conscious` uses two
+    modules over.
 
     Characters lacking :meth:`is_unconscious` are treated as conscious
     (matches the conservative default used elsewhere in the codebase).
@@ -2093,6 +2109,14 @@ def _collect_unmasking_observers(char: Any) -> list:
             continue
         if not hasattr(candidate, "recognition_memory"):
             continue
+        try:
+            from world.perception import can_perceive, can_see
+            if not can_see(candidate):
+                continue
+            if not can_perceive(candidate, char):
+                continue
+        except Exception:  # noqa: BLE001 — fail-open, as perception does
+            pass
         is_unconscious = getattr(candidate, "is_unconscious", None)
         if callable(is_unconscious):
             try:
