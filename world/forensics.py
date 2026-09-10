@@ -388,6 +388,12 @@ def _render_wound_lines(corpse) -> list[str]:
                 severity=wound.get("severity", "Moderate"),
                 stage=wound.get("stage", "fresh"),
                 organ=wound.get("organ"),
+                # THE BODY. Without it the renderer had no pronoun to
+                # substitute — an autopsy printed a literal "{Their}" —
+                # and no species to route on, so every corpse in the
+                # colony was described in human flesh vocabulary
+                # regardless of what it was (#2659).
+                character=corpse,
             )
         except (TypeError, ValueError, KeyError):
             descr = (
