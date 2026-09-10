@@ -89,6 +89,33 @@ class TestTheProseStaysRenderable(EvenniaCommandTest):
                     bad.append(f"{slot}: {{they}} {word}")
         self.assertEqual(bad, [], "use {they <verb>}:\n" + "\n".join(bad))
 
+    # NO "mixed pronoun" GUARD, and the reason is worth recording so the
+    # next person does not rebuild it.
+    #
+    # #2732 proposed widening this file to flag any entry containing both
+    # a braced pronoun and a bare third-person-plural one -- the shape of
+    # its four real bugs ("his throat ... as he settles their breath").
+    # Built and measured: after fixing those four, EIGHT lines still
+    # match, and all eight are correct prose:
+    #
+    #   {Their} cheekbones ... faint shadows under them   -> the cheekbones
+    #   {Their} back ... breaths deeper than they look     -> the breaths
+    #   {Their} {ears} ... long enough to half-conceal them-> the ears
+    #   The palms are damp, and {they wipe} them            -> the palms
+    #   ... and four more of the same shape
+    #
+    # The bare pronoun there refers to a BODY PART or a plural noun in
+    # the same sentence, which is the third correct category #2732 itself
+    # names -- and no regex separates it from "refers to the described
+    # character". Filtering on a third-party antecedent ("someone",
+    # "people") removes the 33 easy cases and none of these eight.
+    #
+    # A guard carrying eight maintained exceptions costs more than it
+    # catches: it fails on legitimate new prose, and the fix for that
+    # failure is to add a ninth exception, which trains everyone to
+    # suppress it. The four real defects are fixed in the catalogue
+    # itself; this is left to review.
+
     def test_braces_are_balanced(self):
         for slot, line in self._lines():
             self.assertEqual(line.count("{"), line.count("}"),
