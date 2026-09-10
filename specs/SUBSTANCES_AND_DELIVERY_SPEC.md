@@ -249,10 +249,19 @@ migration from the old `medical_type` strings.
    `is_smokable` pattern).  `medical_type` remains the
    pharmacology key for the treatment system.  The dead
    `CmdConsumption.CmdSmoke` (unregistered since #454) was
-   deleted.  Known preserved gap: `healing_acceleration` (the
+   deleted.  ~~Known preserved gap: `healing_acceleration` (the
    stim auto-injector) maps to no delivery verb — it was not
    consumable before and stays that way until its substance entry
-   exists.
+   exists.~~ **Closed in #3207 without waiting for the substance
+   entry.** The gate named the wrong subsystem: a stimpak's effect
+   rides the TREATMENT path (`medical_type` + `effectiveness` →
+   `apply_medical_effects`), which has carried a working
+   `healing_acceleration` branch since before the gap was recorded.
+   The substance registry is the pharmacology half — tolerance and
+   addiction — which a healing stim does not need.  Meanwhile the
+   item was stocked in two shops at 150 and 350 credits and
+   dispatched by `CLINIC_SUPPLIES` with the verb `inject`, so the
+   preserved gap was shipping a purchasable no-op.
 4. ~~**Tolerance / addiction conditions**~~ — ✅ shipped in #485
    (flavor-first by design decision).
    * **Tolerance** (`ToleranceSpec`): each dose adds a point to

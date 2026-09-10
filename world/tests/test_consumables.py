@@ -170,12 +170,20 @@ class TestSupportsDelivery(TestCase):
         self.assertTrue(item.tags.has("inhale", category="delivery_method"))
 
     def test_unknown_medical_type_unsupported(self):
-        """Types with no delivery mapping (surgical_treatment,
-        healing_acceleration) stay non-consumable — preserved
-        behavior."""
+        """Types with no delivery mapping stay non-consumable.
+
+        `healing_acceleration` used to be listed here as "preserved
+        behavior". It is now mapped to `inject` (#3207): the stim
+        auto-injector is sold in two shops and dispatched by
+        `CLINIC_SUPPLIES` with that verb, and `apply_medical_effects`
+        has carried a working branch for it all along. What this test
+        pins is the map not becoming a blanket fallback —
+        `surgical_treatment` is a TOOL and must stay unreachable by
+        every delivery verb.
+        """
         from world.consumables import supports_delivery
 
-        for mtype in ("surgical_treatment", "healing_acceleration", ""):
+        for mtype in ("surgical_treatment", ""):
             item = _TaggedItem(medical_type=mtype)
             for verb in ("eat", "drink", "inject", "apply", "inhale",
                          "bandage", "smoke"):
