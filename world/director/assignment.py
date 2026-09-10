@@ -9,10 +9,29 @@ assignment **resolves** and the NPC travels back to its post. A
 module-level registry tracks who is committed where — the finite-pool
 bookkeeping that makes "overwhelm the force" a real tactic.
 
-Assignment state lives on ``ndb`` + an in-memory registry (same
-volatility tier as travel state): a reload clears in-flight assignments,
-and NPCs simply resume their routine. Off-screen authority arrives with
-the population/LOD layer.
+Assignment state lives on ``ndb`` + an in-memory registry, so a reload
+clears the DIRECTOR's half of an assignment. **The souls half is
+persistent and outlives it** (#2761): a responder is driven by
+``npc.db.soul_job``, a real Attribute, so after a reload the registry is
+empty while the job is still there. The two are at different volatility
+tiers and this docstring used to claim they were at one.
+
+That asymmetry is survivable rather than dangerous, and only because
+both sides check instead of trusting:
+
+* ``is_assigned`` verifies the soul is still running the respond job and
+  drops an orphaned registry entry on read (#2715) -- so a reload cannot
+  leave a unit invisible to dispatch;
+* the souls ``respond`` step clears its own job when the assignment has
+  gone (``get_assignment(soul) is None -> soul_job = None``) -- so a
+  reloaded unit finishes its walk, finds nobody sent it, and stands
+  down.
+
+What is left is a wasted trip, not a stranded unit. Anything added here
+that assumes "a reload clears in-flight assignments" outright will be
+wrong about the persistent half.
+
+Off-screen authority arrives with the population/LOD layer.
 """
 
 from __future__ import annotations
