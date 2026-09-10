@@ -11,8 +11,13 @@ selects floors. Both are pressed through the ordinary ``press`` command.
 The car is a room — riders stay free while it moves (no channeled action;
 the CAR moves, not the actor), so scenes can happen in it.
 
-Security seam (not yet consumed): ``db.floor_locks`` is reserved for the
-§2.2 biometric grant-file check on secured floors.
+Security seam: ``db.floor_locks`` maps a floor label to its grant file
+and is CONSUMED by `_floor_permitted`, which gates `request_floor` and
+which the pathfinder consults when routing (`world/spatial/pathfind.py`,
+`_neighbors`). The live Constabulary car carries seven sleeve grants on
+floor "2". This said "not yet consumed" long after it was — a
+maintainer trusting it would have re-implemented the gate or routed
+around it (#2626).
 """
 
 from evennia.utils.utils import delay
@@ -151,6 +156,22 @@ class ElevatorCar(IndoorRoom):
         return not self.db.moving and self.current_landing() is landing
 
     def _out_exit(self):
+        """The car's `out` exit — found by KEY, not by destination.
+
+        Finding it by destination made it invisible the moment its
+        destination was None, which is exactly when it most needs
+        repointing: `db.floors` holds landing rooms by dbref and Evennia
+        unpickles a deleted one as None, so a landing deleted during a
+        rebuild wrote None onto the car's only exit and no later
+        `_arrive` could ever find it again. The car sealed permanently
+        and recovery was `@tel` (#2626).
+
+        The destination scan stays as a fallback for a car whose exit is
+        keyed something else.
+        """
+        for obj in self.contents:
+            if getattr(obj, "key", None) == "out":
+                return obj
         for obj in self.contents:
             if getattr(obj, "destination", None) or obj.db_destination_id:
                 return obj
@@ -226,6 +247,11 @@ class ElevatorCar(IndoorRoom):
                 presser.msg("The reader beside the panel blinks |rred|n. "
                             "The button stays dark.")
             return False
+        if self._landing(idx) is None:
+            if presser:
+                presser.msg("The button stays dark. That floor is "
+                            "sealed.")
+            return False
         if idx == self.db.current_floor and not self.db.moving:
             if presser:
                 presser.msg("The doors are already open on that floor.")
@@ -249,6 +275,14 @@ class ElevatorCar(IndoorRoom):
             if presser:
                 presser.msg("The button clicks, dead. This shaft doesn't "
                             "serve this floor.")
+            return False
+        if self._landing(idx) is None:
+            # A floor whose landing has been deleted still has a label
+            # and a button. Refusing here keeps the car out of the
+            # dead-floor branch in `_arrive` entirely (#2626).
+            if presser:
+                presser.msg("The button clicks, dead. That floor is "
+                            "sealed.")
             return False
         if idx == self.db.current_floor and not self.db.moving:
             if presser:
@@ -302,10 +336,25 @@ class ElevatorCar(IndoorRoom):
             idx = queue.pop(0)
             if idx == self.db.current_floor:
                 continue        # already here; the button is answered
+            if self._landing(idx) is None:
+                continue        # the landing was deleted (#2626)
             self.db.call_queue = queue
             self._begin_move(idx)
             return
         self.db.call_queue = []
+
+    def _landing(self, idx):
+        """The landing room at `idx`, or None if it is gone.
+
+        A deleted room unpickles as None out of `db.floors`, so "the
+        floor exists" and "the button has a label" are different
+        questions (#2626).
+        """
+        floors = self.db.floors or []
+        if not 0 <= idx < len(floors):
+            return None
+        entry = floors[idx]
+        return entry[0] if entry else None
 
     def _begin_move(self, target_idx):
         old_landing = self.current_landing()
@@ -331,6 +380,32 @@ class ElevatorCar(IndoorRoom):
             self.db.target_floor = None
             return
         landing = floors[target_idx][0]
+        if landing is None:
+            # THE FLOOR IS GONE. `db.floors` holds landing rooms by
+            # dbref and Evennia unpickles a deleted one as None, so a
+            # landing removed during a rebuild used to be docked at
+            # anyway — writing None onto the car's only exit and
+            # sealing everyone inside (#2626).
+            #
+            # Stay where we were. The doors do not open on a floor that
+            # does not exist, `current_floor` keeps naming a real
+            # landing, and the queue still gets served so the car can
+            # go somewhere that does.
+            from evennia.utils import logger
+            logger.log_err(
+                f"ELEVATOR_DEAD_FLOOR: {self.key} (#{self.id}) was sent "
+                f"to floor index {target_idx}, whose landing has been "
+                f"deleted. Staying at {self.db.current_floor}. Prune "
+                f"db.floors.")
+            self.db.moving = False
+            self.db.target_floor = None
+            if not quiet:
+                self.msg_contents(
+                    "The car settles. Nothing opens; behind the doors "
+                    "there is only shaft.")
+            if self.db.call_queue:
+                delay(DWELL_SECONDS, self._serve_queue)
+            return
         self.db.current_floor = target_idx
         self.db.moving = False
         self.db.target_floor = None
