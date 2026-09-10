@@ -140,6 +140,32 @@ class CigarettePack(Item):
             # the cigarette has been removed from the pack.
             cig.db.substance = substance
 
+    def at_object_delete(self):
+        """Take the cigarettes with the pack (#2635).
+
+        The class handled exactly ONE destruction route -- its own
+        `at_object_leave` self-destruct when a player draws the last
+        cigarette. Every other route (`@delete`, a room or corpse
+        cleanup, a purge) runs `DefaultObject.delete()`, which calls
+        `clear_contents()`, which moves each cigarette to its HOME.
+        A spawned cigarette has none, so home is `#2` and ten
+        cigarettes fell into Limbo per pack, permanently. 420 of them
+        were sitting there when this was found, in exact runs of ten,
+        none ever smoked.
+
+        Deleting them here runs BEFORE `clear_contents`, so there is
+        nothing left for it to relocate.
+
+        NOT paired with `cig.home = self` at fill time, which the issue
+        floated: this pack crushes ITSELF the moment its last cigarette
+        is drawn, so a home pointing at the pack would dangle for every
+        cigarette anyone actually smokes -- trading a leak for a broken
+        reference on the common path.
+        """
+        for cig in list(self.contents):
+            cig.delete()
+        return True
+
     def at_object_leave(self, moved_obj, target_location, **kwargs):
         """Crush the empty pack once its last cigarette is drawn.
 
