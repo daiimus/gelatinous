@@ -79,6 +79,23 @@ RING = 400
 #: Checkpoint the ring to disk every N emits (writes are the budget).
 CHECKPOINT_EVERY = 25
 
+#: The largest share of the ring any ONE repeating signal may hold.
+#:
+#: Eviction used to be purely by age, so the window was set by the
+#: noisiest emitter and a soul stuck in a loop crowded everything else
+#: out. Measured live: 341 of 400 rows were `plan_faulted`, 259 of them
+#: three security robots failing the same unplannable goal over and
+#: over, while the 37 `went_hungry` and 7 `till_empty` rows — the
+#: signals that actually describe colony state — were being pushed out
+#: by the noise (#2671).
+#:
+#: A repeat is not new information. Twenty rows of "this keeps
+#: happening" say the same thing as two hundred, and cost a twentieth
+#: of the window. The loop stays represented, and stays CURRENT — the
+#: newest occurrence replaces the oldest of its own kind, never
+#: somebody else's.
+SIGNATURE_SHARE = 0.05
+
 #: In-process ring: [(stamp, kind, layer, zone, weight, note)].
 #: ``None`` until `_load` rehydrates it — distinct from a loaded-and-EMPTY
 #: ring, which is the normal state after a flush and on a cold start. A
@@ -129,6 +146,35 @@ def zone_of(where):
     return key.split(" - ")[0].strip()
 
 
+def _signature(entry):
+    """What makes two signals THE SAME EVENT REPEATING.
+
+    Kind, zone and note together: two different robots failing the same
+    goal in the same place are two stories, and the same robot failing
+    it three hundred times is one.
+    """
+    return (entry[1], entry[3], entry[5])
+
+
+def _evict(ring, entry):
+    """Trim the ring, oldest-first, but never let one repeat own it.
+
+    A signature over its share loses its OWN oldest row rather than the
+    ring's, so a loop cannot evict the signals it is drowning out. The
+    global cap still applies afterwards — the share is a ceiling on one
+    voice, not a floor under it.
+    """
+    cap = max(1, int(RING * SIGNATURE_SHARE))
+    signature = _signature(entry)
+    same = [i for i, row in enumerate(ring) if _signature(row) == signature]
+    for index in same[:max(0, len(same) - cap)]:
+        ring[index] = None
+    if None in ring:
+        ring[:] = [row for row in ring if row is not None]
+    if len(ring) > RING:
+        del ring[:-RING]
+
+
 def emit(kind, where=None, weight=None, note="", layer=None):
     """Record that something happened. Cheap, and never raises."""
     try:
@@ -139,8 +185,7 @@ def emit(kind, where=None, weight=None, note="", layer=None):
                  str(note)[:120])
         ring = _load()
         ring.append(entry)
-        if len(ring) > RING:
-            del ring[:-RING]
+        _evict(ring, entry)
         # heavy signals checkpoint immediately: a death should survive a
         # crash even if forty stalls before it do not
         _checkpoint(force=entry[4] >= 0.7)
