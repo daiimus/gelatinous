@@ -38,6 +38,27 @@ from world.director.travel import is_travelling, travel_to
 #: Seconds between heartbeat ticks (also the linger at each waypoint).
 HEARTBEAT_SECONDS = 45
 
+#: Consecutive plans aimed at the same waypoint, without ever arriving,
+#: before the beat gives up on that leg and moves on (#2566).
+#:
+#: The index is pinned BEFORE the walk and advanced only on arrival, so
+#: a waypoint that can never be arrived at was re-targeted forever: the
+#: soul re-plans after its cooldown, aims at the same pinned index,
+#: faults, repeats. `ndb.patrol_idx` is non-persistent, so a reload
+#: cleared it — and it re-pinned on the next tick. A unit that hit one
+#: bad leg simply stopped patrolling, and for a secbot that means the
+#: wanted-face sweep at every waypoint never ran again.
+#:
+#: Set-time validation stops the common CAUSE; this stops the CLASS. A
+#: waypoint can go bad after it is set — a door locked, an exit removed,
+#: a building demolished — and nothing else would notice.
+#:
+#: Not 1: a patrol plan can be pre-empted by dispatch or combat without
+#: the unit ever setting off, and that must not count as a bad leg. At 4
+#: a couple of pre-emptions are absorbed, and the cost of a false
+#: positive is one skipped stop.
+PATROL_FAULT_LIMIT = 4
+
 #: Patrol-sweep locale by room type (user note 2026-07-10: the hardcoded
 #: "across the street" read wrong indoors). Unknown types stay ambiguous.
 _SWEEP_LOCALES = {
@@ -258,6 +279,30 @@ def next_waypoint(npc: Any):
         idx = _identity_phase(npc, len(beat))
         npc.ndb.patrol_idx = idx
     idx = int(idx) % len(beat)
+
+    # Have we aimed here before and never arrived? `advance_waypoint`
+    # resets the count, and it only runs on arrival, so a run of aims at
+    # one index IS a run of failures (#2566).
+    aimed_at = getattr(npc.ndb, "patrol_aim_idx", None)
+    aims = (int(getattr(npc.ndb, "patrol_aims", None) or 0) + 1
+            if aimed_at == idx else 1)
+    npc.ndb.patrol_aim_idx = idx
+    npc.ndb.patrol_aims = aims
+
+    if aims > PATROL_FAULT_LIMIT:
+        from evennia.utils import logger
+        stuck = beat[idx]
+        idx = (idx + 1) % len(beat)
+        npc.ndb.patrol_idx = idx
+        npc.ndb.patrol_aim_idx = idx
+        npc.ndb.patrol_aims = 1
+        logger.log_info(
+            f"PATROL_SKIP: {npc.key} (#{npc.id}) gave up on "
+            f"{getattr(stuck, 'key', stuck)!r} after "
+            f"{PATROL_FAULT_LIMIT} attempts; moving to "
+            f"{getattr(beat[idx], 'key', beat[idx])!r}."
+        )
+
     return beat[idx], idx
 
 
@@ -272,6 +317,11 @@ def advance_waypoint(npc: Any) -> None:
     idx = getattr(npc.ndb, "patrol_idx", None)
     idx = 0 if idx is None else int(idx)
     npc.ndb.patrol_idx = (idx + 1) % len(beat)
+    # Arrived, so the leg was good. This is the ONLY thing that clears
+    # the fault count, which is what makes a run of aims at one index a
+    # run of failures rather than a long walk (#2566).
+    npc.ndb.patrol_aims = 0
+    npc.ndb.patrol_aim_idx = None
 
 
 def cadence_ready(npc: Any) -> bool:
