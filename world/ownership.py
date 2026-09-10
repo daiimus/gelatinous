@@ -29,12 +29,55 @@ import re
 _PUPPET_ACCOUNT = re.compile(r"\bp?id\((\d+)\)")
 
 
+def _account_named(token):
+    """The account this token names, by id or by key, or None.
+
+    The three signals spoke three different languages under one
+    documented `account_key` field: a numeric account ID, an account
+    key, and — most often — whatever id happened to be inside a
+    `puppet:` lockstring, which on a character is commonly the
+    CHARACTER's own dbref. Measured live: 59 of 64 puppet-lock signals
+    named no account at all (#2683).
+
+    A caller could not tell them apart, because the tuple's second
+    element names the SIGNAL, not the namespace — and one real account
+    in this database is literally named `912640631`, so "looks numeric"
+    was never a usable heuristic either.
+    """
+    try:
+        from evennia.accounts.models import AccountDB
+    except Exception:  # noqa: BLE001
+        return None
+    text = str(token)
+    try:
+        if text.isdigit():
+            found = AccountDB.objects.filter(id=int(text)).first()
+            if found is not None:
+                return found
+        return AccountDB.objects.filter(username__iexact=text).first()
+    except Exception:  # noqa: BLE001 — an unreadable account is not a licence
+        return None
+
+
 def owning_accounts(obj):
     """Every account with a claim on *obj*, by any of the three signals.
 
-    Returns a list of ``(account_key, how)`` pairs — `how` names which
+    Returns a list of ``(account_key, how)`` pairs. `how` names which
     signal fired, because "who owns this" and "why do we think so" are
     both needed when the answer is surprising.
+
+    ONE NAMESPACE. Every signal is resolved to a real account and
+    reported by its key, so two claims on one body can be compared.
+
+    ``account_key`` is ``None`` when a signal fired but names no
+    account — a `puppet:` lock referencing the body's own dbref is the
+    common case, and `how` then carries an `-unresolved` suffix. Such a
+    claim is STILL A CLAIM: the lock's presence is evidence the body was
+    set up as somebody's puppet, and this function fails closed on
+    purpose. Seven live bodies — a run of `Drivel` sleeves — have no
+    other signal at all, so dropping unresolved locks outright would
+    hand real player sleeves to the cleanup builds that consume
+    `is_player_owned`.
     """
     claims = []
     if obj is None or not getattr(obj, "pk", None):
@@ -42,7 +85,9 @@ def owning_accounts(obj):
 
     account_id = getattr(obj, "db_account_id", None)
     if account_id:
-        claims.append((str(account_id), "puppeted"))
+        acct = _account_named(account_id)
+        claims.append((acct.key, "puppeted") if acct is not None
+                      else (None, "puppeted-unresolved"))
 
     try:
         from evennia.accounts.models import AccountDB
@@ -58,8 +103,11 @@ def owning_accounts(obj):
             if not clause.startswith("puppet:"):
                 continue
             found = _PUPPET_ACCOUNT.search(clause)
-            if found:
-                claims.append((found.group(1), "puppet-lock"))
+            if not found:
+                continue
+            acct = _account_named(found.group(1))
+            claims.append((acct.key, "puppet-lock") if acct is not None
+                          else (None, "puppet-lock-unresolved"))
     except Exception:  # noqa: BLE001
         pass
 
