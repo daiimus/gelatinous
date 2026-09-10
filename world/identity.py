@@ -2692,9 +2692,25 @@ def linked_family(memory: dict, uid: str,
 def get_linked_aliases(memory: dict, uid: str) -> list[str]:
     """Return assigned names from entries linked to ``uid`` (excluding self).
 
-    Walks the chain via :func:`walk_linked_chain`, skips the starting
-    UID, and collects non-blank ``assigned_name`` values from every
-    other entry in the chain.
+    Walks via :func:`linked_family`, skips the starting UID, and
+    collects non-blank ``assigned_name`` values from every other entry.
+
+    BOTH DIRECTIONS. This used to call `walk_linked_chain`, which
+    follows `linked_to` FORWARD — right for its own job, since the
+    unmasking path points a new presentation back at the one it
+    replaced. But identity is symmetric and recall must be too: if you
+    knew somebody as A, met them again as B (B -> A) and then looked at
+    A, a forward walk from A reached nothing, so "Also known as" showed
+    a different answer depending on which face you happened to be
+    looking at. `linked_family` was written to close exactly this
+    (#2410) and was wired to the LLM NPC path only; the player's own
+    `recall` never got it (#2651).
+
+    Ordered by the observer's MEMORY, not by traversal: `linked_family`
+    returns a set, whose iteration order is arbitrary and not stable
+    across restarts. Walking `memory` instead lists the names in the
+    order this observer met them, which is both deterministic and the
+    order a person would say them in.
 
     Used by ``recall`` / ``memory`` to render "Also known as: …" lines
     so the player can see when the engine has observed a body
@@ -2702,16 +2718,18 @@ def get_linked_aliases(memory: dict, uid: str) -> list[str]:
 
     Args:
         memory: A ``recognition_memory`` dict.
-        uid: The starting UID whose chain is inspected.
+        uid: The starting UID whose family is inspected.
 
     Returns:
         List of assigned names found on linked entries (excluding the
-        entry at ``uid`` itself), in traversal order.  Blank names are
-        omitted.
+        entry at ``uid`` itself), in the order they were met.  Blank
+        names are omitted.
     """
+    family = set(linked_family(memory, uid))
+    family.discard(uid)
     aliases: list[str] = []
-    for chain_uid in walk_linked_chain(memory, uid):
-        if chain_uid == uid:
+    for chain_uid in memory:
+        if chain_uid not in family:
             continue
         entry = memory.get(chain_uid)
         if entry is None:
