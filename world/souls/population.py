@@ -133,6 +133,18 @@ def outfit_for(npc, stock, budget=None):
             and (purse is None or price + spent <= purse)
         ]
         if not options:
+            # OBSERVABLE. A slot the budget could not reach used to be
+            # dropped with no log line and no fallback, which is
+            # indistinguishable from an arrival who is meant to be
+            # barefoot. The docstring calls this "taste"; an empty
+            # option list is not taste, it is a purse that could not
+            # reach the shelf (#2705).
+            from evennia.utils import logger
+            logger.log_info(
+                f"OUTFIT_SLOT_UNFILLED: {npc.key} (#{npc.id}) has "
+                f"nothing for {_slot!r} within "
+                f"{'no budget' if purse is None else purse - spent} — "
+                f"leaving it bare.")
             continue
         best_fit = max(o[0] for o in options)
         # everything that fits them equally well; the tie is where
@@ -145,6 +157,97 @@ def outfit_for(npc, stock, budget=None):
         spent += pick[4]
         covered |= set(pick[2])
     return chosen
+
+
+def missing_outfit_slots(npc):
+    """Which of `OUTFIT_SLOTS` this body has nothing covering.
+
+    Reads `npc.worn_items`, which is keyed by BODY LOCATION — a slot is
+    filled when its proof part appears there. NOT a per-item `db.worn`
+    flag: that attribute does not exist, there are zero such rows in the
+    database, and a probe that read it reported all 78 souls as naked
+    (#2705).
+
+    A robot is legitimately bare and is never short a slot.
+    """
+    from world.souls import needs as needs_mod
+    try:
+        if needs_mod.profile_name(npc) == "robot":
+            return []
+    except Exception:  # noqa: BLE001 — unknown profile is not a robot
+        pass
+    worn = npc.worn_items or {}
+    return [(slot, proof) for slot, proof in OUTFIT_SLOTS
+            if proof not in worn]
+
+
+def ensure_outfit_complete(npc):
+    """Fill any `OUTFIT_SLOTS` this body is short, off the thrift rail.
+
+    The invariant was declared in this module and consulted by the
+    generated-arrival path ALONE. Blueprinted cast is built through
+    `world/npcs/blueprints.py`, which never read it, so the rule that a
+    colonist wears a torso piece, a leg piece and footwear governed
+    procedural residents and not the named cast: twelve named NPCs —
+    three mechanics, two vendors, a bartender, a courier — walked the
+    colony barefoot, every one of them missing exactly `feet` (#2705).
+
+    NO BUDGET. `outfit_for` is a shopping decision and spends what the
+    wearer has; this is the floor under it. A blueprint that authors a
+    full wardrobe never reaches here, and one that authors none gets
+    dressed rather than shipped naked.
+
+    Returns the slots it filled, so a caller can log them.
+    """
+    from evennia.prototypes.spawner import spawn
+    from evennia.utils import logger
+
+    missing = missing_outfit_slots(npc)
+    if not missing:
+        return []
+
+    stock = _thrift_stock()
+    filled = []
+    for slot, proof in missing:
+        options = [entry for entry in stock if proof in entry[2]]
+        if not options:
+            logger.log_info(
+                f"OUTFIT_SLOT_UNFILLABLE: nothing on the rail covers "
+                f"{proof!r} for {npc.key} (#{npc.id}).")
+            continue
+        proto_key = choice(options)[0]
+        try:
+            garment = spawn(proto_key)[0]
+        except Exception:  # noqa: BLE001 — a bad proto never blocks a build
+            continue
+        # MARKED. A blueprint's fidelity check compares what the body
+        # wears against what the blueprint authored, and a garment this
+        # function added is neither authored nor a drift — it is the
+        # floor. Without the mark, `verify_blueprint` reports every
+        # invariant-dressed NPC as diverging from its own blueprint.
+        garment.db.outfit_invariant = True
+        garment.move_to(npc, quiet=True, move_hooks=False)
+        # CHECK THE RETURN. `wear_item` returns `(ok, message)` and
+        # refuses a garment going on UNDER an already-worn outer layer —
+        # the same trap the blueprint wardrobe loop sorts by layer to
+        # avoid. A caller that discards the result leaves the refused
+        # garment sitting in inventory, and something doing that on a
+        # repeating schedule is how one NPC ended up carrying 628
+        # unworn pairs of trousers.
+        ok, why = npc.wear_item(garment)
+        if not ok:
+            garment.delete()
+            logger.log_info(
+                f"OUTFIT_SLOT_REFUSED: {npc.key} (#{npc.id}) could not "
+                f"wear {proto_key} for {slot!r}: {why} — discarded "
+                f"rather than left in inventory.")
+            continue
+        filled.append(slot)
+    if filled:
+        logger.log_info(
+            f"OUTFIT_COMPLETED: {npc.key} (#{npc.id}) was short "
+            f"{filled} and has been dressed.")
+    return filled
 
 
 def _thrift_stock():

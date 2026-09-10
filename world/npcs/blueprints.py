@@ -2188,6 +2188,31 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                              'delay_hours': 8}}}
 
 
+def _dress_to_the_invariant(npc):
+    """Nobody in the cast ships short a wardrobe slot (#2705).
+
+    `OUTFIT_SLOTS` — a torso piece, a leg piece, footwear — was declared
+    in `world/souls/population.py` and consulted by the generated-arrival
+    dresser ALONE. Blueprints never read it, so the rule governed
+    procedural residents and not the named cast, and twelve named NPCs
+    walked the colony barefoot: three mechanics, two vendors, a
+    bartender, a courier, every one of them missing exactly `feet`. They
+    were not failing to put shoes on; they had none.
+
+    Called from BOTH build paths. `build_npc` and `build_successor`
+    carry the same wardrobe loop copied twice, and a fix applied to one
+    of them would be the same defect a second time.
+
+    Fills only what is EMPTY, so a blueprint that authors a full
+    wardrobe never reaches the rail and the authored pieces always win.
+    """
+    try:
+        from world.souls.population import ensure_outfit_complete
+        ensure_outfit_complete(npc)
+    except Exception:  # noqa: BLE001 — a bare body beats a failed build
+        pass
+
+
 def build_npc(blueprint_key, location):
     """Construct the complete NPC from its blueprint at ``location``.
 
@@ -2284,6 +2309,8 @@ def build_npc(blueprint_key, location):
             garment.attributes.add(k, v)     # e.g. a worn earpiece IS a radio
         npc.wear_item(garment)
 
+    _dress_to_the_invariant(npc)
+
     for proto in bp.get("carried_prototypes", ()):
         for item in spawn(proto):
             item.move_to(npc, quiet=True, move_hooks=False)
@@ -2356,6 +2383,9 @@ def build_successor(blueprint_key, location):
         for k, v in (gspec.get("attrs") or ()):
             garment.attributes.add(k, v)     # e.g. a worn earpiece IS a radio
         npc.wear_item(garment)
+
+    _dress_to_the_invariant(npc)
+
     for proto in bp.get("carried_prototypes", ()):
         for item in spawn(proto):
             item.move_to(npc, quiet=True, move_hooks=False)
@@ -2385,7 +2415,13 @@ def verify_blueprint(blueprint_key, against):
     if bp.get("desc") and bp["desc"] != against.db.desc:
         diffs.append(("desc", "<blueprint>", "<live>"))
     want_worn = sorted(g["key"] for g in bp.get("wardrobe", ()))
-    have_worn = sorted(i.key for i in (against.get_worn_items() or []))
+    # Garments the OUTFIT_SLOTS floor put on (#2705) are neither
+    # authored nor drift, so they are not a fidelity failure. They are
+    # marked at the point they are worn rather than inferred from the
+    # blueprint's silence, because a blueprint that authors nothing and
+    # a blueprint whose piece failed to spawn look identical from here.
+    have_worn = sorted(i.key for i in (against.get_worn_items() or [])
+                       if not i.attributes.get("outfit_invariant"))
     if want_worn != have_worn:
         diffs.append(("wardrobe", want_worn, have_worn))
     want_persona = dict(bp.get("persona") or {})
