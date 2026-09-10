@@ -273,8 +273,26 @@ def identity_match_characters(
         candidates: Objects to search among (typically room contents).
 
     Returns:
-        List of matching identity-enabled objects, ordered as they
-        appear in *candidates*.  Empty list if nothing matched.
+        List of matching identity-enabled objects, in RESOLUTION-PRIORITY
+        order: every assigned-name match first, then every sdesc match,
+        candidate order preserved *within* each group. Empty list if
+        nothing matched.
+
+        This line used to read "ordered as they appear in *candidates*",
+        which contradicted the resolution order stated twelve lines above
+        it and the code between them (#2820). The spec settles which half
+        was wrong -- IDENTITY_RECOGNITION_SPEC, "Targeting Priority":
+        assigned names are step 2, sdescs step 3, and ordinals step 4,
+        applied to the result. So the buckets are the contract and this
+        sentence was the error.
+
+        WORTH KNOWING, because it is a real consequence rather than a
+        bug: an ordinal therefore indexes the PRIORITY order, not the
+        order the player can see. With two men present and one of them
+        remembered by name, the remembered one is always ``1.man`` and
+        the stranger always ``2.man``, whoever walked in first. Whether
+        ordinals should index visible order instead is a design question
+        against the spec, not a defect in this function.
     """
     if not query or not candidates:
         return []
