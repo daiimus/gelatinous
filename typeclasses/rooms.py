@@ -1320,6 +1320,27 @@ class CraneContainer(Room):
                              # Queen's roofline — the apex of the actual leap
     FALL = (-1, -17, 0)      # the rebar pit under the cable
 
+    #: The shaft is described in two units by two different speakers.
+    #:
+    #: The car rides a Z COLUMN (`MIN_Z` 1 .. `MAX_Z` 16); the console
+    #: and the people on the radio talk about HOUSE FLOORS (2..17), and
+    #: the Queen's rack roof is `QOC_Z` 12 to the car and the 13th floor
+    #: to a person. The console converted with a bare `floor - 1` and the
+    #: courier hailed with a raw z and no conversion at all, so "bring
+    #: the box to 12" put the container one level BELOW the roof the
+    #: courier was standing on (#2617).
+    #:
+    #: Both sides go through these now, so the offset is written once.
+    @classmethod
+    def floor_of(cls, z):
+        """The house floor a rider would call this z."""
+        return int(z) + 1
+
+    @classmethod
+    def z_of(cls, floor):
+        """The z a house floor sits at."""
+        return int(floor) - 1
+
     def at_object_creation(self):
         super().at_object_creation()
         self.db.outside = True

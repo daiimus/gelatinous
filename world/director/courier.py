@@ -307,5 +307,11 @@ def call_the_crane(soul, level) -> bool:
     if not is_powered(handset) or not same_band(frequency_of(handset),
                                                 CRANE_BAND):
         return False
-    soul.execute_cmd(f"xmit Ossie, Rabbit. Bring the box to {level}.")
+    # SHE ASKS IN FLOORS, because that is what a person says on a radio
+    # and what the console parses. `level` is a Z off the car; hailing it
+    # raw asked for the floor one BELOW the one she wanted, so the box
+    # stopped a level short of the rack she was standing on (#2617).
+    from typeclasses.rooms import CraneContainer
+    floor = CraneContainer.floor_of(level)
+    soul.execute_cmd(f"xmit Ossie, Rabbit. Bring the box to {floor}.")
     return True
