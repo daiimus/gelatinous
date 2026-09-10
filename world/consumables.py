@@ -39,6 +39,12 @@ LEGACY_MEDICAL_TYPE_DELIVERIES: dict[str, tuple[str, ...]] = {
     "pain_relief": ("inject",),
     "blood_restoration": ("inject",),
     "stimulant": ("inject",),
+    # STIMPAK declares `healing_acceleration`, which was in neither the
+    # tag scheme nor this map -- so it supported NO verb at all, while
+    # two shops sold it for 150 and 350 credits. The prototype now
+    # declares the tag; this entry is what reaches the copies already
+    # spawned, which a prototype fix never does (#3207).
+    "healing_acceleration": ("inject",),
     "toxin": ("inject",),
     # CmdApply's old applicable_types (wound_care doubled as a
     # bandage type)

@@ -2958,7 +2958,13 @@ STIMPAK = {
     "typeclass": "typeclasses.items.Item",
     "aliases": ["stim", "healing injection"],
     "desc": "An emergency medical stimulant that accelerates natural healing processes. Single-use auto-injector.",
-    "tags": [("medical_item", "item_type")],
+    # An auto-injector injects. Everything else about this item already
+    # said so -- the desc, the "healing injection" alias, and
+    # CLINIC_SUPPLIES dispatching "stim"/"stimpak" with the verb
+    # `inject` -- but the tag was missing, and the tag is the gate
+    # `supports_delivery` reads. Its sibling STIMPAK_INHALER declares
+    # ("inhale", ...) correctly (#3207).
+    "tags": [("medical_item", "item_type"), ("inject", "delivery_method")],
     "attrs": [
         ("medical_type", "healing_acceleration"),
         # biology, not repair (#2262)
