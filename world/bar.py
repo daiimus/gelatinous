@@ -895,6 +895,18 @@ def _bare_order(low, recipe):
                 if w not in words and w not in ORDER_FILLER]
 
 
+def _without_cues(low):
+    """The line with every order cue removed.
+
+    A cue proves somebody is ORDERING; it does not prove WHAT. Stripped
+    so the remainder can be held to the same "nothing but the drink and
+    filler" test a bare order faces (#2689).
+    """
+    for cue in ORDER_CUES:
+        low = low.replace(cue, " ")
+    return " ".join(low.split())
+
+
 def resolve_order(post, speech, addressed=False):
     """The board entry this line orders, or None.
 
@@ -923,14 +935,25 @@ def resolve_order(post, speech, addressed=False):
         #   * otherwise the line must be nothing but the order and its
         #     filler -- "rotgut", "a rotgut please", "rotgut, thanks".
         # "I'm trying to stay sober tonight" fails all three.
+        # A CUE IS NOT A BLANK CHEQUE. It was decisive on its own, so
+        # any line carrying one served whatever keyword it happened to
+        # contain: "I'll take your word for it" poured `the last word`,
+        # because "i'll take" is exactly how people order and "word" is
+        # exactly what that drink is called (#2689).
+        #
+        # The cue still settles INTENT — a question mark no longer
+        # refuses it, which is the whole point of #2779's carve-out —
+        # but what is left after the cue must still be the drink and
+        # filler, the same test a bare order passes.
         if has_cue:
-            return recipe
+            return recipe if _bare_order(_without_cues(low), recipe) else None
         if "?" in low:
             return None
         return recipe if _bare_order(low, recipe) else None
     if "?" in low:
         return None
-    if has_cue or _bare_order(low, recipe):
+    if (has_cue and _bare_order(_without_cues(low), recipe)) \
+            or _bare_order(low, recipe):
         return recipe
     return None
 
