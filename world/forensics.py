@@ -232,11 +232,27 @@ def attempt_forensic_recognition(
 ) -> RecognitionResult:
     """Roll Intellect vs ``dc`` to recover identity from evidence.
 
-    The roll outcome is cached permanently per
+    The **roll** — not the verdict — is cached permanently per
     ``(looker.dbref, subject-key)`` on ``cache_owner.db.<cache_attr>``.
     This rewards a single careful examination and prevents Intellect
     re-rolls on every examine from eventually surfacing an identity
     by chance.
+
+    Storing the roll rather than ``roll >= dc`` is what keeps the DC
+    meaningful across the doors that share a slot.  The look-time
+    mixin rolls a decay-stage DC (3 at *moderate*, 5 at *advanced*)
+    while ``inspect``/``autopsy`` roll ``AUTOPSY_DC_BASIC`` (3), both
+    against ``forensic_recognition_cache``.  With a cached verdict the
+    first door through fixed the answer for the other at its own
+    difficulty: an ``inspect`` success at DC 3 replayed as recognition
+    at DC 5, and a look-time failure at DC 5 permanently blocked an
+    ``inspect`` the same roll would have passed.  One stored roll,
+    compared against each caller's own DC, gives one attempt per
+    observer per subject *and* an honest difficulty.
+
+    Entries written before this changed are bare booleans and are
+    replayed as the verdict they recorded — the roll behind them is
+    unrecoverable, so their DC cannot be re-evaluated.
 
     Caching strategy mirrors the disguise-pierce convention
     (:func:`world.identity.attempt_disguise_pierce`): permanent per
@@ -290,11 +306,26 @@ def attempt_forensic_recognition(
     looker_dbref = getattr(looker, "dbref", None)
     cache_key = (looker_dbref, revealed_uid)
     if looker_dbref is not None and cache_key in cache:
-        return RecognitionResult(
-            success=bool(cache[cache_key]),
-            revealed_uid=revealed_uid,
-            from_cache=True,
-        )
+        cached = cache[cache_key]
+        # Legacy entries (pre-#2622) stored the verdict, not the roll.
+        # ``bool`` is checked first because ``isinstance(True, int)``
+        # is True — a legacy ``True`` read as a roll would be 1 and
+        # fail every DC above it.
+        if isinstance(cached, bool):
+            success = cached
+        else:
+            try:
+                success = int(cached) >= dc
+            except (TypeError, ValueError):
+                # Unreadable slot: fall through and roll afresh
+                # rather than answer from a value we cannot compare.
+                cached = None
+        if cached is not None:
+            return RecognitionResult(
+                success=success,
+                revealed_uid=revealed_uid,
+                from_cache=True,
+            )
 
     from world.combat.dice import roll_stat
 
@@ -302,7 +333,7 @@ def attempt_forensic_recognition(
     success = roll >= dc
 
     if looker_dbref is not None:
-        cache[cache_key] = success
+        cache[cache_key] = int(roll)
         setattr(cache_db, cache_attr, cache)
 
     return RecognitionResult(
