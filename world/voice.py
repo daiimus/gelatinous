@@ -351,6 +351,44 @@ def forget_voice(observer: Any, target: Any = None, *, name: str = "",
     return True
 
 
+def forget_voices_for_sleeve(observer, real_sleeve_uid) -> int:
+    """Clear every named voice presentation *observer* holds for one sleeve.
+
+    The by-sleeve sibling of :func:`forget_voice`, for the ``forget`` door
+    that has no target object — forgetting someone by the name you gave
+    them, when they are not in the room.  That path holds a recognition
+    entry, not a body, so it cannot compute a current voice UID; what it
+    does hold is the entry's ``real_sleeve_uid``, which every voice-memory
+    entry also carries.
+
+    Sleeve-scoped rather than presentation-scoped because that is what
+    ``forget`` means when it is addressed to a person rather than to a
+    face in front of you: *I no longer claim to know this person*
+    (IDENTITY_RECOGNITION_SPEC, "forget invalidation").  The pierce-cache
+    clear on the same command is already sleeve-wide for the same reason.
+    The visible door stays per-presentation, because there it has a
+    presentation to scope to.
+
+    Args:
+        observer: Character whose voice memory is cleared.
+        real_sleeve_uid: The sleeve to forget every voice presentation of.
+
+    Returns:
+        Count of voice entries whose assigned name was cleared.
+    """
+    if not real_sleeve_uid:
+        return 0
+    cleared = 0
+    for voice_uid, entry in find_voice_entries_by_real_sleeve_uid(
+        observer, real_sleeve_uid
+    ):
+        if not (entry or {}).get("assigned_name"):
+            continue
+        if forget_voice(observer, voice_uid=voice_uid):
+            cleared += 1
+    return cleared
+
+
 def find_voice_entries_by_real_sleeve_uid(observer, real_sleeve_uid):
     """All *observer* voice-memory ``(voice_uid, entry)`` for a given sleeve.
 
