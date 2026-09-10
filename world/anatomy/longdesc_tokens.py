@@ -82,9 +82,10 @@ def substitute_pronoun_tokens(text, *, gender, name="the corpse",
     ``flex_verb``.  This mirrors the living-character renderer's
     ``AppearanceMixin._substitute_longdesc_tokens`` so corpse and severed-
     part prose render the same as it would on the living body.  Tokens
-    that match neither pronoun-table nor flex-vocabulary are left literal
-    so an upstream layer (corpse skintone / ``{color}``) can still claim
-    them.
+    RESERVED to an upstream layer (``{color}``, ``{side}`` and the rest
+    of ``_UPSTREAM_TOKENS``) are left literal so that layer can still
+    claim them; any OTHER single-word token is flexed as a verb, which
+    is how ``{are}`` and ``{carry}`` work in live prose.
 
     Side-aware singular flex (issue #341): when ``side`` is provided
     and a paired body-noun token flexes to singular, the side is
@@ -114,7 +115,13 @@ def substitute_pronoun_tokens(text, *, gender, name="the corpse",
 
     Returns:
         str: ``text`` with pronoun, name, and body-noun tokens resolved.
-        Anything else (e.g. ``{color}``) is left untouched.
+        Tokens reserved to an upstream layer (``{color}``, ``{side}``,
+        ``{actor}``, ``{time}``, ``{date}``) are left untouched; any
+        other single-word token is flexed as a verb.
+
+        This used to promise that anything unrecognised was left alone,
+        naming ``{color}`` as the example -- and then conjugated it to
+        ``colors`` and glued it to the following word (#2722).
     """
     if not text:
         return text
@@ -171,6 +178,25 @@ def _flex_person_verbs(text, pronouns, bucket):
     return _PERSON_VERB_RE.sub(_resolve, text)
 
 
+#: Tokens other renderers claim, which this one must hand through
+#: untouched. `{color}` is resolved by the garment renderer
+#: (`typeclasses/items.py`) and the corpse renderer
+#: (`typeclasses/corpse.py`, before the flexer runs) and appears in 109
+#: prototype values; `{side}` in 41. This renderer would conjugate them
+#: -- `{color}coat` rendered as `colorscoat`, braces eaten and the word
+#: jammed against the next one, with no error (#2722).
+#:
+#: A RESERVED LIST rather than "leave every unknown token literal",
+#: which is what the docstrings used to promise and what the issue
+#: proposed. There is no verb vocabulary to check against -- `flex_verb`
+#: conjugates anything it is handed -- so "unknown" cannot be
+#: distinguished from "a verb nobody listed", and the live census shows
+#: real authored verbs going through this path (`{are}`, `{carry}`).
+#: Leaving unknown tokens literal would silently stop flexing every verb
+#: not on a list, which is a worse failure than the one being fixed.
+_UPSTREAM_TOKENS = frozenset({"color", "side", "actor", "time", "date"})
+
+
 def _flex_body_tokens(text, number, side=None, *, species=None):
     """Flex remaining braced tokens as body nouns or verbs.
 
@@ -179,7 +205,18 @@ def _flex_body_tokens(text, number, side=None, *, species=None):
     (optionally with a leading ``a``/``an``) whose singular is in the
     flex-noun vocabulary renders as a noun; any other single-word brace
     renders as a verb.  Multi-word braces are left literal — that's the
-    "unknown token" case authors use for emphasis or future substitutions.
+    "unknown token" case authors use for emphasis or future
+    substitutions.
+
+    **A single-word brace is NOT left literal** unless it is in
+    ``_UPSTREAM_TOKENS``. This docstring used to say otherwise, and so
+    did the module header, naming ``{color}`` as an example of something
+    safe to write here — while the code conjugated it to ``colors`` and
+    glued it to the next word. The promise was the wrong half: there is
+    no verb vocabulary to check against, so an unknown token cannot be
+    told apart from an unlisted verb, and real authored prose relies on
+    that path (``{are}``, ``{carry}``). The tokens other renderers claim
+    are reserved by name instead (#2722).
 
     Side-aware singular flex (#341) for pair-keyed nouns is applied
     when ``side`` is provided AND number is singular.
@@ -222,6 +259,8 @@ def _flex_body_tokens(text, number, side=None, *, species=None):
         core = art_match.group(1) if art_match else body
         if " " in core:
             return match.group(0)
+        if core.lower() in _UPSTREAM_TOKENS:
+            return match.group(0)      # somebody else's token
         core_base = singularize_noun(core).lower()
         if core_base in flex_nouns:
             # Side-aware singular for pair nouns (#341).
