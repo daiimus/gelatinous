@@ -203,11 +203,26 @@ def unit_matches(cube, want):
     want = (want or "").strip().lower()
     if not want:
         return False
-    tokens = [t.strip("().,").lower() for t in cube.key.split()]
-    if want in tokens:
+
+    # What a board PRINTS, and the whole tail, always match.
+    tail = str(cube.key).split(" - ")[-1].strip()
+    if want in (unit_label(cube).lower(), tail.lower()):
         return True
-    tail = str(cube.key).split(" - ")[-1].strip().lower()
-    return want in (unit_label(cube).lower(), tail)
+
+    # A DESIGNATOR CARRIES A NUMBER. The token match ran against every
+    # whitespace token of the FULL key, so the building's own words
+    # claimed every one of its units: "the" matched all 134 Brackett
+    # units and all 35 Halcyon cabins, and `assign_cube` then handed the
+    # caller an arbitrary one — with a 48-hour relocation attached to it
+    # (#2674).
+    #
+    # Checked against all 229 live cubes: every unit label contains a
+    # digit, and none of "the", "halcyon", "brackett", "arms", "cabin"
+    # or "unit" does. Cheaper and more honest than a stop-word list,
+    # which would need extending for every building ever named.
+    if not any(ch.isdigit() for ch in want):
+        return False
+    return want in [t.strip("().,").lower() for t in tail.split()]
 
 
 def assign_cube(char, terminal, unit=None):
