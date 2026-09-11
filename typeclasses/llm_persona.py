@@ -123,11 +123,26 @@ def build_persona(npc) -> dict:
     from world import service
     post = service.post_for(npc)
     menu = None
+    # THE POST OWNS THE BOARD, on shift and off (#2623).
+    #
+    # This fell back to the BODY's `db.menu` when the NPC stood no post,
+    # while the job tools that act on the menu -- `_check_stock`,
+    # `_prepare_drink` -- read the post's exclusively. So an off-shift
+    # bartender's prompt listed drinks the tools would then refuse to
+    # check or pour: the model offering something the game will not
+    # serve.
+    #
+    # This file states the rule three hundred lines down -- "off shift
+    # it resolves to None and they are simply themselves again" -- and
+    # the archetype follows it. The menu did not, because a stale
+    # `db.menu` on the body survives the shift end. Sully (#2706) and
+    # Sable Vane (#8403) both carry one; they are now inert rather than
+    # contradictory, so no data edit is needed.
+    #
+    # The fallback also reached for `_find_bar`, which has had no
+    # definition since #2378 -- `getattr` returned None and the branch
+    # collapsed to the body's menu every time.
     board = (post.db.menu if post is not None else None)
-    if not board:
-        find_bar = getattr(npc, "_find_bar", None)
-        bar = find_bar() if callable(find_bar) else None
-        board = (bar.db.menu if bar else None) or npc.db.menu or []
     menu = [r.get("name") for r in (board or []) if r.get("name")] or None
 
     # The butcher's real trade, same grounding principle: the cart's ACTUAL
