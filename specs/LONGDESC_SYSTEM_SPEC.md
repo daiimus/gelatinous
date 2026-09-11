@@ -130,21 +130,40 @@ Consequences for a body that predates a new default location:
 - `describe/list` groups by region in **dict-insertion order**, so a key added
   out of canonical position can also display out of anatomical order.
 
-**Whenever `DEFAULT_LONGDESC_LOCATIONS` gains a location (or its order
+**Whenever a species' default locations gain an entry (or the order
 changes), run a one-off backfill** to bring existing bodies into sync. The
-backfill rebuilds each dict in canonical (`DEFAULT_LONGDESC_LOCATIONS`) order,
-preserving any set descriptions and keeping extended anatomy (tails, wings,
-cybernetics) at the end. It is idempotent (a second pass updates nothing) and
-never overwrites set values:
+backfill rebuilds each dict in that species' canonical order, preserving any
+set descriptions and keeping extended anatomy (tails, wings, cybernetics) at
+the end. It is idempotent (a second pass updates nothing) and never
+overwrites set values.
+
+> ⚠️ **This procedure must be SPECIES-AWARE.** An earlier version of this
+> section rebuilt every body against `DEFAULT_LONGDESC_LOCATIONS`, which is
+> **human-only** — `world/combat/constants.py` derives it from
+> `SPECIES_DEFINITIONS["human"]` and points callers at
+> `get_species_default_longdesc_locations(species)` for anything else.
+>
+> Run against `Character.objects.all_family()`, that version injected human
+> anatomy into rats: a rat declares 21 locations and shares only **10** with
+> a human, so it would gain 12 keys it has no body for — `face`, `hair`,
+> `left_arm`, `left_hand`, `left_thigh` and the rest — making
+> `has_location("left_hand")` true on a rat. Synthetics and robots are
+> unharmed (both derive from human and share all 22), so rats were the whole
+> blast radius. The procedure predates the species split and was never
+> rescoped (#2445).
 
 ```python
 # Run via `evennia shell`, then `evennia reload` to flush the server's
 # in-memory object cache so post-reload reads come fresh from the DB.
 from typeclasses.characters import Character
-from world.combat.constants import DEFAULT_LONGDESC_LOCATIONS as D
+from world.anatomy import get_species_default_longdesc_locations
 
 updated = 0
 for c in Character.objects.all_family():
+    # PER SPECIES -- never the human-only DEFAULT_LONGDESC_LOCATIONS.
+    D = get_species_default_longdesc_locations(getattr(c.db, "species", None)) or {}
+    if not D:
+        continue                           # unknown species: leave it alone
     cur = c.longdesc or {}
     rebuilt = {k: cur.get(k) for k in D}   # canonical order + backfill missing as None
     for k, v in cur.items():               # preserve extended anatomy
