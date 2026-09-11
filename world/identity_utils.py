@@ -111,6 +111,7 @@ def msg_room_identity(
     char_refs: dict[str, "Character"],
     exclude: list | None = None,
     pre_resolved_refs: dict[str, dict] | None = None,
+    addressed_refs: tuple[str, ...] | None = None,
     **kwargs,
 ) -> None:
     """Send an identity-aware message to all observers in a room.
@@ -143,6 +144,19 @@ def msg_room_identity(
             §"Action Broadcast Sdesc Stability".  Missing placeholder
             keys or missing observer keys silently fall through to
             the live ``get_display_name`` lookup.
+        addressed_refs: Placeholder names whose referent this message is
+            aimed AT, e.g. ``("target",)``.  Those observers -- and only
+            those -- receive ``addressed=True``; everyone else receives
+            ``addressed=False``.  Without this the same kwargs dict goes
+            to the whole room, so the one person a pose points at cannot
+            be told apart from the audience, and an NPC waved at can only
+            ever observe the wave rather than answer it (#3211).
+
+            This mirrors what ``world/emote.py`` already computes per
+            observer for dot-poses and ``emote`` (``id(observer) in
+            referenced``); the two pose doors disagreed only because this
+            one had no way to say it.  An ``addressed`` passed directly in
+            ``**kwargs`` still wins, so existing callers are untouched.
         **kwargs: Extra keyword arguments passed through to each
             ``observer.msg()`` call (e.g. ``type="say"``).
 
@@ -160,6 +174,16 @@ def msg_room_identity(
     """
     exclude_set = set(exclude) if exclude else set()
     pre_resolved_refs = pre_resolved_refs or {}
+
+    # Who this message is AIMED at, resolved once rather than per observer.
+    # `id()` rather than `is` to match the idiom `world/emote.py` uses for
+    # the same question on the other pose door.
+    addressed_ids = set()
+    for ref in (addressed_refs or ()):
+        who = char_refs.get(ref)
+        if who is not None:
+            addressed_ids.add(id(who))
+    vary_addressed = bool(addressed_ids) and "addressed" not in kwargs
 
     # Plan the substitution ONCE, per OCCURRENCE rather than per name.
     #
@@ -236,4 +260,8 @@ def msg_room_identity(
             )
             parts.append(segments[index + 1])
 
-        observer.msg(text="".join(parts), **kwargs)
+        if vary_addressed:
+            observer.msg(text="".join(parts),
+                         addressed=id(observer) in addressed_ids, **kwargs)
+        else:
+            observer.msg(text="".join(parts), **kwargs)
