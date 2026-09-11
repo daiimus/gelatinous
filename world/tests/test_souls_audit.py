@@ -192,6 +192,13 @@ class TestTheSuiteDoesNotWriteToTheRealLog(EvenniaCommandTest):
         file the docs describe — the first version of this check
         assumed the docs and still leaked six lines."""
         import inspect
-        src = inspect.getsource(audit._under_test)
+        from world import audit_guard
+
+        # The body moved to `world/audit_guard.py` when combat's sink
+        # started using the same check (#2328) — one detector, because
+        # two copies of something this subtle would drift. Assert on
+        # the shared function, and that this module still routes to it.
+        src = inspect.getsource(audit_guard.under_test)
         self.assertIn("memory", src)
         self.assertIn("sys.argv", src)
+        self.assertIn("audit_guard", inspect.getsource(audit._under_test))

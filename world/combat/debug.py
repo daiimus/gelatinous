@@ -116,6 +116,13 @@ def _get_live_channel():
     return _CHANNEL_CACHE[0]
 
 
+def _under_test() -> bool:
+    """See :func:`world.audit_guard.under_test` — shared with the souls
+    audit log so the two cannot disagree about what a test run is."""
+    from world.audit_guard import under_test
+    return under_test()
+
+
 class _AuditRouter:
     """Message sink: audit file always, channel when live.
 
@@ -124,13 +131,20 @@ class _AuditRouter:
     """
 
     def msg(self, message, **kwargs):
-        # Always-on audit write.  A filesystem failure here must never
-        # break combat for players, so the (and only the) expected I/O
-        # failure mode is swallowed; anything else surfaces.
-        try:
-            _get_audit_logger().info(str(message))
-        except OSError:
-            pass
+        # Always-on audit write -- except under a test runner, which
+        # would otherwise append its fixtures to the PRODUCTION log.
+        # This one had it worst: months of suite runs left thousands of
+        # `MagicMock` references in `combat_audit.log` (#2328). Tests
+        # that are ABOUT the write patch `_under_test` to False.
+        #
+        # A filesystem failure here must never break combat for players,
+        # so the (and only the) expected I/O failure mode is swallowed;
+        # anything else surfaces.
+        if not _under_test():
+            try:
+                _get_audit_logger().info(str(message))
+            except OSError:
+                pass
         # Opt-in live mirror.  A developer who set SPLATTERCAST_LIVE is
         # in an active debugging session and *wants* failures to
         # surface, so this path is deliberately unguarded.
