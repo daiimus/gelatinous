@@ -14,6 +14,9 @@ from world.director.routines import (
 )
 
 
+from world.ownership import is_player_owned
+
+
 class CmdPatrol(default_cmds.MuxCommand):
     """
     Post an NPC to a base of operations and set its patrol beat.
@@ -125,6 +128,22 @@ class CmdPatrol(default_cmds.MuxCommand):
         if npc and not npc.is_typeclass(
                 "typeclasses.characters.Character", exact=False):
             self.caller.msg(f"{npc.get_display_name(self.caller)} is not a character.")
+            return None
+        # A PLAYER is a Character, so the type check above admits one --
+        # and then the director's heartbeat walks their body, executing
+        # exits and, at a gap tile, a `jump across` that the travel code
+        # documents can kill the traverser (#2567).
+        #
+        # `is_player_owned` rather than `has_account`: the account link
+        # exists only while PUPPETED, so a logged-out player character
+        # reads as ownerless by that field. `world/ownership.py` exists
+        # because this codebase has already lost bodies to that
+        # assumption.
+        if npc and is_player_owned(npc):
+            self.caller.msg(
+                f"{npc.get_display_name(self.caller)} is a player's "
+                f"character — a beat is for NPCs."
+            )
             return None
         return npc
 
