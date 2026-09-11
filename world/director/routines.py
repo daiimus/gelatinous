@@ -426,8 +426,18 @@ def tick_all() -> dict:
     outcome (diagnostics)."""
     from evennia.objects.models import ObjectDB
     counts: dict = {}
+    from world.ownership import is_player_owned
+
     for npc in ObjectDB.objects.filter(
             db_attributes__db_key="patrol_beat").distinct():
+        # Belt and braces with `CmdPatrol`'s refusal, because this query
+        # selects on the ATTRIBUTE and not on how it got written -- a
+        # beat set before that guard existed, by a build script, or by
+        # hand still lands here. A player's body is never walked by the
+        # heartbeat (#2567).
+        if is_player_owned(npc):
+            counts["player_skipped"] = counts.get("player_skipped", 0) + 1
+            continue
         try:
             outcome = tick_npc(npc)
         except Exception:  # noqa: BLE001 — one broken bot must not stall all
