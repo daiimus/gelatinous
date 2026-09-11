@@ -50,6 +50,22 @@ LLM_ACTION_BUFFER = 6          # room actions observed (no LLM) → next reply (
 class LLMNpcMixin:
     """The reusable LLM brain. Mix into a Character (before it in the MRO)."""
 
+    #: Non-verbal acknowledgements, used when someone thanks this NPC.
+    #: Deliberately free of BOTH pronouns and furniture: this fires for every
+    #: LLM NPC in the colony, so it cannot know their gender and cannot assume
+    #: there is a bar slab to knock on. It used to be imported straight from
+    #: ``world.bar`` -- a male, bar-specific set fired raw for all of them
+    #: (#2584). A class attribute rather than a module constant so an
+    #: archetype can override it in the ordinary Python way; ``db.ack_emotes``
+    #: overrides it per NPC for content that wants one voice only.
+    ACK_EMOTES = (
+        "gives a single slow nod, the kind that's already moved on to the next thing.",
+        "raises two fingers in a flat, unhurried salute.",
+        "grunts once, low, and lets that be the answer.",
+        "nods once, barely, and looks away again.",
+        "makes a small gesture with one hand and leaves it at that.",
+    )
+
     # --- engagement entrypoint -------------------------------------------
     def at_msg_receive(self, text=None, from_obj=None, **kwargs):
         """React to heard speech. Job-specific handlers get first crack; the
@@ -199,15 +215,45 @@ class LLMNpcMixin:
             pass
 
     def _acknowledge(self):
-        """A throttled, non-verbal nod to thanks."""
+        """A throttled, non-verbal nod to thanks, in this NPC's own register."""
         import random
         from time import monotonic
-        from world.bar import ACK_COOLDOWN, ACK_EMOTES
+        from world.bar import ACK_COOLDOWN
         now = monotonic()
         if now - (self.ndb.last_ack or 0) < ACK_COOLDOWN:
             return
         self.ndb.last_ack = now
-        delay(1.0, self.execute_cmd, f"emote {random.choice(ACK_EMOTES)}")
+        delay(1.0, self.execute_cmd, f"emote {random.choice(self._ack_emotes())}")
+
+    def _ack_emotes(self):
+        """Which acknowledgement register this NPC answers in.
+
+        Per-NPC content wins; otherwise anyone actually tending a counter
+        right now gets the bar's set, and everyone else gets the generic
+        one. The bar question is asked of the POST (``tender_at`` naming
+        this NPC), never of a role flag on the body -- that flag is what
+        #2378 exists to remove, and a ripper in a cold room has no taps.
+        """
+        override = self.db.ack_emotes
+        if override:
+            return tuple(override)
+        try:
+            from typeclasses.bar import BarCounter
+            from world.bar import BAR_ACK_EMOTES, tender_at
+            room = self.location
+            for obj in (room.contents if room is not None else ()):
+                # Ask only of an actual counter. `tender_at` takes a
+                # fixture on faith, and an UNPOSTED one answers "whoever
+                # is here serves" -- so handed a chair, a corpse or the
+                # NPC itself it cheerfully names the first NPC in the
+                # room, which put the taps back in every cold room.
+                if not isinstance(obj, BarCounter):
+                    continue
+                if tender_at(obj) is self:
+                    return BAR_ACK_EMOTES
+        except Exception:  # noqa: BLE001 — the register is flavour, not truth
+            pass
+        return self.ACK_EMOTES
 
     # --- classification --------------------------------------------------
     def _is_npc_speaker(self, speaker):
