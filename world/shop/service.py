@@ -210,7 +210,7 @@ def serve_from_board_cart(post, speech, patron, by, addressed=False):
                             style="board")
 
 
-def _check_stock(post, arg, patron, by):
+def _check_stock(post, arg, patron, by, style="shelf"):
     """What is actually on this counter's shelf.
 
     SOLD-OUT LINES ARE NOT ON OFFER (#2459). `shelf_of` lists every
@@ -226,13 +226,26 @@ def _check_stock(post, arg, patron, by):
     if post is None:
         return "no counter to check"
     stock = post.db.item_inventory or {}
-    finite = not post.db.is_infinite
+    # `always_finite` included, because the docstring above promises this
+    # mirrors `serve_from_shelf` and without it it did not: a board-style
+    # counter is finite by STYLE even when `is_infinite` is set, so the
+    # tool would advertise a tray the till then refuses -- the very split
+    # this function exists to close. Latent today (the live cart carries
+    # is_infinite=False, so both branches already agree); fixed so they
+    # cannot stop agreeing (#2459).
+    lines = STYLES.get(style, STYLES["shelf"])
+    finite = lines["always_finite"] or not post.db.is_infinite
     names = [
         display for proto_key, display, _ in shelf_of(post)
         if not finite or int(stock.get(proto_key, 0) or 0) > 0
     ]
     return ("On the shelf: " + ", ".join(names) + ".") if names \
         else "The shelf is empty."
+
+
+def _check_stock_board(post, arg, patron, by):
+    """A cart's tray is finite by style, the same way its till is."""
+    return _check_stock(post, arg, patron, by, style="board")
 
 
 for _role in SHELF_ROLES:
@@ -248,4 +261,4 @@ register("butcher", serve_from_board_cart,
          aliases=("butcher", "cook"),
          fallback="Board's behind me. It says what I sell.",
          archetype="butcher",
-         tools={"check_stock": _check_stock})
+         tools={"check_stock": _check_stock_board})

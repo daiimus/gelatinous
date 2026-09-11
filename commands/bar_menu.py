@@ -114,9 +114,36 @@ def _recipe_keywords(name):
 
     Colour stays in the NAME — it is the bartender's branding and it
     renders. It just isn't part of what the drink is called.
+
+    STOPWORDS ARE NOT KEYWORDS (#2459). The length test alone drops
+    ``a``/``an``/``of``/``in``/``on``/``to``, but lets ``the``, ``and``
+    and ``with`` through -- so a bartender saving "The Reactor" armed the
+    board with the keyword ``the``, and any addressed line containing that
+    word became an order. "to sully, the shift was long" poured a Reactor
+    and took the money, because an ADDRESSED line only has to match the
+    board (``resolve_order``, by design).
+
+    The sibling derivation ``world.bar._drink_aliases`` already filtered
+    these; the two disagreed. It is the same set, imported rather than
+    copied, so they cannot drift apart again.
+
+    If filtering would leave NOTHING -- a drink named "The And" -- the
+    whole visible name becomes a single phrase keyword instead. A phrase
+    still orders the drink by its own name and cannot be tripped by a
+    stray word in conversation, where falling back to the unfiltered
+    words would reintroduce exactly this defect.
     """
     from evennia.utils.ansi import strip_ansi
-    return tuple(w for w in strip_ansi(name).lower().split() if len(w) > 2)
+
+    from world.bar import _ALIAS_STOPWORDS
+
+    plain = strip_ansi(name).lower()
+    words = tuple(w for w in plain.split()
+                  if len(w) > 2 and w not in _ALIAS_STOPWORDS)
+    if words:
+        return words
+    stripped = plain.strip()
+    return (stripped,) if stripped else ()
 
 
 #: Preparation methods — flavour only (decision: no mechanical effect in v1).
