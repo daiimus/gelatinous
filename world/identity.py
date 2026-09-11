@@ -2410,7 +2410,7 @@ def _broadcast_unmask_with_action(
     action_pre_resolved_refs: dict,
     action_exclude: list,
     source: str | None = None,
-) -> None:
+) -> bool:
     """Composed unmask broadcast — action emote + reveal suffix per
     observer in a single message.
 
@@ -2442,7 +2442,19 @@ def _broadcast_unmask_with_action(
     applied here exactly as :func:`_broadcast_unmasking` would.
     """
     if old_uid is None or new_uid is None or old_uid == new_uid:
-        return
+        # No reveal to make. Report that, so the caller can still emit
+        # the plain action -- these are ONE message by design, and this
+        # return used to drop BOTH (#2609).
+        #
+        # Emitting action-only from here is not an option: the loop
+        # below is keyed on `old_uid` / `new_uid` for its memory
+        # lookups, and with the two equal an observer who knows the
+        # character would be told they are "revealed" as themselves.
+        # The caller's `on_committed` is the same `msg_room_identity`
+        # call with the same template and the same PRE-MUTATION
+        # `pre_resolved_refs` snapshot, so the fallback renders
+        # identically by construction.
+        return False
 
     now_iso = _recognition_now_iso()
     exclude_set = set(action_exclude or [])
@@ -2574,6 +2586,7 @@ def _broadcast_unmask_with_action(
         observer.msg(combined)
 
     del source  # reserved for future debug/flavor routing
+    return True
 
 
 class apply_signature_change:
@@ -2646,12 +2659,16 @@ class apply_signature_change:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        #: True when an action+reveal line actually went out. A caller
+        #: that suppressed its own action broadcast in favour of this
+        #: one reads it to know whether to emit after all (#2609).
+        self.broadcast = False
         if exc_type is not None:
             # Mutation failed; do not broadcast.
             return False
         new_uid = get_apparent_uid(self.char)
         if self.action_template is not None:
-            _broadcast_unmask_with_action(
+            self.broadcast = _broadcast_unmask_with_action(
                 self.char,
                 self._old_uid,
                 new_uid,
