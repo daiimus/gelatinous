@@ -104,11 +104,11 @@ work:
 | Phase | Status | Notes |
 |---|---|---|
 | Phase 1 — Documentation & Architectural Clarification | **✅ Complete** | All four tasks shipped. Task 1: `LETHAL_CAPACITY_NAMES` comment in `world/medical/constants.py` now explicitly documents the union role. Task 2: `MedicalState.is_dead` / `is_unconscious` / `calculate_body_capacity` docstrings spell out the substrate-vs-runtime split and cross-reference the audit's phase numbers. Task 3: HEALTH spec's brain-death `# NEXT:` pseudo-code now explicitly points at audit Phase 2 instead of reading as an open design note. Task 4: `specs/roadmaps/MEDICAL_SUBSTRATE_READINESS.md` index lists every unconsumed flag with its intended consumer system and audit phase. |
-| Phase 2 — Brain Death Blocks Revival | Not started | `_check_medical_revival_conditions` still gates only on `is_dead()`. |
+| Phase 2 — Brain Death Blocks Revival | Not started — **and likely made moot by the #3248 ruling** | `_check_medical_revival_conditions` still gates only on `is_dead()`. Note: if brain capacity 0 IS death, a brain-destroyed character stays `is_dead()` until the brain is restored, so the existing `not is_dead()` gate already refuses revival without a transplant — Phase 2's intent falls out without Phase 2. Re-scope rather than build. |
 | Phase 3 — Failure-Mode Surfacing | Not started | Empty-distribution / unbacked-container warnings not wired. |
 | Phase 4 — Vestigial-Flag Deletion | Not started | All flags listed under "Vestigial (delete)" still present. |
 | Phase 5 — `LETHAL_CAPACITY_NAMES` Split | Not started | Split into `IS_DEAD_LETHAL_CAPACITIES` + `TARGETING_VITAL_CAPACITIES` not done. |
-| Phase 6 — Chronic Medical Conditions Framework (Track 2) | Not started | Substrate gate for kidney death + other long-term conditions. |
+| Phase 6 — Chronic Medical Conditions Framework (Track 2) | **Partially shipped** | The KIDNEY INSTANCE shipped: `RenalFailureCondition` is built and wired. The GENERIC framework did not — it extends `MedicalCondition` directly, not the planned `ChronicCondition` base, so `LiverFailure`/`RespiratoryFailure` would each be hand-rolled today. Phase 12 task 1 ("extending `ChronicCondition` from Phase 6") is the part still outstanding. |
 | Phase 7 — Movement Policing Substrate (Track 2) | Not started | Substrate gate for `moving` incapacitation + paralysis. |
 | Phase 8 — Senses System (Track 2) | Not started | Substrate gate for blindness / deafness. |
 | Phase 9 — Equipment-Handling Substrate (Track 2) | Not started | Substrate gate for `manipulation` consequences. |
@@ -229,9 +229,9 @@ the form of declarative metadata**.
 | Item | Current Code | Spec Intent | Verdict |
 |---|---|---|---|
 | `is_dead()` checks `blood_pumping`, `breathing`, `digestion`, `neck_integrity`, blood loss | Yes | Yes (`HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` L731–746) | **Correct** |
-| Brain destruction → unconsciousness, not death | Yes | Yes (L732 "consciousness is unconsciousness, not death") | **Intentional** |
+| Brain destruction → unconsciousness, not death | Yes | Yes (L732 "consciousness is unconsciousness, not death") | **⚠️ SUPERSEDED 2026-09-11 — owner ruling (#3248): _"If consciousness capacity hits 0 they die. It's capacity NOT the actual level."_ `is_dead` is to check `calculate_body_capacity("consciousness")` — the ORGAN FLOOR, which moves only with brain HP — not `self.consciousness`, the runtime value that pain/blood-loss/suppression drive to zero on every knockout. Was Intentional; now a deliberate design change.** |
 | Brain destruction eventually kills via secondary bleeding | Yes (head wound → `BleedingCondition` → blood loss → `is_dead`) | Implicit | **Works** |
-| Kidney loss is fatal | **No** (`is_dead` never reads `blood_filtration`) | Schema says `total_loss_fatal: True` | **DRIFT** |
+| Kidney loss is fatal | **Yes, since `RenalFailureCondition` shipped** | Schema says `total_loss_fatal: True` | **✅ RESOLVED (true-up 2026-09-11)** — `MedicalState._update_renal_failure()` spawns/clears it from the `blood_filtration` capacity inside `update_vital_signs`; the condition kills by draining toward the existing blood-loss floor ("No new death-verdict path"), and clears when a kidney is restored — cyber or donor. `is_dead` still never reads `blood_filtration`, and correctly so. |
 | Comment above `LETHAL_CAPACITY_NAMES` "Keep in sync with is_dead()" | Misleading — it's actually a superset (adds `consciousness` for vital-location bias) | Spec clarifies | **✅ RESOLVED** (Phase 1 Task 1 — comment at `world/medical/constants.py:273-279` now explicitly documents the union role) |
 
 **Action**: ~~Rewrite the `LETHAL_CAPACITY_NAMES` comment to explicitly say~~
@@ -240,6 +240,16 @@ the form of declarative metadata**.
 ~~death".~~ ✅ **Done.** The comment now explicitly states the
 union-of-lethal-and-targeting role and notes consciousness drives unconsciousness, not death. ~~This stops future devs from incorrectly "syncing" `consciousness`~~
 into `is_dead`. **Resolve kidney case** as a separate design call (below).
+
+> **⚠️ True-up 2026-09-11.** The warning above ("stops future devs from
+> incorrectly syncing `consciousness` into `is_dead`") now sits against an
+> owner decision to do exactly that — see the Category A brain row. The
+> warning was aimed at the AMBIGUITY between the two consciousness values,
+> not at the outcome: `self.consciousness` (runtime, driven by pain, blood
+> loss and suppression) must never gate death, because every knockout would
+> become a kill. `calculate_body_capacity("consciousness")` (organ floor,
+> brain HP only) is the safe half, and is what the ruling names. Keep the
+> warning; it is still right about the runtime value.
 
 ### Category B — Declarative Metadata Awaiting Substrate
 
@@ -253,7 +263,7 @@ are waiting on a consumer system that hasn't been built.
 | `vital` (on `Organ`) | 0 | None — superseded by data-driven `_get_vital_locations` | **Vestigial**: delete. |
 | `fatal_threshold` (on capacity) | 0 | Could replace the `<= 0.0` literal in `is_dead` if `is_dead` were refactored to be data-driven | Keep until Phase 7 audit (delete or wire). |
 | `directly_fatal` (on capacity) | 0 (1 test assertion) | Same as `fatal_threshold` — data-driven `is_dead` | Keep until Phase 7 audit. |
-| `total_loss_fatal: True` on `blood_filtration` | 0 | **Chronic Conditions framework** — total kidney loss should spawn a fatal `RenalFailure` condition that takes time to kill (not instant death) | **Substrate gap**: chronic conditions. |
+| `total_loss_fatal: True` on `blood_filtration` | 0 (still unread — the behaviour is imperative, not flag-driven) | **Chronic Conditions framework** — total kidney loss should spawn a fatal `RenalFailure` condition that takes time to kill (not instant death) | **✅ BEHAVIOUR SHIPPED (true-up 2026-09-11)** — `RenalFailureCondition` exists and is wired via `_update_renal_failure()`. The FLAG itself is still unconsumed; the capacity threshold is hardcoded in constants. Flag disposition unchanged (Phase 4/5). |
 | `incapacitation_threshold: 0.15` on `moving` | 0 | **Movement Policing system** — when capacity is below this, character cannot move | **Substrate gap**: movement policing. |
 | `unconscious_threshold` (in `consciousness` capacity dict) | 0 | None — duplicated as top-level `CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD` (the one that's actually read) | **Vestigial**: delete. |
 | `modifiers: ["pain", "blood_pumping", ...]` on `consciousness` | 0 | The cascade is already implemented imperatively in `update_vital_signs`; this list is documentation only | **Vestigial**: delete or convert to spec comment. |
