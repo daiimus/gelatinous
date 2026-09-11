@@ -65,6 +65,25 @@ owner has already decided to defer is *not* homework, and filing it as
 made, the issue moves to `parked` or loses its status label entirely — it
 does not stay in `needs-decision` because it is still open.
 
+## The board
+
+**https://github.com/users/daiimus/projects/1** — *Gelatinous Roadmap*.
+
+Fields, and what each is for:
+
+| field | values | why it exists |
+|---|---|---|
+| **Status** | Needs decision · Parked · Blocked · Ready · In progress · Done | the execution pipeline. `Ready` is the one that matters — decided *and* scoped, so it can be picked up without asking anything. |
+| **Area** | the nine subsystems | grouping. `souls` is the densest by a wide margin. |
+| **Work type** | defect · enhancement · design · question · debt | filtering. "show me defects in souls" is the query that turns 51 into a sitting. |
+| **Effort** | S · M · L · XL | unset by default; fill in when scoping, not when filing. |
+| **Roadmap phase** | free text | the link back to a spec phase. This is the anti-drift hook below. |
+
+The labels and the board fields are kept deliberately parallel, because
+labels are what you see from the CLI and the issue list, and fields are what
+you see on the board. Labels are the source of truth; if they disagree, the
+labels win.
+
 ## Anti-drift: the one rule that would have caught the last three
 
 **Every roadmap phase gets exactly one issue, and the phase status and the
