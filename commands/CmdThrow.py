@@ -297,11 +297,21 @@ class CmdThrow(Command):
         remaining = getattr(obj.ndb, NDB_COUNTDOWN_REMAINING, None)
         if remaining is not None and remaining <= 0:
             self.caller.msg(MSG_THROW_TIMER_EXPIRED)
-            # Apply damage to caller using medical system
-            blast_damage = obj.db.blast_damage if obj.db.blast_damage is not None else 10
-            damage_type = obj.db.damage_type if obj.db.damage_type is not None else 'blast'
-            self.caller.take_damage(blast_damage, location="chest", injury_type=damage_type)
-            obj.delete()
+            # ONE EXPLOSION, not two (#2555).
+            #
+            # This used to hand-roll its own: damage the thrower, delete
+            # the grenade, return. That skipped the dud roll, the room
+            # broadcast, bystander damage and the chain cascade that
+            # `explode_standalone_grenade` performs -- and it deleted an
+            # object a live timer still referenced, so the deadline
+            # sweep could cook off a grenade that no longer existed.
+            #
+            # A cook-off in the hands is a detonation like any other.
+            # The only thing special about it is where it happens, and
+            # the canonical path already reads the location.
+            from commands.explosion_utils import explode_standalone_grenade
+
+            explode_standalone_grenade(obj)
             return False
 
         return True

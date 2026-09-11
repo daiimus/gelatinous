@@ -30,7 +30,7 @@ Run via::
     evennia test --keepdb world.tests.test_throw_characterization
 """
 
-from unittest import TestCase
+from unittest import TestCase, mock
 from unittest.mock import MagicMock, patch
 
 from world.combat.constants import (
@@ -221,19 +221,39 @@ class TestGetObjectToThrow(TestCase):
         self.assertIn(MSG_THROW_GRAPPLED, caller_messages(caller))
 
     def test_expired_grenade_explodes_in_hand(self):
-        """A held grenade whose countdown hit zero damages the
-        thrower and is deleted instead of being thrown."""
+        """A held grenade whose countdown hit zero detonates instead of
+        being thrown.
+
+        The CONFIRMED BEHAVIOUR is unchanged — it goes off in your hand
+        rather than leaving it, and the blast catches you.
+
+        What changed is the MECHANISM (#2555). This used to assert a
+        hand-rolled explosion inside the validator: `take_damage` on the
+        thrower and `grenade.delete()`, directly. That path skipped the
+        dud roll, the room broadcast, bystander damage and the chain
+        cascade, and deleted an object a live timer still referenced.
+
+        It now routes through `explode_standalone_grenade`, which reads
+        the grenade's location — `get_explosion_room` resolves
+        `grenade.location = character` to that character's room — so the
+        thrower is still caught, along with everyone else standing
+        there. Asserting the ROUTE rather than the internals, because
+        the internals were the defect.
+        """
         grenade = make_obj(
             "grenade", is_explosive=True, blast_damage=12, damage_type="blast"
         )
         grenade.ndb = Bag(countdown_remaining=0)
         caller = make_caller(hands={"right": grenade})
         cmd = make_throw_cmd(caller, "grenade")
-        self.assertIsNone(cmd.get_object_to_throw())
-        caller.take_damage.assert_called_once_with(
-            12, location="chest", injury_type="blast"
-        )
-        grenade.delete.assert_called_once()
+        with mock.patch(
+            "commands.explosion_utils.explode_standalone_grenade"
+        ) as detonate:
+            self.assertIsNone(cmd.get_object_to_throw())
+        detonate.assert_called_once_with(grenade)
+        # The validator no longer does the explosion itself.
+        caller.take_damage.assert_not_called()
+        grenade.delete.assert_not_called()
 
 
 # ===================================================================
