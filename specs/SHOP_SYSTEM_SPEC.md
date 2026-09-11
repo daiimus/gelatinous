@@ -2098,6 +2098,12 @@ Shipped well past the Phase-1 vending machine (#1293–#1298):
 - **Shopkeeper typeclass** (LLM-voiced, transactions deterministic):
   spoken orders resolve against the counter's real shelf and run
   ``purchase_item``; the model supplies voice and memory, never prices.
+  *(Superseded #2350/#2378 — the BEHAVIOUR is unchanged, the class is
+  gone: `Shopkeeper` folded into `LLMNpc`, and the code it carried is now
+  keyed by `post_role` in ``world/shop/service.py``
+  (``serve_from_shelf`` / ``match_from_shelf``, registered for the shelf
+  roles through ``world/service.py``), so whoever stands the counter
+  sells.)*
 - **Hand delivery**: base ``ShopContainer.purchase_item`` lands the item
   in the buyer's free hand; bars and the food cart keep their
   counter/board overrides. Tills: ``db.register`` credits when wired.
