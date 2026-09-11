@@ -12,6 +12,26 @@ import re
 from world.mapping import export_map
 
 
+def _script_safe(payload):
+    """Escape a JSON string for embedding in an inline <script> element.
+
+    json.dumps does NOT escape "</script>", so a string containing it would
+    close the script element and everything after it would parse as markup.
+    Escaping "<" (plus the two line separators JS treats as newlines) is the
+    standard hardening -- \\u003c is a valid escape inside a JS string,
+    and "<" only ever occurs inside string values in JSON, never in its
+    syntax, so this is safe to apply to any JSON text.
+
+    Shared rather than inlined: the 2D builder carried this and the 3D one
+    did not, and a hazard documented in only one branch is not documented
+    (#2678). Every inline JSON payload in this module goes through here.
+    """
+    return (payload
+            .replace("<", "\\u003c")
+            .replace("\u2028", "\\u2028")
+            .replace("\u2029", "\\u2029"))
+
+
 def build_atlas_html(game_dir=".", staff=False, fragment=False):
     data = export_map()
 
@@ -74,17 +94,7 @@ def build_atlas_html(game_dir=".", staff=False, fragment=False):
 
     template = open(os.path.join(game_dir,
                                  "scripts/atlas/template.html")).read()
-    # json.dumps does NOT escape "</script>", so a string containing it would
-    # close the script element and everything after it would parse as markup.
-    # Escaping "<" (plus the two line separators JS treats as newlines) is the
-    # standard hardening — \u003c is a valid escape inside a JS string, and
-    # "<" only ever occurs inside string values in JSON.
-    payload = (
-        json.dumps(data)
-        .replace("<", "\\u003c")
-        .replace("\u2028", "\\u2028")
-        .replace("\u2029", "\\u2029")
-    )
+    payload = _script_safe(json.dumps(data))
     html = template.replace("/*__DATA__*/null", payload)
     if fragment:
         # served inside the site's own page: the shell owns <title> and
@@ -140,8 +150,9 @@ def build_atlas3d_html(game_dir=".", fragment=False, account=None):
     models_src = open(models_path).read()
     html = open(tpl_path).read()
     html = html.replace("/*__THREE__*/", three_src)
-    html = html.replace("/*__DATA__*/null", json.dumps(data, separators=(",", ":")))
-    html = html.replace("/*__MODELS__*/null", models_src)
+    html = html.replace("/*__DATA__*/null",
+                        _script_safe(json.dumps(data, separators=(",", ":"))))
+    html = html.replace("/*__MODELS__*/null", _script_safe(models_src))
     if fragment:
         # served inside the site's own page: the shell owns <title>,
         # the charset, and the page background
