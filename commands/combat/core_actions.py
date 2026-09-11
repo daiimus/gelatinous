@@ -472,7 +472,30 @@ class CmdAttack(Command):
 
             # Check if target should also get an initiate message
             # Conditions: target wasn't already in combat OR target wasn't targeting anyone
-            should_show_target_initiate = (
+            #
+            # A BODY DOES NOT SQUARE UP (#1584). The conditions below ask
+            # only whether the target was already enrolled or already had
+            # a target -- never whether they can still react. So attacking
+            # a downed or dying character made THEM emit a combat initiate
+            # pose: "Bravo flexes, joints popping, eyes locked on you."
+            # from someone whose `is_dead()` is already True and whose
+            # session is running the dying narrative.
+            #
+            # The round loop was never the culprit here: it skips the dead
+            # and unconscious and `_remove_incapacitated` ejects them, so
+            # the handler dissolves on the next tick. The pose is emitted
+            # at ENROLMENT, before any round runs, which is why it looked
+            # like the dying kept taking turns.
+            #
+            # Only the target's DEFENSIVE reaction is gated. The attacker
+            # still swings -- a body remains attackable, which is the half
+            # of this the issue explicitly allowed.
+            target_can_react = not (
+                (hasattr(target, "is_dead") and target.is_dead())
+                or (hasattr(target, "is_unconscious")
+                    and target.is_unconscious())
+            )
+            should_show_target_initiate = target_can_react and (
                 not target_was_in_final_handler or 
                 (target_was_in_final_handler and not final_handler.get_target_obj(next((e for e in final_handler.db.combatants if e["char"] == target), None)))
             )
