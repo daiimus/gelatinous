@@ -446,6 +446,40 @@ def _resolve_advance_cross_room(
                     break
 
         if is_yielding and not is_targeted_by_others_not_victim:
+            # THE VICTIM GETS A ROLL, as they do on the walk door
+            # (`typeclasses/exits.py`). This door had none: its only
+            # contest is advancer-vs-ADVANCE-TARGET motorics, and the
+            # grappled victim's stats appear nowhere in it. A victim who
+            # would break free by being walked through a doorway was
+            # carried along by `advance` with no contest at all -- and
+            # in a fight, `advance` is the door a grappler actually uses
+            # (#2602).
+            #
+            # Same opposed grit check, same consequence: a successful
+            # resist breaks the grapple and cancels the move.
+            from random import randint
+
+            victim_grit = getattr(grappled_victim, "grit", 1)
+            grappler_grit = getattr(char, "grit", 1)
+            resist_roll = randint(1, max(1, victim_grit))
+            drag_roll = randint(1, max(1, grappler_grit))
+            splattercast.msg(
+                f"{DEBUG_PREFIX_HANDLER}_ADVANCE_DRAG_RESIST: "
+                f"{grappled_victim.key} rolls {resist_roll} vs "
+                f"{drag_roll} ({char.key})"
+            )
+            if resist_roll > drag_roll:
+                char.msg(
+                    f"|r{get_display_name_safe(grappled_victim, char)} "
+                    f"resists your attempt to drag them!|n"
+                )
+                grappled_victim.msg(
+                    f"|gYou resist {get_display_name_safe(char, grappled_victim)}"
+                    f"'s attempt to drag you!|n"
+                )
+                _break_grapple(handler, char, grappled_victim, splattercast)
+                return
+
             should_drag_victim = True
             splattercast.msg(
                 f"{DEBUG_PREFIX_HANDLER}_ADVANCE_DRAG: {char.key} meets "
@@ -551,6 +585,29 @@ def _resolve_advance_cross_room(
                 f"failed cross-room advance."
             )
             handler.resolve_bonus_attack(target, char)
+
+
+def _break_grapple(handler, grappler, victim, splattercast):
+    """Clear both sides of a grapple after a successful resist.
+
+    The walk door clears BOTH entries -- grappler and victim -- and so
+    must this one, or the pair is left half-grappled and the next tick
+    reads two different answers to "is this a grapple" (#2602).
+    """
+    try:
+        for entry in handler.db.combatants:
+            if entry.get("char") in (grappler, victim):
+                entry[DB_GRAPPLING_DBREF] = None
+                entry[DB_GRAPPLED_BY_DBREF] = None
+        splattercast.msg(
+            f"{DEBUG_PREFIX_HANDLER}_ADVANCE_DRAG_RESIST: "
+            f"{victim.key} broke free of {grappler.key}."
+        )
+    except Exception:  # noqa: BLE001 — a broken grapple never stalls a turn
+        splattercast.msg(
+            f"{DEBUG_PREFIX_HANDLER}_ADVANCE_DRAG_RESIST: "
+            f"could not clear grapple state for {victim.key}."
+        )
 
 
 def _do_advance_move(
