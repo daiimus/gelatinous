@@ -3,7 +3,9 @@
 > **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
-> - "Phase 3: Advanced Features 📋 PENDING — layer conflict detection and resolution" is **stale**; it is fully implemented in `clothing_mixin.wear_item`. Staff targeting ships as `CmdDress`/`CmdUndress`.
+> - "Phase 3: Advanced Features 📋 PENDING — layer conflict detection and resolution" is **stale**; it is fully implemented in `clothing_mixin.wear_item`. Staff targeting ships as `CmdDress`/`CmdUndress`. (Precision, 2026-09-11: those two are `cmd:all()` PLAYER verbs gated on trust or incapacity — `commands/CmdClothing.py:834`, `:1060`, classes at `:813` and `:1041`. No staff-only clothing verb exists, and the `@wear` / `@remove` commands sketched in §Staff Commands were never built.)
+> - **"Meaningful transition validation" — style changes requiring both a `coverage_mod` AND a `desc_mod` — was NEVER IMPLEMENTED and must not be.** `can_style_property_to()` checks membership only (`typeclasses/items.py:343-351`). 35 of the 60 style states in `world/prototypes.py` would be refused if the rule were enforced, every restore-to-`normal` among them. See §Style Validation and §Key Design Decisions.
+> - **`desc_mod` values do not combine.** `get_current_worn_desc()` (`typeclasses/items.py:321-341`) returns the FIRST non-empty `desc_mod` in sorted property order and stops, and a `desc_mod` **replaces** the whole `worn_desc`. The combined-sentence examples in §Multi-Property Combination Examples are not what renders. `coverage_mod` values DO combine.
 
 ## Implementation Status: CORE COMPLETE ✅
 
@@ -365,6 +367,34 @@ jacket = {
 #    Description: "a black leather jacket with sleeves rolled up, hanging open with brass zipper gleaming"
 ```
 
+> **CORRECTED 2026-09-11 (#2445 item 8).** The **coverage** half of this example
+> is exactly what ships. `get_current_coverage()` (`typeclasses/items.py:289-319`)
+> walks every active property in sorted order and applies all of their
+> `coverage_mod` lists cumulatively, so combination 4 really does reduce to
+> `["back"]`.
+>
+> The **description** half does not ship. `get_current_worn_desc()`
+> (`typeclasses/items.py:321-341`) returns the FIRST non-empty `desc_mod` in
+> sorted property order and stops. Two consequences:
+>
+> - `desc_mod` values never concatenate. In combination 4 the code renders the
+>   `adjustable`/`rolled` description alone and drops the `closure`/`unzipped`
+>   sentence entirely. Sorted order means `adjustable` always outranks
+>   `closure`.
+> - A `desc_mod` **replaces** the whole `worn_desc`; it is not a suffix. That is
+>   what the `style_configs` structure comment in §"Wearable Item Class" at the
+>   top of this spec already says (*"Empty desc_mod = use base worn_desc"*), so
+>   the fragment-style values used above (`"with sleeves rolled up"`, `"zipped
+>   tight against the cold"`, `"hanging open"`) are not how live garments are
+>   authored. All 35 non-empty `desc_mod` values in `world/prototypes.py` are
+>   complete standalone worn descriptions — see `WORK_COVERALLS`,
+>   `world/prototypes.py:3833-3848`.
+>
+> Authors should therefore write each state's `desc_mod` as a full description
+> that reads correctly on its own, and accept that when two properties are both
+> off-default only the `adjustable` one narrates. The example above is kept for
+> the combinatorial *coverage* reasoning, which is still correct.
+
 #### Style Validation
 - **Configuration check**: Commands only work if item has the required style_configs
 - **Meaningful transition validation**: Style changes require both coverage_mod and desc_mod to be populated
@@ -373,7 +403,75 @@ jacket = {
 - **State tracking**: Items remember their current style_properties across sessions
 - **Layer interaction**: Style changes check for layer conflicts with other worn items
 
+> **CORRECTED 2026-09-11 (#2445 item 8).** Of those six bullets, two are
+> honoured as written, one is honoured more narrowly than it reads, and three
+> are not honoured at all.
+>
+> **Honoured.** *Configuration check* — `commands/CmdClothing.py:449` and `:553`
+> refuse before any other style check if the garment declares no `adjustable` /
+> `closure` entry. *State tracking* — `style_properties` is a persisted
+> `AttributeProperty` (`typeclasses/items.py:208`).
+>
+> **Meaningful transition validation — never shipped, and must not be.**
+> `Item.can_style_property_to()` (`typeclasses/items.py:343-351`) checks
+> membership only, and says why: *"Always allow transitions to valid states -
+> the validation is structural, not functional."* The both-populated rule would
+> break the shipped wardrobe: of the 60 style states declared in
+> `world/prototypes.py`, **35 leave `coverage_mod` and/or `desc_mod` empty, and
+> all 24 prototypes that declare `style_configs` carry at least one of them** —
+> including every one of the 12 restore-to-`normal` states (`WORK_COVERALLS`,
+> `world/prototypes.py:3835`), the dust poncho's `unzipped`, which is also its
+> DEFAULT state (`DUST_PONCHO`, `world/prototypes.py:3941`, `:3944`), the
+> slicker's `hood_down` (`SEALED_SLICKER`), and the thermal's `rolled`, which
+> changes prose without changing coverage (`world/prototypes.py:4009-4012`).
+> Under this rule nothing could ever be unrolled, unsnapped, lowered or
+> straightened again. This spec's own boot example above (`zipped`/`unzipped`,
+> both with an empty `coverage_mod`) fails it too.
+>
+> **Defensive command validation — honoured, but structurally rather than
+> semantically.** The commands refuse a property the garment does not declare
+> (`:449`, `:553`), a target state the garment does not declare
+> (`_target_style_state`, `commands/CmdClothing.py:383-394`, called at `:455`
+> and `:561`), and a state that is already current (`:464`, `:570`) — that last
+> one is the only sense in which "a transition with no effect" is prevented.
+> Nothing tests whether a change would be *meaningful*. One consequence: the
+> `"That wouldn't change anything about the ..."` refusal still present at
+> `:469` and `:575` is unreachable, because its target state was read out of
+> `style_configs` a few lines earlier, so the guard it sits behind cannot fail.
+>
+> **IC failure messages — half stale.** The zipper line is verbatim
+> (`commands/CmdClothing.py:555`). The sleeve line is not: the rollup refusal
+> reads `The <item> doesn't have anything to roll up.`
+> (`commands/CmdClothing.py:451`) — phrased from the command rather than from
+> sleeves, which is what the garment-driven targeting of #2742 requires, since
+> `rollup` now also reaches hoods and neckties. `button`/`unbutton` add a
+> third: `The <item> doesn't have buttons.` (`:557`).
+>
+> **Layer interaction — not implemented, and the gap is reachable.** A style
+> change never consults layering and never refuses on it. It **re-seats** the
+> garment: `set_style_property` calls `Character.refresh_worn_coverage`
+> (`typeclasses/items.py:370-376` → `typeclasses/clothing_mixin.py:613-655`),
+> which lifts the item out of `worn_items` everywhere and re-inserts it by
+> `layer` at its new coverage — which is what lets the layer beneath surface
+> the moment a sleeve rolls (#2398). Layer *conflict* detection remains a
+> **wear**-time rule only (`clothing_mixin.wear_item`, `:116-146`;
+> `clothing_mixin.blocking_garments`, `:31-61`). Record this as a gap, not a
+> ruling: a state whose `coverage_mod` ADDS a location can seat a garment where
+> `wear_item` would have refused it — `hood_up` on the tox-sealed slicker adds
+> `+head` at layer 3, the same layer as `HOODIE_HOOD_UP`, and the developer
+> hoodie's `rolled` adds `+head` at layer 2, the same layer as `BALACLAVA`.
+> Whether a style change should refuse on conflict, or keep re-seating
+> silently, is still open; this note describes what runs today.
+
 #### Defensive Validation Logic
+> **NOT IMPLEMENTED (#2445 item 8).** `validate_style_transition()` does not
+> exist anywhere in the codebase — a repo-wide grep for `validate_style` returns
+> nothing. The sketch below was never built, and the both-populated rule at its
+> heart is the one corrected immediately above. The validation that did ship is
+> split between `Item.can_style_property_to()` (`typeclasses/items.py:343`) and
+> the two style commands (`commands/CmdClothing.py:423-492` and `:518-598`).
+> Kept because it records the reasoning the design started from.
+
 All style commands perform comprehensive validation before executing transitions:
 
 ```python
@@ -846,6 +944,32 @@ def _process_color_codes(self, description):
 7. **Apply style change** (update specific property in style_properties)
 8. **Provide feedback** with style change description
 
+> **CORRECTED 2026-09-11 (#2445 item 8).** Steps 4-6 are not what runs. The
+> shipped sequence is 1, 2, 3, then:
+>
+> 4. **Ask the GARMENT for the target state.** The command no longer names it.
+>    `_target_style_state()` (`commands/CmdClothing.py:383-394`) walks the
+>    command's intent list — `_ADJUST_TO`, `_RESTORE_TO`, `_CLOSE_TO`,
+>    `_OPEN_TO` (`:377-380`) — and takes the first state the garment's own
+>    `style_configs` declares; `button`/`unbutton` reverse their list so the
+>    buttoned pair is preferred (`:550-551`). So `rollup` can land on
+>    `loosened` or `hood_up` and `button` on `buttoned`, which the hard-coded
+>    four could never reach (#2742). Prose comes from the STATE, not the
+>    command (`_STYLE_PROSE`, `:353-363`).
+> 5. **Refuse only if the state is already current** (`:464`, `:570`). There is
+>    NO meaningful-transition test — see §Style Validation for why enforcing one
+>    would break 35 of the 60 declared style states.
+> 6. **No layer validation happens here.** Applying the change re-seats the
+>    garment's coverage by layer instead (`Character.refresh_worn_coverage`,
+>    `typeclasses/clothing_mixin.py:613`), which is what lets the layer
+>    underneath surface. §Style Validation records the gap this leaves for
+>    states that ADD coverage.
+>
+> Steps 7 and 8 are correct, with one addition: the feedback is a paired
+> self-message and `msg_room_identity` broadcast whose observer names are
+> snapshotted BEFORE the change, because restyling can move the wearer's sdesc
+> (`commands/CmdClothing.py:472-490`, `:578-596`).
+
 #### Command to Property Mapping
 - `rollup/unroll` → `adjustable` property → `rolled/normal` states (could be sleeves, hood, cuffs, pant legs, etc.)
 - `zip/unzip` → `closure` property → `zipped/unzipped` states (could be zipper, buttons, laces, etc.)
@@ -951,6 +1075,25 @@ The shirt doesn't have a zipper.
 **Multi-Property Style System**: Items can have multiple independent style properties (`adjustable`, `closure`) that combine to create rich variation. A jacket can be both rolled up and unzipped simultaneously, creating four distinct states with different coverage and descriptions.
 
 **Meaningful Transition Validation**: All style commands require both coverage changes AND description changes. This ensures every player interaction has both functional and visual impact, preventing meaningless commands.
+
+> **CORRECTED 2026-09-11 (#2445 item 8).** This decision was never implemented,
+> and the shipped wardrobe rules it out. `can_style_property_to()`
+> (`typeclasses/items.py:343-351`) admits any state the garment declares —
+> *"the validation is structural, not functional"* — and 35 of the 60 style
+> states in `world/prototypes.py` would be refused if the rule were enforced,
+> spread across all 24 prototypes that declare `style_configs` and taking every
+> restore-to-`normal` state with them. The `"That wouldn't change anything
+> about the ..."` refusal the commands still carry
+> (`commands/CmdClothing.py:469`, `:575`) is therefore unreachable.
+>
+> The decision that DID ship is close in spirit and worth keeping in mind: a
+> style state must be **declared by the garment** to be reachable, and the
+> commands read the garment rather than naming states themselves (#2742). The
+> paragraph above is preserved because the impulse behind it — no command should
+> be a no-op — still governs the authoring guidance, and the commands do refuse
+> a change to the state a garment is already in; it simply is not enforced as
+> the both-populated rule this paragraph describes. See §Style Validation for
+> the full correction.
 
 **Generic Property Naming**: The `adjustable` property covers any rollup/unroll functionality (sleeves, hoods, cuffs, pant legs), making the system flexible and extensible without requiring specific properties for each adjustment type.
 
