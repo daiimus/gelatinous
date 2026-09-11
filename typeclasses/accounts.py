@@ -301,6 +301,27 @@ class Account(DefaultAccount):
         # archived list is reused below for the last_character restore.
         active_chars, archived_sleeves = self._sleeves_split()
 
+        # A DECANT ALREADY IN PROGRESS IS NOT RESTARTED (#2625).
+        #
+        # `at_post_login` runs for EVERY session (MULTISESSION_MODE=1),
+        # and with zero sleeves it used to start chargen
+        # unconditionally. `EvMenu.__init__` closes any existing menu on
+        # the same caller, so a second tab tore down the first one:
+        # `_charcreate_exit_callback` then saw zero actives and
+        # disconnected the original session with "Sleeve decantation
+        # incomplete", while `start_character_creation` reset
+        # `ndb.charcreate_data` and discarded everything already typed.
+        #
+        # Ten fields in on the web client, open a second tab, lose the
+        # lot. The second session is told where the decant is instead.
+        if not active_chars and getattr(self.ndb, "_evmenu", None):
+            self.msg(
+                "|yYou're already decanting a sleeve in another "
+                "session.|n Finish there, or disconnect it and "
+                "reconnect here."
+            )
+            return
+
         # CRITICAL: Only start character creation if there are ZERO active characters
         if not active_chars:
             # No active characters - start character creation
