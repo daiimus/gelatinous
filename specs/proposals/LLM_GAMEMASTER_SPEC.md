@@ -2,15 +2,15 @@
 
 > **Status:** 🟡 Proposal — **Phases 1–2 SHIPPED; Phase 3 partial.** Phase 1
 > **POSING DIAL-IN for the 12B (2026-07-14, Rocinante).** Work WITH how the model communicates: (1) **ChatML delivery** — the sidecar renders ChatML (Rocinante's RP-recommended format; `GM_CHAT_FORMAT=chatml`), so the charter lands as a real SYSTEM role instead of buried in a Mistral `[INST]` user turn. This alone drove first-person pose leaks 1-in-5 → 0-in-16. (2) **Few-shot teaches, not rules** — a 12B copies the last assistant turns; the bartender few-shot was rewritten to TIGHT, invention-free, channel-clean examples (the OLD single example literally posed 'tracks a scuffle in the corner' — the model was copying that invention; fixing it killed the scene-invention). (3) **Field order A/B** — speech-first KEPT: thought-first (reasoning-first) HURT tool accuracy (pulled toward character-flavour over the transactional decision). thought stays after speech/action so a long-turn truncation lands in the PRIVATE thought, not the visible channels. (4) **Deterministic pose backstop** — `_selfify_action` converts first-person self-refs (my/me/myself) to the NPC's pronoun in code; the model provides voice, code guarantees the render. (5) `LLM_GM_MAX_TOKENS` 180→220 (Rocinante runs long; headroom stops mid-word truncation of visible channels). See [[reference-gelatinous-llm-model-candidates]] for the format/model specifics.**
-> **TOOL-RELIABILITY ARCHITECTURE (2026-07-16→20).** Two levers turned the 12B's finicky tool-calling into reliable behaviour. (1) **Demonstrate, don't describe** — every archetype's action tools must appear in its FEW-SHOT, not just the tool list; a 12B copies the few-shot far more than it obeys tool prose. Proven 3×: bartender `remember`/`feel` fired ZERO until demoed (#1236); doctor `treat` fired 1/5 even after diagnosis (narrated mending instead) until a `diagnose→treat` FOLLOW-THROUGH example lifted it to 6/7 (#1237); companion `remember` fired only after a demo. (2) **Deterministic parsers for EXPLICIT player requests** — a real transaction rides code, not the model roll: `_is_conversational_order` (drink orders, #1235) and `_parse_medical_request` (install/treat, #1237) route an explicit request straight to the real command with the LLM skipped; both conservative (a question / bare symptom / casual mention is NOT a request) and directed-gated. The model keeps VOICE + discretionary reads; the transaction is guaranteed. **Mr. Hands awareness** (#1233: what's in-hand vs stashed + a `wield`/`unwield` tool) and **inventory grounding** (#1230) stop the model narrating gear it isn't holding or inventing gear it doesn't have. Opt-in **decision log** (`LLM_GM_DECISION_LOG` → `server/logs/llm_decisions.log`) records raw model output beside the final render per turn, for tuning. `LLM_GM_MAX_TOKENS` 220, `LLM_GM_TIMEOUT` 120. See [[reference-gelatinous-llm-model-candidates]] tuning lessons 1–3.**
+> **TOOL-RELIABILITY ARCHITECTURE (2026-07-16→20).** Two levers turned the 12B's finicky tool-calling into reliable behaviour. (1) **Demonstrate, don't describe** — every archetype's action tools must appear in its FEW-SHOT, not just the tool list; a 12B copies the few-shot far more than it obeys tool prose. Proven 3×: bartender `remember`/`feel` fired ZERO until demoed (#1236); doctor `treat` fired 1/5 even after diagnosis (narrated mending instead) until a `diagnose→treat` FOLLOW-THROUGH example lifted it to 6/7 (#1237); companion `remember` fired only after a demo. (2) **Deterministic parsers for EXPLICIT player requests** — a real transaction rides code, not the model roll: `_is_conversational_order` (drink orders, #1235) and `_parse_medical_request` (install/treat, #1237) route an explicit request straight to the real command with the LLM skipped **[both have since moved off the NPC class onto the POST and been renamed (#2350/#2352): `world/bar.py` `resolve_order` behind `serve_from_board`, `world/clinic.py` `parse_medical_request` behind `serve_at_clinic`, dispatched by `post_role` through `world/service.py`]**; both conservative (a question / bare symptom / casual mention is NOT a request) and directed-gated. The model keeps VOICE + discretionary reads; the transaction is guaranteed. **Mr. Hands awareness** (#1233: what's in-hand vs stashed + a `wield`/`unwield` tool) and **inventory grounding** (#1230) stop the model narrating gear it isn't holding or inventing gear it doesn't have. Opt-in **decision log** (`LLM_GM_DECISION_LOG` → `server/logs/llm_decisions.log`) records raw model output beside the final render per turn, for tuning. `LLM_GM_MAX_TOKENS` 220, `LLM_GM_TIMEOUT` 120. See [[reference-gelatinous-llm-model-candidates]] tuning lessons 1–3.**
 > (#707): the Bartender NPC Sable answers player speech with model-generated
 > dialogue from a decoupled, **OpenAI-compatible** inference backend (MLX /
 > Ollama / cloud — swappable by URL, no code change), seeded from her real
 > identity, gated behind two switches, fail-safe to scripted behaviour, drink
 > mechanics untouched. **Phase 2** added per-NPC RAG memory (embeddings,
 > identity-gated retrieval, write-back) and a reusable LLM-NPC brain
-> (`LLMNpcMixin`) with archetypes (bartender, companion, doctor, colonist, security, merchant). **Phase 3 (partial):** a
-> small allow-listed action surface is live — base `remember`/`feel`/`look` + per-archetype
+> (`LLMNpcMixin`) with archetypes (bartender, companion, doctor, colonist, security, merchant; butcher, dispatcher and dj were added later — nine in `world/llm/prompt.py` today). **Phase 3 (partial):** a
+> small allow-listed action surface is live — base `remember`/`look` (`feel` was a third base tool until #2388 retired it; see §1 Principle 8) + per-archetype
 > action tools (`prepare_drink`/`check_stock`, `diagnose`/`treat`/`install`, `style`,
 > `wield`, `radio`, `release`) — and **actuation runs through the REAL roleplay commands
 > players use, one channel per turn-field** (`execute_cmd`), so NPC output gets the
@@ -154,6 +154,18 @@ voice/TTS, and any authority over **player** characters (which is a hard line �
    > trust/consent later" — a model-written value scheduled to feed a
    > real mechanic. That is Principle 8 in its pre-souls form and needs
    > to read `souls/thoughts.py` instead of holding its own opinion.
+   >
+   > **DONE (#2388).** That counter-example is history, not an open item.
+   > The `feel` tool is gone from `world/llm/prompt.py` (`BASE_TOOLS` is
+   > `("look", "remember")`, and the tool router shrugs a stray `feel` off
+   > rather than obeying it), `_set_valence` is gone from
+   > `typeclasses/llm_npc.py`, and the read on a person is derived exactly
+   > as this note asked — `world/souls/thoughts.py`
+   > `opinion_of`/`opinion_band` over the event log, handed to the voice
+   > through `_relationship_line`. Pre-existing
+   > `llm_dossiers[uid]["valence"]` strings are left in place but ignored,
+   > as a readable record of what each NPC used to think.
+   > `NPC_PLATFORM_SPEC` criterion 10 records the same retirement.
 
 ---
 
@@ -740,7 +752,12 @@ MLX, ChromaDB, or Evennia.
   - **Persona seeding** (`typeclasses/llm_persona.py` `build_persona`): composes
     the persona dict from the NPC's *real* live fields (sdesc, longdescs, voice,
     skintone, location) + the builder-authored core in `db.llm_persona`.
-  - **Engagement model** (`typeclasses/bar.py` `Bartender`): a reactor-side
+  - **Engagement model** (then `typeclasses/bar.py` `Bartender`; **that class was
+    deleted by #2378 — the engagement loop is `typeclasses/llm_npc.py`
+    `LLMNpcMixin` now: `at_msg_receive` offers the speech to the POST first via
+    `_handle_directed_speech` (the generic service intercept, #2350), and only
+    then does `_classify_speech` decide whether the LLM answers. One NPC
+    typeclass, `LLMNpc`, whose competence comes from the post it stands**): a reactor-side
     classifier — **directed** (addressed, or names her) always replies; **ambient**
     (overheard) is cost-gated (cooldown + roll) *and* the model may decline; orders
     + gratitude paths byte-identical. Two gates: `settings.LLM_GM_ENABLED` +
@@ -753,14 +770,18 @@ MLX, ChromaDB, or Evennia.
   cosine top-k, salience/prune), identity-gated retrieval and write-back scoped to
   the interlocutor's `apparent_uid` (rides `recognition_memory`). Plus the reusable
   brain `typeclasses/llm_npc.py` `LLMNpcMixin` (engagement loop + agentic tool
-  loop) and archetypes in `world/llm/prompt.py` (bartender, companion, doctor, colonist, security, merchant — merchant grounds shopkeepers as the counter's owner, radio-tool-enabled for a shop set) with
+  loop) and archetypes in `world/llm/prompt.py` (bartender, companion, doctor, colonist, security, merchant — merchant grounds shopkeepers as the counter's owner, radio-tool-enabled for a shop set; butcher, dispatcher and dj joined later, nine in all) with
   per-archetype tool scoping. **Identity & posing** (`NPC_MEMORY_AND_IDENTITY_SPEC`
   §8): names-as-claims, spontaneous nicknames via the real `remember` command,
-  behaviour-driven valence (`feel`). *Deliverable met: the NPC remembers a prior
+  behaviour-driven valence (`feel` — **retired #2388**: the read on a person is
+  derived by the engine now, `world/souls/thoughts.py` `opinion_of` over the event
+  log, never authored by the model). *Deliverable met: the NPC remembers a prior
   encounter across sessions and names people it knows.*
 - 🟡 **Phase 3 — bounded actions (PARTIAL).** Shipped: a per-archetype allow-listed
-  action surface (base `remember`/`feel`/`look`; bartender `prepare_drink`/`check_stock`;
-  doctor `diagnose`/`treat`/`install`; `style`, `wield`, `radio`, `release`),
+  action surface (base `remember`/`look`; bartender `prepare_drink`/`check_stock`;
+  doctor `diagnose`/`treat`/`install`; `style`, `wield`, `radio`, `release` —
+  `feel` was a third base tool here until #2388 retired it, the read on a person
+  being derived by the engine now),
   and **actuation through real commands, one channel per turn-field** — `action`→
   `emote` (3rd-person, no conjugation), `speech`→`say`, `thought`→`think` (private
   interiority, perceiver-gated) — all `execute_cmd`, giving per-observer identity
@@ -771,7 +792,11 @@ MLX, ChromaDB, or Evennia.
   requests before the model — `_is_conversational_order` (bartender, #1235) and
   `_parse_medical_request` (doctor, #1237) run the real serve/treat/install for a
   clear order or procedure request, LLM skipped, so a real transaction never rides
-  the model's tool roll; (c) **Mr. Hands awareness** (#1233) + **inventory grounding**
+  the model's tool roll. **Both parsers have since moved off the NPC class onto the
+  POST and been renamed (#2350/#2352): `world/bar.py` `resolve_order` behind
+  `serve_from_board`, and `world/clinic.py` `parse_medical_request` behind
+  `serve_at_clinic`, dispatched by `post_role` through `world/service.py`.** (c)
+  **Mr. Hands awareness** (#1233) + **inventory grounding**
   (#1230) keep the model honest about what it's holding/carrying; (d) opt-in
   **decision log** (`LLM_GM_DECISION_LOG`) pairs raw model output with the final
   render per turn. **Deterministic pose backstops** (`world/grammar` +
@@ -853,12 +878,16 @@ Phase 1 changes the player-facing default if disabled.
 specific section — the real seams the adapters bind to.*
 
 - **Perception inlet.** NPCs already perceive speech through
-  `Character.at_msg_receive(text, from_obj, **kwargs)` — see the bartender in
-  `typeclasses/bar.py` (`Bartender.at_msg_receive` → reacts to addressed/overheard
-  speech). The Perception adapter generalises this to feed the GM queue, applying
+  `Character.at_msg_receive(text, from_obj, **kwargs)` — see
+  `typeclasses/llm_npc.py` (`LLMNpcMixin.at_msg_receive` → reacts to
+  addressed/overheard speech, offering it to the post through
+  `_handle_directed_speech` before `_classify_speech` decides whether the LLM
+  answers). *(This read `typeclasses/bar.py` `Bartender.at_msg_receive` until
+  #2378 collapsed the role typeclasses into one NPC body.)* The Perception adapter generalises this to feed the GM queue, applying
   the identity/voice gating below.
 - **Action outlet.** NPCs already act via `obj.execute_cmd("say …")` /
-  `execute_cmd("attack …")` (`typeclasses/bar.py`, `commands/CmdThrow.py`). The
+  `execute_cmd("attack …")` (`typeclasses/llm_npc.py`, `world/bar.py`,
+  `commands/CmdThrow.py`). The
   Action adapter routes approved intents here — driving the NPC through the same
   cmdset a player uses, so combat/medical/movement/economy apply unchanged.
 - **Speech backbone.** `world/speech.py`
