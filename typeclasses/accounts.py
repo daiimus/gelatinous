@@ -230,6 +230,38 @@ class Account(DefaultAccount):
         # Count active (non-archived) characters via the tag index
         return len(self.active_sleeves) >= max_slots
 
+    def respawn_candidate(self):
+        """The archived sleeve this account may respawn from, or None.
+
+        `db.last_character` is written by the death path and was read
+        RAW by the telnet login while the web view validated it first
+        (#2615). Whatever sat there -- a living sleeve, a deleted one,
+        one transferred to another account -- was handed to the respawn
+        flow as the character being replaced.
+
+        One door now. Both callers ask this, and it CLEARS a reference
+        that does not qualify, so a stale value is repaired on the way
+        past rather than left for the next login to trip over.
+
+        Returns:
+            The archived character, or None (having cleared the
+            attribute when the reference was alive or broken).
+        """
+        old = self.db.last_character
+        if not old:
+            return None
+        try:
+            _ = old.key                  # a deleted sleeve raises here
+            if old.is_archived:
+                return old
+        except (AttributeError, TypeError):
+            self.db.last_character = None
+            return None
+        # Alive: they are not a respawn candidate, and the stale
+        # pointer would misreport the next death.
+        self.db.last_character = None
+        return None
+
     def at_post_login(self, session=None, **kwargs):
         """
         Called after successful login, handles character detection and auto-puppeting.
@@ -286,8 +318,11 @@ class Account(DefaultAccount):
                 
                 # Check if they have a last_character (from death or manual archival)
                 # If so, use respawn flow with flash clone + template options
-                is_respawn = bool(self.db.last_character)
-                old_character = self.db.last_character if is_respawn else None
+                # Validated, not read raw (#2615) — the same check the
+                # web respawn view makes, so the two doors cannot
+                # disagree about what is respawnable.
+                old_character = self.respawn_candidate()
+                is_respawn = old_character is not None
                 
                 start_character_creation(self, is_respawn=is_respawn, old_character=old_character)
             except ImportError as e:
