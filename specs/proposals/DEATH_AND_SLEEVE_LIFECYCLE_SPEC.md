@@ -67,6 +67,12 @@ reason about it.
 
 ## 2 · Death curtain + progression timer (the revival window)
 
+> ⚠️ **The window is not reached by every fatal-looking injury.** A destroyed
+> **brain** never sets `is_dead()`, so `at_death` never fires and this
+> progression never starts — the body breathes indefinitely and the revival
+> gate would approve it. See §10.4 and
+> [#3248](https://github.com/daiimus/gelatinous/issues/3248).
+
 Animation: [`DEATH_CURTAIN_SPEC`](../DEATH_CURTAIN_SPEC.md)
 (`curtain_of_death.py`). On completion it calls `start_death_progression()`,
 creating the **`death_progression` script** on the character
@@ -345,7 +351,123 @@ steps 4–5 wait on the gig economy and the file/records layer respectively.
 
 ---
 
-## 10 · Cross-references
+## 10 · Coup de grâce — finishing a downed opponent  📋 **UNBUILT**
+
+> **Status: DESIGNED, NOT BUILT (2026-09-11).** Owner direction, deferred to
+> whenever the death loop is revisited. Tracked as
+> [#3247](https://github.com/daiimus/gelatinous/issues/3247).
+> **Blocked on [#3248](https://github.com/daiimus/gelatinous/issues/3248)** —
+> see §10.4; the state this feature exists to produce does not currently
+> exist in the model.
+
+### 10.1 · What happens today
+
+After #1584, attacking a body is inert. Measured on an isolated room:
+
+```
+> attack <body>
+You let out a sharp breath and circle <body>.   <- attacker's initiate
+                                                <- the body emits nothing
+[next tick] Your target has left combat...
+[handler dissolves]
+```
+
+`process_attack` is **never called** — instrumented directly, zero swings
+resolved, `blood_level` unchanged. The sweep ejects the body early in the
+round and the handler drops below two combatants and dissolves *before* the
+attacker's turn arrives.
+
+So "attackable as a body" is nominal: you posture at a corpse, combat
+evaporates, and you have **spent a combat round to do nothing**. In a
+multi-way fight that is a real tactical cost for a no-op, and it is the
+specific unfairness this section exists to remove.
+
+### 10.2 · The design
+
+Two halves, both from the owner:
+
+1. **It is an act, not a fight.** Finishing a downed opponent resolves
+   immediately and deterministically — no roll, no initiative, no handler
+   enrolment, and **no round cost to the attacker**.
+2. **It destroys one vital organ at random**, rather than invoking the corpse
+   process directly. *"Kinda a two in the chest, one in the head approach.
+   The person could still be revived with an organ transplant but is much
+   more unlikely."*
+
+The second half is the important one: death stays **anatomical** rather than
+becoming a flag. The victim is not marked unrevivable — they are *injured
+past easy repair*, and revival becomes a surgical long shot instead of a
+timer. This is consistent with how the rest of the medical layer works and
+with the platform direction of removing state flags from bodies.
+
+### 10.3 · Measured organ lethality
+
+Destroying each organ flagged `vital`, alone, after a vital-signs tick:
+
+| organ | result | serves the design? |
+|---|---|---|
+| `heart` | dead | yes |
+| `cervical_spine` | dead | yes |
+| `brain` | **indefinite limbo — see §10.4** | **no, inverts it** |
+| `liver` | survives, fully conscious | no |
+| `pelvis` | survives, fully conscious | no |
+
+`liver` does not kill because `digestion` is shared with the stomach, so
+zeroing the liver alone does not zero the capacity. `pelvis` contributes to
+no lethal capacity at all.
+
+**A uniform random pick across the `vital` flag is therefore mostly a dud** —
+the victim ends up awake and talking, which reads as the finishing move
+failing. The pick wants weighting toward organs that mean something, not
+uniformity across whatever carries the flag.
+
+### 10.4 · Why this is blocked
+
+The "revivable but unlikely" state the design describes **does not currently
+exist for any organ**. Every lethal organ is instant death; every non-lethal
+one is a survivable injury. The one candidate — the brain — is broken:
+
+```
+brain destroyed:  is_dead()=False   at_death fired=False   progression=False
+                  breathing=1.00    revival gate=GRANTS
+```
+
+The body breathes indefinitely, never reaches the death loop, and any medic
+who stabilises it recovers the character whole. Full detail and two candidate
+fixes in [#3248](https://github.com/daiimus/gelatinous/issues/3248).
+
+Fixing brain death is what **creates** the outcome this feature wants to
+produce. Until then, a coup de grâce landing on the brain makes the victim
+*more* recoverable than doing nothing at all.
+
+### 10.5 · Undesigned — decide before building
+
+- **What counts as "downed"?** Unconscious, dying-inside-the-progression-window,
+  and dead-but-not-yet-corpsed are three different states. Mercy, murder and
+  desecration are not the same act and would not read the same way.
+- **"Unless one had already been destroyed."** Read here as *do not stack* —
+  a victim already missing a vital organ is already finished or already in
+  the long-shot state. The alternative reading, *pick at random from those
+  still intact*, is a different rule once more than one is gone.
+- **Does an unrevivable body still resleeve?** Medical revival and sleeve
+  continuity are separate questions; this design only speaks to the first.
+- **Witnesses.** Executing a downed person in front of people is the kind of
+  act the crime and opinion systems would plausibly care about (§ see
+  `world/director/civilians.py` reaction hooks).
+- **Which organs can be picked, and with what weighting** (§10.3).
+
+### 10.6 · Related
+
+- **#330** — decapitated / brain-destroyed characters skipping the
+  death-progression window. **Same principle from the other direction:** #330
+  is irreversibility arriving by accident of damage; this is a player choosing
+  it. Both say the revival window is meaningless for irrevocable states, and
+  they would design better together than separately.
+- **#1584** — a downed character no longer takes a defensive stance (shipped).
+
+---
+
+## 11 · Cross-references
 
 - [`DEATH_CURTAIN_SPEC`](../DEATH_CURTAIN_SPEC.md) — animation + progression timer (§2)
 - [`HEALTH_AND_SUBSTANCE_SYSTEM_SPEC`](../HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md) — corpse creation, autopsy, organ harvest, decay (§3, §7)
