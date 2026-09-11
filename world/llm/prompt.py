@@ -1166,8 +1166,15 @@ def parse_turn(raw, persona: dict, allowed_tools=None) -> dict:
     elif isinstance(raw, str):
         try:
             obj = json.loads(raw)
-        except Exception:  # noqa: BLE001 — legacy prose path (few-shot/fallback)
-            obj = _parse_prose(raw)
+        except Exception:  # noqa: BLE001 — truncated JSON, then legacy prose
+            # A TRUNCATED reply is still JSON, and must not be read as
+            # prose. `_parse_prose` pulls QUOTED RUNS out as dialogue,
+            # and in a cut-off object the first quoted runs are the
+            # SCHEMA'S OWN KEY NAMES -- so the NPC said "speech Evening.
+            # action wipes the bar" and posed as "{: , : , thou".
+            # Measured at ~9% of 2,458 logged turns, including the Rook
+            # broadcasting the word "speech" on air (#2729).
+            obj = _salvage_json(raw) or _parse_prose(raw)
     obj = obj or {}
 
     speech = _clean(obj.get("speech", ""))
@@ -1216,6 +1223,37 @@ def is_echo(reply: str, line: str) -> bool:
 
 _QUOTE_RE = re.compile(r'"([^"]*)"')
 _ACTION_RE = re.compile(r"\*([^*]*)\*")
+
+
+#: A `"key": "value` pair, where the value may be UNTERMINATED because
+#: the reply was cut off mid-string.
+_JSON_FIELD_RE = re.compile(
+    r'"(speech|action|thought|tool|tool_argument)"\s*:\s*"'
+    r'((?:[^"\\]|\\.)*)'
+)
+
+
+def _salvage_json(raw: str) -> dict | None:
+    """Recover the fields from a CUT-OFF JSON reply, or None.
+
+    Returns None for input that is not JSON-shaped, so genuine prose
+    still reaches `_parse_prose` -- the few-shot and fallback paths
+    depend on it.
+
+    Only the leading `{` is required, not a closing one: the whole point
+    is that the closing brace is what went missing (#2729).
+    """
+    if not raw or raw.lstrip()[:1] != "{":
+        return None
+    found = {}
+    for key, value in _JSON_FIELD_RE.findall(raw):
+        if key not in found:
+            found[key] = value.replace('\\"', '"').replace("\\n", " ")
+    if not found:
+        return None
+    found.setdefault("tool", "none")
+    found.setdefault("tool_argument", "")
+    return found
 
 
 def _parse_prose(raw: str) -> dict:
