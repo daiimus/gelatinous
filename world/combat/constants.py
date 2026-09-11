@@ -448,6 +448,20 @@ DB_INITIATIVE = "initiative"
 DB_IS_THROWING_WEAPON = "is_throwing_weapon"
 DB_IS_EXPLOSIVE = "is_explosive"
 DB_FUSE_TIME = "fuse_time"
+
+#: A RIGGED trap detonates almost at once, however it is triggered.
+#:
+#: `REMOTE_DETONATOR_SPEC` builds its trap timing on "rigging process
+#: already sets `grenade.db.fuse_time = 1`". Nothing ever wrote that --
+#: so the tripwire path hardcoded a local 1 and the REMOTE path read the
+#: prototype fuse (4 to 10 seconds), which is long enough for the target
+#: to walk away from the trap that just triggered (#2547).
+#:
+#: A constant rather than a written attribute: rigging would otherwise
+#: have to mutate the grenade's own fuse and restore it on un-rig, and a
+#: grenade that stayed 1-second after being un-rigged is a worse bug
+#: than the one being fixed.
+TRAP_FUSE_TIME = 1
 DB_BLAST_DAMAGE = "blast_damage"
 DB_CHAIN_TRIGGER = "chain_trigger"
 DB_REQUIRES_PIN = "requires_pin"

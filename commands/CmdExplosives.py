@@ -903,7 +903,18 @@ class CmdDetonate(Command):
 
         # Pull the pin remotely
         explosive.db.pin_pulled = True
-        fuse_time = explosive.db.fuse_time if explosive.db.fuse_time is not None else 8
+        # A RIGGED trap is a trap however it is set off. The tripwire
+        # path has always used a ~1s fuse; this door read the prototype
+        # value (4-10s), so remote-detonating a trap gave the target
+        # time to walk out of it. The spec assumed rigging wrote
+        # `db.fuse_time = 1`; nothing ever did (#2547).
+        from world.combat.constants import TRAP_FUSE_TIME
+
+        if explosive.db.rigged_to_exit is not None:
+            fuse_time = TRAP_FUSE_TIME
+        else:
+            fuse_time = (explosive.db.fuse_time
+                         if explosive.db.fuse_time is not None else 8)
         setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
 
         # Start countdown using the shared sticky-aware ticker
