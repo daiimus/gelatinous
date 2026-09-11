@@ -68,9 +68,12 @@ reason about it.
 ## 2 · Death curtain + progression timer (the revival window)
 
 > ⚠️ **The window is not reached by every fatal-looking injury.** A destroyed
-> **brain** never sets `is_dead()`, so `at_death` never fires and this
-> progression never starts — the body breathes indefinitely and the revival
-> gate would approve it. See §10.4 and
+> **brain** sets no lethal capacity, so `is_dead()` stays False and this
+> progression never starts. In practice the *wound* that destroyed it bleeds
+> and kills in ~9 minutes — so this is invisible in ordinary play. It surfaces
+> when the bleed is **stopped**: a stabilised brain-destroyed patient never
+> dies, and the revival gate (which only asks `not is_dead()`) returns them
+> whole. Any bloodless organ destruction hits it directly. See §10.4 and
 > [#3248](https://github.com/daiimus/gelatinous/issues/3248).
 
 Animation: [`DEATH_CURTAIN_SPEC`](../DEATH_CURTAIN_SPEC.md)
@@ -425,20 +428,31 @@ uniformity across whatever carries the flag.
 
 The "revivable but unlikely" state the design describes **does not currently
 exist for any organ**. Every lethal organ is instant death; every non-lethal
-one is a survivable injury. The one candidate — the brain — is broken:
+one is a survivable injury.
 
-```
-brain destroyed:  is_dead()=False   at_death fired=False   progression=False
-                  breathing=1.00    revival gate=GRANTS
-```
+The brain looks like the candidate, and is the trap. **In play it is reliably
+lethal — but by SIDE EFFECT**, not by itself. Measured with the real damage
+path, bleeding ticked at one minute per turn:
 
-The body breathes indefinitely, never reaches the death loop, and any medic
-who stabilises it recovers the character whole. Full detail and two candidate
-fixes in [#3248](https://github.com/daiimus/gelatinous/issues/3248).
+| scenario | outcome |
+|---|---|
+| head blow, brain destroyed, bleed left alone | **dies at minute 9** (blood loss) |
+| head blow, brain destroyed, **bleed stopped** | **never dies** — 4h, blood 100, unconscious |
+| brain destroyed with **no wound at all** | never dies |
 
-Fixing brain death is what **creates** the outcome this feature wants to
-produce. Until then, a coup de grâce landing on the brain makes the victim
-*more* recoverable than doing nothing at all.
+The brain contributes to no lethal capacity; the *wound that destroyed it*
+bleeds, and the bleed kills. Which matters enormously here, because **a coup
+de grâce is bloodless by construction** — it destroys an organ directly,
+with no accompanying wound. So a brain-targeted coup de grâce lands squarely
+in row 3: a permanently unconscious body that never dies, never corpses,
+never resleeves, and that `_check_medical_revival_conditions` (which only
+asks `not is_dead()`) would hand back **whole**.
+
+The victim ends up *more* recoverable than if you had done nothing.
+
+Full detail and the `brain_integrity` fix in
+[#3248](https://github.com/daiimus/gelatinous/issues/3248). Fixing brain death
+is what **creates** the outcome this feature wants to produce.
 
 ### 10.5 · Undesigned — decide before building
 
