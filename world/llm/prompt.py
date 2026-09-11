@@ -798,9 +798,22 @@ _APPEARANCE_KEYS = ("face", "eyes", "hair", "head")
 
 
 def _personality(seed: dict) -> str:
-    if seed.get("personality"):
-        return seed["personality"]
+    """The character's disposition, from every field that describes it.
+
+    `manner`, `wants` and `boundaries` used to sit BELOW an early return
+    on `personality`, so they read as a fallback for a seed that had no
+    personality line rather than as additions to one. Any seed setting
+    both discarded all three -- 64 of the colony's 80 personas, 192
+    authored fields, including all six security robots losing every one
+    (#2730).
+
+    They are different facts, not competing versions of one: a manner is
+    how they carry themselves, a want is what they are after, a boundary
+    is what they will not do. A personality line does not contain them.
+    """
     bits = []
+    if seed.get("personality"):
+        bits.append(seed["personality"])
     if seed.get("manner"):
         bits.append(seed["manner"])
     if seed.get("wants"):
