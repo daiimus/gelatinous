@@ -152,12 +152,29 @@ def _keyword_in(keyword, low):
     (#2779).  A word boundary stops the inside-a-word hits.  It does NOT
     stop a keyword used as a plain word in a remark ("I'm trying to stay
     sober tonight"); that is ``resolve_order``'s job.
+
+    A trailing POSSESSIVE is allowed through, because excluding the
+    apostrophe on the right made a drink unorderable by its own name:
+    the chain-hoist bar carries "pint of shift's end" keyed on ``shift``,
+    and "i'd like a shift's end" matched nothing, so the only way to buy
+    it was to ask for "a pint" (#3195). Consuming an optional ``'s``
+    before asserting the boundary keeps the false positive this guard
+    exists for -- ``word`` still does not match ``wordy``, and ``o`` still
+    does not match ``o'clock`` -- while ``shift`` now matches ``shift's``.
+
+    Both apostrophes are handled. U+2019 happened to work already, by the
+    accident of not being in the excluded set; it is named explicitly now
+    so the smart and the plain form behave the same way rather than
+    differing by oversight.
     """
     import re
     kw = keyword.lower().strip()
     if not kw:
         return False
-    return re.search(r"(?<![a-z0-9'])" + re.escape(kw) + r"(?![a-z0-9'])", low) is not None
+    boundary = r"[a-z0-9'’]"
+    return re.search(r"(?<!" + boundary + r")" + re.escape(kw)
+                     + r"(?:['’]s)?(?!" + boundary + r")",
+                     low) is not None
 
 
 # ---------------------------------------------------------------------------
