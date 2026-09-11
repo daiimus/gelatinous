@@ -4,7 +4,9 @@ Adapted from evennia.contrib.base_systems.email_login
 """
 
 from django.conf import settings
+from evennia.accounts.accounts import LOGIN_THROTTLE
 from evennia.accounts.models import AccountDB
+from evennia.utils import logger
 from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils import class_from_module, utils
 from evennia.server.models import ServerConfig
@@ -36,6 +38,30 @@ class CmdEmailConnect(MuxCommand):
             
         email = arglist[0].lower().strip()
         password = arglist[1]
+        ip = address[0] if address else ""
+
+        # THE THROTTLE, and the security log (#2557).
+        #
+        # This door does its own credential check instead of routing
+        # through `DefaultAccount.authenticate()`, so everything the
+        # framework wraps around the password comparison was absent --
+        # and `CMDSET_UNLOGGEDIN` makes this the ONLY login door, so
+        # there was no second path behaving correctly. Unlimited guesses
+        # at any rate, and not one line in the security log to show for
+        # them.
+        #
+        # Reusing Evennia's own throttle rather than inventing one: it
+        # is the same object the web door and the guest door already
+        # share, so a bad actor cannot dodge a lockout by switching
+        # doors.
+        if ip and LOGIN_THROTTLE.check(ip):
+            session.msg(
+                "Too many login failures. Please wait a while and try "
+                "again."
+            )
+            logger.log_sec(f"Authentication Denied (Throttled): {email} "
+                           f"(IP: {ip}).")
+            return
 
         # Look up account by email and verify password.
         # Use a generic error message for both "no account" and "wrong password"
@@ -55,11 +81,11 @@ class CmdEmailConnect(MuxCommand):
                 AccountDB().set_password(password)
             except Exception:  # noqa: BLE001 — a mitigation is not a fault
                 pass
-            session.msg("Invalid email or password.")
+            self._deny(session, email, ip, "unknown email")
             return
 
         if not account.check_password(password):
-            session.msg("Invalid email or password.")
+            self._deny(session, email, ip, "bad password", account=account)
             return
 
         # A deactivated account is refused here too. The web door gets
@@ -68,7 +94,7 @@ class CmdEmailConnect(MuxCommand):
         # so itself — otherwise "Active" unchecked stops the website and
         # not the game (#2751).
         if not getattr(account, "is_active", True):
-            session.msg("Invalid email or password.")
+            self._deny(session, email, ip, "inactive", account=account)
             return
 
         # Check IP and/or name bans
@@ -82,7 +108,30 @@ class CmdEmailConnect(MuxCommand):
             return
 
         # Login successful
+        logger.log_sec(f"Authentication Success: {account} (IP: {ip}).")
         session.sessionhandler.login(session, account)
+
+    def _deny(self, session, email, ip, reason, account=None):
+        """One refusal: same message, logged, and counted.
+
+        The message stays generic for every reason -- enumeration is the
+        threat the original comment named, and a reason that varies by
+        outcome hands it straight back. The LOG is where the reason
+        goes, because that reader is already trusted (#2557).
+        """
+        logger.log_sec(
+            f"Authentication Failure ({reason}): {email} (IP: {ip}).")
+        if ip:
+            LOGIN_THROTTLE.update(ip, "Too many authentication failures.")
+        if account is not None:
+            # The framework's post-failure hook, which this door never
+            # reached. An account that wants to notice its own failed
+            # logins can.
+            try:
+                account.at_failed_login(session)
+            except Exception:  # noqa: BLE001 — a hook never blocks a refusal
+                logger.log_trace("at_failed_login hook failed")
+        session.msg("Invalid email or password.")
 
 
 def derive_username(email):
