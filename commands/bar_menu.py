@@ -104,7 +104,19 @@ def _effect_summary(effects):
 
 
 def _recipe_keywords(name):
-    return tuple(w for w in name.lower().split() if len(w) > 2)
+    """Order keywords for a branded recipe — from the VISIBLE name.
+
+    A brand is free text typed by a bartender, so it can carry colour
+    codes. Deriving keywords from the raw string made the markup part of
+    the word: `|rBloodwork|n` yielded the keyword `|rbloodwork|n`, and
+    `order a bloodwork` then matched nothing. The drink appeared on the
+    menu and could not be ordered by its own name (#2605).
+
+    Colour stays in the NAME — it is the bartender's branding and it
+    renders. It just isn't part of what the drink is called.
+    """
+    from evennia.utils.ansi import strip_ansi
+    return tuple(w for w in strip_ansi(name).lower().split() if len(w) > 2)
 
 
 #: Preparation methods — flavour only (decision: no mechanical effect in v1).
