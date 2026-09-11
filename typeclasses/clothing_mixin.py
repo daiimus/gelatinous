@@ -304,8 +304,32 @@ class ClothingMixin:
                 action_char_refs=action_char_refs,
                 action_pre_resolved_refs=action_pre_resolved_refs,
                 action_exclude=action_exclude,
-            ):
+            ) as signature_change:
                 _do_wear()
+            # The combined action+reveal line only goes out when the
+            # apparent UID actually MOVED. It does not when the
+            # essential-item TYPE SET is unchanged -- a second garment
+            # of a type already worn, or taking one off while another
+            # of that type remains. The suppression above was
+            # unconditional and the emission was conditional, so those
+            # gestures reached the room as NOTHING AT ALL (#2609).
+            if not signature_change.broadcast:
+                # Emitted HERE rather than via `on_committed`: the
+                # command layer branches before calling us and passes
+                # the callback only on the NON-essential path, so on
+                # this branch it is always None. Everything the
+                # broadcast needs is already a parameter, including the
+                # PRE-MUTATION `pre_resolved_refs` snapshot, so this
+                # renders identically to the non-essential door.
+                from world.identity_utils import msg_room_identity
+
+                msg_room_identity(
+                    location=self.location,
+                    template=action_template,
+                    char_refs=action_char_refs or {"actor": self},
+                    pre_resolved_refs=action_pre_resolved_refs or {},
+                    exclude=action_exclude or [],
+                )
         else:
             if on_committed is not None:
                 on_committed()
@@ -429,8 +453,32 @@ class ClothingMixin:
                 action_char_refs=action_char_refs,
                 action_pre_resolved_refs=action_pre_resolved_refs,
                 action_exclude=action_exclude,
-            ):
+            ) as signature_change:
                 _do_remove()
+            # The combined action+reveal line only goes out when the
+            # apparent UID actually MOVED. It does not when the
+            # essential-item TYPE SET is unchanged -- a second garment
+            # of a type already worn, or taking one off while another
+            # of that type remains. The suppression above was
+            # unconditional and the emission was conditional, so those
+            # gestures reached the room as NOTHING AT ALL (#2609).
+            if not signature_change.broadcast:
+                # Emitted HERE rather than via `on_committed`: the
+                # command layer branches before calling us and passes
+                # the callback only on the NON-essential path, so on
+                # this branch it is always None. Everything the
+                # broadcast needs is already a parameter, including the
+                # PRE-MUTATION `pre_resolved_refs` snapshot, so this
+                # renders identically to the non-essential door.
+                from world.identity_utils import msg_room_identity
+
+                msg_room_identity(
+                    location=self.location,
+                    template=action_template,
+                    char_refs=action_char_refs or {"actor": self},
+                    pre_resolved_refs=action_pre_resolved_refs or {},
+                    exclude=action_exclude or [],
+                )
         else:
             if on_committed is not None:
                 on_committed()
