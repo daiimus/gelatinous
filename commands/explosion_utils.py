@@ -120,7 +120,10 @@ def check_rigged_grenade(character, exit_obj):
 
     # Pull the pin and start countdown timer when triggered
     rigged_grenade.db.pin_pulled = True
-    fuse_time = 1  # Rigged grenades explode almost immediately
+    # Shared with the remote-detonation door so the two cannot disagree
+    # about what a trap fuse is (#2547).
+    from world.combat.constants import TRAP_FUSE_TIME
+    fuse_time = TRAP_FUSE_TIME
     setattr(rigged_grenade.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
 
     # Move grenade to the character's location quietly (no movement announcements)
