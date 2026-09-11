@@ -206,6 +206,32 @@ CONSUMPTION_RULES = {
 }
 ```
 
+> **Accuracy note (re-verified 2026-09-11):** the rules above still match the
+> code *where they can still be reached*. They are implemented twice — the
+> consumption gate in `ConsumptionCommand._check_treatment_possible`
+> (`commands/CmdConsumption.py`) and the effect branches in
+> `apply_medical_effects` (`world/medical/utils.py`) — and `surgical_treatment`
+> really does skip bones (`fracture_vulnerable` / `bone_type`) *and* destroyed
+> organs (`current_hp <= 0`), which report back as "beyond surgical repair".
+> Three things the table hides:
+>
+> 1. **The `surgical_treatment` row no longer applies to the surgical kit.**
+>    Every consumption verb gates on `supports_delivery` first; `SURGICAL_KIT`
+>    carries no `delivery_method` tag and `surgical_treatment` is absent from
+>    `LEGACY_MEDICAL_TYPE_DELIVERIES`, so no delivery verb reaches it. That is
+>    deliberate — `CmdApply` says "surgical kits are NOT applicable — they're
+>    tools for the procedure verbs", and `world/tests/test_consumables.py` pins
+>    it. The kit is spent through the `incise` / `harvest` / `install` /
+>    `suture` verb set instead. The one item that still reaches this row is
+>    `TOOL_ROLL`, the robot analogue, which declares `("apply",
+>    "delivery_method")` explicitly.
+> 2. **"Only consumed" covers the success branch only.** The need-check gates
+>    the `success` arm of `execute_treatment`; a partial success or a failed
+>    roll calls `use_item()` regardless, so a botched roll burns the supply
+>    with nothing treatable.
+> 3. None of this lives in `world/medical/procedures.py`, which is the
+>    *procedural surgery* verb set and carries no consumption matrix at all.
+
 **Organ Harvesting and Biotech Foundation (Phase 3.1 → shipped as Phase 2.8):**
 - **✅ Organ viability system** - Time-based organ deterioration after death drives harvested-organ condition (`ORGAN_CONDITION_BY_DECAY`)
 - **✅ Corpse examination** - `inspect <corpse>` (alias `autopsy`) renders organ inventory with harvested / severed marked absent (PR #186 / renamed PR #441)
@@ -403,9 +429,9 @@ class DeathProgressionScript(DefaultScript):
 
 **Integration Features:**
 - **Medical system compatibility** - Automatic revival if fatal conditions resolved
-- **Brain death mechanics** - Characters with destroyed brain cannot be revived (medical realism)
-- **Consciousness threshold** - Revival eligibility tied to brain organ health and consciousness capacity
-- **Progressive brain damage** - Brain deterioration during death progression affects revival chances over time
+- **🎯 Brain death mechanics** - Characters with destroyed brain cannot be revived (medical realism) — *intended shape, NOT live (re-verified 2026-09-11). Same gap as the Phase 2 note in the pseudo-code above: `_check_medical_revival_conditions` asks only `medical_state.is_dead()`, and `consciousness` is deliberately excluded from the capacities `is_dead()` enforces (`world/medical/core.py:_compute_is_dead`), so a brain-destroyed character whose bleeding is stopped revives whole.*
+- **🎯 Consciousness threshold** - Revival eligibility tied to brain organ health and consciousness capacity — *intended shape, NOT live; nothing on the revival path reads brain HP or the `consciousness` capacity.*
+- **🎯 Progressive brain damage** - Brain deterioration during death progression affects revival chances over time — *intended shape, NOT live; `typeclasses/death_progression.py` mutates no organ HP during the window — it sends progression messages and re-checks `is_dead()`. The post-death deterioration idea is the 🎯 "Progressive organ failure system" bullet under Phase 3.1 below.*
 - **Observer messaging** - Room occupants see progression indicators
 - **Script-based timer** - Robust interval system with cleanup and state management
 - **Placement descriptions** - Death state visible in room descriptions
@@ -416,6 +442,7 @@ class DeathProgressionScript(DefaultScript):
 - **✅ Medical system integration** - Automatic revival when fatal conditions resolved
 - **✅ Death progression messaging** - Complete narrative experience with observer integration
 - **Future enhancement potential** - Brain death mechanics could be added but current system is sufficient
+  - *⚠️ Superseded 2026-09-11 — owner ruling #3248: consciousness **capacity** (the organ floor, which moves only with brain HP — never `MedicalState.consciousness`, the runtime value every knockout drives to zero) is to become a death condition. Recorded but NOT YET IMPLEMENTED — see the `LETHAL_CAPACITY_NAMES` comment in `world/medical/constants.py`. `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` reads Phase 2 (a separate revival-side guard) as "likely made moot … re-scope rather than build" if the ruling lands, but that re-scope is **not yet settled** — owner call pending. Either way the "sufficient" judgement above predates `specs/proposals/DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md` §10.4, which shows the gap yields a stabilised brain-destroyed patient who never dies, never corpses, and is handed back whole — a coup de grâce leaving the victim* more *recoverable than doing nothing.*
 
 **Progression Message Themes:**
 - **Early stages (30-120s)** - Medical shock, surreal sensory experiences, dark humor
@@ -1122,6 +1149,19 @@ PAIN_SYSTEM = {
         "organ_damage_contribution": "varies_by_organ", # Brain damage = direct consciousness loss
         "cumulative_effects": True,                    # All factors stack
         "unconscious_threshold": "30% consciousness",
+        # NOT LIVE -- and note WHICH consciousness value this would read.
+        # `is_dead()` deliberately excludes `consciousness` from the
+        # capacities it enforces (world/medical/core.py:_compute_is_dead),
+        # so brain destruction lands as unconsciousness. This section
+        # already says so correctly under "Death vs Unconsciousness vs
+        # Functionality" above: "Consciousness: Flag system, not death".
+        # Owner ruling #3248 (2026-09-11) makes consciousness *capacity*
+        # -- the organ floor, which moves only with brain HP -- a death
+        # condition. It must never be MedicalState.consciousness, the
+        # runtime value that pain and blood loss drive to zero on every
+        # knockout; gating death on that would turn each KO into a kill.
+        # NOT YET IMPLEMENTED -- see LETHAL_CAPACITY_NAMES in
+        # world/medical/constants.py.
         "death_threshold": "0% consciousness"
     }
 }
