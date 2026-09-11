@@ -42,31 +42,16 @@ class CharacterCreateView(EvenniaCharacterCreateView):
         account = request.user
         
         # Check for respawn scenario FIRST (before max character check)
-        # This allows respawn even when at 0 active characters
-        if account.db.last_character:
-            old_char = account.db.last_character
-            
-            # Validate that last_character is actually dead/archived and eligible for respawn
-            # If they're alive or missing archived attribute (legacy), clear last_character
-            try:
-                # Check if character still exists and is accessible
-                _ = old_char.key
-                
-                # Check if character is actually archived/dead (tag-first, with
-                # legacy db.archived fallback inside the property)
-                is_archived = old_char.is_archived
-                
-                # If not archived, they're alive - clear last_character and proceed to normal creation
-                if not is_archived:
-                    account.db.last_character = None
-                else:
-                    # Character is properly archived, show respawn interface
-                    return self.show_respawn_interface(request, account)
-                    
-            except (AttributeError, TypeError):
-                # last_character reference is broken/invalid, clear it
-                account.db.last_character = None
-        
+        # so respawn works even at 0 active characters.
+        #
+        # The validation this used to do inline now lives on the Account
+        # as `respawn_candidate()`, because the TELNET login read
+        # `last_character` raw and the two doors disagreed about what is
+        # respawnable (#2615). It still clears a reference that does not
+        # qualify — that behaviour moved with it, it did not go away.
+        if account.respawn_candidate() is not None:
+            return self.show_respawn_interface(request, account)
+
         # Check if account has reached max character limit (tag-indexed split,
         # one query — spec §9 step 3)
         active_characters = account.active_sleeves

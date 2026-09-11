@@ -40,6 +40,10 @@ def _account(active, archived=()):
     acc._sleeves_split.return_value = (list(active), list(archived))
     acc.db.last_character = None
     acc.at_post_login = Account.at_post_login.__get__(acc, Account)
+    # Bind the REAL validator too (#2615) — a bare MagicMock returns a
+    # truthy stand-in, which would send a no-sleeve account down the
+    # respawn path instead of chargen.
+    acc.respawn_candidate = Account.respawn_candidate.__get__(acc, Account)
     return acc
 
 
