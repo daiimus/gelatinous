@@ -159,12 +159,40 @@ makes them *administrative*:
   `db.post_policy` (`resleave` | `successor` | `none`),
   `db.post_delay` (seconds of vacancy before reincarnation),
   `db.post_keeper` (the current NPC), and `db.post_vacant_since`.
+  > **SUPERSEDED by shift slots (owner rulings 2026-08-20).** A venue runs
+  > 24/7 in eight-hour shifts, so the keeper and the vacancy stamp are now
+  > PER SHIFT: `db.post_slots` holds `{shift: {"keeper": …,
+  > "vacant_since": …}}`, and `db.post_blueprints[shift]` names the person
+  > who owns that shift (`db.post_blueprint` survives as the post-wide
+  > fallback). `register_post` also writes `db.post_role` and
+  > `db.post_wage_rate`, and `_try_resleave` reads `db.post_insurer` where
+  > the post's own till is not the payer. `db.post_policy` and
+  > `db.post_delay` stay post-wide.
+  >
+  > `db.post_keeper` survives as a single-value LEGACY MIRROR, rewritten by
+  > `register_post`, `_install_keeper` and `do_claim` every time a keeper is
+  > installed. `db.post_vacant_since` is only ever cleared by `do_claim`, so
+  > on a slots post it is stale rather than wrong — nothing reads it once
+  > `post_slots` exists. Neither key is dead: the shop/bar gate
+  > (`world/service.py`, `typeclasses/shopkeeper.py`, `typeclasses/bar.py`,
+  > `world/souls/actions.py`), `keeper_on_duty`'s last-resort fallback,
+  > `world/npcs/posts.snapshot_keeper_memory`, and `sweep`'s one-time
+  > adoption of a pre-slots post all still read `post_keeper`. Ask the slots
+  > first.
 - **The post persists through death.** The cart keeps its stock, till, and
   prices while unstaffed — commerce pauses, property remains. (Deterministic
   transactions gate on the keeper being present: no butcher, no grinding.)
 - **Vacancy is visible.** While unstaffed, the post swaps to a vacant
   `integration_desc` ("The food cart stands cold, its burner ring dark, a
   chain through its wheels.") — the room tells the story without a keeper.
+  > **NOT BUILT, on purpose** — see the banner's owner ruling of 2026-09-08.
+  > The desc-swap helpers were deleted; `vacant_desc`, `arrival_successor`
+  > and `arrival_resleave` are still authored in `world/npcs/blueprints.py`
+  > with no reader anywhere in the tree. What a dark slot emits today is a
+  > signal, not prose: `wsis.emit("post_vacant", …)` from
+  > `world/souls/posts.sweep`, plus a counter that answers closed while
+  > nobody stands the running shift. Keep the strings — the employment
+  > computer system is what they are waiting for.
 
 #### 1.2.1 What a role must supply to stand a post
 
@@ -204,12 +232,28 @@ service lives in `world/bar.py` — so nothing accumulates in
 
 ### 1.3 The watcher — a generalized complement loop
 
+> **AS BUILT — the sweep rides the SOULS heartbeat, not the director's.**
+> `world/souls/engine` calls `world/souls/posts.sweep()` once every
+> `SWEEP_EVERY_BEATS` (10) beats, on beat 3. The shape below is right;
+> the ownership is not. See the banner for why there is only one
+> registry (#2132).
+
 The director heartbeat (the same `GLOBAL_SCRIPTS` loop that runs patrol beats
 and the security complement) gains a **posts sweep**:
 
 1. For each registered post: is `db.post_keeper` alive, intact, and at (or
    near) the post? A deleted/dead keeper stamps `post_vacant_since` and swaps
    the vacant desc.
+   > **As built:** the question is asked per SLOT, by `_slot_held`, and the
+   > rule is holding by ASSIGNMENT, not by attendance — alive (`is_dead()`
+   > over `medical_state`, never a `db` flag — #2706) and still matched by
+   > `soul_post`/`soul_schedule` — so a keeper who steps out for a meal does
+   > not vacate the slot (#2371). One exception, and it is deliberate: a
+   > souled keeper with no `soul_post` recorded holds the slot by standing
+   > in it, or the Rook's own booth reads dark forever (#2178). An unsouled
+   > keeper holds nothing; that is a build error now, not a case. The stamp
+   > lands on that slot's `vacant_since` and emits `post_vacant`. No desc
+   > swap.
 2. When `now - post_vacant_since > post_delay`, run the policy:
    - **`resleave`** → rebuild from the blueprint's FIXED identity; restore
      the memory snapshot (§2); arrival renders as a return ("the butcher is
@@ -229,9 +273,36 @@ the NPC object and die with it. The policy decides what should survive:
 - **Snapshot at death:** the corpse-creation hook (or the watcher's vacancy
   stamp) copies the keeper's dossiers + memories onto the POST
   (`db.post_memory_snapshot`). Cheap, point-in-time, no periodic churn.
+  > **As built:** keyed by SHIFT. `world/souls/posts.snapshot_imprint`,
+  > called from `typeclasses/death_progression`, writes
+  > `db.post_memory_snapshots[shift]` and captures more than this line
+  > promises — thoughts, opinions, and the people known by face and by
+  > voice, as well as dossiers and episodic memory — because it shares
+  > `world/imprint.py` with the player's flash clone and so cannot drift
+  > from it. The singular `db.post_memory_snapshot` remains the fallback
+  > for a post with no slots: `snapshot_imprint` itself writes it when the
+  > deceased matches only the legacy mirror, and the older
+  > `world/npcs/posts.snapshot_keeper_memory` still writes it from the
+  > NPC-deletion branch of the same death path. Two writers, one key, on
+  > purpose — don't delete either half.
 - **`resleave` restores it** — continuity of self is the product the
   insurance pays for. Optional flavor: a configurable "gap" (the last N hours
   missing) if the death/sleeve fiction wants re-sleeve trauma to show.
+  > **The gap shipped**, and so did a price. The gap is not optional and not
+  > local to this system: `world/imprint.GAP` (5400s, ~90 minutes) sets the
+  > backup's `taken_at`, and `restore` drops every memory, thought, opinion
+  > and newly-met face from inside it — so murder stays a mystery for the
+  > player's flash clone and the NPC keeper alike, through one code path.
+  > (`RESLEAVE_PREMIUM`'s neighbour `RESLEAVE_GAP` in `world/souls/posts.py`
+  > is a leftover constant nothing reads; `world/imprint.GAP` is the live
+  > one.) The premium is real: debited from the post's own till — or
+  > `db.post_insurer` where the post has none — and credited to the clinic's
+  > Thawn-Harrison billing terminal, with the balance re-read at the write
+  > so the credit only happens if the debit did. A till that cannot afford
+  > it simply keeps earning: the cart sells noodles toward its own keeper's
+  > resurrection. `_try_resleave` restores the snapshot and does NOT clear
+  > it; per the bullet below, that is the intended disposal, not an
+  > omission.
 - **`successor` discards it** — the empty book is the point. The snapshot is
   retained on the post (GM-readable archaeology: what the old butcher knew)
   but never loaded into the new keeper.
