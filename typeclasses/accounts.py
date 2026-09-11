@@ -301,9 +301,25 @@ class Account(DefaultAccount):
                 # No session means we can't auto-puppet - this shouldn't happen
                 self.msg("|yAuto-puppet failed: No session. Use 'ic' to connect.|n")
         else:
-            # Multiple active characters - let user choose with 'ic <name>'
-            # The default OOC behavior will handle this
-            pass
+            # Multiple active sleeves — show the selection screen.
+            #
+            # This was `pass`, under a comment reading "the default OOC
+            # behavior will handle this". The default is
+            # `DefaultAccount.at_post_login`'s multi-character branch —
+            # which THIS METHOD REPLACES, deliberately without calling
+            # `super()` (see the docstring above, #2613). So nothing
+            # handled it: an account with two or more active sleeves
+            # logged in to silence. No list, no prompt, and no hint that
+            # `ic <name>` was the way out, since the only place that was
+            # written down was the comment (#2614).
+            #
+            # Scoped to `active_chars` rather than the default's
+            # `self.characters`: archived sleeves are dead and must not
+            # appear in a picker that implies they can be puppeted.
+            self.msg(
+                self.at_look(target=active_chars, session=session),
+                session=session,
+            )
 
 
 class Guest(DefaultGuest):
