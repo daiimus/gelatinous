@@ -53,14 +53,35 @@ class TestTheStandardGates(EvenniaCommandTest):
         """A static-drowned listener catches no words — nothing to answer."""
         self.assertIsNone(self._hear(None))
 
-    def test_it_never_answers_a_machine(self):
-        """Players talk, stations answer. Otherwise the band fills with
-        machines replying to each other."""
-        for flag in ("is_npc", "llm_driven", "is_base_station"):
-            self.station.db.heard = None
-            self.char2.attributes.add(flag, True)
-            self.assertIsNone(self._hear("bring her down", self.char2), flag)
-            self.char2.attributes.remove(flag)
+    def test_it_never_answers_a_station(self):
+        """A STATION answering a station is what fills the band with
+        machines talking to machines. That is what the guard refuses.
+
+        It used to refuse `is_npc` / `llm_driven` as well — true of
+        every souled body in the colony, including the one courier
+        whose JOB is to hail a fixture. #2619 narrowed it so Wren's
+        delivery run stops stalling at the crane, and this test asserted
+        the old contract until #2679's baseline sweep caught it.
+        """
+        self.station.db.heard = None
+        self.char2.attributes.add("is_base_station", True)
+        self.assertIsNone(self._hear("bring her down", self.char2))
+        self.char2.attributes.remove("is_base_station")
+
+    def test_it_answers_a_person_whether_or_not_a_soul_drives_them(self):
+        """The reason the guard was narrowed. A person on a radio is a
+        person on a radio — the console hears the courier exactly as it
+        hears a player, with no back door."""
+        for flag in ("is_npc", "llm_driven"):
+            with self.subTest(flag):
+                self.station.db.heard = None
+                self.char2.attributes.add(flag, True)
+                self.assertEqual(
+                    self._hear("bring her down", self.char2),
+                    "bring her down",
+                    f"{flag} must not silence a person on a radio",
+                )
+                self.char2.attributes.remove(flag)
 
     def test_it_never_answers_itself(self):
         self.assertIsNone(self._hear("echo", self.station))
