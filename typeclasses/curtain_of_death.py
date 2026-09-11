@@ -300,51 +300,92 @@ class DeathCurtain:
             self._on_animation_complete()
             
     def _on_animation_complete(self):
-        """Called when the animation completes."""
-        from world.identity_utils import msg_room_identity
+        """Finish the curtain: transition the character, then tell the room.
 
-        # Send a single, vivid death message that incorporates the cause.
-        # Species-aware (#356 follow-up): rats don't "clutch their
-        # chest" or "gasp" — the lookup routes to species overrides
-        # for the few cause-cells that need rat-flavored prose; the
-        # rest fall through to the human default which works for any
-        # small mammal ("eyes lose focus", "charred form crumples",
-        # etc.).
-        if self.location:
-            death_cause = None
-            if hasattr(self.character, 'get_death_cause'):
-                death_cause = self.character.get_death_cause()
+        ORDER MATTERS, and it used to be the wrong way round (#2629).
 
-            from world.medical.medical_messages import get_death_cause_template
-            species = getattr(
-                getattr(self.character, "db", None), "species", None,
-            )
-            death_template = get_death_cause_template(death_cause, species)
+        The room announcement ran FIRST and unguarded — an import, a
+        `get_death_cause_template` lookup, and a broadcast — while the
+        actual death-state transition sat inside `except Exception`. So
+        the cosmetic half was guaranteed to run and could abort the
+        method, and the irreversible half was best-effort.
 
-            msg_room_identity(
-                location=self.location,
-                template=death_template,
-                char_refs={"actor": self.character},
-                exclude=[self.character],
-            )
-        
-        # Start death progression system after death curtain completes
+        A raise anywhere in the announcement meant
+        `start_death_progression` was never reached. `at_death` has
+        already set `db.death_processed = True` by this point and
+        returns early on it forever, so nothing retried: the body stayed
+        puppeted in the room with DeathCmdSet, no corpse, no archive,
+        and `at_post_login` auto-puppeted the player straight back into
+        it.
+
+        `sweep_wedged_deaths` (#2932) now recovers that at the next boot,
+        which turns "permanent" into "wedged until the next reload". A
+        backstop is not a reason to keep the order inverted: doing the
+        transition first means the cosmetic failure costs a death
+        message, not a corpse.
+
+        The guard on the transition is kept deliberately (#469) — the
+        animation chain must finish either way — and the announcement
+        now has one of its own for the same reason.
+        """
+        # --- the irreversible half, first -------------------------
         try:
             from .death_progression import start_death_progression
             script = start_death_progression(self.character)
-            
-            # Debug logging
+
             from world.combat.debug import get_splattercast
-            splattercast = get_splattercast()
-            splattercast.msg(f"DEATH_CURTAIN: Death progression started for {self.character.key}, script: {script}")
-                
-        except Exception as e:
-            # Deliberate guard (#469): the curtain animation chain must
-            # finish even if progression startup fails — the failure is
-            # logged loudly here either way.
+            get_splattercast().msg(
+                f"DEATH_CURTAIN: Death progression started for "
+                f"{self.character.key}, script: {script}"
+            )
+        except Exception as e:  # noqa: BLE001 — see docstring (#469)
+            # Loud in BOTH tiers. Splattercast is a game channel nobody
+            # greps after the fact; a wedged death needs to reach the
+            # server log, where `sweep_wedged_deaths` failing to catch
+            # it can be traced.
+            from evennia.utils import logger
+            logger.log_err(
+                f"DEATH_CURTAIN: death progression failed to start for "
+                f"{getattr(self.character, 'key', '?')}: {e}"
+            )
             from world.combat.debug import get_splattercast
-            splattercast = get_splattercast()
-            splattercast.msg(f"DEATH_CURTAIN_ERROR: Failed to start death progression for {getattr(self.character, 'key', '?')}: {e}")
+            get_splattercast().msg(
+                f"DEATH_CURTAIN_ERROR: Failed to start death progression "
+                f"for {getattr(self.character, 'key', '?')}: {e}"
+            )
+
+        # --- the cosmetic half, guarded ---------------------------
+        # Species-aware (#356 follow-up): rats don't "clutch their
+        # chest" or "gasp" — the lookup routes to species overrides for
+        # the few cause-cells that need rat-flavored prose; the rest
+        # fall through to the human default, which works for any small
+        # mammal ("eyes lose focus", "charred form crumples", etc.).
+        if not self.location:
+            return
+        try:
+            from world.identity_utils import msg_room_identity
+            from world.medical.medical_messages import (
+                get_death_cause_template,
+            )
+
+            death_cause = None
+            if hasattr(self.character, "get_death_cause"):
+                death_cause = self.character.get_death_cause()
+            species = getattr(
+                getattr(self.character, "db", None), "species", None,
+            )
+            msg_room_identity(
+                location=self.location,
+                template=get_death_cause_template(death_cause, species),
+                char_refs={"actor": self.character},
+                exclude=[self.character],
+            )
+        except Exception as e:  # noqa: BLE001 — a lost eulogy is not a lost corpse
+            from evennia.utils import logger
+            logger.log_err(
+                f"DEATH_CURTAIN: death announcement failed for "
+                f"{getattr(self.character, 'key', '?')}: {e}"
+            )
 
 
 def show_death_curtain(character, message=None):
