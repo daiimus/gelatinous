@@ -178,12 +178,17 @@ class TestApplyVerdict(TestCase):
         self.assertIsNone(result)
         raised.assert_not_called()
 
-    def test_medical_maps_to_disturbance(self):
+    def test_medical_stays_medical(self):
+        """It used to map to `disturbance`, which dispatched SECURITY
+        and never a medic (#2721). The downgrade was behind a comment
+        reading "no medic role yet" — there is one, and
+        `dispatch.ROLE_RESPONDS_TO` has mapped `medical` to it all
+        along."""
         result, raised = self._apply({
             "is_incident_report": True, "incident_type": "medical",
             "location_text": "the Maxwell clinic"})
         event = raised.call_args.args[0]
-        self.assertEqual(event.type, "disturbance")
+        self.assertEqual(event.type, "medical")
         self.assertEqual(event.severity, 1)
 
     def test_malformed_verdict_is_silence(self):
