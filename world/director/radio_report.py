@@ -45,7 +45,12 @@ REPORTED_EVENTS = {
     "assault": ("assault", 2),       # violence is the thing that scales
     "disturbance": ("disturbance", 1),
     "fire": ("fire", 1),
-    "medical": ("disturbance", 1),   # wellness check — no medic role yet
+    # There IS a medic role, and `dispatch.ROLE_RESPONDS_TO` already maps
+    # "medical" to it. This downgraded the call to "disturbance" before
+    # the director ever saw it, so a phoned-in medical emergency
+    # dispatched SECURITY and never a medic — behind a comment whose
+    # reason had stopped being true (#2721).
+    "medical": ("medical", 1),
     "theft": ("crime", 1),
 }
 
