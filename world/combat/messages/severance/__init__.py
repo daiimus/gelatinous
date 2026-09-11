@@ -83,6 +83,23 @@ _VALID_SEVERITIES = ("grievous", "minor")
 _VALID_INJURY_TYPES = ("cut", "stab", "laceration")
 
 
+class _Someone:
+    """Stands in for an absent attacker.
+
+    A severance with no attacker is a surgical amputation, and the
+    observer line still has to name an agent. Returns lowercase so the
+    broadcast layer capitalises it wherever it opens a sentence, which a
+    baked-in literal could not do for both positions.
+    """
+
+    def get_display_name(self, looker=None, **kwargs):
+        return "someone"
+
+
+#: One instance; it carries no state.
+_SOMEONE = _Someone()
+
+
 def _resolve_module_name(location: str) -> str:
     """Map a hit-location key to the severance module that owns it."""
     if location in _LIMB_ALIASES:
@@ -325,5 +342,23 @@ def get_severance_message(
     except Exception:
         final["observer_template"] = final.get("observer_msg", "")
 
-    final["observer_char_refs"] = {"actor": attacker, "target_char": target}
+    # A SURGICAL AMPUTATION HAS NO ASSAILANT. `attacker` is None off the
+    # combat path -- it comes from `ndb._last_damage_attacker`, which
+    # only the attack path sets -- and the template's `{actor}` is live
+    # by this point, so handing None through meant
+    # `None.get_display_name(...)` and a fall back to the legacy beat
+    # for every chart-driven amputation (#2753).
+    #
+    # Three of this function's four outputs already guard the same
+    # absence ("someone" / "Someone" above); this was the one that did
+    # not.
+    #
+    # A stand-in rather than a literal, because `{actor}` appears both
+    # leading a sentence and mid-sentence across the templates.
+    # Lowercase, so `msg_room_identity` capitalises it exactly where it
+    # opens one (#2641).
+    final["observer_char_refs"] = {
+        "actor": attacker if attacker is not None else _SOMEONE,
+        "target_char": target,
+    }
     return final
