@@ -10,6 +10,7 @@ from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils.utils import run_async
 from django.conf import settings
 from datetime import datetime, timedelta, timezone
+import re
 import requests
 
 
@@ -275,16 +276,50 @@ class CmdBug(MuxCommand):
         
         return "unknown"
     
+    #: `@name` that GitHub would turn into a mention, and `#123` that it
+    #: would turn into a cross-reference. Both need a word boundary in
+    #: front so `foo@bar` and `C#` are left alone.
+    _MENTION_RE = re.compile(r"(?<![\w/])@(?=[A-Za-z0-9][-\w]*)")
+    _XREF_RE = re.compile(r"(?<![\w&])#(?=\d+\b)")
+
     def sanitize_description(self, text):
-        """Sanitize user input to prevent issues."""
-        # Limit length
+        """Neutralise player text bound for a PUBLIC GitHub issue.
+
+        This truncated and stripped, under a name and a docstring that
+        both said "sanitize" and a spec that ticked two sanitization
+        boxes (#2527). Whatever a player typed reached the issue body
+        verbatim.
+
+        Two things GitHub acts on rather than merely renders, and both
+        reach real people:
+
+        * `@name` PINGS that account, every time, from a report anyone
+          in the game can file;
+        * `#123` cross-references an issue or PR and leaves a permanent
+          backlink on it.
+
+        Escaped rather than stripped, so the report still reads as the
+        player wrote it -- the text is evidence, and silently deleting
+        characters from a bug report is its own bug. Markdown and HTML
+        are left alone: GitHub sanitizes HTML in issue bodies, and
+        formatting is not the hazard.
+        """
+        if not text:
+            return ""
         if len(text) > 5000:
             text = text[:5000] + "\n\n[Description truncated at 5000 characters]"
-        
-        # Basic sanitization - preserve most formatting but prevent extreme cases
         text = text.strip()
-        
+        text = self._MENTION_RE.sub("@\u200b", text)
+        text = self._XREF_RE.sub("#\u200b", text)
         return text
+
+    def sanitize_title(self, text):
+        """The same treatment for the TITLE, which bypassed it entirely.
+
+        The title is player-typed too, goes into the same public issue,
+        and a mention in it is every bit as loud (#2527).
+        """
+        return self.sanitize_description(text or "")[:100]
     
     def create_github_issue(self, description, context):
         """
@@ -300,10 +335,12 @@ class CmdBug(MuxCommand):
         title = context.get('title')
         if title:
             # Title was provided separately (from detail editor)
-            title = title[:100]  # Truncate if too long
+            title = self.sanitize_title(title)
         else:
-            # Extract title from description (for regular @bug command)
-            title = description.split('\n')[0][:100]  # First line, truncated
+            # Extract title from description (for regular @bug command).
+            # `description` is already sanitized above, but re-running it
+            # costs nothing and keeps the 100-char cap in one place.
+            title = self.sanitize_title(description.split('\n')[0])
         
         # Build issue body
         body = self.format_issue_body(description, context)
