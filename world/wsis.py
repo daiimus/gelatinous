@@ -105,7 +105,19 @@ _ring = None
 _since_checkpoint = 0
 
 
+#: Where the ring is kept. `ServerConfig` is a plain global key/value
+#: table -- nothing manages it, nothing recreates it.
+#:
+#: It used to live on `GLOBAL_SCRIPTS.souls_heartbeat`. Evennia manages
+#: those from `settings`, and RECREATES a managed script when its
+#: settings entry changes -- so an interval tweak to the souls heartbeat
+#: would have taken the colony's entire signal history with it, silently
+#: (#2672).
+_STORE_KEY = "wsis_ring"
+
+
 def _heartbeat():
+    """The old home, read once for migration. See `_load`."""
     from evennia import GLOBAL_SCRIPTS
     return getattr(GLOBAL_SCRIPTS, "souls_heartbeat", None)
 
@@ -115,8 +127,15 @@ def _load():
     global _ring
     if _ring is not None:
         return _ring
-    hb = _heartbeat()
-    stored = (hb.db.wsis_ring if hb else None) or []
+    from evennia.server.models import ServerConfig
+
+    stored = ServerConfig.objects.conf(_STORE_KEY, default=None)
+    if not stored:
+        # One-time adoption from the script the ring used to live on,
+        # so the history already recorded there is not thrown away by
+        # the move. Writes through on the next checkpoint.
+        hb = _heartbeat()
+        stored = (hb.db.wsis_ring if hb else None) or []
     _ring = [tuple(entry) for entry in stored]
     return _ring
 
@@ -127,9 +146,11 @@ def _checkpoint(force=False):
     if not force and _since_checkpoint < CHECKPOINT_EVERY:
         return
     _since_checkpoint = 0
-    hb = _heartbeat()
-    if hb is not None:
-        hb.db.wsis_ring = list(_ring[-RING:])
+    if _ring is None:
+        return
+    from evennia.server.models import ServerConfig
+
+    ServerConfig.objects.conf(_STORE_KEY, list(_ring[-RING:]))
 
 
 def zone_of(where):
