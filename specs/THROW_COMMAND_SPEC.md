@@ -1,6 +1,27 @@
 # Throw Command Implementation Specification
 
 > **Status:** ✅ **SHIPPED** — verified against code 2026-08-02; 59 tests as claimed.
+>
+> **Re-audited 2026-09-11 (#2445 item 4).** The suite is now **60** tests
+> — the deflection-weapon fix (#2493) replaced one test and added
+> another. Divergences found on that pass are annotated where they sit
+> rather than deleted. Two of them are **code** defects with issues
+> already open, and this spec describes the correct intent in both cases
+> — do not re-spec around them:
+> - **#2538** — a thrown object never leaves the thrower's inventory
+>   during flight, so a cooked grenade detonates in the thrower's hands
+>   at double damage in the wrong room, and the item stays re-wieldable
+>   mid-flight. Nothing below sanctions that; the "Throw window" and
+>   "Hand explosion" rules describe the behaviour that was wanted.
+> - **#2540** — the throw path writes only the grenade's side of the
+>   universal-proximity link, so movement and `retreat` cannot escape a
+>   **thrown** grenade's blast. The "Bidirectional relationships"
+>   principle below is the design; the code half-implements it. The
+>   issue's "a *placed* grenade escapes correctly" framing does not
+>   survive a read: there is no `place` command, and `drop` — this
+>   spec's own area-denial tactic — writes only the object's side too.
+>   The sole bidirectional writer is `CmdDefuse`'s approach helper, so
+>   the gap is wider than the issue title suggests.
 
 ## 🚀 **IMPLEMENTATION STATUS - COMPLETE**
 
@@ -9,7 +30,9 @@
 ### Architecture, Test Coverage & Known Divergences (issue #471)
 
 Behavior is pinned by the characterization suite at
-`world/tests/test_throw_characterization.py` (59 tests: parsing,
+`world/tests/test_throw_characterization.py` (60 tests — 59 at the
+#471 restructure, plus one from the deflection-weapon fix (#2493):
+parsing,
 validation, flight lifecycle, landing/proximity, hit resolution,
 deflection, pull, catch). That suite is the contract for any change
 to the system.
@@ -246,7 +269,7 @@ throw keys to here   # Throw randomly in current room
 
 ### Grenades ✅ **FULLY IMPLEMENTED**
 - **Proximity creation**: Landing creates danger zone using existing proximity mechanics
-- **Retreat escape**: Standard retreat command removes from grenade proximity
+- **Retreat escape**: Standard retreat command removes from grenade proximity — **⚠ not honoured by the code (#2540).** `retreat` is a combat-handler action: it needs a live handler and gates on `ndb.in_proximity_with`, the *melee* set, and `break_proximity` touches only that set. `resolve_retreat` does read the character's universal `ndb.proximity`, but the throw path writes only the **grenade's** side of that link, so it reads empty and retreat cannot see the grenade at all. The `drop`-as-area-denial path below has the same gap — it appends the dropper to the object's list and never writes the character's. The one place that writes both ends is `CmdDefuse`'s `establish_mutual_proximity`, reached when someone walks up to a grenade to defuse it; there is no `place` command, so #2540's "a placed grenade escapes correctly" describes that defuse-approach path rather than a placement one. The design stated here is right and the code is the defect — fix the link (and fix it for `drop` too), do not re-spec the escape.
 - **Area effect**: All characters in target's proximity inherit grenade proximity
 - **Chain reactions**: Multiple grenades can create strategic positioning puzzles
 - **Pin pulling system**: `pull pin on <grenade>` activates fuse timer
