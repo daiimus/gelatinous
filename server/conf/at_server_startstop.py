@@ -149,6 +149,19 @@ def at_server_stop():
     This is called just before the server is shut down, regardless
     of it is for a reload, reset or shutdown.
     """
+    # #2672: the signal ring checkpoints every 25 emits, so everything
+    # since the last multiple of 25 dies with the process. `flush()`
+    # existed for exactly this and its docstring named two callers it
+    # never had -- measured live, the newest checkpointed row was 58
+    # minutes old, about 35 signals of colony history one reload from
+    # gone.
+    try:
+        from world.wsis import flush
+        flush()
+    except Exception:  # noqa: BLE001 — a checkpoint never blocks a stop
+        from evennia.utils import logger
+        logger.log_trace("WSIS checkpoint on shutdown failed.")
+
     pass
 
 
