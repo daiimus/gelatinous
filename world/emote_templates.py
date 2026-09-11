@@ -203,6 +203,12 @@ def _make_social_cmd(
                 targeted_template,
                 {"actor": caller, "target": target},
                 exclude=[caller],
+                # The one person this gesture points at is flagged, so an
+                # NPC waved at can ANSWER rather than merely record it.
+                # `.waves at bartender` already did this; `wave at
+                # bartender` -- the shipped command for the same act --
+                # did not, and the two doors disagreed (#3211).
+                addressed_refs=("target",),
                 type="pose",
                 from_obj=caller,
             )
