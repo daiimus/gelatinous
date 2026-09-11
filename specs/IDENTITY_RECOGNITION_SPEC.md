@@ -329,12 +329,46 @@ recognition_memory = {
                                         # recognition roll (see §Disguise Piercing).
         "linked_to": str | None,        # Apparent UID of a prior presentation the
                                         # observer witnessed transitioning into this one.
-                                        # Populated by the unmasking-moments hook (see
-                                        # §Unmasking Moments). Forms a one-direction
-                                        # chain new → old; walked by
-                                        # `get_linked_aliases` to render the
-                                        # "Also known as" line in `recall` and the
-                                        # "(aka ...)" annotation in `memory`.
+                                        # Populated by the unmasking-moments hook
+                                        # (see §Unmasking Moments), by the
+                                        # pierce-then-`remember` auto-link (see
+                                        # §Disguise Piercing), and by
+                                        # `world/identity.py:_link_by_papers`
+                                        # when two entries both carry a verified,
+                                        # colony-tier attestation of the same
+                                        # name. The stored pointer is
+                                        # one-direction, new → old, but
+                                        # `get_linked_aliases` walks it in BOTH
+                                        # directions via `linked_family` (#2410,
+                                        # #2651) to render the "Also known as"
+                                        # line in `recall` and the indented
+                                        # "aka:" row in `memory`. Absent on
+                                        # entries that were never linked — read
+                                        # it with `.get`.
+
+        # Documentary proof (see NPC_MEMORY_AND_IDENTITY_SPEC.md §2b)
+        "attested": [                   # Names a DOCUMENT vouched for. Written
+                                        # only by proof, never by speech: a name
+                                        # merely claimed is an `assigned_name`.
+                                        # Appended by `world/identity.py:attest`,
+                                        # capped at the last 8, rendered as the
+                                        # `Papers:` lines in `recall`, and read by
+                                        # `_link_by_papers` to chain two faces.
+                                        # Absent until the first attestation —
+                                        # read it with `.get`.
+            {
+                "name": str,            # The vouched-for name
+                "issuer": str,          # Who vouched ("colony registry", ...)
+                "authority": str,       # `AUTHORITY_TIERS` key: "colony" |
+                                        # "corporate" | "commercial" | "personal".
+                                        # Tier is weight, not truth.
+                "protocol": str,        # Which security protocol was satisfied;
+                                        # `PROTOCOL_UNVERIFIED` when none was.
+                "verified": bool,       # Protocol satisfied. A colony document
+                                        # with a broken seal is high authority
+                                        # and worthless.
+            }
+        ],
 
         # Interaction log (capped, rolling window)
         "recent_interactions": [
@@ -438,6 +472,7 @@ Recognition data lives directly on the Character as an `AttributeProperty` (`typ
 - Populated by explicit player action (`remember` command)
 - Future: auto-populated by Resonance-driven proximity detection
 - Lost on character deletion. When recognition migrates to the brain organ (future medical-system work), it will be lost on brain destruction — moot for the current character (brain destruction = death) but relevant for brain-transplant scenarios.
+  - **⚠️ Accuracy note (2026-09-11):** the parenthetical is not what the runtime does *today*. `world/medical/core.py:_compute_is_dead` gates death on `blood_pumping` / `breathing` / `digestion` / `neck_integrity` and the blood-loss floor only; `consciousness` is deliberately excluded (its own docstring: "Brain destruction lands as unconsciousness here (not death)"). A destroyed brain drops the consciousness capacity floor to zero, which `update_vital_signs` writes into the runtime value, which trips `MedicalState.is_unconscious` — so brain destruction currently reads as **unconsciousness**, and kills only indirectly through head-wound bleeding. Owner ruling **#3248** makes `calculate_body_capacity("consciousness")` — the organ floor, *not* the runtime `self.consciousness`, which every knockout drives to zero — a death gate, which will make this parenthetical true again; it is not implemented yet. See `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` Category A. The point this bullet is making is unaffected either way: recognition memory currently lives on the Character, so brain loss only becomes a storage concern once it moves to the brain organ and transplants exist.
 - Brain damage (non-fatal, future) will carry a risk of partial memory loss — individual entries can be degraded or lost. This is a future enhancement once the memory pool is rich enough to make partial loss meaningful and once recognition lives on the brain organ.
 - Flash clones get a new Character record — they start with empty recognition memory. The clone is a stranger who happens to look like someone others remember.
 
@@ -898,9 +933,35 @@ This is the bridge that keeps disguise legible after the fact. Without it, a sig
 **Chain semantics.**
 
 - `linked_to` forms a **one-directional chain** new → old. Walking the chain (`world/identity.py:walk_linked_chain`) terminates on `None`, on a cycle (logged and broken), or on `_LINKED_CHAIN_MAX_HOPS = 64` (defensive guard).
-- `get_linked_aliases(memory, current_uid)` walks the chain from `current_uid` and returns the list of non-empty `assigned_name`s from prior presentations. The renderer uses this to emit `Also known as: |w<name1>|n, |w<name2>|n` in `recall` and `\n|x(aka <names>)|n` in the `memory` table.
-- The chain is *not* bidirectional — viewing an old entry does not currently surface the new presentation's name. Forward-only walk was chosen for simplicity and is sufficient for the "Also known as" UX. If a future need arises (e.g. "this name was later replaced by..."), the inverse walk can be added without schema change.
-- **Forget interaction:** Forgetting the *old* entry leaves the new entry's `linked_to` pointing at a missing UID; `get_linked_aliases` silently terminates the walk via `memory.get(next_uid)`. No dangling-reference error.
+- `get_linked_aliases(memory, current_uid)` returns the list of non-empty `assigned_name`s from every *other* entry in `current_uid`'s linked family. The renderer uses this to emit `Also known as: |w<name1>|n, |w<name2>|n` in `recall` and an indented `aka: <name1>, <name2>` row per listed entry in the `memory` report panel.
+- ~~The chain is *not* bidirectional — viewing an old entry does not currently surface the new presentation's name. Forward-only walk was chosen for simplicity and is sufficient for the "Also known as" UX. If a future need arises (e.g. "this name was later replaced by..."), the inverse walk can be added without schema change.~~ **Superseded — see the note below.** The reasoning here was right at the time, and the *storage* shape it defends is unchanged; only the walk is now two-way.
+- **Forget interaction:** Forgetting the *old* entry leaves the new entry's `linked_to` pointing at a missing UID; the walk silently drops it (`linked_family` follows a pointer only when the target UID is still present in `memory`, and returns `[uid]` unchanged when the start UID is itself absent). No dangling-reference error.
+
+> **⚠️ Superseded 2026-09-11 — the alias walk is bidirectional (#2410, #2651).**
+> The *stored* `linked_to` pointer is still one-directional, new → old, exactly
+> as the bullets above describe. What changed is the **traversal**:
+> `get_linked_aliases` no longer calls `walk_linked_chain`. It calls
+> `world/identity.py:linked_family`, which closes over `linked_to` in BOTH
+> directions — forward via an entry's own pointer, backward by scanning for
+> entries that point *at* it — and returns the family as a set;
+> `get_linked_aliases` then orders the names by the observer's own memory order
+> so the output is deterministic across restarts. The "future need" the last
+> bullet anticipated arrived: under a forward-only walk, "Also known as" gave a
+> different answer depending on which face you happened to be looking at.
+> `linked_family` landed on the LLM-NPC path first (#2410,
+> `typeclasses/llm_npc.py`) and was wired into the player's `recall` / `memory`
+> later (#2651). As the bullet predicted, no schema change was needed.
+> `walk_linked_chain` still exists and still behaves exactly as the first bullet
+> describes, but it has no production caller left — only tests.
+>
+> **Writers.** `linked_to` now has three, not one: the unmasking-moments hook
+> (cells B and D above); the pierce-then-`remember` auto-link in
+> `CmdRemember._remember_target` (see §Disguise Piercing); and
+> `world/identity.py:_link_by_papers`, which links two faces when both carry a
+> **verified, colony-tier** attestation of the same name — the paper route to
+> the conclusion a witnessed unmasking reaches by eye. `_link_by_papers` is
+> deliberately narrow: it refuses to link when either entry already has a
+> `linked_to`, and weaker tiers or unverified protocols never link at all.
 
 **Per-cell narrative flavor.** `_send_unmasking_message` emits per-observer prose, dispatched as a direct `.msg()` call rather than through `msg_room_identity` (the recipient list is already narrowed by `_collect_unmasking_observers`, and the prose is tailored to what *this* observer knew going in). The cell-B and cell-D templates follow the same noir, recognition-centric voice as the wear/remove emote pipeline:
 
@@ -2844,7 +2905,7 @@ Sites that broadcast **only** non-character text (item names, constant prose) ar
   - Cross-namespace uniqueness enforced (keyword catalog ∩ recognition names ∩ persona names)
   - No cap (deferred to balance pass)
   - Persona `essential_item_types` snapshot + adoption-time advisory — **shipped** (`commands/CmdCharacter.py:_build_persona_entry,_adopt_persona`); `_build_persona_entry` captures `get_essential_item_type_ids(caller)` at save time, and `_adopt_persona` emits a yellow advisory when the saved composition diverges from currently-equipped essentials. Adoption proceeds regardless.
-- Unmasking-moments hook — **shipped** (PR #134, prose follow-up PR #136). `world/identity.py:apply_signature_change` context manager wraps every mutation that may change the actor's identity signature (`_clear_all_overrides`, `_nudge_height`, `_nudge_build`, `_set_keyword_override`, `_adopt_persona`, and `ClothingMixin.wear_item` / `remove_item` for `disguise_essential` items). When a signature actually changes, `_broadcast_unmasking` walks the room's conscious observers and updates their recognition memory according to the A/B/C/D matrix in §Unmasking Moments — flipping `lost_contact` on prior presentations, refreshing the new presentation's recency, and forming `linked_to` chains. `get_linked_aliases` walks the chain forward and surfaces aliases in `recall` (`Also known as: ...`) and `memory` (`(aka ...)`). Per-cell narrative prose now ships via `_send_unmasking_message` (cell B: recognition-gained, cell D: link-discovered, cell C: silent).
+- Unmasking-moments hook — **shipped** (PR #134, prose follow-up PR #136). `world/identity.py:apply_signature_change` context manager wraps every mutation that may change the actor's identity signature (`_clear_all_overrides`, `_nudge_height`, `_nudge_build`, `_set_keyword_override`, `_adopt_persona`, and `ClothingMixin.wear_item` / `remove_item` for `disguise_essential` items). When a signature actually changes, `_broadcast_unmasking` walks the room's conscious observers and updates their recognition memory according to the A/B/C/D matrix in §Unmasking Moments — flipping `lost_contact` on prior presentations, refreshing the new presentation's recency, and forming `linked_to` chains. `get_linked_aliases` walks the chain forward and surfaces aliases in `recall` (`Also known as: ...`) and `memory` (`(aka ...)`). *(Both halves of that sentence have since changed: the walk is bidirectional via `linked_family` (#2410, #2651) and the `memory` render is an indented `aka: <names>` row in the report panel — see the superseded note in §Unmasking Moments. The rest of this bullet still describes what PR #134 shipped.)* Per-cell narrative prose now ships via `_send_unmasking_message` (cell B: recognition-gained, cell D: link-discovered, cell C: silent).
 - Corpse apparent-UID propagation — **shipped** (PR #133). `typeclasses/corpse.py` carries `sleeve_uid`, `get_worn_items()`, a recognition-aware `get_display_name`, and `at_object_leave` invalidation so worn-item removal from a corpse re-derives its apparent presentation. Observers who tagged the deceased under a particular signature continue to auto-recognize the body under that same signature; stripping the body changes the signature and breaks the recognition tag, mirroring the live-character semantics.
 - Lifecycle integration:
   - Death: clears overrides; corpse stores `real_sleeve_uid` + `last_active_signature` snapshot — **shipped** (PR #133 + Issue #182). Corpse `sleeve_uid` propagation and presentation-aware recognition shipped in PR #133. Issue #182 closed the remaining gaps: `_create_corpse_from_character` now stores the full identity-signature 5-tuple as `corpse.db.signature_at_death` alongside the existing `apparent_uid_at_death` hash (so forensic consumers can reconstruct component axes — the hash alone is one-way), and `_clear_all_overrides(character)` runs after the snapshot to wipe `height_override` / `build_override` / `keyword_override` / `active_persona` on the dead Character (snapshot-before-clear ordering preserves the death-moment disguise). `world.identity.render_signature_summary(signature)` provides a stable keyed view over the 5-tuple for future forensic-reconstruction consumers (cf. Future Hooks: photo evidence, signature snapshots as evidence, multi-UID linking).
