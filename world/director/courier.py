@@ -139,6 +139,9 @@ def _reachable(soul: Any, origin: Any, dest: Any) -> bool:
         return False
 
 
+from world.grammar import with_article
+
+
 def hand_over(soul: Any, counter: Any, package: Any = None) -> dict:
     """Give the package over and take the fee. Returns a small report.
 
@@ -169,6 +172,29 @@ def hand_over(soul: Any, counter: Any, package: Any = None) -> dict:
     # a parcel that never moved.
     if not out["delivered"]:
         return out
+
+    # THE ROOM SEES IT. The move is `quiet=True, move_hooks=False`, so
+    # without this a courier walked in, handed a parcel across the
+    # counter and took a fee out of the till while every observer saw
+    # nothing at all -- the origin of a run was narrated and its arrival
+    # was not (#2716).
+    #
+    # Through `emote`, the same door a player's pose uses, so the
+    # identity layer renders the courier and the keeper per observer.
+    # No bespoke broadcast.
+    try:
+        if keeper is not None:
+            soul.execute_cmd(
+                f"emote hands {with_article(package.key)} across to "
+                f"{keeper.key}, and signs it off."
+            )
+        else:
+            soul.execute_cmd(
+                f"emote sets {with_article(package.key)} down on "
+                f"{counter.key}, and signs it off."
+            )
+    except Exception:  # noqa: BLE001 — narration never blocks the errand
+        pass
 
     till = int(counter.attributes.get(REGISTER, 0) or 0)
     if till >= FEE:
