@@ -168,18 +168,60 @@ class TestSyntheticInfectionImmunity(TestCase):
         self.assertEqual(InfectionCondition(2, "chest").condition_type,
                          "infection")
 
-    def test_seed_infection_skips_immune_target(self):
+    # Both of these assert on `add_condition`, the DOOR, rather than on
+    # `state.conditions`, the list behind it (#3080).
+    #
+    # #2506 moved `_seed` onto `MedicalState.add_condition` because the
+    # list is not the door -- the door also invalidates the death
+    # verdict, starts the condition's ticker, and saves. Against a
+    # `MagicMock` state that call records itself and never touches
+    # `.conditions`, so the pair below drifted in opposite directions:
+    #
+    #   * the non-immune test went RED and stayed red, reporting a
+    #     working seeder as broken;
+    #   * the immune test went FALSE GREEN -- `conditions == []` is
+    #     true whether or not the guard fires, so it could not fail,
+    #     and the design rule it guards (synthetics don't go septic,
+    #     #516) was unpinned.
+    #
+    # A red test is loud. A test that cannot fail is silent, and it was
+    # sitting next to it the whole time.
+    def _seed_against_mock(self, *, immune):
         from world.medical.procedures import seed_infection
         state = MagicMock()
         state.conditions = []
-        state.is_infection_immune.return_value = True
+        state.is_infection_immune.return_value = immune
         seed_infection(MagicMock(medical_state=state), "chest", 3)
-        self.assertEqual(state.conditions, [])  # no infection seeded
+        return state
+
+    def test_seed_infection_skips_immune_target(self):
+        state = self._seed_against_mock(immune=True)
+        state.add_condition.assert_not_called()
+        self.assertEqual(state.conditions, [])
 
     def test_seed_infection_applies_to_non_immune(self):
+        from world.medical.conditions import InfectionCondition
+
+        state = self._seed_against_mock(immune=False)
+        state.add_condition.assert_called_once()
+        seeded = state.add_condition.call_args.args[0]
+        self.assertIsInstance(seeded, InfectionCondition)
+        self.assertEqual(seeded.condition_type, "infection")
+        self.assertEqual(seeded.location, "chest")
+        self.assertEqual(seeded.severity, 3)
+
+    def test_a_state_with_no_door_still_gets_the_condition(self):
+        """`_seed`'s fallback branch: a state shape with no
+        `add_condition` is appended to directly. Pinned because it is
+        the only path that still writes the list, so a future cleanup
+        cannot quietly delete it."""
         from world.medical.procedures import seed_infection
-        state = MagicMock()
-        state.conditions = []
-        state.is_infection_immune.return_value = False
+
+        class _Bare:
+            def __init__(self):
+                self.conditions = []
+
+        state = _Bare()
         seed_infection(MagicMock(medical_state=state), "chest", 3)
         self.assertEqual(len(state.conditions), 1)
+        self.assertEqual(state.conditions[0].condition_type, "infection")
