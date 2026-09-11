@@ -13,8 +13,13 @@
 > + cart #5221 at the Toe of Hammett's Boot (#5203); rats via `@spawnmob/rat`
 > (ambient sewer spawn still deferred). Her persona grounds the cart's LIVE board
 > + what she buys (anti-invention), and spoken DISH ORDERS serve deterministically
-> off the cart (the bartender's #1235 pattern: `_match_dish_order` via recipe
-> keywords → the cart's purchase path; LLM never serves or quotes prices). Remaining from §5: ambient rat supply, rep-
+> off the cart (the bartender's #1235 pattern; since #2350/#2378 the matcher and
+> the serve are the SHARED shelf code rather than methods on a butcher class —
+> `world/shop/service.py` `serve_from_board_cart` → `serve_from_shelf` →
+> `match_from_shelf` → `_fulfil_from_shelf` → the cart's `purchase_item`, scoring
+> the cart's live `prototype_inventory` names and aliases; the `keywords` tuples
+> in `world/food.py` are no longer what resolves an order; LLM never serves or
+> quotes prices). Remaining from §5: ambient rat supply, rep-
 > scaled rates, tier-3 provenance, the Ripper.
 
 ---
@@ -62,7 +67,10 @@ voice + memory.** A real payout never rides a model tool-roll.
   pre-harvested carcass is worth less, for free).
 - **Transaction/payment:** the bartender pattern — `tokens` on the payer, a
   `register` on the butcher's block, `world.shop.utils.format_currency`. The
-  handler is modeled on `Bartender._fulfil_order`.
+  handler is modeled on `Bartender._fulfil_order` — which is no longer a
+  typeclass method either: since #2350/#2378 service is keyed by `post_role` in
+  `world/service.py`'s registry, bar service lives in `world/bar.py` and the
+  cart's half in `world/shop/service.py`.
 - **Hand-over:** the `give` command → the butcher's `at_object_receive` room hook
   detects the corpse (the same arrival-hook shape the bar uses).
 - **Voice + memory:** the LLM NPC brain (`LLMNpcMixin`) + a new `butcher`
@@ -72,6 +80,30 @@ voice + memory.** A real payout never rides a model tool-roll.
 ## 3 · The build (the Butcher only)
 
 ### 3.1 `Butcher` typeclass (`typeclasses/butcher.py`, sibling of `Bartender`/`Doctor`)
+
+> **⚠️ SUPERSEDED (#2378) — the class is gone; the job stayed.** There is no
+> `Butcher` typeclass, and no `Bartender`/`Shopkeeper`/`Doctor` either: every
+> body is `LLMNpc` and what it can DO comes from the post it stands
+> (`NPC_PLATFORM_SPEC` §3, law 5 — "no capability rides a typeclass").
+> Everything below still happens; what changed is its address, so that whoever
+> stands the block can work it:
+>
+> | §3.1 as written | where it lives now |
+> |---|---|
+> | `db.is_butcher_npc` (loop-guard marker) | gone — being the butcher IS standing a `butcher` post; the registry entry in `world/shop/service.py` (role, aliases, fallback, archetype, tools, `on_receive`) is the whole declaration |
+> | `_find_block()` | `world.service.post_for()` — the post owns the cart |
+> | `at_object_receive(obj, **kw)` | generic on `LLMNpc` (`typeclasses/llm_npc.py`) → `world.service.receive` → the registry's `on_receive` hook |
+> | `_process_corpse(corpse, giver)` | `world.butchery.process_corpse` (reached via `world.butchery.on_receive`) |
+> | `_name_aliases()` | still a method on `LLMNpc`, but it no longer HOLDS the words — it returns `world.service.aliases_for()`, the aliases of the post being stood, so a successor inherits the name for the job |
+>
+> **One line did not ship as written:** those aliases are `("butcher", "cook")`
+> in the registry, not `["butcher", "meatpacker", "grinder"]` — "meatpacker" and
+> "grinder" address nobody, and "cook" was added. Flagged, not reconciled:
+> whether the registry list is the intended one is an owner call.
+>
+> `typeclasses/butcher.py` now holds only the `FoodCart` fixture, with
+> `ButcherBlock` kept as a back-compat alias for objects created before the cart
+> redesign.
 - `LLMNpcMixin, Character`; `db.is_butcher_npc = True` (loop-guard marker);
   `db.llm_driven` opt-in (off by default, like the others).
 - `_find_block()` → the `ButcherBlock` fixture (the register holder), mirroring
