@@ -248,9 +248,19 @@ def cleanup_invalid_proximity(character):
             # Different rooms - should not be in proximity
             invalid_chars.append(other_char)
     
-    # Remove invalid characters
+    # Remove invalid characters -- from BOTH sides.
+    #
+    # This discarded from `character`'s set only, leaving `character`
+    # sitting in the partner's. That is not a repair, it is a new
+    # asymmetry: one of them has forgotten the other and the other has
+    # not, which is the exact desync this helper exists to clean up
+    # (#2485). `break_proximity` is the module's working primitive and
+    # already removes each from the other.
     for invalid_char in invalid_chars:
-        proximity_set.discard(invalid_char)
+        if invalid_char is None:
+            proximity_set.discard(invalid_char)
+            continue
+        break_proximity(character, invalid_char)
         log_debug("PROXIMITY", "CLEANUP", f"Removed invalid {invalid_char} from {character.key}")
 
 
@@ -266,8 +276,29 @@ def sync_proximity_bidirectional(character):
         return
     
     for other_char in list(proximity_set):
-        # Ensure other character has us in their proximity too
-        if not is_in_proximity(other_char, character):
-            initialize_proximity(other_char)
-            getattr(other_char.ndb, NDB_PROXIMITY).add(character)
-            log_debug("PROXIMITY", "SYNC", f"Added {character.key} to {other_char.key}'s proximity")
+        if is_in_proximity(other_char, character):
+            continue                      # already symmetric
+        # A ONE-SIDED entry is ambiguous: it can mean the partner
+        # dropped us, or that our own side is stale. This used to
+        # resolve it by ADDING -- treating `character`'s set as
+        # authoritative and forcing the partner to match -- so a stale
+        # cross-room entry was PROPAGATED rather than repaired, and the
+        # sibling helper above repairs the very same desync by
+        # REMOVING. Two repairs pulling in opposite directions (#2485).
+        #
+        # Validity decides which way. A pair that should not be in
+        # proximity at all is broken on both sides; only a genuinely
+        # valid pair is completed.
+        valid = (
+            getattr(other_char, "location", None) is not None
+            and getattr(character, "location", None) is not None
+            and other_char.location == character.location
+        )
+        if not valid:
+            break_proximity(character, other_char)
+            log_debug("PROXIMITY", "SYNC",
+                      f"Broke stale {character.key} <-> {other_char.key}")
+            continue
+        initialize_proximity(other_char)
+        getattr(other_char.ndb, NDB_PROXIMITY).add(character)
+        log_debug("PROXIMITY", "SYNC", f"Added {character.key} to {other_char.key}'s proximity")
