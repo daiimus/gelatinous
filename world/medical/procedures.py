@@ -1114,6 +1114,52 @@ def _resolve_install(actor, target, *, organ_item, location: str,
     # Look up the destination organ's display_location from the
     # snapshot to determine whether the location needs incising
     # or is surface-accessible.
+    # Species gate — the biological half of the check the AUGMENT and
+    # MODULE resolvers already make (and that `CmdOperate`'s install
+    # picker makes when listing donors). This path had none, so a
+    # harvested rat liver grafted into a person on any successful roll,
+    # and a human liver into a rat: the harvest writer stamps
+    # `compatible_species = [source species]` on every organ it cuts
+    # out, so the fact was sitting on the item and simply was not read
+    # (#3070).
+    #
+    # STRICT, as the cyberware gate is: an organ that cannot say what
+    # it came from does not go into anybody. Owner call, and free --
+    # measured before tightening, every one of the 22 organ items in
+    # the world carries provenance, and no prototype can spawn one
+    # without it.
+    #
+    # The fallback rung is NOT free, though, and stays: `#2352 human
+    # liver` live carries `compatible_species = None` with
+    # `source_species = 'human'`, so reading only the first field would
+    # refuse a perfectly good organ sitting in the world right now.
+    # Prefer `compatible_species`, fall back to `[source_species]`,
+    # refuse if neither. Same ladder the picker climbs, so the two
+    # doors cannot disagree about the same organ.
+    #
+    # A refusal is NOT a roll failure, and the two are easy to confuse
+    # from the outside: `roll_procedure`'s failure branch says "The
+    # graft won't take", which reads like a compatibility refusal. This
+    # message names the species so the player can tell them apart.
+    from world.anatomy import species_of
+    item_db = getattr(organ_item, "db", None)
+    compat = getattr(item_db, "compatible_species", None)
+    if compat is None:
+        source_species = getattr(item_db, "source_species", None)
+        compat = [source_species] if source_species else None
+    target_species = species_of(target) or "human"
+    if target_species.lower() not in [str(sp).lower() for sp in (compat or [])]:
+        actor.msg(
+            f"The {organ_item.key} isn't {target_species} anatomy — "
+            f"it won't take."
+        )
+        from world.medical.charts import mark_running_step_failed
+        mark_running_step_failed(
+            target,
+            outcome=f"species mismatch — {target_species} not supported",
+        )
+        return
+
     snapshot_organs = get_organ_snapshot(target).get("organs", {}) or {}
     organ_name = getattr(getattr(organ_item, "db", None),
                          "organ_name", None) or organ_item.key
