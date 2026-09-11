@@ -127,6 +127,16 @@ voice + memory.** A real payout never rides a model tool-roll.
      (a shotgun-shredded trunk yields few or no chops);
    - `get_decay_factor()` scales EVERYTHING down (a rotting rat → little usable,
      mostly waste; a fully-rotted one → refused with a line).
+     **As built (#1247), decay scales only the MEAT-MASS cuts.** In
+     `world/butchery.py` `_butcher_yields`, `freshness = 1.0 - decay`
+     multiplies exactly two products — rat chops and ground mystery meat — and
+     nothing else; tail, haunch and offal are all-or-nothing per part (present
+     and sound, or gone), gated by `severed_locations` / `removed_organs` /
+     organ HP alone. Decay's other lever is the refusal gate, and it bites well
+     before "fully-rotted": `BUTCHER_DECAY_REFUSAL = 0.6` on a curve where 1.0
+     is one week, so ≈4 days in she says "That's past even my standards. Bury
+     it." How punishing rot should be across the rest of the table is §6's open
+     yield-tuning question, still untuned.
 3. **Produce the named cuts** — spawn each surviving ingredient (a rat tail, rat
    chops, a rat haunch, rat offal…) onto the block / into her stock. 2–4 named
    products from a clean carcass.
@@ -163,6 +173,16 @@ corpse field that gates it:
 
 `get_decay_factor()` multiplies the whole table. Extend per animal as fauna grows;
 each new species ships its own table + its cuts' recipes.
+
+> **As built (#1247) — decay multiplies two of these five rows: chops and
+> mystery meat.** In `world/butchery.py` `_butcher_yields`, rat chops are
+> `round(3 * trunk_frac * freshness)` and ground mystery meat is
+> `max(1, round(3 * freshness))` — the `max` is a floor, so a carcass never
+> grinds to literally nothing. Tail, haunch and offal carry no decay term at
+> all. Two corrections to the chops row while you're here: its Base is **3**,
+> not 2–3, and its "Gated by" is trunk wound severity **and** decay — the
+> mystery-meat row already names decay, so chops is the only row whose "Gated
+> by" cell omits a term it actually carries.
 
 ### 3.5 The `butcher` LLM archetype (`world/llm/prompt.py`)
 - **Duties:** she runs the block — buys animal carcasses, breaks them down into
