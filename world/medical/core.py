@@ -434,10 +434,21 @@ class Organ:
         organ.conditions = []
         from .conditions import MedicalCondition, deserialize_condition
         for entry in data.get("conditions", []):
-            if isinstance(entry, dict):
-                organ.conditions.append(deserialize_condition(entry))
-            elif isinstance(entry, MedicalCondition):
+            # DUCK-TYPED, not `isinstance(entry, dict)`. Evennia wraps a
+            # persisted container in `_SaverDict`, which is NOT a `dict`
+            # subclass, so that test was False for every entry that had
+            # actually been through the database -- and the `elif` did
+            # not catch it either, so each one was silently dropped. An
+            # organ-bound condition did not survive a reload (#2679).
+            #
+            # The concrete type is checked FIRST so a live
+            # `MedicalCondition` never reaches the factory. Same
+            # `hasattr(x, "get")` shim `world/medical/diagnose.py` and
+            # `severance.py` already use for this exact trap.
+            if isinstance(entry, MedicalCondition):
                 organ.conditions.append(entry)
+            elif hasattr(entry, "get"):
+                organ.conditions.append(deserialize_condition(entry))
         organ.wound_stage = data.get("wound_stage")
         organ.injury_type = data.get("injury_type")
         organ.wound_timestamp = data.get("wound_timestamp")
