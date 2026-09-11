@@ -822,14 +822,20 @@ GRATITUDE_TRIGGERS = (
     "ta for", "much love",
 )
 
-#: Non-verbal acknowledgements — Sully's taciturn, so he answers with a gesture
-#: rather than words. Phrased as emote actions (the identity system prepends his
-#: per-observer name).
-ACK_EMOTES = (
-    "tips his chin a fraction, not looking up from the taps.",
+#: Non-verbal acknowledgements for someone TENDING A COUNTER — the bar's own
+#: register, which is why it may reach for the taps and the slab. Sully is the
+#: original voice here; the phrasing is kept almost verbatim, with the one
+#: gendered entry rewritten, because bartenders are not all male and this set
+#: now belongs to the post rather than to him (#2584).
+#:
+#: The generic fallback every other NPC uses is ``LLMNpcMixin.ACK_EMOTES``.
+#: This set is selected by ``tender_at`` answering with the NPC itself, not by
+#: a role flag on the body — that flag is the thing #2378 exists to remove.
+BAR_ACK_EMOTES = (
+    "nods without looking up from the taps.",
     "raises two fingers off the slab in a flat, unhurried salute.",
     "grunts once, low, and keeps wiping down a glass.",
-    "gives a single slow nod, the kind that's already moved on to the next thing.",
+    "gives a single slow nod, the kind that's already moved on to the next order.",
     "knocks two knuckles against the slab and lets that be the answer.",
 )
 
