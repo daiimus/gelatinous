@@ -792,7 +792,19 @@ def plan_for(soul, goal_need):
         # knife, mark, and mood gate as hunger (misery is the mechanism)
         if soul.db.soul_lawless:
             from world.souls import thoughts as thoughts_mod
-            if thoughts_mod.mood(soul) >= 0.25:
+            from world.souls import traits as traits_mod
+            # READ THE DIAL, as the hunger gate above does. This
+            # hardcoded 0.25 -- the dial's DEFAULT -- under a comment
+            # claiming "the same ... mood gate as hunger". The tell was
+            # that this branch did not import `traits_mod` at all: the
+            # dial was not dropped mid-expression, it was never
+            # consulted here (#2704).
+            #
+            # Live, 5 of 80 souls carry a tuned value (two at 0.45,
+            # three at 0.05), so those five were gated one way by
+            # hunger and another by craving.
+            gate = traits_mod.dial(soul, "violence_gate", 0.25)
+            if thoughts_mod.mood(soul) >= gate:
                 return None
             if not _permits(soul, "craving", ("violence", "theft")):
                 return None
