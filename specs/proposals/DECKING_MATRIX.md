@@ -61,6 +61,15 @@ Two consequences that make this a first-class play space:
   quiet, duplicable) *or* rip the physical component out of a machine in
   meat-space (hardware theft — the stealth/theft layer §6.2 already does
   this). Two routes to the same prize, different risk shapes.
+  *(Note 2026-09-12: "already does this" overstates the seam.
+  `STEALTH_AND_DETECTION_SPEC` §6.2 is the right section — "Theft (steal &
+  pickpocket)" — but what it ships (`commands/CmdTheft.py`) is PERSON-to-person
+  theft only: it refuses any target without `get_sdesc` and lifts loose items
+  from what someone is carrying. Nothing there pulls a component out of a fixed
+  machine, and no other verb does either — `sabotage` (`commands/CmdBreach.py`)
+  wrecks infrastructure rather than yielding a part, and `harvest` is surgical,
+  against a body or robot chassis. Hardware theft is work this spec is
+  PROPOSING, not a layer it can lean on.)*
 * **Editing a file edits the world.** Because these files are the same objects
   the deterministic systems read (the wanted record, a gig board, a printer's
   queue), changing the file *changes reality* — no separate "apply" step.
@@ -157,6 +166,19 @@ Two gates decide what you can write and run (user-decided 2026-07-03):
   rewrite. Some instructions are additionally gated on **acquired knowledge**
   — an instruction library you buy, find, or extract — so an unlock can also
   be *a place you went and a thing you did*, keeping it true to gear/favor.
+
+  *(Note 2026-09-12: "(parked)" above is stale. The skill board was RULED FINAL
+  2026-08-19 at fourteen ratings (`SKILLS_AND_DESIGNATION_SPEC` §5) and those
+  ratings ship today in `world/manifest.py` — seeded at creation by
+  `ensure_manifest`/`seed_skills` (called from `commands/charcreate.py`,
+  `web/website/views/characters.py`, `world/souls/population.py`), with
+  `check_value(char, skill)` as the check helper. Decking's rating is already
+  named: **`systems`**, Intellect-governed — "everything done through a
+  machine's interface: decking, consoles, radio & broadcast procedure,
+  electronic locks". What remains unbuilt is the XP/dice layer above the
+  snapshot, so the Intellect-now/skill-later seam still holds — but the later
+  gate is `systems`, not a skill still to be invented. §13's first risk bullet
+  is answered to that extent.)*
 * **What your deck can run** — the **hardware axis** (§9): CPU sets execution
   speed, memory sets program size, and the rig's grade sets how much **heat**
   (trace pressure) it can absorb before it cooks. **Better rigs handle more
@@ -292,6 +314,16 @@ Phase 1 is the one piece that can be **prototyped now** — the programming
 model doesn't need the net to exist to be authored and tested. Everything else
 waits for the vertical world.
 
+*(Note 2026-09-12: "waits for the vertical world" has largely been overtaken.
+`SPATIAL_COORDINATE_SYSTEM_SPEC` Phases 1–2 are SHIPPED & LIVE (2026-06-27,
+#847/#851 — the (X,Y,Z) volume, A* pathing, jump/fall gravity, 309 rooms
+seeded), and `VERTICALITY_AND_BUILDINGS_SPEC` now reads "PARTIALLY SHIPPED":
+§2 doors and §2.5 housing are live, and the vertical/Greenhaus doctrine builds
+through 2026-08-25 put real towers, roofs, hull-tops and air lattices in the
+world. The remaining gate on this spec is `PHASE_LAYER_SPEC` itself, which is
+still "Proposal — not implemented"; the coordinate/vertical prerequisite is
+no longer the thing being waited on.)*
+
 
 ## Physical interface layer — TERMINALS (groundwork shipped 2026-07-11)
 
@@ -303,3 +335,9 @@ records = the grant files on cube doors, §2.2 shape). When this spec
 builds, these are the boxes whose records become net-visible files —
 the buttons remain the street-level interface; the truth moves to the
 host.
+
+*(Note 2026-09-12: that bare "§2.2" points at
+`VERTICALITY_AND_BUILDINGS_SPEC` §2.2, "Biometric access — everything is a
+file", not at a subsection of this document — §2 here has none (this spec's
+only subsections are §6.1–§6.3). The same spec's §2.5 is the housing guarantee
+`typeclasses/terminals.py` cites.)*
