@@ -1,6 +1,6 @@
 # Condition Cadence Spec — Elapsed-Time Rates
 
-> **Status:** ✅ **SHIPPED** — Phases 1-2 shipped; Phase 3 parked by design. Verified 2026-08-02.
+> **Status:** ✅ **SHIPPED** — Phases 1-2 shipped; Phase 3 parked by design. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 14 claim(s) false, annotated inline**.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The previous banner called Phases 1-2 "the near-term lift". Both landed; `CONDITION_INTERVALS` is gone from the code entirely.
@@ -175,7 +175,7 @@ running 5× off its design:
 | `BLOOD_LOSS_PER_SEVERITY` | 0.5–2.5% per tick | same, per minute | 1:1 — authored for 60s.  #507 then made the rate derive from *current* severity (stale-rate fix) and replaced the treated-path truncation with the layered-brakes model: bandage slows to 30%, dressing stops, clotting only at severity ≤5 |
 | Bleeding natural clotting (severity −1 chance) | per tick | same hazard per minute | 1:1 |
 | Pain decay | 1 severity per tick | 1 per minute | 1:1 |
-| Infection: treated improvement | 12% per tick (authored: "12% per 12s tick") | **restored**: `1−(1−0.12)⁵ ≈ 47%` per minute | the 5× drift fix |
+| Infection: treated improvement | 12% per tick (authored: "12% per 12s tick") | **restored**: `1−(1−0.12)⁵ ≈ 47%` per minute | the 5× drift fix. **2026-09-11: this is not what shipped, and never was.** #504 shipped `INFECTION_IMPROVE_HAZARD_PER_MINUTE = 0.07` → `1−(1−0.07)⁵ ≈ 30%` per **five** minutes (`constants.py:210`, applied at `conditions.py:470`) — roughly **6× slower** than this cell. Deliberate: the #504 commit message says "treated ~30%/5min", and `world/tests/test_condition_cadence.py:133-138` pins `1−(1−p)⁵` between 0.25 and 0.35. The disagreement is a misread source. The pre-#504 line was `if random.randint(1, 100) <= 12:  # ~30% chance over 25 ticks = 1.2% per tick`, under the comment "improves every ~5 minutes (25 ticks at 12s intervals)" — so the literal `12` was itself a 10× slip against its own arithmetic, and this cell scaled the slip up another 5× instead of reading the design. §4.4 requires conversion to preserve "the *designed* behavior, not the accidentally-current one", which points at 0.07/min: on the spec's own rule the code is right and this cell is wrong. It is still a balance knob and no medical balance pass has run, so the owner should confirm the pacing rather than let either figure win silently — but nobody should "fix" the code up to 0.47 on the strength of this cell. The untreated row below is unaffected — 0.05/min is exactly the documented ~20-minute progression |
 | Infection: untreated worsening | granular per-tick chance (authored for "~20min progression" at 12s) | **restored** to the documented ~20-minute progression curve | drift fix |
 | Dressing/splint knitting (`_hp_per_tick`) | rating//5 HP per tick | same per minute | 1:1 |
 | Addiction craving | already wall-clock (`last_dose_time`) | unchanged | the existing precedent |
@@ -285,6 +285,21 @@ Phase 1 ships with:
 * **Persistence**: `last_processed` and fractional accumulators
   round-trip `to_dict`/`deserialize_condition`; legacy dicts
   without them default safely.
+  *(2026-09-11: half of this is unbuilt and half is untested.
+  Conditions carry no fractional accumulator at all — see the §3
+  note — so there is nothing for `deserialize_condition` to
+  round-trip. `last_processed` does: written at
+  `world/medical/conditions.py:206`, restored with a safe default at
+  `:221` (and in every subclass override), pinned by
+  `world/tests/test_condition_cadence.py:155-171` — the round-trip
+  and the legacy-dict default both. The one real accumulator,
+  `organ.dressing_progress`, round-trips through the **organ**
+  serializer instead (`world/medical/core.py:405`, `:463`) and is
+  pinned by **nothing**: `test_condition_cadence.py:13` still
+  advertises "persistence — last_processed and dressing_progress
+  round-trip" in its own module docstring, and no test in the repo
+  asserts the second half. The round-trip code is correct where it
+  lives; the missing coverage is a test gap, not a spec error.)*
 
 ## 10 · Maintenance contract
 
