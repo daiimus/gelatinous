@@ -1,6 +1,6 @@
 # Verticality & Buildings Spec — floors, doors, and tenancy
 
-> **Status:** 🚧 **PARTIALLY SHIPPED.** §2 doors + §2.5 housing guarantee LIVE (QoC 2026-07-11; the Brackett Arms' 54 leases + pick-your-unit kiosk 2026-07-25). **VERTICAL DOCTRINE (2026-07-25, owner-set):** open plates (roofs/decks) are STRIP rooms tiling their footprint; spine links are plain exits and every other applicable direction (incl. diagonals) is a wired EDGE; air cells are deliberate negative space (fall lanes, future flight); every air build ends with the edge audit ('edges accountable'). Built to it: the Brackett roof, the Boot hull-top + toe breach, ~50 air cells, the toe-end rooftop archipelago joined to the ancestral #190 pair. Climbing hooks = the named next mechanic (four shipped decisions defer to it). **GREENHAUS DOCTRINE (2026-08-24/25, builds 055–065 — the farm towers, air lattice, and cistern saga; owner-ratified):** (1) **Structures never stand over walkable cells** — only AIR crosses a street (the Kaspar-connector idiom); landmarks on tall legs with a lane beneath are the sanctioned exception (Overflow Alley under Cistern No. 3). (2) **Gap crossings must be straight collinear lines** — a jump's momentum goes straight; perch → air → far-perch must satisfy `perch+Δ == air && air+Δ == far-perch` (diagonals included; the knight's-move cistern crossing was rebuilt for this). (3) **Gap exits carry THREE parts** (canon: the Halcyon↔Antenna crossing): `destination` = the air cell (jump-off descents), `db.gap_destination` = the far perch (where jump-across LANDS), `db.sky_room` = the air (transit). Destination-only wiring strands jumpers in bare SkyRooms — 83 edges shipped broken before build 060 wired them. (4) Air columns are bare `SkyRoom`s; a pure descent entry is `is_edge` only, its destination the airspace whose fall line lands where you intend (the Constabulary entry falls to the West Lawn INSIDE the fence). (5) Demolitions EVACUATE occupants first; audits are queries, not eyeballs (overlap: room z>0, type≠sky, over z0 type ∈ {market,street,alley}; gap wiring: is_gap without gap_destination pointing at a sky destination = broken). Original proposal below. The
+> **Status:** 🚧 **PARTIALLY SHIPPED.** §2 doors + §2.5 housing guarantee LIVE (QoC 2026-07-11; the Brackett Arms' 54 leases + pick-your-unit kiosk 2026-07-25 — **[54 was the 2026-07-25 figure; build 010 (#1754, 2026-08-08) gave the whole upper tower doors and leases, ~60 → ~134. Verified 2026-09-12.]**). **VERTICAL DOCTRINE (2026-07-25, owner-set):** open plates (roofs/decks) are STRIP rooms tiling their footprint; spine links are plain exits and every other applicable direction (incl. diagonals) is a wired EDGE; air cells are deliberate negative space (fall lanes, future flight); every air build ends with the edge audit ('edges accountable'). Built to it: the Brackett roof, the Boot hull-top + toe breach, ~50 air cells, the toe-end rooftop archipelago joined to the ancestral #190 pair. Climbing hooks = the named next mechanic (four shipped decisions defer to it). **GREENHAUS DOCTRINE (2026-08-24/25, builds 055–065 — the farm towers, air lattice, and cistern saga; owner-ratified):** (1) **Structures never stand over walkable cells** — only AIR crosses a street (the Kaspar-connector idiom); landmarks on tall legs with a lane beneath are the sanctioned exception (Overflow Alley under Cistern No. 3). (2) **Gap crossings must be straight collinear lines** — a jump's momentum goes straight; perch → air → far-perch must satisfy `perch+Δ == air && air+Δ == far-perch` (diagonals included; the knight's-move cistern crossing was rebuilt for this). (3) **Gap exits carry THREE parts** (canon: the Halcyon↔Antenna crossing): `destination` = the air cell (jump-off descents), `db.gap_destination` = the far perch (where jump-across LANDS), `db.sky_room` = the air (transit). Destination-only wiring strands jumpers in bare SkyRooms — 83 edges shipped broken before build 060 wired them. (4) Air columns are bare `SkyRoom`s; a pure descent entry is `is_edge` only, its destination the airspace whose fall line lands where you intend (the Constabulary entry falls to the West Lawn INSIDE the fence). (5) Demolitions EVACUATE occupants first; audits are queries, not eyeballs (overlap: room z>0, type≠sky, over z0 type ∈ {market,street,alley}; gap wiring: is_gap without gap_destination pointing at a sky destination = broken). Original proposal below. The
 > arc that unlocks **radio Phase 2** (rooftop antennae, height-based range)
 > and, downstream, decking's verticality gate. Three layers, each
 > independently shippable, dependency-ordered: **§1 vertical construction**
@@ -26,6 +26,13 @@ volume that has carried a Z axis since spatial Phase 1 — the vertical
 dimension is *paid for and unused*. Meanwhile three systems are queued behind
 it:
 
+> **[Stale as of 2026-09-12 — both halves of that opening sentence. The world
+> is now **1069 rooms on-grid** (open **#3245**), and it is not flat: the Queen
+> of Cups stands to z12 (#1774), the Brackett to 15 floors, plus the Boot
+> hull-top, the Greenhaus towers and the ~50 air cells the banner itself lists.
+> `SPATIAL_COORDINATE_SYSTEM_SPEC` carries its own dated note on this very 309
+> figure. Read §0 as the 2026-07 motivation, not a measurement.]**
+
 * **Radio Phase 2** — range/coverage wants antennae with *height*; a rooftop
   transmitter should out-reach a street-level walkie.
 * **Decking** — explicitly gated on the phase layer **+ verticality**
@@ -43,7 +50,7 @@ it:
 | Gravity: sky rooms, `fall_damage`, edge-jump descent | `commands/combat/jump.py`, `Exit.at_traverse` | ✅ live (to be generalized per spatial §6) |
 | Exit traversal hooks (blocks, aim-lock, proximity cleanup) | `typeclasses/exits.py` | ✅ live — doors extend this class |
 | Kiosk/vendor pattern (`ShopContainer`, prototype inventory) | `typeclasses/shopkeeper.py` | ✅ live — tenancy kiosk mirrors it |
-| Token pockets on NPCs/players | dispatch spec §5.2 | ✅ live (but nothing to *spend* on — everything is priced 0) |
+| Token pockets on NPCs/players | dispatch spec §5.2 | ✅ live (but nothing to *spend* on — everything is priced 0) **[stale 2026-09-12: prices are real now — `world/shop/service.py` reads `get_price` and sweeps tokens into a till; Auntie Lin's cart sells at 2–6 tokens, and the Butcher and the snailery run the same loop. The §4 token sink exists.]** |
 
 ---
 
@@ -58,7 +65,12 @@ convenience.
 * **Stairwell** — a plain exit pair (`up`/`down` aliases) between `(x,y,z)`
   and `(x,y,z±1)`. Nothing new mechanically; the A\* pathfinder already walks
   any exit edge, so NPC dispatch/pursuit climbs stairs for free.
-* **Lift/elevator — THE CAR MODEL (DECIDED 2026-07-10, supersedes the
+* **Lift/elevator — THE CAR MODEL — ✅ SHIPPED AND LIVE (verified
+  2026-09-12: `typeclasses/elevator.py` — `ElevatorCar`, `ElevatorDoorExit`,
+  landing call buttons via `press`/`call`, `db.shaft_xy`, `db.floor_locks`
+  consumed by `_floor_permitted` and the pathfinder; running in the
+  Constabulary (car #4969) and across all 14 Brackett floors. Both the banner
+  and the §5 ladder still read as though it were unbuilt.) (DECIDED 2026-07-10, supersedes the
   warp-exit v1; resolves open question 1).** A real elevator is three
   parts:
   1. **Landings** — the ordinary rooms the doors open onto, one per
@@ -101,6 +113,10 @@ convenience.
 * **Ladders/fire escapes** — stairwell idiom with different messaging;
   candidate for `climb`-gated traversal (existing climb verb) so they're
   slower/riskier under pursuit.
+  **[FALSE as of 2026-09-12: there is no `climb` command and no exit keyed
+  `climb` anywhere in the tree — `climb` survives only in `CmdCoordSeed`'s
+  list of non-cardinal exit names to skip. The banner's "climbing hooks = the
+  named next mechanic" is the accurate line; nothing gates on climbing yet.]**
 
 ### 1.2 · Interior ↔ exterior seam
 
@@ -116,7 +132,11 @@ not a rebuild.
 ### 1.3 · Rooftops — what radio P2 actually needs
 
 The top of every stack is a **rooftop room**: exterior (weather applies),
-`db.is_rooftop = True`, edge exits eligible for the existing jump/fall
+`db.is_rooftop = True` **[never implemented — as of 2026-09-12 the shipped
+convention is `db.outside = True` + `db.type = "rooftop"`; `db.is_rooftop`
+appears nowhere in the tree but this line, so setting it would do nothing.
+`typeclasses/rooms.py`'s `SkyRoom` docstring states the rule.]**, edge exits
+eligible for the existing jump/fall
 system (jumping between adjacent rooftops = the edge-jump mechanic pointed
 at `z>0` — it already handles descent and fall damage; the -Z chain through
 `passable` sky rooms is spatial §6's generalization, built here as its first
@@ -150,7 +170,8 @@ door IS the exit, per user call). `typeclasses/doors.py DoorExit`
 requires the door OPEN — open/close are explicit verbs, walking never
 changes state, refined 2026-07-10 per user), player verbs
 `open/close/lock/unlock/knock`, builder `@door` (+/grant /revoke /list
-/force), **`memory` renders an @stats-format MNEMONIC RECALL REPORT (2026-07-11): KNOWN ASSOCIATES + REGISTERED RESIDENCE dossier — unit, building/vehicle name (`cube.db.residence_building`), street/port of origin (`cube.db.residence_origin`), registration age, live relocation-handover window; builders MUST set both residence attrs on new cubes**, **`db.door_autolock` spring latch (2026-07-11, user call:
+/force **[no `/force` switch shipped — as of 2026-09-12 the forcing switches
+are `/lock` `/unlock` `/open` `/close`; `/grant` `/revoke` `/list` are real]**), **`memory` renders an @stats-format MNEMONIC RECALL REPORT (2026-07-11): KNOWN ASSOCIATES + REGISTERED RESIDENCE dossier — unit, building/vehicle name (`cube.db.residence_building`), street/port of origin (`cube.db.residence_origin`), registration age, live relocation-handover window; builders MUST set both residence attrs on new cubes**, **`db.door_autolock` spring latch (2026-07-11, user call:
 closing re-engages the lock, no grant needed — anyone can RESTORE
 security, only granted sleeves can remove it; cube doors ship with
 it)**, grant files in `world/access.py`, pathfinder blocked-edge
@@ -250,7 +271,9 @@ question the trust spec deferred.)
   five too (user call): R0-02/03/04 sit **half-sunk below street
   grade at z=-1**, their berths directly under Kaspar Street's
   sidewalk — the grid stays honest, no cell overlap. **25 cubes**
-  total. Rooms typed `cube hotel` (crowd modifier
+  total **[25 was the 2026-07-11 ship figure; build 018 (#1774, 2026-08-08)
+  raised the Queen to z12 and stacked Racks 5–11, +35 cubes → **60** on the
+  terminal. Verified 2026-09-12.]**. Rooms typed `cube hotel` (crowd modifier
   pre-existing). Belongings left after an expired window are the next
   tenant's problem/prize — flophouse rules.
 
@@ -269,7 +292,14 @@ tenants' doors are not (v1).
 
 ## 3 · Layer 3 — tenancy: the hotel / rental kiosk
 
-**A lease is a timed keycode grant sold by a machine.** Composes §1 + §2;
+**A lease is a timed keycode grant sold by a machine.**
+**[Vocabulary superseded 2026-09-12: §2.2 decided biometric-only (no keys, no
+codes, no cards) and §2.5 shipped the `press` grammar as the one interaction
+language for every machine — so "keycode" here and the `use kiosk` /
+`rent 1 for 3 nights` sketch in §3.1 are both dead interfaces
+(`commands/CmdGraffiti.py` owns `press`/`push`/`call`; `RentalTerminal` is
+driven through `at_press`). The by-the-night, token-priced hotel tenancy this
+layer proposes is genuinely unbuilt — only its interface words are stale.]** Composes §1 + §2;
 adds no new mechanics beyond time.
 
 ### 3.1 · The kiosk
@@ -339,6 +369,16 @@ director can call it later without changes.
 
 ## 5 · Build ladder (each rung shippable, in order)
 
+> **[Ladder audited 2026-09-12 — it predates four later user calls and reads
+> stale in three places. Rung 1's `@stack` was decided AGAINST (§1.4: floors
+> are hand-authored up/down exits). Rung 2's "key/code grants" and rung 3's
+> "keycard" were superseded by biometric-only access (§2.2, §6 q4). And rung 4
+> still defers "moving lift cars", which are SHIPPED: `typeclasses/elevator.py`
+> (`ElevatorCar`, `ElevatorDoorExit`, landing call buttons, `db.shaft_xy`,
+> `db.floor_locks`) runs live in the Constabulary (car #4969) and across all 14
+> Brackett floors — see closed #2102, #2610, #2626, #2687, #3173. Rungs 1 and 2
+> are otherwise done; rung 3 is the only unbuilt rung left.]**
+
 1. **§1 construction**: `@stack`, stairwell idiom, rooftop flag, one real
    building authored (the hotel shell, undoored) + rooftop. *(Unblocks radio
    P2 immediately.)*
@@ -356,6 +396,11 @@ director can call it later without changes.
 1. ~~Lift v1~~ — **RESOLVED (2026-07-10): the moving CAR** (user call,
    §1.1) — landings + car room + controller; first install is the
    Constabulary shaft (alcove #4939 ↔ 2F landing #4957).
+   **[These labels contradict §1.1 as of 2026-09-12. §1.1 — the same day's
+   refinement — makes #4939/#4957 the SHAFT column at (9,-18,z) and the
+   landings the lobby #4936 and the 2F Secure Corridor #4960; builds 121, 124
+   and 127 each name #4960 "Colonial Constabulary Secure Corridor (floor 2)",
+   and 119/124 name #4969 as the car. Trust §1.1.]**
 2. **Sky-room interplay** — do building interiors above z=0 need `passable`
    /floor semantics per spatial §6 generalization *now* (breach a floor →
    fall through), or defer floor-breaching entirely? Proposal: defer;
