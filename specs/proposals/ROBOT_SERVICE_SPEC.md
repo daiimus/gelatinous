@@ -186,7 +186,13 @@ the one method all six treatment verbs (inject / apply / bandage /
 eat / drink / inhale) already route through, so the gate cannot be
 live on one verb and absent on another. Four machine articles added:
 hydraulic charge, sealant patches, strut brace, conformal coating, all
-Boiler Run. The tourniquet declares nothing and so serves both.
+Boiler Run. (**Four is right for #2268; the fifth came next.**
+`TOOL_ROLL` — "tool roll", `medical_type` `surgical_treatment`,
+`serves: ["robot"]` — landed in **#2270** together with
+`SURGICAL_KIT`'s matching `not_for: ["robot"]`, because the signed-off
+table had five pairs and the surgical kit had been left universal.
+That is why the table above shows five machine articles built while
+this paragraph counts four.) The tourniquet declares nothing and so serves both.
 
 **One trap the gate had to grow a second half for.** `serves` /
 `not_for` are PROTOTYPE attributes, so they only reach items spawned
