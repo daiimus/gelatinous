@@ -1,6 +1,6 @@
 # SHOP SYSTEM SPECIFICATION
 
-> **Status:** 🚧 **PARTIAL** — Phase 1 shipped; Phases 2-3 not built, as stated. Verified 2026-08-02.
+> **Status:** 🚧 **PARTIAL** — Phase 1 shipped; Phases 2-3 not built, as stated. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 22 claim(s) false, annotated inline**.
 
 ## Overview
 
@@ -82,6 +82,26 @@ world/prototypes.py           # Merchant prototypes (HOLOGRAPHIC_MERCHANT, etc.)
 ```python
 self.db.prototype_inventory = {}  # {prototype_key: price}
 self.db.item_inventory = {}       # For future limited stock mode
+# ^ THAT COMMENT IS STALE — corrected 2026-09-11 (re-verification). Limited
+#   stock is LIVE, not future: `add_prototype(key, price, quantity=N)` sets
+#   `is_infinite = False` and fills this dict (`shopkeeper.py:101-105`),
+#   `is_in_stock` gates on it (`:141-148`), `purchase_item` decrements it
+#   (`:298-299`), and the food cart runs entirely on it. It reads as
+#   "future" because it WAS, at Phase 1; left in place for that reason.
+#
+# Also set at creation and omitted from this list:
+self.db.markup_percent = 0        # `add_prototype(price=None)` derives the
+                                  # price via `calculate_shop_price(base,
+                                  # markup)`
+# plus `self.tags.add("till", category="souls")` (`shopkeeper.py:62`), the
+# index the souls tithe sweep reads.
+#
+# READ but never initialised here, so None on a plain shelf — which is exactly
+# why an unbound counter vends freely:
+#   db.register        # till; credited by `price` on every sale when not None
+#   db.post_slots      # post binding, per shift
+#   db.post_keeper     # legacy single-keeper mirror
+#   db.post_closed_msg # the refusal line when nobody is minding it
 self.db.is_infinite = True        # Infinite stock enabled
 self.db.shop_name = "Shop"        # Display name
 self.db.container_type = "shelf"   # Container type
@@ -95,8 +115,23 @@ self.db.purchase_msg_room = "{buyer} purchases {item} from {shop}."
 - `is_in_stock(prototype_key)` - Check availability (always True in infinite mode)
 - `purchase_item(buyer, prototype_key)` - Process purchase, spawn item, deduct tokens
 - `get_display_name_for_prototype(prototype_key, prototype)` - Get display name (handles cans via aerosol_contents)
-- `get_browse_display(viewer)` - Generate inventory listing
+- `get_browse_display(viewer)` - Generate inventory listing — numbered
+  `[001]`-style lines (`typeclasses/shopkeeper.py:372`), and it stores the
+  number→prototype map on the **viewer's** `ndb.shop_number_map` keyed to this
+  container (`:392-393`), so `buy 002 from shelf` works and one looker's
+  numbering can never renumber another's. The map used to live on the
+  container, which is how a stock change between two looks handed a buyer the
+  wrong dish (#2470; the reasoning is preserved in the comment at `:379-391`)
 - `return_appearance(looker)` - Override look to show inventory
+
+*Two live methods this list omits — added 2026-09-11 (re-verification):*
+
+- `remove_prototype(prototype_key)` - drop an item from both inventories
+  (`typeclasses/shopkeeper.py:107`)
+- `_off_shift_deflection(buyer)` - `typeclasses/shopkeeper.py:150`; when a
+  post-bound counter has no on-duty keeper but one of its OWN off-shift
+  keepers is standing there, they say so out loud and name whoever holds the
+  shift, and that line becomes the refusal the buyer sees
 
 **Purchase Flow:**
 1. Validate prototype exists in inventory
@@ -256,6 +291,16 @@ HOLOGRAPHIC_MERCHANT = {
 
 **Key Functions:**
 ```python
+# STALE SIGNATURE — corrected 2026-09-11 (re-verification). The live helper
+# (`world/shop/utils.py:8`) is generic and takes THREE arguments:
+#
+#     def get_prototype_value(prototype, attr_name, default=None)
+#
+# It does not hardcode "value", does not coerce to int, and defaults to None
+# rather than 10. Callers supply the attribute and the fallback themselves —
+# `ShopContainer.add_prototype` uses `get_prototype_value(prototype, "value",
+# 10)` (`typeclasses/shopkeeper.py:95`), which is where the 10 now lives.
+# Code written against the one-argument form below raises TypeError.
 def get_prototype_value(prototype):
     """Extract 'value' attribute from prototype attrs list."""
     for attr in prototype.get("attrs", []):
@@ -426,7 +471,31 @@ Example NPC dialogue:
 "That medkit? 150 ticks, no haggling."
 "I need at least 30 tabs for this junk."
 "You got the kennys for it, or you just window shopping?"
+```
+
 for future dynamic pricing phases.
+
+<!-- FENCE REPAIR 2026-09-11 (re-verification). The closing triple-backtick
+above was missing, and so was the one before "### Sell Command (Phase 2
+Only)". The two omissions cancel in the fence COUNT (102, even), which is why
+no parity check caught them, but they inverted rendering for the ~970 lines
+between them (425 → 1392): every heading in that span — "NOT IMPLEMENTED IN
+PHASE 1" (433), "Merchant Template System" (439), "Room-Based Shop System"
+(601), "Character Merchant Flags" (728), "Shop Container System" (819),
+"Vending Machine" (1016), "Command Implementation - Phase 1" (1372) and
+"Buy Command" (1390) — fell inside a code span, while the python blocks
+between them rendered as prose. So the NOT-IMPLEMENTED boundary a reader
+needs in order to trust the rest of this document was the part that did not
+render. -->
+
+> **Orphan fragment, kept 2026-09-11 (re-verification).** The line "for
+> future dynamic pricing phases." directly above is the tail of a sentence
+> lost in an earlier edit — it belonged to a note about prototype `value`
+> attributes feeding future dynamic pricing. Left visible rather than
+> discarded, since the lost half may matter to whoever writes Phase 2. The
+> slang bullet for "ticks" is missing from the list above for the same
+> reason: the sentence names ticks, tabs and kennys, but only Tabs and
+> Kennys got bullets.
 
 ---
 
@@ -1371,12 +1440,35 @@ class VendingMachine(ShopContainer):
 
 ## Command Implementation - Phase 1
 
+> **⚠️ THIS WHOLE SECTION IS ORIGINAL-SPEC, NOT THE SHIPPED COMMAND —
+> corrected 2026-09-11 (re-verification).** It sits after the
+> "NOT IMPLEMENTED IN PHASE 1" divider but is titled "Phase 1" and carries no
+> not-implemented label, so a reader working top-down takes it as live. It is
+> not:
+>
+> - The `CmdBuy` printed below is headed `# commands/economy/shop_commands.py`.
+>   There is no `commands/economy/` package in this repo. The live command is
+>   `commands/shop.py` (`CmdBuy`, registered at
+>   `commands/default_cmdsets.py:68, 387`) and is documented under
+>   "4. Buy Command" near the top of this document.
+> - `buy_from_room`, `get_prototype_by_name`, `VendingMachine`, `restock_slot`
+>   and `set_operational` — all named in this section — have no code anywhere
+>   in the repository.
+>
+> Read "### 4. Buy Command" for the shipped behaviour, and treat everything
+> from here to "### Sell Command (Phase 2 Only)" as the original design.
+
 ### Shop Interaction Pattern
 
 **Phase 1 Fixed Shops**: Players use standard `look` command to interact with shop inventory:
 - `look` - See room and all containers
 - `look at shelf` - See items in a specific ShopContainer
 - `look at machine` - See items in a vending machine
+  - *Corrected 2026-09-11 (re-verification): there is no vending machine to
+    look at. No `VendingMachine` typeclass exists in the repo, and this
+    document's own checklist still lists "[ ] Vending machines (original
+    spec)" as unbuilt — so this bullet claims a Phase-1 capability the same
+    document denies.*
 - `buy <item>` or `buy <item> from <container>` - Purchase items
 
 **Phase 2 Marketplaces**: Adds `browse` and `sell` commands:
@@ -1839,6 +1931,23 @@ def validate_container_inventory(prototype_list):
 # Check what's in stock
 @py shop.db.prototype_inventory
 # Output: {"SPRAYPAINT_CAN": 50, "SPRAY_SOLVENT": 30, "MACHETE": 150, "FRAG_GRENADE": 200}
+#
+# TWO OF THESE FOUR PROTOTYPES DO NOT EXIST — corrected 2026-09-11
+# (re-verification), and this section is labelled ACTUAL IMPLEMENTATION, so a
+# builder follows it verbatim.
+#
+#   SPRAYPAINT_CAN  — real (`world/prototypes.py:511`)
+#   FRAG_GRENADE    — real
+#   SPRAY_SOLVENT   — NOT A PROTOTYPE. The solvent can is `SOLVENT_CAN`
+#                     (`world/prototypes.py:535`).
+#   MACHETE         — NOT A PROTOTYPE. No `machete` of any casing exists in
+#                     `world/prototypes.py`.
+#
+# `add_prototype` does not raise on a miss: it logs "Prototype 'X' not found"
+# and returns False (`typeclasses/shopkeeper.py:87-89`). So these four lines
+# build a TWO-item shop in silence, and the "# Output:" line above can never
+# appear. The live general shelf gets it right — `GENERAL_SHELF`
+# (`world/prototypes.py:3509`) stocks "SPRAYPAINT_CAN": 25, "SOLVENT_CAN": 30.
 ```
 
 **Step 3: (Optional) Customize Purchase Messages**
@@ -1861,6 +1970,20 @@ def validate_container_inventory(prototype_list):
 
 # Or spawn directly with attributes
 @spawn {"prototype_parent": "BASE_NPC", "key": "Juan Sanchez", "typeclass": "typeclasses.characters.Character", "attrs": [("is_merchant", True), ("is_holographic", True)]}
+#
+# THIS COMMAND CANNOT WORK — corrected 2026-09-11 (re-verification). There is
+# no prototype named `BASE_NPC` anywhere in this repository: the only two
+# occurrences of the string are in THIS document (here and in the
+# HOLOGRAPHIC_MERCHANT snippet under "6. Merchant Prototypes"). The live
+# `HOLOGRAPHIC_MERCHANT` (`world/prototypes.py:3306`) has no
+# `prototype_parent` at all.
+#
+# The two-tuple `("is_holographic", True)` is wrong here for the same reason
+# it is wrong in that snippet: the flag is an `AttributeProperty(
+# category="shop")` on `Character` and the combat guard reads the property, so
+# an uncategorised row leaves a hologram swingable (#3130). Spell it
+# `("is_holographic", True, "shop")`. Prefer `@spawn CORNERSTORE_MERCHANT`,
+# which inherits the categorised flag correctly.
 
 # Merchant will be invulnerable to attacks (holographic protection)
 ```
@@ -1890,6 +2013,10 @@ def validate_container_inventory(prototype_list):
 @py shop.add_prototype("SPRAY_SOLVENT", 30) 
 @py shop.add_prototype("MACHETE", 100)
 @py shop.add_prototype("KEVLAR_VEST", 300)
+# Corrected 2026-09-11: `SPRAY_SOLVENT` and `MACHETE` are not prototypes —
+# see the note under "Step 2: Add Items to Inventory". Use `SOLVENT_CAN`;
+# there is no machete in `world/prototypes.py` at all. This "Complete Shop
+# Setup Example" therefore builds a two-item shop, without an error.
 
 # Customize messages
 @py shop.db.purchase_msg_buyer = "|gGracias, amigo!|n You purchase {item} for {price}."
@@ -1940,6 +2067,17 @@ buy solvent from shop
 attack merchant
 
 # Output: Your attack passes through merchant's holographic form!
+#
+# Corrected 2026-09-11 (re-verification): the protection is live, the line is
+# not. `commands/combat/core_actions.py:147` emits
+#
+#   |yYour attack passes through <them>'s holographic form with a shimmer of
+#   static.|n
+#
+# and `<them>` comes from `get_display_name_safe(target, caller)`, so it
+# renders through the attacker's own recognition — it never prints the raw key
+# "merchant". Observers get a separate per-observer line via
+# `msg_room_identity` (`:149-155`).
 ```
 
 ## Integration with Existing Systems (ACTUAL)
@@ -1975,6 +2113,27 @@ All items in `world/prototypes.py` can be sold in shops:
 
 ```python
 # Example: Items with value attributes
+#
+# STALE ON ALL THREE COUNTS — corrected 2026-09-11 (re-verification). The real
+# `SPRAYPAINT_CAN` (`world/prototypes.py:511-533`) reads:
+#
+#   "key": "can of"                                  # not "can of spraypaint"
+#   "typeclass": "typeclasses.items.SprayCanItem"    # no `AerosolCan` class
+#                                                    # exists (items.py:937)
+#   attrs: aerosol_level, max_aerosol, current_color,
+#          aerosol_contents, damage, weapon_type,
+#          damage_type, hands_required             # NO "value" AT ALL
+#
+# The bare key really is "can of": the contents half is supplied at display
+# time by `get_display_name_for_prototype` from `aerosol_contents`, which is
+# the mechanism §5 describes — so the snippet below misrepresents the very
+# example it is illustrating.
+#
+# The missing `value` matters for pricing: `add_prototype("SPRAYPAINT_CAN")`
+# with no explicit price falls through `get_prototype_value(prototype,
+# "value", 10)` to **10**, not 50 (`typeclasses/shopkeeper.py:94-96`). The
+# checklist item "Pricing uses prototype value attributes" holds for
+# prototypes that carry one; this example is not one of them.
 SPRAYPAINT_CAN = {
     "key": "can of spraypaint",
     "typeclass": "typeclasses.items.AerosolCan",
@@ -2060,6 +2219,41 @@ else:
 - [ ] Merchant AI/personality scripts
 - [ ] Vending machines (original spec)
 - [ ] Limited stock mode (infinite only)
+
+> **Four of those five shipped — corrected 2026-09-11 (re-verification).**
+> The list was already contradicted by the 2026-07-25 addendum printed
+> directly below it.
+>
+> - **Merchant attendance requirement — SHIPPED.** A post-bound counter
+>   refuses every sale while no keeper stands the running shift
+>   (`typeclasses/shopkeeper.py:235-248`, via
+>   `world/souls/posts.py:208 any_keeper_present`). Only counters with no
+>   post binding are self-service.
+> - **Merchant interactions — SHIPPED.** Keepers resolve spoken orders
+>   deterministically against the real shelf (`world/shop/service.py:100,
+>   :145`) and serve the typed `buy` in person (`commands/shop.py:93-116`).
+> - **Merchant AI/personality — SHIPPED.** Souls, blueprints
+>   (`world/npcs/blueprints.py`) and the shelf-grounding persona clause at
+>   `world/llm/prompt.py:929-939` (complete stock, anti-invention,
+>   no-haggling, and "never narrate a sale or a handover yourself").
+> - **Limited stock mode — SHIPPED.** `add_prototype(key, price,
+>   quantity=N)` sets `is_infinite = False` and fills `item_inventory`;
+>   `is_in_stock` gates on it and `purchase_item` decrements it
+>   (`typeclasses/shopkeeper.py:71-105, 141-148, 298-299`). The food cart
+>   runs entirely on it.
+> - **Vending machines — genuinely still unbuilt.** No `VendingMachine`
+>   typeclass exists, and none of the original spec's machine surface has
+>   code anywhere: no slot codes (A1/B2), no `price_multiplier`, no
+>   `restock_slot`, no `set_operational`. What DOES exist is weaker and
+>   different: the addendum, and matching comments at
+>   `world/service.py:185` and `world/bar.py:826`, record an UNBOUND counter
+>   as "the vending tier by construction" — a shelf that sells with nobody
+>   behind it. Whether that retires the machine, or the machine is still
+>   wanted as its own fixture, is an owner call and is not recorded here.
+>
+> The three items below this block — dynamic pricing/haggling, marketplace
+> mazes, player-owned shops — remain accurate: no `CmdSell`, no `CmdHaggle`
+> and no `MarketplaceRoom` exist in the repo.
 - [ ] Dynamic pricing/haggling
 - [ ] Marketplace mazes
 - [ ] Player-owned shops
