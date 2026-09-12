@@ -4,7 +4,18 @@
 > **§4 and §8.1/§8.2 carry owner rulings (2026-08-22).**
 > §1 documents **shipped** behaviour (traced from
 > `world/souls/posts.py`, `typeclasses/death_progression.py`); §2
-> onward is proposal. The interactive half depends on the net layer
+> onward is proposal.
+>
+> **§1 AND §8.2 ARE STALE (noted 2026-09-11).** They were written on
+> 2026-08-21 between 20:26 and 20:38 (PRs #2186, #2187). Eighteen
+> minutes later PR #2189 — closing issue #2188, *"PCs lose everyone
+> they knew on resleeve"* — pulled the record into one shared module
+> and made **every** death stamp one onto the body; at 21:08 PR #2191
+> (issue #2190) renamed *estate* → **imprint** (`world/imprint.py`).
+> So §1's function names, and the "PCs get none" premise that §8.2's
+> ruling rests on, have been wrong since that night. Annotated in
+> place below. **Nothing in §2–§7 is affected:** the design still
+> turns on `taken_at` and on where that number comes from. The interactive half depends on the net layer
 > ([`DECKING_MATRIX`](DECKING_MATRIX.md)), which is itself spec-first
 > and gated on the phase/verticality work — so this is
 > **spec-now, build-when-the-world-is-ready**.
@@ -29,6 +40,15 @@ reason this spec is short.
 
 `world/souls/posts.py::_estate_of()` writes:
 
+> **Renamed 2026-08-21, 30 minutes after this line was written (PR
+> #2191 / issue #2190).** The live record is built by
+> `world/imprint.py::capture()`; `world/souls/posts.py::_imprint_of()`
+> is a thin alias kept so this module's callers read as they did. The
+> record also carries three fields added since and missing from the
+> block below: `opinions` (#2388), and `designation` + `skills`
+> (#2800) — the last two restored with **no** cutoff, because a
+> service record is not an episode.
+
 ```python
 {
   "version": 1,
@@ -47,6 +67,15 @@ reason this spec is short.
 * **Trigger:** every death calls `snapshot_estate()`, but it only
   *stores* for a post-holder. Backups are therefore **institutional** —
   a policy covering staff, not a consumer product. PCs get none.
+  **No longer true (noted 2026-09-11):** the call is
+  `snapshot_imprint()` (`typeclasses/death_progression.py:534`), and it
+  is only half the death path — ten lines further down the same method
+  writes `character.db.imprint = imprint.capture(character)` for
+  **everyone** (PR #2189, closing #2188), and `create_flash_clone`
+  restores from it through the same `world/imprint.py::restore()` an
+  NPC resleeve uses. Post-holders additionally get the per-shift record
+  described below. What is *institutional* today is the **premium and
+  the restore policy**, not the existence of a backup.
 * **Storage:** on the post fixture, `db.post_memory_snapshots[shift]`.
   One record per shift, **overwritten**.
 * **Restore:** `_try_resleave()` rebuilds the named keeper, debits
@@ -56,6 +85,11 @@ reason this spec is short.
   is the same face.
 * **The gap:** `taken_at = died_at - RESLEAVE_GAP` (5400s). The last
   ~90 minutes never made the backup.
+  **Constant moved (noted 2026-09-11):** the live one is
+  `world/imprint.py::GAP` (still 5400). `RESLEAVE_GAP` survives at
+  `world/souls/posts.py:27` but nothing in that module reads it any
+  more — its only importer is the one-off
+  `scripts/builds/085_restore_the_cast.py`.
 
 ### 1.1 · The one design decision already made
 
@@ -236,7 +270,17 @@ is inhabiting a stolen body, not forging one — §4.
 stays **institutional**. Players already resleeve free via
 `create_flash_clone`, which inherits the sleeve (`same body means same
 sleeve_uid`) and deliberately leaves the brain empty — *"flash clones
-have empty brains and recognise nobody"*. There is no perm-death to
+have empty brains and recognise nobody"*.
+
+> **The rationale was overtaken the same night (noted 2026-09-11).**
+> Since PR #2189 (closing #2188) a flash clone is *not* empty: every
+> death stamps `character.db.imprint`, and `create_flash_clone` calls
+> `world/imprint.py::restore()` on it, so a PC wakes knowing the faces,
+> the voices, and — since #2800 — the designation and skills the record
+> held, minus the gap. The quoted line still stands in
+> `IDENTITY_RECOGNITION_SPEC` §Flash Clone Interaction, which is stale
+> the same way. **Whether the RULING survives is an owner call:** PCs
+> now have a backup in everything but insurer, premium and history. There is no perm-death to
 soften and no premium to charge, so coverage would buy nothing today.
 
 > Worth noting for later: this is **coherent, not inconsistent**. A PC
@@ -244,6 +288,13 @@ soften and no premium to charge, so coverage would buy nothing today.
 > knowing what the backup held. **The backup IS the memory.** If PC
 > coverage is ever revisited, that is the value it sells — not
 > survival.
+>
+> **Superseded (noted 2026-09-11):** a PC with no policy still wakes
+> holding the imprint stamped at their own death, so memory is no
+> longer the line between the two. What the cast has and players do
+> not is the **insurer**: a premium, a body rebuilt for them, a record
+> held off-body where somebody else can reach it — and that last part,
+> not memory, is what PC coverage would actually sell.
 
 **8.3 — History depth.** How many past selves does an insurer keep,
 and does a stale restore cost less than a fresh one? *(Open.)*
@@ -264,6 +315,11 @@ Thawn-Harrison secret. Changes every conversation about it. *(Open.)*
 * Double-sleeving (§4.1) — needs the net layer AND an answer to how
   one mind runs two bodies (§8.4). The largest thing in this spec.
 * Personal backups — **ruled out** for now (§8.2), not merely gated.
+  **Partly overtaken (noted 2026-09-11):** the personal *record*
+  already ships — `character.db.imprint`, stamped at every death and
+  restored free at decant (PR #2189 / issue #2188). What remains ruled
+  out is the **product**: insurer-held storage, on-demand capture, a
+  premium, history. Read §8.2's note before building on this line.
 
 **Buildable independently, whenever wanted:** backup *history* (§2
 prerequisite) and the on-demand capture command. Both are small, both
