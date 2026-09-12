@@ -98,7 +98,16 @@ Organic medical commands gate on living tissue; robots use **repair** — the
 heal-analog (weld a frame member, swap a fried sensor, hot-swap the power core).
 Much of the routing already exists (the `inorganic` filter keeps organic
 treatment from applying); the **new** piece is a small repair verb/flow
-(field-repair vs. a workbench), reserved as a build step. Component swap also
+(field-repair vs. a workbench), reserved as a build step. **Note 2026-09-12:**
+still accurate that no chassis repair *verb* exists — `commands/CmdArmor.py`'s
+`repair` covers armor and breachable structure, not a chassis. But the
+capability landed in a different shape, as a **service**: see the sibling
+`ROBOT_SERVICE_SPEC` (✅ BUILT, #2262/#2266), the species→door mapping
+(`world/souls/needs.py` `CLINIC_SERVICE = {"robot": "repair"}`), the
+mechanic's bench kit and `restock_mechanic` (`world/director/medical.py`), and
+species-gated supplies that refuse organic kit on a chassis
+(`world/medical/utils.py` `serves_species`). This document does not
+cross-reference that spec anywhere. Component swap also
 means robots are the natural home for **salvage** (a stripped frame yields parts).
 
 ### 3.3 · What's reused vs. new
@@ -216,6 +225,20 @@ Patrol (routine) ─▶ Detect ─▶ Challenge ─▶ Escalate ─▶ Restrain 
   reserved "authority NPC" seam from the dispatch spec (§6) and trust spec (§6) —
   the police MOB is what makes it concrete. Sequence coercive force *after* that
   gate exists.
+
+  > **Note 2026-09-12 — the sequencing is past tense now.** The trust gate
+  > shipped 2026-07-03: `world/consent.py` (`is_restrained`, `can_contest`,
+  > `has_trust`, `check_consent`) + `commands/CmdTrust.py`, and
+  > `TRUST_AND_CONSENT_SPEC` is ✅ SHIPPED IN FULL, re-verified against code
+  > 2026-08-02. So coercive force is no longer *waiting* on the gate — the
+  > grapple/cuff rung above is simply unbuilt (no grapple or cuff path exists
+  > in `world/director/security.py`). Both §6 citations in this sentence were
+  > re-checked and are **correct**: `NPC_DISPATCH_AND_SIMULATION_SPEC` §6
+  > closes with "Third-party action safety", which reserves this exact seam
+  > ("a security bot restrains … NPC-initiated actions targeting
+  > able-to-resist players are subject to the same consent rules … Reserve
+  > the seam now"), and `TRUST_AND_CONSENT_SPEC` §6 is "NPC participation —
+  > self-action only".
 * **Dispatch backup** — escalation raises a `WorldEvent` so more units converge
   (alert propagation), and a downed bot is itself an event.
 * **Lethality / jurisdiction** — non-lethal by default (deterrence, restraint);
