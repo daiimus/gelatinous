@@ -1,13 +1,19 @@
 # Jump Command Implementation Specification
 
-> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. Verified 2026-08-02.
+> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 24 claim(s) false, annotated inline**.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The header claimed "IMPLEMENTATION COMPLETE ✅". Phase 3 (elevated-position combat bonuses, enhanced aim from edges) has **no code**.
 > **FIELD NOTES (2026-08-06, from building the Brackett fire escape):**
 > (1) An edge exit whose destination is air MUST carry `sky_room` (int
 > dbref) — without it the "graceful degradation" fallback turns the jump
-> into a plain walk with no fall and no landing roll. (2) Walking into a
+> into a plain walk with no fall and no landing roll.
+> _(2026-09-11: half-stale. Since #2944, `handle_edge_descent` REFUSES an
+> edge whose destination is a sky room and carries no `sky_room`
+> (jump.py:496-524) rather than stranding you. The surviving fallback is
+> not a plain walk either — it applies flat `exit.db.fall_damage`, default
+> 8 (jump.py:548-551). What it still skips is the landing roll and the
+> per-story scaling.)_ (2) Walking into a
 > sky room never triggers falling; the entire fall experience lives in
 > this command's flow. (3) The landing runs on a delayed callback
 > (0.5s/story): a server reload during that window orphans the jumper in
@@ -15,7 +21,14 @@
 > item: resolve airborne characters at server start.
 > - No dedicated jump test module exists — only incidental coverage in `test_drop_to_room.py` and `test_build_tools.py`.
 
-**Status: IMPLEMENTATION COMPLETE** ✅  
+**Status: IMPLEMENTATION COMPLETE** ✅
+
+> _(2026-09-11: STALE — superseded by the status banner at the top of this
+> file, which lists this header among the claims that were already FALSE
+> when audited on 2026-08-02. The banner flagged it and left it standing,
+> so the two lines have contradicted each other ever since. Phase 3 still
+> has no code (#1511, open, parked). Left in place per
+> annotate-don't-delete; the banner is authoritative.)_  
 **Location:** `commands/combat/jump.py` - CmdJump class  
 **Integration:** Added to combat cmdset, ready for live testing
 
@@ -40,13 +53,29 @@ jump across <direction> edge  # Horizontal leap across gaps at same level
 1. **Explosive must exist** in current room
 2. **Explosive must be armed** (`db.pin_pulled = True`)
 3. **Explosive must be counting down** (active timer)
+   - _(2026-09-11: neither validation exists. `jump.py:190` — "Always allow
+     the heroic leap - false heroics are part of the drama!" Armed state and
+     countdown are read at `jump.py:186-188` only to choose which revelation
+     branch fires 2.5s later. An unarmed grenade is accepted and answered
+     with "...but nothing happens. X wasn't even armed." (`jump.py:428`).)_
 4. **Caller can be in or out of combat** (heroic actions transcend combat state)
 5. **No proximity requirement** (can jump on explosive from anywhere in room)
 
 #### Timing Mechanics
 - **Timer-based window**: Can only jump on explosive while countdown is active
 - **Instant execution**: No delay once command is entered
+  - _(2026-09-11: false as shipped. `jump.py:194-206` computes a
+    `revelation_delay` — 2.5s normally, `remaining_time - 0.3` when the fuse
+    is shorter — and `jump.py:433` puts the entire outcome behind
+    `delay(revelation_delay, reveal_outcome)`. Only the leap message is
+    immediate; the blast, the damage and the dud reveal are all deferred.)_
 - **Timer inheritance**: Takes over explosive's remaining countdown
+  - _(2026-09-11: only for short fuses. `jump.py:195-206` inherits the
+    remaining time ONLY when it is ≤ 2.5s (`remaining_time - 0.3`);
+    anything longer is cut to a flat 2.5s, and the original timer is
+    cancelled outright at `jump.py:209-225`. A 10s fuse detonates 2.5s
+    after the leap, so the hero shortens the countdown rather than
+    inheriting it.)_
 - **Damage amplification**: Hero takes ALL explosive damage (100% absorption)
 - **Complete protection**: Everyone else in proximity takes zero damage
 
@@ -163,6 +192,15 @@ def jump_on_explosive(caller, explosive):
 **Philosophy**: Sky rooms are permanent world features, not temporary objects. This prepares for future XYZ coordinate systems and flying vehicle mechanics.
 
 **Room Lookup Strategy**:
+
+> _(2026-09-11: only strategy 4's inverse ships. Both call sites —
+> `jump.py:484` (edge) and `jump.py:723` (gap) — read `exit_obj.db.sky_room`
+> as an int dbref and `search_object(f"#{id}")`. There is no tag lookup and
+> nothing reads `db.origin_room` / `db.destination_room` anywhere in the
+> repo. The only bidirectional behaviour is `get_sky_room_for_gap`
+> (`jump.py:947-1004`), whose second try falls back to the
+> reverse-direction exit (`jump.py:975-1001`) — on gap FAILURES only, never
+> on edge descent. Strategies 1-3 are unbuilt.)_
 1. **Tagged rooms**: Sky rooms tagged with `sky_{origin_id}_{destination_id}`
 2. **Property-based**: Sky rooms with `db.origin_room` and `db.destination_room` properties
 3. **Bidirectional**: Sky rooms that work for both directions of travel
@@ -343,6 +381,14 @@ if destination_is_sky and not (is_edge or is_gap):
 - **Between sky rooms**: "You cannot traverse between sky rooms! Sky rooms are transit-only spaces."
 
 **Visibility Behavior**:
+
+> _(2026-09-11: there is no "Edges:" section — that shape never shipped.
+> `typeclasses/rooms.py:1046-1063` renders prose: "There is an edge to the
+> north." / "There are edges to the ..." / "There is a gap to the ...". The
+> filtering claim is correct — `rooms.py:926-931` skips exits whose
+> destination is a sky room unless the exit is itself an edge or gap. The
+> "Exits:" listing named in Restriction Implementation above is prose too
+> (`rooms.py:1065-1070`).)_
 - **Pure sky rooms**: Completely invisible in room exit listings
 - **Sky + edge rooms**: Visible in "Edges:" section, blocked by edge restrictions
 - **Sky + gap rooms**: Visible in "Edges:" section, blocked by gap restrictions
@@ -357,6 +403,16 @@ if destination_is_sky and not (is_edge or is_gap):
 ## Combat Integration
 
 ### Explosive Sacrifice Combat Effects
+
+> _(2026-09-11: both of the first two bullets are false as shipped, and
+> they repeat claims corrected earlier in this file. "Instant resolution"
+> — the outcome is deferred 2.5s (`jump.py:433`; see Timing Mechanics).
+> "Combat bypass" — being grappled refuses the sacrifice outright
+> (`jump.py:139-149`), and the hero's next round is skipped
+> (`jump.py:416`, `NDB_SKIP_ROUND`). "Proximity clearing" and "chain
+> reaction prevention" do hold: the explosive is deleted at `jump.py:378`
+> after the hero inherits its proximity list (`jump.py:353-361`, fixed in
+> #2453).)_
 - **Instant resolution**: Not turn-based, immediate heroic action
 - **Combat bypass**: Works regardless of combat state
 - **Proximity clearing**: Removes explosive threat from all characters
@@ -375,6 +431,18 @@ if destination_is_sky and not (is_edge or is_gap):
 - **Position bonuses**: Elevated positions provide combat modifiers
 
 ## Room Announcements
+
+> _(2026-09-11: illustrative, not shipped text. Every string below differs
+> from the code — e.g. the sacrifice line is "{actor} makes the ultimate
+> sacrifice, leaping onto X!" (`jump.py:242-262`), the edge departure is
+> "{actor} leaps off the X edge!" (`jump.py:616`), the successful landing is
+> "{actor} lands with athletic grace from above!" (`jump.py:1230`). Shipped
+> lines are rendered through `msg_room_identity` with `{actor}`/`{victim}`
+> refs, so the actor is named per-observer rather than as a fixed name.
+> **Defect, not a spec error:** the sacrifice lines interpolate the player's
+> raw typed argument (`self.explosive_name`, at `jump.py:246`, `259`, `385`,
+> `407`, `421`, `428`) instead of the resolved object's name — `jump on
+> gren` announces "...leaping onto gren!".)_
 
 ### Explosive Sacrifice Messages
 - **Hero message**: "You leap onto the grenade, shielding everyone with your body!"
@@ -402,18 +470,46 @@ if destination_is_sky and not (is_edge or is_gap):
 ## Error Handling
 
 ### Explosive Sacrifice Errors
+
+> _(2026-09-11: none of the four strings below is in the code. Shipped:
+> `jump.py:158` "You don't see 'X' here."; `jump.py:165` "X is not an
+> explosive device." (an object-type check this section omits);
+> `jump.py:420-421` "...but X makes only a small 'click' sound. It was a dud
+> or the timer expired."; `jump.py:428` "...but nothing happens. X wasn't
+> even armed." The last two are delayed OUTCOMES broadcast to the room, not
+> refusals — see the Validation Requirements note above.)_
 - **Explosive not found**: "You cannot find '<explosive>' to jump on."
 - **Explosive not armed**: "The <explosive> is not armed - there's no danger to absorb."
 - **Timer expired**: "Too late! The <explosive> has already detonated."
 - **No explosive timer**: "The <explosive> is not counting down."
 
 ### Edge Descent Errors
+
+> _(2026-09-11: shipped strings differ and one refusal is missing here.
+> `find_edge_exit` (`jump.py:700-716`) says "There is no exit to the X."
+> (`jump.py:706`) and "The X exit doesn't lead anywhere." (`jump.py:713`);
+> `jump.py:472` "The X exit is not an edge you can jump from.";
+> `jump.py:477` "The X edge doesn't lead anywhere safe to land.". There is
+> no "blocked" refusal at all — walking an edge is blocked instead, in
+> `Exit.at_traverse` (`typeclasses/exits.py:115-119`). Missing from this
+> list: the #2944 refusal at `jump.py:496-524` — "You lean out over the X
+> edge and stop. There's nothing to land on down there — no ledge, no fire
+> escape, nothing but air." (`jump.py:520-523`).)_
 - **No edge exit**: "There is no edge to jump off here."
 - **Invalid exit**: "That is not an edge you can jump from."
 - **Blocked exit**: "The edge is blocked - you cannot jump off."
 - **No destination**: "The edge leads nowhere - jumping would be suicide."
 
 ### Gap Jump Errors
+
+> _(2026-09-11: **missed by the 2026-08-02 audit** — none of the five
+> strings below ships either. Shipped: `jump.py:706` "There is no exit to
+> the X." (there is no gap-specific not-found message); `jump.py:665` "The X
+> exit is not a gap you can jump across."; `jump.py:681` "The X gap doesn't
+> lead anywhere safe to land.". There is no "blocked gap" refusal and no
+> "You cannot attempt that jump right now." — the only movement-side
+> refusal is the grapple block at `jump.py:637-640`, "You cannot jump while
+> being grappled by X!")_
 - **No gap exit**: "There is no gap to jump across here."
 - **Invalid gap**: "That is not a gap you can jump across."
 - **Blocked gap**: "The gap is blocked - you cannot make the jump."
@@ -661,6 +757,17 @@ Based on the philosophy of heroic action and tactical depth:
 8. **Retreat direction**: Can retreat to edges, one-way descent only
 9. **Gap success**: General Motorics stat check vs gap difficulty (success on success or tie)
 10. **Gap failure**: Fall to failure_room with distance-based fall damage (rooms fallen × multiplier)
+    _(2026-09-11: half-shipped, and the missing half may be deliberate. The
+    distance-based damage is real — `jump.py:887-890` walks
+    `follow_gravity_to_ground` and charges 5 per story, which is exactly
+    what the owner-ruled movement kernel in
+    `specs/PARKOUR_TEMPLATE_LIBRARY.md` §0 prescribes for falls. But
+    `exit.db.fall_room` is never consulted on a gap failure: the helper
+    written for it, `get_fall_room_for_gap` (`jump.py:1006-1022`), has no
+    callers, and the only live `fall_room` read is the edge-landing path at
+    `jump.py:1078-1083`. Whether gravity should override an authored crash
+    site for gaps is an owner call, not a bug to fix from this note — see
+    the Fall Room Strategy note above.)_
 11. **Gap combat**: Counts as movement action if in combat (flee-like timing)
 12. **Gap difficulty**: 1-5 scale (trivial to nearly impossible)
 13. **Jump syntax**: Uses direction-based syntax (`jump off north edge`, `jump across east edge`)
