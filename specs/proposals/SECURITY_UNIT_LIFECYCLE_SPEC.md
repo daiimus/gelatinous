@@ -3,6 +3,17 @@
 **Status:** ✅ **BUILT 2026-08-24.** Assignment leak (#2280), recovery
 errand (#2282), strip-and-junk (#2284), and the harvest door that made
 the §3 race reachable (#2286).
+
+> **Note 2026-09-12 (drift audit):** the pieces landed on 08-24, but the
+> loop did not RUN until **2026-09-05**. `recover_casualty` called the
+> two-argument `is_grappled()` with one argument and a blanket `except`
+> turned the TypeError into a permanent "no", so `goal=recover` was
+> elected zero times for nine days (#2712, closed via PR #2899); the
+> `strip_and_junk` report was also discarded, radioing "Armament
+> secured." off a wreck that was still armed (#2765). Both closed; the
+> §1/§4/§5/§7/§8 notes below mark the prose that predates all of this.
+> This file is also still filed under `specs/proposals/`, which
+> `specs/README.md` describes as "designed, nothing built yet".
 **Depends on:** `world/director/population.py` (the respawn loop),
 `world/souls/*` (Phase 2 — units are souls), the mechanic post
 **~~Blocks on:~~ UNBLOCKED 2026-08-24** — repair is real: the bench
@@ -12,6 +23,17 @@ and `operate` charts a chassis in its own words (#2262).
 ---
 
 ## 1. What happens today
+
+> **Note 2026-09-12 (drift audit):** read this section as the PRE-BUILD
+> problem statement, kept for the reasoning. `maintain_security_complement`
+> (`world/director/population.py:465`) and the armament-as-organ
+> paragraph (`factory_fit_armament`, same file, line 91) still describe
+> the live code exactly. "Nothing recovers the casualty, nothing repairs
+> anything, and the remains stay where they fell" no longer does —
+> recovery is `world/director/medical.py::recover_casualty` plus the
+> `hold`/`travel`/`deliver` steps in `world/souls/jobs.py`, repair is
+> the staffed bench with three mechanics, and disposal is
+> `world/director/disposal.py::strip_and_junk`. See the banner and §4.
 
 A unit destroyed in the field is replaced. `maintain_security_complement`
 counts living posted units against the base's complement and cycles one
@@ -67,6 +89,14 @@ still: more units in the field is more units to lose.
 Most of the substrate is already here. What is missing is the *errand*:
 somebody whose job is to go and get it.
 
+> **Note 2026-09-12 (drift audit):** stale, and contradicted by the table
+> directly above it and by the banner — the errand shipped with #2282.
+> `world/director/medical.py::recover_casualty` elects it (unit-only,
+> both ways, and band-arbitrated so a unit does not drop a call for it),
+> `world/souls/actions.py::plan_for(soul, "recover")` builds the
+> `hold → travel → deliver` plan, and `world/souls/jobs.py` runs the
+> three steps. Delivery bay and yard are tag-driven (builds 127 and 128).
+
 ## 5. Design notes
 
 **Recovery is a JOB, not a director callback.** Phase 2 put units in the
@@ -75,9 +105,27 @@ job with steps, faults, and interruptions. A recovery detail is
 `travel → grapple → drag → deliver`, which is the shape the souls layer
 already runs, using the real verbs.
 
+> **Note 2026-09-12 (drift audit):** the built shape is
+> `hold → travel → deliver` (`world/souls/actions.py::plan_for`, goal
+> `recover`). Two differences, both deliberate: the hold comes FIRST
+> (the wreck is where the noticing unit already is), and the step is
+> `hold`, not `grapple` — see §8 for why reusing the mugger's `grapple`
+> would have failed silently. Dragging stays emergent, so there is no
+> `drag` step.
+
 **Repair belongs to the mechanic**, whose post is the reason
 `maintenance` is deliberately advertised NOWHERE (owner ruling,
-2026-08-23). Servicing a unit on shift and rebuilding one that was
+2026-08-23).
+
+> **Note 2026-09-12 (drift audit):** superseded the next day. `maintenance`
+> is advertised — at the bench, and only while somebody is standing
+> there: build 124 sets `advertises = {"maintenance": 0.9}` with
+> `advertise_staffed = True` (#2261), and build 125 adds `repair`
+> alongside it for damage as opposed to scheduled wear. The live rule is
+> in `world/souls/salience.py::_work_mechanic`: "a machine cannot fix
+> itself: `maintenance` advertises only at a STAFFED bench". The
+> ruling's point — that this is the mechanic's work, not a wall
+> fitting's — is what the staffed advertiser implements. Servicing a unit on shift and rebuilding one that was
 dropped are the same person's work, and should share a bench.
 
 **A repaired unit keeps its defects; a replacement does not.** A chassis
@@ -96,6 +144,14 @@ cheaper cure, which is a funny incentive to leave lying around.
   Feedstock for the Ripper's cold room and for parts, and it lets
   Kaspar Salvage accumulate a visible history of the force's bad
   nights.
+
+  > **Note 2026-09-12 (drift audit):** the yard is not Kaspar's — §4's
+  > table already corrects this. Build 128 tagged **The Midden — Middle
+  > Yard** (#7487) with `world/director/disposal.py`'s
+  > `SCRAPYARD_TAG = ("scrapyard", "disposal")`; Kaspar Pawn & Salvage
+  > is an indoor shop and explicitly not where a chassis gets dumped.
+  > The chassis-persists ruling itself holds: `strip_and_junk` moves the
+  > wreck rather than deleting it.
 * **How long is the window?** **Minutes — genuinely losable.** Long
   enough that somebody who watched the fight can reach the wreck, take
   the arm and be gone. Recovery usually wins on quiet streets; a
@@ -109,6 +165,17 @@ call stayed open in the ledger with no outcome, and because
 `think()` returns early for any assigned soul, **the unit's soul
 stayed permanently asleep**. Even repaired, it would never think
 again.
+
+> **Note 2026-09-12 (drift audit):** the early return is gone. #2384
+> (closed 2026-08-29) replaced the assignment boolean with a band-0
+> `respond` job, so an assigned soul is arbitrated rather than silenced
+> — `world/souls/engine.py:421` now reads "An assignment used to return
+> here", and the only early exit left in `think()` is `_in_combat`.
+> The same stale explanation still stands in `release_on_death`'s own
+> docstring (`world/director/assignment.py`), which is where this
+> paragraph took it from. Everything else here holds: `release_on_death`
+> settles through `close_call_for(assignment, "unit_lost", npc)` and
+> `unit_lost` has no line in `_CALL_OUTCOME_LINES`.
 
 That would have quietly defeated this entire spec: the recovery loop
 would have dragged a chassis home, the mechanic would have rebuilt it,
@@ -130,3 +197,11 @@ Recovery therefore needs its own step that establishes a hold on a
 body that cannot resist, rather than reusing the mugger's grapple.
 Worth knowing before building: the failure is silent and would look
 like a pathing bug.
+
+> **Note 2026-09-12 (drift audit):** built, and the trap was taken
+> seriously — `world/souls/jobs.py` has `if do == "hold":`, which checks
+> `is_grappled(handler, wreck)` with both arguments and re-issues the
+> grab rather than assuming an unresisting body is already held (#2282).
+> The paragraph above still describes the live `grapple` step correctly:
+> it does guard on `can_contest(mark)` and does advance when that reads
+> False, which is exactly why recovery does not reuse it.
