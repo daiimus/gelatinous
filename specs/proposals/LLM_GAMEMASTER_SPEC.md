@@ -27,7 +27,12 @@
 > the format problem at the root. `think` (#787) is a new real RP verb players share.
 > The Phase-3 **arbiter (capability + consent gates)** and mechanical-verb routing
 > to the tactical resolver are **not** built yet (consent ties to the deferred
-> Trust/Consent gate). Build ladder + per-phase status in §10. Validation harnesses:
+> Trust/Consent gate). **[STALE 2026-09-12 — the gate is NOT deferred:
+> `specs/TRUST_AND_CONSENT_SPEC.md` reads "✅ SHIPPED IN FULL (2026-07-03,
+> Phases 1–3)", and `world/consent.py` (`check_consent` / `can_contest` /
+> `is_restrained`) plus `commands/CmdTrust.py` are live. The arbiter itself
+> is still genuinely unbuilt — nothing in the LLM path gates an action
+> before `execute_cmd` — but it is not waiting on the gate.]** Build ladder + per-phase status in §10. Validation harnesses:
 > `world/llm/live_probe.py` (volume format scorer) + `world/llm/npc_console.py`
 > (reactive turn-by-turn play against the sidecar NPC).
 > A methodology for
@@ -40,7 +45,10 @@
 > lives in **Appendix A**; everything above it should transfer to any MUD with a
 > command layer and a perception bus. Runtime target: **MLX on Apple Silicon**
 > (a Mac mini), as a decoupled sidecar. Interlocks with the deferred
-> **Trust/Consent** gate (`proposals/TRUST_AND_CONSENT_SPEC.md`) and the
+> **Trust/Consent** gate (`proposals/TRUST_AND_CONSENT_SPEC.md` — **[PATH +
+> STATUS STALE 2026-09-12: the file is `specs/TRUST_AND_CONSENT_SPEC.md`
+> (top level = shipped); there is no copy under `proposals/`, and it has
+> read ✅ SHIPPED IN FULL since 2026-07-03]**) and the
 > recognition-memory sketch in `IDENTITY_RECOGNITION_SPEC.md` §embedding.
 
 ---
@@ -50,6 +58,15 @@
 NPCs today are **scripted reactors**: a bartender hears speech addressed to it,
 keyword-matches a menu, and fulfils (Appendix A). That ceiling is low — every
 behaviour is hand-authored, every NPC is a vending machine with flavour text.
+
+> **[FRAMING PREDATES THE BUILD — stale 2026-09-12.** Phases 1–2 shipped, so
+> this paragraph no longer describes current state: LLM-driven NPCs are live
+> (`typeclasses/llm_npc.py` `LLMNpcMixin`/`LLMNpc`, nine archetypes in
+> `world/llm/prompt.py`, RAG memory in `world/llm/memory.py`). The
+> keyword-matched menu survives only as the deterministic floor beneath the
+> model — `world/bar.py` `resolve_order` behind `serve_from_board`, dispatched
+> by `post_role` through `world/service.py`. Read §0 as the original problem
+> statement.**]**
 
 This proposal raises the ceiling by putting a **language model in the loop as a
 gamemaster** — one storyteller intelligence that *wears NPCs as masks*. It
@@ -816,7 +833,13 @@ MLX, ChromaDB, or Evennia.
   vs conn). **NOT yet built:** the full arbiter
   (§5.4) — the **capability and consent gates** — and **mechanical verbs routing
   to the tactical resolver** (§2.2); consent ties to the deferred Trust/Consent
-  gate. *Deliverable partially met: governed social/expressive actions through real
+  gate. **[STALE 2026-09-12: Trust/Consent shipped in full 2026-07-03
+  (`specs/TRUST_AND_CONSENT_SPEC.md`; `world/consent.py` `check_consent`), so
+  the arbiter is not blocked on it. The arbiter itself remains unbuilt as
+  written — `typeclasses/llm_npc.py` `_handle_action_tool` and
+  `world/service.py` `run_tool` hand a tool straight to `execute_cmd`, so
+  capability and consent are enforced only implicitly, by the real command
+  the NPC runs.]** *Deliverable partially met: governed social/expressive actions through real
   commands; the mechanical/consented action surface remains.*
 - **Phase 4 — many NPCs & de-confliction.** One GM, multiple personas, serialised
   turns, priority queue, isolation verified across namespaces.
@@ -908,7 +931,9 @@ specific section — the real seams the adapters bind to.*
   `IDENTITY_RECOGNITION_SPEC.md` §indexing (where LLM synthesis was explicitly
   deferred — this spec is that deferred layer).
 - **Governance interlocks.** The consent gate is
-  `proposals/TRUST_AND_CONSENT_SPEC.md` (third-party actions on awake/able-to-
+  `proposals/TRUST_AND_CONSENT_SPEC.md` **[PATH STALE 2026-09-12: the file lives
+  at `specs/TRUST_AND_CONSENT_SPEC.md` — top level = shipped — and has read
+  ✅ SHIPPED IN FULL since 2026-07-03]** (third-party actions on awake/able-to-
   resist targets need consent; unconscious/restrained/dead are free actions —
   exactly the rule §5.4.3 enforces for NPCs). Audit logging can reuse the
   combat-audit sink pattern (`world/combat/debug.py`).
@@ -963,7 +988,11 @@ beat. Remaining #954 scope: clothing/transfer perception + directed
 reactions.
 
 **The reflex lane (#1136):** the TWO-LANE DOCTRINE completed — the
-GM lane (24B) plays conversation tempo; the CIVIC lane's on-device
+GM lane (24B — **[stale 2026-09-12: the resident GM model is the 12B
+Rocinante. The banner's 2026-07-14 posing dial-in is written for the 12B,
+§4.2 names a 12B Nemo-class tune as the production pick, and the sidecar
+LaunchAgent loads `…/llm-gm-spike/models/rocinante-12b`. 24B is the §4.2
+bench tier, not production]**) plays conversation tempo; the CIVIC lane's on-device
 small model (~0.65s) plays the FLINCH. On fight beats, ONE elected
 bystander (lowest dbref, combatants excluded, 90s NPC cooldown, one
 reflex per fight) barks a single line through `say`. **Input shaping
