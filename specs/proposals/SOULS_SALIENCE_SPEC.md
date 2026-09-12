@@ -34,6 +34,12 @@ There is a third edge: the band tree is `survive > critical needs >
 schedule duty > elevated needs > idle`, and a running job is only
 interrupted by a strictly lower band number. Duty sits *below* critical
 needs, so a hungry dispatcher mid-meal lets the emergency band ring.
+(NOTE 2026-09-12: the band ordering is unchanged and arbitration is
+still unwired, so nothing about this edge was closed by the tree. What
+changed is that the wake drains the inbox outside the job — so a
+dispatcher who eats *in the chair* judges the call anyway. One whose
+meal takes her out of the chair senses nothing at all, which is the §4
+ruling rather than this edge. See the note in §3.4.)
 
 This is not a dispatch problem. It is the same shape as a scream
 through a wall, a fire alarm, a shot fired in the next room, a customer
