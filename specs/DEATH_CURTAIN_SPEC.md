@@ -32,7 +32,28 @@ This animation system is based on a beautiful and subtle design:
 - **Evennia-Native**: Uses Evennia's built-in `delay()` function and color system
 - **Message Flexibility**: Can animate any text message
 - **Character Messaging**: Integrates with standard Evennia character messaging
+  - **Correction 2026-09-12 (#2469 / #2952):** the *API* is standard —
+    `character.msg()` — but the *filter* is not. This game overrides
+    `Character.msg` (`typeclasses/characters.py:288-344`) to drop almost
+    everything addressed to a dead character: no `from_obj` is blocked
+    outright, non-staff and non-`death_progression` senders are blocked, and
+    only a `death_curtain=True` kwarg lets the curtain's own traffic through
+    (`curtain_of_death.py:277`, `:291`; the flag is popped before `super()`
+    so it never reaches the client as an outputfunc). The filter previously
+    sniffed for `▓` in the text, which is true of the opening frames and
+    false of the trailing drip, the three blank frames and the
+    cause-of-death line — so the animation cut out partway and the dying
+    player was never told what killed them.
 - **Observer Support**: Provides different messages for dying character vs. room observers
+  - **Re-checked 2026-09-12:** true as written, but narrower than it reads, and the
+    banner's blunter "**false**" overstates it. What observers never get is the
+    *animation*: every frame goes to `self.character` alone
+    (`DeathCurtain._show_next_frame`, `curtain_of_death.py:285-296`), and the
+    initial cause line is sent to the victim only, deliberately
+    (`:279-280`). Observers do get their own, genuinely different message —
+    one cause- and species-keyed template at completion, rendered per
+    watcher by `msg_room_identity` (`:377-382`). So: different messages yes,
+    different frames no, and nothing at all until the curtain ends.
 - **Configurable**: Timing, colors, and characters can be easily adjusted
 
 ## Usage
@@ -77,6 +98,14 @@ The animation works through these steps:
 3. **Progressive Removal**: Remove characters one by one according to the plan
 4. **Color Enhancement**: Apply random red-spectrum colors to remaining characters
 5. **Final Frame**: Show the complete message one last time
+   - **Correction 2026-09-12:** the animation never returns to the message.
+     After the text is erased, `curtain_of_death` appends 12 trailing
+     sparse-drip frames (`curtain_of_death.py:190-213`) and then three
+     **all-blank** frames (`" " * curtain_width`, `:215-218`). The complete
+     message is shown exactly once, as frame 0 (`:139`). The player's last
+     sight is an empty line, not the message. Measured by running the
+     shipped generator 200× on the default message at width 78: **33-41
+     frames** per run.
 
 ### Key Functions
 
@@ -115,6 +144,11 @@ The animation works through these steps:
 ```python
 self.frame_delay = 0.015        # Starting delay between frames
 self.delay_multiplier = 1.01    # Acceleration factor (gets slower)
+# CORRECTION 2026-09-12: the live values are frame_delay = 0.05 and
+# delay_multiplier = 1.02 (curtain_of_death.py:256-257). Measured over 200
+# runs of the shipped generator on the default message at width 78: 33-41
+# frames, scheduled over ~2.3-3.1 s -- not the "~5-10 seconds" claimed twice
+# further down.
 ```
 
 ### Visual Parameters
@@ -195,14 +229,41 @@ The death curtain now integrates with the medical system for informed death mess
 
 #### Intelligent Death Cause Messages:
 - **Cause Detection**: Uses existing `debug_death_analysis()` logic to determine death cause
+  - **Correction 2026-09-12:** the curtain calls `character.get_death_cause()`
+    (`typeclasses/characters.py:624-662`) at `curtain_of_death.py:266` and
+    `:373`. `debug_death_analysis()` (`characters.py:494`) is a
+    splattercast-only report fired from `at_death` (`characters.py:813`) and
+    never touches the curtain's path. The logic is **duplicated, not
+    shared**, and the copies diverge three ways: `debug_death_analysis`
+    lists *every* fatal condition while `get_death_cause` returns only the
+    first in priority order (blood loss first, `:648`); zero `digestion`
+    reads "LIVER FAILURE" in the debug report (`characters.py:536`) but
+    "organ failure" in the player-facing cause (`characters.py:656`); and
+    only the player-facing path appends the killing blow via
+    `_with_death_blow` (`characters.py:103-121`), so the victim can hear
+    "blood loss from a stab wound to the chest" where the debug report says
+    just "BLOOD LOSS".
 - **Informed Messaging**: Shows specific causes like "blood loss", "heart failure", "respiratory failure"
 - **Fallback Gracefully**: Returns to beautiful mixed red message if cause detection fails
 
 #### Message Flow:
 1. **Initial Death Messages**: Both victim and observers get cause-specific messages
+   - **Correction 2026-09-12:** the victim only. See the note on the
+     Observers sub-bullet below — the observer half was deliberately removed
+     (`curtain_of_death.py:279-280`). The victim's line is real
+     (`:271-277`), and with a recorded killing blow it reads longer than the
+     example below: `_with_death_blow` (`characters.py:103-121`) can make it
+     "Your body succumbs to blood loss from a stab wound to the chest."
    - Victim: "Your body succumbs to blood loss. The end draws near..."
    - Observers: "Nick Kramer is dying from blood loss..."
 2. **Death Curtain**: Always uses the beautiful mixed red message for immersion
+   - **Qualification 2026-09-12:** "always" holds only on the death path,
+     where `at_death` calls `show_death_curtain(self)` with no message and
+     the default is substituted (`curtain_of_death.py:249-251`). Any caller
+     that passes a `message` overrides it — including the custom-message form
+     documented in this spec's own *Usage* section and
+     `@testdeathcurtain <message>` (`commands/CmdAdmin.py:768-776`), whose
+     text is animated uncoloured.
 3. **Final Notification**: "Nick Kramer has died." for observers
 
 ### Visual Improvements
@@ -250,7 +311,7 @@ def _strip_color_codes(text):
 
 ## Death Progression Configuration
 
-The death system consists of two parts: the death curtain animation (~5-10 seconds) followed by a configurable death progression timer.
+The death system consists of two parts: the death curtain animation (~5-10 seconds — **measured 2026-09-12: ~2.3-3.1 s**, 33-41 frames at `frame_delay` 0.05 × 1.02ⁿ, `curtain_of_death.py:256-257`) followed by a configurable death progression timer.
 
 ### Configuration Constants
 
@@ -260,6 +321,16 @@ All death progression timing is controlled in `world/combat/constants.py`:
 # Death progression timing
 DEATH_PROGRESSION_DURATION = 90           # Total time before permanent death (seconds)
 DEATH_PROGRESSION_CHECK_INTERVAL = 30     # How often to check and send messages (seconds)
+# CORRECTION 2026-09-12: no longer a literal. world/combat/constants.py:878-879
+# DERIVES it from the other two:
+#     _message_spacing = DEATH_PROGRESSION_DURATION // DEATH_PROGRESSION_MESSAGE_COUNT
+#     DEATH_PROGRESSION_CHECK_INTERVAL = max(1, int(_message_spacing * 0.6))
+# At the live 90 s / 11 messages that is 8 * 0.6 -> 4. The death_progression
+# script therefore ticks every 4 s, not 30 s, and re-asserts that from
+# constants on every restart (death_progression.py:196-211, #501 Phase 2) --
+# so editing the number as printed above has no effect at all.
+# specs/proposals/DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md:89 still carries the
+# stale 30 s in its timing table (its :88 row already says 90 s correctly).
 DEATH_PROGRESSION_MESSAGE_COUNT = 11      # Number of progression messages to send
 ```
 
@@ -268,6 +339,19 @@ DEATH_PROGRESSION_MESSAGE_COUNT = 11      # Number of progression messages to se
 **Production (Default):**
 ```python
 DEATH_PROGRESSION_DURATION = 360          # 6 minutes - full dramatic experience
+# ⚠ NOT WHAT THE WORLD RUNS ON (checked 2026-09-12). world/combat/constants.py:869
+# has shipped 90 since the constant was introduced (commit 0ce97a06,
+# 2025-10-27); `git log -S` finds no other value, so 360 has never been live
+# for a single commit, and the "Testing: 90" line below therefore describes
+# production. The rest of the code is written against 90
+# (world/director/medical.py:74-76, world/tests/test_medic_dispatch_and_triage.py:11-12,
+# issue #2757's title). The same stale 360 s also appears in
+# specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md:213-214 and :330 -- the
+# designated authority for medical behaviour -- and in
+# typeclasses/death_progression.py:14-16.
+# Whether 360 is still the INTENDED production value is an owner question and
+# is left open here. The stale "Default: 360 seconds" comments at
+# constants.py:867 and death_progression.py:14 are a code defect, not a spec one.
 ```
 
 **Testing:**
@@ -278,7 +362,7 @@ DEATH_PROGRESSION_DURATION = 60           # 60 seconds - very fast testing
 
 ### How It Works
 
-1. **Death Curtain** → Animation plays (~5-10 seconds)
+1. **Death Curtain** → Animation plays (~5-10 seconds) — *measured 2026-09-12: ~2.3-3.1 s (33-41 frames)*
 2. **Death Progression** → Timer begins with periodic messages
 3. **Medical Window** → Characters can attempt revival during this time
 4. **Final Death** → After duration expires, permanent death occurs
@@ -286,6 +370,14 @@ DEATH_PROGRESSION_DURATION = 60           # 60 seconds - very fast testing
 Messages are automatically distributed evenly across the total duration. For example, with 90 seconds and 11 messages, they appear every ~8 seconds.
 
 To apply changes: Edit constants, then `@reload` or restart the server.
+
+> **Qualification 2026-09-12:** true for *future* deaths only. `total_duration`
+> and `message_intervals` are seeded once at `at_script_creation`
+> (`typeclasses/death_progression.py:129-136`) and persist on the script, so a
+> death already in flight keeps the old duration and spacing across a reload.
+> Only `interval` is re-derived from constants on restart
+> (`at_start`, `:196-211`, the #501 Phase 2 guarantee). A duration change
+> therefore takes effect at the next death, not at the next reload.
 
 ---
 
