@@ -120,7 +120,7 @@ not all commands exist yet):
 | `grab` / `grapple` | consensual restraint (let them grab/restrain you uncontested) | the "strap me in willingly" path |
 | `heal` | **all** medical commands — treat, bandage, inject, install, **operate, harvest** | **deliberately blanket** (§3.1) |
 | `search` / `frisk` | frisk / search / loot the target — **identifies the items on their person** (worn, carried, **and concealed**) | the active counter to organic concealment (§3.2) |
-| `dress` | dress / undress (strip) the target's clothing | the class `CmdClothing`'s third-party paths defer to today via their "requires the trust/consent system" placeholder (§3.3) |
+| `dress` | dress / undress (strip) the target's clothing | the class `CmdClothing`'s third-party paths defer to today via their "requires the trust/consent system" placeholder — **2026-09-12: that deferral is over.** `dress`/`undress` call `check_consent(caller, target, "dress")` via `_can_third_party_clothing` (`commands/CmdClothing.py:626-638`, called at `:863` and `:1093`), with severed appendages always dressable. The placeholder rejection is gone from the code path entirely (`grep -rn "requires the trust"` returns nothing); only a stale comment block above the function still describes the pre-Phase-1 world (§3.3) |
 
 ### 3.1 · `heal` is intentionally all-medical — betrayal included
 
@@ -254,3 +254,20 @@ When the build is cleared:
 * **Phase 3 — escort/movement-coupling + the dispatch coercive-authority
   seam** (`NPC_DISPATCH_AND_SIMULATION_SPEC` §6): lawful restrain-then-act
   for security NPCs.
+  *(2026-09-12 drift audit: the movement-coupling half shipped in full
+  (`world/movement_coupling.py`, `commands/CmdFollow.py`, hooked into
+  `Character.at_post_move`/`at_pre_move` at
+  `typeclasses/characters.py:1665`/`:1695`). The **lawful** half is the part
+  that is unbuilt: `world/director/security.py` gives a unit challenge,
+  aim-lock and watch (`security_arrival`, `watch_once`) and escalates
+  straight to `attack` (`_engage`) — it never grapples, cuffs or pods
+  anyone, so "restrain-then-act" has no lawful actor.
+  Note this is **not** a gate-only phase: coercive restrain-then-act by NPCs
+  is already live on the CRIMINAL side, through real commands and this
+  spec's own predicate. A lawless soul that cannot afford to eat builds a
+  `grapple → rob → disengage` job (`world/souls/actions.py:752-768`,
+  `:793-819`), and the grapple step consults `can_contest(mark)` before
+  issuing the command (`world/souls/jobs.py:834-849`), with the rob step
+  re-checking it (`:976-989`). So "ALL §9 PHASES COMPLETE" holds for this
+  spec's own build; what remains is the security-NPC CONTENT, which belongs
+  to the dispatch arc as the status block says.)*
