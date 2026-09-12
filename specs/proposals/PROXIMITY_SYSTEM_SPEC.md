@@ -44,6 +44,8 @@ typeclasses/exits.py:
 - **Use Cases**: Grenade blast zones, object landing proximity, defuse mechanics
 - **Establishment**: Object throws, drops, grenade landings, defuse attempts
 - **Cleanup**: Manual removal, retreat command, movement between rooms, defuse success
+
+> **Dated note (2026-09-12):** "retreat command" does not hold for universal proximity. `commands/combat/movement.py` (CmdRetreat) contains no reference to `NDB_PROXIMITY_UNIVERSAL` at all, and its resolver `world/combat/movement_resolution.py:resolve_retreat` *reads* the grenade list only to decide whether there is anyone to retreat from (it unions both stores into `all_proximity`); on success it calls `break_proximity` against melee opponents and never touches `NDB_PROXIMITY_UNIVERSAL`. Retreating therefore does not remove you from a grenade's blast list — the same asymmetry family as open defect #2540. This also qualifies "Retreat command must handle both systems" under §Architectural Challenges: it reads both, cleans one.
 - **Integration**: Throw command, grenade system, defuse mechanics
 
 #### Universal Proximity Code Locations
@@ -76,6 +78,8 @@ typeclasses/exits.py:
 
 ### Cleanup Implementation
 Both systems have identical cleanup patterns in `typeclasses/exits.py`:
+
+> **Dated note (2026-09-12):** still true of `exits.py`, but no longer the whole picture — exit traversal is not the only movement-cleanup site. `world/combat/proximity.py:clear_proximity_on_room_change` was added under #2490 because combat movement (`advance`, a cross-room `charge`, a grapple drag) calls `char.move_to()` directly and never traverses an exit, so `at_traverse` never fired on those paths; it is invoked from `world/combat/movement_resolution.py` and clears both stores. Any later consolidation has to account for the non-traversal path as well.
 ```python
 def at_traverse(self, traversing_object, target_location, **kwargs):
     # Combat proximity cleanup
