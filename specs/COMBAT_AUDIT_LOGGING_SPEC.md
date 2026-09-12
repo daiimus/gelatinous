@@ -49,7 +49,7 @@ Every `.msg()` on the router does up to two things:
 
 1. **Audit file — always on.** The message is appended to
    `server/logs/combat_audit.log` via a **module-owned stdlib
-   `logging.RotatingFileHandler`** (changed #1106, 2026-07-10:
+   `logging.handlers.RotatingFileHandler`** (changed #1106, 2026-07-10:
    Evennia's `logger.log_file` recycles its cached handle every 500th
    access on the reactor while queued thread writes still hold it —
    every recycle boundary silently dropped the queue, 7.9k lines
@@ -107,9 +107,23 @@ with no count cap — the size knob controls granularity per file,
 not total disk use.  The knob is Evennia's and is shared by
 channel logs.
 
+*(Correction 2026-09-12: the audit log **is** count-capped, and has
+been since #1106. The module-owned handler passes `backupCount=100`
+(`world/combat/debug.py`), so at most 100 generations survive — a
+~1 GB ceiling at the 10 MB size — and the oldest is discarded. The
+uncapped behavior described above was Evennia's `logger.log_file`,
+which stopped carrying these writes in #1106. The knob itself is
+still Evennia's (`settings_default.py`, 1 MB default) and is still
+read by its channel logs.)*
+
 Flip to `True` (and reload) to watch combat live in-game. Leave
 `False` in production — the audit file captures everything either
 way.
+
+*(2026-09-12: "either way" is about `SPLATTERCAST_LIVE`, which is
+still true of it. The file write itself has one exception the
+sentence predates — it is skipped under a test runner (#3221); see
+the footnote under §2.)*
 
 ## 5 · Conventions for call sites
 
