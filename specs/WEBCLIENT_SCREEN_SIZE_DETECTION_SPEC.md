@@ -34,12 +34,43 @@ below is delivered. (Header corrected 2026-06-14 — was stale "Draft".)
 
 ### Current Behavior
 
+> **Re-audited 2026-09-12 —** read this subsection as the pre-implementation
+> state, not as today's. Under the ✅ SHIPPED banner its opening sentence
+> ("does not dynamically detect or report the actual browser window dimensions
+> to the server") reads as a live statement and is false: the client measures
+> and reports on connect (`web/static/webclient/js/gel.js:183`) and on every
+> debounced resize (`gel.js:489-502`). Items 1-3 below were the real
+> motivation and were fixed; item 4 was never accurate as written — see the
+> note on it.
+
 The Evennia webclient currently defaults to a fixed screen width of 78 characters (defined by `settings.CLIENT_DEFAULT_WIDTH`) and does not dynamically detect or report the actual browser window dimensions to the server. This results in:
 
 1. **Suboptimal Display**: Text formatting, tables, and combat messages may not fully utilize available screen space
 2. **Inconsistent Experience**: Telnet clients automatically negotiate screen size via NAWS protocol (RFC 1073), but webclient users have no equivalent
 3. **Manual Configuration Required**: Users must manually set screen dimensions if they want accurate sizing
 4. **Combat System Impact**: The G.R.I.M. combat system uses screen width for formatting combat messages, art, and status displays
+
+> **Re-audited 2026-09-12 — two of the three clauses are false; the "art" one
+> holds.** No file under `world/combat/` reads screen width directly
+> (`grep -rn 'SCREENWIDTH|client_width|get_client_size|terminal_width' world/combat/`
+> returns nothing), and combat **messages** are never wrapped or boxed to a
+> width — they are emitted verbatim from the per-weapon tables in
+> `world/combat/messages/`. There is no width-aware combat **status display**
+> either: the `COMBAT` banner sketched in §User Impact below does not exist
+> anywhere in the code. The **art** clause is true, indirectly but genuinely —
+> `world/combat/attack.py:739` and `:757` call `show_death_curtain()`, and
+> `typeclasses/curtain_of_death.py:29` scales that art to the reported width,
+> so combat is what drives the most visible consumer of this feature.
+>
+> The four `SCREENWIDTH` consumers in the whole repo are
+> `world/utils/boxtable.py:26` (`get_terminal_width()`, reached only from
+> `commands/CmdArmor.py:9`), `typeclasses/death_progression.py:37`,
+> `typeclasses/curtain_of_death.py:28` and `commands/CmdCharacter.py:29` — the
+> armour table, the death sequence and the character sheet. Note that all four
+> clamp with `max(60, detected_width)` (`boxtable.py:27`,
+> `curtain_of_death.py:29`, `death_progression.py:38`, `CmdCharacter.py:30`),
+> so anything a client reports below 60 columns is discarded. See owner
+> question.
 
 ### Telnet vs Webclient Comparison
 
@@ -50,6 +81,20 @@ The Evennia webclient currently defaults to a fixed screen width of 78 character
 | **Window Resize** | ✅ Updates on resize | ❌ No updates | ✅ Updates on resize |
 | **Font Changes** | ✅ Terminal handles | ❌ No detection | ✅ Detects & updates |
 | **Protocol** | Telnet NAWS bytes | None | `client_options` inputfunc |
+
+> **Re-audited 2026-09-12 — three cells in this table are wrong:**
+> - **"Static (24 lines)"** — Evennia 6.1.0 ships `CLIENT_DEFAULT_HEIGHT = 45`
+>   (`evennia/settings_default.py:835`) and this repo does not override it.
+>   `CLIENT_DEFAULT_WIDTH = 78` (line 833) is correct.
+> - **"Font Changes → ✅ Detects & updates"** did not ship. `gel.js` has no
+>   font-change hook of any kind, and its measuring probe is built once
+>   (`gel.js:457`, `if (!probeEl)`) and never re-reads the font — so the
+>   `@media (max-width: 600px)` drop from 14px to 13px
+>   (`web/static/webclient/css/webclient.css:305-307`) leaves the reported size
+>   stale until reload. That is a code defect, not a licence to tick §Phase 2.
+> - **"Protocol → `client_options` inputfunc"** is right only at the far end.
+>   The wire format is GMCP `Client.Options` (`gel.js:486`), translated to the
+>   inputfunc by `server/conf/gmcp_websocket.py:168-170`.
 
 ### User Impact
 
@@ -324,6 +369,29 @@ graph TD
 ```
 
 ### Component Design
+
+> **Re-audited 2026-09-12 — spec vs. `web/static/webclient/js/gel.js`:**
+>
+> | Spec says | Code does |
+> |---|---|
+> | `measureCharacterDimensions()` | inlined in `measureScreen()` — `gel.js:455` |
+> | `calculateScreenSize()` | same function, `gel.js:455-481` |
+> | `sendDimensionsToServer()` | `sendScreenSize()` — `gel.js:483-487` |
+> | `debounce(func, wait)` helper | inline `resizeTimer` — `gel.js:489-495` |
+> | probe text `"M"` | `"MMMMMMMMMM"` ÷ 10 — `gel.js:464, 468` (better; still not what is written) |
+> | probe font refreshed each call | probe built once, `if (!probeEl)` — `gel.js:457`; **never refreshed** |
+> | container `$(".content[types*='main']")` → `.content` → `#messagewindow` | `#output` — `gel.js:474`; no jQuery, no `.content`, no `#messagewindow` in this client |
+> | padding read from CSS | hardcoded `- 20` / `- 16` — `gel.js:474-475` (matches `#output { padding: 8px 10px }` at `webclient.css:136` only; `webclient.css:315-317` makes it `6px 8px` under 600px) |
+> | clamp 20-500 / 10-200 | `Math.max(40, …)` / `Math.max(10, …)`, no ceiling — `gel.js:477-478` |
+> | fallback 78 × 24 | fallback char cell 8px × 16px — `gel.js:471-472` |
+> | `Evennia.msg("client_options", …)` | `sendGMCP("Client.Options", size)` — `gel.js:486`, a TEXT frame (`gel.js:237-241`) → `server/conf/gmcp_websocket.py:168-170` |
+> | debounce 500 ms | `RESIZE_DEBOUNCE_MS = 250` — `gel.js:29` |
+> | `Evennia.emitter.on("connection_open")` + `postInit` | `ws.onopen` → `sendScreenSize()` — `gel.js:183` |
+> | `console.log` / `console.warn` diagnostics | none — `gel.js` contains zero `console.` calls |
+>
+> Two of these rows are defects rather than harmless renames: the un-refreshed
+> probe and the hardcoded padding both go wrong at the same
+> `@media (max-width: 600px)` breakpoint, in the same direction.
 
 #### 1. Character Dimension Measurement
 
@@ -666,7 +734,35 @@ window.plugin_handler.add("screensize", screensize_plugin);
 
 ## Testing Strategy
 
-### Unit Testing (Manual)
+> **Re-audited 2026-09-12 — four of these procedures cannot be run as written.**
+> - **Test 1** calls `screensize_plugin.measureCharacterDimensions()` from the
+>   console. `gel.js` is a bare IIFE that assigns nothing to `window`, so no
+>   such global exists and no such method exists; the step raises a
+>   `ReferenceError`.
+> - **Tests 2, 3 and 4** all say "check console for dimension report".
+>   `gel.js` never logs — the file contains no `console.` call. Observe the
+>   outgoing `Client.Options` GMCP frame in the DevTools **Network → WS**
+>   messages pane instead, or read it back server-side as Test 5 describes.
+>   Test 4 additionally needs a font picker this client does not have; the only
+>   font change available is crossing the 600px breakpoint
+>   (`webclient.css:305-307`), which is exactly the case `measureScreen()`
+>   fails to notice.
+> - **Test 5 is the sound one** and still works unchanged:
+>   `session.get_client_size()` (`evennia/server/serversession.py:230-241`)
+>   reads exactly the flags this path writes. Run it inside the game container,
+>   not over SSH.
+> - **Test 6 needs rewording, not replacing.** Combat *messages* are not
+>   formatted to the reported width (see the note in §Problem Statement), but
+>   combat does drive a width-aware consumer: `world/combat/attack.py:739`
+>   and `:757` call `show_death_curtain()` and
+>   `typeclasses/curtain_of_death.py:29` scales it to the reported width. So
+>   kill something and watch the curtain fill the window. The other two
+>   observable consumers are `armor` (via `world/utils/boxtable.py`) and the
+>   character sheet (`commands/CmdCharacter.py:29`). All of them clamp at
+>   `max(60, …)`, so nothing can be tested below 60 columns.
+>
+> Per the house rule, whatever replaces these must be played in the live game,
+> not asserted from a helper.
 
 #### Test 1: Character Measurement
 
@@ -896,6 +992,17 @@ Options Dialog:
 
 ### Phase 7: Orientation Change Detection
 
+> **Re-audited 2026-09-12 — already delivered, by a better route.** `gel.js`
+> binds its resize handler to `window.visualViewport` when the API is present
+> and falls back to `window` only otherwise (`gel.js:497-502`), and a
+> visualViewport resize fires on rotation *and* on virtual-keyboard show/hide —
+> covering the `orientationchange` listener sketched below plus the
+> "virtual keyboard" mitigation listed under §Risk 5. What rotation does *not*
+> do correctly is re-measure the character cell, because crossing the 600px
+> breakpoint changes the font while the probe keeps the old one
+> (`gel.js:457`) — so the open work here is the stale probe, not the event
+> hook.
+
 **Description:** Detect mobile device orientation changes.
 
 **Implementation:**
@@ -1056,6 +1163,18 @@ Evennia supports multiple windows per session (though webclient currently only u
 3. Inconsolata (Google Fonts)
 4. Lucida Console (fallback)
 5. Generic monospace (system default)
+
+> **Re-audited 2026-09-12 —** that is upstream Evennia's stack (its
+> `webclient.css:18-19` really is `.9em` / `'DejaVu Sans Mono', Consolas,
+> Inconsolata, 'Lucida Console', monospace`), not this client's, and the
+> scaling table below it describes a font picker this client does not have.
+> `web/static/webclient/css/webclient.css:41-43` defines
+> `--font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace`
+> at `--font-size: 14px` / `--line-height: 1.4`, and the only variation is the
+> single `@media (max-width: 600px)` step to 13px (`webclient.css:305-307`).
+> There is no 0.4em-2.0em range and no user-selectable family, so the one
+> font change this client can actually experience is the breakpoint — which is
+> precisely the one `measureScreen()` fails to notice (`gel.js:457`).
 
 **Font Size Scaling:**
 ```
