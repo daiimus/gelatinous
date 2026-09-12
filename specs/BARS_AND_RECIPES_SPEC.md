@@ -1,6 +1,6 @@
 # Bars & Recipes Spec
 
-> **Status:** 🚧 **PARTIAL** — v1 engine, menu and bartender shipped; §9 owner tooling not built. Verified 2026-08-02.
+> **Status:** 🚧 **PARTIAL** — v1 engine, menu and bartender shipped; §9 owner tooling not built. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 24 claim(s) false, annotated inline**.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - §9 lists `load <ingredients> into <bar>` as a shipped v1 verb. **No `load` command exists** — bottomless house stock (`derive_bar_stock`) replaced it.
@@ -136,6 +136,19 @@ as a *crafting station*):
    `clear` tidies abandoned items.
 3. **Register** — `deposit $`; the bar is an economic actor (§7).
 4. **Manage** — owner config: menu, prices, staff, recipe management (§8).
+
+> **Pillar status, 2026-09-11.** Pillar 1 and the surface half of pillar 2 are
+> live. The tidy verb is **`clean`** (alias `wipe`), not `clear` — see the header
+> correction — and it sweeps plated dishes too, which are marked by tags rather
+> than `db.is_drink` (`typeclasses/bar.py::CmdBarClear`, #2459). Pillar 3 is half
+> built: the register is credited on a sale and drained by **`till <bar>`**
+> (`typeclasses/bar.py::CmdBarTill`, #1515); there is **no `deposit` verb** —
+> payment is swept automatically on the serve path with no bartender gesture.
+> Pillar 4 (`manage`) is unbuilt: no command with that key exists anywhere.
+> Recipe save/name/brand happens inside the `use <bar>` EvMenu instead — but
+> **prices** are not editable in play at all: `_save_recipe` writes
+> `"price": 0` and only a build script can change it (see §7). Staff-list
+> editing has no in-game door either.
 
 ### 2.1 · The bar is a crafting station (the workshop on-ramp)
 
@@ -277,6 +290,18 @@ Notes:
 - **Multi-use:** `sip_msg` = one use, `finish_msg` = the last sip (decision #13).
 - **`craft_msg` / `ocraft_msg`** are the authored flavour of `use <bar>` (§2, §4),
   per drink.
+- **Field names, checked 2026-09-11.** None of the four message fields in the
+  table above exist in the code — `sip_msg`, `finish_msg`, `craft_msg` and
+  `ocraft_msg` return nothing repo-wide. A live menu entry carries
+  `name` / `order_keywords` / `ingredients` / `price` / `sips` / `effects` /
+  `desc` / `taste` / `craft` (see `HUB_AND_HOWL_MENU`), and the drink itself
+  carries `db.uses_left` and `db.drink_taste`. The craft narration collapsed to a
+  **single `craft` string**, third-person only, because it is spoken through
+  `emote` — which renders per-observer identity and derives the first-person view
+  itself, so an authored `craft_msg`/`ocraft_msg` pair would have had nothing to
+  do. `sips` survives as a count; the per-sip and last-sip *lines* were never
+  authored per drink. The shape in the table is still the right shape for a
+  future authored pass — it just is not what ships.
 - **Theming is a content call:** polished cocktails suit an upscale venue; the Hub
   & Howl's menu is scuzzier. All drink names, descriptions, and prose are authored
   fresh for the colony — nothing lifted.
@@ -286,8 +311,37 @@ Notes:
 - **Register:** the bar holds chits. Serving a menu drink for a price moves chits
   patron → register; the owner withdraws profit via `manage`. `deposit $` covers
   the bartender ringing up a sale.
+  > **Amended 2026-09-11.** Withdrawal is **`till <bar>`** (`till <bar> = <amount>`
+  > for a partial take), gated on `BarCounter.is_bartender` — not `manage`, which
+  > was never built. There is no `deposit` verb either: the serve path debits the
+  > patron and credits the counter itself, with no bartender gesture in between.
+  >
+  > **Code defect — unfiled as of 2026-09-11. The mechanism described in this
+  > paragraph is a bug, not the design; do not build on it and do not "correct"
+  > the spec to match it.** In `world/bar.py::_fulfil_from_board` the register
+  > credit sits *inside the `except` arm* of the audit `try` block, and the audit
+  > call it follows passes `other=bar` — a name that is neither a parameter of
+  > that function nor a module global. So every sale raises `NameError`, the bare
+  > handler swallows it, and the register is credited only as a side effect of
+  > that failure; the `coin` audit emitter #2698 shipped never records a bar sale,
+  > and correcting the `NameError` would silently stop crediting every register in
+  > the colony. Regression from PR #3178 (commit 5a5edc5b), which inserted the
+  > try/except above pre-existing lines without re-indenting them.
+  > `world/tests/test_served_at_the_counter.py` asserts the credited total and
+  > passes for this reason, so the suite guards nothing here.
 - **Pricing:** per-bar, per-recipe (set in `manage`). Floor = ingredient cost;
   margin = the owner's call.
+  > **Not reachable from play, checked 2026-09-11.** The *data* shape held — a
+  > price is per-bar and per-recipe, carried on the menu entry and read by the
+  > serve path — but there is **no tool that sets one**. `manage` was never
+  > built, and the `use <bar>` EvMenu's save step writes `"price": 0` into every
+  > recipe it creates (`commands/bar_menu.py::_save_recipe`), with no prompt and
+  > no later edit path; a repo-wide search finds no other assignment to a
+  > recipe's `price` outside tests. So a player-authored house special is free
+  > forever, and re-pricing a board — including the Hub & Howl's zeroed menu
+  > (§0.1) — means editing a build script. This is the gap that makes the
+  > "margin = the owner's call" half of the sentence aspirational rather than
+  > false.
 - **Player-run bars become real economic nodes** — the hook into the favor/gear/
   rep loop. v1 keeps money handling clean and simple; the faction/favor layer
   (§8, §11) builds on it later.
@@ -381,6 +435,18 @@ bare attribute).
   serve, `deposit`) but not manage.
 - **Role resolution:** a verb checks the actor against owner/staff/neither →
   owner / bartender / patron tier.
+  > **Superseded by the job system, 2026-09-11 (#2597, #2921).** Two of the three
+  > verbs named above never shipped (`load`, `deposit`), and the three-tier
+  > resolution did not survive: `BarCounter.is_bartender` is a **single boolean**
+  > — there is no owner tier distinct from a bartender tier, so "permitted to
+  > bartend but not manage" has nothing to express it with. What it answers, in
+  > code order: Builder+ staff → an explicit `owner`/`staff` entry → **whoever is
+  > standing this counter's shift**, via `world/souls/posts.keeper_on_duty` →
+  > and, only for an unbound counter with no post slots and no keeper, whoever is
+  > present. Its docstring records why: no bar in the colony has ever had `owner`
+  > set, so the v1 owner-attribute design was never the operative rule anywhere,
+  > and the post became the answer instead. The §8 seam did snap on — it just
+  > snapped onto posts rather than factions.
 - **Faction/favor is a stubbed seam (decision #8):** v1 ownership is a plain
   owner attribute + allowlist. The later pass lets factions own bars, ties staff
   permissions to the favor system, and may lean on the parked **TRUST_AND_CONSENT**
@@ -414,6 +480,18 @@ counter object.
 **Owner**
 - `manage <bar>` — menu (add/remove recipes), pricing, staff allowlist, register
   withdrawal, save/rename/brand recipes.
+
+> **Built / unbuilt, 2026-09-11** (the header correction covers `load` and
+> `clear`; this is the rest of the list). **Shipped but missing from the table
+> above:** `prepare <drink>` — a menu-skip pour of a known recipe straight onto
+> the counter (`typeclasses/bar.py::CmdBarPrepare`); and `till <bar>` /
+> `till <bar> = <amount>` — the register drain, gated through `is_bartender`
+> (`typeclasses/bar.py::CmdBarTill`, #1515). **Still unbuilt:** `deposit` and
+> `manage` — no command with either key exists in the repo. Of `manage`'s five
+> promised jobs, one shipped elsewhere (register withdrawal, as `till`), two live
+> in the `use <bar>` EvMenu (add a recipe, save/rename/brand it), and two have no
+> in-game door at all: the **staff allowlist**, and **pricing** — `_save_recipe`
+> writes `"price": 0` and nothing in play can change it (see §7).
 
 (Both player and NPC bartenders work the same way — the patron *says* what they
 want (`to <bartender>` / pose) and the bartender makes it: a player loads and
@@ -487,6 +565,15 @@ are settled; what remains is the deferred-seam work (§11) and tuning:
 1. ✅ **`to` command** (directed say) — built, and the whole `say`/`to`/pose path
    is unified through `world/speech.py`; the NPC reacts to any of them.
 2. ✅ **NPC menu-request parsing** — keyword match against the menu (`match_recipe`).
+   *(2026-09-11: `match_recipe` still does the matching, but a bare keyword match
+   turned out not to be settleable as a v1 tuning concern — it served drinks off
+   ordinary conversation. "the old man sent me" poured an Old Fashioned and "I'll
+   take your word for it" poured `the last word` (#2689), and an addressed
+   question bought a drink and suppressed the reply (#2779). Parsing now runs
+   `resolve_order` → an intent gate (`ORDER_CUES`, `_bare_order`,
+   `_without_cues`, no-question-mark) in front of `resolve_drink`, which tries
+   the board and then `mix_offmenu` against the bar's stock. Still ✅, but the
+   ✅ covers three layers, not one.)*
 3. ✅ **Ingredient contributions** — assigned across the seeded catalog (§3).
 4. **Effect/balance tuning** — `MIX_EFFECT_CAP` and per-sip dose scaling (esp.
    `chug` stacking) are first-pass; "drunk is just a condition," tune in play.
