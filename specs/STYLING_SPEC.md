@@ -1,6 +1,6 @@
 # Website Styling Specification
 
-> **Status:** ✅ **SHIPPED & LIVE** — the Atlas register across all four surfaces (site, Atlas, forum, webclient). Verified 2026-08-02; `custom.css` is the source of truth and this document describes it.
+> **Status:** ✅ **SHIPPED & LIVE** — the Atlas register across all four surfaces (site, Atlas, forum, webclient). ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 25 claim(s) false, annotated inline**; `custom.css` is the source of truth and this document describes it.
 
 ## Overview
 
@@ -12,6 +12,43 @@ subtle CRT-style effects (scanlines, flicker, glow).
 
 All styling lives in a single file, `web/static/website/css/custom.css`, which
 overrides Bootstrap and Evennia defaults.
+
+> **⚠ Re-verified 2026-09-11 — two corrections to the sentence above.**
+>
+> 1. "A single file" describes the *website* surface only. The four-surface
+>    house style also lives in `web/static/webclient/css/webclient.css`,
+>    `scripts/atlas/template.html` + `template3d.html`, and
+>    `web/discourse-theme/common/common.scss` — all documented further down.
+> 2. `custom.css` is not internally consistent, so "the CSS wins" is not a
+>    usable tiebreak as written. Sections `NAVBAR` through `PRINT STYLES`
+>    appear **twice** — `:144-670` and `:672-1199`, ~528 lines — and the
+>    *second* copy is the stale pre-Atlas theme. Because it comes last it wins
+>    every cascade tie the first copy did not settle with `!important`, so
+>    several values this document states are correct *in the file* but are not
+>    what renders. Flagged at each affected claim below.
+>
+> **Root cause, traced 2026-09-11: the restore reached for the wrong
+> ancestor.** `497109f0` (#1398, 2026-07-29) recovered the theme from
+> `2848e7e^` = `6b8bfcac` — verified by blob comparison: `497109f0`'s file is
+> `6b8bfcac`'s 1080 lines plus that night's two additions and nothing else.
+> But `6b8bfcac` is the copy that *had* the duplicate tail. Its other child,
+> `fa1a9a64` (2025-10-24, sibling of the untracking commit `2848e7e2`), had
+> already **deleted the 526-line duplicate** (`@@ -555,526 +555,87 @@`) and put
+> the Evennia help/channel override block in its place. Restoring the shared
+> parent instead of `fa1a9a64` resurrected the duplication *and* dropped that
+> block in one move — which is why the two defects flagged below are one
+> regression with one source:
+>
+> ```bash
+> git show fa1a9a64:web/static/website/css/custom.css   # deduplicated, block intact
+> ```
+>
+> That copy predates the Atlas repalette, so it still says `--terminal-green`
+> / `--terminal-green-dim`; rename to `--terminal-success` /
+> `--terminal-success-dim` before reuse (see the palette note below).
+>
+> **Unfiled code defect: the duplication is the thing to fix, not this
+> document.**
 
 > **Source of truth:** the live `custom.css` is canonical. This spec describes
 > what that file implements; if they disagree, the CSS wins and this document
@@ -85,6 +122,13 @@ stubborn).
 
 - **Main site:** Evennia's default `base.html` head block links
   `website/css/custom.css` after Bootstrap and `website.css`.
+  > **2026-09-11:** it is **our** `base.html` now, not Evennia's default —
+  > `web/templates/website/base.html`, forked 2026-08-10 by `38df091a`
+  > (#1909). The load order the argument depends on is unchanged (Bootstrap
+  > CDN `:18`, `website.css` `:20`, `custom.css` `:25`), so the specificity
+  > reasoning still holds — but the file that guarantees it is ours to keep in
+  > step on every Evennia upgrade. See *The favicon is named
+  > `evennia_logo.png` on purpose* below.
 - **Discourse iframe header:** `web/templates/website/header_only.html` (a minimal
   navbar-only template embedded in the forum) links the same file explicitly:
 
@@ -108,6 +152,23 @@ stubborn).
 
 Bootstrap is pinned to **4.6** (CDN in `header_only.html`; Evennia ships 4.6 for
 the main site).
+
+> **⚠ 2026-09-11 — true of the CSS only, and the two surfaces disagree.**
+> Bootstrap *CSS* is 4.6.0 on both (`base.html:18`, `header_only.html:33`).
+> The *JavaScript* is not pinned with it: the main site loads jQuery
+> 3.2.1-slim, Popper 1.12.9 and **Bootstrap 4.0.0** JS (`base.html:69`, `:74`,
+> `:75`), while the forum header loads jQuery 3.6.0 and the **Bootstrap
+> 4.6.2** bundle (`header_only.html:96-97`). A 4.6/4.0 split inside one page,
+> and two surfaces that do not match each other.
+>
+> Those version strings came in verbatim from upstream Evennia when the fork
+> was taken, so this was already the case on the 2026-08-02 banner date — but
+> `base.html` is ours now, so the drift is ours to own. Read the *Maintenance
+> Notes* obligation ("Bootstrap stays at 4.6") as covering **both files and
+> both asset types**. Low severity — 4.0 JS is broadly API-compatible with 4.6
+> CSS — but the navbar dropdown behaviour documented in
+> `DISCOURSE_INTEGRATION` / #1466 rides this JS, and it is now invisible debt
+> in a file nobody expects to own.
 
 ## Color Palette
 
@@ -214,6 +275,25 @@ h1, h2, h3, h4, h5, h6 {
 **One column, everywhere.** `.container` *is* that column, which is what makes
 Evennia's navbar (defined in `base.html`, which we never fork) share its left
 and right edges with page content for free.
+
+> **⚠ 2026-09-11: `base.html` IS forked now.** `38df091a` (#1909, 2026-08-10)
+> created `web/templates/website/base.html` — the sanctioned template-shadow
+> route — to declare an `apple-touch-icon` (`:12`). The shared-column argument
+> here is unaffected: the navbar still lives in `_menu.html`, and the fork
+> touches nothing but two `<head>` links.
+>
+> It is **not** otherwise identical to upstream, though, and the second
+> deviation is easy to lose: `4b7f7b54` (#1911) also rewrote the stock
+> `rel="icon"` declaration to `type="image/png" sizes="256x256"` (`:11`),
+> because the stock `type="image/x-icon"` pointing at a PNG is a MIME mismatch
+> WebKit treats as licence to ignore the declaration and keep its stored icon
+> forever (edge logs: no device ever fetched the hashed logo). Two deviations,
+> both in `<head>`.
+>
+> This spec asserts "we never fork `base.html`" in **four** places — here,
+> `:86`, `:278` and `:339` — and all four are now stale. A forked template
+> carries an obligation the unforked one did not: **resync it against upstream
+> on every Evennia upgrade.**
 
 ```css
 :root {
@@ -343,6 +423,22 @@ searched before the package (confirmed with
 and the favicon changes on both the site and the webclient with no template
 edit. Do not "tidy" the filename; the link target is not ours to change.
 
+> **⚠ 2026-09-11: the fork happened anyway — but keep the shadow.** `38df091a`
+> (#1909, 2026-08-10) shadowed `website/base.html` into
+> `web/templates/website/base.html` for one reason: iOS keeps a stored touch
+> icon forever and never re-probes while an entry exists, so a page that
+> *declares* a touch-icon URL it has not seen is the only reliable refetch
+> trigger (live-verified in edge logs — the webclient's declared link fetched
+> instantly through a stale store, undeclared pages never fetched at all).
+> `4b7f7b54` (#1911) then fixed the stock `rel="icon"` MIME mismatch in the
+> same file.
+>
+> **The `evennia_logo.png` shadow is still how the `rel="icon"` target is
+> replaced** — the `href` at `base.html:11` is unchanged, and
+> `STATICFILES_DIRS` still wins. Both techniques are in use now, and
+> everything above about not tidying the filename stands. Add one obligation:
+> **resync the fork against upstream on every Evennia upgrade.**
+
 > **⚠ `evennia_logo.png` and `favicon.ico` were untracked live-only files** —
 > no repo copy, no history, invisible to review, gone on a clean checkout. The
 > same fragility that destroyed `custom.css`. Both are committed now, and the
@@ -385,6 +481,32 @@ Highlights:
 - **Evennia help/channel overrides:** a dedicated block re-skins `.thead-light`,
   `.list-group-item`, `.badge-light`, `.alert-secondary`, etc., so Evennia's
   default web help and channel pages match.
+  > **⚠ 2026-09-11 — the block is GONE, but it was real and it is
+  > recoverable.** In today's `custom.css`: `thead-light` 0 occurrences,
+  > `list-group-item` 0, `badge-light` 0, `alert-secondary` 0. It was lost on
+  > **2026-07-29** as collateral damage from the wrong-ancestor restore
+  > described in the Overview note — `497109f0` (#1398) recovered the theme
+  > from `2848e7e^` (`6b8bfcac`) rather than from `fa1a9a64`, and `fa1a9a64`
+  > is the only commit that ever carried this block. That is *before* the
+  > 2026-08-02 banner date, which is why the banner cannot be taken at its
+  > word.
+  >
+  > It survives verbatim:
+  > `git show fa1a9a64:web/static/website/css/custom.css`, a section headed
+  > `/* ===== EVENNIA HELP/CHANNEL PAGE OVERRIDES ===== */` at `:558-641`,
+  > covering `.thead-light`, `.thead-light th`, `.card-header`,
+  > `.list-group-item` (+ `:hover`, `.active`), `.badge-light`,
+  > `.card.border-light`, `.alert-secondary`, `.alert-warning`, `.table` and
+  > `pre`. **So this bullet was an accurate description of shipped code when
+  > it was written** — it is stale, not invented.
+  >
+  > Reinstating it is close to a copy, with two caveats: that copy predates
+  > the Atlas repalette and still references `--terminal-green` /
+  > `--terminal-green-dim`, which no longer exist (see the palette note
+  > above), and its jade `.list-group-item:hover` / `.active` treatment needs
+  > checking against *Jade is STATE, never decoration* before it goes back in
+  > unchanged. Whether those pages currently render pale Bootstrap defaults on
+  > the ink ground was **not** confirmed in a browser.
 
 ## Terminal Effects
 
@@ -523,10 +645,58 @@ apart: `custom.css`, `scripts/atlas/template.html` (which inherits the tokens
 with standalone fallbacks), `web/static/webclient/css/webclient.css`, and the
 Discourse colour scheme.
 
+> **⚠ 2026-09-11 — four is an undercount, and the Atlas entry needs splitting
+> rather than correcting.** All four above are still real. But
+> `scripts/atlas/template.html` is the *sprite* plate, and it is no longer
+> served: `/atlas/` renders `scripts/atlas/template3d.html:13-18`
+> (`world/atlas.py:148`, cached by `web/website/views/atlas.py:42`).
+> `template.html` still needs the same fallback edit, because
+> `scripts/atlas/generate.py` is its one consumer (`world/atlas.py:96`) and
+> the staff instrument it emits *is* opened as a standalone file. So that is
+> **five** files, not a substitution.
+>
+> Also required, none of them documented in this spec:
+> - the **six `[data-skin]` palette blocks** at `custom.css:1914-1990`
+>   (`terminal`, `stray`, `dub`, `prism`, `laughing`, `ed`) — the Atlas
+>   register is now one of seven, not the only one;
+> - **`SKIN_INK`** at `web/website/views/header_only.py:31-41`, the forum
+>   header's critical-CSS ground, per skin;
+> - the `.ghostty` sources in `web/static/website/skins/` (7 files) with
+>   `scripts/brand/build_skins.py`, plus `scripts/brand/seed_skins.rb` and
+>   `scripts/brand/nginx-gel-skin-map.generated.conf` for the Discourse side;
+> - the raster brand exports, regenerated by
+>   `scripts/brand/build_brand.py:135-158` (librsvg cannot resolve custom
+>   properties, so PNG/ICO are flattened to literal hex by design).
+>
+> **The site-side skin system has no spec anywhere in `specs/`** — this is the
+> only document that could hold it, and it mentions skins only on the
+> Discourse side (`skins.gjs`). See owner questions.
+
 The **brand mark follows automatically** wherever it is inlined, since it reads
 the tokens — but `web/static/website/images/gm-orbit.svg` carries literal
 fallbacks for standalone use, and `evennia_logo.png` is a raster export. Both
 need re-rendering by hand if the accent moves.
+
+> **2026-09-11.** `gm-orbit.svg` no longer exists (deleted `209b2acf`,
+> 2026-08-03); read it as `gm-mark.svg` and `gm-patch.svg`, which carry the
+> same `var(--terminal-accent, #e0a86f)` fallbacks (`gm-mark.svg:4-6`,
+> `gm-patch.svg:4-6`). And "by hand" is no longer the procedure for the
+> rasters: **run `scripts/brand/build_brand.py <outdir>`**, which regenerates
+> both SVGs plus `gm-patch-{512,192}.png`, `gm-mark-{256,180,64}.png` and
+> `favicon.ico` from one definition (`:135-158`).
+>
+> **Two hand steps remain, because the generator emits neither filename the
+> site actually links.** `evennia_logo.png` is `gm-mark-256.png` under the
+> Evennia name (256×256, alpha intact — see *The favicon is named
+> `evennia_logo.png` on purpose* for why the name stays), and
+> `apple-touch-icon.png` is the 180 composited onto an ink ground, which must
+> stay **fully opaque** (`sips -g hasAlpha` → `no`) because Apple flattens
+> transparency onto black.
+>
+> The librsvg caveat is worth carrying here too: rasters are flattened to
+> literal hex **on purpose** (`build_brand.py:9-19`) — librsvg does not
+> implement CSS custom properties and renders unresolved ones as silent grey.
+> SVG follows the skin; PNG/ICO cannot and must not try.
 
 Adjust glow by changing the `--terminal-glow` alpha and the `text-shadow`/
 `box-shadow` blur radii. Disable scanlines by removing the `body::before` block.
@@ -609,6 +779,20 @@ would have broken a signal to fix a decoration.
 the one weak spot at 2.6:1 (it had been 2.4:1), so its opacity went from `0.6`
 to `0.8`, giving 3.6:1 — still clearly a hint, now legible.
 
+> **2026-09-11 — recomputed; this paragraph holds, and the CODE COMMENT is the
+> error.** All of it checks out against the shipped tokens, measured on the
+> ground the placeholder actually sits on: `#input-field`'s own background,
+> `--bg-light` `#182030` (`webclient.css:252`), not the bar behind it. Output
+> text (bone on ink) **12.91:1**; input text (bone on plate-hi) **10.90:1**;
+> muted status (muted on ink) **5.80:1**; amber send button (amber-dim on
+> plate) **5.52:1**; placeholder at `0.6` **2.63:1**, at `0.8` **3.63:1**. The
+> `0.6` → `0.8` change is confirmed at `webclient.css:269-274`.
+>
+> That code comment says "0.8 lifts it to ~3.3:1", and no candidate ground
+> yields 3.3 — `--bg-medium` gives 3.93, ink gives 4.09. **Fix the comment,
+> not this figure.** Unfiled code defect; it matters because this file is the
+> spec's own evidence that contrast was measured rather than eyeballed.
+
 **The sleeve pages stopped borrowing semantic classes** (#1432). The
 Psychophysical Evaluation Report plate was dressed in `.text-success` /
 `.border-success` — border, header, both `<hr>` rules — plus the Active label.
@@ -635,6 +819,17 @@ history. Two lessons from doing it, though:
 copy on the live homepage. Multi-line comments need `{% comment %}` /
 `{% endcomment %}`. Swept the whole template tree afterwards; that was the only
 instance.
+
+> **⚠ 2026-09-11: it recurred, in a template that did not exist yet when the
+> sweep ran.** `38df091a` (#1909) and `4b7f7b54` (#1911) each added a
+> multi-line `{# … #}` block to the freshly forked
+> `web/templates/website/base.html` on 2026-08-10, and they rendered as
+> literal text on **every website page** until `8750fcdc` (#1912) stripped
+> them the same morning. The lesson survives; the "only instance" tally does
+> not — and the shape of the recurrence is the useful part: a *newly shadowed
+> template* is the gap a completed sweep cannot cover. The surviving in-tree
+> reminder is at `web/templates/website/homepage/main-content.html:25`; it is
+> worth repeating in any template we newly fork.
 
 **Evennia's `recently-connected-widget.html` is overridden**, not patched
 upstream — for the spaced em dash and to render the list as a flat strip rather
