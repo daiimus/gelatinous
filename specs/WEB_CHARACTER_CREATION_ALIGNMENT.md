@@ -1,6 +1,6 @@
 # Web Character Creation Alignment Spec
 
-> **Status:** ✅ **SHIPPED** — all five phases including respawn. Verified 2026-08-02.
+> **Status:** ✅ **SHIPPED** — all five phases including respawn. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 13 claim(s) false, annotated inline**.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The Phase 5 testing checklist is entirely unchecked, contradicting both this document's header and the code. The checklist is stale; the header is right.
@@ -70,6 +70,24 @@ char.db.previous_clone_dbref = old_character.dbref
 char.key = build_name_from_death_count(old.key, death_count)  # Roman numeral
 char.db.current_sleeve_birth = time.time()
 char.db.archived = False
+
+# Corrected 2026-09-11 — commands/charcreate.py:394-546:
+#   char.unarchive_character()   # :543, not a db.archived assignment
+#   char.db.skintone is copied only when the source HAS one (:455-456),
+#     and char.longdesc only when the source HAS longdescs (:450-451) —
+#     the unconditional forms above would write None over state the new
+#     body was just seeded with
+# And the clone inherits far more than the block above lists:
+#   char.db.species + a REBUILT MedicalState (:458-478) — the body you get
+#     back is the body you had; without it a bioroid came back human
+#   char.sleeve_uid (:481-483) — same body, same physical identity
+#   char.height / char.build / char.hair_color / char.hair_style /
+#     char.sdesc_keyword (:484-493)
+#   the recognition imprint, via world.imprint (:503-508, #2188)
+#   the manifest designation, via ensure_manifest(char,
+#     inherit_from=old_character) (:530-531) — a service record is not
+#     reissued on resleeve (#3033)
+#   char.db.decant_announce_pending (:540)
 ```
 
 ## Web Form Requirements
@@ -116,6 +134,15 @@ char.db.archived = False
 ```python
 charname = f"{first_name} {last_name}"
 ```
+
+> **Correction 2026-09-11:** this recipe was the #2449 bug. The live view
+> composes the key through the shared numeral helper —
+> `web/website/views/characters.py:271-272`:
+> `charname = build_name_from_death_count(f"{first_name} {last_name}", 1)`
+> → `"First Last I"`, with the reasoning kept in the comment above it at
+> `:264-270`. This was the only creation site in the codebase that
+> skipped the helper, so a web sleeve was keyed without an "I" and its
+> first death renamed the clone straight to "First Last II".
 
 **Validation:**
 - 2-30 characters each
@@ -251,6 +278,32 @@ class CharacterForm(EvenniaCharacterForm):
 
 ## View Example (as built)
 
+> **Correction 2026-09-11 — this example is no longer "as built".** The
+> real `form_valid` is `web/website/views/characters.py:238-376`. Differences
+> that matter:
+> - `charname = form.cleaned_data['db_key']` cannot work: `db_key` is not
+>   among the live form's fields (`web/website/forms.py:174-175`), and the
+>   create template renders no such input, so the key is absent from
+>   `cleaned_data` and the subscript raises `KeyError`. The view reads
+>   `first_name` and `last_name` (`:263-264`) and composes the key via
+>   `build_name_from_death_count(..., 1)` (`:271-272`).
+> - the character is created in Limbo (#2) as a staging area, with the
+>   spawn room resolved separately (`:278-292`), stashed on
+>   `db.prelogout_location` and `location` nulled so the sleeve is
+>   invisible until first puppet (`:354-355`).
+> - besides the four GRIM stats (`:309-312`) it also sets `sex` (`:315`),
+>   `height`/`build` (`:324-325`, #2449), `db.stack_id` /
+>   `db.original_creation` / `db.current_sleeve_birth` (`:330-332`),
+>   `unarchive_character()` (`:333`), `db.decant_announce_pending`
+>   (`:342`, so a first-time web player gets the decant scene rather than
+>   the routine re-login line) and `ensure_manifest(character)`
+>   (`:346-347`, #3033).
+> - a slot check runs first (`:251-259`, `account.active_sleeves` vs
+>   `settings.MAX_NR_CHARACTERS`), and Evennia colour codes are stripped
+>   from errors before they reach a web page (`:301-305`).
+>
+> Retained below as the shape of the override, which is still accurate.
+
 ```python
 # web/website/views/characters.py
 from django.contrib import messages
@@ -339,6 +392,13 @@ urlpatterns = urlpatterns + evennia_website_urlpatterns
 - [x] Gender property returns correct value
 
 ### Phase 5 (Respawn)
+
+> **2026-09-11:** still unchecked, and still stale — the respawn code is
+> live on both doors (see the note at §"Remaining Work"). Left unchecked
+> rather than ticked because no one has recorded playing these five
+> through, and reading the code is not the same evidence as walking the
+> flow in the live game; whoever does that should tick them then.
+
 - [ ] Flash clone option appears for accounts with dead characters
 - [ ] Templates display correctly
 - [ ] Flash clone preserves all attributes
@@ -350,4 +410,35 @@ urlpatterns = urlpatterns + evennia_website_urlpatterns
 - **Incremental approach:** Each phase builds on previous, with testing at each step
 - **Code reuse:** Import functions from `commands/charcreate.py` where possible
 - **Consistency:** Web and telnet should create identical character states
+  - **2026-09-11 — one axis still diverges: HAIR.** The telnet door asks
+    for hair colour and style (`commands/charcreate.py:1217`, `:1266`) and
+    stamps them (`:1558-1559`); the respawn templates roll them
+    (`:140-146`, applied `:373-374`); a flash clone inherits them
+    (`:488-491`). The web first-character form asks for neither
+    (`web/website/forms.py:174-175`) and the view sets neither
+    (`web/website/views/characters.py:307-347`), so both stay `None` —
+    which `world/identity.py:682-683` reads as **bald**, yielding no
+    distinguishing feature at all in the sdesc (hair is priority 3 in the
+    chain, `typeclasses/characters.py:1120-1126`). Nothing sets either
+    attribute on an existing player character afterwards — the only other
+    writers in the repo are NPC generators and builder tools — so it is
+    permanent. **Already named, never fixed:** issue #2449 listed
+    `hair_color`/`hair_style` alongside `height`/`build` in its own trace
+    ("get_distinguishing_feature has no hair to report") and closed with
+    only height/build addressed, so this wants a reopen or a successor
+    issue citing #2449 — not a first filing. Owner call first on whether
+    the web door is deliberately a reduced chargen.
+  - **2026-09-11 — `create_character_from_template` stamps no
+    `db.stack_id`** (`commands/charcreate.py:318-390`), unlike every other
+    creation path (`:1575`, `:533-539`,
+    `web/website/views/characters.py:330`). Both doors use it for a
+    template respawn, so the gap is symmetric rather than a parity break.
+    **Recorded, not re-opened:** #2449 investigated this exact gap and
+    rejected it — `db.stack_id` has no gameplay reader (today: propagation
+    inside `create_flash_clone`, a docstring at `world/manifest.py:231`,
+    and the one-off `scripts/builds/164_backfill_the_last_sleeves.py:43`),
+    so no player can observe it. It stays written down here because
+    manifest lineage is defined in terms of it and a future reader will
+    otherwise rediscover the gap and re-file it. Birth date does have a
+    fallback (`world/death_records.py:34-40`); stack_id has none.
 - **Safety:** Always test on development before production deployment
