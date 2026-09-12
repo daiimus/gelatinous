@@ -15,6 +15,27 @@ Evennia `evennia-mudstandards` fork. In this wire format, BINARY frames
 carry raw ANSI text and TEXT frames carry GMCP messages in the standard
 `"Package.Name json_payload"` format.
 
+> **Correction (2026-09-12):** the subprotocol and the BINARY/TEXT framing
+> are accurate; the attribution is stale. That fork's work landed
+> **upstream**. Evennia 6.1.0 (July 5 2026) ships WebSocket subprotocol
+> negotiation natively — CHANGELOG `[Feat][pull3867]`: "Add WebSocket
+> subprotocol negotiation per MUD Standards proposal. Supports
+> `json.mudstandards.org`, `gmcp.mudstandards.org`,
+> `terminal.mudstandards.org` and `v1.evennia.com` … New
+> `WEBSOCKET_SUBPROTOCOLS` setting. (daiimus)" — implemented in
+> `evennia/server/portal/wire_formats/gmcp_standard.py`. The container runs
+> that stock `evennia/evennia:latest` (6.1.0); there is no forked Evennia.
+>
+> Gelatinous does **not** use the stock codec. `server/conf/settings.py`
+> sets `WEBSOCKET_PROTOCOL_CLASS =
+> "server.conf.gmcp_websocket.GmcpWebSocketClient"`, and that in-repo
+> subclass accepts the subprotocol in its own `onConnect()` and overrides
+> `send_text` / `send_prompt` / `send_default` / `onMessage`, so the stock
+> wire-format codec never runs. `server/conf/gmcp_websocket.py` is the live
+> wire contract this spec must satisfy — and it is **not** the same contract
+> as the stock codec; see the correction under "Evennia Implementation
+> Pattern" before writing any send call.
+
 **Current state**: Gelatinous advertises `"GMCP": "1"` in MSSP but sends
 no custom GMCP packages. All output is plain `msg(text=...)` calls.
 
@@ -334,6 +355,47 @@ The `evennia-mudstandards` fork routes `oob` kwargs through the
 `gmcp.mudstandards.org` wire format codec, which encodes them as
 WebSocket TEXT frames.
 
+> **Correction (2026-09-12):** the mechanism above is wrong, and the sample
+> code below inherits the error. No codec keys off an `oob` kwarg — the
+> **outputfunc cmdname becomes the GMCP package name**.
+>
+> Evennia normalizes `msg()` kwargs in `evennia/server/sessionhandler.py`:
+> because `is_iter("Room.Info")` is False and the payload is a dict,
+> `msg(oob=("Room.Info", payload))` becomes `{"oob": [["Room.Info"],
+> payload]}` — the payload is captured as cmd*kwargs*, not cmdargs — and
+> `portalsessionhandler.py` then calls `send_default("oob", "Room.Info",
+> **payload)`.
+>
+> There are two codecs, and they want **opposite** call shapes. Measured
+> output for the same payload:
+>
+> | call | in-repo codec (live) | stock Evennia 6.1.0 codec |
+> |------|----------------------|---------------------------|
+> | `msg(oob=("Room.Info", payload))` | `oob "Room.Info"` (payload dropped) | `Core.Oob ["Room.Info", {…}]` |
+> | `msg(**{"Room.Info": [[payload], {}]})` | **`Room.Info {…}`** ✅ | `Core.Room.Info {…}` ❌ |
+> | `msg(room_info=payload)` | `room_info` (payload dropped) ❌ | **`Room.Info {…}`** ✅ |
+>
+> Gelatinous currently runs the **in-repo** codec
+> (`GmcpWebSocketClient.send_default`, `server/conf/gmcp_websocket.py`), so
+> the shape to use today is:
+>
+> ```python
+> character.msg(**{"Room.Info": [[payload], {}]})
+> ```
+>
+> Two caveats. (1) The tempting shorthands both fail the same way: a bare
+> dict (`{"Room.Info": payload}`) or a bare list (`{"Room.Info": [payload]}`)
+> routes the payload into cmdkwargs, and the in-repo `send_default` ignores
+> `**kwargs` entirely — you get a package name with no payload. (2) This
+> shape is **codec-specific**. The in-repo codec emits `cmdname` verbatim;
+> stock Evennia's `gmcp_utils.encode_gmcp` maps `room_info` → `Room.Info`
+> and prefixes any dotted-but-unmapped name with `Core.`. If the
+> `WEBSOCKET_PROTOCOL_CLASS` override is ever dropped in favour of stock
+> 6.1.0's native `gmcp.mudstandards.org` wire format, every call written to
+> the shape above starts emitting `Core.Room.Info` and must be reworked to
+> the `msg(room_info=payload)` idiom. Decide which codec Phase 1 targets
+> before writing the first send.
+
 ### Sending a GMCP message
 
 ```python
@@ -362,6 +424,14 @@ def send_room_info(character):
 
     character.msg(oob=("Room.Info", payload))
 ```
+
+> **Note (2026-09-12):** the final line above does not work against either
+> live codec — the in-repo one emits `oob "Room.Info"` with the payload
+> dropped. Against the in-repo codec the working form is
+> `character.msg(**{"Room.Info": [[payload], {}]})`; against stock Evennia
+> 6.1.0's native codec it is `character.msg(room_info=payload)`. See the
+> correction under "Evennia Implementation Pattern" for the trace and the
+> comparison table.
 
 ### Hook points
 
@@ -432,6 +502,12 @@ Each package should have tests verifying:
 
 1. **Payload correctness** -- Mock a character/room, call the send
    function, assert the `msg()` call contains the expected `oob` tuple.
+
+   > **Note (2026-09-12):** there is no `oob` tuple — see the correction
+   > under "Evennia Implementation Pattern". Assert on the outputfunc
+   > kwarg the send actually uses (`{"Room.Info": [[payload], {}]}` for the
+   > in-repo codec), and prefer the §4 wire-format check as the real
+   > guarantee, since the kwarg shape is codec-specific.
 2. **Trigger points** -- Verify the GMCP message is sent at the correct
    game events (room entry, damage, channel message).
 3. **Edge cases** -- Room with no exits, character with no medical state,
