@@ -77,6 +77,19 @@ Resolution: multiplicative for rates, override-toward-extreme for
 thresholds/gates when two traits touch the same dial (rare; exclusion
 pairs prevent the contradictions that matter).
 
+> **Audit note 2026-09-12 — two things here no longer match the build.**
+> (1) The shipped `traits.dial()` compounds `rate:*` multiplicatively as
+> described, but resolves every other key LAST-trait-wins, not
+> override-toward-extreme; #2885 deliberately made the code match its own
+> docstring, and this paragraph was never reconciled with that ruling.
+> (2) The surfaces named in the table above do all exist, but three keys
+> were never wired to theirs: `venue_bias` was never declared on any
+> trait (Greenhaus-Handed and Wire-Loved both ship `"dials": {}`), and
+> `schedule_affinity` and `duty_lead` are declared on four traits yet read
+> by no `dial()` call site — the eight live sites are `actions.py`
+> (`price_ceiling`, `violence_gate` ×2) and `needs.py` (`misery_pull`,
+> `soft:`, `crit:`, `rate:` ×2). Tracked as #2771; see the note in §13.
+
 ## 4. Ethos — the conscience
 
 Actions declare what they ARE; a small fixed tag vocabulary on plan
@@ -94,6 +107,23 @@ branches (data on the plan dict, not code):
 | `solitude` | dwelling alone |
 
 Traits declare `abhors` / `relishes` sets over these tags.
+
+> **Audit note 2026-09-12 — the vocabulary shipped, but two tags never
+> reached a plan's `ethos` key.** Six do: `violence`/`theft` (the two rob
+> plans), `revelry` (linger), `care` (the clinic treat), `solitude`
+> (dwell) and `toil` (the worked shift) — the last three were attached in
+> P1 but only became reachable when #2708/#2904 made those steps call
+> `jobs._conscience`. `communion` appears nowhere in the engine.
+> `indulgence` appears only as a DURESS tag: the vice run calls
+> `_permits(soul, "craving", ("indulgence",))`, so Dry Circuit's
+> abhorrence genuinely does gate her off the shelf until craving is
+> CRITICAL — §4's rule works for her. What is missing is the other half:
+> that branch's plan dict declares no `ethos`, so no thought is ever
+> filed — Rustgut's and Open-Valve's relish never warms them, and Dry
+> Circuit never registers the refusal. #2708 is closed as completed, yet
+> its own fix commit (`62390403`) left both tags explicitly undecided —
+> "attach them or drop them from the vocabulary" — and nothing open
+> tracks the remainder.
 
 **The duress rule (one sentence):** *a plan branch whose ethos
 intersects the soul's abhors set is only selectable when the driving
@@ -229,6 +259,14 @@ Existing generated souls get a one-time backfill roll (build script).
   named-NPC layering; trait pose banks on dwell/linger/work.
 - **P3 — curation**: named-NPC assignments (post-red-pen) + any
   vocabulary additions the first live week suggests.
+
+> **Audit note 2026-09-12 — phases out of order.** P1 shipped 2026-08-21
+> (#2134) and P3's named-NPC assignments shipped WITH it, in
+> `scripts/builds/099_traits.py` (11 of §9's 12 rows; Ossie absent). P2
+> is the one phase still unbuilt: `traits.voice_fragments()` and
+> `traits.poses()` are authored but have no caller anywhere in the repo,
+> tests included — so no trait voice reaches a persona and no trait pose
+> reaches the dwell/linger/work steps.
 
 ## 11. Deferred seams (deliberate)
 
