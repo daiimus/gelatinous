@@ -14,6 +14,18 @@
 > off-grid). `world/spatial` exposes `get_xyz`/`room.xyz`, `distance`,
 > `rooms_within`, `bearing`, the A\* `find_path`/`find_path_exits`/`path_length`/
 > `is_reachable`, and the `@coordseed` / `@path` builder commands.
+>
+> **[Stale as of 2026-09-12 — the two figures above were true at Phase 1 ship
+> (2026-06-27) and are not true now.]** Re-measured read-only against the live
+> world and reported in open issue **#3245** (numbers unchanged since #2755):
+> **1069 rooms on-grid**, of which the seed walk reaches **750** — the other
+> **319** are hand-placed by `scripts/builds/*.py` (cisterns, the Boot hull,
+> Brackett's rise, the crane shaft, the Halcyon) and the walk never touches
+> them — and **11 geometry contradictions**, nine of them in the sky layer over
+> Kaspar Street and Hammett's Boot. The pinned origin is still Central Span
+> #1005, and every helper and command named in this block does exist as stated.
+> The "only Limbo + debug rooms off-grid" parenthetical has not been
+> re-measured.
 
 ## 1 · Intent — why coordinates, and why now
 
@@ -102,6 +114,22 @@ cached `room.xyz -> (x, y, z)` property reads them for math; hot consumers
 (combat/radar) may cache the tuple on `ndb`. Tags are the truth; the property is
 the convenience.
 
+**[Stale as of 2026-09-12 — Phase 1 (#847) shipped a different storage than this
+paragraph describes.]** There is no `room_x_coordinate` / `room_y_coordinate` /
+`room_z_coordinate` tag anywhere in the repo; coordinates are a single
+`room.db.xyz` Attribute holding the `(x, y, z)` tuple
+(`world/spatial/coordinates.py` — `set_xyz` / `get_xyz` / `clear_xyz`). Three
+consequences the paragraph above still promises away: the `z = -1` and
+bounding-box queries are **not** DB-level — `all_coordinate_rooms()` filters
+`ObjectDB` on `db_attributes__db_key="xyz"` and then decodes every row in
+Python, and `rooms_within()` walks that whole list per call (the module heads
+that section "linear scan for Phase 1; spatial-hash escalation later"); the
+`room.xyz` property (`typeclasses/rooms.py`) is a plain **uncached** read, not a
+cached one; and nothing caches the tuple on `ndb` yet. The §9 Phase 1 row
+records the deviation, and §10's spatial-hash bullet is the named escalation.
+The same staleness applies to the tag-scheme sentence in §2's "What we borrow
+from XYZGrid".
+
 Rooms without coordinate tags are **off-grid** (legitimately — pocket spaces,
 limbo, test rooms). Every helper treats a missing coordinate as "not spatially
 present" and fails open, never raising.
@@ -139,6 +167,20 @@ the world. Per the design decision: *if we build correctly, contradictions are
 rare and each is a real bug worth surfacing.* Existing room descriptions are
 never touched — rooms only gain tags.
 
+**[Stale as of 2026-09-12 — four corrections to the section above.]** (1) The
+origin is no longer *chosen* per run: since **#1192** it is PINNED to the single
+room tagged `coordseed_origin:spatial` (live: Central Span #1005),
+`@coordseed` anchors there regardless of where the builder stands, and the
+command refuses to run at all when nothing is pinned; `/origin` re-pins it. The
+spec header already says this — this section was not updated with it. (2) The
+walk also applies a z-delta for `slope_down` / `slope_up`-tagged exits (#1192),
+not only the cardinal step. (3) Since **#3141** `/check` diffs the plan against
+what is on disk and the command **refuses to write** when a room would land on a
+cell another room already holds, unless `/force` is given — the walk's own
+contradiction list never looked at disk, so a run that stacked rooms used to
+preview as clean (#2755). (4) Rooms gain a `db.xyz` **Attribute**, not tags —
+see the storage note in §3.
+
 ## 5 · Pathfinding & dispatch
 
 A\*/Dijkstra over the **live exit graph** (rooms = nodes, exits = edges), in a
@@ -152,6 +194,17 @@ new `world/spatial/pathfind.py`:
   heuristic) transparently.
 * **Edge weights** default to 1 per step; reserved for terrain cost, hazard
   avoidance, and lock/traversal penalties later.
+  * **[Stale as of 2026-09-12 — the reserved work has since shipped.]**
+    `world/spatial/pathfind.py` states in its own docstring that "edge weight is
+    no longer flat": `_route_cost()` weights each step by `ROUTE_COST` keyed on
+    `room.db.type` (streets cheap, rooftops dear), scaled by the traverser's
+    `db.route_taste` and floored at 1.0 so the coordinate heuristic stays
+    admissible and A\* stays optimal; `_neighbors()` already skips exits the
+    *traverser* cannot pass (locked doors, access locks), so dispatch routes
+    around what an NPC can't open. One distinction worth carrying into this
+    section: `path_length()` counts flat **steps** (that is what "nearest unit"
+    means to dispatch) while the search minimises **cost**, and `max_steps` is a
+    budget in steps.
 
 Consumers: the **NPC dispatch system** (route an NPC toward an event/target),
 **auto-walk** (`goto`/`path` style player movement), and any "is B reachable
@@ -280,7 +333,7 @@ Designed-for now so we don't paint into a corner; implemented later.
 
 | Phase | Scope | Unblocks |
 |---|---|---|
-| **1 — Substrate** | ✅ **SHIPPED** (#847): `room.db.xyz` + `.xyz` property + `distance`/`rooms_within`/`bearing` + `@coordseed` (world seeded, 0 contradictions) + warp-exit tag. (Storage is `db.xyz`, not tags — see §10.) | Ranged systems; everything downstream |
+| **1 — Substrate** | ✅ **SHIPPED** (#847): `room.db.xyz` + `.xyz` property + `distance`/`rooms_within`/`bearing` + `@coordseed` (world seeded, 0 contradictions) + warp-exit tag. (Storage is `db.xyz`, not tags — see §10.) **[Stale as of 2026-09-12: the live grid reports **11** geometry contradictions, not 0 (#3245, open) — see the note under the header's "Live" block. Also, the "see §10" pointer does not resolve: §10 carries no storage note; the `db.xyz`-vs-tags deviation is annotated in §3 instead.]** | Ranged systems; everything downstream |
 | **2 — Pathfinder** | ✅ **SHIPPED** (#851): A\* over the exit graph w/ coordinate heuristic (`world/spatial/pathfind.py`); `@path` inspector | NPC dispatch ✅; auto-walk |
 | **3 — Verticality** | Generalize jump/sky-room gravity onto Z; `passable`/floor flags | Vertical content; falling |
 | **— Parallel —** | Vehicle combat + radar (consume Phase 1 distance/bearing) | — |
