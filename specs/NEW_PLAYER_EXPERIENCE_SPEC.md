@@ -23,6 +23,19 @@ rendering), and
    test-pattern broadcast. `YEAR:` is derived from the clock at render
    time via `world.gametime.tst_now()`. Accounts are **email-keyed**;
    `create` does **not** auto-login — the player must `connect` after.
+   *(Added 2026-09-12:)* which flow step 2 becomes is decided by
+   `typeclasses/accounts.py::at_post_login` (`:265`), which replaces
+   Evennia's default outright — `AUTO_PUPPET_ON_LOGIN = False`
+   (`server/conf/settings.py:117`) is what hands it the decision. Zero
+   live sleeves → chargen, or the respawn menu when
+   `respawn_candidate()` returns one (`:345-348`, #2615); zero sleeves
+   with a menu already running in another session → a message instead of
+   a restart, so a second tab cannot tear down a decant in progress
+   (`:317-323`, #2625); exactly one live sleeve → auto-puppet
+   (`:352-357`); two or more → the sleeve picker, scoped to the live ones
+   (`:375-378`, #2614). It also re-sends the non-puppeting preamble
+   Evennia's default owns — saved protocol flags, the `logged_in` OOB
+   message, and the connect-channel line (`:287-298`, #2613).
 2. **Character initialization** (`commands/charcreate.py`, EvMenu) —
    protocol-voiced nodes: identity (first/last name), biological sex,
    height/build/hair (bald skips the style node), G.R.I.M. point
@@ -89,6 +102,7 @@ The yellow print does the informing:
 ```
     THAWN-HARRISON SINGLE-USE SLEEVE ENVELOPE
     CONTENTS: <NAME> <NUMERAL>
+    MANIFEST: <RANK, DEPT — HULL>   (first character only)
     DECANTED: <DD MON YYYY, TST>
     PRIOR TERMINATION: <CAUSE>      (flash clone only)
     DEATH COUNT: <N>                (flash clone only)
@@ -96,7 +110,36 @@ The yellow print does the informing:
 ```
 
 `CONTENTS` is the diegetic name reveal — the sleeve numbering fiction
-doing its own worldbuilding. `PRIOR TERMINATION` reads
+doing its own worldbuilding.
+
+> **Added 2026-09-12.** The label grew a `MANIFEST` line on 2026-08-21,
+> two weeks after this section was written — `commands/charcreate.py:1602`,
+> from #2139 (*Designation P1: the manifest*). It prints `_manifest_stamp`
+> → `world.manifest.designation_line` (`world/manifest.py:274`), e.g.
+> `CHIEF, LIFE SYSTEMS — SBL-0117 HALCYON DAYS`, or `NO RECORD` for
+> anyone the manifest never listed — "which is its own kind of record",
+> as that function's docstring puts it. It is the purest case of the
+> "informing, not telling" rule above: a chart that never stood up, still
+> knowing your berth.
+>
+> It is on the **first-character** envelope only. Both respawn doors
+> *stamp* a designation at creation (`:368`, and inherited at `:531` via
+> `ensure_manifest(char, inherit_from=old_character)`) but neither label
+> prints it (`:851-854`, `:938-943`) — a service record issued once and
+> not reissued on a resleeve. Print and stamp landing on different doors
+> is also why this line read `MANIFEST: NO RECORD` for every new player
+> between 2026-08-21 and 2026-09-08: the roll was on the respawn path and
+> the print on the first-character path (#2541, #2669), closed by #3033,
+> which is what added the three `ensure_manifest` calls.
+>
+> One precision on this section's dates, which §3 correctly sources to
+> `world/gametime.py` without naming a function: `YEAR:` on the connection
+> screen reads `gametime.tst_now()`
+> (`server/conf/connection_screens.py:101`), while `DECANTED` reads
+> `gametime.colony_now()` (`:853`, `:940`, `:1603`, since #1581). Same TST
+> calendar, but colony-local at a fixed UTC-8 (`world/gametime.py:42`), so
+> the two can name different dates for eight hours of every day. Both are
+> derived, neither is hardcoded — the rule holds; the function differs. `PRIOR TERMINATION` reads
 `old_char.db.death_cause`, which the death flow mirrors onto the
 character at corpse construction (#1582).
 
@@ -110,9 +153,44 @@ capitalization only at genuine sentence starts, #1588).
 
 | Event | Player sees | Room sees |
 |-------|-------------|-----------|
-| First puppet ever | framed decant block, then the room | the tech scene: pod cracked, envelope unzipped, body peeled from the nutrigel (one-shot `db.decant_announce_pending`, set at every creation point incl. web) |
+| First puppet ever | framed decant block, then the room (telnet doors only today — see note) | the tech scene: pod cracked, envelope unzipped, body peeled from the nutrigel (one-shot `db.decant_announce_pending`, set at every creation point incl. web) |
 | Later logins | the room | "{Actor} stirs as consciousness returns." |
 | Logout | — | "{Actor} goes still, eyes emptying to static; the vacant sleeve is quietly gone." (stow-away behavior preserved: `prelogout_location`, body off-grid) |
+
+> **Divergence found 2026-09-12 — the web door sends no framed block.**
+> The envelope exists in exactly three places, all telnet EvMenu finalize
+> nodes: `commands/charcreate.py:843` (template respawn), `:930` (flash
+> clone), `:1592` (first character). A sleeve decanted on the **website**
+> never receives it — both web doors end in a Django `messages.success(...)`
+> and a redirect (`web/website/views/characters.py:160`, `:184`, `:367`),
+> and nothing replays it at that character's first puppet
+> (`typeclasses/characters.py:1405-1443` sends `at_look` and the room
+> scene, nothing else). So a web player's first puppet is the room alone,
+> and a web-respawned player never sees their own `PRIOR TERMINATION` or
+> `DEATH COUNT` — the §4 morgue tag, unread.
+>
+> **This row is left as intent, not narrowed to telnet.** The last time
+> this table and the web door disagreed, the code was the defect and the
+> code was fixed: #2449 added `decant_announce_pending` to the web path
+> quoting this very line — "NEW_PLAYER_EXPERIENCE_SPEC says it is 'set at
+> every creation point incl. web'"
+> (`web/website/views/characters.py:335-342`). Its test file opens on the
+> shape: "two doors onto the same act, and only one of them carries the
+> act's obligations"
+> (`world/tests/test_web_sleeves_are_not_second_class.py`). Same shape
+> here, so this is recorded as an open gap for an owner call rather than
+> written up as correct behavior.
+>
+> What *is* true on every path is the **room** column:
+> `decant_announce_pending` is set at all four creation points
+> (`commands/charcreate.py:389`, `:540`, `:1576`,
+> `web/website/views/characters.py:342`). §1's "web-created characters
+> share the same conventions" holds for the room-facing and data
+> conventions and not, today, for the player-facing frame. The other known
+> divergence on that door — hair is neither asked for nor set, leaving
+> every web sleeve bald in its sdesc — is recorded in
+> [`WEB_CHARACTER_CREATION_ALIGNMENT.md`](WEB_CHARACTER_CREATION_ALIGNMENT.md)
+> §Notes (2026-09-11, #2449) and is likewise an open owner call.
 
 The logout stow-away is slated to become in-world sleeping persistence
 eventually — see
