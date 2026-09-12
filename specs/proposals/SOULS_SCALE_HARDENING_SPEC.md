@@ -1,12 +1,19 @@
 # Souls at Scale — Evennia Core Findings & Hardening Plan
 
-> **Status:** 📋 **Proposal — findings + phased plan (2026-08-18).** Product of a
+> **Status:** 📋 **Proposal — findings + phased plan (2026-08-18).**
+> ⚠️ **Stale as of 2026-09-12 — the plan shipped.** P0 (#1982), P1 (#1984),
+> P2 (#1986) and P3 (#1988) are all closed and present in `world/souls/`
+> today, and P4's load test ran (#1990, §4 below). §3's register is now a
+> historical audit rather than open debt; §1–§2 and §5 remain current.
+> Product of a
 > source-level dig through Evennia 6.1.0 internals (persistence, scheduling)
 > plus an adversarial audit of `world/souls/` against them, before scaling the
 > population from 4 souls toward hundreds. §1–§2 are durable knowledge about
 > the engine we run on; §3 is the ranked debt register; §4 is the plan; §5 is
 > law for every future always-on system. ELABORATES
 > [`NPC_NEEDS_AND_GOALS_SPEC`](NPC_NEEDS_AND_GOALS_SPEC.md) (phase 1–2 shipped).
+> *(2026-09-12: that spec now reads phases 1–3 shipped plus P4a succession
+> live, #2009.)*
 
 ## 1 · How Evennia actually persists (measured against source, v6.1.0)
 
@@ -98,6 +105,12 @@ never waits on the sidecar).
 
 ## 3 · Debt register (adversarial audit of `world/souls/`, ranked)
 
+> *Historical as of 2026-09-12 — the rows below describe the code as it
+> stood on 2026-08-18. Findings 1–11 are all fixed: 3/5/9/10 by P0
+> (#1982), 1 by P1 (#1984), 2/4 by P2 (#1986), 6/7/11 by P3 (#1988), 8
+> across P2/P3. Finding 12 stands, deliberately —
+> `commands/CmdSoul.py` still uses `global_search`, admin-only.*
+
 | # | Sev | Finding | Where |
 |---|-----|---------|-------|
 | 1 | CRIT | Per-beat write storm: 3–4 UPDATEs per soul per beat (`soul_last_decay`, `soul_needs` written twice, `soul_wage_owed`) — ~900–1200 writes/30s at 300 souls, ~all on unobserved souls | engine.py, needs.py |
@@ -122,6 +135,12 @@ self-heal on reload; the stagger idiom already exists in
 `director/routines.py` to copy.
 
 ## 4 · Hardening plan (phased, each phase shippable alone)
+
+> *All five phases shipped 2026-08-18: P0 #1982, P1 #1984, P2 #1986,
+> P3 #1988, P4 #1990. Confirmed present in the code on 2026-09-12. The
+> bullets below read as plan but describe work already done; the only
+> open tail is P4's parked WAL / arm64 decision, recorded in the results
+> block that follows.*
 
 - **P0 — correctness (small diffs, do first):** wrap the per-soul beat body
   in fault-isolation like `think()` already is (#3); cancel travel whenever
