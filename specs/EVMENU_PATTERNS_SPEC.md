@@ -20,6 +20,13 @@ This specification documents the correct patterns for implementing text-input no
 
 When implementing text-input nodes in EvMenu (where users type freeform text rather than selecting numbered options), we encountered four critical bugs that revealed important EvMenu behavior patterns.
 
+> **2026-09-11 (drift audit):** two are documented, not four — `Bug #1:
+> Blank Input Processing` and `Bug #2: Node Transition During Input
+> Processing`. Either two sections were lost before this was committed, or
+> the count was borrowed from the four patterns (A–D) below. The Overview
+> repeats the same "four critical bugs". Nothing in the repo records what
+> the other two were.
+
 ---
 
 ## Bug #1: Blank Input Processing
@@ -239,7 +246,7 @@ Commands: stat1 <value>, stat2 <value>, reset, done
 
 ### Pattern D: Multi-Source Picker with Status Tags
 
-**Use Case:** Location / target pickers whose entries come from more than one underlying source — e.g. surgery's suture picker (open incisions + planned chart steps + severed-organ stumps), the install picker (species-valid slots tagged occupied/empty), the amputate picker (severable containers minus already-severed ones). Each source contributes the same kind of entry; tags on each row tell the player *why* an entry is there.
+**Use Case:** Location / target pickers whose entries come from more than one underlying source — e.g. surgery's suture picker (open incisions + planned chart steps + severed-organ stumps), the install picker (species-valid slots tagged occupied/empty), the amputate picker (severable containers minus already-severed ones — **2026-09-11 (drift audit):** not so, and not an instance of this pattern: `_list_severable_containers` (`commands/CmdOperate.py:944-963`) returns the species severable table plus augment-declared containers with no severed-state subtraction, and `_node_amputate_location` (`:966-988`) stores bare location strings and renders them untagged via `_render_numbered`). Each source contributes the same kind of entry; tags on each row tell the player *why* an entry is there.
 
 **Use case characteristics:**
 
@@ -309,6 +316,16 @@ def _node_picker(caller, raw_string, **kwargs):
 
 **The processor unpacks `(label, value)`:**
 
+> **2026-09-11 (drift audit):** it unpacks `(value, label)` — `pick[0]`, not
+> `pick[1]` (`CmdOperate.py:1429`). The sample also omits the ambiguity branch
+> every live picker carries: `_parse_pick` can return `_Several`, and the
+> #2276 owner ruling — "Owner ruling 2026-08-24: never guess", recorded in
+> `_parse_pick`'s own docstring at `CmdOperate.py:846-849` and implemented at
+> `:866-874` — requires asking rather than taking a candidate:
+> `if isinstance(pick, _Several): caller.msg("Which did you mean?" ...); return None`
+> (`:1422-1425`). Its real signature is `_parse_pick(raw, items, species=None)`
+> (`:837`) and all five live call sites pass the species.
+
 ```python
 def _process_picker(caller, raw_string, **kwargs):
     raw = (raw_string or "").strip()
@@ -354,6 +371,29 @@ def _process_picker(caller, raw_string, **kwargs):
 
 ### 🔍 Debugging:
 If you see node names appearing as text output, you're returning a string during input processing instead of calling the node function.
+
+> **2026-09-11 (drift audit):** this symptom is still live in nine places in
+> `commands/charcreate.py` — the file the "Fixed Files" section below says
+> this bug was fixed in. Each returns a bare node-name string from a **node**
+> function (reached by a string `goto`, so `evmenu.py:839` sets
+> `options = None` and `:998-1000` closes the menu), which for an account
+> with no ACTIVE sleeve also disconnects the session via
+> `_charcreate_exit_callback` (`:597-619`) — respawning accounts included,
+> since their sleeves are archived, not active:
+>
+> * `first_char_finalize` (`:1506`): `return "first_char_name_first"`
+>   (`:1637`) and `return "first_char_confirm"` (`:1643`). The first is the
+>   #2550 fix itself — the comment at `:1626-1628` calls it "a route back to
+>   the name prompt", and it prints `first_char_name_first` and ends the
+>   session instead. #2550's test (`world/tests/test_chargen_name_check_can_fire.py`)
+>   exercises `validate_name` only, never the route, so the suite stays green.
+> * `respawn_confirm_template` (`:757`): `:762`.
+> * `respawn_finalize_template` (`:805`): `:813`, `:823`, `:878`.
+> * `respawn_flash_clone` (`:881`): `:887`, `:897`, `:967`.
+>
+> Filed as code defects by this audit; the correct re-display is the
+> recursion `first_char_grim` uses, or a goto-callable. Do not read this note
+> as blessing any of the nine.
 
 ---
 
