@@ -24,6 +24,19 @@ That exposure is the point, not a side effect:
   Arms' 54 leases, spring-latch doors keyed to tenancy) becomes the
   survival answer — *rent a room or your body is loot*. The housing
   guarantee shipped first, deliberately.
+  *(Note 2026-09-12: both counts were true the day this was written
+  and are now stale — the buildings grew days later. The Brackett went
+  ~60 → **~134 leases** when the upper tower was wired top to bottom
+  (`scripts/builds/010_brackett_upper_leases.py`, #1755, merged
+  2026-08-08); `scripts/builds/097_release_ghost_cubes.py` (#2130)
+  later measured the live building at "61 of 134 units". The Queen of
+  Cups went 25 → **60 cubes** when it was raised to a z12 roof
+  (`scripts/builds/018_qoc_raise.py`, #1775, merged 2026-08-08:
+  "+35 cubes (25 -> 60)"). The argument is unaffected — housing got
+  bigger, not smaller — only the numbers moved. Two other documents
+  still print the old figures: `VERTICALITY_AND_BUILDINGS_SPEC.md`
+  §2.3 ("**25 cubes**") and the #2821 docstring in
+  `world/tests/test_cube_rental.py` ("a building running 54 leases").)*
 
 ## Blocking dependencies (why deferred)
 
@@ -34,6 +47,16 @@ be scoped when this revives — meaningful defensive options for the
 sleeping (locked doors are shipped; what else?), consequences/recourse
 for sleeve crime (witnesses, dispatch, the favor/rep loop), and an
 economy where losing pocket contents isn't losing everything.
+
+*(Note 2026-09-12: of that parenthetical, only the favor/rep loop is
+absent from the code. The witness and dispatch layers shipped BEFORE
+this proposal was written — `world/director/witness.py` (crowd-gated
+flash-temp witness NPC, #873, 2026-07-01) and
+`world/director/dispatch.py` (#853, 2026-06-26), with the 911MHz
+report path and its interdiction/sabotage seam in `world/radio.py`
+(see `RADIO_COMMS_SPEC.md`). What is missing is their WIRING to sleeve
+crime, not the machinery: read the list as design axes, the way
+"locked doors are shipped" is flagged for the item above it.)*
 
 ## The seam
 
