@@ -1,6 +1,6 @@
 # Forum Integration Guide
 
-> **Status:** ✅ **SHIPPED & LIVE** — companion guide to `DISCOURSE_INTEGRATION.md`. Verified 2026-08-02.
+> **Status:** ✅ **SHIPPED & LIVE** — companion guide to `DISCOURSE_INTEGRATION.md`. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 19 claim(s) false, annotated inline**.
 
 ## Optional Discourse Forum Setup for Gelatinous
 
@@ -39,9 +39,16 @@ The following files support forum integration but are **non-invasive**:
 - `/sso/discourse/` - SSO endpoint (returns error if not configured)
 - `/sso/discourse/logout/` - Logout endpoint
 - `/sso/discourse/session-sync/` - Session sync endpoint
+- *2026-09-11: two more routes in `web/website/urls.py` belong to this
+  integration and are missing from this list: `/forum/` (a redirect to
+  `DISCOURSE_URL`, falling back to `/`) and `auth/logout/`, which overrides the
+  site-wide logout with `logout_with_discourse`.*
 
 **Templates** (`web/templates/website/`):
 - `header_only.html` - Minimal header template for embedding
+- *2026-09-11: and `_menu_iframe.html`, the iframe variant of the site menu.
+  `header_only.html` includes it and nothing else does, so it is part of this
+  integration too.*
 
 ### Discourse Side (Forum)
 
@@ -189,6 +196,8 @@ rm web/website/views/header_only.py
 
 # Remove forum templates (optional)
 rm web/templates/website/header_only.html
+# 2026-09-11: also remove web/templates/website/_menu_iframe.html --
+# header_only.html is its only referrer, so it is dead weight once this goes.
 
 # Remove forum specs (optional)
 rm specs/DISCOURSE_*.md
@@ -211,6 +220,23 @@ Then remove the imports and URL patterns from `web/website/urls.py`:
 # path("sso/discourse/", discourse_sso, name="discourse-sso"),
 # path("sso/discourse/logout/", discourse_logout, name="discourse-logout"),
 # path("sso/discourse/session-sync/", discourse_session_sync, name="discourse-session-sync"),
+
+# 2026-09-11: this list is INCOMPLETE. Two more patterns in web/website/urls.py
+# belong to the forum integration and are not named above:
+#     path("auth/logout/", logout_with_discourse, name="logout"),
+#     path("forum/", RedirectView.as_view(
+#         url=getattr(settings, 'DISCOURSE_URL', '') or '/',
+#         permanent=False,
+#     ), name="forum-redirect"),
+# The first is the site-wide logout route, so removing the import above while
+# leaving the pattern raises NameError at import and the site will not start --
+# it has to be removed too. Removing it IS safe: Evennia's website urlpatterns
+# include django.contrib.auth.urls under "auth/", which already provides
+# auth/logout/ named "logout", so the {% url 'logout' %} in _menu.html and
+# _menu_iframe.html keeps resolving -- to a plain Django logout with no forum
+# sync, which is what you want once the forum is gone. (Today the project
+# pattern wins because it comes first in urlpatterns, so every logout on the
+# live site does run through logout_with_discourse.)
 ```
 
 ---
