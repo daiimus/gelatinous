@@ -1,6 +1,33 @@
 # Descriptive Stat System Specification
 
 > **Status:** 📋 Proposal — not implemented. The four G.R.I.M. stats exist on the Character, but the A–Z descriptor display layer and any skill system described below are unbuilt.
+>
+> **Correction (2026-09-11):** the banner above is stale in the "unbuilt"
+> direction, and was wrong the day it was written. The A–Z descriptor layer
+> described here **shipped 2025-09-15** in commit `0883f94c` — the same commit
+> that created this file — nine months before the 2026-06-13 specs reorg (#554)
+> filed it under `proposals/` and stamped it "not implemented". (The #1507 spec
+> audit that fixed banners elsewhere covered top-level specs only, so this one
+> was never re-checked.) Shipped today: `STAT_DESCRIPTORS` and
+> `STAT_TIER_RANGES` in `world/combat/constants.py`; `get_stat_descriptor`,
+> `get_stat_range` and `get_stat_tier_info` in `commands/CmdCharacter.py`; the
+> player-facing sheet `CmdStats` (`@stats` / `score`), descriptors only for
+> players with the exact number behind the staff-gated `/numeric` switch; and
+> `web/website/views/characters.py`, which renders the same descriptors on the
+> web character page. The tier boundaries and all four 26-word vocabularies
+> below match the shipped tables verbatim.
+>
+> The "skill system described below" clause points at nothing — no skill system
+> is described in this document. One is built: `world/manifest.py` (fourteen
+> ratings, `letter_for()` giving the same A–Z tiers on the same 0–150 scale),
+> rendered in the "Ratings:" block of that same `@stats` box; see
+> `SKILLS_AND_DESIGNATION_SPEC.md` and #2082. Only its per-skill *word* lists
+> are still outstanding.
+>
+> What is still genuinely unbuilt is the **Future Extensions** list below —
+> per-tier colouring, help-file tier tables, comparison tools, chargen
+> integration, localisation — plus the exact **Display Formats** sketched
+> further down (see the note there).
 
 ## Overview
 
@@ -178,6 +205,15 @@ Motorics represents fine motor control, hand-eye coordination, and physical grac
 
 The descriptive system integrates with existing G.R.I.M. stat handling:
 
+> **Note (2026-09-11):** this section is shipped, not pending. The complete
+> `STAT_DESCRIPTORS` table lives in `world/combat/constants.py`, and
+> `get_stat_descriptor` / `get_stat_range` exist in `commands/CmdCharacter.py`
+> with exactly these signatures (plus a `get_stat_tier_info` helper that also
+> returns the tier letter). One difference from the sketch below: the shipped
+> table keys each tier on its **maximum** value (`150: "Apex", 144:
+> "Bulletproof", 138: "Concrete", ...`) rather than its minimum as written here,
+> with the ranges themselves held separately in `STAT_TIER_RANGES`.
+
 ```python
 # Constants for stat conversion
 STAT_DESCRIPTORS = {
@@ -214,6 +250,14 @@ def get_stat_range(descriptor_word, stat_name):
 ```
 
 ### Display Formats
+
+> **Note (2026-09-11):** the blocks below are the proposed formats, not the
+> shipped ones. The live `@stats` sheet is a 48-column boxed "PSYCHOPHYSICAL
+> EVALUATION REPORT" listing one stat per row (not two), and the staff
+> `/numeric` view shows the word plus the **exact value** — `Grit: Granite
+> (112)` — never the tier range, so nothing renders the `(109-114, actual:
+> 112)` form. The `@stats` help text is the `CmdStats` docstring, which names
+> the A–Z tier system but does not carry the per-stat range table shown here.
 
 **Character Sheet Display:**
 ```
