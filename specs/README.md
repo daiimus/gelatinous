@@ -4,6 +4,30 @@ Design specifications for **shipped** game systems — the index below
 describes how the game works today. Each entry is a running system
 (deferred sub-features are noted inline within each spec).
 
+> **Drift note (2026-09-12, index audit).** Two qualifications on the
+> paragraph above, both checked against the tree:
+>
+> * **"Each entry is a running system" has six exceptions** that are
+>   doctrine or authoring guides rather than systems:
+>   `BUILDING_PLAYBOOK.md` (its own banner: "Not a system spec"),
+>   `PARKOUR_TEMPLATE_LIBRARY.md` (companion doctrine — its §0 kernel
+>   rules mechanics that are **not built**: "The hook (rappel/grapple),
+>   *when built*", stamina is a "(future stat)"),
+>   `EVMENU_PATTERNS_SPEC.md` ("Canonical Reference Guide"),
+>   `SPECIES_AUTHORING.md`, and the two forum guides. The 🧭 markers in
+>   the tables flag the first two; the rest are unmarked.
+> * **"describes how the game works today" is a claim about this index,
+>   not a warranty on the specs it links.** The 2026-09-11 drift-audit
+>   pass re-checked fifteen of the top-level specs and annotated **285
+>   false claims** inside them (worst: `LOOK_COMMAND_SPEC` 28,
+>   `EMOTE_POSE_SPEC` 26, `MODULAR_ARMOR_SYSTEM_SPEC` and `STYLING_SPEC`
+>   25 each, `BARS_AND_RECIPES_SPEC` and `JUMP_COMMAND_SPEC` 24 each).
+>   Six top-level specs are 🚧 **PARTIAL**, not shipped-whole:
+>   `BARS_AND_RECIPES_SPEC`, `JUMP_COMMAND_SPEC`, `LOOK_COMMAND_SPEC`,
+>   `MODULAR_ARMOR_SYSTEM_SPEC`, `SHOP_SYSTEM_SPEC`,
+>   `SUBSTANCES_AND_DELIVERY_SPEC`. Read the target spec's own banner
+>   before trusting a row here.
+
 Specs that are **not** shipped live in subfolders and are kept out of this
 index:
 
