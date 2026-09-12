@@ -1,6 +1,6 @@
 # Substances and Delivery Spec
 
-> **Status:** 🚧 **PARTIAL** — §§1-4 shipped; §5 roll-your-own remains open. Verified 2026-08-02.
+> **Status:** 🚧 **PARTIAL** — §§1-4 shipped; §5 roll-your-own remains open. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 19 claim(s) false, annotated inline**.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The §4 delivery table lists `snort` → `CmdSnort`. **No such command or delivery tag exists.** The table is prefaced "existing or planned" but carries no planned marker.
@@ -59,6 +59,20 @@ Three layers, three independent axes:
 
 * **Item** is what the player holds.  One item, one substance,
   one or more delivery methods declared via tag.
+
+  **Superseded 2026-09-11 — "one item, one substance" no longer
+  holds.**  A recipe-composed drink or plated dish carries
+  `db.drink_effects`, a `{substance_id: doses}` MAP written by
+  `world/bar.py:78`, and `_apply_substance_dose` applies every entry
+  through the same pipeline (`commands/CmdConsumption.py:210-224`; 21
+  prototypes carry it, e.g. `world/prototypes.py:3240` alcohol,
+  `:3190` tobacco_neutral, `:1894` nutrition).  That shape is
+  deliberate — `BARS_AND_RECIPES_SPEC` §3-§4 owns it as an
+  ingredient's `contributions` summed and capped into the drink's
+  `effects`, and §6 there says it rides `apply_substance` so the
+  alcohol cap, tolerance and addiction all hold — it was simply never
+  folded back into this spec, and the shipped attribute name
+  (`db.drink_effects`) appears in no spec at all.
 * **Substance** is what's actually doing pharmacology to the
   consumer.  Lives in a registry keyed by id.  Effects compose
   through the existing `MedicalState.conditions` system — no new
@@ -68,6 +82,17 @@ Three layers, three independent axes:
   validates "this item supports this delivery" and applies the
   substance's effects modulated by the delivery's magnitude /
   speed.
+
+  **Unbuilt 2026-09-11 — there is no per-delivery magnitude or speed
+  modifier**, here or in the diagram's DELIVERY box above.  Greps for
+  `delivery_magnitude` / `magnitude_modifier` / a delivery multiplier
+  return nothing repo-wide.  `apply_substance`'s only dial is a plain
+  `doses` count (`world/substances/registry.py:504`): `CmdSmoke` passes
+  the default 1 per puff (`commands/CmdSmoke.py:295`), the ingestion
+  verbs pass 1 or the item's own `drink_effects` count, and
+  `chug`/`devour` pass `uses_left`.  A smoked dose and an injected dose
+  of the same substance are identical.  Dose count is per ITEM, never
+  per delivery.
 
 ## 2 · Encoding on items
 
@@ -193,6 +218,41 @@ The `CmdConsumption` commands (`eat`, `drink`, `inhale`,
 `world/consumables.py:supports_delivery` (#474), with lazy legacy
 migration from the old `medical_type` strings.
 
+> **Correction 2026-09-11 — three things this table and paragraph get
+> wrong about the shipped delivery layer:**
+>
+> - **The command list is short by two.**  `CmdChug`
+>   (`commands/CmdConsumption.py:1221`) and `CmdDevour` (`:1277`) also
+>   gate on `supports_delivery` (`drink` / `eat` respectively) and
+>   apply every remaining use at once via `_apply_full_dose` (`:231`).
+> - **Most of the Prerequisites column is intent rather than code —
+>   but the consciousness rows are enforced one layer up.**
+>   `CmdInject` performs no vein-access and no armor check whatsoever
+>   (`:465-521`); `apply` enforces no skin contact; and there is no gag
+>   mechanic anywhere in the repo — the only `gag` in the tree is
+>   combat prose — so the `eat` / `drink` row describes a check nothing
+>   could make today.  "Conscious", however, IS honoured: the
+>   `UnconsciousCmdSet` REPLACES the character cmdset entirely and
+>   carries no consumption verb at all (`commands/default_cmdsets.py:71-113`,
+>   with `no_objs = True` since #2528 so room fixtures can't hand one
+>   back), so an unconscious character cannot `eat` / `drink` /
+>   `inhale` / `inject` / `chug` / `devour` / `smoke`.  What is
+>   unenforced is the THIRD-PARTY path: `check_medical_requirements`
+>   refuses a medical procedure on an unconscious patient (`:328-333`)
+>   and `CmdInhale` checks its target explicitly (`:1173`), but the
+>   other verbs let a conscious character put a non-medical substance
+>   into an unconscious one — and that is partly deliberate, because
+>   `check_consent` grants the free path for a target that cannot
+>   contest (`world/consent.py:62-63`, `:210-212`), which is what lets
+>   a medic dose a patient who is out cold.  As a PRESENTATION failure
+>   the column is the same class as the `snort` row, tracked in #1513.
+> - **The one prerequisite that IS enforced is missing from the
+>   table: trust/consent.**  `get_item_and_target` refuses every
+>   consumption verb aimed at another character without `heal`-class
+>   consent (`:176-181`), hoisted to that funnel by #2458 after the
+>   medical-only gate let `inject guttervenom bob` land 3 pain on an
+>   unwilling target.
+
 ## 5 · Current state vs target state
 
 ### What exists today
@@ -234,6 +294,19 @@ migration from the old `medical_type` strings.
   Delivery gating migrated to tags in #474; treatment effects
   still key off `medical_type` pending the substance-entry
   migration (item 6).
+  **Correction 2026-09-11:** the cluster is EIGHT verbs — `CmdChug`
+  (`:1221`) and `CmdDevour` (`:1277`) ship too, gate on the same
+  `drink` / `eat` tags (`:1244`, `:1298`), refuse medical items
+  outright, and apply every remaining use at once via
+  `_apply_full_dose` (`:231`).  The "pending" clause is stale in both
+  halves: item 6 closed in #487, and #3207 (item 3 above) settled that
+  treatment pharmacology riding `medical_type`
+  (`world/medical/utils.py:1272`) is the DESIGN, not a migration
+  waiting on a substance entry — the registry owns the habit half
+  (tolerance, addiction), the treatment path owns healing.  Also
+  unrecorded here: the trust/consent gate #2458 hoisted into
+  `get_item_and_target` (`:176-181`), the one delivery prerequisite
+  enforced for every third-party use.
 
 ### Gaps to close (separate PRs)
 
