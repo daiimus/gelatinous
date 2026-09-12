@@ -15,6 +15,14 @@
 > Balance numbers are tuned in play. §0 below frames the *original* problem
 > this solved.
 
+> **⚠️ Deferred-list true-up 2026-09-11.** One entry above is stale: the base
+> single-blob room-desc **five-senses decomposition** *shipped* (#623 / #624) —
+> `Room.get_display_desc` (`typeclasses/rooms.py`) composes the description
+> from only the sense layers the looker can perceive, and §5 carries the ✅
+> marker. The other three deferrals (voice-descriptor-as-identity, §4.6
+> multi-voice disambiguation, the full-perception sensory suite, the
+> social-blocked capacities) still hold as written.
+
 ## 0 · Purpose
 
 The body-capacity system (`world/medical/core.py` → `calculate_body_capacity`,
@@ -77,6 +85,21 @@ A capacity effect only lands if a *consumer system* exists.
 | `blood_filtration` | infection course, renal failure (existing condition substrate) | ✅ shipped (§7) |
 | `eating` | **consumption benefit** (existing consume pipeline; buff model, no hunger) | blocked — needs the food/drink buff; rides delivery tags |
 | `hearing`→trade, `*`→work_speed | trade price, crafting/work | blocked (no trade/work system); `hearing→trade` vestige dropped |
+
+> **Note 2026-09-11 (two true-ups on this table).** (1) "vestige dropped" is the
+> *design* ruling of §2.1 ("drop / re-scope rather than honor"), not a data
+> change — `hearing` still declares `"affects": ["trade_price_improvement"]` in
+> `world/anatomy/species.py`, read by nothing, and §11 still words it as pending
+> ("is to be dropped"), so the two sections read differently. Actually deleting
+> the declaration is **Phase 13** of
+> `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` (the `modifiers`/`affects`
+> re-audit) — Phase 4 explicitly *excludes* `affects` lists, which "wait on
+> substrate-resolution decisions" — and is not done. (2) The table is missing a
+> capacity that *is* consumed today: **`smell`** (`world/anatomy/species.py`,
+> organ `nose`, `total_loss_penalty: "anosmia"`) — `world/perception.py`
+> `can_smell` gates the olfactory sense category on it (threshold 0.15,
+> `smell_override` seam), shipped with the #637 / #638 primitive move. No chrome
+> nose prototype exists yet, and nothing produces an anosmia condition.
 
 ### 2.1 · Blocked-capacity shapes (pin the shape so future system-builders snap in correctly)
 
@@ -238,6 +261,21 @@ weather + crowd ambient pools on `sight`→visual / `hearing`→auditory (chrome
 override seams honoured), with a +1 compensatory ambient message when a sense
 is missing.
 
+> **Scope true-up 2026-09-11.** Two things grew past this paragraph. (a) A
+> **third** sense is gated: `smell` → olfactory (`world/perception.py`
+> `can_smell` / `SMELL_OVERRIDE_CONDITION`), so `blocked_senses` can return
+> `olfactory` as well as `visual` / `auditory`. (b) The primitives are no longer
+> a perception-render-only input — `can_see` / `can_hear` / `can_perceive_sense`
+> are now consumed by `world/stealth.py`, `world/radio.py`, `world/speech.py`,
+> `world/emote.py`, `world/identity.py`, `commands/CmdCommunication.py`,
+> `commands/CmdTheft.py`, `typeclasses/exits.py`, `typeclasses/rooms.py`
+> (base desc + adjacent-room sightings), the director (`security` / `crime`) and
+> the LLM NPC brains (`world/llm/observation.py`, `world/llm/reflex.py`).
+> "One capacity, many consumers" (§1) landed harder than this section records.
+> (Note the module's *other* export, `can_perceive`, is a different gate — the
+> stealth presence check, which reads no capacity — with its own wider consumer
+> set; don't conflate the two when changing either.)
+
 **✅ SHIPPED (base room-desc five-senses decomposition):** `Room.get_display_desc`
 (`typeclasses/rooms.py`) composes the room description from only the sense layers
 the looker can perceive — the visual blob (`db.desc`) when sighted, plus authored
@@ -248,6 +286,17 @@ the `@roomsense` builder command — rooms with no sense layers + a sighted look
 render exactly as before (zero regression). Weather/crowd still append (also
 perception-gated). Tests: `test_room_five_senses.py`.
 
+> **⚠️ Correction 2026-09-11 — `@roomsense` does not exist.** It shipped with
+> this work (#623 / #624) and was then **deliberately removed** in #625 / #626
+> (`ed082a38`): "Remove @roomsense (unused builder scaffolding; room sense data
+> authored directly to the DB, render reads the attribute, nothing depends on
+> it)." The *render* half of this paragraph is correct and live; only the
+> authoring path named here is wrong. Today sense layers are authored straight
+> onto `room.db.sense_descs` by the build scripts (`scripts/builds/*.py`) and
+> **read back** by `@room` (`commands/CmdBuildTools.py` `CmdRoomProfile`, which
+> lists the authored layers). `CmdRoomProfile`'s own help text still points at
+> the removed command — a code-side stale reference, not a spec fix.
+
 ## 6 · Manipulation & Moving — the per-effector resolver (decided)
 
 Unlike `sight`/`hearing` (whole-body), these route through a shared
@@ -256,6 +305,19 @@ Unlike `sight`/`hearing` (whole-body), these route through a shared
 surplus effectors**, both measured against the **species baseline** derived
 *dynamically* from anatomy (§6.3). An action declares the effectors it needs
 (weapon `hands_required`; locomotion; future jump/athletics → legs).
+
+> **⚠️ Naming correction 2026-09-11 — there is no `resolve_effectors`.** A
+> repo-wide grep for that name matches only the sentence above. The *shape*
+> described here shipped, but split in two under different names: the
+> per-effector capacity scoping is
+> `MedicalState.calculate_capacity_scoped(capacity, containers)`
+> (`world/medical/core.py`, with the contribution math extracted into
+> `_resolve_capacity_contribution` and shared with the body-wide method), read
+> by its two consumers `manipulation_hit_factor` and `moving_dodge_factor`
+> (`world/combat/capacity.py`); the meta-bonus half (b) is separate again —
+> `surplus_limb_initiative_bonus` and `select_weapon_for_engagement`
+> (`world/combat/utils.py`), see §6.1. One resolver returning both halves was
+> the design; two collaborating layers is what exists.
 
 ### 6.1 Manipulation — two distinct outputs
 
@@ -319,6 +381,16 @@ losing 1 of 4 — already species-aware via `get_species_body_capacities`).
 Drives: **dodge** (combat defense), **flee**, **movement speed**, and **future
 jump/athletics**. Hard floor at the table's `0.15` incapacitation_threshold =
 can't locomote (drag yourself).
+
+> **Build-state note 2026-09-11.** Only **dodge** is wired: `moving` has exactly
+> one runtime consumer, `moving_dodge_factor` (`world/combat/capacity.py`),
+> where the 0.15 threshold collapses *evasion*, not locomotion. Nothing gates
+> movement itself — no `at_pre_move`, compass, `flee` or jump check reads the
+> capacity — so "can't locomote (drag yourself)" is design intent. That gate is
+> the movement-policing substrate, **Phase 7 of
+> `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md`, still "Not started"** (which
+> also records `incapacitation_threshold: 0.15` on `moving` as an unread flag
+> waiting on that substrate); §2's "flee/jump future" is the accurate row.
 
 ### 6.3 The combat capacity stack (multiplicative)
 
@@ -472,17 +544,38 @@ is the content lift) → per-effector resolver (manipulation/moving).
    enrichment. **✅ CORE SHIPPED.** `world/perception.py` (`blocked_senses` /
    `can_perceive_sense` / `has_reduced_perception`) reads `sight`→visual,
    `hearing`→auditory from the voice-layer primitives (chrome override seams
-   honoured); olfactory/tactile/atmospheric never gated. The weather + crowd
+   honoured); olfactory/tactile/atmospheric never gated.
+   **⚠️ Two corrections (2026-09-11):** (i) the primitives moved the *other*
+   way — #637 / #638 (`059ac493`) lifted `can_see` / `can_hear` out of
+   `world/voice.py` into `world/perception.py`, and `world.voice` now imports
+   them from there; (ii) **olfactory IS gated** — `can_smell` reads the `smell`
+   capacity (nose organ) against a 0.15 threshold with a `smell_override` seam,
+   so `blocked_senses` returns `olfactory` for an anosmic looker. Tactile /
+   gustatory / atmospheric remain ungated, as written. The weather + crowd
    ambient pools (`get_sensory_messages`, `get_crowd_contributions`) now drop
    content the looker can't perceive (blind → no visual weather/crowd; deaf →
    no auditory), and a sense-reduced looker gets a **+1 compensatory** ambient
-   message. Tests: `world/tests/test_perception.py`. **Deferred (spec §5,
+   message. Tests: `world/tests/test_perception.py`. ~~**Deferred (spec §5,
    accepted):** base single-blob room-desc sense decomposition — the visual
-   layer stays whole for now; gating the additive pools is the buildable slice.
+   layer stays whole for now; gating the additive pools is the buildable slice.~~
+   **✅ Superseded 2026-09-11 — that decomposition shipped** (#623 / #624,
+   `d7efe6b2`): `Room.get_display_desc` (`typeclasses/rooms.py`) composes the
+   description from only the perceivable sense layers, so a blind looker reads
+   the room by its authored non-visual layers. §5's ✅ marker is the current
+   record; the deferral above is history and contradicts it.
 4. **Per-effector resolver** — `manipulation`/`moving` (and the multi-appendage
-   future). **✅ CORE SHIPPED (4a/4b).** Deferred: Q2 breadth meta-bonuses
+   future). **✅ CORE SHIPPED (4a/4b).** ~~Deferred: Q2 breadth meta-bonuses
    (surplus-appendage initiative / disarm-resist / loadout) — a future combat
-   revision.
+   revision.~~
+   **✅ Superseded 2026-09-11 — the Q2 breadth bonuses are in:**
+   **loadout-readiness** via `select_weapon_for_engagement`
+   (`world/combat/utils.py`, called from `process_attack` in
+   `world/combat/attack.py`); **initiative** via `surplus_limb_initiative_bonus`
+   (`world/combat/utils.py`), added to the `d20 + motorics` initiative roll —
+   triangular increments capped at 4 surplus limbs, so `+0/+1/+3/+6/+10` for a
+   human's 2–6 hands and flat beyond; **disarm-resist** ruled already satisfied
+   — `resolve_disarm` (`world/combat/actions.py`) strips one item per success.
+   §6.1 carries the shipped markers; this line is the stale half.
    - **4a ✅ SHIPPED — `moving` → dodge (defensive half).** `world/combat/
      capacity.py` `moving_dodge_factor` multiplies the *target's* motorics in
      `attack.py` (dodge = motorics × moving). Whole-body, species-normalized
