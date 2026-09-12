@@ -94,6 +94,8 @@ class RemoteDetonator(Item):
 
 ### Prototype
 
+> *2026-09-12: the shipped prototype is BRANDED per the everything-branded mandate (`world/prototypes.py:149-163`): key `"VECTOR UEM-3 detonator"`, aliases `["vector", "uem3", "uem-3", "detonator", "remote", "trigger"]`, a VECTOR UEM-3 desc, and tags `("item", "general")` / `("tool", "category")`. The typeclass path and the three `attrs` below still match exactly; the key, aliases and desc below are the pre-brand draft.*
+
 ```python
 REMOTE_DETONATOR = {
     "key": "remote detonator",
@@ -113,6 +115,8 @@ REMOTE_DETONATOR = {
 ## 2. Explosive Tracking
 
 ### Bidirectional Relationship
+
+> *2026-09-12: both sides store the integer `.id`, never a `#dbref` string — `typeclasses/items.py:1247` `self.db.scanned_explosives.append(explosive.id)` and `:1250` `explosive.db.scanned_by_detonator = self.id`. Lookups rebuild the string (`search_object(f"#{explosive_dbref}")`, `commands/CmdExplosives.py:889`), and the player-facing signature is `e-<id>` (`:778`). Read `dbref` below as "id" throughout, including in the `scan` pseudo-code at §3.*
 
 Each explosive can only be scanned by ONE detonator at a time, but detonators can scan multiple explosives:
 
@@ -152,6 +156,8 @@ detonator.db.scanned_explosives = [explosive_dbref1, explosive_dbref2, ...]
 
 ### Scan Command
 
+> *2026-09-12 — message drift: the shipped strings are "You scan {key} into {detonator}'s memory." plus separate `  Signature: e-{id}` and `  Capacity: n/20` lines, with the room getting "{actor} points a device at {key}, which emits a soft beep." (`commands/CmdExplosives.py:777-787`). The capacity refusal is "Detonator at maximum capacity (20 explosives)." (`typeclasses/items.py:1226`), not the `(20/20) … Clear some explosives first.` form below. The already-scanned and not-an-explosive refusals do match.*
+
 **Syntax:** `scan <explosive> with <detonator>`
 
 **Requirements:** Detonator must be wielded/held (not just in inventory)
@@ -159,6 +165,7 @@ detonator.db.scanned_explosives = [explosive_dbref1, explosive_dbref2, ...]
 **Behavior:**
 ```python
 1. Validate both objects exist and in inventory/room
+   *(2026-09-12: inventory ONLY as shipped — `commands/CmdExplosives.py:743` and `:753` both call `caller.search(name, location=caller)`, so room contents are never candidates. Because `CmdRig.rig_grenade` moves the grenade into the room (`:173`), a trap can only be scanned BEFORE rigging, and another person's trap or dropped charge cannot be scanned at all. Whether room reach was intended is an open owner question (#3285); `CmdDefuse` does reach into the room by proximity — it searches `self.caller.location.contents` as well as the caller's own (`:287-344`, candidate list at `:293`).)*
 2. Confirm explosive has is_explosive attribute
 3. Check detonator capacity (< 20)
 4. Check if explosive already scanned by different detonator:
@@ -186,6 +193,8 @@ Room: {char_name} scans a SPDR M9 grenade with their remote detonator, which emi
 ---
 
 ### Detonate Single Command
+
+> *2026-09-12 — message drift: there is no blue-LED text anywhere in the code. `commands/CmdExplosives.py:925-950` ships the red-safety-cover pair this spec itself sketches at the top of the file (§Cross-Room Messaging) — "You flip open the red safety cover … A distant beep echoes!" plus "An {key} beeps and its light begins flashing! [N seconds]" to the charge's room. The already-active refusal is "{key} is already detonating!" (`:901`), not "e-1234 is already armed and counting down!". The `[N seconds]` figure is whatever `db.fuse_time` says (10 for an SPDR M9), except on the `rigged_to_exit` branch, which uses `TRAP_FUSE_TIME` (`:911-914`).*
 
 **Syntax:** `detonate e-<dbref> with <detonator>`
 
@@ -224,6 +233,10 @@ Observer at grenade location (if different room): A SPDR M9 grenade suddenly act
 ---
 
 ### Detonate All Command
+
+> *2026-09-12 — the per-signature report below was never built.* `CmdDetonate.detonate_all` (`commands/CmdExplosives.py:959-1050`) sends the safety-cover line plus "Detonated {n} explosive(s)." and nothing else: `already_active_count` goes only to the splattercast debug channel (`:1046-1050`), and invalid entries are silently skipped (`:984-986`) — never counted, never listed, never reported as `[INVALID - REMOVED]`. The "5 armed, 1 already active, 2 invalid" summary and the ARMED/ALREADY ACTIVE/INVALID display block are UNBUILT, not shipped.
+>
+> *Also: this door does not honour the trap fuse.* `:990` reads `explosive.db.fuse_time` with no `rigged_to_exit` branch, so mass-detonating a rigged trap gives it 4-10 seconds and announces that to the trap's room, where `detonate e-<id>` gives the same trap 1 second (`:911-914`). Code defect — the surviving half of #2547: the fix commit (`50859edb`, "A trap fuse is short at both doors") edited only the single-target branch, having counted just two `db.fuse_time` readers.
 
 **Syntax:** `detonate all with <detonator>`
 
@@ -266,6 +279,8 @@ Room: {char_name} flips open a red safety cover on their remote detonator and pr
 ---
 
 ### List Command
+
+> *2026-09-12 — shipped shape: an `EvTable(border="cells", width=78)` framed by `=` rules (`commands/CmdExplosives.py:1137-1204`), not the drawn box below. Same five columns, same `Capacity: n/20` line, same four-state legend, different glyphs. Two real gaps: the TRAP row prints the PROTOTYPE fuse (`:1158-1161`), so a trap that detonates in 1s is listed as "8s (trap)" — a code defect, the same one as `detonate all`, and the reason the "1s (trap)" row below no longer describes the code; and there is no "Dropped at {room}" string — a charge on the ground shows the bare room key (`:1181`). An all-invalid list falls through to "{key} has no scanned explosives." (`:1130`), not "All previously scanned explosives are invalid. List cleared."*
 
 **Syntax:** `detonate list with <detonator>` or `detonator list` (if wielded)
 
