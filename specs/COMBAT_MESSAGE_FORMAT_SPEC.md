@@ -5,7 +5,7 @@
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - "Required Phases: initiate, hit, miss, kill" — **33 weapon files have no `initiate` phase** (knife, katana, machete, staff, sledgehammer, whip, chainsaw…).
 > - The colour scheme documented here is not what ships: `__init__.py:175-185` colours only hit/kill/miss, `initiate` gets none, and miss uses `|W` not `|w`.
-> - The third-person contract has moved on. `observer_msg` with `{attacker_name}`/`{target_name}` is now a **legacy fallback**; the shipped path is the identity-aware `observer_template` + `observer_char_refs` (`__init__.py:222-243`).
+> - The third-person contract has moved on. `observer_msg` with `{attacker_name}`/`{target_name}` is now a **legacy fallback**; the shipped path is the identity-aware `observer_template` + `observer_char_refs` (`__init__.py:222-243`; re-measured 2026-09-12 the block sits at `__init__.py:212-245`). *This bullet is accurate: `observer_template` is built at `:212-240`, `observer_char_refs` at `:242-245`, and the live consumers pass `observer_msg` only as a fallback — `world/combat/attack.py` uses `observer_template` exclusively (`:618`, `:653`, `:698-717`), as does `resolve_auto_escape` (`world/combat/actions.py:623`, `:676`).*
 > - `{damage}` is listed as a standard placeholder; 2 of 101 message files use it.
 
 **Version 1.0 - Message Refactoring Guidelines**
@@ -19,6 +19,7 @@ This specification defines the standardized format for combat messages across al
 ### Format Status by File Type:
 - ✅ **Already Converted**: `anti-material_rifle.py`, `unarmed.py`, `grapple.py`
 - ✅ **Refactoring Complete**: ~80 weapon message files converted to new format
+  - *Re-measured 2026-09-12:* `world/combat/messages/` now holds **100 weapon banks** (plus `__init__.py`), every one in the three-perspective dict format — no bank lacks `attacker_msg`. Median variants per core phase: 30 (min 3, max 45). There is also a second message family this spec never mentions: **`world/combat/messages/severance/`** — 12 location banks (head, arms, hands, thighs, shins, feet, tail, forelegs, forepaws, hindlegs, hindpaws, cybernetic) plus its own loader `get_severance_message` (`severance/__init__.py:202`), keyed by location / injury_type / severity rather than weapon / phase, returning the same render shape (#332).
 - ✅ **Special Cases Handled**: `grapple.py` (extended phases), `unarmed.py` (base template)
 
 ### Existing Content Quality:
@@ -55,17 +56,30 @@ MESSAGES = {
 2. **`hit`** - Successful attack messages  
 3. **`miss`** - Failed attack messages
 4. **`kill`** - Fatal blow messages (optional, can fall back to hit)
+   - *Corrected 2026-09-12 — it does not fall back to `hit`.* A bank with no `kill` phase falls through to the loader's **generic** `fallback_template_set` (`world/combat/messages/__init__.py:66-71`, selected at `:105-107`), which renders `"You kill {target_name} with {item_name}."` from the phase name — not to that weapon's richer `hit` prose. `_handle_kill` (`world/combat/attack.py:684-717`) asks only for `"kill"` and has no second lookup. In practice this never fires, because all 99 non-grapple banks author a `kill` phase; but an author who omits one on the strength of this line gets the flat generic sentence, not graceful degradation. (This is the "is the phase genuinely optional?" half of **#1513**: optional, yes — but the fallback is not what the parenthesis promises.)
 
 ### Special Extended Phases (for specific weapons):
 - **`escape_hit`** / **`escape_miss`** - Grappling escape attempts
 - **`release`** - Voluntary release of grapples
 - **`grapple_damage_hit`** / **`grapple_damage_miss`** / **`grapple_damage_kill`** - Damage while grappling
 
+> **Reachability re-measured 2026-09-12 — 72 of `grapple.py`'s 76 authored variants are unreachable.** `get_combat_message` is asked for `grapple` phases at six call sites, and only two of them run in production:
+>
+> - **Live:** `escape_hit` / `escape_miss` from `resolve_auto_escape` (`world/combat/actions.py:623`, `:676`), which the round loop calls for anyone grappled (`world/combat/handler.py:682`). Reachable variants: 2 + 2.
+> - **Dead:** `hit` / `miss` (`actions.py:342`, `:367`) inside `resolve_grapple_attempt`, and a second `escape_hit` / `escape_miss` pair (`actions.py:453`, `:477`) inside `resolve_escape_grapple`. Both resolvers are reached only through `handler._dispatch_dict_action` (`handler.py:938-961`), which requires a **dict-shaped** `combat_action`. Nothing in production sets one — the grapple/escape commands set the *strings* `grapple_initiate` / `grapple_join` / `grapple_takeover` / `escape_grapple` (`commands/combat/special_actions.py:194-205`, `:257`), and `_dispatch_string_action` (`handler.py:886-935`) has no `escape_grapple` branch. The only dict-shaped action in the tree is in `world/tests/test_one_grappler_one_victim.py:360`.
+> - **Never requested at all:** `release` (2 variants), `grapple_damage_hit` (30), `grapple_damage_miss` (5), `grapple_damage_kill` (2).
+>
+> The live resolvers in `world/combat/grappling.py` never call `get_combat_message`; they hardcode their prose — `"|gYou successfully grapple …|n"` (`grappling.py:358-368`) and `"|gYou release your grapple on …|n"` (`:690-698`). Unreachable total: `hit` 30 + `miss` 3 + `release` 2 + `grapple_damage_*` 37 = **72 of 76**.
+>
+> Most of this is already on record and should not be re-filed: `specs/GRAPPLE_SYSTEM_SPEC.md:169` carries the verified note that **grapple damage was never built**, and the owner question "was a grapple-damage exchange ever meant to ship?" is open on **#3285**. The `release` bank is covered by neither — its code path *does* ship, just with hardcoded prose — and it is the only part of this that resembles **#2823**.
+
 ### Standard Placeholders:
 - **`{attacker_name}`** - Attacker's display name (for victim/observer messages)
 - **`{target_name}`** - Target's display name (for attacker/observer messages)  
 - **`{item_name}`** - Weapon/item name
 - **`{damage}`** - Damage dealt (for hit/kill messages)
+
+> **Measured 2026-09-12 — this list is both incomplete and optimistic.** The loader (`world/combat/messages/__init__.py:121-160`) also supplies `{hit_location}`, `{blood}` / `{Blood}` (species-keyed *target* fluid — human crimson, synth cobalt, robot amber; #1206/#1207), the bare aliases `{attacker}` / `{target}` / `{item}`, and `{phase}`. Actual usage across the 100 weapon banks: `{attacker_name}` 100, `{target_name}` 100, `{hit_location}` 100, `{blood}` 64, `{Blood}` 13, `{item_name}` **1** (`bowel_disruptor.py`), `{damage}` **2** (`anti-material_rifle.py`, `heavy_pistol.py`), `{phase}` 0. `{item_name}` and `{damage}` are supported by the loader but are not the shipped authoring style — each bank bakes its weapon's name into the prose instead. Whether that is intended house style or a gap is an open owner call (#1513).
 
 ### Message Perspective Guidelines:
 
@@ -269,7 +283,7 @@ For each existing message, create three versions:
 The combat message system now automatically applies contextual colors based on message phase:
 
 #### Color Scheme:
-- **Kill Messages**: `|r{message}|n` (Bold red for fatal attacks)
+- **Kill Messages**: `|r{message}|n` (Bold red for fatal attacks) — *corrected 2026-09-12: the intensities in this table are inverted. In Evennia (and in this repo's own convention — see `specs/GRAMMAR_ENGINE_SPEC.md:32`, `world/grammar.py:776`, `world/tests/test_grammar_colour_safety.py:40`) lowercase is normal and uppercase is bright: `|r` is **normal** red, `|R` is **bright** red. The codes shipped in `world/combat/messages/__init__.py:175-185` are right; only the parenthetical labels in the three rows below are wrong.*
 - **Hit Messages**: `|R{message}|n` (Regular red for successful hits)  
 - **Initiate Messages**: `|R{message}|n` (Regular red for threat establishment)
 - **Miss Messages**: `|w{message}|n` (White for failed attempts)
@@ -277,6 +291,7 @@ The combat message system now automatically applies contextual colors based on m
 
 #### Benefits:
 - **Threat Escalation**: Visual progression from initiate → hit → kill
+  - *Measured 2026-09-12 — there is no three-step progression.* `initiate` and `hit` are both in `successful_hit_phases` and both render `|R` (`world/combat/messages/__init__.py:163-169`, `:177-181`), so the first two steps are visually **identical**; `kill` renders `|r`, which is *less* bright than `|R`, not more. Whether the intended escalation is `|r` → `|R` → `|R` + something (bold, a prefix, a bright-magenta kill) is an open owner call; the code is internally consistent, the claimed escalation is not what a player sees.
 - **Clarity**: White misses clearly indicate failed attempts
 - **Consistency**: Automatic application ensures uniform presentation
 - **Override Support**: Pre-colored templates bypass automatic coloring
