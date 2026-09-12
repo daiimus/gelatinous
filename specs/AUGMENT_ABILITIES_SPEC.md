@@ -1,6 +1,6 @@
 # Augment Abilities Spec — Toggled Cyberware
 
-> **Status:** ✅ **SHIPPED** — Phases 1, 2 **and 3** shipped. Verified 2026-08-02.
+> **Status:** ✅ **SHIPPED** — Phases 1, 2 **and 3** shipped. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 8 claim(s) false, annotated inline**.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The previous banner said "implementation phased" and §5 frames Phases 2-3 as pending. All three have shipping code and tests — natural weapons (`NAILZ`, jawz) and the weapon-resolution precedence are live.
@@ -113,6 +113,23 @@ Gates: the slot's anatomy must exist and not be severed; dead or
 unconscious characters can't toggle; busy-state (active procedure)
 blocks.
 
+> **Note 2026-09-11 (re-verification) — the CODE is short of this spec,
+> not the other way round.** `toggle_ability`
+> (`world/medical/augments.py:115-140`) implements the first two gates
+> (slot anatomy at `augments.py:194-200` plus the 0-HP organ filter in
+> `iter_abilities` at `:46`; dead / unconscious at `:132-136`) and
+> **no busy-state gate at all**: neither
+> `world.medical.procedures.is_procedure_active` (`procedures.py:307`,
+> the helper the surgical verbs use through `_reject_if_busy`,
+> `commands/CmdSurgical.py:212`) nor
+> `world.channeled.refuse_if_channeling` (`channeled.py:78`, the house
+> BLOCKED-class gate, which by design lives at its call sites) is
+> called from the toggle path or from `commands/CmdCyberware.py`. A
+> patient on the table inside a procedure's in-flight window, or a
+> character mid-channel, can deploy or retract hardware — and deploy
+> also auto-drops whatever the hand held. The requirement stated above
+> stands; it is unbuilt, not withdrawn.
+
 ### 3.3 · The integrated item
 
 Locked: `get:false()`, `drop:false()`, `give:false()`; flagged
@@ -120,7 +137,27 @@ Locked: `get:false()`, `drop:false()`, `give:false()`; flagged
 ("(integrated)").  While deployed it appears held — correct, you
 are visibly brandishing an arm-gun.
 
+> **Note 2026-09-11 (re-verification):** the `"(integrated)"` label and
+> the last sentence were already superseded on the banner date. #535
+> (2026-06-12) made a deployed integrated weapon read as *body*, not as
+> a held item: self-inventory renders "A shotgun module **is your right
+> hand**" (`commands/CmdInventory.py:263-268`), and `return_appearance`
+> **excludes** integrated items from the wielded list entirely, giving
+> them their own line (`typeclasses/appearance_mixin.py:696-699`, the
+> paired third-person form added by #556). No `"(integrated)"` suffix
+> is rendered anywhere in the repo. The flag and its disarm consumer are
+> exactly as described (`world/medical/augments.py:493-494`;
+> `world/combat/actions.py:111`, `:118`), as are the three locks.
+
 ### 3.4 · natural_weapon precedence (Phase 3, designed now)
+
+> **Note 2026-09-11 (re-verification):** "designed now" is stale — this
+> shipped. `get_wielded_weapon` checks `get_active_natural_weapon`
+> first (`world/combat/utils.py:151-158`), `_toggle_natural_weapon`
+> never touches `held_items` (`world/medical/augments.py:301-355`), and
+> `world/tests/test_weapon_autoprioritizer.py:118-130` asserts the
+> precedence — against `select_weapon_for_engagement`, the #616
+> selector, so the rule survived the weapon auto-prioritizer.
 
 `get_wielded_weapon` gains the precedence rule: an organ-active
 natural cyberweapon's item profile wins over held items.  Claws
