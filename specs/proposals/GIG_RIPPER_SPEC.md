@@ -1,6 +1,19 @@
 # Gig #2 — The Ripper
 
-> **Status:** 📋 PROPOSAL (2026-07-24) — design only, nothing built. **For
+> **Status:** 📋 PROPOSAL (2026-07-24) — design only, nothing built.
+> *(Re-checked 2026-09-12: still nothing built — no `ripper` entry in
+> `world/llm/prompt.py` `ARCHETYPES`, no ripper blueprint in
+> `world/npcs/blueprints.py`, no `ripper` role in the post registry
+> (`world/shop/service.py` registers only `butcher` beside the shelf
+> roles), no cold-room fixture. The world already points at the gig: the
+> butcher refuses sapient corpses with "Ripper trade's not mine — take it
+> elsewhere" (`world/butchery.py` `_refusal_line`), and
+> `world/director/disposal.py` keeps stripped chassis in the yard because
+> they are "the obvious feedstock for the Ripper's cold room". Spec'd
+> #1277/#1278. **Owner ruling recorded in `BUILDING_PLAYBOOK` §4: "The
+> Ripper stays parked until the Southside stands"** — that banner is
+> labelled 2026-08-25, but the playbook's own 2026-09-11 correction dates
+> the ruling to **2026-08-11** (PR #1946, commit `818d47b3`).)* **For
 > owner review before any build**: §6 (legality & consequence) and §7 (open
 > questions) are the decisions that shape this gig, and they touch systems
 > the butcher never had to (crime, forensics, sleeve identity). The Ripper is
@@ -55,6 +68,14 @@ business. They buy quiet, sell quiet, and their real product is discretion.
   bodies exclusively as inventory; never asks names, never offers them. The
   few-shot demonstrates `remember`/`feel` (per tuning lesson 3) and the
   restraint `none`. The deterministic transaction is never a tool.
+  *(2026-09-12: **the `feel` tool no longer exists** — #2388 "Opinion: the
+  engine owns how an NPC reads a person (retires the `feel` tool)" removed
+  it after this spec was written. `world/llm/prompt.py:103` now reads
+  `BASE_TOOLS = ("look", "remember")`, the tool router shrugs a stray
+  `feel` off, and `world/tests/test_opinion.py` asserts `feel` is absent
+  from both `TOOLS` and `BASE_TOOLS`. Read this as: demonstrate `remember`
+  plus the restraint `none`; the Ripper's read on a supplier comes from the
+  engine-owned opinion layer, not a tool call.)*
 
 ## 2 · The buy side — corpses in
 
@@ -143,6 +164,10 @@ consequence stack, cheapest first — each independently shippable:
    old sleeve never surfaced. For a PC that's pure roleplay fuel; for a
    named NPC (post keeper), the §P3 memory snapshot means their re-sleeve
    can carry a seeded `feel` — "someone sold my body" — against whoever the
+   *(2026-09-12: `feel` was retired as a tool by #2388 — see §1. The
+   seeded-grudge idea survives, but it has to ride the engine-owned
+   opinion/valence layer now, not a `feel` call;
+   `NPC_POSTS_AND_REINCARNATION_SPEC` §P3 carries the same stale wording.)*
    post's snapshot last saw them with. Lean: v2, not v1.
 3. **Sleeve-UID traceability (the real teeth, later).** Corpses carry
    identity (`sleeve_uid`, recognition surfaces). A sold PC corpse could
