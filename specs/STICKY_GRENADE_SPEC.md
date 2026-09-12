@@ -1178,6 +1178,8 @@ if armor_item.db.stuck_grenade is not None:
 
 ### Message Categories
 
+> **Drift (2026-09-12): these five dictionaries are v1.0 design text and do not exist in the code.** No `magnetic THUNK`, `CLAMPS onto`, `SPRINGS` or "DETONATES with devastating force" string appears anywhere in the repo (bare `THUNK` does occur, but only as `*CHLACK-THUNK*` in `world/combat/messages/semi-auto_shotgun.py:211-213`, an unrelated weapon). The shipped messages are (a) the spider-leg set quoted earlier in this same spec under "Combat Messages", which matches `world/combat/throwing.py:461-500` verbatim; (b) the stuck-countdown line at `commands/explosion_utils.py:435-446`; (c) the stuck-explosion lines at `commands/explosion_utils.py:661-672`; (d) the `remove` warning panel at `commands/CmdClothing.py:258-295`. Treat the "Combat Messages" section above as the authority and this section as superseded design notes.
+
 **Stick Success (Thrown):**
 ```python
 {
