@@ -15,6 +15,17 @@ system, and any future system that needs English grammar processing.
 This spec is the canonical reference for the engine. The Emote/Pose,
 Identity/Recognition, and Clothing specs all delegate grammar concerns here.
 
+> **2026-09-11 — one of those three delegations does not exist.**
+> `CLOTHING_SYSTEM_SPEC.md:29` and `EMOTE_POSE_SPEC.md:409` do point here, and
+> `EMOTE_POSE_SPEC.md:1082` now names this document canonical and its own
+> Appendix A/B a pre-extraction leftover. `IDENTITY_RECOGNITION_SPEC.md` never
+> got the rewrite: it names **`EMOTE_POSE_SPEC.md`** as "the canonical grammar
+> engine specification" three times (`:16`, `:508`, `:547`), so a reader
+> following that spec is sent to a section that now forwards back here. The
+> code side of the claim is sound — `world/grammar.py` is imported by
+> `world/emote.py`, `world/identity.py` / `world/identity_utils.py`,
+> `typeclasses/clothing_mixin.py` and eight `world/combat/*` modules.
+
 ---
 
 ## Colour Markup
@@ -161,6 +172,27 @@ curated `world.combat.constants.LONGDESC_FLEX_NOUNS` body-noun set (`leg`,
 braced **single** word is a **verb**. A multi-word token that is not an
 article+noun is left literal and logged.
 
+> **2026-09-11 — the vocabulary is species-derived, one multi-word token is
+> resolved, and this rule has two doors.** The caller builds the set from the
+> species registry — `get_species_longdesc_flex_nouns` and
+> `get_species_pair_keys` (`typeclasses/appearance_mixin.py:950-979`,
+> #350/#356); the two `world.combat.constants` names above are now derived
+> legacy views of the human table, kept for callers with no species context
+> (`world/combat/constants.py:82-115`). `{they <verb>}` is resolved rather than
+> left literal: head `they` plus a verb tail agrees with the **person's**
+> number, not the body part's (`appearance_mixin.py:1041-1054`, plumbed via
+> `person_number` at `:982` and `:1249`), which is what `{they are}` /
+> `{they turn}` in the shipped rat and synth longdescs rely on
+> (`world/mob_flavor/longdescs_rat.py:43`). Other multi-word braces are still
+> left literal and logged. Singular flex is also side-aware: with `side` set, a
+> pair-keyed noun renders `"right arm"`, and `{an arm}` becomes
+> `"a right arm"` (`appearance_mixin.py:1062-1073`, #341). The corpse and
+> severed-part renderer mirrors all of this in a second implementation,
+> `world/anatomy/longdesc_tokens.py:_flex_body_tokens` (`:200`, with the
+> person-verb mirror at `:159-178`), which adds a reserved-token set
+> `_UPSTREAM_TOKENS` (`:197`, #2722) the living path lacks — a change to the
+> rule has to land in both.
+
 **Scope** — only brace words whose grammatical number tracks the body part
 (the part noun and verbs whose subject **is** that part). A main-clause verb
 agreeing with the person-pronoun ("They have …") is a gender/pronoun concern,
@@ -230,6 +262,17 @@ def is_pluralia_tantum(noun_phrase: str) -> bool:
 | Paired-noun garments (idiomatic plural) | boots, shoes, gloves, socks, sneakers |
 | Eyewear | glasses, goggles, sunglasses, binoculars |
 | Two-bladed/handled tools | scissors, pliers, tweezers, tongs, shears |
+| Garment sets / uniforms | scrubs, fatigues |
+| Paired weapons | knuckles |
+| Other | trunks |
+
+> **2026-09-11 —** this table has never been complete. `_PLURALIA_TANTUM_NOUNS`
+> already carried an `# other` group (`trunks`) and `clippers` in the same
+> commit that created this document, so those two rows document day-one
+> behaviour rather than later drift; the *garment sets / uniforms* and *paired
+> weapons* groups were added afterwards by #1212/#1213. The frozenset now holds
+> 50 entries across seven categories (`world/grammar.py:488-508`), and the
+> module's own category comment (`:482-487`) still lists only four.
 
 **Head-noun rule.** Detection inspects only the *head* of the noun
 phrase — the last token before the first prepositional break (`" in "`,
@@ -352,6 +395,35 @@ The conjugation function pairs with the subject reference:
 
 The rendering pipeline handles this: if the observer is the actor, use
 the base form; otherwise, use `conjugate_third_person()`.
+
+> **2026-09-11 — the code no longer does this, and the change reverses an
+> owner ruling. OWNER DECISION NEEDED — treat neither half as settled.**
+> The actor branch now runs the typed verb through `conjugate_second_person`
+> (`world/emote.py:890` and `:908`; `world/grammar.py:243`), which normalises
+> an `-s` form down to the plural/second-person form (`leans` → `lean`,
+> `is` → `are`) and passes modals and irregular past straight through; both
+> branches are gated by `_should_conjugate` (`world/emote.py:205`) so `-ing`
+> participles are untouched. It landed as #3197 (2026-09-10) on the reasoning
+> that a player who types `.leans` reads "You leans" while the room reads
+> correctly.
+>
+> **The same change already landed once and was reverted the same day.**
+> `to_base_form` (#2210, 2026-08-21) did exactly this and was removed hours
+> later by owner ruling — #2211 *"Revert #2210: I invented the input, then
+> changed the engine to accept it"*, #2212 *"Nobody types '.stands'"*. The
+> ruling: `.` is first-person authoring, so the verb a player types is always
+> a base form; the third-person input was invented by a probe and read back as
+> a live bug; and normalising it makes `.stands` and `.stand` render
+> identically, erasing the signal that the author reached for the wrong
+> command. #3197 cites none of those three and reaches its evidence the same
+> way (typing `.leans` on a testbed). `conjugate_second_person("stands")` is
+> `"stand"` today, so the collapse #2212 objected to is back.
+>
+> The sentence above is therefore what the last owner ruling **restored** —
+> the spec and the code disagree and the code is the half that moved. Read it
+> as: the spec states the ruled behaviour; the code currently conjugates. One
+> accepted wart of the shipped path, recorded in #3197 so it is not
+> rediscovered: `inflect` normalises `focuses` to `focuse`.
 
 ---
 
