@@ -59,6 +59,18 @@ tops out around **sixteen to eighteen** (the height that "feels tall"),
 just under the rim. Today's tallest builds reach ~8 — the city has
 used less than half its vertical budget. The crater wall is the city's
 outermost facade and the honest end of every map.
+*(Correction 2026-09-11: "reach ~8" was true the day this was written —
+the as-built plate labels the Brackett "BRACKETT 8"
+(`scripts/planning/cityplan.py:65`) — and was overtaken within 48 hours.
+Build 005 (2026-08-05) ran the Brackett to floor 11; build 009
+(2026-08-07) added floors 12–15 plus a roof deck at z16; build 011
+(2026-08-07) put the antenna platform — "the highest walkable point of
+the Brackett" — at z19 (`scripts/builds/011_brackett_crown.py:69-94`).
+The Boiler Run crane's cab sits at z17
+(`scripts/builds/032_crane_operator.py:29`) and its container rides
+z1..z16 (`typeclasses/rooms.py:1315-1316`). The 16–18 envelope is
+already reached in one southwest block; read the half-unused budget as a
+2026-08-05 snapshot, not a current fact.)*
 
 **The organism.** The colony's purpose is **terraforming; everything
 else is an offshoot of it.** The water cycle is the city's skeleton:
@@ -180,6 +192,16 @@ vertical doctrine still wires every rim as an edge, because edges are
 jumps priced in risk, not corridor exits.
 
 **The room itself** (practice, 246 rooms deep):
+*(Provenance note 2026-09-11: 246 is inherited from
+`SPATIAL_COORDINATE_SYSTEM_SPEC:20`'s ~2026-06-27 count of rooms carrying
+five-senses descriptions, and it was already behind the world when this
+line was written — the as-built plate of 2026-08-05 is subtitled "589
+rooms" (`scripts/planning/cityplan.py:62`), and 1,069 rooms were on-grid
+by the time `@coordseed` mis-seeded them (`commands/CmdCoordSeed.py:117`,
+#2755). How many of today's rooms carry all four sense layers is not
+recorded anywhere in the repo, so treat "246 rooms deep" as a dated
+provenance note, not a current measure. The four rules below are
+unaffected.)*
 - **Five-senses descriptions** are the register — a room ships with its
   sense layers, not "desc now, senses later."
 - Room `type` is load-bearing twice: it routes **crowd-pool** ambience
@@ -217,6 +239,18 @@ now law:
    action) — never as work orders.
 2. **No roof above an `outside` room, ever.** Open sky below is
    weather truth; the builder refuses it mechanically now.
+   *(Scope note 2026-09-11: "mechanically" is narrower than it reads.
+   The only refusal in the tree is an `assert` inside one one-shot build
+   script — the local `new_roof()` helper in
+   `scripts/builds/001_old_town_roof_skeleton.py:103-104` ("REFUSING roof
+   over OUTSIDE room … open sky below"), from #1697 (CLOSED) — never
+   lifted into shared tooling. `@room` shows the flag
+   (`commands/CmdBuildTools.py:34`) and sets it (`@room/outside on|off`,
+   `:122-127`), but nothing tests the roof/outside relation; `@building`'s
+   drift table (`:133-193`) does not audit it, and no later build
+   re-implements the check. Today the law rests on builder discipline;
+   lifting the check into `@building` would make the sentence literally
+   true.)*
 3. **A unit's security perimeter includes its balcony.** Private
    terraces are not roof fabric; nothing public joins them.
 4. **Furniture is demand-driven.** A tower, escape, or plank exists
@@ -289,6 +323,30 @@ none are skipped silently.
 > brewery). The Ripper stays parked until the Southside stands. The
 > UNDERWORKS remains deliberately unspecced — it will be inspired by
 > what gets built above it.
+>
+> *(Corrections 2026-09-11, four: (a) **Date** — the program was recorded
+> 2026-08-11, not 08-25: PR #1946 (closing #1945) opened and merged that
+> day as commit `818d47b3`, which is the commit that added this banner.
+> (b) **Constabulary** — a Colonial Constabulary already stands: Lobby,
+> Elevator Car, Secure Corridor on floor 2 and Rooftop (South) are all in
+> play (`scripts/builds/071_constab_fleet_cradle.py:19`,
+> `scripts/builds/121_the_charging_rack.py:32`,
+> `scripts/builds/055_greenhaus_verticals.py:332`; the room type dates to
+> #1110, 2026-07-10, `typeclasses/rooms.py:1257`). Read "Constabulary 3×3
+> complex with holding facility" as an EXPANSION of that building — and
+> note no holding facility exists anywhere in the tree yet. (c) **Heat
+> Works** — the site given, (x11, y-9..-11), falls inside the Atmospheric
+> Processor's reserved 7×7 plot, which §1.5 declares empty and reserved
+> and which `scripts/planning/cityplan.py:93` draws as
+> `zone(11,-5,5,-11)` = x5..11, y-11..-5. Owner call needed before either
+> is built. (d) **Progress** — none of the five NAMED items has shipped:
+> no Rendering Works, no Heat Works, no holding facility, and none of the
+> Pessoa infill list ("Boiler Run" is still only a crane brand). Southside
+> building did continue after the program was set, though — the Escallier
+> Snailery on Pessoa (build 066, 2026-08-10, #1948) and the Community
+> Thrift on Kaspar (build 092, 2026-08-20, "the Community Thrift,
+> Southside") — so the program is stalled on its named list, not
+> abandoned.)*
 
 What the city still owes us, ranked by how much is already decided.
 **Spec'd** items have documents; **named** items exist as owner calls in
@@ -306,6 +364,18 @@ owner verdict — argue with them.
 - **Clinic completions**: cyberware-install rooms and the clinic's
   remaining sense layers (`MAXWELL` TODO list) — install space is also
   decking/chrome-economy pre-wiring.
+  *(Notes 2026-09-11: (1) **`MAXWELL` resolves to nothing in this repo** —
+  no document by that name exists here; the only repo-wide matches are a
+  plate caption (`scripts/planning/channel.py:65`) and the build script
+  `scripts/builds/074_maxwell_health_economy.py`. The probable referent is
+  the out-of-repo "Maxwell Medical Clinic" project note, whose TODO reads
+  exactly "cyberware-install + sense-layers"; either name it properly or
+  restate the TODO here, because as written a reader cannot reach it.
+  (2) The install MECHANIC has since shipped — `world/clinic.py:49
+  CLINIC_CYBERWARE`, `:103 parse_medical_request` (returns `('install',
+  speech)`), `:201 resolve_cyberware` (#2354 2026-08-28, #3046
+  2026-09-08) — so what remains under this entry is the ROOM, not the
+  capability.)*
 
 **Named in doctrine, undesigned:**
 - **The underground**: the ice mines feeding the terraformer (§1.5),
@@ -361,10 +431,23 @@ solid ideas that lived only in conversation until now):**
   house/workshop beside it whose back door and escape face the alley
   — the alley-backed F1 in its correct fiction, and the proposed
   proving build for the corrected process.
+  *(Count note 2026-09-11: "the colony's ONE true alley" is stale — see
+  the alley-carving law below. The (-8,-5) cell and its empty lots are
+  unchanged; only the census moved.)*
 - **The alley-carving law**: the city has an alley deficit (one true
   alley colony-wide) while the roofscape needs alleys as its
   driveways — new ground blocks carve their back alleys as part of
   the block.
+  *(Count correction 2026-09-11: no longer one. Build 063 (2026-08-10,
+  PR #1934) dug **Overflow Alley** at (13,-15,0) — `type: "alley"`,
+  outside=True, a walkable dead-end spur off the Spillane under Cistern
+  No. 3's legs (`scripts/builds/063_cistern_three_real.py:35-41`, reached
+  by `Spillane (12,-15,0) --east--> Overflow Alley` at `:13`), and
+  `VERTICALITY_AND_BUILDINGS_SPEC` now cites it as the sanctioned
+  landmark-on-legs exception. (Shipbreaker Alley still does not count:
+  it is typed `market`, and build 001 classified it an open-air yard —
+  the ruling §2.5 law 2 came from.) The deficit argument and the law
+  stand; the census does not.)*
 - **The heel-void nook** at (-9,-18,0): the one roomless ground cell
   in the Brackett block, boxed between the Boot's heel and the
   tenement's east wall. A genuinely hidden space for when the block
@@ -378,6 +461,18 @@ solid ideas that lived only in conversation until now):**
   valve-landing / z16 / z18 → the ONE rim terminus at z20, with the
   Braddock cut-stair as the free route. ~20 rooms; the hard-ring
   exemplar; buildable almost entirely against existing mass.
+  *(Premise note 2026-09-11: the ladder above transcribes the source
+  plate faithfully — `scripts/planning/corridors.py:58-64` lists z7 / z10
+  / z9 / z13 ★ cliff bar / z12 valve / z16 / z18, `:90` the V→rim ladder
+  at z20, `:91` the Braddock cut stair as the free route — but the plate
+  was drawn against an 8-storey Brackett: it labels the trailhead "THE
+  BRACKETT ARMS 8 (exists)" (`:54`) and jumps roof(z8) → Terrace I(z7) at
+  `:78`. Builds 009 and 011 (2026-08-07) then carried the tower to a roof
+  deck at z16 and a mast platform at z19, so the z8 roof this whole
+  corridor hangs off no longer exists; the design needs re-deriving
+  before it is built. Re-derive from coordinates, not from the plate's
+  E/W captions — those read swapped against game space (east = +x since
+  #1690).)*
 - **The Central Channel design sheet** (owner-deferred, "later", but
   the analysis was blessed as interesting): quays are Tolliver/
   Maxwell as-built; raft lanes + clear barge fairway at z-1; racks
