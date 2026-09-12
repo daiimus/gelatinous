@@ -39,7 +39,10 @@ They touch at exactly one point (`_handle_corpse_creation_and_transition`) and
 then diverge. Because no document owned the whole path, the **PC-vs-NPC fork** and
 the **"archived sleeves are permanent review records"** intent were unwritten —
 which is how a corrupted DB index (#4590) and an NPC-ghost leak went undiagnosed
-for a while. This spec makes the spine explicit so future work has one place to
+for a while. (**Note 2026-09-12:** `#4590` here is a live-DB **dbref**, not a
+GitHub issue — the orphaned husk whose diagnosis surfaced the leak, per the #1022
+commit message (07b0ad9e). No issue #4590 exists in this repo; the number is far
+outside its issue range. §4 and §6 use the same shorthand.) This spec makes the spine explicit so future work has one place to
 reason about it.
 
 ---
@@ -143,7 +146,7 @@ PC-only:
 
 - `account.db.last_character = self` — seeds the respawn/decant flow.
 - **`death_count += 1`** — the single authoritative increment; drives the Roman
-  numeral suffix (`build_name_from_death_count`, `commands/charcreate.py:128` —
+  numeral suffix (`build_name_from_death_count`, `commands/charcreate.py` — the `:128` anchor is stale, `:164` as of 2026-09-12 —
   `Jorge → Jorge II → Jorge III …`).
 - Sets `db.archived = True`, `db.archived_reason`, `db.archived_date`.
 - Moves to Limbo (`#2`) and disconnects sessions with *"Sleeve has been archived.
@@ -215,6 +218,13 @@ the design wants:
 1. **Limbo is a junk drawer.** Archived sleeves *and* (formerly) NPC ghosts share
    `#2`; every "list my sleeves" / character-limit check is an O(n) scan filtering
    `db.archived`. No index, no dedicated store, no tag.
+   **Closed by §9 step 3 (shipped 2026-07-04; re-checked 2026-09-12):** the
+   `archived` tag (category `sleeve`) is the index, and `Account._sleeves_split`
+   splits an account's characters in ONE tag query. Both slot-count paths
+   (`check_available_slots`, `at_character_limit`) and the web decant view read
+   it. The Sleeve Registry page still lists every sleeve on purpose — it is a
+   registry, not a filtered view. Limbo is still the *store*; it is no longer
+   the *query surface*.
 2. **Corpse↔sleeve link is one-way and stringly-typed.** The corpse stores
    `original_character_dbref` as a string; the archived sleeve has no
    back-reference. Reconstructing "which sleeve, died where, of what" means a
