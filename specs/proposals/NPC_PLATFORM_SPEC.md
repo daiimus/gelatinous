@@ -71,7 +71,7 @@ they held moves by kind:
 |---|---|---|
 | 1 | competence keyed by `post_role`, not class | ✅ #2350/#2352 |
 | 2 | job carries aliases, fallback, archetype, tools | ✅ #2352 |
-| 3 | every NPC is a soul | ✅ #2362 |
+| 3 | every NPC is a soul | ✅ #2362 — *note 2026-09-12: #2362 is still OPEN and labelled `status: parked`, and its body still describes "37 souls, 40 ambient `LLMNpc` civilians... zero souls scaffolding". The migration is staged on purpose (`scripts/builds/138_ensoul_the_crowd.py`, `LIMIT = 5` per run). Confirm the crowd is fully ensouled and close #2362, or this citation reads as evidence against the checkmark.* |
 | 4 | one driver walks a body | ✅ #2373 (patrol) |
 | 5 | exactly one NPC typeclass | ✅ #2378 |
 | 6 | no blueprint names a role typeclass | ✅ #2378 |
@@ -132,6 +132,14 @@ would have started one.
 
 ## 7 · Criterion 8 — dispatch as work, not seizure
 
+> **Note (2026-09-12): this section SHIPPED and is retained as the design
+> record, not as pending work.** All four steps below landed — #2383
+> (step 1) and #2384 (steps 2–4) — and §5 row 8 already marks the
+> criterion done. The "Today." block describes the code as it stood
+> BEFORE #2384; read it as history. `world/director/security.py` and
+> `world/souls/jobs.py` both cite "NPC_PLATFORM_SPEC §7" in their
+> comments, so a reader arriving from the code lands here first.
+
 The last real split, designed here rather than half-started.
 
 **Today.** `dispatch.dispatch()` calls `assignment.assign()`, which
@@ -150,6 +158,15 @@ is a boolean where a band belongs, and it has already cost once: nothing
 cleared the assignment on death, so a wrecked unit's soul stayed asleep
 permanently, even after repair (#2255).
 
+> **Note (2026-09-12) — no longer true.** The `is_assigned` early return is
+> gone from `world/souls/engine.py:think()`; a comment stands where it was,
+> and `world/tests/test_dispatch_is_a_job.py` asserts the line's absence.
+> `assign()` writes the band-0 `respond` job for any souled responder; the
+> `travel_to(..., on_arrive=_on_scene)` path above survives only as the
+> unsouled fallback, which `world/director/assignment.py` itself annotates
+> as a state "nothing in the colony currently is". `_ACTIVE` stayed, as
+> step 3 intended.
+
 **Target.** `assign()` hands the soul a JOB instead of seizing it:
 
 ```python
@@ -165,7 +182,11 @@ behaviour `is_assigned` was protecting — but it is *arbitrated* rather
 than silenced, so a band-0 safety need can still reach it and a dead
 unit's job clears like any other.
 
-**Order, smallest verifiable step first.**
+**Order, smallest verifiable step first.** *(Note 2026-09-12: all four
+shipped. 1 = `security.watch_once()`, #2383. 2 = the `respond` step at
+`world/souls/jobs.py:400`, plus a `stand_down` step this plan did not
+anticipate. 3 = the band-0 job written in `assignment.assign()`. 4 = the
+early return deleted from `think()`.)*
 
 1. `security._watch_tick` becomes tick-once rather than `delay`-chained.
    Behaviour identical; only the caller changes.
@@ -179,10 +200,17 @@ unit's job clears like any other.
 **Risks.** This is the crime-response chain and it is combat-adjacent
 (`_engage` issues real `attack` commands). `test_director_security`
 carries three pre-existing baseline failures, so that file cannot be a
-clean signal — pin new behaviour with new tests. The failure mode is
+clean signal — pin new behaviour with new tests. *(Note 2026-09-12: those
+three were fixed in #2381 — two faked combat with a bare
+`NDB_COMBAT_HANDLER` attribute after `_in_combat` gained a liveness check,
+and one predated the `via="machine"` provenance gate, #2247. That issue
+reports the director suite green.)* The failure mode is
 SILENT: crimes simply go unanswered, and nothing shouts.
 
-**Criterion 9 follows from it.** Once dispatch is a job, the only thing
+**Criterion 9 follows from it.** *(Note 2026-09-12: it did — #2386. The
+hunt is a souls goal at band 4 in `_desired_goal`, and `routines.tick_npc`
+returns `souls` for any souled body. §5b above is the current account;
+this paragraph is the prediction that produced it.)* Once dispatch is a job, the only thing
 the 45s tick still DRIVES is the hunt; the rest is maintenance sweeps.
 Move the hunt to a souls goal the way patrol went, and the two
 schedulers can merge.
