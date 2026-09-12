@@ -9,6 +9,14 @@
 > instancing, spectator/ghost planes, and private scenes. Depends conceptually on
 > `SPATIAL_COORDINATE_SYSTEM_SPEC` (phase rides alongside coordinates) and the
 > perception system (`world/perception.py`).
+>
+> **Note (2026-09-12):** still true of the phase partition itself — no `db.phase`,
+> no `co_present`, no `PerceptionWindow`, no jack-in path anywhere in the code.
+> But part of Phase 1's gate landed meanwhile *from the stealth side*:
+> `world/perception.py` now carries `can_perceive(looker, target)` and the single
+> enumeration choke `filter_present(looker, entities)`
+> (`STEALTH_AND_DETECTION_SPEC` Phase 3, shipped 2026-07-03), awaiting only the
+> phase clause. See the dated notes in §3, §3.1, §4, §5.3 and §10.
 
 ---
 
@@ -103,6 +111,21 @@ def filter_present(observer, candidates) -> list:
     all enumeration through it."""
 ```
 
+> **Note (2026-09-12) — two of these three already exist.**
+> `world/perception.py:can_perceive(looker, target)` is the shipped presence gate
+> (its clause today is stealth's `is_hidden_from`; it takes no `sense` argument
+> and does not join the sense-capacity check this block describes) and
+> `world/perception.py:filter_present(looker, entities)` is the shipped
+> enumeration choke — both built by `STEALTH_AND_DETECTION_SPEC` Phase 3
+> (2026-07-03), whose docstrings already reserve the slot for "the phase layer's
+> binary clause". Only `co_present` is absent. Also: `filter_visible` is **not** a
+> phantom — it is a real inherited Evennia method
+> (`evennia/objects/objects.py:1614`, verified against the live 6.1.0 checkout),
+> and the only occurrence in this repo is the parent-API listing inside the
+> boilerplate docstring of `typeclasses/objects.py` (line 225 today, not 166),
+> which the repo never overrides or calls. There is no stub, and so no "latent
+> `filter_visible` debt" to pay down — only Evennia's hook going unused.
+
 **Phase sits *above* the existing perception gate, not beside it.** First you
 must be co-present (or windowed); *then* sight/hearing capacity applies. A blind
 decker in the net still can't see net objects; a sighted meat patron still can't
@@ -111,13 +134,33 @@ see the net at all.
 ### 3.1 · Audit — the three enumeration choke points
 
 Perception predicates are centralized; **enumeration is not** (verified
-2026-06). Phasing routes each path through `filter_present` / `co_present`:
+2026-06 — **partly stale as of 2026-09-12; see the note under the table**).
+Phasing routes each path through `filter_present` / `co_present`:
 
 | Path | Today | Phase insertion |
 |---|---|---|
 | **Room display** | `Room.get_display_characters` / `get_display_things` loop `self.contents` gated by `obj.access(looker, "view")` | filter contents through `filter_present(looker, …)` |
 | **Broadcasts** | Evennia `msg_contents` → all `.contents` | override `Room.msg_contents` to drop recipients not `co_present` with the source phase |
 | **Combat / proximity** | `world/combat/proximity.py` `establish_proximity` / `is_in_proximity` (an `ndb` set) | a same-phase guard in `establish_proximity` → cross-phase proximity never forms → combat can't target across phase |
+
+> **Note (2026-09-12).** Two corrections to the audit above.
+>
+> 1. **Enumeration is now partly centralized.** `filter_present` landed in
+>    2026-07 and these paths route through it: identity targeting
+>    (`commands/_identity_targeting.py`), whisper/`to`
+>    (`commands/CmdCommunication.py`), adjacent-room sightings and the LLM
+>    PRESENT roster (`typeclasses/characters.py`). The three rows above are still
+>    un-routed, so their insertion points stand — the helper simply already
+>    exists to insert into.
+> 2. **The Broadcasts row names the wrong seam.** Overriding `Room.msg_contents`
+>    would miss the path the game actually broadcasts on:
+>    `world/identity_utils.py:msg_room_identity` (~461 call sites, against ~47
+>    direct `msg_contents` calls) iterates `location.contents` itself and calls
+>    `observer.msg()` per observer, never reaching `Room.msg_contents`. Its only
+>    recipient filter is `_hears_broadcasts` (connected session or an
+>    `at_msg_receive` override) — a cost optimisation, not a perception gate. A
+>    phase clause has to go there too, which makes this a bounded surface of
+>    **four** subsystems + the director, not three.
 
 Plus the **dispatch director** (`NPC_DISPATCH_AND_SIMULATION_SPEC`): LOD
 materialization must be phase-scoped — never render `phase = net` NPCs to a
@@ -137,6 +180,13 @@ it pays down the latent `filter_visible` debt at the same time.
   a DB-level query (the dispatch director and radar need this). A cached
   `obj.phase` property reads it; `ndb` cache for hot loops, invalidated on change
   (mirrors the `.xyz` caching call).
+  *Note (2026-09-12):* there is no `.xyz` caching to mirror — `Room.xyz`
+  (`typeclasses/rooms.py`) calls `world/spatial/coordinates.py:get_xyz` on every
+  access, and nothing in `world/spatial/` caches or invalidates; the `ndb` cache
+  is a still-unbuilt "Lean" in `SPATIAL_COORDINATE_SYSTEM_SPEC` §10. The indexed
+  **tag** mirror above also inherits a storage model that spec retreated from:
+  its §9 ladder records "Storage is `db.xyz`, not tags — see §10", so `phase`
+  storage needs deciding here rather than inherited by analogy.
 * **Perception window** — a structured grant (§7), stored on the *device* or the
   *room* that mediates it.
 * **Phase is not on the room.** The room is phase-agnostic geometry; only its
@@ -190,6 +240,17 @@ under `TRUST_AND_CONSENT_SPEC`'s contest predicate (`conscious AND unrestrained`
 it reads as a **free-action target**: someone in meat can frisk, move, or harm
 the slumped decker while they're away in the net. Emergent, on-theme, and it
 falls out of systems we've already specced — no special case needed.
+
+> **Note (2026-09-12):** the built predicate does not deliver this on its own.
+> `world/consent.py:can_contest` is `is_conscious(target) and not
+> is_restrained(target)`; `is_conscious` returns False only on an affirmative
+> corpse/dead/unconscious medical state (unreadable state defaults to awake) and
+> `is_restrained` requires a grapple or restraint furniture. A slumped-but-
+> medically-awake, ungrappled decker therefore reads as **able to contest** —
+> not a free-action target. Jacking in has to assert an affirmative helplessness
+> state (an unconscious-equivalent medical flag, or a restraint-equivalent) for
+> the payoff to land. `TRUST_AND_CONSENT_SPEC` §8 repeats the same inference, so
+> the gap is shared between the two specs rather than a disagreement.
 
 ### 5.4 · Combat in the net
 
@@ -312,6 +373,15 @@ system honors it as an intentional bridge.
 | **4 — Perception windows** | The `PerceptionWindow` model; cameras / bugs / ghost eavesdropping; window clause in `co_present` | Default-deny, perceive-only |
 | **5 — Cross-phase causation** | Explicit `crosses_phase` effect bridges (EMP, collapse, body-death disconnect) | Reserved; via dispatch bus |
 
+> **Note (2026-09-12):** Phase 1 is partly done — from the stealth side.
+> `can_perceive` and `filter_present` exist in `world/perception.py` and about a
+> dozen enumeration paths route through them. What Phase 1 still owes: `db.phase`
+> (plus the storage decision, §4 note), `co_present`, the phase clause inside
+> `can_perceive`, and **four** insertions — room display, `msg_contents`,
+> `msg_room_identity` (§3.1 note), proximity — plus director materialization. The
+> `filter_visible` line in the Notes column is void: that method is real Evennia
+> code, not a debt (§3 note).
+
 Phase 1 is the whole feasibility bet: if `filter_present` cleanly gates the three
 choke points, everything else is incremental.
 
@@ -330,7 +400,7 @@ choke points, everything else is incremental.
 * **Phase-tagged exits & the pathfinder.** Confirm the A\* edge filter is a clean
   add (it should be — edges already gate on traversability).
 * **Performance.** Phase is a cheap int compare, but it multiplies onto every
-  enumeration and every spatial query. Bound by the same `ndb` caching as `.xyz`;
+  enumeration and every spatial query. Bound by the same `ndb` caching as `.xyz` (itself unbuilt — see the §4 note);
   measure on the live box.
 * **Griefing / consequence-dodging.** Phase must not become a way to escape
   accountability illegitimately (hiding from a fight by phasing). Phase changes
