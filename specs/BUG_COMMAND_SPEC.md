@@ -161,6 +161,11 @@ POST https://api.github.com/repos/daiimus/gelatinous/issues
 - `datetime` (standard library, timestamps)
 - `git` command line (to get current commit hash)
 
+> **Correction 2026-09-11:** `json` is not imported — see the corrections
+> under "Technical Implementation → Dependencies" below, which apply to
+> this list too. Missing here as well: `run_async` (#460) and `re`
+> (#2527).
+
 ---
 
 ## Rate Limiting
@@ -171,6 +176,18 @@ POST https://api.github.com/repos/daiimus/gelatinous/issues
 - **Storage:** Track in `account.db.bug_reports_today` with date stamp
 
 ### Rate Limit Messages
+
+> **Correction 2026-09-11:** neither string is what a player sees.
+> The refusal is two lines and does not say "try again tomorrow" —
+> "You've reached the daily limit of 30 bug reports." then "The limit
+> resets in {time}." (`commands/CmdBug.py:730-731`), which is what the
+> "Rate Limit Reached" flow further down shows. The remaining-count line
+> is not conditional on the limit being "approached": it is sent after
+> **every** successful report (`CmdBug.py:758-764`), as "You have N bug
+> reports remaining today.", merely highlighted in yellow when N ≤ 5.
+> The "30" in the refusal is a hardcoded literal while the limit itself
+> reads `BUG_REPORT_DAILY_LIMIT` (`:730` vs `:149`) — a code-side defect,
+> not a spec correction.
 ```python
 # When limit reached
 "You've reached the daily limit of 30 bug reports. Please try again tomorrow."
@@ -432,6 +449,17 @@ mean overriding a core Evennia class, which this project does not do.
 - `datetime` (standard library, timestamps)
 - `git` command line (to get current commit hash)
 
+> **Corrections 2026-09-11** (apply to both Dependencies lists in this
+> file — this one and the one under "GitHub API Integration"): `json` is
+> **not** imported. `requests` handles serialisation through its `json=`
+> kwarg and `.json()` (`commands/CmdBug.py:368, 375`); the import block is
+> `CmdBug.py:9-14`. Two real dependencies are missing from both lists:
+> `evennia.utils.utils.run_async` (`CmdBug.py:10`), which carries every
+> GitHub call off the reactor thread (#460), and `re` (`:13`), which the
+> mention/xref sanitizer needs (#2527). The `git` command line is a
+> *fallback* only: the hash is read from `.git/refs/heads/master` first
+> and cached for the process lifetime (`CmdBug.py:215-277`).
+
 ### Network Failures
 ```python
 try:
@@ -465,6 +493,13 @@ def sanitize_bug_description(text):
 ```
 
 ### Missing Configuration
+
+> **Correction 2026-09-11:** the block below is close but not the live
+> code. There are **two** gates, not one — `GITHUB_TOKEN` and then
+> `GITHUB_REPO` (`commands/CmdBug.py:93-102`) — and the message is two
+> lines: "Bug reporting is not currently configured." followed by "Please
+> contact staff directly to report bugs." Both gates run before any
+> switch is dispatched, so `@bug/list` and `@bug/show` refuse too.
 ```python
 if not hasattr(settings, 'GITHUB_TOKEN') or not settings.GITHUB_TOKEN:
     caller.msg("|rBug reporting is not configured. Please contact staff.|n")
@@ -474,6 +509,13 @@ if not hasattr(settings, 'GITHUB_TOKEN') or not settings.GITHUB_TOKEN:
 ---
 
 ## Admin Features
+
+> **Correction 2026-09-11: nothing in this command is staff-gated.**
+> `locks = "cmd:all()"` (`commands/CmdBug.py:84`) and neither
+> `show_bug_list` nor `show_bug_detail` checks permissions, so every
+> player can run `@bug/list` and `@bug/show` — as "Command Syntax" above
+> already documents them. Read this heading as "Read-only switches", not
+> as an access boundary.
 
 ### List Recent Issues
 ```
@@ -505,6 +547,13 @@ if not hasattr(settings, 'GITHUB_TOKEN') or not settings.GITHUB_TOKEN:
 - `@bug/close <issue_number>` - Close an issue from in-game
 - `@bug/comment <issue_number> <comment>` - Add comment to issue
 - `@bug/search <query>` - Search existing issues
+
+> **Note 2026-09-11:** mis-phased — read the heading as "Phase 3". "Phase
+> 2" is marked ✅ COMPLETE below with a different, finished list, and
+> `close`/`comment` appear there again as "Admin close/comment commands
+> from in-game" under **Phase 3: Future Enhancements (Not Currently
+> Planned)**. `@bug/search` is not listed in any phase. None of the three
+> exist: `switch_options = ("list", "show")`, `commands/CmdBug.py:86`.
 
 ---
 
