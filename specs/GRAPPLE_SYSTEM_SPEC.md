@@ -1,6 +1,6 @@
 # G.R.I.M. Grappling System Specification
 
-> **Status:** ✅ **SHIPPED** — Phase 1 complete; Phases 2-3 remain future work. Verified 2026-08-02.
+> **Status:** ✅ **SHIPPED** — Phase 1 complete; Phases 2-3 remain future work. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 17 claim(s) false, annotated inline**.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - **"Grenade Bodyshield System ⚠️ MISSING IMPLEMENTATION" is wrong — it is built.** `world/combat/explosives.py:36` `check_grenade_human_shield` + `:103`, called from four sites. The shipped version is deterministic (grappler ×0.0, victim ×2.0), not the probabilistic formula proposed here.
@@ -166,6 +166,12 @@ Failure: Current Grappler >= Challenger → Maintains control
   - Grapple damage hits: Control damage during struggle
   - Grapple damage misses: Failed attempts to harm
 
+> **Re-verified 2026-09-11 — grapple damage was never built.** No code path in the repo deals damage *for* a grapple. The `grapple_damage_hit` / `grapple_damage_miss` / `grapple_damage_kill` message banks exist (`world/combat/messages/grapple.py:214`, `:366`, `:394`) and the phase-colouring table knows their names (`world/combat/messages/__init__.py:161-172`), but no `get_combat_message()` call anywhere requests them.
+>
+> The grapple phases that *are* requested are `hit`, `miss`, `escape_hit` and `escape_miss` — and of those six call sites only two are live. `escape_hit`/`escape_miss` fire from `resolve_auto_escape` (`world/combat/actions.py:623`, `:676`). The other four (`actions.py:342`, `:367`, `:453`, `:477`) sit inside `resolve_grapple_attempt` and `resolve_escape_grapple`, which nothing in production dispatches; the live resolvers in `world/combat/grappling.py` never call `get_combat_message` at all and emit their own hardcoded lines.
+>
+> In shipped code "violent mode" means only this: neither party is yielding, so the victim auto-resists every round (`world/combat/actions.py:506`). Whether a damage exchange was ever meant to ship — and therefore whether those three banks are pending content or dead weight — is an open owner question.
+
 ### Human Shield System
 
 #### **Bodyshield Mechanics** ✅ **IMPLEMENTED**
@@ -263,6 +269,8 @@ The grenade explosion system (`CmdThrow.py`, with detonation logic now largely i
   - Grapple broken automatically
   - Movement blocked
 
+> **Re-verified 2026-09-11 — accurate for the walk door, but there are two doors.** These conditions describe `typeclasses/exits.py:281-330` exactly (yielding flag at `:281`, the targeted-by-others loop at `:283-293`, the Grit contest and the grapple-break on a successful resist below it). The combat `advance` door (`world/combat/movement_resolution.py:431-480`) gained the same victim resistance roll in #2602, but its "targeted by others" predicate has drifted: it *also* excludes the person being advanced on, and it ignores anyone targeting the grappler from another room. The same situation can therefore pass one gate and fail the other. Reconciling them is an open owner ruling — **#3239** — not a defect.
+
 #### **Combat Movement Restrictions**
 - **Being Grappled**: Blocks flee, retreat, advance, charge
 - **Grappling Someone**: Charge auto-releases grapple if targeting others
@@ -285,11 +293,17 @@ The grenade explosion system (`CmdThrow.py`, with detonation logic now largely i
   - Both maintain proximity after retreat
 - **Consistency**: Both remain in proximity post-retreat
 
+> **Re-verified 2026-09-11 — implemented, with one line to read carefully.** `retreat` (alias `disengage`) creates distance *within the same room* and never traverses an exit (`world/combat/movement_resolution.py:39-189`), so "drag victim back" is not a movement. What actually ships: the grappled victim is excluded from the motorics contest (`:89-97`), a retreat whose only proximity *is* the grappled victim is refused outright (`:99-113`), and on success proximity is broken with every opponent and deliberately maintained with the victim (`:143-158`).
+
 #### **Proximity Inheritance** ✅ **IMPLEMENTED**
 - **Principle**: Victim inherits all of grappler's proximity relationships
 - **Timing**: After successful movement (advance/retreat/charge)
 - **Mechanism**: Copy grappler's proximity set to victim
 - **Rationale**: Victim is "dragged along" and gains same positioning
+
+> **NOT IMPLEMENTED — re-verified 2026-09-11; the ✅ above is unearned.** Nothing in the codebase copies a proximity set from one character to another. `world/combat/proximity.py` defines ten functions (`:28`, `:45`, `:82`, `:103`, `:124`, `:160`, `:177`, `:198`, `:231`, `:267`) and none of them is an inheritance function, and every grapple movement path establishes only the pair's own mutual link: `world/combat/movement_resolution.py:680` after a drag-advance, and `world/combat/utils.py:699-704` (`add_combatant`) after a cross-handler drag through an exit. A same-room `advance` establishes the advancer↔target link alone (`movement_resolution.py:270`) and never reads the grappled victim at all. So a dragged victim arrives in melee with their grappler and nobody else.
+>
+> This is the one Phase 1 item that was never built, so the status banner's "Phase 1 complete" is not earned on it. Whether the behaviour is still wanted, or was abandoned in favour of the pair-only proximity the drag and advance paths establish today, is an open owner question.
 
 ---
 
@@ -389,6 +403,10 @@ The grenade explosion system (`CmdThrow.py`, with detonation logic now largely i
 - **Within Room**: Advance/retreat maintains grapple proximity
 - **Multiple Targets**: Victim gains grappler's proximity to others
 
+> **Re-verified 2026-09-11 — two of these bullets restate the unbuilt proximity inheritance.** "Proximity inherited during movement" and "Victim gains grappler's proximity to others" describe no shipped code; see the Proximity Inheritance note under Movement Integration for the searches that prove the absence. What ships is pair-only: a drag re-establishes grappler↔victim and nothing else (`world/combat/movement_resolution.py:680`, `world/combat/utils.py:699-704`).
+>
+> The rest of this section holds. Release leaves proximity standing — `resolve_release_grapple` (`world/combat/grappling.py:655-701`) clears the two grapple fields and never touches the proximity sets. Retreat deliberately keeps the victim link while breaking every other one (`movement_resolution.py:143-158`), and a room-change drag re-establishes the pair in the new room (`movement_resolution.py:680`).
+
 ### Yielding System Integration
 
 #### **State Relationships**
@@ -417,6 +435,8 @@ The grenade explosion system (`CmdThrow.py`, with detonation logic now largely i
    - ✅ Implement victim proximity copying during grappler movement
    - ✅ Ensure consistency across advance/retreat/charge
    - ✅ Handle multi-character scenarios
+
+   > **Re-verified 2026-09-11: none of these three shipped.** There is no proximity-copying code anywhere — see the Proximity Inheritance note under Movement Integration above for the searches that prove the absence. The consistency and multi-character items are consequences of a mechanism that was never written, so all three ✅ marks rest on nothing.
 
 3. **Human Shield System**: ✅ **COMPLETED**
    - ✅ Add bodyshield mechanics to attack resolution
