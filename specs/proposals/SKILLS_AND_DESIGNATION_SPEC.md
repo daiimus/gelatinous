@@ -10,6 +10,31 @@
 > (DESCRIPTIVE_STAT_SYSTEM_SPEC — descriptor layer unbuilt) and on
 > the traits spec (NPC_TRAITS_SPEC §11's background seam — this is
 > its first tenant).
+>
+> **Note (2026-09-12): the "PROPOSAL" banner is stale in the UNBUILT
+> direction — §10's P1 SHIPPED 2026-08-21** (issue #2138 / PR #2139, one
+> day after this file's last edit) as `world/manifest.py`: `VESSELS`,
+> `DEPARTMENTS`, `RANKS`/`RANK_WEIGHTS`, the fourteen `SKILLS` with their
+> governing stats and cants, `DEPARTMENT_SKILLS`, `DEPARTMENT_AFFINITY`,
+> `BANDS`, `roll_designation`, `seed_skills`, `check_value`,
+> `letter_for`, `designation_line`, `designation_rows`, `rated_skills`,
+> `ensure_manifest`, `travelled_as_crew`. Extended four times since: PR
+> #2858 (#2800 — reserved-designation guard, and the record surviving a
+> resleeve), PR #3034 (#3033 — every PC sleeve gets one; a flash clone
+> inherits its person's record rather than rolling a new career), PR
+> #3053 (the sheet split across two rows — see the note in §7) and PR
+> #3187 (#2670 — only people held a berth). Rolled at every creation
+> door (`commands/charcreate.py`, `web/website/views/characters.py`,
+> `world/souls/population.py`), backfilled by
+> `scripts/builds/100_the_manifest.py` (+ `162_…`, `164_…`), and
+> displayed on `score`/`@stats` (Posting / Vessel / Ratings rows in
+> `commands/CmdCharacter.py`), on `@soul` (`commands/CmdSoul.py`) and in
+> the decant envelope's MANIFEST stamp. **Still unbuilt:** the
+> LLM-persona fragment, which P1 does list (§7, §10 — `world/llm/` never
+> imports `world.manifest`, and `world/souls/traits.py::voice_fragments`
+> has no callers either), and the terminal Manifest lookup (§1, §7 —
+> never phased into P1 at all). §2's "wiring is deferred wholesale"
+> still holds exactly: `check_value` has no callers anywhere in the repo.
 
 ## 1. The fiction (why this designation exists)
 
@@ -37,6 +62,11 @@ Design consequences, each load-bearing:
   file"): designations are readable at terminals today and become
   verifiable/forgeable when decking lands — a forged Command
   designation is social engineering, the wanted-record precedent.
+  *(Note 2026-09-12: the "today" here is this design's own pre-decking
+  timeline, not a claim about shipped code — no terminal or fixture
+  reads the manifest, and §10's P1 never included one. Where
+  designations DO surface today: `score`/`@stats`, `@soul`, the decant
+  envelope's MANIFEST stamp, and the build-script roster.)*
 - **The snapshot is the skill system's spine** (§2): what you were
   rated for pre-planetfall is what you know at decant.
 
@@ -255,6 +285,11 @@ lean Demolitions; Life Systems' lean Athletics (tower work).
 - **P1**: storage + chart data + decant/generator/backfill rolls +
   display (score/@soul/persona). Zero check-site changes — the
   designation exists and speaks before it does anything.
+  *(Note 2026-09-12: shipped 2026-08-21 — #2138 / PR #2139 — storage,
+  chart data, the decant/generator/backfill rolls and the score/@soul
+  display; the LLM-persona fragment is the one item of this list still
+  unwired. "Zero check-site changes" holds exactly: `check_value` has
+  no callers.)*
 - **P2+ (owner-gated)**: wiring, when the owner calls it ready —
   medicine's two existing check sites are the natural first, then
   each future system (decking, kitchens, mapping, breaching) claims
