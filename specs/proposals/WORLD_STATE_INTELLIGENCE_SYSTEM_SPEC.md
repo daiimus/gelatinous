@@ -4,6 +4,14 @@
 > signal bus. Everything above it is design. Tracking #303, which is
 > stale and still says no implementation exists.
 >
+> *(Correction 2026-09-12: #303 is no longer stale — it was rewritten
+> and now leads with "Status: **P0 BUILT AND LIVE** — this issue was
+> stale", titled "WSIS: the colony's capacity to notice itself (P0
+> built; zones next)", carrying the 2026-08-24 vision rewrite and the
+> four-live-layers finding. It is labelled `status: parked`. The P0
+> half of this banner verifies: `world/wsis.py` was added 2026-08-21
+> by #2140 / PR #2141.)*
+>
 > **Vision rewritten 2026-08-24** on the owner's call: intelligence is
 > a sourced, fallible, tradeable commodity — not an objective readout.
 
@@ -165,6 +173,22 @@ it — never by analogy to somebody else's categories.
 | **cyber** | ⏳ aspirational | needs the net layer |
 | **environment** | ⏳ aspirational | needs weather/hazard systems to emit; the terraform failure and the Boot breach are the obvious first sources |
 
+*(Verified 2026-09-12 — read "emitting today" as DECLARED, not live.
+The column mirrors `wsis.SIGNALS` (`world/wsis.py:49-74`), the bus's
+vocabulary; only 7 of the 20 kinds above have an `emit()` call site
+anywhere in the repo (there are five `wsis.emit` call sites in non-test
+code): `death` (`typeclasses/death_progression.py:571`), `robbery`,
+`travel_stalled`, `plan_faulted` (`world/souls/jobs.py:78,990`),
+`went_hungry` (`world/souls/actions.py:771`), `post_vacant`
+(`world/souls/posts.py:360`), `till_empty`
+(`world/director/courier.py:214`). The four ✅ verdicts hold — each
+live layer has at least one real emitter — but `killing`, `assault`,
+`casualty`, `casualty_untreated`, `arrival`, `resleeve`, `homeless`,
+`undressed`, `sale`, `wage_paid`, `supply_dry`, `post_unsouled` and
+`machine_defect` are declared and unemitted. Note in particular that
+`casualty_untreated` — the founding incident of this document — is one
+of them.)*
+
 Note what the live four already describe: **a colony that starves,
 loses its staff, and bleeds.** That is not a small picture. The
 medical collapse would have been visible in three of these four.
@@ -218,6 +242,21 @@ graph TB
 
     ANOM & CONV --> TERM & NPC & ROOM
 ```
+
+> *(Correction 2026-09-12: P0 did not ship in this shape, and the
+> sections from here through "Constants" describe components that are
+> already built — differently. The live bus is a FLAT module,
+> `world/wsis.py`: module-level `emit(kind, where=None, weight=None,
+> note="", layer=None)`, `recent`, `pressure`, `by_layer`, `hot_zones`,
+> `counts`, `flush`, with `LAYERS` / `SIGNALS` / `RING` /
+> `CHECKPOINT_EVERY` / `SIGNATURE_SHARE` as module constants. There is
+> no `world/intel/` package, no `signal_bus.py`, no singleton, and no
+> `world/intel/constants.py`. The `SignalBus.emit(signal_type, zone_id,
+> severity, metadata)` signature below and the `SIGNAL_COMBAT_START`
+> vocabulary in "Constants" share nothing with the shipped ones. Read
+> the tree below as a target shape for the UNBUILT layers, not as a
+> description of the bus. `world/combat/constants.py`, cited there as
+> the pattern, does exist.)*
 
 ### Module Structure
 
@@ -550,6 +589,21 @@ graph LR
 | New: infrastructure system | damage/repair events | `infra_damage`, `infra_repair` |
 | New: faction patrol scripts | patrol movement | `faction_patrol` |
 | New: hacking commands | intrusion attempts | `cyber_intrusion` |
+
+*(Correction 2026-09-12: `CombatHandler.start_combat()` does not exist
+and never has — there is no `start_combat` anywhere in the repo. The
+handler's live entry points are `get_or_create_combat(location)`
+(`world/combat/handler.py:102`) and `CombatHandler.start()` (`:224`);
+the example below is written against the missing method. The rest of
+the table checks out: `stop_combat_logic()` (`:255`),
+`Character.at_death()` (`typeclasses/characters.py:734`),
+`DeathProgressionScript` (`typeclasses/death_progression.py:85`),
+`CmdThrow` (`commands/CmdThrow.py:118`), `CmdBuy`
+(`commands/shop.py:12`), `weather_system.set_weather()`
+(`world/weather/weather_system.py:166`), and `db.managed_rooms` /
+`db.combatants` on the handler script. Note also that `death` already
+emits, from `DeathProgressionScript` rather than from
+`Character.at_death()`.)*
 
 ### Integration Example
 
@@ -899,6 +953,18 @@ Following Evennia conventions (use `db` for persistent, `ndb` for temporary):
 
 - **Zone data:** `ZoneRegistryScript.db.zones` (persistent dict)
 - **Signal history:** `SignalBusScript.db.signals` (rolling list, capped at configurable max entries)
+  - *(Correction 2026-09-12: the live ring is NOT on a Script, for cause.
+    It lives in `ServerConfig` under the key `wsis_ring`
+    (`world/wsis.py:116`), capped at `RING = 400` with a
+    per-signature share (`SIGNATURE_SHARE`, #2671). The docstring there
+    records why it moved: the ring used to sit on
+    `GLOBAL_SCRIPTS.souls_heartbeat`, and Evennia RECREATES a
+    settings-managed script when its settings entry changes, so an
+    interval tweak to the souls heartbeat would have silently taken the
+    colony's entire signal history with it (#2672, closed). Do not put
+    the signal history back on a global Script — the same hazard applies
+    to `ZoneRegistryScript.db.zones` and
+    `AnomalyBaselineScript.db.baselines` above and below.)*
 - **Anomaly baselines:** `AnomalyBaselineScript.db.baselines` (persistent dict, keyed by (zone, signal_type) tuples)
 - **Per-room zone assignment:** `room.db.zone` (AttributeProperty, category="intel")
 - **Active alerts:** `ZoneRegistryScript.db.active_alerts` (list of finding dicts)
@@ -998,7 +1064,9 @@ These are future phases or separate specs:
 
 **The old phase table is withdrawn — reality already reordered it.**
 It had the signal bus as Phase 2, behind zones and terminals. The bus
-shipped FIRST (#2228-era work, live 2026-08-21) precisely because it
+shipped FIRST (#2228-era work, live 2026-08-21 — correction 2026-09-12: the shipping
+issue was #2140, PR #2141, "WSIS P0: the signal bus, and a colony health
+panel"; #2228 is the souls sensory inbox, unrelated) precisely because it
 was the piece that needed nothing: no zones, no faction system, no
 tuning. Observation is always the cheapest thing to build and the
 safest thing to be wrong about.
@@ -1009,9 +1077,9 @@ observes, then the part that interprets, then the part that speaks.**
 | | scope | state |
 |---|---|---|
 | **Legibility** | the signal bus, decay, checkpointing | ✅ live |
-| **Zones** | named districts on rooms; the bus keys on them instead of room names | next |
+| **Zones** | named districts on rooms; the bus keys on them instead of room names — *note 2026-09-12: "named districts" is the framing this spec's own "Corridors, not districts — corrected 2026-08-24" section rules WRONG, citing BUILDING_PLAYBOOK §1.5 (owner-set). Read this row as **corridors**, with Northside/Southside above them* | next — *but parked: the zone section says "Not being built (owner, 2026-08-24)", NPC management stays the priority, and #303 carries `status: parked`. #303's own "Next brick: zones" still records the superseded "named districts, hand-authored (owner ruling)", so spec and tracking issue currently disagree on the unit* |
 | **Interpretation** | baselines per (zone, layer), anomaly z-scores, convergence | after zones |
-| **Circulation — the Rook** | he already broadcasts nightly and already has opinions. The cheapest mouth in the colony | after interpretation |
+| **Circulation — the Rook** | he already broadcasts nightly and already has opinions *(she — blueprint `dj_rook` is female, `world/npcs/blueprints.py:1819`; and the nightly claim is now stronger than when written: `db.ambient_broadcaster=True` with `broadcast_interval=1800` cuts an unprompted segment every ~30 min off the director heartbeat, `world/director/broadcasts.py` + `world/director/routines.py:492`; verified 2026-09-12)*. The cheapest mouth in the colony | after interpretation |
 | **Circulation — a terminal** | one door among several, gated by access, and the only source that tells the truth plainly | any time after zones |
 | **Circulation — rumour** | NPCs repeat what they half-know; fidelity degrades with each retelling | after interpretation |
 | **Circulation — the net layer** | raw signal, stealable, uninterpreted | with decking |
