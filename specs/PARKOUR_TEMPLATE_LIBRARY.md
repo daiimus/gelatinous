@@ -21,6 +21,39 @@ a number reopens the templates.
 - **Falls**: gravity walks sky cells to ground at **5 damage/story**.
   Risk therefore scales with height automatically — the same gap is a
   scraped knee at z2 and a death sentence at z14.
+  *(Correction 2026-09-12 — three findings, none of which retires the
+  kernel. **(a) 5/story is the law on one verb only.** A failed `jump
+  across` charges exactly 5 × stories, hard-coded, discarding whatever
+  `fall_damage` the exit carries (`commands/combat/jump.py:882`,
+  `:890`). A `jump off` edge descent instead charges
+  `exit.db.fall_damage` × stories, **default 8** (`jump.py:1046-1047`,
+  `:1076`), and the world authors that number per exit: 5 on the
+  Brackett roof edge (`scripts/builds/003_brackett_fire_escape.py:191`),
+  6 on the crane (`typeclasses/rooms.py:1420`), 10 on the Fallen
+  Antenna↔Halcyon crossing
+  (`scripts/builds/020_fallen_antenna_gap.py:77`), 20 on the ancestral
+  Laundromat↔Market pair (exits #191/#193). Concretely: the same
+  one-storey miss over Braddock costs 5 if you fail the leap and 20 if
+  you jump off the same edge. **(b) The gravity walk only walks where a
+  `down` chain exists.** `follow_gravity_to_ground`
+  (`jump.py:1253-1300`) descends `down` exits and calls the first room
+  without one "ground". The colony's highest crossings hang over air
+  cells that have NO exits at all — Kaspar Gap (Queen–Halcyon) #7307
+  (-5,-15,12) and the crane's air #7390 (-1,-16,13), measured
+  read-only 2026-09-12 — so the walk returns zero stories: a missed
+  leap at the top of the colony deals **0 damage** and leaves the
+  jumper inside the exitless air cell (#2441's stranding, at the one
+  place the fiction promises a death sentence). The authored
+  `fall_room` is consulted only on a failed landing roll, never on a
+  gap failure, so on the edge verb *passing* the roll strands you and
+  *failing* it puts you safely on the street. **(c) Everything
+  downstream inherits (a).** The verb table's "5×height" row below and
+  §1 invariant 3's ≤10-damage apron cap therefore describe Jump-across
+  over a wired air column only, and the `fall_damage` authored on all
+  90 gap exits is dead weight on the gap-failure path. All three are
+  code and world data failing the kernel, not the kernel failing: the
+  ruling stands and the drop should be brought to it. Related: #2945
+  (open — the exitless air cells), #2441, #2944.)*
 - **Field facts (learned building the Brackett escape, 2026-08-06):**
   an edge exit into air REQUIRES `sky_room` (int dbref) or the jump
   silently degrades to a plain walk — the full edge-to-air attr set is
