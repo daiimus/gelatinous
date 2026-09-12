@@ -22,7 +22,11 @@
 > bypasses hold: AoE, area sound, `search`. **`search` GREW HIDDEN-EXIT DISCOVERY (#1114, 2026-07-10): view-locked (secret) exits roll the stash idiom (d20 + Resonance + search bonus vs `db.search_difficulty`, default 14 > stashes' 10) — a find is PER SEARCHER (`db.found_exits`; the exit joins THEIR exit prose forever, everyone else keeps seeing nothing; custom `db.search_found_msg`). First consumer: the Constabulary roof hatch.** **PHASE 4 (THE HUNT) SHIPPED
 > (2026-07-03):** `world/director/hunt.py` — the deterministic state
 > machine off the awareness meter, ticked by the director heartbeat
-> before the patrol beat: Suspicious → orient beat (the player's audible
+> before the patrol beat **[mechanism stale — noted 2026-09-12: the state
+> machine still lives in `world/director/hunt.py`, but the BEAT now comes
+> from the souls job scheduler — `world/souls/engine.py` consults
+> `wants_hunt` and queues a `hunt` job, `world/souls/jobs.py` calls
+> `tick_hunt`. Nothing in the director ticks it any more (#2373)]**: Suspicious → orient beat (the player's audible
 > cue) + commit; Searching → director-travel to the LAST-KNOWN room
 > (stamped on awareness records) and sweep it with the REAL `search`
 > command, fanning through unswept adjacents on a bounded budget
@@ -56,6 +60,14 @@
 > warrants a response — e.g. zone-dependent (corporate blocks vs the
 > sprawl) — revisit with the faction/zone work. NOT yet built: ambush
 > advantage (§6.1), theft (§6.2), light/cover modifiers.
+> **[Stale — noted 2026-09-12: ambush AND theft both shipped, and §6.1 /
+> §6.2 below already say SHIPPED (2026-07-03). Issue #993 "Stealth Phases
+> 5-6: ambush + theft" closed 2026-07-04. Live: `world/stealth.py`
+> `is_ambush` + `AMBUSH_INITIATIVE_BONUS` (+20, folded in through
+> `add_combatant(..., ambush_bonus=)` from `commands/combat/core_actions.py`
+> and `commands/combat/special_actions.py`) + `AMBUSH_CONTEST_BONUS` (+6);
+> and `commands/CmdTheft.py` (`steal`, `steal <item> from <target>`,
+> `pickpocket`). Only **light/cover modifiers** remain unbuilt.]**
 > Original abstract: designs the **presence-concealment**
 > layer: `hide` (self or object) vs `search` (a room), resolved as an opposed
 > **Resonance/Motorics** contest, surfaced as a **per-observer graded awareness
@@ -86,7 +98,13 @@ Resonance/Motorics contest → updates the searcher's **awareness** of the targe
 ## 2 · The big picture — stealth is the graded sibling of phase
 
 `PHASE_LAYER_SPEC` built the unified perception gate (`co_present` /
-`can_perceive` / `filter_present` in `world/perception.py`). Stealth lives in the
+`can_perceive` / `filter_present` in `world/perception.py`).
+*[Correction, noted 2026-09-12: `PHASE_LAYER_SPEC` is still an unbuilt
+proposal and built nothing. `can_perceive` and `filter_present` in
+`world/perception.py` were built by THIS spec's Phase 3 — the banner above
+says so ("built HERE; the phase layer's binary clause slots in later"), as
+does `can_perceive`'s own docstring. `co_present` exists nowhere in the
+code; it appears only in `specs/proposals/PHASE_LAYER_SPEC.md`.]* Stealth lives in the
 same gate, as its **graded** counterpart:
 
 | | Phase | Stealth |
@@ -97,7 +115,11 @@ same gate, as its **graded** counterpart:
 
 This is the precise distinction: **phase removes you from consequence; stealth
 removes you only from passive notice.** A hidden character is still
-`co_present` — a grenade, a shout, or a `search` finds them. So stealth is a
+`co_present` — a grenade, a shout, or a `search` finds them. *[2026-09-12:
+`co_present` is the phase proposal's unbuilt name — the shipped gate is
+`can_perceive` / `filter_present` alone. The behaviour described is correct
+and enforced: AoE, area sound and `search` simply do not route through the
+gate.]* So stealth is a
 *new clause* inside `can_perceive`, not a second gate, and it reuses the
 single-choke-point discipline (`filter_present`) that makes the gate safe.
 
@@ -285,9 +307,20 @@ risk is *getting caught*. It is the contest engine (§3) and the awareness meter
   awake target who could notice — which is the whole skill.
 * **Concealed items** can't be `steal`-targeted until revealed: you take what you
   can perceive (sdesc-visible) or what a `frisk` (§6.3) has surfaced. Frisk-then-
-  steal on a subdued mark is the mugging loop.
+  steal on a subdued mark is the mugging loop. *[Stale — noted 2026-09-12: not
+  what shipped, and contradicted by "No frisk required: theft is accessible to
+  anyone" in this same section. `_stealable_inventory` in
+  `commands/CmdTheft.py` returns every carried, non-worn, non-held item;
+  `steal <target>` picks from that set at random and the named path matches by
+  key — neither is perception- or frisk-gated, and no item-concealment flag
+  exists in the codebase. Frisk-then-steal remains a useful loop, but only as
+  intel, never as a gate.]*
 * **Proximity** required (same room, close/adjacent) — theft rides the combat
-  proximity substrate.
+  proximity substrate. *[Superseded — noted 2026-09-12: contradicted by the
+  user-corrected bullet three above ("Same-room is the ONLY spatial gate …
+  it never requires proximity or an advance") and by what shipped.
+  `commands/CmdTheft.py` contains no proximity or advance check; its module
+  docstring states same-room is the only spatial gate.]*
 
 ### 6.3 · Frisk (the consent-gated reveal)
 
@@ -354,7 +387,11 @@ unchanged).
   for stashed objects. Cleared on move/reveal.
 * **Awareness store** — per-observer, mirroring `recognition_memory`:
   `observer.db.awareness = { target_key: { level, last_known_pos, last_roll_t,
-  decay_t } }` (`target_key` = stable id; for players, tie to the identity
+  decay_t } }` *[shipped shape differs — noted 2026-09-12: `world/stealth.py`
+  `set_awareness` writes `{ level, t, t_roll, last_room }`. Decay is computed
+  lazily from `t` against `AWARENESS_DECAY` (300s per level), so there is no
+  `decay_t` field; and the `ndb` cache named at the end of this bullet was
+  never built — `_records` deserializes `db.awareness` on every read]* (`target_key` = stable id; for players, tie to the identity
   apparent-UID so awareness respects disguise — you can be "made" as a presence
   without being identified). `ndb` cache for the hot combat/tick reads.
 * **Symmetric** — the same structures live on PCs and NPCs; only the *consumer*
