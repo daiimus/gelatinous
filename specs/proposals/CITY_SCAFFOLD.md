@@ -7,6 +7,40 @@
 > rename, or reassign per line; the generator re-derives in seconds.
 > Existing buildings are marked KEEP. Coordinates are grid (x,y),
 > z = roof height in stories. Furniture per the template library §2.5.
+>
+> **Doc-review note (2026-09-11)** — three corrections to the banner
+> above. None of them touches the design; the proposal itself is still
+> unbuilt, which is what it claims to be.
+>
+> 1. **It was generated against the Roof Plan v3, not v2.**
+>    `scripts/planning/scaffold.py` titles its own plate "THE ROOF PLAN
+>    v3", `scripts/planning/README.md` calls it v3 (v1 is the superseded
+>    `roofplan.py`; no v2 exists in the repo), `PARKOUR_TEMPLATE_LIBRARY.md`
+>    §1.5 cites "owner law, Roof Plan v3", and the issue that delivered
+>    this document (#1681) says v3. The wrong number is hardcoded in
+>    `manifest.py`, so a re-run reprints it.
+> 2. **KEEP is a 2026-08-05 map snapshot, already overtaken.** The Queen
+>    of Cups was raised to a z12 roof (build 018, #1774) and is listed
+>    here at 6; The Halcyon (builds 014/016/017 — #1766/#1770/#1772) now
+>    stands as a z12 liner hull on and beside Kaspar Pawn & Salvage, over
+>    tiles this table still offers as a fresh z2 workshop (x-8..-7
+>    y-15..-13, which contains the sun-deck corner at -7,-15); and the
+>    Greenhaus verticals and cisterns (builds 055–065) appear nowhere.
+>    Read KEEP as "existed on 2026-08-05", and re-export before using it.
+> 3. **`Roof z` on a KEEP row is generated, not as-built.** Outside the
+>    mesa/pad/dome cases the generator synthesizes a datum from its zone
+>    formula without consulting the building's real height, so these rows
+>    silently propose raising built roofs: Suds & Bubbles Laundromat is
+>    listed at 4 although `PARKOUR_TEMPLATE_LIBRARY.md` §1.5 makes its z1
+>    rooftop the datum the whole roof city starts from — and the built
+>    Laundromat→Market crossing over Braddock rides it — while Hammett's
+>    Boot, one building, appears at 6, 4, 4 and 2 across its four chunks.
+>
+> Re-deriving is also not the one-command job the banner implies: both
+> generators read `city.json` / `scaffold_blocks.json` from a hardcoded
+> session scratchpad path that no longer exists (the committed blocks
+> file sits in `scripts/planning/`, where nothing reads it), so a fresh
+> `export_map()` dump and a path fix come first.
 
 **Method**: buildings are 2×3-max chunks of the buildable tiles;
 each holds ONE flat roof datum (bi-directional 1:1 fabric); ±1
@@ -194,3 +228,35 @@ between neighbors = jumps; 2-3 = furniture; >3 = deliberate breaks
 
 
 **119 buildings** · 🧗 = a Long Climb station · roof rooms ship WITH the building (archipelago pattern: strips + air cells + fall links + edges at own height).
+
+> **Doc-review note (2026-09-11)** — three things this footer leaves
+> out, all of them generator artifacts rather than design decisions.
+>
+> - **The Long Climb is not continuous in the table above.** The
+>   generator aims at street→2→4→6→8→8→14→16→18, but its z4 station falls
+>   on a street cell and so has no building and no row; the z8 station at
+>   x-2..-1 y9..11 was forced to 8 by the climb pass and then pulled back
+>   to 6 by the crossing-equalization pass that runs after it (its zone
+>   records this as `high*climb+eq+eq` in `scaffold_blocks.json`), which
+>   is why The Okafor is listed at 6; and the remaining 8→14 hop from
+>   Thawn-Harrison (x2..3) to Voss Spire (x5..5) crosses the street at x4
+>   between unequal roofs, which the 1:1-crossings-only owner law this
+>   plan is built on forbids. The climb needs re-deriving before it can
+>   be built to.
+> - **🧗 marks 4 of the 7 stations.** Every marker present is a station,
+>   but the tag is suppressed on crown and spire blocks, so the top two
+>   rungs (Voss Spire z14, THE ANCHOR z16) carry no marker, and the
+>   vanished z4 rung has no row to mark. The climb cannot be read off
+>   the markers.
+> - **The names are not distinct, so "every building, named" overstates
+>   the title.** The count itself is consistent with the Method above,
+>   which defines a building as a chunk — but the 119 rows use only 80
+>   distinct labels. Among the 92 newly-named rows, 30 roof-room names
+>   collide across 63 of them: three unrelated stores are all "Okafor Dry
+>   Goods", three more are all "Marsh & Sons Hardware", and "Quill
+>   Stationery & Sundries Rooftop" appears three times — rooms that would
+>   ship with identical keys. The name pools cycle modulo their length
+>   with no uniqueness pass, so every repeat is an artifact. (Repeats on
+>   KEEP rows are different: they are one real building spanning several
+>   chunks — Hammett's Boot across four, at 6/4/4/2 — so "each holds ONE
+>   flat roof datum" holds per chunk, not per named building.)
