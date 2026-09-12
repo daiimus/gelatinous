@@ -56,7 +56,47 @@ unlocalised, so durations stay subtraction and nothing depends on a calendar
 offset. Shift on the way out with `format_stamp()`. `wound_timestamp` in
 `world/medical/core.py` uses this.
 
+### Reading the hour in-world
+
+*(Added to the spec 2026-09-12; shipped earlier and never written down here.)*
+
+Time is legible through **objects**, not a command — the owner ruling behind
+#2819, and what makes a working chrono worth carrying. The layer lives in
+`world/gametime.py`:
+
+- `render_time_tokens(text, obj=None)` substitutes authored braces in any
+  description. The tokens (`TIME_TOKENS`, `world/gametime.py:179`) are
+  `{time}`, `{time12}`, `{date}`, `{datetime}`, `{cy}`, `{hour}`, `{period}`.
+  Text holding no token comes back untouched, so it is safe to run over every
+  description.
+- It has **three** call sites, all of them `get_display_desc`: `ObjectParent`
+  (`typeclasses/objects.py:47`), `Room` (`typeclasses/rooms.py:98`) and `Exit`
+  (`typeclasses/exits.py:532`). Only the first is inherited — `Room` composes
+  its own perception-gated string and never reaches `super()`, and `Exit` does
+  not inherit `ObjectParent` at all — so an authored `{time}` rendered
+  literally on both until each was wired separately (#2772). That is why the
+  tests assert through `get_display_desc` rather than through the helper: the
+  defect shipped once already behind a helper-level test.
+- Two attributes let timepieces disagree with each other, which is the point
+  of owning more than one: `db.clock_skew` (minutes fast or slow) and
+  `db.clock_stopped` (a POSIX stamp the device then shows forever).
+- `{cy}` and `colony_year()` both render from `colony_now()`, so they agree
+  even in the eight-hour window where UTC and the colony disagree about the
+  year (#2772).
+
 ### Justification Framework
+
+> **Scope note 2026-09-12.** From here to *Worldbuilding Notes* is in-fiction
+> justification and aspiration, not a description of code — despite the
+> "Implementation Details", "Technical Requirements", "Operational
+> Necessities" and "System Architecture" headings. Nothing in the game models
+> commodity exchanges, shipping manifests, FTL arrays or fleet operations.
+> Three statements in that stretch are code-true: the weather system runs an
+> Earth-like day/night cycle (`TIME_PERIODS`,
+> `world/weather/time_system.py:11`), NPC shifts run on the 24-hour colony
+> clock (`current_shift`, `world/souls/posts.py:70`, over `SCHEDULES`,
+> `world/souls/engine.py:35`), and stored timestamps stay UTC POSIX seconds
+> (`gametime.stamp()`).
 
 The persistence of Earth time in space is driven by three critical practical necessities:
 
@@ -164,6 +204,32 @@ TIME_IGNORE_DOWNTIMES = True   # Maintain continuity during downtime
 - **Infrastructure**: Existing weather/time system in `world/weather/time_system.py` ready for TST
 - **Dependencies**: No breaking changes - only adjustment to time flow rate
 - **Validation**: Use `@time` command to verify synchronization after implementation
+
+> **Corrected 2026-09-12.** `world/weather/time_system.py` is no longer
+> merely "ready": `TimeSystem.get_current_hour()` delegates to
+> `world.gametime.colony_hour()` (`world/weather/time_system.py:62-67`),
+> and that is the seam weather, the director's on-air line
+> (`world/director/broadcasts.py:54-55`) and the `@weather` staff readout
+> (`commands/CmdAdmin.py:812-813`) all read. The comment there records the
+> bug this closed — the old `time.localtime()` was the CONTAINER's clock,
+> so "night" ran eight hours away from the colony's own night.
+>
+> **`@time` is not the validation path; it is not in the player cmdset.**
+> Evennia's stock `CmdTime` was removed from `CharacterCmdSet` by #2819
+> (`commands/default_cmdsets.py:299-300`) because it printed
+> `datetime.now()` — the real-world date, wrong century, wrong timezone —
+> and because `help tokens` states the design premise that *no command
+> tells you the hour*. `world/tests/test_no_clock_command.py` pins its
+> absence. Verify instead with `@weather` (staff), an authored `{time}`
+> token on an object, or `world.gametime.format_now()` from `@py`.
+>
+> One residue survives, and it is a **code** defect rather than a licence to
+> restore the bullet above: `UnconsciousCmdSet` still adds `CmdTime`
+> explicitly (`commands/default_cmdsets.py:97`), and that set becomes a downed
+> non-Builder's entire default cmdset (`typeclasses/characters.py:871-872`),
+> so a knocked-out player can still read the real-world date. Tracked on
+> #2691; the guarding test builds only `CharacterCmdSet`, so it does not see
+> it.
 
 ### Implementation Steps
 1. **Edit Configuration**: Add/modify settings in `server/conf/settings.py`:
