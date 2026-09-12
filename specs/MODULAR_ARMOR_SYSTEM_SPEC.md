@@ -1,6 +1,6 @@
 # Modular Armor System Specification
 
-> **Status:** 🚧 **PARTIAL** — armour stacking, plate carriers, tactical targeting and commands shipped; **weight/encumbrance not built**. Verified 2026-08-02.
+> **Status:** 🚧 **PARTIAL** — armour stacking, plate carriers, tactical targeting and commands shipped; **weight/encumbrance not built**. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 25 claim(s) false, annotated inline**.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The **Weight and Encumbrance System** section describes load thresholds, −1/−2/−3 movement penalties and `get_total_weight(character)`. **None of it exists.** Weight is a per-item attribute summed for display only (`typeclasses/items.py:56`, `:537-541`).
@@ -49,6 +49,21 @@ The Modular Armor System provides a comprehensive tactical combat experience wit
 
 **Layer Processing Order**: Outermost → Innermost (highest layer number first)
 
+> **⚠ 2026-09-11 re-verify — the example below misstates the mechanic twice.**
+> (a) **Ratings are never summed for mitigation.**
+> `_expand_plate_carrier_layers` (`typeclasses/armor_mixin.py:470-569`) returns
+> the carrier at its own layer and each applicable plate at `layer + 1` as
+> *separate* entries, and `_calculate_armor_damage_reduction` (`:405-443`)
+> applies each sequentially with its own effectiveness. A rating-2 carrier and a
+> rating-6 plate reduce damage twice, in series; they never form one rating-8
+> layer. The summed form (`_get_total_armor_rating`, `:571-611`) has exactly one
+> caller — `_get_location_armor_coverage` in `world/medical/utils.py:315-316`,
+> which feeds the armour-aware **targeting** weights, not display; the armour
+> display re-derives its own totals in `commands/CmdArmor.py:33-78`. (b) **The
+> live layer numbers are lower**: the plate carrier is layer 2
+> (`world/prototypes.py:1358`) and the tactical jumpsuit layer 1 (`:1270`), so
+> the plate lands on 3. The relative order the example teaches is still right.
+
 ```python
 # Example armor stack on chest:
 Layer 3: Plate Carrier (armor_rating: 2) + Medium Ballistic Plate (armor_rating: 6) = 8 total
@@ -66,6 +81,25 @@ Each armor layer processes damage sequentially:
 4. **Continue until** damage absorbed or all layers processed
 
 ### Armor Effectiveness Matrix
+
+> **⚠ 2026-09-11 re-verify — the block below is NOT the shipped matrix.** The live
+> table is `ARMOR_EFFECTIVENESS_MATRIX` in `world/combat/constants.py:377-426`,
+> read by `ArmorMixin._get_armor_effectiveness`
+> (`typeclasses/armor_mixin.py:625-634`). It differs in kind, not just in
+> detail: kevlar `stab` 0.3 / `cut` 0.4 (not 0.20 / 0.15), steel `bullet` 0.9
+> (not 0.60) / `stab` 0.8 / `cut` 0.9, leather `cut` 0.6 / `blunt` 0.3, ceramic
+> `bullet` 0.95 (not 0.90) — and **ceramic `blunt` is 0.8, commented "Very good
+> vs blunt force"** (`constants.py:406`), the exact inverse of the 0.30 "Poor vs
+> blunt (shatters)" design recorded here. (The player-facing blurb at
+> `typeclasses/items.py:592` still says ceramic is "brittle vs blunt force", so
+> the shipped prose and the shipped number also disagree with each other — one of
+> the two is a bug, and which one is an owner call.) The live matrix additionally
+> carries two armour types this block omits: `synthetic` (`constants.py:410` —
+> the `armor_type` of both the tactical jumpsuit and the plate carrier itself)
+> and `generic` (`:418`, the fallback for an unrecognised type), and every type
+> defines all six damage keys (`bullet`, `stab`, `cut`, `blunt`, `laceration`,
+> `burn`). Treat `world/combat/constants.py` as the source of truth; the values
+> below are kept as the original design intent.
 
 ```python
 ARMOR_EFFECTIVENESS = {
@@ -154,6 +188,25 @@ def get_total_weight(character):
 - Plates can be swapped in/out for different threat profiles
 
 **Slot-to-Location Mapping**:
+
+> **⚠ 2026-09-11 re-verify — `torso` is wrong, in both this block and the
+> `carrier.db` example below.** The shipped mapping is
+> `world/prototypes.py:1374-1379`: `front → ["chest"]`, `back → ["back"]`,
+> `left_side → ["abdomen"]`, `right_side → ["abdomen"]`. **There is no `torso`
+> body location in this anatomy** (see `COVERAGE_INHERITANCE`,
+> `world/combat/constants.py:133-156`, which enumerates all 22 locations), so a
+> carrier authored to the mapping below would protect nothing at its sides. One
+> shipped rule is also missing here: at the abdomen each side plate contributes
+> only **half** its rating (`typeclasses/armor_mixin.py:556-559`,
+> `plate_rating // 2`), because an angled side plate only partly covers the
+> abdomen. Note that the halving is applied in three different places three
+> different ways — mitigation halves each plate then layers them
+> (`:556-559`), the coverage display sums both then halves the total
+> (`commands/CmdArmor.py:65-77`), and the targeting rating does not halve at all
+> (`armor_mixin.py:598-607`) — so quote the mitigation path when a number has to
+> be right. (`plate_slot_coverage` reached its `getattr` consumers only after
+> #2581 gave it an `AttributeProperty`; mitigation was always correct because it
+> reads through `.db.`.)
 ```python
 plate_slot_coverage = {
     "front": ["chest"],        # Front plate protects chest
@@ -382,6 +435,16 @@ BALLISTIC_PLATE_BACK = {
 
 **Player Configuration**:
 - `caller.db.center_armor_headers` - Enable/disable table centering (default: `True`)
+  - **⚠ 2026-09-11 re-verify: it does not enable or disable table centering.**
+    The flag is read once, by `_get_center_headers`
+    (`commands/CmdArmor.py:29-30`), and passed only as `center=` to
+    `BoxTable.add_header` (`:236`, `:426`), where it decides whether the header
+    **title** is centred inside its own box (`world/utils/boxtable.py:119-128`).
+    The table's on-screen centering is unconditional — `center_on_screen` runs
+    whenever the caller has a session, regardless of the flag
+    (`CmdArmor.py:238-244`, `:428-433`). The two bullets below are correct:
+    `get_terminal_width` falls back to 78 columns and floors the detected width
+    at 60 (`world/utils/boxtable.py:13-31`).
 - Automatically detects screen width with fallback to 78 columns
 - Minimum width of 60 columns enforced
 
@@ -448,6 +511,20 @@ Displays effectiveness percentages for each armor type vs damage type:
 - Centered table presentation
 
 #### `armor` - Legacy Text Format (when centering disabled)
+
+> **⚠ 2026-09-11 re-verify: there is no legacy format.** `center_armor_headers`
+> is read once, by `_get_center_headers` (`commands/CmdArmor.py:29-30`), and is
+> passed only to `table.add_header(..., center=...)` (`:236`, `:426`) — the
+> `BoxTable` and its on-screen centering run either way (`:238-244`). Setting it
+> `False` un-centers the header title inside the box; it does not switch to plain
+> text. The sample output below is unreachable line by line: no code path prints
+> a **character-level** weight total, a load band or an encumbrance line (the two
+> "Total Weight" lines that do ship are per-carrier — `CmdArmor.py:1421` in lbs,
+> `typeclasses/items.py:628` in kg — and belong to the unbuilt weight system's
+> prerequisites, #1509), and nothing anywhere prints an "Effectiveness vs Common
+> Threats" summary. What `armor` actually renders is a five-column table — Item,
+> Type, Rating, Durability (a coloured ▓/░ bar), Coverage (first three locations,
+> then "& N more") — at `:158-245`.
 ```
 > armor
 === ARMOR STATUS ===
@@ -465,6 +542,26 @@ Effectiveness vs Common Threats:
 ```
 
 #### `armor repair` - Repair Damaged Armor
+
+> **⚠ 2026-09-11 re-verify: wrong invocation, wrong output, and the real system
+> is much larger.** Repair is its own command, not an `armor` subcommand:
+> `CmdArmorRepair`, `key = "repair"`, aliases `fix` / `mend`
+> (`commands/CmdArmor.py:841-842`). Typing `armor repair plate carrier` falls
+> through `CmdArmor.func`'s four-way dispatch into `_show_item_details` and
+> answers *"You are not wearing any armor matching 'repair plate carrier'"*
+> (`:450-452`). The shipped surface is `repair <armor> [with <tool>]`,
+> `repair <armor> field` and `repair <armor> full` (`:831-838`), and it carries:
+> an **Intellect roll that can fail**, with per-material failure prose
+> (`:1182-1223`); tool bonuses up to +12, with the tool degrading and
+> occasionally breaking (`:1068-1131`, `:1225-1258`); a workshop-access gate on
+> `full` (`:1259-1272`); and a shared branch that repairs breachable structures
+> before armour (`:858-862`). Success reports a durability delta and percentage —
+> "Durability improved by N points. Current condition: N%" (`:1167-1170`) — never
+> the named condition states ("damaged" → "worn") shown below. Multi-word armour
+> names parse correctly here; #2521 fixed that by reading the modifier from the
+> end of the phrase (`parse_repair_args`, `:887-930`), and that parser is the
+> one piece of armour code with real test coverage
+> (`world/tests/test_repair_reads_the_whole_name.py`).
 ```
 > armor repair plate carrier
 You begin field-repairing the plate carrier, restoring some of its protective capability.
@@ -472,6 +569,23 @@ The plate carrier's condition improves from 'damaged' to 'worn'.
 ```
 
 ### Enhanced Look Command
+
+> **⚠ 2026-09-11 re-verify: the carrier example is right; the plate example
+> cannot render.** `look <carrier>` works as shown — base protection, per-slot
+> configuration, totals (`Item._get_plate_carrier_details`,
+> `typeclasses/items.py:599-630`), though it labels weight **kg** (`:544`,
+> `:628`) while `slot list` labels the same attribute **lbs**
+> (`commands/CmdArmor.py:1419-1421`). `look <plate>` never prints the Plate Type
+> / Threat Level / Slot Compatibility lines: they come from `_get_plate_details`
+> (`items.py:632-645`), reached only through `elif hasattr(self, 'plate_type')`
+> (`:553`), and **`plate_type` is not declared in the AttributeProperty family**
+> (`:107-134`) nor written by any prototype — so `hasattr` is always False and
+> the branch is dead code. A plate shows Protection Rating, Armor Type, Weight
+> and Condition only. This is the same dead-read shape as the
+> `weakness_exploited` key removed in #2473, and it needs the same resolution:
+> delete the branch, or declare `plate_type` and populate the four plate
+> prototypes. Already recorded twice in the code-review ledger (#2477) as
+> read-but-unfiled.
 
 #### `look <item>` - Shows Armor Information
 ```
@@ -529,6 +643,23 @@ You carefully remove the medium ballistic plate from the plate carrier.
 ```
 
 #### `slot list [carrier]` - List Installed Plates
+
+> **⚠ 2026-09-11 re-verify: this invocation does not parse, and the output is
+> not what ships.** `slot list plate carrier` is three tokens; `CmdSlot.func`
+> matches `list` only in its one- and two-token forms
+> (`commands/CmdArmor.py:1307-1315`), so three tokens fall through to
+> `_parse_install_command` and bind plate=`"list"`, carrier=`"plate"`,
+> slot=`"carrier"`. Working today: `slot list` (all carriers) and
+> `slot <single-token-carrier>` — see the parser defect noted under
+> `slot <plate> [in] <carrier>` above; **the spec is right about the syntax, so
+> fix the parser rather than these examples.** When `_show_carrier_details` is
+> reached (`:1385-1430`) it prints `=== <Carrier Key> ===`, a Carrier Statistics
+> block (Base / Plate / Total Protection as `N/10`, then Carrier / Plate / Total
+> Weight in **lbs**) and a Plate Configuration list with a condition colour per
+> slot. There is no "Total Protection Bonus" line and no kg anywhere in that
+> output. Note also that the Total Protection it prints is a plain sum, which the
+> damage model never computes — mitigation applies each plate as its own capped
+> layer.
 ```
 > slot list plate carrier
 === PLATE CARRIER CONFIGURATION ===
@@ -585,6 +716,15 @@ Total Protection Bonus: +12 armor rating
 ### Balancing Mechanisms
 
 1. **Weight Penalties**: Heavy armor reduces mobility and combat effectiveness
+   - **⚠ 2026-09-11 re-verify: unbuilt (#1509).** Nothing reads item weight for
+     any penalty, so the Mobility column of the Trade-off Matrix above is design
+     intent rather than shipped behaviour, and "Resource Limits" below rests on
+     cost alone. A reinforced plate weighs 8.5 (`world/prototypes.py:1466`) and
+     currently costs its wearer nothing. The one live protection-versus-mobility
+     trade-off is the carrier's `rolled` style, which drops `abdomen` coverage
+     (`:1382-1387`) — and therefore both side plates with it. Per the
+     balance-pass rule, nothing should be tuned against these thresholds until
+     the system exists.
 2. **Cost Barriers**: Better armor requires significant resource investment
 3. **Tactical Counters**: High-Intellect fighters can exploit armor gaps
 4. **Maintenance**: Armor degrades and requires repair/replacement
@@ -609,6 +749,13 @@ Total Protection Bonus: +12 armor rating
 - `_get_total_armor_rating()` - Calculates armor + plates
 - `_get_armor_effectiveness()` - Armor type vs damage type
 - Weight calculation and encumbrance effects
+  - **⚠ 2026-09-11 re-verify: not present.** `typeclasses/armor_mixin.py`
+    contains no occurrence of "weight" or "encumbr" in any of its 689 lines.
+    See the correction block at the top of this spec and issue #1509. The file's
+    real fifth responsibility, undocumented here, is combat-driven severance and
+    decapitation: `_bone_freshly_destroyed` (`:140`), `_maybe_sever_from_damage`
+    (`:174`), `_broadcast_decapitation_message` (`:258`), plus the `death_blow`
+    record `take_damage` persists for the corpse pipeline (`:120-132`, #2778).
 
 **`world/medical/utils.py`**:
 - `select_hit_location()` - Tactical targeting system
@@ -705,7 +852,15 @@ layer_damage_reduction = round(remaining_damage * final_reduction_percent)
 
 1. **Armor Degradation**: Realistic wear and damage over time
 2. **Environmental Effects**: Weather, temperature affecting armor
-3. **Specialized Plates**: Trauma plates, side protection, neck guards  
+3. **Specialized Plates**: Trauma plates, side protection, neck guards
+   - **⚠ 2026-09-11 re-verify: two of these three already ship.** Trauma plates:
+     `CERAMIC_PLATES`, key `"trauma plate"`, rating 10 with deliberately low
+     durability so it shatters after absorbing damage
+     (`world/prototypes.py:1484-1509`). Side protection: the carrier's
+     `left_side` / `right_side` slots, mapped to the abdomen at half rating
+     (`:1372-1379`, `typeclasses/armor_mixin.py:556-559`). Only **neck guards**
+     remain unbuilt — four prototypes cover `neck` (a rebreather, a collar, a
+     necktie, a scarf) and none carries an armour rating.  
 4. **Advanced Materials**: Exotic armor types with unique properties
 5. **Armor Crafting**: Player-created armor with custom properties
 
@@ -745,6 +900,41 @@ The Modular Armor System provides a comprehensive tactical combat experience tha
 The integration with existing systems ensures compatibility while adding significant new gameplay dimensions. The modular design allows for future expansion and customization while maintaining balance through realistic trade-offs and resource management.
 
 **Code Quality**: The implementation includes performance optimizations (coverage caching), safety features (null checks), mathematical accuracy improvements (proper rounding), and robust error handling. All code has undergone thorough review and testing.
+
+> **⚠ 2026-09-11 re-verify: the optimisations are real; "thorough testing" is not
+> — though the gap is narrower than a first pass suggests.** Coverage caching
+> (`typeclasses/armor_mixin.py:341-359`), the deleted-mid-combat null check
+> (`:415-417`) and `round()` over `int()` (`:439`) all verified present. The
+> "Improved Exception Handling" snippet above is the one that reads backwards: it
+> shows `except Exception:` while its comment claims narrowing, and the shipped
+> line is narrower than either — `except (ImportError, AttributeError):`
+> (`world/medical/utils.py:272`).
+>
+> Armour tests exist in **four** files, and none of them reaches the parts this
+> re-verify found wrong:
+>
+> - `world/tests/test_repair_reads_the_whole_name.py` — ~15 tests pinning
+>   `parse_repair_args` against the shipped multi-word names (#2521). The
+>   best-covered armour code in the repo.
+> - `world/tests/test_the_vestigial_sweep.py` — `TestArmourStillReduces`
+>   (`:98-129`) calls `_calculate_armor_damage_reduction` directly: armour
+>   reduces, never below zero, an uncovered location is untouched. Its vest uses
+>   `armor_type = "ballistic"`, which is not in the matrix, so it exercises the
+>   `generic` fallback and asserts no specific number.
+> - `world/tests/test_reads_reach_their_data.py` — the `plate_slot_coverage`
+>   AttributeProperty fix (#2581).
+> - `world/tests/test_armor_rendering.py` — five per-observer *broadcast* tests
+>   (`TestArmorPerObserverRendering`, `:128-290`). Two of them
+>   (`test_remove_plate_broadcast`, `test_swap_plates_broadcast`) drive
+>   `CmdSlot._remove_plate` / `_swap_plates`, which **no command dispatch can
+>   reach** — `CmdSlot.func` (`commands/CmdArmor.py:1300-1318`) routes only to
+>   `_list_plate_carriers`, `_show_carrier_details` and
+>   `_parse_install_command`, so those two tests cover dead player-facing code.
+>
+> Untested: the effectiveness matrix values, multi-layer stacking and plate
+> expansion, the slot→location mapping and the abdomen halving, degradation, and
+> the `slot` / `unslot` parsers — which is why the multi-word parsing defect
+> recorded above survived.
 
 This system transforms combat from simple damage exchanges into tactical engagements where equipment choices, character builds, and intelligent play all contribute to success.
 
