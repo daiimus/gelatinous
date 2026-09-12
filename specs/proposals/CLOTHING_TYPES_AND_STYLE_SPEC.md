@@ -3,7 +3,21 @@
 > **Status:** 📋 **PROPOSAL — §4 style vocabulary RULED 2026-08-20**
 > (seven keywords, revealing derived, style-states as a tell, brands
 > carrying style). Still wanting the red pen: the type vocabulary
-> (§2) and the layer reconciliation (§3). Builds on the shipped
+> (§2) and the layer reconciliation (§3).
+>
+> **⚠ STATUS STALE — checked against code 2026-09-11. §2, §3 and §4 have
+> all SHIPPED.** §2 is `world/style.py` `RUNGS` + `derive_rung`, read
+> through the `Item.layer` property in `typeclasses/items.py` (#2126,
+> closed). §3 was settled as option (a) and executed by
+> `scripts/builds/090_one_ladder.py` (#2112, closed). §4/§4.3 are
+> `world/style.py` `STYLES`/`BRAND_STYLES`/`derive_style`/`affinity` and
+> `PRESENTATIONS`/`derive_presentation`, rolled onto every arrival in
+> `world/souls/population.py` and authored onto the cast by
+> `scripts/builds/095_colony_style.py` (#2122, closed). Of §8's phases,
+> P1 and P2 are shipped and P3 is largely shipped; only P4 (weather) is
+> untouched. §9 is done (#2110, closed). Per-section notes below.
+>
+> Builds on the shipped
 > clothing system (coverage/layer/worn_desc, `is_wearable`), the
 > Wardrobe need (#2104/#2106), blueprint wardrobes, and the identity
 > system. Traits (NPC_TRAITS_SPEC) and designation
@@ -29,10 +43,27 @@ can have coherent taste without anyone hand-writing their wardrobe.
 
 ## 2. Type keywords → layer (OWNER RED PEN)
 
+> **SHIPPED — note added 2026-09-11.** This table is live as `RUNGS` in
+> `world/style.py`, reached through `derive_rung` and the `Item.layer`
+> property in `typeclasses/items.py` (#2126). The shipped ladder
+> differs from the table below in four places settled after this was
+> written: `goggles` sits on rung 5 (not 2), `slicker` on rung 3 (not
+> 4), `poncho` on rung 4 (not 3), and `watch`/`chrono` (#2433) and
+> `scrubs` (#3088) were moved down to rung 1. The shipped table also
+> carries words this one never listed — `top`, `suit`, `wig`,
+> `carrier`, `lenses`, `rebreather`.
+
 A garment's name is scanned for the first matching type keyword; that
 type fixes its layer and supplies default coverage when the prototype
 doesn't override. Names are checked longest-first so "trenchcoat"
-beats "coat" and "labcoat" beats "coat".
+beats "coat" and "labcoat" beats "coat". (Note 2026-09-11: in the
+shipped `derive_rung` the `labcoat` half holds, but the `trenchcoat`
+half does not. The matcher anchors a word boundary at **both** ends
+(#2478/#2657), so a closed compound matches nothing and `trenchcoat`
+and `longcoat` both fall to the default base rung. Neither word is in
+the shipped `RUNGS` table, although `world/style.py`'s own docstring
+says a compound the table should know belongs in the table — so this
+is a gap in the code, not a change of intent here.)
 
 | Layer | Register | Type keywords |
 |---|---|---|
@@ -53,6 +84,19 @@ Two rules make the convention enforceable rather than advisory:
    unnamed scrap of cloth can never accidentally outrank a coat.
 
 ## 3. The layer reconciliation (the real integration cost)
+
+> **DONE — note added 2026-09-11. The owner picked (a) and the
+> migration ran.** `scripts/builds/090_one_ladder.py` (#2112, closed)
+> moved every spawned garment onto the settled ladder, and #2741/#2464
+> later dragged the prototypes after it. **The "what's actually there
+> today" table below is now a pre-migration snapshot:** boots are rung
+> 5 (not 3), the plate carrier and the hi-vis vest are rung 2 (not 4),
+> the tox-sealed slicker is rung 3 (not 4), and rung 0 is no longer
+> armour alone — `CODER_SOCKS` sits there. What did *not* happen is the
+> second half of the recommendation: the plates stayed on `layer` 0
+> instead of moving to their own scale, on build 090's reasoning that
+> they were never on the ladder at all (they live in a carrier's
+> `plate_slots`). The three options below are spent.
 
 The shipped layer scale is **already 0–5 but means something else**,
 and this is the one part of the spec that costs migration work:
@@ -184,6 +228,13 @@ dressing, and it gives PCs a habit worth mirroring.
   nudged by **traits** (Rivet-Tight prefers `salvage`, Open-Valve
   `shine`). Personality and past pick your clothes, which is exactly
   how it works for people.
+
+  *(2026-09-11: shipped, but rolled off **role**, not department —
+  `world/style.py` `ROLE_STYLES` + `roll_style`, called at arrival in
+  `world/souls/population.py`. `world/manifest.py` now carries
+  `DEPARTMENTS` and `department_of`, so the department signal this
+  bullet describes exists and is simply not wired to style yet; the
+  trait nudge is not wired either.)*
 - **Players**: unset by default; a future `style` preference could
   feed shop filtering, but nothing is ever forced.
 
@@ -224,6 +275,16 @@ emptiest slot.
 
 ## 8. Phasing
 
+> **Progress note, 2026-09-11.** P1 ✅ shipped — `world/style.py`
+> `RUNGS`/`derive_rung` plus `Item.layer` (#2126), with the §3
+> migration run as build 090 (#2112). P2 ✅ shipped — `db.style` and
+> `db.presents` derived on garments and rolled onto arrivals (#2122),
+> the cast authored by build 095. P3 🔶 largely shipped — taste drives
+> arrival dressing (`population.outfit_for`) and buying
+> (`actions._proto_affinity`), but the wardrobe planner's own `wear`
+> step in `world/souls/jobs.py` still ranks candidates by bare coverage
+> then rung, with no style affinity. P4 📋 not built.
+
 - **P1 — types**: the keyword→layer table + derivation helper, and
   the §3 migration the owner picks. No behavior change beyond correct
   layering.
@@ -235,6 +296,13 @@ emptiest slot.
   weather layer wants it.
 
 ## 9. Immediate, unrelated to phasing
+
+> **✅ DONE — note added 2026-09-11 (#2110, closed).** `vendor_lin`'s
+> blueprint in `world/npcs/blueprints.py` now carries a full wardrobe
+> (faded indigo work shirt, dark cotton trousers, the canvas apron and
+> more), and `scripts/builds/089_dress_lin.py` put it on the woman
+> already standing at the cart and cleared her wardrobe errand. The
+> paragraph below describes the state before that build.
 
 Auntie Lin's blueprint dresses her in a canvas apron and nothing else,
 so she reads as undressed to the Wardrobe need and is currently
