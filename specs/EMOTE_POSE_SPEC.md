@@ -1,6 +1,6 @@
 # Emote, Pose & Communication System Specification
 
-> **Status:** ✅ **SHIPPED** — all five phases. Verified 2026-08-02.
+> **Status:** ✅ **SHIPPED** — all five phases. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 26 claim(s) false, annotated inline**.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - Spec is behind code: `CmdTo` (directed speech, `CmdCommunication.py:71`) ships and is undocumented here.
@@ -82,6 +82,8 @@ class CmdDotPose(Command):
 | `"Hey," I .say, .waving my hand. "Over here!"` | "Hey," you say, waving your hand. "Over here!" | "Hey," Jorge says, waving his hand. "Over here!" | "Hey," a lanky man says, waving his hand. "Over here!" |
 | `.fold my arms and .lean against the wall.` | You fold your arms and lean against the wall. | Jorge folds his arms and leans against the wall. | A lanky man folds his arms and leans against the wall. |
 
+> **2026-09-11 — two speech-first rows above render a capital article, not a lowercase one.** The third and fifth rows show `"Get down!" a lanky man shouts` and `"Hey," a lanky man says`; the shipped observer branch calls `capitalize_first` on the first-mention display name unconditionally (`world/emote.py:892-896`, comment: "Observer: always capitalize_first on first mention"), so both read **"A lanky man"**. §Capitalization and Punctuation below already states this rule correctly ("the article is also capitalized: `"Get down!" A lanky man shouts.`"), and `CmdDotPose`'s own help text (`commands/CmdCommunication.py:521-522`) shows the capitalized form — it is this table that is stale, not the rule.
+
 ### Traditional Emote (`emote`)
 
 Third-person emoting with identity-aware character references. The player writes in third person; the system prepends the actor's per-observer display name.
@@ -151,6 +153,14 @@ Directed speech with per-observer attribution for both speaker and target. Three
 ```
 whisper <target> = <message>
 ```
+
+> **2026-09-11 — this is the LEGACY form; it is still accepted.** The canonical syntax shipped in `commands/CmdCommunication.py:310-311` is:
+>
+> ```
+> whisper "<message>" to <person>
+> ```
+>
+> `CmdWhisper.parse` (`:325-337`) matches the quoted-to form first and falls back to `=`; the usage error (`:344`) advertises only the quoted-to form. Owner ruling of 2026-07-03, recorded at `specs/proposals/STEALTH_AND_DETECTION_SPEC.md:324-326`: quoted-to is the syntax, and `whisper <person> = <message>` is a legacy alias that stays accepted — not a deprecation.
 
 **Command class:**
 
@@ -249,7 +259,7 @@ First-person pronouns outside of quoted speech are detected and transformed:
 Text enclosed in double quotes (`"..."`) is treated as a speech block:
 
 - **Never scanned** for pronouns, verb markers, or character references
-- **Preserved verbatim** in the output for the speaker and for observers who share the language
+- **Preserved verbatim** in the output for the speaker and for observers who share the language *(2026-09-11: and who can **hear** the speaker. `world/emote.py:151-154` redacts the quoted words to `"..."` for any observer other than the speaker who fails `can_hear` — CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4, #589. The speaker always hears their own words. The same correction applies to the `SpeechToken` rows of the §Actor Self-View and §Observer View tables and to §Default Behavior.)*
 - **Tokenized as distinct SPEECH tokens** with speaker metadata, enabling future language system processing (see Speech Token System)
 
 Unmatched quotes (opening `"` with no closing `"`) treat the rest of the input as speech. Nested quotes are not supported — the parser matches the first `"` to the next `"`.
@@ -425,6 +435,11 @@ def render_dot_pose(token_stream, actor, location, exclude=None):
         observer.msg(rendered)
 ```
 
+> **2026-09-11 — the signature above is still accurate; the loop body is superseded in three ways** (`world/emote.py:1029-1065`).
+> 1. **`_perceivers(location, exclude_set)` replaced `contents_get` + the `hasattr` check.** `if not hasattr(observer, "msg")` excludes *nothing* — every typeclassed Evennia object has `.msg` — so the guard above is inert. #2788 replaced it with a character duck-type filter (`world/emote.py:88 _perceivers` / `:114 _perceives`) after measuring that 1,961 of 2,037 objects standing in live rooms are not characters. **Do not reinstate the guard above; it is the bug, not the fix.**
+> 2. **The msg is typed and attributed:** `observer.msg(text=rendered, type="pose", from_obj=actor, **payload)`.
+> 3. **A structured speech payload rides along.** `_extract_speech` (`:1011`) pulls any embedded quote and the ids of referenced characters; `world/speech.py:speech_payload` attaches `speech` (hearing-gated) and `addressed`, so an NPC can tell "posed AT me" from "posed in the room". A wordless pose still carries `addressed` via `payload.setdefault` (`:1063`); `render_emote` carries the same fallback (`:1214`, #2462 item 4).
+
 ### Actor Self-View
 
 When `observer == actor`:
@@ -543,6 +558,11 @@ The first character of the final rendered string is capitalized. Specific cases:
 
 When a display name (sdesc with article) appears at the start of a clause after speech, the article is also capitalized: `"Get down!" A lanky man shouts.`
 
+> **2026-09-11 — three corrections to the capitalization and punctuation rules in this section.**
+> 1. **The terminal-punctuation set also includes `'`.** `world/emote.py:1000` tests `stripped[-1] not in ".!?\"')"` — the single quote is terminal too, which the list below omits.
+> 2. **A second, undocumented capitalizer ships.** After the first-character rule above, `world/emote.py:993-999` capitalizes the letter following any *bare* `[.!?]` + whitespace, so a multi-beat pose reads "…sets a glass down. He lets his eyes linger." Punctuation that *closes a quote* is deliberately excluded, so `"Get down!" you shout` stays lowercase.
+> 3. **Both rules are dot-pose only.** `render_emote_for_observer` (`world/emote.py:1132-1179`) applies neither, so `emote leans back` broadcasts "Jorge leans back" with no period. That is consistent with §Traditional Emote's "the player is responsible for their own grammar", but §Edge Cases → Auto-Punctuation Details states it as a general emote rule. See owner question.
+
 **Auto-punctuation:**
 
 If the rendered emote doesn't end with terminal punctuation (`.`, `!`, `?`, `"`, or `)`), a period is appended automatically.
@@ -582,7 +602,7 @@ When a player types a character name in an emote, the parser resolves it to a ga
 
 1. **Assigned names** — Check the actor's recognition memory for any room occupant whose assigned name matches
 2. **Sdescs** — Match against visible characters' sdescs as perceived by the actor (partial, case-insensitive)
-3. **Real keys** — Fall through to `.key` matching
+3. **Real keys** — Fall through to `.key` matching *(2026-09-11: Builder+ only — `world/emote.py:426-442` gates this candidate on `actor.locks.check_lockstring(actor, "perm(Builder)")`. See the note in §Character References.)*
 4. **Ordinals** — `"2nd tall man"` uses the existing ordinal system
 
 The resolved game object is stored in a `CharRefToken`. At render time, each observer sees that character via `get_display_name(observer)` — which may be completely different from what the actor typed.
@@ -675,6 +695,13 @@ def render_say(actor, message, location):
         observer.msg(f'{capitalize_first(speaker_name)} says, "{message}"')
 ```
 
+> **2026-09-11 — `render_say` does not exist; `say` rides the shared speech backbone.** `CmdSay.func` sends the actor's own line (`commands/CmdCommunication.py:80`) and then calls `broadcast_speech(caller, speech, location)` (`:81`) — `world/speech.py:116`, the one room loop `say`, `to` and `whisper` all share (#656). The three-audience *shape* above is still right; the mechanism is not:
+> - **Attribution is not `get_display_name`.** `world/speech.py:85-87` uses `resolve_speaker_attribution(speaker, observer)` (`world/voice.py`): sight and the voice channel decide *who*, so a speaker hidden from the observer is attributed by VOICE, and a remembered voice can name someone the observer cannot see (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4.5).
+> - **Hearing gates the content.** A deaf-but-watching observer gets "X says something you can't make out." (`world/speech.py:107-113`); an observer who is both deaf and blind is skipped entirely (`:130-131`).
+> - **Voice flavour may be appended** for observers who can see the speaker (`world/speech.py:42-54`, `:95-105`) — a garbled voice always renders, otherwise a low-frequency sprinkle rolled once per utterance so every observer reads it consistently.
+>
+> `say` also breaks stealth: `break_stealth(caller)` at `commands/CmdCommunication.py:75`, placed *after* the argument and location guards so a refused command no longer blows your cover for an action that never happened (#2530).
+
 Speech content passes through unchanged for `say`. The only transformation is per-observer speaker attribution.
 
 ### Death Filter Compatibility
@@ -709,7 +736,7 @@ The whisper target is resolved using the identity spec's targeting priority:
 
 1. Assigned names from the actor's recognition memory
 2. Sdescs of visible room occupants
-3. Character `.key` values
+3. Character `.key` values *(2026-09-11: Builder+ only. `Character.search` (`typeclasses/characters.py:1745`) bypasses the identity pipeline for Builder+ and otherwise filters default search results through `world/search.py:406 is_identity_match`, which for an identity-enabled target allows an assigned name or an sdesc and nothing else — so an ordinary player cannot whisper to a character by real key. Same gate as the emote path, by a different door; see the note in §Character References.)*
 4. Ordinals for ambiguous matches
 
 If no target is found, the actor receives an error message. If multiple targets match without an ordinal, the actor is prompted to clarify.
@@ -859,6 +886,8 @@ No explicit length limit imposed by the emote system. Server-side limits (Evenni
 - `capitalize_first(text)` — capitalization helper
 
 **Testing:** Pure unit tests, no Evennia dependency required. Run via `evennia test world.grammar` or standalone `python3 -m pytest`.
+
+> **2026-09-11 — `evennia test world.grammar` collects nothing.** `world/grammar.py` contains no `TestCase`; the suite lives in `world/tests/test_grammar.py` (`TestVerbConjugation:35`, `TestArticles:159`, `TestIsPluraliaTantum:183`, `TestWithArticle:224`, `TestPronounTransformation:271`, `TestGenderMap:393`, `TestDefaultSdescKeywords:420`, `TestPossessive:443`, `TestCapitalizeFirst:500`, `TestSingularizeNoun:553`, `TestFlexNoun:579`, `TestFlexVerb:614`), plus `world/tests/test_grammar_colour_safety.py`. Run `evennia test world.tests.test_grammar`. The command-level suites named in §Testing Strategy exist too, under their shipped names: `world/tests/test_communication.py` (`TestCmdSay:401`, `TestCmdTo:521`, `TestCmdWhisper:637`, `TestCmdEmote:792`, `TestCmdDotPose:1025`), alongside `test_emote.py`, `test_emote_templates.py`, `test_pose_perspective.py`, `test_your_own_pose_reads_correctly.py`, `test_pose_reaches_only_perceivers.py`, `test_poses_and_pronouns_follow_the_mask.py`, `test_a_social_emote_reaches_the_one_it_names.py`, `test_a_refused_social_keeps_your_cover.py`, `test_speech_shortcuts_and_stealth.py` and `test_speech_and_sessions_do_not_leak_hidden.py`.
 
 **Depends on:** Nothing. Can be implemented immediately, before the identity system.
 
@@ -1049,6 +1078,10 @@ Each test verifies all four observers receive a unique, correct rendering.
 ## Appendix A: Verb Conjugation Rules Reference
 
 ### Irregular Table
+
+> **2026-09-11 — this appendix is a pre-extraction leftover; `GRAMMAR_ENGINE_SPEC.md` is canonical.** §Grammar Engine above delegated conjugation to that document and kept only Appendix B here "for convenient reference" — Appendix A was not trimmed with it. Use `specs/GRAMMAR_ENGINE_SPEC.md` §Verb Conjugation, which already documents what the table below omits: the irregular table is keyed by *any* recognised form (is/are/be, was/were, has/have, does/do — `world/grammar.py:66-81`, derived from `_IRREGULAR_VERB_FORMS` so the two views cannot drift), modals are returned unchanged (`:86-90`, 12 entries), and the four rules below are reached only after an already-conjugated form is normalised through `inflect.plural_verb` (`:201`) and the irregular table is **re-consulted**, because a form can normalise *into* a table key (`am` → `are` → "ares", #2642).
+>
+> One shipped invariant class is documented in **neither** spec: `IRREGULAR_PAST` (`world/grammar.py:113-137`, ~110 forms — went, said, took, stood…), which short-circuits ahead of the rules because English past tense is invariant across person. Added by #2642 after `went`→"wents" and `said`→"saids" shipped to the room. Its exclusion rule matters more than the list: a form belongs there only if it is **not** also a present-tense verb (`set`, `put`, `read`, `saw`, `lay`, `ground` are deliberately absent). **Extend the tables in `world/grammar.py` and record it in `GRAMMAR_ENGINE_SPEC.md`, not here** — the instruction below to "add it to the irregular table" points at a structure this document no longer owns.
 
 | Base | Third Person |
 |---|---|
