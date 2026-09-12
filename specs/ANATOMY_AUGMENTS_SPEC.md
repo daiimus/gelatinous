@@ -1,6 +1,6 @@
 # Anatomy Augments Spec — Per-Character Anatomy
 
-> **Status:** ✅ **SHIPPED** — Phases 1-2 and post-Phase-2 standards shipped; Phase 3 parked. Verified 2026-08-02.
+> **Status:** ✅ **SHIPPED** — Phases 1-2 and post-Phase-2 standards shipped; Phase 3 parked. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 6 claim(s) false, annotated inline**.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The previous banner read "approved design, implementation phased", which §5 of this same document already contradicted.
@@ -8,6 +8,15 @@
 **Status:** approved design, implementation phased.  The discussion
 that settled every decision below happened 2026-06-11.  First
 consumer: the cybernetic tail.
+
+> **Note 2026-09-11 (re-verification):** this body-level status line
+> is the ORIGINAL 2026-06-11 header, kept for its date and
+> provenance — it is no longer the document's status.  Phases 1-2 and
+> the post-Phase-2 standards shipped (§5); the banner at the top of
+> this file is authoritative.  Worth recording because the banner's
+> own correction note attributes the wording "approved design,
+> implementation phased" to the *previous banner* alone — it also sat
+> here, in the body, and was missed when the banner was corrected.
 
 ## 0 · The principle: the body is the truth
 
@@ -45,6 +54,22 @@ revision:
    capacity down, never boost past 1.0 — and `moving`/`manipulation`
    have no consumers yet.  Capacity extension waits for consumers
    (same parking decision as the fracture condition).
+
+   > **Note 2026-09-11 (re-verification):** partly superseded by the
+   > replacement-chassis standard that shipped on this substrate.
+   > `moving` / `manipulation` now HAVE consumers
+   > (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC`, shipped; see
+   > `MedicalState.calculate_capacity_scoped`), and replacement
+   > augments already contribute to them — CYBER_ARM and CYBER_LEG
+   > declare their organs under the canonical species names
+   > (`{side}_humerus`, `{side}_femur`, …), which are exactly the
+   > names the species capacity tables list, so chrome limb HP feeds
+   > `calculate_body_capacity` directly.  What remains unbuilt is what
+   > this decision was really protecting: capacity **extension** for
+   > anatomy the species table never declared.  The capacity organ
+   > list is still species-static, so the cyber tail contributes
+   > nothing — see `specs/roadmaps/MEDICAL_SUBSTRATE_READINESS.md`
+   > ("Capacity-extension note"), which owns that gap.
 4. **Augment data lives on the item.**  The item carries its own
    organ spec(s), anchor container, longdesc surface, and species
    list.  No new DB entities, no registry until a second augment
@@ -57,6 +82,21 @@ revision:
    another character rides the same third-party-surgery door that
    already exists; the future trust/consent system gates it there.
    Nothing in this spec may assume surgeon == patient.
+
+   > **Note 2026-09-11 (re-verification):** no longer "future" —
+   > trust/consent shipped in full 2026-07-03
+   > (`TRUST_AND_CONSENT_SPEC`, ✅ SHIPPED & LIVE) and the door this
+   > decision names is now gated: the typed surgical verbs call
+   > `check_consent(caller, target, "heal")` before cutting
+   > (`commands/CmdSurgical.py`), so installing hardware in a
+   > conscious character who can contest requires their trust, exactly
+   > as intended.  One half is still open by deferral, not oversight:
+   > the `operate` charting door has no consent gate — `CmdOperate`'s
+   > own module docstring lists "Trust/consent integration for
+   > conscious targets" under "Deferred to follow-on PRs", and its
+   > help text still tells players the system is "not yet
+   > implemented".  Closing that is a code change (and a help-text
+   > fix), not a spec change.
 
 ## 2 · Current state: the static reads
 
@@ -76,6 +116,26 @@ installed tail:
 `MedicalState.from_dict` already *overlays* persisted organs onto
 the species set, and severance already subtracts locations
 per-character — the substrate is half-built; this spec finishes it.
+
+> **Note 2026-09-11 (re-verification):** the table above is the
+> **pre-implementation census** (2026-06-11), kept for its reasoning.
+> Six of its seven "Per-character today?" answers are now **yes**:
+> §3.2 moved location→organ resolution onto the body
+> (`world/medical/utils.py`, rat-tail fix pinned in
+> `test_anatomy_substrate.py`), §3.1 fixed the organ-spec round trip
+> (`Organ.to_dict`/`from_dict`), §3.3 gave `CmdInstall` a
+> slot-*creating* augment branch (`commands/CmdSurgical.py`), §3.5 the
+> severable overlay (`MedicalState.location_severable_by_organ`), §3.4
+> the grasping overlay (`Character.grasping_containers`), and §3.6
+> renders longdesc keys beyond the species order
+> (`typeclasses/appearance_mixin.py`).  Two static reads survive, both
+> on the **corpse** side and both still open: corpse severance reads
+> only `get_species_severable_containers` (`commands/forensics.py`,
+> and `CmdOperate._list_severable_containers` finds no `medical_state`
+> on a corpse), and the corpse longdesc renderer iterates only
+> `ANATOMICAL_DISPLAY_ORDER` (`typeclasses/corpse.py`) — so an
+> installed tail can be severed from a living body but not from the
+> corpse, and never appears in the corpse's description at all.
 
 ## 3 · Mechanics
 
@@ -163,12 +223,39 @@ the species display order after their `display_after` hint (or at
 the end of their region).  Wound rendering follows
 `display_location` as it already does.
 
+> **Note 2026-09-11 (re-verification):** shipped behaviour is
+> narrower than this sentence.  `typeclasses/appearance_mixin.py`
+> builds `render_order = ANATOMICAL_DISPLAY_ORDER + [keys not in
+> it]`, so an augment location renders after the **whole** species
+> order — the tail, whose hint is `display_after: "back"`, renders
+> after the feet, not after the back line.  `display_after` is
+> honoured only at install time, where `_resolve_install_augment`
+> inserts the key into `character.longdesc` at that position
+> (`world/medical/procedures.py`); that ordering then survives only
+> among other extra keys.  The Phase 2 commit records the choice
+> explicitly ("longdesc keys beyond the species display order render
+> after it").  Honouring the hint at render is a code change, not a
+> spec change.  Note also that only the LIVING renderer and the
+> Appendage renderer append extras — `typeclasses/corpse.py` iterates
+> the species order alone, so a corpse never renders an augment
+> location.
+
 **Chrome rendering** (shipped): a body location whose organs are
 `inorganic` renders in a light steel grey (`CHROME_DEFAULT_COLOR`)
 instead of the wearer's skintone — chrome is not flesh.  Limb
 longdesc is side-aware via the `{side}` token (resolved at install).
 A deployed integrated weapon expands the limb's longdesc and
 replaces the consumed hand's — see `AUGMENT_ABILITIES_SPEC` §9.
+
+> **Correction 2026-09-11 (re-verification):** "light steel grey"
+> above is stale, and was already stale on this spec's 2026-08-02
+> verification date.  #545 ("Chrome renders in the black-leather
+> tone, not light grey", 2026-06-13) replaced
+> `CHROME_DEFAULT_COLOR = "|444"` with `"|=l"` — the DARK steel grey
+> that matches the clothing palette's black — in
+> `world/combat/constants.py`.  `AUGMENT_ABILITIES_SPEC` §9 and
+> `LONGDESC_SYSTEM_SPEC` already carry the corrected wording; this
+> section did not.
 
 ### 3.7 · The body is the single truth (the anatomy-truth standard)
 
@@ -267,6 +354,20 @@ variants are new prototype text over the same attrs.
   capacity consumers), synth compatibility (item-data edit),
   biotech theming, implant-specific organ-bound conditions
   ("cyberware-era gold"), new-anatomy movement/emote flavor.
+
+  > **Note 2026-09-11 (re-verification):** the named blocker is gone
+  > but the work is not done, so the parking still holds — for a
+  > different reason.  Capacity consumers shipped
+  > (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC`), and replacement
+  > augments already contribute through canonical organ names (see
+  > the note on §1 decision 3).  Still unbuilt: capacity
+  > **extension** — added anatomy such as the tail contributing to,
+  > or introducing, a capacity the species table never declared.
+  > `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` records this as an
+  > un-catalogued substrate concern to fold into movement-policing /
+  > senses / equipment-handling when those are scoped, and
+  > `MEDICAL_SUBSTRATE_READINESS.md` owns the row.  Whether Phase 3
+  > should now be re-scoped to that narrower item is an owner call.
 
 ## 6 · Test contract
 
