@@ -1,6 +1,6 @@
 # Discourse Forum Integration
 
-> **Status:** ✅ **SHIPPED & LIVE** — SSO, the header iframe, the theme component and the colour scheme are all in production on forum.gel.monster. Verified 2026-08-02.
+> **Status:** ✅ **SHIPPED & LIVE** — SSO, the header iframe, the theme component and the colour scheme are all in production on forum.gel.monster. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 15 claim(s) false, annotated inline**.
 
 ## Complete Setup Guide for Gelatinous
 
@@ -156,6 +156,20 @@ Love (likes):             #e0a86f
 If the scheme you are replacing had a `tertiary-med-or-tertiary` override, set
 it too — otherwise the old accent bleeds through in a handful of places.
 
+> **Checked against the live scheme 2026-09-11** (Discourse colour scheme id
+> 21, "Domino's Gambit" — *not* "Gelatinous Dark"; see the note in 3.1).
+> Thirteen of the fourteen values above are exactly what production carries,
+> and the `tertiary-med-or-tertiary` override is indeed set, to `#e0a86f`.
+> The exception is **`primary-medium`, which is `#8f8d82` live, not
+> `#a9a49a`** — `#8f8d82` is the site's `--terminal-text-muted`
+> (`custom.css`, and `STYLING_SPEC.md` § Color Palette), so the live value is
+> the one that honours this section's own "matching the live site palette"
+> promise. `#a9a49a` and `#6b6f78` appear nowhere in `custom.css` or
+> `STYLING_SPEC.md`. `#a9a49a` is also what the tracked component declares at
+> `web/discourse-theme/about.json`, so that file carries the same stale value
+> — harmless in itself, since colour schemes do not travel with components,
+> but it means the repo does not record the palette that is actually serving.
+
 ### 3.3 Apply to Theme
 
 1. Go to **Admin** → **Customize** → **Themes**
@@ -171,6 +185,30 @@ it too — otherwise the old accent bleeds through in a handful of places.
 >
 > This palette is already dark, so put it in **both** slots unless you have
 > built a genuine light variant.
+>
+> **CORRECTION 2026-09-11 — do NOT fill the dark slot.** The advice above was
+> written to fix the 2026-08-02 stale-dark bug (a dark slot still pointing at
+> an *old* palette), and it went on to cause a worse one. Once the skin
+> easter egg shipped (2026-08-03/04), any browser carrying a `gel_skin` cookie
+> made Discourse emit two palette stylesheets — the skin under
+> `media=(prefers-color-scheme: light)` and the parent theme's default under
+> `media=(prefers-color-scheme: dark)` — so on a dark-mode OS the default
+> always won and `skins.gjs` then bailed as "already applied", because it
+> reads the light link and nothing else. Every browser with a resident skin
+> cookie (i.e. the signed-in daily one) was stuck while fresh cookie-less
+> windows worked, which is why it presented as "signed-in users can't change
+> themes but logged-out can". Reported and fixed live on **2026-08-10**
+> (#1898) by setting Foundation's `dark_color_scheme_id` back to empty,
+> restoring the single `media=all` stylesheet the skins component is designed
+> against.
+>
+> Every palette we ship is dark-styled, so the light slot alone serves
+> everyone from one stylesheet — which is exactly what
+> `web/discourse-theme/javascripts/discourse/api-initializers/skins.gjs` is
+> built against. Live state today: Foundation (theme -1) has
+> `color_scheme_id = 21` ("Domino's Gambit") and an empty
+> `dark_color_scheme_id`. **Empty is the only correct value** — see
+> `STYLING_SPEC.md` § Discourse Integration, which carries the full account.
 >
 > **Colour schemes do not travel with theme components.** Installing a component
 > that declares `color_schemes` in `about.json` does not create the scheme —
@@ -198,6 +236,35 @@ it too — otherwise the old accent bleeds through in a handful of places.
 ---
 
 ## Step 5: Add HTML
+
+> **Stale as of 2026-09-11 — production does not do this.** The live
+> component's `head_tag` (Discourse theme id 1, last modified 2026-07-30,
+> three days before this file was stamped verified) ships the `<iframe>`
+> itself, inline, rather than an empty container for JavaScript to fill:
+>
+> ```html
+> <div id="gel-django-header-container">
+>   <iframe
+>     id="gel-django-header-iframe"
+>     src="https://gel.monster/header-only/"
+>     frameborder="0"
+>     scrolling="no"
+>     style="width: 100%; height: 80px; border: none; display: block; background: #0b0e14;">
+>   </iframe>
+> </div>
+> <link rel="preconnect" href="https://gel.monster">
+> <link rel="dns-prefetch" href="https://gel.monster">
+> ```
+>
+> That is the field verbatim (only trailing whitespace removed). Two
+> consequences worth knowing: the `iframeCreated` machinery in Step 7 has no
+> counterpart in the live component, and "Correct domain in JavaScript
+> `iframe.src`" under Troubleshooting sends you looking in the wrong place —
+> the domain lives in this markup. Note also the inline
+> `background: #0b0e14`: the *container* was moved to `var(--secondary)` by
+> #1528 but this literal was not. It is only visible for the instant before
+> the iframe document paints its own skin ground, so it is cosmetic rather
+> than the seam bug #1528 fixed.
 
 1. Edit the "Django Header Integration" component
 2. Click **Edit HTML**
@@ -312,6 +379,32 @@ body {
 ---
 
 ## Step 7: Add JavaScript
+
+> **Stale as of 2026-09-11 — the listing below is not what production runs.**
+> The live forum-side file is
+> `discourse/api-initializers/theme-initializer.gjs` on the "Gelatinous"
+> component (Discourse theme id 1). It was last modified **2025-10-21** — two
+> days after this listing was written, and nine months before this document's
+> verification date — so it has not matched the listing at any point since.
+> Production differs in four ways:
+>
+> 1. It creates no iframe. The iframe is static markup in the component's
+>    `head_tag` (see Step 5), so `createHeaderIframe`, the `iframeCreated`
+>    flag and the `api.onPageChange` hook have no counterpart in production.
+> 2. On a `gel-header-height` message it sets **both** `iframe.style.height`
+>    and `container.style.height`, and nothing else — it never touches
+>    `body.paddingTop`, `#main-outlet` or `.sidebar-wrapper`. An open dropdown
+>    therefore overlays the page rather than pushing it down.
+> 3. Logout is an `addEventListener('hashchange', …)` redirecting to
+>    `https://gel.monster/logout`, not a one-shot hash read that clears
+>    `_forum_session` / `_t` and returns to the site root. (That URL 404s; the
+>    real route is `/auth/logout/`, `web/website/urls.py:58`. The mechanism is
+>    vestigial either way — nothing sets `#logout`, and the header's logout is
+>    a POST form, `_menu_iframe.html:176`.)
+> 4. It carries none of the skin protocol that now shares this channel.
+>
+> The authoritative description of the live listener is **"The header height
+> contract"** below, which this listing contradicts on point 2.
 
 1. Still editing the component
 2. Go to **Common** → **JavaScript**
@@ -504,6 +597,10 @@ game site showed the brand mark. They are uploads, not URLs — set them in
 2. Header should show hamburger menu
 3. Menu should collapse properly
 4. Same 80px height as desktop
+   <!-- 2026-09-11: not what ships. The live component's mobile media query is
+        60px, not 80px — see the Mobile Layout Issues note under
+        Troubleshooting, which also explains why this is an open question
+        rather than a one-line fix. -->
 
 ---
 
@@ -569,6 +666,25 @@ curl https://yourgame.com/header-only/
 1. Mobile CSS media query is present
 2. Both heights are 80px (not 60px)
 3. Django Bootstrap version matches (4.6.0)
+
+> **Neither of these describes production, measured 2026-09-11.**
+>
+> - The live component's mobile media query is **60px** for all five values
+>   (`body` padding, `#main-outlet` margin, container, iframe,
+>   `.sidebar-wrapper`). Its `scss` field was last edited 2026-08-04; this
+>   document has said 80px since the 2025-10-19 consolidation, and the two
+>   disagreed through all three later "make the spec match the code" passes
+>   (#1439, #1480, #1508) without anyone catching it. Note also that
+>   `theme-initializer.gjs` resizes only the container and the iframe —
+>   `body { padding-top }` and `#main-outlet { margin-top }` keep whatever the
+>   media query gave them, so if the mobile header does not rest at exactly
+>   60px the two disagree and content sits under it. Settling this needs a
+>   real device; do not "fix" either side from this doc.
+> - Bootstrap is **not** version-matched. `base.html` loads Bootstrap CSS
+>   4.6.0 with Bootstrap **JS 4.0.0** (maxcdn) and jQuery **3.2.1 slim**;
+>   `header_only.html` loads Bootstrap CSS 4.6.0 with Bootstrap **JS 4.6.2**
+>   (jsDelivr) and jQuery **3.6.0**. Only the CSS is synced, and both CDN sets
+>   are allowlisted deliberately in `web/utils/security_middleware.py:24-30`.
 4. No font-size overrides in header_only.html
 
 ---
