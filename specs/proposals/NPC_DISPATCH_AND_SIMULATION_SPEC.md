@@ -12,6 +12,15 @@
 > `CHATTER_LINES`, `FALLBACK_LINE`, `ANSWER_COOLDOWN`, the "civic voice
 > lane" and `[CONTEXT]` grounding describes deleted code.
 >
+> *(Correction 2026-09-12 — three of those six outlived the console.
+> `ANSWER_COOLDOWN` was EXTRACTED, not deleted: `AnsweringFixture` in
+> `typeclasses/items.py` still carries it at 4.0s (#2216). `FALLBACK_LINE`
+> survives renamed as `DESK_FALLBACK_LINES` in `world/director/dispatch.py`.
+> The civic LANE is live — `CIVIC_LLM_*` settings, `client.civic_enabled`,
+> `world/director/radio_report.py` — it was the console's half of the VOICE
+> that moved to the operator. `_clean_reply`, `CHATTER_LINES` and `[CONTEXT]`
+> are genuinely gone.)*
+>
 > | then | now |
 > |---|---|
 > | console classifies + speaks | `world/souls/salience.py` senses; whoever holds the chair judges and answers |
@@ -66,8 +75,16 @@
 >
 > **Identification design RESOLVED (§5.1, 2026-06-30); crime taxonomy + heat
 > (§5.2, 2026-06-30).** Chain status: BOLO ✅ · tiered confidence ✅ (detain
-> deferred to the trust gate) · combat auto-raise ✅ #871 (45s→witness window, per-scene debounce, crime-time BOLO) · witness spawn ✅ #873 (crowd-gated, interdictable, first flash-temp ephemeral; flees to cower via director travel #888) · base intel-sync ✅ #876 (per-bot sightings → force-wide wanted record only on return-to-post; latency window real; repeat-offender counts; @dispatch/wanted) · radio report ✅ (2026-07-05: NO magic radios left on the crime chain — witness calls ride a real walkie via wield/xmit (#1009/#1020); a caught theft routes through report_crime's crowd-gated witness instead of a raw raise_event; patrol wanted-flags and hunt challenges key the unit's comms organ on 911MHz (xmit fallback) before the deterministic raise — the security net is audible to anyone tuned in. Explosions stay direct: a detonation is its own broadcast)
-> (`RADIO_COMMS_SPEC` drafted #859; magic placeholder until built) ·
+> deferred to the trust gate — *stale 2026-09-12: a non-coercive detainment
+> rung ships — a high-confidence match is challenged and held at aim
+> (`world/director/security.py` `_aim_lock`), closing the call `detained`.
+> What is still deferred is COERCIVE restraint, and the gate it waited on
+> shipped 2026-07-03*) · combat auto-raise ✅ #871 (45s→witness window, per-scene debounce, crime-time BOLO) · witness spawn ✅ #873 (crowd-gated, interdictable, first flash-temp ephemeral; flees to cower via director travel #888) · base intel-sync ✅ #876 (per-bot sightings → force-wide wanted record only on return-to-post; latency window real; repeat-offender counts; @dispatch/wanted) · radio report ✅ (2026-07-05: NO magic radios left on the crime chain — witness calls ride a real walkie via wield/xmit (#1009/#1020); a caught theft routes through report_crime's crowd-gated witness instead of a raw raise_event; patrol wanted-flags and hunt challenges key the unit's comms organ on 911MHz (xmit fallback) before the deterministic raise — the security net is audible to anyone tuned in. Explosions stay direct: a detonation is its own broadcast)
+> (`RADIO_COMMS_SPEC` drafted #859; magic placeholder until built — **stale
+> 2026-09-12:** `RADIO_COMMS_SPEC` is SHIPPED, not drafted — Phase 1 live
+> 2026-07-04, Phase 2 range/antennae #1128 2026-07-10, masts + repeaters +
+> radio geography since. `world/radio.py` is the carrier, and this same
+> sentence already records "NO magic radios left on the crime chain") ·
 > no-trace window ⬜. Population/identity presentation layer
 > still open — see §10.
 
@@ -205,6 +222,9 @@ spec) and act via real commands. No LLM required for any of it.
 The heart of "both layers."
 
 **Events** (`world/director/events.py`) are typed, located, and weighted:
+*(Path note 2026-09-12: no `world/director/events.py` was ever written — the
+shipped `WorldEvent` lives in `world/director/dispatch.py`, beside the
+dispatcher it feeds.)*
 
 ```python
 @dataclass
@@ -275,6 +295,11 @@ Each link, and the play it creates:
   criminal avenue: snatch the walkie from a witness's hand, break the rooftop
   antenna, jam the band. Until radio ships, dispatch's report step is an
   acknowledged *magic placeholder*.
+
+  *(Stale 2026-09-12: radio SHIPPED — `world/radio.py`, `RADIO_COMMS_SPEC`
+  Phases 1–2. The witness spawns carrying a real `WALKIE_TALKIE` on 911MHz
+  and `witness_report` gates on it (#1009/#1020); nothing in the report step
+  is a placeholder any more.)*
 * **The BOLO is a perception-graded descriptor, not a handle.** What the event
   carries is *what witnesses saw*: a clear witness yields the perp's
   `apparent_uid` (the identity system's presentation hash); a poor/distant one
@@ -347,6 +372,13 @@ only question is whether you were *seen*.
 **NPC victims** (what makes mugging/robbery real):
 * **Pockets** — civilians spawn with **100–500 tokens** (everything is priced
   at 0 today, so this sets the reference scale; worth mugging, not farming).
+
+  *(Half stale 2026-09-12: the pocket IS live —
+  `world/director/civilians.py` `TOKEN_RANGE = (100, 500)`. The pricing
+  premise is not: food/drink prototypes carry `value` 2–12, butchery pays 1–5
+  per cut, bar recipes charge, and `world/souls/population.py` defines
+  `BROKE_LINE = 3` as the cheapest meal. 100–500 now sits against real prices
+  and has not been through the balance pass.)*
 * **Reactions** — comply / flee / resist, **role-weighted for now** (a laborer
   complies, a ganger resists, a shopkeeper raises the alarm). Future: a
   **nature/demeanor/traits axis** on NPCs informs both these deterministic
@@ -389,6 +421,12 @@ cold-by-design is player knowledge worth having.
 (`steal`/`pickpocket`/frisk-reveal, `STEALTH_AND_DETECTION_SPEC` §6.2) —
 specced, unbuilt; crime pulls them forward in the build order.
 
+*(Stale 2026-09-12: the theft verbs SHIPPED 2026-07-03 —
+`commands/CmdTheft.py` (`CmdSteal`, `CmdPickpocket`), registered in
+`commands/default_cmdsets.py`; `STEALTH_AND_DETECTION_SPEC` §6.2 now reads
+SHIPPED, and `frisk` landed with the trust gate's Phase 2. The dependency is
+satisfied.)*
+
 ## 6 · Interaction & the LLM escalation gate
 
 The hardest part, by your call, is **NPC↔NPC interaction** — and the answer is
@@ -416,7 +454,10 @@ to make the *default* free.
 **Third-party action safety.** When a dispatched NPC acts **on a player**
 (a security bot restrains, a companion touches, a ganger shoves), that action
 must route through the future **trust/consent gate** (`TRUST_AND_CONSENT_SPEC`,
-flagged SUPER IMPORTANT). The director must not paint this into a corner:
+flagged SUPER IMPORTANT). *(Stale 2026-09-12: the gate SHIPPED IN FULL
+2026-07-03 — `world/consent.py` (`check_consent` / `can_contest` /
+`is_restrained`) plus the `trust`/`distrust` commands. It is a live
+dependency, not a future one.)* The director must not paint this into a corner:
 NPC-initiated actions targeting able-to-resist players are subject to the same
 consent rules as player-initiated ones. Reserve the seam now.
 
@@ -471,6 +512,11 @@ consent rules as player-initiated ones. Reserve the seam now.
   the carrier for §5.1's report link: witness reports, dispatch orders, and the
   base intel-sync all ride radio. Jamming/antenna sabotage/walkie-snatching cut
   the chain. Until it ships, the report step is a magic placeholder.
+
+  *(Stale 2026-09-12: SHIPPED, not 📋 drafted — `RADIO_COMMS_SPEC` Phases 1–2
+  are live in `world/radio.py`, including range/antennae, mast repeaters and
+  the `order_reaches` order-range physics (#1208) that gates
+  `find_responders`.)*
 * **Identity & recognition (`IDENTITY_RECOGNITION_SPEC`) — the BOLO substrate.**
   §5.1's identification runs on `apparent_uid` (presentation hash): disguise/
   re-sleeve defeats a BOLO and resets a wanted record; recognition memory is
@@ -483,7 +529,7 @@ consent rules as player-initiated ones. Reserve the seam now.
 | Phase | Scope | Notes |
 |---|---|---|
 | **3 — Event bus & dispatcher** | ✅ **CORE SHIPPED** (#853): `WorldEvent`, `ROLE_RESPONDS_TO`, `find_responders` (nearest-by-travel), `dispatch` (severity-scaled), `travel_to` (the routine-movement primitive too), `@dispatch`. Monitor/resolve + a real event bus still ahead. | The "dispatch system" proper |
-| **1 — Population registry & LOD** | 🟡 **security-base slice SHIPPED** (#901): `world/director/population.py` — `@patrol/base` designates the base room (spawn/sync/**respawn**: the heartbeat maintains `db.security_complement`, cycling one alcove replacement per tick; census self-heals — dead units just fall out of the count); one shared `spawn_secbot` factory (a secbot is always "a {finish} **security robot**", #903). Still ahead: the general registry, ephemerals-at-scale, spawn-on-approach LOD, **the anti-small-worlding presentation layer (§10)**. | Needs coordinate proximity (spatial Phase 1 ✅) |
+| **1 — Population registry & LOD** | 🟡 **security-base slice SHIPPED** (#901): `world/director/population.py` — `@patrol/base` designates the base room (spawn/sync/**respawn**: the heartbeat maintains `db.security_complement`, cycling one alcove replacement per tick; census self-heals — dead units just fall out of the count); one shared `spawn_secbot` factory (a secbot is always "a {finish} **security robot**", #903). Still ahead: the general registry, ephemerals-at-scale, spawn-on-approach LOD *(contradiction note 2026-09-12: the RECONCILIATION block above calls §3's spawn-on-approach/virtualization ABANDONED — cold souls stay instantiated — so this row's "still ahead" reads the opposite way; the other two items are unaffected)*, **the anti-small-worlding presentation layer (§10)**. | Needs coordinate proximity (spatial Phase 1 ✅) |
 | **2 — Roles & routines** | 🟡 **patrol beats SHIPPED** (#899): `db.post` (assignments return to base) + `db.patrol_beat` loops via the **GLOBAL_SCRIPTS heartbeat** (45s; #908 — hand-created script rows never arm, learned hard) — **but the FEET moved (#2373): a souled body's beat is a band-4 souls goal now (`world/souls/actions._patrol_plan`), walked by the 30s `souls_heartbeat`. `director_routines` still ticks at 45s and still owns what a beat IS — route, stagger, cadence, waypoint hook, complement respawn — but `routines.tick_npc` returns `souls` for a souled body and walks only an unsouled one. Two schedulers reading each other's attributes over the same bodies was the bug; one driver per body is the fix**; waypoint hook = the security wanted-sweep (**Patrol→Detect by composition**: a flagged face raises a `disturbance` the patroller answers) — **still `routines.at_waypoint`, but role-branched now: security sweeps, a civilian gets a role-authored ambient beat (`civilians.ambient_beat`). A souled body reaches the hook through the souls `patrol_mark` step (#2373); an unsouled one — which every freshly spawned civilian still is — reaches it from the 45s tick exactly as before**; `@patrol` command family; first live beat = the two-district figure-eight over the Central Span. ~~Still ahead: time-of-day schedules, non-security routines.~~ **Both landed, but outside this ladder (see RECONCILIATION, §4): non-security routines shipped as the ambient civilian layer — `world/director/civilians.py`, haunts sampled around wherever the civilian appears and walked at a slower `patrol_cadence`, a role-authored `ambient_beat` at every stop, managed live by `@civilians`; and time-of-day shipped as the souls tripartite 8h clock — `SCHEDULES` day/swing/night plus `on_duty`/`soul_hour` (`world/souls/engine.py`) and `current_shift` (`world/souls/posts.py`) — i.e. as WANTS against a clock, not as the routine schedules this row meant.** | Needs spatial Phase 2 ✅ |
 | **4 — Deterministic interaction vocabulary** | Templated NPC↔NPC / NPC↔PC exchanges via real commands | Zero-LLM baseline |
 | **5 — LLM escalation gate** | Witnessed + salient + budget; generalize bartender gate | Reuses LLM-NPC pipeline |
@@ -498,7 +544,10 @@ it's what makes a small literal map read as a large colony (§10).
 
 * **Small-worlding (the headline design problem, owed a discussion).** The
   colony is *conceptually* large (thousands of inhabitants) but the literal map
-  is small (~309 rooms) with few NPCs. If the same handful of NPCs are visibly
+  is small (~309 rooms — *stale 2026-09-12: 1070 rooms measured live
+  2026-08-24, per `WORLD_STATE_INTELLIGENCE_SYSTEM_SPEC`; the map is ~3.5×
+  the size this bullet reasons from*) with few NPCs. If the same handful of
+  NPCs are visibly
   dispatched everywhere, the world reads as a tiny stage with a small recurring
   cast. The **dispatch core is identity-agnostic** — it routes whatever NPCs
   exist; the cure lives in the **population + identity** layer:
@@ -540,6 +589,11 @@ it's what makes a small literal map read as a large colony (§10).
   before authority NPCs (security bots) can lawfully grab a player. Sequence the
   LEO-force content *after* that gate, or scope early authority NPCs to
   non-coercive actions.
+
+  *(Stale 2026-09-12: the gate exists — `TRUST_AND_CONSENT_SPEC` shipped
+  2026-07-03. Units today take the second option: challenge + aim-lock hold,
+  `world/director/security.py` `_aim_lock`. Coercive restraint is still
+  unbuilt, but no longer for want of the gate.)*
 * **Persistence cost.** The registry for a large virtual population must stay
   light (data rows, lazy detail) so the census itself doesn't become the bottleneck.
 * **Ownership of corpses/cleanup** between the director and the existing
