@@ -1,6 +1,14 @@
 # Kitchens & Recipes Spec — the food half of the consumable economy
 
 > **Status:** 📋 **Proposal — design only (2026-08-25, owner-prompted).**
+> *(Date note, 2026-09-11: this file has one commit — cf326879, 2026-08-10
+> (PR #1952, closing #1951) — and has not been revised since, so
+> "2026-08-25" describes no version of this document. Two present-tense
+> claims below went stale in the gap and are annotated in place: §4's
+> "`{time}` system's first venue" and §6's "Hunger/need mechanics: none
+> exist". The build status — design only, nothing here built — still
+> holds: there is no kitchen station, no extracted crafting-station
+> framework, and no `derive_kitchen_stock` in the code.)*
 > **This spec ELABORATES promises two shipped specs already made; it
 > supersedes neither.** Parents: (1)
 > [`GIG_PROTOTYPE_BUTCHER_SPEC`](../GIG_PROTOTYPE_BUTCHER_SPEC.md) **§7 —
@@ -87,7 +95,13 @@ Bhavani; a **dumpling window** (a hatch in a prefab wall, three seats);
 a **zakuski cellar** near Tsiolkovsky (samovar, black bread, pickles);
 a **bakery** on the Heat Works' steam line when it exists; a
 **third-shift congee window** open when everything else is dark (the
-`{time}` system's first venue). Venue *types* beyond menus: **tea
+`{time}` system's first venue — *stale 2026-09-11: clock-driven venue
+hours already ship. `world/souls/engine.py` reads
+`world.gametime.colony_hour` and its `SCHEDULES["vendor"]` band closes
+Auntie Lin's cart off-shift behind an authored `post_closed_msg` (build
+068, 2026-08-17, "so the small-hours hunger gap emerges rather than
+being scripted"), and the Snailery runs day/swing/night keepers (build
+137). The congee window would be a good venue for it, not the first*). Venue *types* beyond menus: **tea
 house** (lingering, the anti-shift-food), **fermentory** (crocks and
 jars; supplies every kitchen above), **spice stall** (one cell, huge
 sense radius), and the **vat-protein counter** — Greenhaus or Longhaul
@@ -122,6 +136,19 @@ may stand unbranded (the Escallier precedent).
 - Time system: opening hours as venue character (the congee window).
 - Hunger/need mechanics: **none exist and none are proposed** — food
   remains flavor + substance-effects; this spec adds depth, not chores.
+  *(Stale 2026-09-11 — true at this file's commit (2026-08-10), false
+  within a week. NPC hunger shipped 2026-08-17: `world/souls/needs.py`
+  `PROFILES` carries a live `hunger` need (0→1 in 8h human, 16h
+  synth/recluse, planner shapes `buy_consume`/`graze`), and #2074
+  (closed 2026-08-20) made eating pharmacology — the `nutrition`
+  substance at `world/substances/registry.py:227` eases that meter via
+  `nourish`, and food prototypes already declare
+  `drink_effects {"nutrition": N}` (raw cuts, the butcher's dishes, the
+  snail skewer). Needs are also **proposed**, in
+  `specs/proposals/NPC_NEEDS_AND_GOALS_SPEC.md` (P1–P3 shipped). What
+  genuinely does not exist is PLAYER hunger — `nourish` no-ops on a
+  consumer with no meter (registry.py:235, "players, for now") — so the
+  no-chores stance survives; only the absolute wording fails.)*
 
 ## 7 · Open questions (owner)
 
