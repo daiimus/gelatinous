@@ -75,6 +75,21 @@ export_map() -> {
   "links": [
     {"from": "#123", "to": "#456", "key": "north",
      "kind": "walk|edge|gap|fall|door",
+     # DRIFT (2026-09-11 audit) — the two entries below describe a shape
+     # `export_map()` no longer has. Kept verbatim for the record:
+     #   * edge: the real keys are the exit attribute names, copied
+     #     straight through — sky_room, fall_room, fall_distance,
+     #     fall_damage, edge_difficulty, gap_destination (ints). Each
+     #     appears only when that attribute is set, and the whole "edge"
+     #     key is ABSENT (not null) for any kind but edge/gap.
+     #   * door: lock state REMOVED 2026-09-07 (#2682). `export_map()`
+     #     feeds the PUBLIC /atlas/ page, so shipping live lock state let
+     #     anyone with the URL read which of 470 doors stood locked (348
+     #     of them touching private residences), joined to room names and
+     #     coordinates. Nothing ever read the field. A door is still
+     #     typed `kind: "door"`; a staff map that wants lock state must
+     #     read the exits directly rather than route it through this
+     #     payload.
      "edge": {"sky_room": ..., "fall_room": ..., "distance": n,
               "damage": n, "difficulty": n} | null,
      "door": {"locked": bool} | null},
@@ -113,6 +128,21 @@ isometric renderer, no external assets, openable anywhere.
     constants — the Birdhouse's actual footprint drawn on the district.
   - *Collision candidates*: cells adjacent to occupied space (tunnel
     planning).
+  - **Status of this list (2026-09-11 audit)** — the shipped plate
+    (`scripts/atlas/template.html`) carries three staff toggles: *jump
+    routes* (the Edges overlay), *radio coverage*, and an *air lattice*
+    that was never spec'd here, plus a non-staff *street life* layer.
+    **Open columns, ground coverage and collision candidates were never
+    built** — neither template contains a column, `is_ground` or
+    adjacency pass. The two that did ship are also narrower than
+    described above: the Edges overlay filters `edge` and `gap` links
+    only — `fall` links are never drawn — and strokes them all in one
+    cyan rather than "colored by kind"; radio coverage draws two rings
+    per mast, crisp (solid) and full reach (dashed), not the
+    crisp/fuzzy/static three. The banner's "SHIPPED through §M2.5" is
+    earned by the plate itself, not by this overlay set; the three
+    missing audits are still the throwaway shell scripts §0 set out to
+    retire.
 - **Builder-only artifact**: a generated file, never served by the game.
   Regenerate after builds; stale is fine, truth is one command away.
 
@@ -229,7 +259,15 @@ Two consumers exist today, both fed by `export_map()`:
   toggle (crescent/sun glyph). Rotation is gestural (twist, shift-drag,
   bracket keys). Hover/tap raycasts to the room readout.
 - **'You are here'**: `player_positions(account)` rides the logged-in
-  account's character positions into the page and a 5-second poll of
+  account's character positions into the page [SUPERSEDED — 2026-09-11
+  audit: when the plate went public it also went cached, and the cache is
+  account-neutral BY DESIGN. `web/website/views/atlas.py` builds it once
+  with `account=None` and says why — "empty beacon seed — the client's
+  ?feed=here poll fills beacons within one tick for logged-in players" —
+  so the served HTML seeds no beacons at all.
+  `build_atlas3d_html(account=...)` still honors an account, but nothing
+  passes one, which leaves the poll below as the only live path] and a
+  5-second poll of
   `?feed=here` (same allowlisted path; query strings pass the edge)
   keeps the pulsing beacons honest while you play. Characters without a
   place in the world simply don't report.
