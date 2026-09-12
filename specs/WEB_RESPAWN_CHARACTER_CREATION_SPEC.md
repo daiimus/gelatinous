@@ -38,6 +38,20 @@ When a user visits the "Decant Sleeve" page:
 
 ### 1. View Logic (web/website/views/characters.py)
 
+> *Corrected 2026-09-12 — this pseudo-code is not what shipped, on two
+> points a reader would otherwise copy:*
+> - *The gate is `account.respawn_candidate() is not None`, not a raw
+>   `db.last_character` read (web/website/views/characters.py:52). Since
+>   #2615 the helper (typeclasses/accounts.py:233-263) requires the
+>   referenced sleeve to be ARCHIVED and clears the attribute when it points
+>   at a living or deleted one, because the telnet login read the attribute
+>   raw and the two doors disagreed about what is respawnable.*
+> - *`show_first_character_form()` was never written. The first-character
+>   branch falls through to `super().get(...)` inline (characters.py:82-86)
+>   after a max-character check the pseudo-code does not show
+>   (:57-69). `show_respawn_interface()` and `handle_respawn_submission()`
+>   DO exist as named (:88, :142).*
+
 ```python
 class CharacterCreateView(EvenniaCharacterCreateView):
     def get(self, request, *args, **kwargs):
@@ -149,6 +163,24 @@ Sex: [Male] [Female] [Ambiguous]
 ```python
 {
     'sleeve_choice': 'template_0' | 'template_1' | 'template_2' | 'flash_clone',
+    # Corrected 2026-09-12 — 'sex' is NOT posted. The shipped form has no sex
+    # input at all (character_respawn_create.html: the only controls are the
+    # sleeve_choice radios at :25-32 / :74-80 and the submit at :108), and the
+    # handler reads the sex the template was generated with:
+    #     template_sex = template.get('sex', 'ambiguous')
+    # web/website/views/characters.py:180-182, under the comment
+    # "Use the template's pre-assigned sex (not user selection)".
+    #
+    # This was REMOVED ON PURPOSE, not lost: commit 802985d9 (2025-10-21,
+    # "Improve respawn UI with random gender and better colors") deleted the
+    # three name="sex" radios, its own changelog line reading "Remove manual
+    # sex selection (templates use pre-assigned gender)" — templates roll a
+    # sex first and draw a gendered first name from it, so a selector let the
+    # two contradict each other.
+    #
+    # NOTE: the TELNET respawn door still prompts for sex and overrides
+    # template['sex'] (commands/charcreate.py:779-800, :805-817). The two
+    # doors disagree; which is canonical is unresolved.
     'sex': 'male' | 'female' | 'ambiguous'
 }
 ```
@@ -247,6 +279,10 @@ Redirect to Character Management
 3. **last_character deleted from DB**: Handle gracefully, show manual form
 4. **Concurrent creation attempts**: Django form validation should handle
 5. **Invalid sex selection**: Validate and default to 'ambiguous'
+   - *Moot as of 2026-09-12 — no sex is submitted on the web respawn path
+     (commit 802985d9 removed the input), so there is nothing to validate.
+     The `.get('sex', 'ambiguous')` default survives as the fallback for a
+     template dict missing the key (web/website/views/characters.py:181).*
 
 ## Success Criteria
 
@@ -363,6 +399,15 @@ else:
     character = create_character_from_template(account, template, sex)
 ```
 
+> *Superseded 2026-09-12 — the flash-clone half of this fix survives
+> (web/website/views/characters.py:156-158, `create_flash_clone` inherits at
+> commands/charcreate.py:454). The `else` half does not: `request.POST` is
+> never read for sex any more. Commit 802985d9, later the same day, deleted
+> the sex radios entirely, and the template branch now reads
+> `template.get('sex', 'ambiguous')` (characters.py:180-182). Nothing posts
+> a sex field, so "Template-based creation uses POST sex" is no longer true
+> of any path.*
+
 **Result:** Flash clones now properly maintain their original sex (male/female) across respawns without manual selection.
 
 #### 4. UI Cleanup (Manage Sleeves Display)
@@ -413,7 +458,24 @@ else:
 
 4. **Flash Clone Sex Inheritance:** Flash clones inherit sex automatically from the archived character. Sex selection in the respawn UI only applies to template-based characters, not flash clones.
 
-5. **Numeric Stats Display:** UI shows numeric stat values (1-10 scale) rather than descriptive adjectives. This is clear, concise, and avoids template filter complexity. Descriptive system can be added later if needed.
+5. **Numeric Stats Display:** UI shows numeric stat values (1-10 scale) rather than descriptive adjectives.
+
+   > *Corrected 2026-09-12 — wrong on the scale, and overtaken on the
+   > adjectives. GRIM is a **1-150** scale on a 300-point budget
+   > (`GRIM_MIN = 1` / `GRIM_MAX = 150`, web/website/forms.py:21-22, applied
+   > to all four stat fields at :102-145), never 1-10. Manage Sleeves shows
+   > no stats at all any more (character_manage_list.html:46-85); numeric
+   > GRIM values survive on the respawn cards
+   > (character_respawn_create.html:37-49, :86-98) and in the post-creation
+   > success message (characters.py:186-189).*
+   >
+   > *The ROLLBACK itself is accurately recorded — `web/website/templatetags/`
+   > does not exist. But "descriptive system can be added later" has since
+   > happened IN GAME, just not on the web: `STAT_DESCRIPTORS`
+   > (world/combat/constants.py:822) is imported by commands/CmdCharacter.py:13
+   > and rendered as tier words by `@stats`/`score` (:147, :166, :354-357).
+   > See specs/proposals/DESCRIPTIVE_STAT_SYSTEM_SPEC.md. The web surface is
+   > the half that stayed numeric.* This is clear, concise, and avoids template filter complexity. Descriptive system can be added later if needed.
 
 ### Current State (Post-Phase 1)
 
