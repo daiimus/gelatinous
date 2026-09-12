@@ -9,7 +9,18 @@
 > as second consumer (2026-07-10)**: 3s + 1s/solvent-unit; graffiti scrubs
 > pro-rata on interruption; **blood breaks down only at completion** (the
 > solvent needs dwell time — bailing mid-scrub leaves the evidence). The
-> wrest/disarm seam remains the next consumer. Originally: The game's first
+> wrest/disarm seam remains the next consumer. **Amended 2026-09-11: two
+> other consumers jumped that queue and are listed nowhere in this spec.
+> Breach SHIPPED third (2026-07-11, #1164): `sabotage` (90s) and the
+> structure branch of `repair` (180s) on `db.breachable` masts —
+> `commands/CmdBreach.py`. Surgery SHIPPED fourth (2026-09-06, #2926
+> owner ruling): `start_procedure` (`world/medical/procedures.py`) opens
+> the channel and the channel IS the procedure timer, so an operation
+> inherits the whole taxonomy without new interruption logic. And
+> wrest/disarm is a §2.3 BREAKING row rather than a consumer — still
+> unwired: neither `resolve_disarm` (`world/combat/actions.py`) nor
+> `CmdWrest` (`commands/CmdInventory.py`) calls `interrupt_channel`.**
+> Originally: The game's first
 > generic **timed-act primitive**: an action that occupies its actor for a
 > real duration, shows a visible tell, and resolves to a full result on
 > completion or a **partial result on interruption**. First consumer:
@@ -98,6 +109,22 @@ work because of a mistyped verb:
 * Starting an attack, aiming, throwing
 * `xmit`/`tune`/`toggle` (device work is hands-work)
 * Starting another channel, using a kiosk, trading
+
+> **Wiring ledger (checked 2026-09-11).** The list above is the design
+> taxonomy; only part of it has callers, and the status banner scopes what
+> shipped. **WIRED** — seven production `refuse_if_channeling` call sites,
+> plus the refusal inside `begin_channel` itself: movement
+> (`Character.at_pre_move`), `wield` (`commands/CmdInventory.py`),
+> `attack` (`commands/combat/core_actions.py`), `xmit`/`tune`/`toggle`
+> (three sites in `commands/CmdRadio.py`), the radio branch of `to`
+> (`commands/CmdCommunication.py`), and starting another channel.
+> **NOT WIRED — no caller:** `unwield`, `get`, `drop`, `give`, `wear`,
+> `remove`, style verbs, `aim`, `throw`, `press` (buttons and kiosks) and
+> `buy` (trading). Consequence in play today: a tagger can `drop` or
+> `give` the spray can mid-channel and the full tag still lands, because
+> `_land_tag` re-reads the captured can object rather than the tagger's
+> hands. Owner call pending on whether to finish the list or narrow it
+> (see §5).
 
 Voluntary exit: **`stop`** (the existing stop-verb family) aborts the
 channel deliberately → `on_interrupt` with the current fraction. You keep
