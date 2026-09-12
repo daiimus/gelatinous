@@ -91,6 +91,19 @@ Per-soul decaying meters, 0.0–1.0, ticked by the LOD clock (§7):
 spent at tills. Broke NPCs skip paid satisfiers (the poor eat worse:
 emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
 
+> **PARTLY STALE, checked 2026-09-12 (annotation only).** The table
+> above is the v1 shape; §12 calls it "the shipped table, unchanged",
+> and it no longer matches `world/souls/needs.py::PROFILES`. Two
+> differences. **`duty` is not a meter** — it never decays and holds no
+> pressure; duty is the §5 band-3 SCHEDULE goal, read off the shift
+> clock (`engine.py` returns `(2, "duty")` for a soul with a post on
+> shift), and `needs.py::_snapshot` treats a stored `duty` key as a
+> legacy artefact to tolerate. **Three derived needs have since joined
+> the human profile**, all zero-write and computed on read: `craving`
+> (shape `vice`, #2076), `wardrobe` (shape `dress`, #2104) and `health`
+> (shape `clinic`, §14). `cash`-as-a-resource and the broke-skip-paid
+> rule both still hold.
+
 ## 3.5 · Souls advertise too — NPC↔NPC interaction
 
 Everything §4 says about venues applies to **souls themselves**: an
@@ -397,6 +410,16 @@ a soul belongs to the §3.5 soul↔soul work, not to phase 3.~~
 > vacancy watcher would not resleeve a second Vesper while the first was
 > standing there (#2132). That branch exists only to support this
 > exclusion and goes when she is ensouled.
+>
+> **DONE, checked 2026-09-12 — it went.**
+> `scripts/builds/139_vesper_takes_the_shift.py` ensouled her through
+> the ordinary `do_claim` path and removed the branch in the same
+> change, as the last piece of the population merge (issue #2362, which
+> stays open for the broader ambient-crowd work). `_slot_held` now
+> records "a post keeper is a soul" as an invariant, and an unsouled
+> keeper is a build error. (A later branch from #2178 lets a SOULED
+> keeper with no recorded `soul_post` hold a slot by standing in it —
+> the Rook in his own booth — which is a different rule, not this one.)
 
 ## 13 · Succession, phase P4a — the post survives its keeper
 
