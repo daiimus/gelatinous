@@ -131,7 +131,18 @@ class CmdBug(MuxCommand):
         if self.args:
             caller.msg("|yUsage:|n @bug  or  @bug/list")
             return
-        
+
+        # Daily cap: refuse BEFORE the editor opens (#3367). The check used
+        # to live only in the save callback, so a capped player wrote the
+        # whole report and lost it at :wq. The save-time check stays as the
+        # last line of defence (two doors, one gate).
+        account = getattr(caller, "account", None)
+        if account is not None and not self.check_rate_limit(account):
+            limit = getattr(settings, 'BUG_REPORT_DAILY_LIMIT', 30)
+            caller.msg(f"|rYou've reached the daily limit of {limit} bug reports.|n")
+            caller.msg(f"The limit resets in {self.get_time_until_reset(account)}.")
+            return
+
         # Open the detailed bug report workflow
         self.start_detail_editor(caller)
     
