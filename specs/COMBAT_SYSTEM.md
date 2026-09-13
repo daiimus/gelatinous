@@ -138,7 +138,7 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 - **`escape`**: Break free from grapple (switches to violent mode)
 - **`release`**: Let go of grappled target
 - **`disarm <target>`**: Attempt to remove target's weapon
-- **`aim <target>`**: Improve accuracy for next attack
+- ~~**`aim <target>`**: Improve accuracy for next attack~~ **Owner ruling 2026-09-13 (#3355): the promise is withdrawn.** Aim is a positioning tool -- lock, tell, cross-room fire, flee-punish -- and grants no accuracy. `help aim` now says so.
   > **⚠ Corrected 2026-09-11 — no accuracy bonus is applied.** `world/combat/attack.py:437` computes `effective_skill = attacker_skill * sight_factor * manip_factor` and `:469` rolls `randint(1, 20) + effective_skill`; `NDB_AIMING_AT` is never read in that file. What aiming actually buys: the target is held in place, a visible tell is posted, `aim <direction>` unlocks cross-room fire through that exit (`commands/combat/core_actions.py:97-115`), and the aimer gets an opportunity attack if the aimed-at target flees (`commands/combat/movement.py:229`). Whether the bonus should be built or the promise withdrawn is an open owner question — `CmdAim`'s own help text (`commands/combat/special_actions.py:361`) makes the same claim.
 
 ### Information Commands (main character cmdset)
@@ -192,7 +192,7 @@ Player A: attack Player B
 
 ### Status Effects
 - **Grappled**: Restricted movement and actions
-- **Aimed**: Bonus accuracy on next attack
+- ~~**Aimed**: Bonus accuracy on next attack~~ **Owner ruling 2026-09-13 (#3355): no accuracy bonus, by decision.** The state persists INTO combat (cleared on `aim stop`, on the aimer moving, or on leaving combat) -- it is not dropped when combat starts.
   > **⚠ Corrected 2026-09-11.** The aimed state is real (`NDB_AIMING_AT` / `NDB_AIMED_AT_BY`, set at `commands/combat/special_actions.py:632-633`) but confers no accuracy bonus — see the `aim <target>` note under Command Structure. Its mechanical effects are immobilising the target, the visible tell, cross-room fire, and an opportunity attack on a flee attempt.
 - **Yielding**: Non-violent stance with limited options
 - **Wounded**: Injury effects on performance
