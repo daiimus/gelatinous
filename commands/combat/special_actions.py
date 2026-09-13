@@ -390,6 +390,9 @@ class CmdAim(Command):
     help_category = "Combat"
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         caller = self.caller
         args = self.args.strip()
         splattercast = get_splattercast()

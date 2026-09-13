@@ -33,6 +33,9 @@ class CmdBuy(Command):
     
     def func(self):
         """Execute buy command"""
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         caller = self.caller
         
         # Parse args: buy <item> from <container>

@@ -420,7 +420,8 @@ def start_procedure(
             check that did not exist.
     """
     from world.medical.utils import find_surgical_kit, instruments_wanted
-    if find_surgical_kit(actor, target) is None:
+    kit = find_surgical_kit(actor, target)
+    if kit is None:
         raise SurgicalKitRequired(
             f"needs {instruments_wanted(target)} to {verb}")
 
@@ -513,6 +514,7 @@ def start_procedure(
             tell="working on a patient",
             on_complete=_channel_done, on_interrupt=_channel_broken,
             key="operating",
+            tools=[kit],  # the surgeon's instruments (#3376)
         )
     except Exception:  # noqa: BLE001 — the act still has to resolve
         started = False

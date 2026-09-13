@@ -201,6 +201,9 @@ class CmdThrow(Command):
 
     def func(self):
         """Execute the throw command."""
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         if not self.args:
             self.caller.msg("Throw what? Use 'throw <object>' or 'throw <object> at <target>'.")
             return

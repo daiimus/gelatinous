@@ -175,7 +175,7 @@ class CmdGraffiti(Command):
             caller, duration,
             tell="crouched at the wall, spray can hissing.",
             on_complete=_complete, on_interrupt=_interrupted,
-            key="spraying")
+            key="spraying", tools=[spray_can])
         if not started:
             return
         caller.msg(f"You shake {spray_can.get_display_name(caller)}, the "
@@ -213,7 +213,11 @@ class CmdGraffiti(Command):
         can_name_for_message = spray_can.get_display_name(caller)
 
         # Use the paint
-        spray_can.use_paint(paint_used)
+        # Consumer-side guard (#3376): paint is spent only from a can the
+        # tagger still holds. The channel primitive breaks the act when the
+        # can leaves the hands; this is the last line if something slipped.
+        if getattr(spray_can, "location", None) is caller:
+            spray_can.use_paint(paint_used)
 
         # Find or create the room's graffiti object
         graffiti_obj = None
@@ -336,7 +340,7 @@ class CmdGraffiti(Command):
             caller, duration,
             tell="scrubbing at the wall, solvent fumes sharp.",
             on_complete=_complete, on_interrupt=_interrupted,
-            key="cleaning")
+            key="cleaning", tools=[solvent_can])
         if not started:
             return
         caller.msg(f"You shake {solvent_can.get_display_name(caller)} and "
@@ -489,6 +493,9 @@ class CmdPress(Command):
 
     def func(self):
         """Execute the press command."""
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         if getattr(self, "cmdstring", "").lower() == "call":
             # `call` = press the call button here (elevator shorthand);
             # any trailing words ("call elevator") are just as welcome.
