@@ -63,6 +63,16 @@ Three characteristics of Gelatinous amplify the cost of the
    `observer.db.disguise_pierce_cache` *and* writes back on every
    pierce attempt. `grep` finds 497 `get_display_name` /
    `attempt_display_pierce` call sites; most exercise the cache.
+
+   > **Correction 2026-09-12.** It writes back on every cache *miss*,
+   > not every attempt. `attempt_disguise_pierce`
+   > (`world/identity.py:1683`) reads the cache at `:1747` and
+   > returns early on a hit (`:1751-1752`); the write at `:1771` is
+   > only reached after the opposed roll. §3.3 and §4.1 state this
+   > correctly — this bullet overstates the hot-path write cost, and
+   > it is the overstatement §5's measured deferral later deflated
+   > (0.8 % common-case). The read is still on the hot path. Same
+   > shape in the reverse-lookup path (`:1820` read, `:1842` write).
 2. **Ticker-driven mutation.** `MedicalScript` ticks every 12s
    (`world/medical/script.py:96`) and mutates `_medical_state` in
    place — blood loss, pain accumulation, consciousness drift,
@@ -115,6 +125,29 @@ The exemplar in our codebase is `MedicalState`
   damage-application path. **`MedicalScript.at_repeat` does not
   call it** — tick-level changes (blood drip, pain accumulation,
   consciousness drift) are intentionally volatile.
+
+  > **Stale 2026-09-12.** `at_repeat` DOES call it now, every tick
+  > and unconditionally (`world/medical/script.py:409-410`, #2418 →
+  > PR #2937) — see the §1.2 note. The call-site list has also moved
+  > and grown well past the five names above. Full production set
+  > (excluding `world/tests/` and `scripts/builds/`):
+  > `world/medical/core.py:1265/1291`;
+  > `world/medical/script.py:410` (the tick, new);
+  > `world/medical/treatments.py:301/331/452`;
+  > `world/medical/utils.py:1395`;
+  > `world/medical/augments.py:500`;
+  > `world/substances/registry.py:634`;
+  > `world/director/population.py:109/123` (NPC spawn, new);
+  > six `getattr(target, "save_medical_state")` sites in
+  > `world/medical/procedures.py` (`:1942/2188/2260/2459/2566/2903`);
+  > `typeclasses/characters.py:286/688`;
+  > `typeclasses/items.py:2553/3011`;
+  > `typeclasses/armor_mixin.py:96`; and `CmdAdmin` — still exactly 7
+  > sites (`commands/CmdAdmin.py:222/263/292/405/493/635/662`).
+  > `_resolve_suture` no longer flushes directly: it flushes through
+  > `apply_vital_consequences` (`world/medical/procedures.py:2526`,
+  > the save at `:2566`), and `procedures.py:1268` is now organ-HP
+  > code inside `_resolve_install` (`:1105`).
 
 This pattern: runtime tier is canonical, persistence tier is a
 snapshot of the runtime, writes happen at named boundaries.
@@ -206,6 +239,41 @@ audit tax across read sites (`if obj.db.X` →
 `if obj.tags.has("X", category="...")`). Worth doing per-flag
 on first touch; not worth a sweeping migration PR.
 
+> **Partly shipped 2026-09-12.** PR #453 ("convert 4 of 6 boolean db
+> flags to Tags") was closed unmerged with the rest of the §5 stack,
+> but `archived` landed later on its own terms — and *not*
+> mechanically. The Tag is now the query index
+> (`typeclasses/characters.py:591`, read at `:552`, cleared at
+> `:559`, queried in one pass at `typeclasses/accounts.py:157-165`)
+> while `db.archived` is deliberately RETAINED as the display/audit
+> record and as the fallback for sleeves archived before the Tag
+> existed (comment at `typeclasses/characters.py:585-588`). Both
+> stores, kept in sync in one place —
+> `Character.archive_character` (`:561`) and
+> `unarchive_character` (`:555`) are the only writers. The table's
+> site column points at a *caller*, not the write:
+> `web/website/views/characters.py` calls
+> `character.archive_character(reason="manual")` (`:570`) and
+> `old_character.unarchive_character()` (`:110`, after reading
+> `db.archived` at `:108`).
+>
+> The other five rows are unconverted and still accurate, though two
+> site columns under-count: `combat_is_running` 4 writes
+> (`world/combat/handler.py:218/247/338/547`); `pin_pulled` 11
+> writes — `commands/explosion_utils.py` ×7
+> (`:122/197/255/591/767/933/1018`), `commands/CmdExplosives.py` ×3
+> (`:512/905/989`), `commands/CmdThrow.py:605`, and read-only at
+> `commands/combat/jump.py:186`; `is_infinite`
+> (`typeclasses/shopkeeper.py:56/102`, now also
+> `typeclasses/butcher.py:53/90`, plus 5 build scripts);
+> `integrate` — far wider than the one file listed, at
+> `typeclasses/objects.py:358/519/588`, `typeclasses/bar.py:422`,
+> `typeclasses/lockers.py:135/156`, `typeclasses/butcher.py:58`,
+> `commands/CmdExplosives.py:190/595/599`, plus 13 build scripts, so
+> its "audit tax across read sites" is the largest of the five;
+> `head_severed` (`typeclasses/corpse.py:68`,
+> `typeclasses/items.py:2370`).
+
 ### 3.5 · `ndb` scratch state (transient by design)
 
 256 ndb references. Top users:
@@ -245,6 +313,24 @@ attribute-soup access pattern.
   computation from a 5-tuple signature, no caching. Free reads.
   Called on every render of every character; the perf hit is real
   but the cost is bounded (one tuple hash).
+
+  > **Understated 2026-09-12.** "Free reads" and "one tuple hash"
+  > are both wrong about the cost, though the no-cache verdict
+  > (§8) is still the right call. `get_apparent_uid` is now at
+  > `world/identity.py:1032` and per call it: reads three
+  > descriptor-backed attributes (`db.height_override`,
+  > `db.build_override`, `db.keyword_override` —
+  > `get_identity_signature`, `:953`), calls
+  > `get_essential_item_type_ids` (`:904`) which walks
+  > `get_worn_items()` (`typeclasses/clothing_mixin.py:536`, itself
+  > reading the `worn_items` AttributeProperty) and inspects two
+  > attributes per worn item, then `repr()`s the 5-tuple and runs
+  > `blake2b` over it (`:1055-1058`). None of that is a plain-dict
+  > read in this document's sense, and it scales with worn-item
+  > count. It is still cacheless by design — see §8 — and
+  > invalidation really would be hell; the honest framing is
+  > "deliberately uncached despite a non-trivial per-render cost,"
+  > not "free."
 * `signature_at_death` / `apparent_uid_at_death` written once at
   death.
 
@@ -530,6 +616,16 @@ already a half-truth that gets cleared on
 * Keep `incisions` and `sutured_stumps` on db.surgical_state
   (those are genuinely durable).
 
+  > **Correction 2026-09-12.** `sutured_stumps` was never inside
+  > `db.surgical_state`. It is its own top-level attribute:
+  > written at `world/medical/procedures.py:1408`
+  > (`target.db.sutured_stumps = sutured`) and read through
+  > `normalize_sutured_stumps` (`world/medical/severance.py:30-47`).
+  > Only `incisions` and `active_procedure` live in
+  > `surgical_state` (`world/medical/procedures.py:204-205`). The
+  > migration's actual scope is therefore narrower than this bullet
+  > implies — `sutured_stumps` needs no change either way.
+
 **Risk:** low. The active-procedure tracking is already
 in-process; this just makes that fact honest.
 
@@ -618,6 +714,20 @@ Hook points worth knowing:
 | Combat end                      | (custom: `_finalize_combat`)| Combatants list, handler state     |
 | Procedure complete              | existing `_advance`         | Chart batched write                |
 | Death                           | existing death pipeline     | Already a flush boundary           |
+
+> **Correction 2026-09-12.** The combat-end row names a hook that
+> does not exist: `grep -rn "_finalize_combat"` finds nothing in the
+> repo. The real combat-teardown entry point is
+> `CombatHandler.stop_combat_logic`
+> (`world/combat/handler.py:255`), with per-combatant cleanup at
+> `_cleanup_all_combatants` (`:353`) /
+> `_cleanup_combatant_state` (`:489`) and
+> `world/combat/utils.py:988`. Copy against those names. The other
+> four rows check out (`at_server_shutdown`, `at_post_unpuppet` and
+> the death pipeline are all real; note §5.1 step 3 says
+> `at_server_shutdown` while the §5 deferral note above says
+> `at_server_stop` / `at_server_reload_stop` — the object-level hook
+> is `at_server_shutdown`).
 
 ### 6.3 · `_SaverDict` literacy
 
@@ -710,6 +820,27 @@ opportunistically.
    independently obvious and shipping blind is defensible.
    Consider lightweight instrumentation (decorator-counter on
    the cache surfaces) if we want to back the claim.
+
+   > **Half still true, half superseded (2026-09-12).** The first
+   > clause holds: there is still no committed profiling harness —
+   > `grep -rl "cProfile\|pstats\|timeit\|perf_counter"
+   > --include='*.py'` returns nothing, and the instrumentation
+   > suggested in the last sentence was never built. What is
+   > superseded is the *conclusion* drawn from it. Three measured
+   > passes have happened since, all ad-hoc through `evennia shell`:
+   > the §5 Pepsi-challenge run documented at the head of §5; #462 /
+   > #465's `get_display_name` profile, whose numbers shipped
+   > `world/grammar.py:465`, `MedicalState._cached_is_dead`
+   > (`world/medical/core.py:532/577/595`) and the session-gated
+   > broadcast; and #3077's bleeding-tick profile (a blood-pool
+   > flush was 72 % of the tick) which shipped
+   > `BLOOD_POOL_FLUSH_TICKS` (`world/medical/constants.py:195`,
+   > consumed at `world/medical/script.py:619-620`). So wins on this
+   > codebase are no longer theoretical, and "shipping blind is
+   > defensible" is withdrawn — the discipline rule at the foot of
+   > this document now says the opposite. The standing gap is that
+   > every one of those profiles was thrown away after use; nothing
+   > is repeatable.
 3. **Tick-vs-flush invariants.** The medical script's
    no-save-per-tick policy assumes that any persistence-worthy
    tick-state change (e.g. a wound stage progressing past a
