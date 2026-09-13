@@ -376,39 +376,7 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             return self.form_invalid(form)
 
 
-_ROMAN = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
-
-
-def _roman_value(token):
-    """
-    Return the value of a Roman numeral, or None if it isn't one.
-
-    Strict on purpose: a sleeve legitimately named "Mick" or "DiDi" is made
-    only of Roman letters and would otherwise be read as a number. Requires
-    the token to be uppercase and to round-trip, so "XLIV" parses and "MIX"
-    (a real word, and not canonical Roman) does not.
-    """
-    if not token or not token.isupper() or any(c not in _ROMAN for c in token):
-        return None
-    total = prev = 0
-    for char in reversed(token):
-        value = _ROMAN[char]
-        total = total - value if value < prev else total + value
-        prev = max(prev, value)
-    return total if total and _to_roman(total) == token else None
-
-
-def _to_roman(number):
-    """Canonical Roman for round-tripping the parse above."""
-    pairs = ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"),
-             (90, "XC"), (50, "L"), (40, "XL"), (10, "X"), (9, "IX"),
-             (5, "V"), (4, "IV"), (1, "I"))
-    out = []
-    for value, glyph in pairs:
-        while number >= value:
-            out.append(glyph)
-            number -= value
-    return "".join(out)
+from commands.charcreate import roman_value as _roman_value  # noqa: E402  -- one strict parser for both doors (#3359)
 
 
 def _sleeve_sort_key(sleeve):
