@@ -330,6 +330,8 @@ character beat**: *"You were someone else yesterday."* Whether the NPC
 merge of episodic + claim-history across the connected identities is the
 mechanical payoff.
 
+> **Shipped 2026-09-13 (#3371, owner ruling option A).** The WHO line now reads the whole `linked_family`: aliases are the UNION across every connected face, opinion is the SUM of the decayed opinion held against each face (`souls.thoughts.opinion_over`) -- connecting two faces is a full merge, so a grudge earned as face A reads on face B and cannot be laundered by changing faces -- and papers something vouched for (`identity.attestations`) are surfaced, the NPC-side twin of `recall`'s `Papers:` rows. Memory retrieval had followed the chain since #2410; this was the other half.
+
 ## 6 · Memory as substrate — affordance roadmap
 
 Once memory hangs on the identity spine it stops being an NPC attribute and
