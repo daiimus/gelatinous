@@ -17,6 +17,8 @@ from evennia import create_object
 from evennia.utils.test_resources import EvenniaCommandTest
 
 from commands.shop import CmdBuy
+from world.identity import get_apparent_uid
+from world.tests._identity_helpers import make_recognition_entry
 
 
 class CartIsTheBarModelTest(EvenniaCommandTest):
@@ -24,7 +26,11 @@ class CartIsTheBarModelTest(EvenniaCommandTest):
     def setUp(self):
         super().setUp()
         self.char1.tokens = 500
-        self.keeper = create_object("typeclasses.characters.Character", key="Ottilie", location=self.room1)
+        # A keeper with a REAL name and a composable sdesc, so the identity
+        # pipeline has both to choose between (owner: "assigned name, not
+        # the actual -- we have a lot of code that does this").
+        self.keeper = create_object("typeclasses.characters.Character", key="Ottilie Krug", location=self.room1)
+        self.keeper.height = "short"; self.keeper.build = "stocky"; self.keeper.sdesc_keyword = "woman"
         self.cart = create_object("typeclasses.butcher.FoodCart", key="food cart", location=self.room1)
         self.cart.db.is_infinite = True
         self.cart.db.prototype_inventory = {"cigarette_pack_noir": 6}
@@ -45,7 +51,22 @@ class CartIsTheBarModelTest(EvenniaCommandTest):
             out = self.call(CmdBuy(), "cigarette_pack_noir from food cart")
         hand_over.assert_not_called()
         self.assertEqual(self.char1.tokens, before, "coin moved at a cart")
-        self.assertIn("Ottilie", out or ""); self.assertIn("ask", (out or "").lower())
+        self.assertIn("ask", (out or "").lower())
+        # A stranger gets the SDESC, never the real name.
+        self.assertIn("woman", out or "", "refusal did not use the sdesc: %r" % out)
+        self.assertNotIn("Ottilie", out or "", "refusal leaked the keeper's REAL name")
+
+    def test_refusal_uses_the_name_the_buyer_assigned_not_the_real_one(self):
+        # char1 remembers this face as "Tilly" -- their own label, which may be
+        # wrong, and which is what they should be told. Never `key`.
+        self.char1.recognition_memory = {
+            get_apparent_uid(self.keeper): make_recognition_entry(assigned_name="Tilly"),
+        }
+        with self._on_duty(self.keeper):
+            out = self.call(CmdBuy(), "cigarette_pack_noir from food cart")
+        self.assertIn("Tilly", out or "", "refusal did not use the assigned name: %r" % out)
+        self.assertNotIn("Ottilie", out or "", "refusal leaked the REAL name over the assigned one")
+        self.assertNotIn("woman", out or "", "refusal fell back to the sdesc despite an assigned name")
 
     def test_buy_at_an_unattended_cart_says_nobody_is_working_it(self):
         with self._on_duty(None):
