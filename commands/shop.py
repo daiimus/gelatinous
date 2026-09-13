@@ -7,6 +7,7 @@ Provides buy command for purchasing from shops.
 from evennia import Command
 from evennia.utils import logger
 from world.identity_utils import msg_room_identity
+from world.grammar import capitalize_first
 
 
 class CmdBuy(Command):
@@ -64,6 +65,20 @@ class CmdBuy(Command):
             caller.msg(f"{container.get_display_name(caller)} is not a shop container.")
             return
         
+        # Carts follow the bar model (owner ruling 2026-09-13; #3375): you
+        # talk to whoever is working the cart and they serve you onto the
+        # board. `buy` does nothing here -- refused BEFORE any coin moves.
+        # Stores and vending machines keep the typed door.
+        if not getattr(container, "TAKES_BUY", True):
+            what = container.get_display_name(caller)
+            keeper = self._find_keeper(caller, container)
+            if keeper:
+                who = keeper.get_display_name(caller)
+                caller.msg(f"{capitalize_first(who)} is working {what} -- just ask them.")
+            else:
+                caller.msg(f"Nobody's working {what} right now.")
+            return
+
         # Try to find item by prototype key or name
         prototype_key = self._find_prototype_key(container, item_name)
         if not prototype_key:

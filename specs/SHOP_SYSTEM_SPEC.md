@@ -30,6 +30,8 @@ This specification defines a container-based shop system for the G.R.I.M. MUD wi
 
 ## Design Philosophy
 
+> **Owner ruling 2026-09-13 -- three tiers (#3375 superseded).** Live today: (1) **Bars** are talk-only -- you speak to the tender (the bar's `order` is speech with the targeting done); they are not shop containers and `buy` cannot address them. (2) **Stores** (`ShopContainer`, shelf-styled; post-bound ones like Kaspar Pawn, Cinder & Leaf, Lin's noodle cart, and unbound self-service ones like Ramirez, the Armory, Gaia's, Community Thrift) keep the typed `buy`; a manned store also serves you when you speak to the keeper. The owner is **hesitant** to make stores talk-only -- "a bit alien for a MUD" -- so both doors stay there for now. (3) **Vending machines** (e.g. the battered cigarette machine, an unbound `ShopContainer`) are self-serve only. **Carts** (`FoodCart`, board-styled) move to the **bar model**: you talk to whoever is working the cart; `buy` is refused before any coin moves (`TAKES_BUY = False`). Principle 9 below ("no attendance check") describes the unbound tier only; post-bound fixtures are closed when nobody is on shift.
+
 1. **Container-Based Architecture**: ShopContainers are standalone objects that manage their own inventory and pricing. No room configuration needed.
 
 2. **Prototype Inventory**: Items stored as prototype keys, spawned on purchase to prevent database bloat.

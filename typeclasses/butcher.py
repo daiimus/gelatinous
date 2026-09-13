@@ -48,6 +48,11 @@ class FoodCart(Seating, ShopContainer):
     via the short ``db.integration_desc`` line (the full desc stays on
     ``look cart`` — the jukebox lesson)."""
 
+    #: Carts are the bar model: talk to whoever is working it (owner ruling
+    #: 2026-09-13, #3375). The typed `buy` is refused here.
+    TAKES_BUY = False
+
+
     def at_object_creation(self):
         super().at_object_creation()
         self.db.is_infinite = False

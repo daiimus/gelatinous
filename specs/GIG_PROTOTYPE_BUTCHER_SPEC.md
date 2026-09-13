@@ -24,6 +24,9 @@
 
 ---
 
+
+> **Owner ruling 2026-09-13 (#3375):** the cart is the **bar model** -- dishes are bought by speaking to whoever is working it (deterministic shelf match onto the board); the typed `buy` is refused at the cart (`FoodCart.TAKES_BUY = False`). Stores keep `buy`.
+
 ## 0 · Purpose & the capstone connection
 
 The world is a rich sandbox with no *pull* — nobody wants anything from the
