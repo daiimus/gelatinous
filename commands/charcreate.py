@@ -792,7 +792,15 @@ Select a consciousness vessel:
 
 
 def respawn_confirm_template(caller, raw_string, template_idx=0, **kwargs):
-    """Confirm template selection and choose sex."""
+    """Confirm template selection. The sleeve comes as rolled.
+
+    Sex is NOT chosen here. `generate_random_template` rolls it first and
+    draws the first name from the bank keyed to it, so overriding it after
+    the fact produced a sleeve named from one bank whose sex said the
+    other. The web door already takes the template as rolled (commit
+    802985d9 "Remove manual sex selection"); this node was the leftover
+    (#3358, owner ruling A: telnet matches the web).
+    """
     
     templates = caller.ndb.charcreate_data.get('templates', [])
     if template_idx >= len(templates):
@@ -800,36 +808,28 @@ def respawn_confirm_template(caller, raw_string, template_idx=0, **kwargs):
     
     template = templates[template_idx]
     caller.ndb.charcreate_data['selected_template'] = template
+    sex_label = (template.get('sex') or 'ambiguous').capitalize()
     
     text = f"""
 |w╔════════════════════════════════════════════════════════════════╗
 ║  SLEEVE CONFIGURATION                                          ║
 ╚════════════════════════════════════════════════════════════════╝|n
 
-Selected: |c{template['first_name']} {template['last_name']}|n
+Selected: |c{template['first_name']} {template['last_name']}|n ({sex_label})
 
 |gGrit:|n      {template['grit']:3d}
 |yResonance:|n {template['resonance']:3d}
 |bIntellect:|n {template['intellect']:3d}
 |mMotorics:|n {template['motorics']:3d}
 
-Select biological sex for this sleeve:
-
-|w[1]|n Male
-|w[2]|n Female
-|w[3]|n Androgynous
-
+|w[Y]|n Decant into this sleeve
 |w[B]|n Back to template selection
 
 |wEnter choice:|n """
     
     options = (
-        {"key": "1",
-         "goto": ("respawn_finalize_template", {"sex": "male"})},
-        {"key": "2",
-         "goto": ("respawn_finalize_template", {"sex": "female"})},
-        {"key": "3",
-         "goto": ("respawn_finalize_template", {"sex": "ambiguous"})},
+        {"key": ("y", "yes"),
+         "goto": "respawn_finalize_template"},
         {"key": ("b", "back"),
          "goto": "respawn_welcome"},
         {"key": "_default",
@@ -842,12 +842,13 @@ Select biological sex for this sleeve:
 def respawn_finalize_template(caller, raw_string, **kwargs):
     """Create character from template and finalize respawn."""
     
-    # Extract sex from kwargs (EvMenu passes goto dict params as kwargs)
-    sex = kwargs.get('sex', 'ambiguous')
-    
     template = caller.ndb.charcreate_data.get('selected_template')
     if not template:
         return "respawn_welcome"
+    
+    # The sleeve's sex is what the template was rolled with -- the same
+    # value the web door passes (#3358). Never a menu choice.
+    sex = template.get('sex', 'ambiguous')
     
     # Create character
     try:
