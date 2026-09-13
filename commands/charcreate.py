@@ -1006,13 +1006,17 @@ def first_char_name_first(caller, raw_string, **kwargs):
         # Validate format (not uniqueness yet - need full name)
         if len(name) < 2 or len(name) > 30:
             caller.msg(f"|rInvalid name: Name must be 2-30 characters.|n")
-            # Return None to re-display current node
-            return None
+            # Re-display THIS node with the error already shown. A bare
+            # `return None` closes the menu (EvMenu treats no-options as
+            # done), which disconnects a first-time player mid-chargen.
+            return first_char_name_first(caller, "", **kwargs)
         
         if not re.match(r"^[a-zA-Z][a-zA-Z\-']*[a-zA-Z]$", name):
             caller.msg(f"|rInvalid name: Only letters, hyphens, and apostrophes allowed.|n")
-            # Return None to re-display current node
-            return None
+            # Re-display THIS node with the error already shown. A bare
+            # `return None` closes the menu (EvMenu treats no-options as
+            # done), which disconnects a first-time player mid-chargen.
+            return first_char_name_first(caller, "", **kwargs)
         
         # Store first name and advance to next node
         caller.ndb.charcreate_data['first_name'] = name
@@ -1050,21 +1054,27 @@ def first_char_name_last(caller, raw_string, **kwargs):
         
         if len(name) < 2 or len(name) > 30:
             caller.msg(f"|rInvalid name: Name must be 2-30 characters.|n")
-            # Return None to re-display current node
-            return None
+            # Re-display THIS node with the error already shown. A bare
+            # `return None` closes the menu (EvMenu treats no-options as
+            # done), which disconnects a first-time player mid-chargen.
+            return first_char_name_last(caller, "", **kwargs)
         
         if not re.match(r"^[a-zA-Z][a-zA-Z\-']*[a-zA-Z]$", name):
             caller.msg(f"|rInvalid name: Only letters, hyphens, and apostrophes allowed.|n")
-            # Return None to re-display current node
-            return None
+            # Re-display THIS node with the error already shown. A bare
+            # `return None` closes the menu (EvMenu treats no-options as
+            # done), which disconnects a first-time player mid-chargen.
+            return first_char_name_last(caller, "", **kwargs)
         
         # Check full name uniqueness
         full_name = f"{first_name} {name}"
         is_valid, error = validate_name(full_name)
         if not is_valid:
             caller.msg(f"|r{error}|n")
-            # Return None to re-display current node
-            return None
+            # Re-display THIS node with the error already shown. A bare
+            # `return None` closes the menu (EvMenu treats no-options as
+            # done), which disconnects a first-time player mid-chargen.
+            return first_char_name_last(caller, "", **kwargs)
         
         # Store last name and advance to next node
         caller.ndb.charcreate_data['last_name'] = name
