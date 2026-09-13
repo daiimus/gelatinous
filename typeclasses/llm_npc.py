@@ -47,6 +47,15 @@ LLM_MEMORY_TOPK = 3            # long-term memories recalled into a turn (Phase 
 LLM_ACTION_BUFFER = 6          # room actions observed (no LLM) → next reply (§8.4)
 
 
+#: Ways the model refers to the person it is already talking to. The `look`
+#: tool hands the patron back for these instead of searching the room (#3370).
+_PATRON_WORDS = frozenset({
+    "patron", "the patron", "them", "they", "you", "him", "her",
+    "speaker", "the speaker", "interlocutor", "customer", "the customer",
+    "this person", "the person", "the person i'm speaking to",
+})
+
+
 class LLMNpcMixin:
     """The reusable LLM brain. Mix into a Character (before it in the MRO)."""
 
@@ -979,6 +988,55 @@ class LLMNpcMixin:
                 f"units went out — the scene is covered or there is "
                 f"nobody free. Do not claim anyone is responding.")
 
+    def _look_at(self, arg, patron):
+        """The ``look`` context tool (#3370). Resolve ``arg`` the way a real
+        `look` would -- a person in the room by PERCEIVED identity, or an
+        object in the room, in the patron's hands, or in our own -- and
+        return that thing's appearance. The handler used to ignore ``arg``
+        and always return the patron, so an NPC could never perceive an
+        object (the "show them a photo" scenario, NPC_MEMORY_AND_IDENTITY
+        §2b) and every look burned a round to re-read the PERCEPTION line.
+
+        No argument (or the patron themself) still yields the patron;
+        nothing matching yields a plain "nothing like that" rather than a
+        silent fallback to the interlocutor."""
+        query = " ".join(str(arg or "").split())
+        # No argument, or the model naming its interlocutor generically
+        # ("patron", "them", "you"): that is the person already in the
+        # PERCEPTION line -- hand them back rather than hunting the room.
+        if not query or query.lower() in _PATRON_WORDS:
+            return self._perceive(patron) or "nothing remarkable"
+        try:
+            from world.search import strip_leading_article
+            query = strip_leading_article(query) or query
+        except Exception:  # noqa: BLE001 -- article stripping is a nicety
+            pass
+        room = getattr(self, "location", None)
+        room_contents = list(getattr(room, "contents", None) or [])
+        # People first, by how THIS NPC perceives them (masks, sdescs).
+        try:
+            from commands._identity_targeting import resolve_character_target
+            people = [o for o in room_contents
+                      if o is not self and hasattr(o, "medical_state")]
+            person = resolve_character_target(self, query, candidates=people)
+        except Exception:  # noqa: BLE001 -- fall through to objects
+            person = None
+        if person is not None:
+            return self._perceive(person) or "nothing remarkable"
+        # Then things: in the room, in the patron's hands, in our own.
+        candidates = [o for o in room_contents if o is not self and not hasattr(o, "medical_state")]
+        for holder in (patron, self):
+            candidates.extend(o for o in (getattr(holder, "contents", None) or []) if o not in candidates)
+        try:
+            found = self.search(query, candidates=candidates, quiet=True)
+        except Exception:  # noqa: BLE001
+            found = None
+        if isinstance(found, (list, tuple)):
+            found = found[0] if found else None
+        if found is None:
+            return f"You see nothing like '{query}' here."
+        return self._perceive(found) or "nothing remarkable"
+
     def _perceive(self, patron):
         """What this NPC sees when it looks at the patron — grounds the model's
         description so it can't invent the speaker's appearance. ANSI-stripped,
@@ -1118,7 +1176,7 @@ class LLMNpcMixin:
         empty string, which the model then improvises around (#2352).
         Subclasses may still extend, then call super."""
         if tool == "look":
-            return self._perceive(patron) or "nothing remarkable"
+            return LLMNpcMixin._look_at(self, arg, patron)  # explicit: a mocked subclass still routes here
         from world import service
         handled, result = service.run_tool(self, tool, arg, patron)
         if handled:
