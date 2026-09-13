@@ -441,6 +441,16 @@ def start_procedure(
         "token": token,
         "kwargs": dict(kwargs),
     }
+    # First element of any procedure (#3360, owner ruling 2026-09-13): the
+    # hardware at the cut goes back to its default, undeployed state before
+    # the surgeon starts. Same retract path the patient's own command uses.
+    try:
+        from world.medical.augments import stow_abilities_at
+        for line in stow_abilities_at(target, kwargs.get("location")):
+            if line and hasattr(target, "msg"):
+                target.msg(line)
+    except Exception as exc:  # noqa: BLE001 -- a stow hiccup never blocks surgery
+        _log_guarded_failure("stow_abilities_at", target, exc)
     state = _state(target)
     state["active_procedure"] = record
     target.db.surgical_state = state

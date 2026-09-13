@@ -113,6 +113,18 @@ Gates: the slot's anatomy must exist and not be severed; dead or
 unconscious characters can't toggle; busy-state (active procedure)
 blocks.
 
+> **Ruled and built 2026-09-13 (#3360).** (1) The busy gate is in
+> `toggle_ability`: no toggles while a procedure is active on the body.
+> (2) **The first element of any procedure stows the hardware at the
+> cut**: `start_procedure` calls `stow_abilities_at(target, location)`,
+> which retracts every deployed ability hosted at that location through
+> the normal retract path (hands restored, room told). Hardware elsewhere
+> on the body is left alone -- a leg operation does not switch off a
+> voice modulator. (3) **No channeled-act gate, by ruling**: a shotgun
+> arm must deploy the moment combat starts, and sensory hardware (night
+> vision, thermal) is designed to be used whenever; `refuse_if_channeling`
+> is intentionally not consulted here.
+
 > **Note 2026-09-11 (re-verification) — the CODE is short of this spec,
 > not the other way round.** `toggle_ability`
 > (`world/medical/augments.py:115-140`) implements the first two gates
