@@ -157,6 +157,10 @@ def is_target_grappled(target):
 - **Turn-based mechanics**: Instant execution
 - **Damage system**: No combat implications
 
+> **Added 2026-09-12 — one integration IS required, and it is not wired.** `CHANNELED_ACTIONS_SPEC.md` §2.3's BREAKING table lists "**The tool leaving your hands** (disarm, `wrest` the spray can away) | disarm/wrest resolution" (`specs/CHANNELED_ACTIONS_SPEC.md:144`), and that spec's banner records the gap explicitly (`:20-22`, amended 2026-09-11): neither `resolve_disarm` (`world/combat/actions.py`) nor `CmdWrest` calls `interrupt_channel`. So wresting a spray can out of a tagger's hand today leaves their channel running on an item they no longer hold, and it completes as a full tag. Seven production call sites already do break a channel — `world/combat/grappling.py:75`, `world/combat/utils.py:632`, `typeclasses/characters.py:752`, `:855`, `:1653`, `typeclasses/exits.py:380`, `typeclasses/armor_mixin.py:49` — so the pattern is established and wrest is simply unwired. **This is a code gap, not a spec gap** — no GitHub issue tracks it yet.
+>
+> The four rows above verify as written: nothing in `CmdWrest` touches proximity, aiming, turn order or damage.
+
 ## Implementation Architecture
 
 ### Command Flow Overview
@@ -171,6 +175,8 @@ def is_target_grappled(target):
 8. If successful: Update both hand dictionaries
 9. Announce result to room
 ```
+
+> **Stale 2026-09-12 — third instance of the same no-op.** Step 8 is the flow-chart form of the line corrected under `#### Mr. Hand System Requirements`: nothing updates a hand dictionary, and there is no dictionary to update. The victim's slot is released by `Character.at_object_leave` off `target_object.move_to(caller, quiet=True)` (#2468) and the caller's is written by `wield_item` into `held_items`; assigning into `target.hands` here was the discarded write filed as #2489 / #2536. Step 9 is accurate but partial — caller and target each get a direct `msg()`, and only the third line goes to the room, rendered per-observer through `msg_room_identity` (`commands/CmdInventory.py:1246`, `:1271`).
 
 ### Constants Required
 - `MSG_WREST_SUCCESS_CALLER`
@@ -305,6 +311,7 @@ for hand_name, held_item in caller.hands.items():
 1. **No hardcoded assumptions**: No references to specific hand names like "left" or "right"
 2. **Automatic scaling**: Works with 1 hand, 2 hands, 8 tentacles, etc.
 3. **Graceful degradation**: If a character loses a hand, simply remove it from dictionary
+   - *Corrected 2026-09-12:* nobody removes anything — the derived view omits it. `hands` subtracts severed containers on every read and, since the #526 functional-anatomy gate, also any container whose organs are all dead, which is what finally closed "wield in a hand hanging off a severed arm" (`typeclasses/characters.py:2081-2112`). Benefits 2, 4 and 5 hold as written. Benefit 1 holds for **this command** — `CmdWrest` never names a hand, it iterates the view (`_find_free_hand`, `commands/CmdInventory.py:1116`) — but not for the Mr. Hand system as a whole: `HAND_NAME_ALIASES` hardcodes `left`/`right` (`typeclasses/characters.py:32-37`), and both `wield_item` (`:2290`) and `unwield_item` (`:2352`) default to `hand="right"`, so a defaulted call on a species with no `right_hand` answers "You don't have a right hand."
 4. **Name flexibility**: Hand names can be descriptive ("cybernetic_left", "tentacle_north", etc.)
 5. **Future-proof**: New appendage types require no command modifications
 
@@ -324,6 +331,7 @@ for hand_name, held_item in caller.hands.items():
 
 ### Integration Opportunities
 - **Identity system**: Better target resolution when implemented
+  - *Shipped 2026-09-12 — no longer an opportunity.* `_find_target_in_room` calls `resolve_character_target` (`commands/CmdInventory.py:1124-1129`), the canonical identity-aware helper named by `IDENTITY_RECOGNITION_SPEC` §Command Authoring Rule, so `wrest knife from tall man` resolves on recognition rather than keys, ambiguity gets a disambiguation prompt, and all three announcements render per-observer through `msg_room_identity`.
 - **Emote system**: Custom wrest emotes for different scenarios
 - **Messaging system**: More detailed context-aware messages
 - **Animation system**: Visual indicators for successful wrests
