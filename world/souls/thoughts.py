@@ -254,6 +254,44 @@ def opinion_of(soul, uid, now=None):
     return max(-1.0, min(1.0, total))
 
 
+def opinion_over(soul, uids, now=None):
+    """Opinion of a PERSON known under several faces: the SUM of the decayed
+    opinion held against each uid, clamped like `opinion_of` (#3371, owner
+    ruling 2026-09-13, option A -- connecting two faces is a full merge, so
+    a grudge cannot be laundered by changing faces). A bare string is a
+    one-face person."""
+    if isinstance(uids, str) or uids is None:
+        uids = [uids]
+    now = now if now is not None else time.time()
+    total = 0.0
+    for uid in uids:
+        uid = str(uid or "").strip()
+        if not uid:
+            continue
+        entries = _opinions(soul).get(uid) or []
+        total += sum(float(v) * _weight(k, now - t, soul)
+                     for t, k, v, _n in (tuple(e) for e in entries))
+    return max(-1.0, min(1.0, total))
+
+
+def opinion_note_over(soul, uids, now=None):
+    """The single strongest reason across every face of a person (#3371)."""
+    if isinstance(uids, str) or uids is None:
+        uids = [uids]
+    now = now if now is not None else time.time()
+    best, best_note = 0.0, ""
+    for uid in uids:
+        uid = str(uid or "").strip()
+        if not uid:
+            continue
+        for e in (_opinions(soul).get(uid) or []):
+            stamp, key, valence, note = tuple(e)
+            weighted = abs(float(valence) * _weight(key, now - stamp, soul))
+            if note and weighted > best:
+                best, best_note = weighted, note
+    return best_note
+
+
 def opinion_band(value):
     for floor, label in OPINION_BANDS:
         if value >= floor:

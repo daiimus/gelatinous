@@ -806,10 +806,39 @@ class LLMNpcMixin:
         voice is handed the answer.
         """
         from world.souls import thoughts
-        d = self._dossiers().get(subject) or {}
-        aliases = [a for a in (d.get("aliases") or []) if a]
-        band = thoughts.opinion_band(thoughts.opinion_of(self, subject))
-        if not aliases and band == "neutral":
+        # Every face this NPC believes is the same person (#3371). Memory
+        # retrieval already follows the identity chain (#2410); the WHO
+        # line did not, so a grudge earned as face A read neutral on face
+        # B and the aliases of the other face never showed. Owner ruling
+        # 2026-09-13, option A: connecting faces is a FULL merge -- aliases
+        # union, opinion SUMS across the family.
+        scope = self._memory_scope(subject)
+        family = list(scope) if isinstance(scope, (list, tuple)) else [subject]
+        dossiers = self._dossiers()
+        aliases = []
+        for uid in family:
+            for a in ((dossiers.get(uid) or {}).get("aliases") or []):
+                if a and a not in aliases:
+                    aliases.append(a)
+        # Papers something VOUCHED for, across the family -- the NPC-side
+        # twin of `recall`'s "Papers:" rows (#2408); previously produced
+        # nowhere on this path, so a verified ID changed nothing.
+        papers = []
+        try:
+            from world.identity import attestations
+            for uid in family:
+                for row in attestations(self, uid):
+                    name = row.get("name")
+                    if not name:
+                        continue
+                    tag = f"'{name}' ({row.get('issuer') or 'papers'}"
+                    tag += ")" if row.get("verified") else ", unverified)"
+                    if tag not in papers:
+                        papers.append(tag)
+        except Exception:  # noqa: BLE001 -- papers are a bonus, never a crash
+            pass
+        band = thoughts.opinion_band(thoughts.opinion_over(self, family))
+        if not aliases and not papers and band == "neutral":
             return None
         parts = []
         if len(aliases) == 1:
@@ -817,9 +846,13 @@ class LLMNpcMixin:
         elif aliases:
             parts.append("you've known them as "
                          + ", ".join(f"'{a}'" for a in aliases))
+        if len(family) > 1:
+            parts.append("you know these are the same person under different faces")
+        if papers:
+            parts.append("papers vouch for them as " + ", ".join(papers))
         if band != "neutral":
             read = f"your read on them: {band}"
-            because = thoughts.opinion_note(self, subject)
+            because = thoughts.opinion_note_over(self, family)
             if because:
                 # cite the REASON, so the voice narrates the engine's
                 # grievance instead of inventing its own
