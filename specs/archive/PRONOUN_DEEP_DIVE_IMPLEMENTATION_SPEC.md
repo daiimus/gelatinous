@@ -2,6 +2,37 @@
 
 > **Status:** 🗄 Superseded — the $pron()/FuncParser design here was never built; perspective pronouns shipped via the grammar engine + brace tokens (see GRAMMAR_ENGINE_SPEC, LONGDESC_SYSTEM_SPEC, EMOTE_POSE_SPEC). Kept for historical design context.
 
+> **Sharpened 2026-09-12 (drift audit).** The sentence above is accurate about
+> the mechanism — no `$pron()` call, no `FuncParser(ACTOR_STANCE_CALLABLES)`, no
+> `_send_pronoun_message` exists anywhere in the repo — but two things around it
+> are looser than the code.
+>
+> **(1) One item of this spec did ship, and its checkbox is still unticked.**
+> The `Character.gender` property from §1 is live at
+> `typeclasses/characters.py:200-222` and is load-bearing: `get_apparent_gender`
+> falls back to it for every undisguised character
+> (`world/identity.py:1306`), so every `look` pronoun set passes through it. It
+> is also read at `typeclasses/characters.py:1252`,
+> `typeclasses/items.py:1858,3471`, `commands/CmdCharacter.py:845,901,1448,1574`
+> and in the chargen debug trace (`commands/charcreate.py:380,514`). Its mapping
+> differs from §1: everything non-male/female collapses to `"neutral"`, and the
+> `"plural"` value §1 proposed is produced one layer up, by the renderer's own
+> `gender_mapping` over the *apparent* gender
+> (`typeclasses/appearance_mixin.py:1127-1140`).
+>
+> **(2) What shipped through brace tokens is the gendered THIRD person, not the
+> self-vs-other PERSPECTIVE this spec was written for.** All eight production
+> callers of `_process_description_variables` pass `force_third_person=True`
+> (`typeclasses/appearance_mixin.py:367,657,916`; `typeclasses/items.py:435`;
+> `commands/CmdCharacter.py:900,1266,1532,1563`), so `is_self`
+> (`typeclasses/appearance_mixin.py:1124`) is never true on a `look` and its
+> second-person arms are unreachable there. Second-person perspective shipped
+> only in the emote/pose path, via `world.grammar.transform_pronoun`
+> (`world/emote.py:940-953`). For `look`, the rule is now explicitly
+> third-person-for-everyone (`LONGDESC_SYSTEM_SPEC.md:343`); the one surviving
+> contradiction (the `help tokens` entry at `world/help_entries.py:58-66`) is
+> open as #2691.
+
 > **STATUS: SUPERSEDED / HISTORICAL.** The `$pron()`/FuncParser design proposed here was not implemented. Perspective-aware pronouns shipped via the grammar engine and `{their}`/`{they}` brace tokens instead. See `GRAMMAR_ENGINE_SPEC.md` and `LONGDESC_SYSTEM_SPEC.md` for the actual implementation. Retained for historical design context.
 
 ## Overview
@@ -57,7 +88,6 @@ class Character(ObjectParent, DefaultCharacter):
     # @set me/sex = female  
     # @set me/sex = nonbinary
     # (Character creation will handle this)
-```
 ```
 
 ### 2. Dynamic Appearance System
@@ -449,6 +479,21 @@ wear_msg = "$You() $conj(put) on a black hoodie that clings to $pron(your) frame
 
 ### Technical Metrics
 - [ ] Self-examination shows second person pronouns ("you", "your")  
+  > **Reversed by a later ruling, not left undone (noted 2026-09-12).** `look me`
+  > renders third person end to end: `return_appearance` forces it for `db.desc`
+  > (`typeclasses/appearance_mixin.py:657`), `_render_body_longdesc` for every
+  > longdesc (`:916`), and `get_current_worn_desc_with_perspective` for every
+  > worn item (`typeclasses/items.py:435`). `is_self`
+  > (`typeclasses/appearance_mixin.py:1124`) is therefore never true in
+  > production, so the 21 `'your'` / `'you'` / `'yourself' if is_self` arms at
+  > `:1146-1236` are unreachable on a look.
+  > `LONGDESC_SYSTEM_SPEC.md:343` now states the opposite rule — "all
+  > descriptions use consistent third-person perspective regardless of viewer" —
+  > so this criterion was decided against rather than skipped.
+  > Second-person perspective DID ship, but only for emotes and poses
+  > (`world/emote.py:940-953`). The `help tokens` entry
+  > (`world/help_entries.py:58-66`) still promises the behaviour described here;
+  > that is open as #2691 (needs-decision).
 - [ ] Observer examination shows correct third person pronouns ("he/she/they", "his/her/their")
 - [ ] Clothing descriptions dynamically adapt to viewer perspective
 - [ ] Longdesc descriptions work seamlessly with pronoun system
