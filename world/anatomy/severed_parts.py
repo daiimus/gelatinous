@@ -414,6 +414,16 @@ def get_severed_part_description(species, location, condition, inorganic=False):
     specific entry, then the generic ``{part}`` template — before
     falling through to the species flesh prose.
     """
+    # A species that is inorganic all the way down (robot, synth --
+    # `infection_immune` at species level) and has its OWN bank answers
+    # from that bank: a robot arm is a robot arm, not a chrome augment.
+    # The cybernetic table is for chrome on a flesh body (#516), and it
+    # still wins there. (#3362, owner: "each species has a bank, no
+    # shortcuts".)
+    if inorganic and species in SEVERED_PART_DESCRIPTIONS:
+        from world.anatomy.species import get_species_infection_immune
+        if get_species_infection_immune(species):
+            inorganic = False
     if inorganic:
         cyber_table = (
             CYBERNETIC_PART_DESCRIPTIONS.get(location)
@@ -454,3 +464,374 @@ def get_severed_part_description(species, location, condition, inorganic=False):
     if not location_table:
         return ""
     return location_table.get(condition, "")
+
+# ---------------------------------------------------------------------
+# Robot and synthetic-humanoid banks (#3362). Authored prose in each
+# species' own register (see world/medical/wounds/messages/robot.py and
+# synth.py); neither species rots, so "damaged"/"putrid" read as
+# corroded-wreck and inert respectively. Every severable container is
+# covered; test_severed_part_descriptions.py enforces it for all species.
+# ---------------------------------------------------------------------
+SEVERED_PART_DESCRIPTIONS.setdefault("robot", {
+    "head": {
+        "pristine": (
+            "A severed robot head, its optical sensors still faintly "
+            "lit and the neck servo column sheared clean, amber "
+            "hydraulic fluid beading along the cut."
+        ),
+        "damaged": (
+            "A dulled severed robot head, its optical sensors gone dark "
+            "and the neck-column stump crusted tar-black where the "
+            "fluid dried."
+        ),
+        "putrid": (
+            "A wrecked severed robot head, the faceplate pitted with "
+            "corrosion and the processor core dead behind a "
+            "grime-filmed aperture."
+        ),
+    },
+    "left_arm": {
+        "pristine": (
+            "A severed left arm, the shoulder mount sheared clean "
+            "through and amber hydraulic fluid weeping from the cut "
+            "couplings."
+        ),
+        "damaged": (
+            "A scuffed left arm, its plating dented along the upper "
+            "strut and the mount-end couplings crusted tar-black."
+        ),
+        "putrid": (
+            "A wrecked left arm, its plating pitted with corrosion and "
+            "the shoulder mount packed with grime, nothing inside it "
+            "moving."
+        ),
+    },
+    "right_arm": {
+        "pristine": (
+            "A severed right arm, bright metal showing at the sheared "
+            "shoulder mount and its elbow actuator still ticking as it "
+            "unloads."
+        ),
+        "damaged": (
+            "A tarnished right arm, the elbow actuator seized "
+            "mid-travel and dried fluid staining the panel seams "
+            "tar-black."
+        ),
+        "putrid": (
+            "A corroded right arm, the upper plating flaking away and "
+            "its shoulder contacts long dead under a pale crust."
+        ),
+    },
+    "left_hand": {
+        "pristine": (
+            "A severed left hand, its graspers still loosely curled and "
+            "the wrist coupling cut clean, amber fluid beading at the "
+            "line-ends."
+        ),
+        "damaged": (
+            "A dented left hand, the graspers seized part-closed and "
+            "the wrist coupling ringed with dried tar-black fluid."
+        ),
+        "putrid": (
+            "A wrecked left hand, its finger servos locked stiff with "
+            "grime and the wrist contacts pitted dead."
+        ),
+    },
+    "right_hand": {
+        "pristine": (
+            "A severed right hand, its manipulators twitching faintly "
+            "on residual charge and the wrist coupling shorn through in "
+            "one clean pass."
+        ),
+        "damaged": (
+            "A seized right hand, two graspers bent out of true and the "
+            "wrist-cut hydraulic lines frayed and dry."
+        ),
+        "putrid": (
+            "A corroded right hand, its palm plating flaking and the "
+            "servo housings crusted shut, nothing articulating."
+        ),
+    },
+    "left_thigh": {
+        "pristine": (
+            "A severed left thigh, the hip mount cut clean through its "
+            "bearing and amber hydraulic fluid welling from the severed "
+            "lines."
+        ),
+        "damaged": (
+            "A scuffed left thigh, the heavy plating dulled and the "
+            "hip-mount lines crimped shut with dried tar-black fluid."
+        ),
+        "putrid": (
+            "A wrecked left thigh, its thigh strut pitted through in "
+            "places and the hip bearing seized under packed grime."
+        ),
+    },
+    "right_thigh": {
+        "pristine": (
+            "A severed right thigh, its hydraulic ram still pressurised "
+            "and beading amber at the sheared hip coupling."
+        ),
+        "damaged": (
+            "A dented right thigh, panel seams sprung along the outer "
+            "plate and the coupling-end fluid dried to tar-black scale."
+        ),
+        "putrid": (
+            "A corroded right thigh, the outer plating flaking off in "
+            "scabs and its ram bled dry long ago."
+        ),
+    },
+    "left_shin": {
+        "pristine": (
+            "A severed left shin, the knee joint sheared clean across "
+            "its bearing surfaces and amber fluid running from the cut "
+            "lines."
+        ),
+        "damaged": (
+            "A tarnished left shin, its knee actuator seized and the "
+            "joint-cut ringed with dried tar-black residue."
+        ),
+        "putrid": (
+            "A wrecked left shin, its shin strut pitted with corrosion "
+            "and the knee bearing packed solid with grit."
+        ),
+    },
+    "right_shin": {
+        "pristine": (
+            "A severed right shin, bright metal at the knee shear and "
+            "live contacts sparking faintly where the harness tore."
+        ),
+        "damaged": (
+            "A dulled right shin, the forward plating dented inward and "
+            "the severed hydraulic lines frayed and crusted dark."
+        ),
+        "putrid": (
+            "A corroded right shin, plating flaking from the strut and "
+            "its knee contacts dead under a film of grime."
+        ),
+    },
+    "left_foot": {
+        "pristine": (
+            "A severed left foot, its toe pads still splayed and the "
+            "ankle coupling cut clean, amber fluid running from the "
+            "mount."
+        ),
+        "damaged": (
+            "A scuffed left foot, the sole plate worn smooth and the "
+            "ankle-cut lines dried tar-black."
+        ),
+        "putrid": (
+            "A wrecked left foot, its foot servos locked under caked "
+            "grime and the ankle mount pitted through."
+        ),
+    },
+    "right_foot": {
+        "pristine": (
+            "A severed right foot, the ankle mount sheared through "
+            "cleanly and its toe actuators still flexing in slow, "
+            "aimless cycles."
+        ),
+        "damaged": (
+            "A dented right foot, its heel plate crumpled and the ankle "
+            "coupling crusted with dried fluid."
+        ),
+        "putrid": (
+            "A corroded right foot, the sole plating flaking to scale "
+            "and its toe actuators seized dead."
+        ),
+    },
+    "tail": {
+        "pristine": (
+            "A severed robot tail, a segmented prehensile assembly "
+            "still articulating faintly, amber hydraulic fluid weeping "
+            "from the torn base mount."
+        ),
+        "damaged": (
+            "A scuffed robot tail, its segments seized at odd angles "
+            "and the base mount crusted tar-black where the lines tore."
+        ),
+        "putrid": (
+            "A wrecked robot tail, its segment joints corroded solid "
+            "and the base mount flaking to rust, nothing left live in "
+            "it."
+        ),
+    },
+})
+
+SEVERED_PART_DESCRIPTIONS.setdefault("synthetic_humanoid", {
+    "head": {
+        "pristine": (
+            "A severed synth head, the features composed and the "
+            "neck-cut unnaturally clean, cobalt welling in a thin even "
+            "rim."
+        ),
+        "damaged": (
+            "A dulled severed synth head, the dermis gone waxy and the "
+            "neck-cut dried to a slate crust."
+        ),
+        "putrid": (
+            "An inert severed synth head, the dermis slackened and "
+            "pearl-dull, its iris-rings dead glass and the neck seam "
+            "parted dry."
+        ),
+    },
+    "left_arm": {
+        "pristine": (
+            "A severed left arm, the shoulder-cut clean through joint "
+            "and substrate, cobalt beading along the layered dermis."
+        ),
+        "damaged": (
+            "A slackened left arm, the dermis gone waxy and the "
+            "shoulder-cut set to a dry slate rim."
+        ),
+        "putrid": (
+            "An inert left arm, the dermis greyed to pearl-dull and its "
+            "shoulder seam parted around a crust of dried cobalt."
+        ),
+    },
+    "right_arm": {
+        "pristine": (
+            "A severed right arm, its dermal layers showing too evenly "
+            "at the shoulder-cut and cobalt running thin from the "
+            "substrate."
+        ),
+        "damaged": (
+            "A waxen right arm, the limb gone slack and heavy and its "
+            "shoulder-cut margins dulled and dry."
+        ),
+        "putrid": (
+            "An inert right arm, pearlescent seams standing open along "
+            "the forearm and the shoulder-cut long set to slate."
+        ),
+    },
+    "left_hand": {
+        "pristine": (
+            "A severed left hand, the fingers loosely curled and the "
+            "wrist-cut machine-even, cobalt welling across it."
+        ),
+        "damaged": (
+            "A waxen left hand, the fingers stiffened part-closed and "
+            "the wrist-cut dried to slate."
+        ),
+        "putrid": (
+            "An inert left hand, the dermis greyed and slack over the "
+            "knuckles and the wrist seam parted, dry to the substrate."
+        ),
+    },
+    "right_hand": {
+        "pristine": (
+            "A severed right hand, its palm still warm and the "
+            "wrist-cut unnaturally clean, cobalt beading in a neat "
+            "line."
+        ),
+        "damaged": (
+            "A slackened right hand, the dermis waxy across the back of "
+            "it and the wrist-cut edges gone dull and dry."
+        ),
+        "putrid": (
+            "An inert right hand, its fingers set stiff and pearl-dull "
+            "and the wrist-cut crusted over with old slate."
+        ),
+    },
+    "left_thigh": {
+        "pristine": (
+            "A severed left thigh, the hip-cut clean through the joint "
+            "and cobalt welling steadily from the layered dermis."
+        ),
+        "damaged": (
+            "A waxen left thigh, its heavy dermis gone slack and the "
+            "hip-cut dried into a flat slate rim."
+        ),
+        "putrid": (
+            "An inert left thigh, the dermis greyed to pearl-dull and "
+            "the hip-cut opened dry to the substrate."
+        ),
+    },
+    "right_thigh": {
+        "pristine": (
+            "A severed right thigh, its dermal layers stacked too "
+            "regularly at the unnaturally clean hip-cut, cobalt beading "
+            "along them."
+        ),
+        "damaged": (
+            "A slackened right thigh, the surface waxy and cool and its "
+            "hip-cut margins set slate-dark."
+        ),
+        "putrid": (
+            "An inert right thigh, pearlescent seams parted down the "
+            "length of it and the hip-cut crusted with dried cobalt."
+        ),
+    },
+    "left_shin": {
+        "pristine": (
+            "A severed left shin, the knee-cut clean across the joint "
+            "surfaces and cobalt welling in an even rim."
+        ),
+        "damaged": (
+            "A waxen left shin, the dermis gone slack over the calf and "
+            "the knee-cut dried to slate."
+        ),
+        "putrid": (
+            "An inert left shin, its dermis greyed and pearl-dull and "
+            "the knee-cut parted dry around the substrate."
+        ),
+    },
+    "right_shin": {
+        "pristine": (
+            "A severed right shin, its calf firm and the knee-cut "
+            "machine-even, cobalt tracking down from it."
+        ),
+        "damaged": (
+            "A slackened right shin, the surface waxy and the knee-cut "
+            "margins dulled to a dry slate line."
+        ),
+        "putrid": (
+            "An inert right shin, the dermis drawn tight and opaline "
+            "and the knee-cut crusted hard with old cobalt."
+        ),
+    },
+    "left_foot": {
+        "pristine": (
+            "A severed left foot, the toes loosely splayed and the "
+            "ankle-cut unnaturally clean, cobalt beading at the joint."
+        ),
+        "damaged": (
+            "A waxen left foot, the toes stiffened and the ankle-cut "
+            "dried into a slate rim."
+        ),
+        "putrid": (
+            "An inert left foot, its dermis greyed and slack and the "
+            "ankle seam parted, dry through to the substrate."
+        ),
+    },
+    "right_foot": {
+        "pristine": (
+            "A severed right foot, its sole pale and unworn and the "
+            "ankle-cut clean through the joint, welling cobalt."
+        ),
+        "damaged": (
+            "A slackened right foot, the dermis gone waxy across the "
+            "instep and the ankle-cut set dry and dull."
+        ),
+        "putrid": (
+            "An inert right foot, the toes pearl-dull and stiff and the "
+            "ankle-cut crusted over with dried slate."
+        ),
+    },
+    "tail": {
+        "pristine": (
+            "A severed synth tail, a prehensile length of layered "
+            "dermis still limp and warm, cobalt welling from the "
+            "unnaturally clean base-cut."
+        ),
+        "damaged": (
+            "A waxen synth tail, its length gone slack and rubbery and "
+            "the base-cut dried to a slate ring."
+        ),
+        "putrid": (
+            "An inert synth tail, the dermis greyed and pearl-dull "
+            "along its length and the base-cut parted dry over the "
+            "substrate."
+        ),
+    },
+})

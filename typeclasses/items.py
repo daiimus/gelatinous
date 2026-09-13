@@ -1762,7 +1762,10 @@ class Appendage(Item):
         # under "data" since the anatomy substrate.
         snapshot = corpse.get_medical_snapshot() if hasattr(corpse, "get_medical_snapshot") else {}
         inorganic = _chain_organs_inorganic_snapshot(snapshot, chain)
-        if inorganic and species in (self.key or ""):
+        # "cybernetic <part>" is chrome on a flesh body; a robot or synth
+        # limb keeps its species name (#3362).
+        from world.anatomy.species import get_species_infection_immune
+        if inorganic and species in (self.key or "") and not get_species_infection_immune(species):
             self.key = self.key.replace(species, "cybernetic", 1)
         prose = get_severed_part_description(
             species, location_name, condition, inorganic=inorganic,
@@ -1876,7 +1879,10 @@ class Appendage(Item):
         # Cyber-aware prose (#516 follow-up): a severed augment limb
         # is chrome, not meat.  Read live off the still-intact body.
         inorganic = _chain_organs_inorganic_live(character, chain)
-        if inorganic and species in (self.key or ""):
+        # "cybernetic <part>" is chrome on a flesh body; a robot or synth
+        # limb keeps its species name (#3362).
+        from world.anatomy.species import get_species_infection_immune
+        if inorganic and species in (self.key or "") and not get_species_infection_immune(species):
             self.key = self.key.replace(species, "cybernetic", 1)
         prose = get_severed_part_description(
             species, location_name, condition, inorganic=inorganic,
