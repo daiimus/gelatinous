@@ -265,15 +265,28 @@ class Room(ObjectParent, DefaultRoom):
             if exit_obj and exit_obj.destination:
                 aimed_room = exit_obj.destination
                 # Call the parent's return_appearance directly to avoid aiming recursion
-                return super(Room, aimed_room).return_appearance(looker, **kwargs)
-        
+                base = super(Room, aimed_room).return_appearance(looker, **kwargs)
+                # ...then compose the aimed room's OWN layers onto it (#3374).
+                # Skipping Room in the MRO skipped the only place @integrate
+                # content and weather are assembled, so the one room a
+                # shooter stares into rendered bare: no graffiti, no blood
+                # pools, no weather.
+                compose = getattr(aimed_room, "_compose_room_layers", None)
+                return compose(base, looker) if callable(compose) else base
+
         # Normal room appearance (not aiming)
         # Get the base description from the parent class
         appearance = super().return_appearance(looker, **kwargs)
-        
+        return self._compose_room_layers(appearance, looker)
+
+    def _compose_room_layers(self, appearance, looker):
+        """Splice this room's @integrate content and weather onto ``appearance``
+        (the parent-class render). Shared by the normal path and the aiming
+        path so a room composes the same whether you stand in it or stare
+        into it down a barrel (#3374)."""
         # Process @integrate objects and flying objects - append to room description
         integrated_content = self.get_integrated_objects_content(looker)
-        
+
         # Get weather contributions for outdoor rooms
         weather_desc = weather_system.get_weather_contributions(self, looker)
         
