@@ -367,9 +367,17 @@ class CmdAim(Command):
       aim <direction>
       aim stop
 
-    Establishes an aim lock on a target or direction, potentially
-    granting bonuses to subsequent ranged attacks. While aiming at
-    a target, they cannot move. Use 'aim stop' to cease aiming.
+    Aiming at a target locks them in place: they cannot leave the room
+    while you hold your aim. Their only way out is to |wflee|n, which is
+    an attempt to break your aim -- if it fails, you get an immediate
+    free attack on them. Everyone in the room can see you take aim.
+
+    Aiming in a direction lets you attack through that exit into the
+    next room, if you are wielding a ranged weapon.
+
+    Aiming does not improve your accuracy; your shot is decided by your
+    own skill and senses. Your aim holds through combat and ends when you
+    'aim stop', when you move, or when you leave combat.
     """
 
     key = "aim"
