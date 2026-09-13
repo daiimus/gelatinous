@@ -458,28 +458,48 @@ class Room(ObjectParent, DefaultRoom):
         Returns:
             str: Integration content for this object
         """
+        # Perception gate (#3373). This was the one room-render layer the
+        # looker's senses never reached: a blind looker got the void line
+        # and then, on the same line, the graffiti. Each sensory
+        # contribution now passes through `can_perceive_sense`, the same
+        # gate `get_display_desc` uses for the room's own layers, so a
+        # blind looker still hears the generator hum and smells the
+        # solvent but is not told what the walls look like.
+        from world.perception import can_perceive_sense
+
+        def _perceives(sense):
+            try:
+                return can_perceive_sense(looker, sense)
+            except Exception:  # noqa: BLE001 -- an odd looker perceives as before
+                return True
+
         # Check for sensory contributions (primary content source)
         sensory_contributions = obj.db.sensory_contributions or {}
-        
+
         if sensory_contributions:
-            # Collect available sensory content
-            # For now, use all available senses - later we'll filter by character abilities
             content_parts = []
-            
+
             # Standard sensory order: visual, auditory, olfactory, tactile, etc.
             sensory_order = ["visual", "auditory", "olfactory", "tactile", "gustatory"]
-            
+
             for sense in sensory_order:
-                if sense in sensory_contributions:
+                if sense in sensory_contributions and _perceives(sense):
                     content_parts.append(sensory_contributions[sense])
-            
+
             # Add any other sensory contributions not in standard order
             for sense, content in sensory_contributions.items():
-                if sense not in sensory_order:
+                if sense not in sensory_order and _perceives(sense):
                     content_parts.append(content)
-            
-            if content_parts:
-                return " ".join(content_parts)
+
+            # Authored per sense: what the looker cannot perceive is simply
+            # absent, and an object with nothing perceivable contributes
+            # nothing (no fall-through to its visual line).
+            return " ".join(content_parts) if content_parts else ""
+
+        # Everything below is VISUAL prose (a line you read off the room);
+        # a looker who cannot see gets none of it.
+        if not _perceives("visual"):
+            return ""
         
         # Let an object re-derive its line before we read it. A blood
         # pool's age ladder was written once at bleed time and never
