@@ -134,11 +134,27 @@ def toggle_ability(character, name) -> str:
         return "You are dead."
     if callable(getattr(character, "is_unconscious", None)) and character.is_unconscious():
         return "You are unconscious."
+    # Busy gate (AUGMENT_ABILITIES_SPEC §3.2, #3360): nobody works their
+    # hardware while a surgeon is inside them. The surgeon stows anything
+    # deployed at the cut when the procedure starts (`stow_abilities_at`);
+    # this keeps the patient from popping it back out mid-incision.
+    # Deliberately NOT gated on channeled acts (owner ruling 2026-09-13):
+    # a shotgun arm must deploy the moment combat starts, and sensory
+    # hardware is meant to be used whenever.
+    from world.medical.procedures import is_procedure_active
+    if is_procedure_active(character):
+        return "You can't work your hardware while a procedure is underway on you."
 
     # Every organ carrying this ability, not just the first: one tray
     # claws both hands (#2483).
     hosts = find_ability_hosts(character, name)
+    return _dispatch_toggle(character, organ, name, spec, hosts)
 
+
+def _dispatch_toggle(character, organ, name, spec, hosts):
+    """Route to the per-type toggle. Shared by `toggle_ability` and
+    `stow_abilities_at` so the surgical stow uses the SAME retract path
+    (hands restored, room told) as a player's own `retract`."""
     ability_type = spec.get("type")
     if ability_type == "integrated_weapon":
         return _toggle_integrated_weapon(character, organ, name, spec, hosts)
@@ -149,6 +165,31 @@ def toggle_ability(character, name) -> str:
     if ability_type == "blindsight":
         return _toggle_blindsight(character, organ, name, spec, hosts)
     return f"{name} doesn't respond. (unknown ability type {ability_type!r})"
+
+
+def stow_abilities_at(character, location) -> list[str]:
+    """Retract every DEPLOYED ability hosted at ``location`` -- the first
+    element of any procedure on that location (#3360, owner ruling
+    2026-09-13: the surgeon restores the hardware at the cut to its
+    default, undeployed state; hardware elsewhere on the body is left
+    alone). Bypasses the busy gate on purpose: it runs as the procedure
+    begins. Returns the retract messages, for the patient."""
+    if not location:
+        return []
+    messages, seen = [], set()
+    for organ, name, spec in list(iter_abilities(character)):
+        if name in seen:
+            continue
+        if not (getattr(organ, "container", None) == location
+                or getattr(organ, "display_location", None) == location):
+            continue
+        if not _ability_state(organ, name).get("deployed"):
+            continue
+        seen.add(name)
+        messages.append(
+            _dispatch_toggle(character, organ, name, spec,
+                             find_ability_hosts(character, name)))
+    return messages
 
 
 def list_abilities(character) -> str:
