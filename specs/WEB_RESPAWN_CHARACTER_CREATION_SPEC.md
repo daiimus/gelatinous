@@ -28,6 +28,7 @@ When a user visits the "Decant Sleeve" page:
      - 3 randomly generated character templates (name, stats)
      - Flash clone option (if archived character exists)
      - Sex selection for chosen option
+     - ~~Sex selection~~ **Corrected 2026-09-13 (#3358, owner ruling A):** there is NO sex selection on either door. The sleeve is decanted with the sex `generate_random_template` rolled (its first name is drawn from the bank keyed to that roll). Telnet's confirm node shows the rolled sex and offers only decant / back.
    - Submit creates character using selected template/clone
    
 2. **If no `last_character`** (first character):
@@ -153,6 +154,7 @@ Available Sleeves:
 └─────────────────────────────────────────────┘
 
 Sex: [Male] [Female] [Ambiguous]
+<!-- Corrected 2026-09-13 (#3358, ruling A): the sex picker above was removed from telnet too; both doors take the template as rolled. -->
 
 [Decant Sleeve Button]
 ```
