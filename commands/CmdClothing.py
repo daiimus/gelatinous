@@ -253,7 +253,9 @@ class CmdRemove(Command):
             grenade = item.db.stuck_grenade
             
             # Get remaining countdown time if any
-            remaining = getattr(grenade.ndb, 'countdown_remaining', 0)
+            # None for an inert grenade (dud / never armed) -> 0, so the
+            # clamped warning below renders instead of a TypeError (#3361).
+            remaining = getattr(grenade.ndb, 'countdown_remaining', 0) or 0
             stuck_location = grenade.db.stuck_to_location if grenade.db.stuck_to_location is not None else 'unknown'
             
             # Send dramatic warning
