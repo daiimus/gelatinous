@@ -48,6 +48,12 @@ class ShopContainer(DefaultObject):
         db.shop_name (str): Display name for the shop
         db.container_type (str): "shelf", "rack", "counter", "crate", etc.
     """
+
+    #: Does the typed `buy` work here? Stores and vending machines: yes.
+    #: Carts follow the BAR model (owner ruling 2026-09-13, #3375): you talk
+    #: to whoever is working the cart and they serve you; `buy` does nothing.
+    TAKES_BUY = True
+
     
     def at_object_creation(self):
         """Initialize shop container attributes."""
