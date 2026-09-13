@@ -2211,6 +2211,12 @@ class Character(
                 if item is not None and not _is(item)}
         if kept != held:
             self.held_items = kept
+            # A tool a running channel depends on just left the hands (#3376).
+            try:
+                from world.channeled import tool_left_hands
+                tool_left_hands(self, obj)
+            except Exception:  # noqa: BLE001 -- never let a channel hook break a release
+                pass
 
         worn = dict(self.worn_items or {})
         changed = False
@@ -2243,6 +2249,13 @@ class Character(
         -- `LockerBank.stash` is the one that already had to.
         """
         self.release_slots(moved_obj)
+        # Any possession loss, held or not, breaks a channel that declared
+        # the object as its tool (#3376) -- a kit in a bag counts too.
+        try:
+            from world.channeled import tool_left_hands
+            tool_left_hands(self, moved_obj)
+        except Exception:  # noqa: BLE001
+            pass
         return super().at_object_leave(moved_obj, target_location, **kwargs)
 
     # ===================================================================

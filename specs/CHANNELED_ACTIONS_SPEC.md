@@ -123,8 +123,16 @@ work because of a mistyped verb:
 > `buy` (trading). Consequence in play today: a tagger can `drop` or
 > `give` the spray can mid-channel and the full tag still lands, because
 > `_land_tag` re-reads the captured can object rather than the tagger's
-> hands. Owner call pending on whether to finish the list or narrow it
-> (see §5).
+> hands. ~~Owner call pending on whether to finish the list or narrow it~~
+> **Ruled and wired 2026-09-13 (#3376, option A -- finish the list):** all
+> eleven now call `refuse_if_channeling` first. And the tool problem is
+> solved in the PRIMITIVE, not per consumer: `begin_channel(..., tools=[...])`
+> declares the objects an act needs on the actor; `tool_left_hands` (called
+> from `Character.release_slots` and `at_object_leave`) breaks the channel the
+> moment one leaves by ANY route -- drop, give, wrest, disarm, theft -- and
+> `_finish` re-validates as belt-and-braces. Graffiti, solvent and surgery
+> declare their tools; future consumers just pass theirs. This also closes
+> the §2.3 "tool leaving your hands" row for wrest/disarm (#3377, #3385).
 
 Voluntary exit: **`stop`** (the existing stop-verb family) aborts the
 channel deliberately → `on_interrupt` with the current fraction. You keep

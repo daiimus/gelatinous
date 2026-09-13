@@ -83,6 +83,9 @@ class CmdWear(Command):
     help_category = "Inventory"
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         caller = self.caller
         
         if not self.args:
@@ -175,6 +178,9 @@ class CmdRemove(Command):
     help_category = "Inventory"
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         caller = self.caller
         
         if not self.args:
@@ -423,6 +429,9 @@ class CmdRollUp(Command):
     help_category = "Inventory"
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         caller = self.caller
         
         if not self.args:
@@ -518,6 +527,9 @@ class CmdZip(Command):
     help_category = "Inventory"
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         caller = self.caller
         
         if not self.args:
@@ -837,6 +849,9 @@ class CmdDress(Command):
     help_category = "Inventory"
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         caller = self.caller
         args = (self.args or "").strip()
 
@@ -1063,6 +1078,9 @@ class CmdUndress(Command):
     help_category = "Inventory"
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         caller = self.caller
         args = (self.args or "").strip()
         if not args:

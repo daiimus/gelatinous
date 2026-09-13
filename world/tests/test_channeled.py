@@ -107,11 +107,14 @@ class TestGraffitiChannel(TestCase):
         cmd.caller = caller
         return cmd, caller
 
-    def _can(self, paint=256, color="red"):
+    def _can(self, paint=256, color="red", holder=None):
         can = MagicMock()
         can.db.aerosol_level = paint
         can.db.current_color = color
         can.get_display_name = lambda looker=None: "a battered spray can"
+        # In hand when given a holder: the channel binds the can as its tool
+        # and refuses to complete without it (#3376).
+        can.location = holder
         return can
 
     def test_spray_channels_with_per_letter_duration(self):
@@ -127,7 +130,7 @@ class TestGraffitiChannel(TestCase):
 
     def test_completion_lands_full_tag_and_reports_vandalism(self):
         cmd, caller = self._cmd()
-        can = self._can()
+        can = self._can(holder=caller)
         with patch.object(ch, "delay") as d, \
                 patch("commands.CmdGraffiti.msg_room_identity"), \
                 patch("commands.CmdGraffiti.create_object") as co, \
@@ -144,7 +147,7 @@ class TestGraffitiChannel(TestCase):
 
     def test_interruption_lands_partial_with_ellipsis(self):
         cmd, caller = self._cmd()
-        can = self._can()
+        can = self._can(holder=caller)
         with patch.object(ch, "delay"), \
                 patch("commands.CmdGraffiti.msg_room_identity"), \
                 patch("commands.CmdGraffiti.create_object") as co, \

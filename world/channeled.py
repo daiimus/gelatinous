@@ -88,7 +88,7 @@ def refuse_if_channeling(actor: Any) -> bool:
 
 def begin_channel(actor: Any, duration: float, tell: str,
                   on_complete: Callable, on_interrupt: Callable,
-                  key: str = "working") -> bool:
+                  key: str = "working", tools=()) -> bool:
     """Begin a channeled act. Refuses (False, with message) if one is
     already running. ``on_complete()`` fires after *duration* seconds;
     ``on_interrupt(fraction)`` fires instead if the act is stopped or
@@ -108,6 +108,12 @@ def begin_channel(actor: Any, duration: float, tell: str,
         # The tell is KEPT so teardown can check it is still the thing
         # it wrote before restoring over it (see `_clear`).
         "tell": tell,
+        # The objects this act needs in the actor's possession (#3376,
+        # owner ruling 2026-09-13: generic, not per-consumer). If one of
+        # them leaves the actor -- dropped, given, wrested, disarmed,
+        # stolen -- the channel breaks at that moment (`tool_left_hands`),
+        # and `_finish` re-validates as belt-and-braces.
+        "tools": [t for t in (tools or ()) if t is not None],
     }
     try:
         actor.override_place = tell   # the act is PUBLIC time — visible tell
@@ -148,13 +154,62 @@ def _clear(actor: Any) -> Optional[dict]:
     return chan
 
 
+def _tools_missing(actor: Any, chan: dict) -> list:
+    """Which of the channel's declared tools are no longer on the actor."""
+    missing = []
+    for tool in chan.get("tools") or ():
+        try:
+            if getattr(tool, "location", None) is not actor:
+                missing.append(tool)
+        except Exception:  # noqa: BLE001 -- a deleted tool is a missing tool
+            missing.append(tool)
+    return missing
+
+
+def tool_left_hands(actor: Any, obj: Any) -> bool:
+    """BREAKING seam (#3376): *obj* has just left *actor* by any route. If a
+    running channel declared it as a tool, the act breaks now, at its true
+    fraction. Cheap and fail-open -- the hands code calls this on every
+    release, channeling or not."""
+    chan = channel_of(actor)
+    if not chan or obj is None:
+        return False
+    oid = getattr(obj, "id", None)
+    hit = any(t is obj or (oid is not None and getattr(t, "id", None) == oid)
+              for t in chan.get("tools") or ())
+    if not hit:
+        return False
+    try:
+        name = obj.get_display_name(actor)
+    except Exception:  # noqa: BLE001
+        name = getattr(obj, "key", "it")
+    try:
+        actor.msg(f"Without {name} in hand, you break off.")
+    except Exception:  # noqa: BLE001
+        pass
+    return _interrupt(actor, voluntary=False, reason="tool left hands")
+
+
 def _finish(actor: Any, token: object) -> None:
     """Timer landing: complete the act — unless the channel was already
-    interrupted (token mismatch) or died with the server (ndb gone)."""
+    interrupted (token mismatch) or died with the server (ndb gone).
+    A declared tool no longer on the actor (a path that bypassed the hands
+    seam) lands the act as interrupted, never as complete (#3376)."""
     chan = channel_of(actor)
     if not chan or chan.get("token") is not token:
         return
+    missing = _tools_missing(actor, chan)
     chan = _clear(actor)
+    if missing:
+        try:
+            actor.msg("You no longer have what you were working with; you break off.")
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            chan["on_interrupt"](1.0)
+        except Exception:  # noqa: BLE001
+            pass
+        return
     try:
         chan["on_complete"]()
     except Exception:  # noqa: BLE001 — a consumer bug never leaks upward

@@ -114,6 +114,9 @@ class CmdUnwield(Command):
     key = "unwield"
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         caller = self.caller
         itemname = self.args.strip()
 
@@ -321,6 +324,9 @@ class CmdDrop(Command):
     key = "drop"
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         caller = self.caller
         args = self.args.strip()
 
@@ -521,6 +527,9 @@ class CmdGet(Command):
             self.item_name = args
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         from typeclasses.items import Item
         
         caller = self.caller
@@ -841,6 +850,9 @@ class CmdGive(Command):
                         self.item_name = " ".join(words[:-1])
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
         caller = self.caller
         
         # Basic syntax validation
