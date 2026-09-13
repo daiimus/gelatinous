@@ -327,7 +327,37 @@ def resolve_grapple_initiate(char_entry, combatants_list, handler):
     
     # Grappling inherently allows "rush in" - proximity will be established on success
     # No proximity check needed here since grapple commands handle their own proximity logic
-    
+
+    # Consensual hold (#3363, TRUST_AND_CONSENT_SPEC §3 "grab": let them
+    # grab/restrain you UNCONTESTED). Grapple doubles as holding someone;
+    # the difference from an attack is whether anyone chose violence. A
+    # target who trusts this grappler for "grab" -- or who cannot contest
+    # at all (unconscious / already restrained, the consent layer's free
+    # path, same as the other four action classes) -- is simply held: no
+    # roll, both parties yielding so nobody auto-struggles, and no
+    # retaliation target set on the held person. Owner ruling 2026-09-13.
+    from world.consent import check_consent
+    if check_consent(char, target, "grab"):
+        release_existing_grapple(char_entry, combatants_list, splattercast)
+        char_entry[DB_GRAPPLING_DBREF] = get_character_dbref(target)
+        target_entry[DB_GRAPPLED_BY_DBREF] = get_character_dbref(char)
+        if char.location == target.location:
+            from .proximity import establish_proximity
+            establish_proximity(char, target)
+        char_entry[DB_IS_YIELDING] = True
+        target_entry[DB_IS_YIELDING] = True
+        char.msg(f"|gYou take hold of {get_display_name_safe(target, char)}, who lets you.|n")
+        target.msg(f"|g{capitalize_first(get_display_name_safe(char, target))} takes hold of you; you let them.|n")
+        if char.location:
+            msg_room_identity(
+                location=char.location,
+                template="|g{actor} takes hold of {target}, who does not resist.|n",
+                char_refs={"actor": char, "target": target},
+                exclude=[char, target],
+            )
+        splattercast.msg(f"GRAPPLE_CONSENSUAL: {char.key} holds {target.key} uncontested (grab trust / free path).")
+        return
+
     # Roll for grapple
     attacker_roll = randint(1, max(1, get_numeric_stat(char, "motorics", 1)))
     defender_roll = randint(1, max(1, get_numeric_stat(target, "motorics", 1)))

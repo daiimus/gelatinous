@@ -119,7 +119,12 @@ class CmdGrapple(Command):
         from world.stealth import (
             AMBUSH_INITIATIVE_BONUS, break_stealth, is_ambush,
         )
-        ambush = AMBUSH_INITIATIVE_BONUS if is_ambush(caller, target) else 0
+        # You can't ambush someone who is letting you take hold of them
+        # (#3363): a consensual grab takes no initiative bonus.
+        from world.consent import check_consent
+        ambush = (AMBUSH_INITIATIVE_BONUS
+                  if is_ambush(caller, target) and not check_consent(caller, target, "grab")
+                  else 0)
         if ambush and not caller_is_in_combat:
             caller.msg("You lunge from concealment!")
         break_stealth(caller, quiet=True)
