@@ -497,7 +497,10 @@ class Item(ObjectParent, DefaultObject):
         # Check for stuck grenade (CRITICAL SAFETY WARNING)
         if hasattr(self, 'stuck_grenade') and self.stuck_grenade:
             grenade = self.stuck_grenade
-            remaining = getattr(grenade.ndb, 'countdown_remaining', 0) if hasattr(grenade, 'ndb') else 0
+            # ndb hands back None for a key that was never set (a dud, or a
+            # grenade never armed), and None > 0 is a TypeError -- the
+            # 'magnetically clamped' line below was unreachable (#3361).
+            remaining = (getattr(grenade.ndb, 'countdown_remaining', 0) if hasattr(grenade, 'ndb') else 0) or 0
             if remaining > 0:
                 appearance += f"\n\n|r{'='*60}|n"
                 appearance += f"\n|R!!! WARNING: LIVE GRENADE MAGNETICALLY CLAMPED TO THIS ITEM !!!|n"
