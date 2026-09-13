@@ -1272,24 +1272,76 @@ class CmdArmorRepair(Command):
         return False
 
 
+PLATE_SLOT_NAMES = ("front", "back", "left_side", "right_side")
+
+
+def parse_slot_args(words):
+    """``["standard","plate","in","plate","carrier","front"]``
+    -> ``("standard plate", "plate carrier", "front")``.
+
+    Read from the END and split on the LAST ``in`` (#3365, the same shape
+    as ``parse_repair_args`` / #2521). The old parser took ``args[0]`` as
+    the plate and ``args[1]`` as the carrier, and every plate and carrier
+    the game ships has a MULTI-WORD name -- "plate carrier", "standard
+    plate", "trauma plate" -- so ``slot standard plate in plate carrier``
+    parsed as plate="standard", carrier="plate", slot="in", and the
+    command's own docstring example failed the same way.
+
+    A trailing slot name (``front``/``back``/``left_side``/``right_side``,
+    also written ``left side``) is peeled first, so a carrier keeps its
+    whole name. Without an ``in``, returns ``(phrase, None, slot)`` and
+    the caller decides how to split the phrase.
+
+    Returns ``(plate_name, carrier_name_or_None, slot_or_None)``.
+    """
+    parts = list(words)
+    lowered = [w.lower().replace("-", "_") for w in parts]
+    slot = None
+    if lowered and lowered[-1] in PLATE_SLOT_NAMES:
+        slot = lowered[-1]; parts = parts[:-1]; lowered = lowered[:-1]
+    elif len(lowered) >= 2 and lowered[-1] == "side" and lowered[-2] in ("left", "right"):
+        slot = f"{lowered[-2]}_side"; parts = parts[:-2]; lowered = lowered[:-2]
+    if "in" in lowered:
+        idx = len(lowered) - 1 - lowered[::-1].index("in")
+        return " ".join(parts[:idx]).strip(), " ".join(parts[idx + 1:]).strip(), slot
+    return " ".join(parts).strip(), None, slot
+
+
+def parse_unslot_args(words):
+    """``["standard","plate","from","plate","carrier"]``
+    -> ``("standard plate", "plate carrier")``; no ``from`` -> whole
+    phrase is the plate (or slot) name and carrier is ``None`` (#3365).
+    Splits on the LAST ``from`` so an item whose name contains the word
+    survives. Returns ``(item_name, carrier_name_or_None)``.
+    """
+    parts = list(words)
+    lowered = [w.lower() for w in parts]
+    if "from" in lowered:
+        idx = len(lowered) - 1 - lowered[::-1].index("from")
+        return " ".join(parts[:idx]).strip(), " ".join(parts[idx + 1:]).strip()
+    return " ".join(parts).strip(), None
+
+
 class CmdSlot(Command):
     """
     Install armor plates into plate carriers.
 
     Usage:
-        slot <plate> <carrier> [<slot>]             - Install plate in carrier
-        slot <plate> in <carrier> [<slot>]          - Install plate in carrier
-        slot list [<carrier>]                       - List plate configurations
-        slot                                        - List all plate carriers
+        slot <plate> in <carrier> [<slot>]     - Install plate in carrier
+        slot <plate> <carrier> [<slot>]        - Same, if the names are unambiguous
+        slot list [<carrier>]                  - Show a carrier's plate slots
+        slot                                   - List all your plate carriers
 
-    Install armor plates into modular plate carriers to customize protection.
-    Different plate types provide various protection levels and weight trade-offs.
-    If no slot is specified, the system will choose the best available slot.
+    Plates and carriers have multi-word names; write them out in full.
+    Put 'in' between the plate and the carrier. Slots are front, back,
+    left side and right side. If you name no slot, the best free one is
+    chosen.
 
     Examples:
-        slot ballistic plate carrier
-        slot ballistic plate in carrier chest
-        slot medium plate in vest back
+        slot standard plate in plate carrier
+        slot trauma plate in plate carrier front
+        slot lightweight plate in plate carrier left side
+        slot list plate carrier
     """
 
     key = "slot"
@@ -1304,41 +1356,63 @@ class CmdSlot(Command):
         if not args:
             # List all plate carriers
             self._list_plate_carriers(caller)
-        elif len(args) == 1:
-            # Show specific carrier details or handle "list"
-            if args[0].lower() == "list":
-                self._list_plate_carriers(caller)
+        elif args[0].lower() == "list":
+            # "slot list" / "slot list <carrier words>" -- the carrier's
+            # whole name, not its first word (#3365).
+            carrier_name = " ".join(args[1:]).strip()
+            if carrier_name:
+                self._show_carrier_details(caller, carrier_name)
             else:
-                self._show_carrier_details(caller, args[0])
-        elif len(args) == 2 and args[0].lower() == "list":
-            # Show specific carrier details
-            self._show_carrier_details(caller, args[1])
-        elif len(args) >= 2:
-            # Parse different syntax patterns
+                self._list_plate_carriers(caller)
+        else:
             self._parse_install_command(caller, args)
 
     def _parse_install_command(self, caller, args):
-        """Parse various install command syntaxes."""
-        # Pattern 1: slot <plate> <carrier> [<slot>]
-        # Pattern 2: slot <plate> in <carrier> [<slot>]
+        """Parse the install syntaxes with multi-word names (#3365)."""
+        plate_name, carrier_name, slot_name = parse_slot_args(args)
 
-        if len(args) >= 3 and args[1].lower() == "in":
-            # Pattern 2: slot <plate> in <carrier> [<slot>]
-            plate_name = args[0]
-            carrier_name = args[2]
-            slot_name = args[3] if len(args) > 3 else None
+        if carrier_name is not None:
+            # slot <plate words> in <carrier words> [<slot>]
+            if not plate_name or not carrier_name:
+                caller.msg(self._usage())
+                return
             self._install_plate(caller, plate_name, carrier_name, slot_name)
-        elif len(args) >= 2:
-            # Pattern 1: slot <plate> <carrier> [<slot>]
-            plate_name = args[0]
-            carrier_name = args[1]
-            slot_name = args[2] if len(args) > 2 else None
-            self._install_plate(caller, plate_name, carrier_name, slot_name)
-        else:
-            caller.msg(
-                "Usage: slot <plate> [in] <carrier> [<slot>]"
+            return
+
+        # No "in": try every split of the phrase into <plate> <carrier>
+        # and take the first where both halves resolve to the right kind
+        # of object. Searches are quiet so a miss prints nothing.
+        words = plate_name.split()
+        for k in range(1, len(words)):
+            left, right = " ".join(words[:k]), " ".join(words[k:])
+            if self._resolves(caller, left, carrier=False) and self._resolves(caller, right, carrier=True):
+                self._install_plate(caller, left, right, slot_name)
+                return
+
+        # Not an install. A bare carrier name shows that carrier.
+        if slot_name is None and self._resolves(caller, plate_name, carrier=True):
+            self._show_carrier_details(caller, plate_name)
+            return
+
+        caller.msg(self._usage())
+
+    @staticmethod
+    def _usage():
+        return ("Usage: slot <plate> in <carrier> [<slot>]"
                 " | slot list [<carrier>]"
-            )
+                " -- write the full names, e.g. 'slot standard plate in plate carrier'")
+
+    @staticmethod
+    def _resolves(caller, name, carrier):
+        """Does `name` quietly find exactly the kind of thing we want in inventory?"""
+        if not name:
+            return False
+        found = caller.search(name, location=caller, quiet=True)
+        if not found:
+            return False
+        obj = found[0] if isinstance(found, (list, tuple)) else found
+        is_carrier = bool(getattr(obj, "plate_slots", None))
+        return is_carrier if carrier else not is_carrier
 
     def _list_plate_carriers(self, caller):
         """List all available plate carriers and their configurations."""
@@ -1740,12 +1814,17 @@ class CmdUnslot(Command):
 
     Usage:
         unslot <plate>                      - Remove plate from any carrier
-        unslot <plate> from <carrier>       - Remove plate from specific carrier
-        unslot <slot> from <carrier>        - Remove plate from specific slot
+        unslot <plate> from <carrier>       - Remove plate from a specific carrier
+        unslot <slot> from <carrier>        - Empty a specific slot
 
-    Remove installed armor plates from modular plate carriers. The plate
-    will be added to your inventory if you have space, otherwise it will
-    drop to the ground.
+    Plates and carriers have multi-word names; write them out in full.
+    Slots are front, back, left_side and right_side. The plate goes to
+    your inventory if you have space, otherwise to the ground.
+
+    Examples:
+        unslot standard plate
+        unslot trauma plate from plate carrier
+        unslot front from plate carrier
     """
 
     key = "unslot"
@@ -1764,14 +1843,20 @@ class CmdUnslot(Command):
             )
             return
 
-        if len(args) == 1:
-            # Remove plate from any carrier
-            plate_name = args[0]
-            self._remove_plate_by_name(caller, plate_name)
-        elif len(args) >= 3 and args[1].lower() == "from":
-            # Remove from specific carrier or slot
-            item_name = args[0]  # Could be plate name or slot name
-            carrier_name = args[2]
+        # Whole names, split on the LAST "from" (#3365). "unslot standard
+        # plate" used to print usage because it had three tokens and the
+        # second was not "from" -- there was no way to unslot a shipped
+        # plate by its real name.
+        item_name, carrier_name = parse_unslot_args(args)
+        if not item_name:
+            caller.msg(
+                "Usage: unslot <plate> [from <carrier>]"
+                " | unslot <slot> from <carrier>"
+            )
+            return
+        if carrier_name is None:
+            self._remove_plate_by_name(caller, item_name)
+        elif carrier_name:
             self._remove_from_carrier(caller, item_name, carrier_name)
         else:
             caller.msg(
