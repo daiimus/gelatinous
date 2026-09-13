@@ -484,7 +484,7 @@ class CmdArmor(Command):
 
         # Display detailed info
         caller.msg(f"\n|w=== {target_armor.key.title()} ===|n")
-        caller.msg(f"|xDescription:|n {target_armor.desc}")
+        caller.msg(f"|xDescription:|n {target_armor.db.desc or ''}")
         caller.msg(f"\n|xArmor Statistics:|n")
         caller.msg(f"  Type: {armor_type.title()}")
         caller.msg(f"  Material: {material.title()}")
@@ -1464,7 +1464,7 @@ class CmdSlot(Command):
 
         # Basic info
         caller.msg(f"\n|w=== {carrier.key.title()} ===|n")
-        caller.msg(f"|xDescription:|n {carrier.desc}")
+        caller.msg(f"|xDescription:|n {carrier.db.desc or ''}")
 
         # Configuration
         base_rating = carrier.armor_rating

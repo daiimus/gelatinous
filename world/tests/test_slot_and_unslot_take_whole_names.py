@@ -102,3 +102,10 @@ class SlotTakesWholeNamesTest(EvenniaCommandTest):
         for cls, needle in ((CmdSlot, "slot standard plate in plate carrier"),
                             (CmdUnslot, "unslot trauma plate from plate carrier")):
             self.assertIn(needle, cls.__doc__ or "", "%s help lacks a runnable example" % cls.__name__)
+
+    def test_slot_list_carrier_does_not_crash(self):
+        # _show_carrier_details read carrier.desc (bare) and raised
+        # AttributeError the moment #3365 made this path reachable.
+        out = self.call(CmdSlot(), "list plate carrier")
+        self.assertNotIn("Traceback", out or "")
+        self.assertIn("Plate Carrier", out or "", "carrier details header missing")
