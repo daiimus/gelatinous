@@ -78,7 +78,7 @@ Every species declaration MUST include the following keys. Missing entries fall 
 
 ## Required entries in `SEVERED_PART_DESCRIPTIONS[species]`
 
-Each severable container needs prose at three condition tiers (`pristine`, `damaged`, `putrid`). The container set must match `species["severable_containers"]` — every container the species can lose. Falls through to human entries when missing; for anatomically distinct species the human prose will read wrong (e.g., "severed left arm" prose on a rat foreleg).
+Each severable container needs prose at three condition tiers (`pristine`, `damaged`, `putrid`). The container set must match `species["severable_containers"]` — every container the species can lose. ~~Falls through to human entries when missing~~ **Corrected 2026-09-13 (#3362):** a REGISTERED species with no bank gets *silence* (empty string, so the part renders with no description), not human prose — that fallback exists only for an *unknown* species name (#2725). As of #3362 all four registered species carry a full bank (human, rat, robot, synthetic_humanoid); a new species MUST ship one, and `world/tests/test_severed_part_descriptions.py` fails if any registered species is missing a location or a condition tier.
 
 Example minimal declaration:
 

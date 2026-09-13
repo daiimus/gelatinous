@@ -290,3 +290,41 @@ class TestAppendageDecay(TestCase):
             limb._refresh_decay_key_if_changed()
         # Chrome doesn't rot — frozen name preserved.
         self.assertEqual(limb.key, "cybernetic left arm")
+
+
+class TestEveryRegisteredSpeciesHasABank(TestCase):
+    """#3362: every registered species carries a full bank -- every severable
+    container, three condition tiers, non-empty prose. Robot and synth used
+    to be silent (deliberately, #2725, pending owner prose); they are now
+    authored. A new species that forgets its bank fails here."""
+
+    def test_every_registered_species_covers_its_severable_containers(self):
+        from world.anatomy.species import SPECIES_DEFINITIONS
+        missing = []
+        for species, spec in SPECIES_DEFINITIONS.items():
+            bank = SEVERED_PART_DESCRIPTIONS.get(species)
+            if bank is None:
+                missing.append(f"{species}: NO BANK"); continue
+            for loc in sorted(spec.get("severable_containers") or ()):
+                entry = bank.get(loc)
+                if not entry:
+                    missing.append(f"{species}.{loc}: no entry"); continue
+                for cond in ("pristine", "damaged", "putrid"):
+                    if not (entry.get(cond) or "").strip():
+                        missing.append(f"{species}.{loc}.{cond}: empty")
+        self.assertFalse(missing, "gaps: " + "; ".join(missing))
+
+    def test_inorganic_species_prose_is_not_flesh(self):
+        for species in ("robot", "synthetic_humanoid"):
+            bank = SEVERED_PART_DESCRIPTIONS.get(species) or {}
+            self.assertTrue(bank, f"{species} has no bank")
+            for loc, entry in bank.items():
+                for cond, prose in entry.items():
+                    low = prose.lower()
+                    for bad in ("blood", "human"):
+                        self.assertNotIn(bad, low, f"{species}.{loc}.{cond} says {bad!r}")
+
+    def test_lookup_answers_for_every_species_head(self):
+        for species in ("human", "rat", "robot", "synthetic_humanoid"):
+            got = get_severed_part_description(species, "head", "pristine")
+            self.assertTrue(got, f"{species} head returned empty")
