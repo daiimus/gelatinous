@@ -69,3 +69,17 @@ class CardNamesWhoYouBecomeTest(EvenniaTest):
         promised = _flash_clone_name(old)
         delivered = charcreate.build_name_from_death_count(old.key, old.death_count)
         self.assertEqual(promised, delivered)
+
+
+    def test_create_flash_clone_runs_and_agrees_with_the_card(self):
+        # Drive the REAL creator to completion (the label tests alone let a
+        # NameError in create_flash_clone survive -- #3364 follow-up). The
+        # decanted sleeve's key and its own death_count must match the card.
+        old = self._dead_sleeve()   # key "Jorge Jackson I", death_count 2
+        promised = charcreate.flash_clone_name(old)
+        clone = charcreate.create_flash_clone(self.account, old)
+        self.assertIsNotNone(clone, "create_flash_clone returned nothing")
+        self.assertEqual(clone.key, promised, "clone key does not match the card")
+        self.assertEqual(clone.key, "Jorge Jackson II")
+        self.assertEqual(clone.death_count, 2,
+                         "clone counter %r disagrees with its numeral" % clone.death_count)

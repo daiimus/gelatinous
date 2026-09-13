@@ -428,6 +428,15 @@ def create_character_from_template(account, template, sex="ambiguous"):
     return char
 
 
+def flash_clone_death_count(old_character):
+    """The generation counter a flash clone of `old_character` inherits.
+
+    Already incremented on the old sleeve at death; the clone carries it
+    forward so its name numeral and its own death_count agree.
+    """
+    return old_character.death_count if old_character.death_count is not None else 1
+
+
 def flash_clone_name(old_character):
     """
     The name a flash clone of `old_character` will be decanted under.
@@ -439,10 +448,8 @@ def flash_clone_name(old_character):
     the player the wrong identity (#3364). `create_flash_clone` uses the
     same function, so label and result cannot drift apart.
     """
-    death_count = old_character.death_count
-    if death_count is None:
-        death_count = 1  # Default from AttributeProperty
-    return build_name_from_death_count(old_character.key, death_count)
+    return build_name_from_death_count(old_character.key,
+                                      flash_clone_death_count(old_character))
 
 
 def create_flash_clone(account, old_character):
@@ -566,7 +573,7 @@ def create_flash_clone(account, old_character):
     # The old character's death_count was already incremented at death (at_death())
     # The new clone inherits this value to continue the progression
     # Use AttributeProperty directly, not db.death_count
-    char.death_count = old_death_count
+    char.death_count = flash_clone_death_count(old_character)
     
     # Link to previous incarnation
     char.db.previous_clone_dbref = old_character.dbref
