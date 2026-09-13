@@ -21,6 +21,8 @@ MESSAGES = {
 ```
 
 ### New Format (Multi-Perspective)
+
+> *Note 2026-09-12: the `hit` entry below has drifted from the bank it was copied from — `world/combat/messages/cellphone.py:156-158` now parameterises the struck body part as `{target_name}'s {hit_location}` rather than `{target_name}'s arm`. Read the note at §Example Conversion before copying either block.*
 ```python
 MESSAGES = {
     "initiate": [
@@ -50,6 +52,10 @@ MESSAGES = {
 | `{item_name}` | Remains `{item_name}` in all perspectives |
 | `{damage}` | Remains `{damage}` in all perspectives (when present) |
 
+> **Measured 2026-09-12 — the bottom two rows describe a mapping the shipped banks barely use, and the table predates the placeholders they actually use.** Across the 100 weapon banks: `{attacker_name}` 100 banks, `{target_name}` 100, **`{hit_location}` 100** (anatomy grounding added after this migration — #333 / PR #369 parameterised the kill templates, and the pattern then spread to hit/miss/initiate), `{blood}` 64, `{Blood}` 13 (species-keyed *target* fluid — human crimson, synth cobalt, robot amber; #1206 / PR #1207), `{item}` **1** (`melee.py`), `{item_name}` **1** (`bowel_disruptor.py`), `{damage}` **2** (`anti-material_rifle.py`, `heavy_pistol.py`), `{phase}` 0. No bank anywhere still uses the bare `{attacker}` / `{target}` of the old format, so the §After Conversion check for leftover variables passes.
+>
+> Two boundaries worth knowing before authoring. The loader *supplies* `blood` / `Blood` / `item` / `item_name` / `phase` itself, along with the bare `{attacker}` / `{target}` back-compat aliases (`world/combat/messages/__init__.py:121-160`) — which is why grepping the loader for `{attacker}` still hits even though no bank uses the old form. **`{hit_location}` is not loader-supplied**: it arrives only in the calling site's `**kwargs`, and a call site that omits it renders `(Error: Missing placeholder 'hit_location' …)` straight into the room (`__init__.py:203-206`). That was #1583 — so a bank is free to use `{hit_location}`, but only phases whose callers pass one are safe, and that is a per-call-site contract rather than a property of the format. Nothing in the table is broken; the authoring style that emerged simply bakes the weapon's name into the prose and parameterises the *body part* instead. Whether `{item_name}` / `{damage}` authoring was meant to survive is an open owner call (#1513).
+
 ### Perspective-Specific Pronoun Usage
 
 #### Attacker Perspective (`attacker_msg`)
@@ -77,6 +83,10 @@ MESSAGES = {
 2. **hit** - Messages for successful attacks
 3. **miss** - Messages for failed attacks
 4. **kill** - Messages for fatal blows
+
+> **Measured 2026-09-12 — "required" is stronger than what the code enforces, and this list is not the whole phase vocabulary.** 99 of 100 banks carry all four. `grapple.py` carries neither `initiate` nor `kill`, correctly: its vocabulary is `hit` / `miss` plus `escape_hit` / `escape_miss` / `release` / `grapple_damage_hit` / `grapple_damage_miss` / `grapple_damage_kill`. Of those alternates only `escape_hit` and `escape_miss` are requested by a caller today — `release` and the three `grapple_damage_*` phases (39 authored entries) are referenced nowhere but the loader's phase-colouring lists (`world/combat/messages/__init__.py:166-172`), which is a code gap rather than a spec one. The guard test added for #2823 deliberately requires only that a bank offer *one* populated phase, not the four (`world/tests/test_combat_message_banks.py:52-66`). A bank that omits `kill` does **not** degrade to its own `hit` prose — it falls through to the loader's generic sentence (`world/combat/messages/__init__.py:67-71`, selected at `:107-108`); see the correction block in `specs/COMBAT_MESSAGE_FORMAT_SPEC.md`.
+>
+> One trap for anyone auditing this: 32 banks spell the key single-quoted as `'initiate'` and 68 double-quoted, so a double-quote-only grep reports 32 banks as missing the phase. That is the provenance of the "33 weapon files have no `initiate` phase" claim carried in `specs/COMBAT_MESSAGE_FORMAT_SPEC.md` and in open issue **#1513** — 32 single-quoted banks + `grapple.py` = 33. Parsed rather than grepped, `knife`, `katana`, `machete`, `staff`, `sledgehammer` and `whip` each carry a 30-variant `initiate` phase and `chainsaw` carries 41.
 
 ### Message Count Guidelines
 - Maintain the same number of messages per category as the original
@@ -199,6 +209,10 @@ Kill Messages: 1-5 (first chunk) → 6-10 (second chunk) → 11-15 (third chunk)
 
 ## Example Conversion
 
+> **Drifted 2026-09-12 — the worked example no longer matches the bank it was drawn from.** `world/combat/messages/cellphone.py:4-6` still carries the `initiate` example verbatim, but the `hit` example's hardcoded body part is gone: `cellphone.py:166-168` now reads `"Your cellphone smashes against {target_name}'s {hit_location}, its hard casing and keypad imprinting a painful, rapidly swelling bruise."` The §New Format example higher up drifted the same way (`cellphone.py:156-158`, `{target_name}'s {hit_location}` for `{target_name}'s arm`). All 100 banks now carry `{hit_location}` somewhere (#333 / PR #369 onward), so a conversion done to the letter of either example would ship a hardcoded limb. The prose is otherwise unchanged — the one-for-one refactor rule in §Content Transformation Rules held.
+>
+> **Scope of that substitution, for anyone repeating it.** `{hit_location}` is the *target's* struck location, chosen by `select_hit_location` at the call site. It is right in `{target_name}'s {hit_location}` (attacker/observer) and `your {hit_location}` (victim); it is wrong anywhere it stands for the attacker's own anatomy. 215 `attacker_msg` lines in the `initiate` phase currently read `your {hit_location}` in positions that plainly described the attacker's own face, shoulder or wrist — `baton.py` "A flick of your {hit_location} brings your baton to full length", `assault_rifle.py` "You snap your assault rifle to your {hit_location}" — which render in play as "a flick of your left thigh". That is collateral damage from the sweep, not the house style: parameterise the body part being *hit*, never the body part doing the hitting.
+
 ### Original Message
 ```python
 "hit": [
@@ -227,6 +241,10 @@ A successful conversion must:
 5. Result in clean, properly formatted Python dictionaries
 6. Pass basic syntax validation
 7. Keep original content intact with only pronoun/perspective changes
+
+> **Partly machine-enforced now, noted 2026-09-12.** `world/tests/test_combat_message_banks.py` pins part of this contract structurally for every bank `pkgutil` finds: that it exports the name the loader reads (`:38`), that it offers at least one populated phase (`:52`), and that every entry present carries all three observer roles (`:68`). That covers criterion 6 (the test imports each bank, so a syntax error fails here), most of criterion 5, and the *per-entry* half of criterion 1. It does **not** cover completeness — nothing asserts message counts, so a bank that lost half its variants during conversion still passes, and the §After Conversion count check remains a human step. Criteria 2, 3, 4 and 7 — voice, perspective, atmosphere, no-embellishment — remain human-judged and unpinned.
+>
+> The test exists because four banks shipped exporting `SCALPEL_MESSAGES` / `SCIMITAR_MESSAGES` / `SEMI_AUTO_RIFLE_MESSAGES` / `STREETLIGHT_MESSAGES` instead of `MESSAGES`, and 478 authored lines fell silently through to the loader's generic fallback for months — an empty bank and a weapon that was never given one are indistinguishable at `getattr(module, "MESSAGES", {})` (#2823, fixed).
 
 ## File Naming Convention
 
