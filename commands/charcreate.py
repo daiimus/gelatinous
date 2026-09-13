@@ -428,6 +428,23 @@ def create_character_from_template(account, template, sex="ambiguous"):
     return char
 
 
+def flash_clone_name(old_character):
+    """
+    The name a flash clone of `old_character` will be decanted under.
+
+    `archive_character` bumps death_count BEFORE the respawn menu renders,
+    so the incoming name is computable at render time. Both respawn doors
+    label the flash-clone option with THIS, not with the outgoing key --
+    a card reading "Jorge Jackson I" that delivers "Jorge Jackson II" told
+    the player the wrong identity (#3364). `create_flash_clone` uses the
+    same function, so label and result cannot drift apart.
+    """
+    death_count = old_character.death_count
+    if death_count is None:
+        death_count = 1  # Default from AttributeProperty
+    return build_name_from_death_count(old_character.key, death_count)
+
+
 def create_flash_clone(account, old_character):
     """
     Create a flash clone from a dead character.
@@ -452,12 +469,7 @@ def create_flash_clone(account, old_character):
     
     # Get old character's death_count (already incremented at death)
     # Use AttributeProperty directly to access the correct categorized attribute
-    old_death_count = old_character.death_count
-    if old_death_count is None:
-        old_death_count = 1  # Default from AttributeProperty
-    
-    # Build name using death_count as Roman numeral source
-    new_name = build_name_from_death_count(old_character.key, old_death_count)
+    new_name = flash_clone_name(old_character)  # same expression the menu label shows (#3364)
     
     # NOTE: We do NOT remove old_character from account.characters here.
     # check_available_slots() excludes archived characters from the count,
@@ -770,7 +782,8 @@ Select a consciousness vessel:
     # Flash clone option
     old_char = caller.ndb.charcreate_old_character
     if old_char:
-        text += f"\n|w[4]|n |rFLASH CLONE|n - |c{old_char.key}|n (preserve current identity)\n"
+        # Who you'll WAKE UP AS, not who you just lost (#3364).
+        text += f"\n|w[4]|n |rFLASH CLONE|n - |c{flash_clone_name(old_char)}|n (preserve current identity)\n"
         text += f"    |gGrit:|n {old_char.grit:3d}  "
         text += f"|yResonance:|n {old_char.resonance:3d}  "
         text += f"|bIntellect:|n {old_char.intellect:3d}  "

@@ -117,9 +117,12 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                 account.db.last_character = None
                 old_character = None
         
+        from commands.charcreate import flash_clone_name
         context = {
             'templates': templates,
             'old_character': old_character,
+            # The name the flash clone will be decanted under (#3364).
+            'flash_clone_name': flash_clone_name(old_character) if old_character else None,
         }
         
         # Persist templates in Django session so POST receives the same ones
