@@ -189,13 +189,12 @@ def build_name_from_death_count(base_name, death_count):
     Returns:
         str: Name with appropriate Roman numeral suffix.
     """
-    # Strip any existing Roman numeral from base_name.
-    # Only strip if there's whitespace before the Roman numeral to avoid
-    # stripping letters from names like "Drivel" (ends with "L").
-    pattern = r'^(.+?)\s+([IVXLCDM]+)$'
-    match = re.match(pattern, base_name.strip(), re.IGNORECASE)
-    if match:
-        base_name = match.group(1).strip()
+    # Strip an existing generation numeral from base_name -- STRICTLY.
+    # The suffix we ourselves append is always canonical uppercase
+    # (`int_to_roman`), so that is all we recognise. A case-insensitive
+    # match read every surname spelled with only I/V/X/L/C/D/M as a numeral
+    # and ate it: "Mary Dix" decanted as "Mary I" (#3359).
+    base_name, _ = split_roman_suffix(base_name)
 
     # Defensive fallback for None / pre-fix legacy values.
     if death_count is None or death_count < 1:
@@ -220,6 +219,45 @@ def int_to_roman(num):
             result += numeral * count
             num -= value * count
     return result
+
+
+_ROMAN_VALUES = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+
+
+def roman_value(token):
+    """
+    Return the integer value of a canonical Roman numeral, else None.
+
+    Strict on purpose. Our generation suffixes are always the uppercase
+    canonical form `int_to_roman` emits, so anything else is a NAME:
+    "Dix", "Mill", "Mix" (any lowercase), "IIII" (not canonical). Requires
+    uppercase, Roman letters only, and ``int_to_roman(value) == token``.
+    """
+    if not token or not token.isupper() or any(c not in _ROMAN_VALUES for c in token):
+        return None
+    total = prev = 0
+    for char in reversed(token):
+        value = _ROMAN_VALUES[char]
+        total = total - value if value < prev else total + value
+        prev = max(prev, value)
+    return total if total and int_to_roman(total) == token else None
+
+
+def split_roman_suffix(name):
+    """
+    Split "Brock III" into ("Brock", 3); a name with no canonical numeral
+    suffix comes back as (name, None). Whitespace before the token is
+    required (so "Drivel" keeps its L) and the token must satisfy
+    `roman_value` (so "Mary Dix" keeps its Dix).
+    """
+    name = (name or "").strip()
+    base, sep, last = name.rpartition(" ")
+    if not sep:
+        return name, None
+    value = roman_value(last)
+    if value is None:
+        return name, None
+    return base.strip(), value
 
 
 def validate_name(name):
@@ -267,7 +305,7 @@ def validate_name(name):
     # surfaced 1300 lines later as a raw exception string at the
     # confirmation node.
     #
-    # Compared on the BASE name, using the same regex
+    # Compared on the BASE name, using the same strict split
     # `build_name_from_death_count` strips with, so "First Last" is
     # taken whether the existing sleeve is I, II or XIV. A prefix query
     # narrows the scan; the numeral test is what decides.
@@ -276,9 +314,8 @@ def validate_name(name):
     if Character.objects.filter(db_key__iexact=name).exists():
         return (False, "That name is already taken.")
     for other in Character.objects.filter(db_key__istartswith=f"{name} "):
-        match = re.match(r'^(.+?)\s+([IVXLCDM]+)$', other.db_key.strip(),
-                         re.IGNORECASE)
-        if match and match.group(1).strip().lower() == wanted:
+        base, value = split_roman_suffix(other.db_key)
+        if value is not None and base.lower() == wanted:
             return (False, "That name is already taken.")
     
     return (True, None)
