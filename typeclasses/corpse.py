@@ -333,6 +333,36 @@ class Corpse(IdentityBearerMixin, Item):
             ]
             pair_keys = {}
 
+        # Added anatomy (#3379). The species order is FACTORY anatomy; a
+        # cybernetic tail, a hardpoint, anything installed later, lives in
+        # a container the species table never lists, so the loop below
+        # never visited it and the corpse silently omitted it -- installed
+        # chrome the parts trade is priced on was invisible on the body,
+        # and a harvested one left no visible mark. Extend the order with
+        # every container the death snapshot knows and every location a
+        # preserved wound names (a ripped-out augment's `harvested` wound
+        # is recorded at its container), species order first, so the wound
+        # system renders the surgery mark exactly as it does elsewhere.
+        # Non-specific on purpose (owner, 2026-09-13): any added anatomy.
+        extra = []
+        try:
+            snapshot = self.get_medical_snapshot() if hasattr(self, "get_medical_snapshot") else None
+            organs = (snapshot or {}).get("organs") or {}
+            for entry in organs.values():
+                if not hasattr(entry, "get"):
+                    continue
+                container = entry.get("container")
+                if container and container not in ANATOMICAL_DISPLAY_ORDER and container not in extra:
+                    extra.append(container)
+            for wound in (self.db.wounds_at_death or []):
+                loc = wound.get("location") if hasattr(wound, "get") else None
+                if loc and loc not in ANATOMICAL_DISPLAY_ORDER and loc not in extra:
+                    extra.append(loc)
+        except Exception:  # noqa: BLE001 -- a bad snapshot never hides the rest of the body
+            extra = []
+        if extra:
+            ANATOMICAL_DISPLAY_ORDER = list(ANATOMICAL_DISPLAY_ORDER) + extra
+
         descriptions = []
         longdesc_data = self.db.longdesc_data
 
