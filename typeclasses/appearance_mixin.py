@@ -141,6 +141,19 @@ class AppearanceMixin:
         render_order = list(ANATOMICAL_DISPLAY_ORDER) + [
             loc for loc in longdescs if loc not in set(ANATOMICAL_DISPLAY_ORDER)
         ]
+        # Added anatomy with no prose left (#3493, mirrors #3379 on the
+        # corpse): a container the medical state knows but no longdesc
+        # names -- the tail socket after the chrome was ripped out --
+        # still renders its wounds through the standalone-wound path
+        # below, so the surgery mark shows exactly as it does elsewhere.
+        try:
+            state = getattr(self, "medical_state", None)
+            for organ in (getattr(state, "organs", None) or {}).values():
+                container = getattr(organ, "container", None)
+                if container and container not in render_order:
+                    render_order.append(container)
+        except Exception:  # noqa: BLE001 -- a bad organ never hides the rest of the body
+            pass
         for location in render_order:
             if location in collapse_skip:
                 # Partner of a collapsed pair; rendered at the anchor location.
