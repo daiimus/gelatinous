@@ -3058,6 +3058,12 @@ def _configure_harvested_item(item, *, organ_name: str, condition: str,
             except Exception:  # noqa: BLE001
                 pass
     else:
+        # Organic organs carry the moment they came out (#3498): the
+        # viability / refrigeration gate the Ripper spec names reads
+        # this; nothing consumes it yet (balance pass pending). Chrome
+        # gets no stamp -- it doesn't rot.
+        from world.gametime import stamp
+        item.db.harvested_at = stamp()
         item.key = get_species_organ_name(species, organ_name, decay_stage)
 
         prose = get_organ_default_description(organ_name, condition, species)
