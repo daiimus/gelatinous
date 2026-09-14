@@ -1353,6 +1353,9 @@ class Organ(Item):
         # after spawn via ``configure_from_harvest``.
         self.db.organ_name = ""
         self.db.condition = "pristine"
+        # Real POSIX seconds (world.gametime.stamp) at harvest for organic
+        # organs; None for chrome, which doesn't rot (#3498).
+        self.db.harvested_at = None
         self.db.source_signature = None
         self.db.source_apparent_uid = None
         self.db.source_corpse_dbref = None

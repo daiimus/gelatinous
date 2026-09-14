@@ -155,7 +155,7 @@ lying in a room. Murder cleanup as a paid service.
 
 ## 6 · Legality & consequence — the owner-review section
 
-> **Rulings recorded 2026-09-14** (from the chrome-removal review): anything installed can be uninstalled; robots go to the junkyard salvager, not the Ripper; chrome doesn't rot (organic organs get a harvest timestamp, refrigeration later); chrome stays on the corpse and you re-sleeve as a flesh bag. §6's consequence stack itself is still owner-pending.
+> **Rulings recorded 2026-09-14** (from the chrome-removal review): anything installed can be uninstalled; robots go to the junkyard salvager, not the Ripper; chrome doesn't rot (organic organs get a harvest timestamp -- SHIPPED as `db.harvested_at` on every organic harvest, #3498; the freshness gate that reads it and the refrigeration component wait on the balance pass); chrome stays on the corpse and you re-sleeve as a flesh bag. §6's consequence stack itself is still owner-pending.
 
 This is where the Ripper differs from the butcher in kind, not degree.
 Selling a rat is commerce; selling a person should have *weight*. Proposed
