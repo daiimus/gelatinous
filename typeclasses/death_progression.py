@@ -710,6 +710,18 @@ class DeathProgressionScript(DefaultScript):
         
         # Transfer medical/death data if available
         if hasattr(character, 'medical_state') and character.medical_state:
+            # Park deployed integrated hardware FIRST (#3486): before the
+            # snapshot below records ``deployed`` and before the contents
+            # sweep would carry a locked, undroppable gun loose into the
+            # corpse. Guarded (#469): hardware bookkeeping never aborts
+            # corpse construction.
+            try:
+                from world.medical.augments import park_all_hardware
+                park_all_hardware(character)
+            except Exception as park_err:
+                get_splattercast().msg(
+                    f"DEATH_HARDWARE_PARK_ERROR: {getattr(character, 'key', '?')} - {park_err}"
+                )
             corpse.db.death_cause = character.get_death_cause()
             # Mirror onto the character: the respawn flow reads
             # old_char.db.death_cause for the sleeve envelope's
