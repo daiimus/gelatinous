@@ -87,6 +87,9 @@ player: `give corpse to ripper`
       species guard — ACCEPTS human + synthetic_humanoid;
                       REFUSES animals ("take the rat to the meat cart")
                       and robots ("scrap's a different trade")
+                      -- CONFIRMED by owner 2026-09-14: robots are robots, not chrome;
+                      a JUNKYARD SALVAGER (future gig) handles them. Other specs that
+                      named the Ripper as the chassis buyer are corrected.
       freshness gate — decay scales organ viability; past a threshold only
                       the chrome is worth anything (chrome doesn't rot)
       appraisal    — walk the corpse's REAL medical snapshot:
@@ -151,6 +154,8 @@ lying in a room. Murder cleanup as a paid service.
   witnesses, dispatch records, the victim's own re-sleeved memory.
 
 ## 6 · Legality & consequence — the owner-review section
+
+> **Rulings recorded 2026-09-14** (from the chrome-removal review): anything installed can be uninstalled; robots go to the junkyard salvager, not the Ripper; chrome doesn't rot (organic organs get a harvest timestamp, refrigeration later); chrome stays on the corpse and you re-sleeve as a flesh bag. §6's consequence stack itself is still owner-pending.
 
 This is where the Ripper differs from the butcher in kind, not degree.
 Selling a rat is commerce; selling a person should have *weight*. Proposed

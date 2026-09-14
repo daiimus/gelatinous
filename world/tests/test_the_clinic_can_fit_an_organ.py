@@ -150,8 +150,8 @@ class TestAStumpYieldsNothingTwice(EvenniaTest):
     def test_the_typed_verb_and_the_chart_now_agree(self):
         """The defect in one sentence: `harvest` refused, `operate`
         allowed."""
-        import inspect
+        # Behaviour, not source text (#3381): both doors read ONE helper,
+        # so a refactor of _list_organs cannot silently drop the exclusions.
         from commands import CmdOperate
-        source = inspect.getsource(CmdOperate._list_organs)
-        self.assertIn("severed_locations", source)
-        self.assertIn("current_hp", source)
+        from world.medical.removable import harvestable_organs
+        self.assertEqual(CmdOperate._list_organs(self.char1), harvestable_organs(self.char1))

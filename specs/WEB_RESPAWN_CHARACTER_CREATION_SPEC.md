@@ -100,6 +100,8 @@ templates = [generate_random_template() for _ in range(3)]
 
 ### 3. Flash Clone Logic
 
+> **Owner ruling 2026-09-14:** a flash clone inherits GRIM, appearance, sex and imprint -- **not augments**. Chrome stays on the corpse; the clone's medical state is rebuilt from the species table (`create_flash_clone`). You come back a flesh bag.
+
 Reuse existing flash clone creation from `commands/charcreate.py`:
 
 ```python

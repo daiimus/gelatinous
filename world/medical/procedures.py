@@ -941,6 +941,15 @@ def _resolve_harvest(actor, target, *, organ_name: str, location: str,
     snapshot_organs = get_organ_snapshot(target).get("organs", {}) or {}
     organ_data = snapshot_organs.get(organ_name) or {}
 
+    # Resolver-level gate (#3381): chart steps reach here without passing
+    # either command's picker, so the rule lives where every door lands.
+    from world.medical.removable import can_harvest_organ
+    from world.anatomy.species import species_of
+    if not can_harvest_organ(organ_name, organ_data, species_of(target)):
+        actor.msg(f"The {organ_name.replace('_', ' ')} is not something "
+                  f"that can be taken out.")
+        return
+
     # Access gate (#307 follow-up): the CmdHarvest command checks for
     # an open incision before dispatch, but chart-commenced harvests
     # call ``start_procedure`` directly and would otherwise bypass

@@ -234,6 +234,8 @@ the design wants:
    once the corpse is removed, the death's history is gone. That's fine for
    in-game forensics (no body, no evidence — correct), but it means a PC's
    **nostalgic sleeve history has no home that survives corpse removal**.
+
+   > **Owner ruling 2026-09-14 -- chrome stays on the corpse; you re-sleeve as a flesh bag.** Death costs you your augments: they remain on the body for the parts trade, and the new sleeve starts as stock species anatomy. This is ALREADY the code's behaviour -- `create_flash_clone` rebuilds `MedicalState` from the species table rather than copying the old organs (`commands/charcreate.py`, "The medical state is REBUILT rather than copied") -- so this line records the rule the secondhand-chrome economy is priced on, not a change.
 4. **NPC deaths still spawn a full corpse + do a teleport dance** even though the
    husk is immediately deleted (§4). Fine at current scale; worth noting.
 
