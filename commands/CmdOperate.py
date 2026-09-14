@@ -871,7 +871,7 @@ def _node_incise_location(caller, raw_string, **kwargs):
     containers = _list_containers(target)
     if not containers:
         caller.msg("|rNo incisable locations on this target.|n")
-        return "node_top"
+        return _node_top(caller, raw_string, **kwargs)  # a node's string is TEXT, not a goto (#3500)
     caller.ndb._operate_pickable = containers
     listing = _render_numbered(
         containers, lambda loc: loc.replace("_", " "),
@@ -935,7 +935,7 @@ def _node_amputate_location(caller, raw_string, **kwargs):
             "requires species anatomy that declares severable "
             "containers (limbs / head).|n"
         )
-        return "node_top"
+        return _node_top(caller, raw_string, **kwargs)  # a node's string is TEXT, not a goto (#3500)
     caller.ndb._operate_pickable = locations
     listing = _render_numbered(
         locations, lambda loc: loc.replace("_", " "),
@@ -980,7 +980,7 @@ def _node_harvest_organ(caller, raw_string, **kwargs):
     organs = _list_organs(target)
     if not organs:
         caller.msg("|rNo harvestable organs on this target.|n")
-        return "node_top"
+        return _node_top(caller, raw_string, **kwargs)  # a node's string is TEXT, not a goto (#3500)
     caller.ndb._operate_pickable = organs
     from world.anatomy import get_organ_display_name
     species = _species_of_target(caller)
@@ -1034,7 +1034,7 @@ def _node_install_organ(caller, raw_string, **kwargs):
             "|rNo donor organs in your inventory.  Harvest one "
             "first, then re-enter operate to install.|n"
         )
-        return "node_top"
+        return _node_top(caller, raw_string, **kwargs)  # a node's string is TEXT, not a goto (#3500)
     caller.ndb._operate_pickable = donors
     listing = _render_numbered(
         donors, lambda item_organ: item_organ[0].key,
@@ -1220,7 +1220,7 @@ def _node_install_location(caller, raw_string, **kwargs):
         caller.msg(
             f"|r{donor_key} is no longer in your inventory.|n"
         )
-        return "node_top"
+        return _node_top(caller, raw_string, **kwargs)  # a node's string is TEXT, not a goto (#3500)
 
     slots = _list_install_locations(target, donor_item)
     if not slots:
@@ -1230,7 +1230,7 @@ def _node_install_location(caller, raw_string, **kwargs):
             f"cross-species mismatch or no matching {target_species} "
             f"slot for this organ.|n"
         )
-        return "node_top"
+        return _node_top(caller, raw_string, **kwargs)  # a node's string is TEXT, not a goto (#3500)
 
     # Picker entries: (location_value, label) -- value first, per the
     # convention documented on ``_pick_aliases``.  Tag shows whether
@@ -1598,7 +1598,7 @@ def _node_commence(caller, raw_string, **kwargs):
     chart = chart_lib.get_chart(target)
     if not chart:
         caller.msg("|rNo chart to commence.|n")
-        return "node_top"
+        return _node_top(caller, raw_string, **kwargs)  # a node's string is TEXT, not a goto (#3500)
 
     pending = chart_lib.pending_steps(chart)
     if not pending:
@@ -1606,12 +1606,12 @@ def _node_commence(caller, raw_string, **kwargs):
             "|wChart complete — no pending steps.|n  "
             "Use option 5 to discard if you're done."
         )
-        return "node_top"
+        return _node_top(caller, raw_string, **kwargs)  # a node's string is TEXT, not a goto (#3500)
 
     step = chart_lib.commence_chart(target, caller)
     if step is None:
         caller.msg("|wChart complete.|n")
-        return "node_top"
+        return _node_top(caller, raw_string, **kwargs)  # a node's string is TEXT, not a goto (#3500)
 
     summary = chart_lib.render_step_summary(step, _species_of(target))
     caller.msg(
