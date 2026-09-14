@@ -360,28 +360,14 @@ def _severable_locations(corpse) -> list[str]:
 
     Returns an empty list if the snapshot is missing.
     """
-    snapshot = corpse.get_medical_snapshot()
-    if snapshot is None:
+    # Species set UNION the augment overlay, read from the death snapshot
+    # (#3380): a cyber tail came off a living body but never off the
+    # corpse, because this door read the species set alone. Presence and
+    # already-severed filtering live in the helper.
+    if corpse.get_medical_snapshot() is None:
         return []
-    organs = snapshot.get("organs") or {}
-    present_containers = {
-        (data.get("container") or "")
-        for data in organs.values()
-    }
-    severed = set(corpse.db.severed_locations or ())
-    # Issue #356 Phase 2: species-aware severable set.  Rats sever at
-    # foreleg / forepaw / hindleg / hindpaw / tail, not human arm /
-    # hand / thigh / shin / foot.
-    from world.anatomy import get_species_severable_containers
-    severable = get_species_severable_containers(
-        getattr(getattr(corpse, "db", None), "species", None)
-    )
-    out = [
-        loc for loc in severable
-        if loc in present_containers and loc not in severed
-    ]
-    out.sort()
-    return out
+    from world.medical.removable import severable_containers
+    return severable_containers(corpse)
 
 
 class CmdSever(Command):
@@ -499,11 +485,8 @@ class CmdSever(Command):
         # Specific location requested.  Issue #356 Phase 2: consult
         # the species-aware severable set so rat tails / forelegs are
         # recognised.
-        from world.anatomy import get_species_severable_containers
-        target_severable = get_species_severable_containers(
-            getattr(getattr(target, "db", None), "species", None)
-        )
-        if location_arg not in target_severable:
+        from world.medical.removable import container_is_severable
+        if not container_is_severable(target, location_arg):   # species OR overlay (#3380)
             caller.msg(
                 f"You cannot sever the {location_arg.replace('_', ' ')} "
                 f"— it is not a detachable body location."
@@ -627,10 +610,12 @@ class CmdSever(Command):
         # Location still severable and not already taken (species-
         # aware per #356 Phase 2 — rats sever at tail / fore-/hindleg
         # not human containers).
-        from world.anatomy import get_species_severable_containers
-        if location_arg not in get_species_severable_containers(
-            getattr(getattr(target, "db", None), "species", None)
-        ):
+        from world.medical.removable import container_is_severable
+        if not container_is_severable(target, location_arg):   # species OR overlay (#3380)
+            caller.msg(
+                f"The {location_arg.replace('_', ' ')} is no longer something "
+                f"you can sever."
+            )
             return
         if location_arg in (target.db.severed_locations or ()):
             caller.msg(

@@ -409,40 +409,13 @@ class CmdHarvest(Command):
             from world.anatomy.organs import BONE_ORGANS
             bones = BONE_ORGANS
 
-        harvestable = []
-        for name, data in organs.items():
-            if skeletal and name not in bones:
-                continue
-            # Duck-type rather than ``isinstance(data, dict)`` —
-            # Evennia's ``_SaverDict`` wraps persisted snapshot
-            # entries and isn't a dict subclass, so isinstance
-            # would silently filter every organ on a corpse target.
-            # See ``world.medical.procedures.organs_at_location``
-            # for the original bug + fix this mirrors.
-            if not hasattr(data, "get"):
-                continue
-            spec = get_organ_spec(name, species) or {}
-            # An AUGMENT has no species spec entry -- it was fitted at
-            # runtime, not declared on the anatomy -- so this filter
-            # was rejecting chrome by ABSENCE rather than by decision.
-            # `operate` never had the guard, so the same extraction
-            # worked there and was refused here: two routes into one
-            # act disagreeing (#2286).
-            #
-            # Anything installed can be uninstalled. That is what an
-            # augment IS, and it is what the Ripper's chrome appraisal
-            # and the wanted-armament race are both built on.
-            if not spec.get("can_be_harvested") \
-                    and not (data.get("data") or {}).get("module_type"):
-                continue
-            if name in removed:
-                continue
-            if data.get("container") in severed_locs:
-                continue
-            if data.get("current_hp", 0) <= 0:
-                continue
-            harvestable.append(name)
-        harvestable.sort()
+        # ONE answer for every door (#3381, #3380): the harvest axis OR a
+        # grafted augment ("anything installed can be uninstalled"), minus
+        # removed / severed / destroyed, chrome surviving a skeletal body.
+        # `operate` and the resolver read the same helper, so the two
+        # routes into one act can no longer disagree (#2286 was a keyhole).
+        from world.medical.removable import harvestable_organs
+        harvestable = [name for name, _container in harvestable_organs(target)]
 
         if not organ_arg:
             if not harvestable:
@@ -628,6 +601,18 @@ class CmdInstall(Command):
             caller.msg(
                 f"{target.get_display_name(caller)} isn't something "
                 f"you can install an organ into."
+            )
+            return
+        # Living bodies only (owner 2026-09-14: install into a non-living
+        # body makes sense only for robots and maybe bioroids, later). The
+        # augment / module / limb branches already say so before dispatch;
+        # this branch let a corpse through to be refused silently in the
+        # resolver (#2455 item 5 made the resolver refuse; the message
+        # belongs at the door).
+        if getattr(target, "medical_state", None) is None:
+            caller.msg(
+                f"{target.get_display_name(caller)} isn't alive -- there's "
+                f"nothing to install into."
             )
             return
 

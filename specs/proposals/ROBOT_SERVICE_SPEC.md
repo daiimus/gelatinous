@@ -128,6 +128,7 @@ Tempting to rename `heart` to `power_core` in the data. Don't:
 * hit locations, wound tables, severed parts and the harvest/appraisal
   paths all key off organ names, and the Ripper's chrome appraisal is
   coming for exactly these
+  *(corrected 2026-09-14: the **junkyard salvager**, not the Ripper -- robots are robots, not chrome; the Ripper refuses them)*
 * `_derive_robot` deep-copies the human table, so the two stay
   structurally identical for free — that is the whole reason a robot is
   operable at all today
@@ -142,8 +143,8 @@ Rename what people READ. Never what the system JOINS on.
   units to rack; this gives her something to actually do to them, in
   words that fit.
 * **Salvage reads right.** A stripped frame yields a power core and a
-  vocal modulator, not a heart and a tongue — which is what the Ripper
-  and the junkyard both want (`SECURITY_UNIT_LIFECYCLE_SPEC`).
+  vocal modulator, not a heart and a tongue — which is what the ~~Ripper
+  and the~~ junkyard **salvager** wants (`SECURITY_UNIT_LIFECYCLE_SPEC`; owner 2026-09-14: the Ripper refuses robots).
 * **Repair becomes real**, which is the dependency `#2255` is blocked
   on: recovering a downed unit means nothing until somebody can put it
   back together.

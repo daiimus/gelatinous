@@ -5,6 +5,13 @@
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The previous banner read "approved design, implementation phased", which §5 of this same document already contradicted.
 
+> **Owner rulings 2026-09-13/14 (chrome-removal slice), and what shipped on them:**
+> 1. **Anything installed can be uninstalled.** One predicate now answers "what can come off this body" for every door -- `world/medical/removable.py` (`can_harvest_organ` / `harvestable_organs` / `container_is_severable` / `severable_containers`), read by the typed `harvest`, the `operate` chart, `_resolve_harvest` itself (so a chart step cannot bypass it), and all three corpse severance gates in `commands/forensics.py`. Harvest = the species harvest axis OR a grafted augment; severable = the species set OR any organ at the container flagging `severable_container` -- from the SNAPSHOT, so corpses and severed parts answer like the living (#3380, #3381).
+> 2. **Robots are robots.** Native anatomy is whatever the body's OWN species table declares -- a robot's arm bone is robot anatomy, not chrome, even though it is inorganic. `is_grafted` treats an organ as chrome only when the table does not know it (tail, hardpoint, module) or when it carries augment markers the table's own entry lacks (a cyber humerus on a human). Robot parts are gated behind the robot species; the **junkyard salvager** (future) handles them, not the Ripper.
+> 3. **Chrome doesn't rot.** A skeletal body still yields its grafted inorganic parts; only flesh is gone. (Harvested-item naming/condition fork: next slice.) Organic harvested organs will carry a harvest timestamp for viability, with refrigeration later.
+> 4. **Chrome stays on your corpse; you re-sleeve as a flesh bag.** Death costs you your augments -- that is what the secondhand market is priced on.
+> 5. **Install into a non-living body makes sense only for robots and maybe bioroids -- they can be rebuilt.** Organics: living targets only (the #2455 decision stands).
+
 **Status:** approved design, implementation phased.  The discussion
 that settled every decision below happened 2026-06-11.  First
 consumer: the cybernetic tail.
@@ -136,6 +143,7 @@ per-character — the substrate is half-built; this spec finishes it.
 > `ANATOMICAL_DISPLAY_ORDER` (`typeclasses/corpse.py`) — so an
 > installed tail can be severed from a living body but not from the
 > corpse, and never appears in the corpse's description at all.
+> **Both closed:** the corpse longdesc renderer visits augment locations since #3379 (2026-09-14), and corpse severance reads the overlay through `world/medical/removable.py` since #3380 (2026-09-14). No static species-only read of severability survives in the tree.
 
 ## 3 · Mechanics
 
@@ -215,6 +223,8 @@ tail's spec does).  The severed-part pipeline already builds from
 the character's organs, so the severed tail hits the floor as an
 organ item carrying the cybernetic tail — reinstallable, damage and
 conditions intact.
+
+> **Corrected 2026-09-14 (#3380):** the rule now holds on corpses and severed parts too (`removable.container_is_severable` / `severable_containers`, read from the snapshot). And the severed tail is an **Appendage** carrying the organ snapshot (AUGMENT_ABILITIES §8), not a bare organ item -- it reattaches via `install_limb`.
 
 ### 3.6 · Rendering
 

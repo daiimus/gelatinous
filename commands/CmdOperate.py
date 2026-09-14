@@ -526,46 +526,16 @@ def _list_organs(target):
     """Return ``(organ_name, container)`` pairs from ``target``'s
     snapshot, sorted by container then organ name.  Drops organs
     already in ``removed_organs``."""
-    from world.medical.procedures import get_organ_snapshot
-    snapshot = get_organ_snapshot(target)
-    organs = snapshot.get("organs") or {}
-    removed = set(
-        getattr(getattr(target, "db", None), "removed_organs", None)
-        or ()
-    )
-    # The SAME two exclusions the typed `harvest` verb applies
-    # (CmdSurgical.py:418-421). Two doors onto one decision, and only
-    # one of them refused (#2455):
-    #
-    # * a container that has been SEVERED leaves tombstones behind —
-    #   `sever_character_body` keeps every organ of the departed limb in
-    #   `medical_state.organs` at 0 HP / wound_stage "severed", while a
-    #   copy travels in the Appendage's own snapshot. Offering those
-    #   again meant the stump yielded a SECOND, identical set of the
-    #   organs and modules that already left with the limb — duplicated
-    #   chrome, and chrome is exactly what the Ripper appraisal and the
-    #   parts trade are priced on.
-    # * a 0-HP organ is pulped, and `harvest` has always refused it.
-    #
-    # The picker is the whole gate: `_parse_pick` matches only what is
-    # listed here, so free-typing in the menu cannot get past it.
-    severed_locs = set(
-        getattr(getattr(target, "db", None), "severed_locations", None) or []
-    )
-    out = []
-    for name, data in organs.items():
-        if name in removed:
-            continue
-        if not hasattr(data, "get"):
-            continue
-        container = data.get("container") or "?"
-        if container in severed_locs:
-            continue
-        if (data.get("current_hp") or 0) <= 0:
-            continue
-        out.append((name, container))
-    out.sort(key=lambda nc: (nc[1], nc[0]))
-    return out
+    # ONE helper for every door (#3381). The chart door used to apply NO
+    # harvest filter -- it would pull a human lung -- while the typed verb
+    # applied the species axis, so the two routes into one act disagreed
+    # on 16 of 28 human organs. `harvestable_organs` carries the #2455
+    # exclusions too (removed / severed-container tombstones / 0-HP), so
+    # a stump still cannot yield duplicated chrome. The picker is still
+    # the whole gate here (`_parse_pick` matches only what is listed), and
+    # the resolver now refuses as well, so a chart step cannot bypass it.
+    from world.medical.removable import harvestable_organs
+    return harvestable_organs(target)
 
 
 def _list_donor_organs(caller):
@@ -946,21 +916,14 @@ def _list_severable_containers(target):
     the species table plus any per-character augment locations whose
     organs declare ``severable_container`` (ANATOMY_AUGMENTS_SPEC
     §3.5)."""
-    from world.anatomy import get_species_severable_containers
-    species = _species_of(target)
+    # Reads the SNAPSHOT, so the overlay answers on a corpse or a severed
+    # part as well as a living body (#3380): the old branch keyed on
+    # `medical_state`, a Character-only property, and was dead on the dead.
+    from world.medical.removable import severable_containers
     try:
-        severable = set(get_species_severable_containers(species))
+        return severable_containers(target)
     except Exception:
         return []
-    medical_state = getattr(target, "medical_state", None)
-    if medical_state is not None:
-        for organ in getattr(medical_state, "organs", {}).values():
-            data = getattr(organ, "data", None)
-            if data and data.get("severable_container"):
-                container = getattr(organ, "container", None)
-                if container:
-                    severable.add(container)
-    return sorted(severable)
 
 
 def _node_amputate_location(caller, raw_string, **kwargs):
