@@ -376,6 +376,13 @@ class CmdGraffiti(Command):
         solvent_used = min(solvent_used, solvent_can.db.aerosol_level or 0)
         if solvent_used <= 0:
             return
+        # Read everything we need off the can BEFORE consuming: spending the
+        # last unit deletes it, and a read on a deleted object either raised
+        # (swallowed by the channel, so the blood was never touched) or
+        # silently degraded to "basic" (#3378).
+        tool_quality = "basic"  # Default for spray cans
+        if solvent_can.db.quality is not None:
+            tool_quality = solvent_can.db.quality
         solvent_can.use_solvent(solvent_used)
 
         # Track what was cleaned
@@ -395,10 +402,7 @@ class CmdGraffiti(Command):
         if has_blood:
             for blood_pool in blood_pools:
                 if blood_pool.db.bleeding_incidents:
-                    # Determine tool quality based on solvent can type
-                    tool_quality = "basic"  # Default for spray cans
-                    if solvent_can.db.quality is not None:
-                        tool_quality = solvent_can.db.quality
+                    # tool_quality was read above, before the can could be consumed (#3378)
                     
                     cleaned_volume, clean_result = blood_pool.clean_with_solvent(caller, tool_quality)
                     if cleaned_volume > 0:
