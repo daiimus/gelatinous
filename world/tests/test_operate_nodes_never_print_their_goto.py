@@ -57,7 +57,7 @@ class OperateNodesNeverPrintTheirGotoTest(EvenniaTest):
             self._is_top_menu(menu._node_install_organ(self.char1, ""))
 
     def test_incise_with_nothing_to_list_returns_to_the_top(self):
-        with mock.patch.object(menu, "_list_severable_containers", return_value=[]):
+        with mock.patch.object(menu, "_list_containers", return_value=[]):
             self._is_top_menu(menu._node_incise_location(self.char1, ""))
 
     def test_amputate_with_nothing_to_list_returns_to_the_top(self):
