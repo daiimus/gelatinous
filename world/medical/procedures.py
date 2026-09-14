@@ -1267,6 +1267,10 @@ def _resolve_install(actor, target, *, organ_item, location: str,
     from evennia.utils.dbserialize import deserialize
     item_spec = deserialize(getattr(organ_item.db, "organ_spec", None) or {})
     if item_spec:
+        # Only an item that CARRIES anatomy is chrome; a spec-less
+        # biological organ keeps the legacy restore path below.
+        stamp_chrome_provenance(item_spec, organ_item)
+    if item_spec:
         from world.medical.core import Organ
         organ = Organ(organ_name, organ_data=dict(item_spec))
         organ.medical_state = state
@@ -1798,6 +1802,8 @@ def _resolve_install_augment(actor, target, *, organ_item, location: str,
         )
         return
     augment_organs = declaration["organs"]
+    for _spec in list(augment_organs.values()):
+        stamp_chrome_provenance(_spec, organ_item)
     augment_container = declaration["container"]
     augment_longdesc = declaration["longdesc"]
     if not augment_organs or not augment_container:
@@ -2034,6 +2040,8 @@ def _resolve_install_module(actor, target, *, organ_item, location: str,
 
     item_db = getattr(organ_item, "db", None)
     module_spec = deserialize(getattr(item_db, "organ_spec", None) or {})
+    if module_spec:
+        stamp_chrome_provenance(module_spec, organ_item)
     module_type = (
         getattr(item_db, "module_type", None)
         or module_spec.get("module_type")
@@ -2788,6 +2796,58 @@ def _mark_organ_removed(target, organ_name: str) -> None:
         apply_vital_consequences(target)
 
 
+def stamp_chrome_provenance(spec, item):
+    """Record the ITEM's own identity inside the organ spec at install --
+    the chrome item contract (owner rulings 2026-09-13/14). Key,
+    description, prototype tag, install-compatibility list, value and
+    the flesh-mount fields travel INTO the body so `harvest` can hand the
+    chrome back as what it is, instead of naming a cyber humerus "human
+    left humerus" with the stock Item description and a single-species
+    compatibility list. Provenance strings never carry ``{side}``, so
+    `_format_side` leaves them alone. Returns ``spec`` for chaining."""
+    if spec is None or not hasattr(spec, "__setitem__"):
+        return spec
+    db = getattr(item, "db", None)
+    prov = {"key": getattr(item, "key", None), "desc": getattr(db, "desc", None)}
+    try:
+        tags = item.tags.get(category="from_prototype", return_list=True)
+        if tags:
+            prov["prototype_key"] = tags[0]
+    except Exception:  # noqa: BLE001 -- an untagged item simply has no prototype link
+        pass
+    for field in ("compatible_species", "value", "brand", "module_mount",
+                  "flesh_containers", "flesh_organ"):
+        val = getattr(db, field, None) if db is not None else None
+        if val in (None, "", [], ()):
+            continue
+        if not isinstance(val, str) and hasattr(val, "__iter__"):
+            val = list(val)
+        prov[field] = val
+    spec["chrome_provenance"] = prov
+    return spec
+
+
+def _unformat_side(value, side):
+    """Inverse of `_format_side`: put ``{side}`` back where a resolved side
+    word sits, so a module harvested from a LEFT arm leaves surgery
+    side-agnostic again and seats correctly on the right ("side baked at
+    install"). Only applied to grafted organs in a sided container;
+    provenance strings are skipped."""
+    if isinstance(value, str):
+        return value.replace(side, "{side}") if side in value else value
+    if hasattr(value, "items"):
+        out = {}
+        for k, v in value.items():
+            if k == "chrome_provenance":
+                out[k] = v
+                continue
+            out[_unformat_side(k, side) if isinstance(k, str) else k] = _unformat_side(v, side)
+        return out
+    if isinstance(value, (list, tuple)):
+        return type(value)(_unformat_side(v, side) for v in value)
+    return value
+
+
 def _configure_harvested_item(item, *, organ_name: str, condition: str,
                               source, organ_data: dict) -> None:
     """Set the harvested ``item``'s db fields without relying on the
@@ -2848,14 +2908,37 @@ def _configure_harvested_item(item, *, organ_name: str, condition: str,
     # snapshots without "data" produce no spec; install falls back
     # to its HP-restore behavior.
     spec = organ_data.get("data") if hasattr(organ_data, "get") else None
+    chrome = None
+    grafted = False
     if spec and hasattr(spec, "get"):
         from evennia.utils.dbserialize import deserialize
-        item.db.organ_spec = deserialize(spec)
+        from world.medical.removable import is_grafted
+        grafted = is_grafted(organ_name, organ_data, species)
+        raw_chrome = spec.get("chrome_provenance") if grafted else None
+        chrome = deserialize(raw_chrome) if hasattr(raw_chrome, "get") else None
+        spec_out = deserialize(spec)
+        # Side: a module resolved for a LEFT arm at install carries "left"
+        # frozen into every string; put the template back so it seats on
+        # the other side correctly (owner: looted chrome must re-fit).
+        container = organ_data.get("container") or ""
+        for side in ("left", "right"):
+            if grafted and container.startswith(side + "_"):
+                spec_out = _unformat_side(spec_out, side)
+                break
+        item.db.organ_spec = spec_out
         # Module provenance (#526 M3): a harvested module routes back
         # through the module-install branch, not the by-name path —
         # it seats into any matching hardpoint, either side.
         if spec.get("module_type"):
             item.db.module_type = spec.get("module_type")
+        # Flesh-mount fields (Nailz class): without these a harvested
+        # flesh module could never be reinstalled anywhere.
+        for field in ("module_mount", "flesh_containers", "flesh_organ"):
+            val = (chrome or {}).get(field)
+            if val is None:
+                val = spec.get(field)
+            if val not in (None, "", []):
+                setattr(item.db, field, val)
 
     stage_getter = getattr(source, "get_decay_stage", None)
     if callable(stage_getter):
@@ -2867,11 +2950,48 @@ def _configure_harvested_item(item, *, organ_name: str, condition: str,
     else:
         decay_stage = "fresh"
 
-    item.key = get_species_organ_name(species, organ_name, decay_stage)
+    if grafted:
+        # CHROME DOESN'T ROT (owner 2026-09-14). A grafted augment is named
+        # and described as the chrome it is -- from the provenance the
+        # install stamped, else "cybernetic <part>" the way severance
+        # already names a chrome limb -- carries no decay prefix, takes its
+        # condition from its own housing (HP), and restores the
+        # install-compatibility list, value and prototype link the item had.
+        from world.anatomy.organs import get_organ_display_name
+        display = get_organ_display_name(organ_name, species)
+        max_hp = float(organ_data.get("max_hp") or 0)
+        hp = float(organ_data.get("current_hp") or 0)
+        condition = "pristine" if (max_hp <= 0 or hp / max_hp >= 0.66) else "damaged"
+        item.db.condition = condition
+        item.key = (chrome or {}).get("key") or f"cybernetic {display}"
+        prose = (chrome or {}).get("desc")
+        if not prose:
+            try:
+                from world.anatomy.severed_parts import CYBERNETIC_PART_DESCRIPTIONS
+                prose = CYBERNETIC_PART_DESCRIPTIONS[None][condition].format(part=display)
+            except Exception:  # noqa: BLE001
+                prose = None
+        if prose:
+            item.db.desc = prose
+        compat = (chrome or {}).get("compatible_species")
+        if compat:
+            item.db.compatible_species = list(compat)
+        for field in ("value", "brand"):
+            if (chrome or {}).get(field) is not None:
+                setattr(item.db, field, chrome[field])
+        pk = (chrome or {}).get("prototype_key")
+        if pk:
+            item.db.prototype_key = pk
+            try:
+                item.tags.add(pk, category="from_prototype")
+            except Exception:  # noqa: BLE001
+                pass
+    else:
+        item.key = get_species_organ_name(species, organ_name, decay_stage)
 
-    prose = get_organ_default_description(organ_name, condition, species)
-    if prose:
-        item.db.desc = prose
+        prose = get_organ_default_description(organ_name, condition, species)
+        if prose:
+            item.db.desc = prose
 
     # Organ-bound conditions travel with the organ (#307 follow-up).
     item.db.organ_conditions = list(organ_data.get("conditions") or [])
