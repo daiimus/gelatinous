@@ -1802,10 +1802,21 @@ def _resolve_install_augment(actor, target, *, organ_item, location: str,
         )
         return
     augment_organs = declaration["organs"]
-    for _spec in list(augment_organs.values()):
-        stamp_chrome_provenance(_spec, organ_item)
     augment_container = declaration["container"]
     augment_longdesc = declaration["longdesc"]
+    # The prose keys this augment surfaces (same rule the longdesc
+    # block below applies), recorded on every organ so harvest can take
+    # the prose down again when the location empties (#3491).
+    _longdesc_keys = [
+        (e.get("key") or augment_container)
+        for e in (augment_longdesc if isinstance(augment_longdesc, (list, tuple))
+                  else [augment_longdesc])
+        if hasattr(e, "get")
+    ]
+    for _spec in list(augment_organs.values()):
+        stamp_chrome_provenance(_spec, organ_item)
+        if _longdesc_keys and hasattr(_spec, "__setitem__"):
+            _spec["augment_longdesc_keys"] = list(_longdesc_keys)
     if not augment_organs or not augment_container:
         actor.msg(f"The {organ_item.key} has nothing installable in it.")
         return
@@ -2785,6 +2796,15 @@ def _mark_organ_removed(target, organ_name: str) -> None:
         if snapshot:
             target_db.medical_state_at_death = snapshot
 
+    # Phantom prose (#3491): a grafted augment's longdesc kept rendering
+    # after the chrome was harvested out. Take it down once the location
+    # it names has no live organ left. Guarded: prose bookkeeping never
+    # blocks the extraction.
+    try:
+        _drop_augment_longdesc(target, organ_name, container)
+    except Exception as exc:  # noqa: BLE001
+        _log_guarded_failure("augment_longdesc_drop", target, exc)
+
     # PR-393 follow-up: re-evaluate vitals on living targets.  Vital
     # organ removal needs immediate death detection — the medical
     # script may not be running yet (fresh-spawned mob, fully-healed
@@ -2794,6 +2814,57 @@ def _mark_organ_removed(target, organ_name: str) -> None:
     if not (target_db is not None
             and getattr(target_db, "medical_state_at_death", None) is not None):
         apply_vital_consequences(target)
+
+
+def _drop_augment_longdesc(target, organ_name: str, container: str) -> None:
+    """Take down the prose a grafted augment surfaced, once the location
+    it names has no live organ left (#3491).
+
+    Install records ``augment_longdesc_keys`` on each organ it adds; a
+    pre-#3491 install has none, so the key defaults to the container and
+    is dropped only when that container is one the species table never
+    lists (an ADDED location like the tail) -- native prose (a cyber arm
+    mounted over a stump) is never touched by guesswork. Reads the body's
+    ``longdesc`` on the living and ``longdesc_data`` on corpse-shaped
+    sources; reassigns rather than mutates so the attribute persists."""
+    from world.medical.removable import _species_of, is_grafted, organ_spec_of
+    snapshot = get_organ_snapshot(target) or {}
+    organs = snapshot.get("organs") or {}
+    entry = organs.get(organ_name)
+    if entry is None or not hasattr(entry, "get"):
+        return
+    species = _species_of(target)
+    if not is_grafted(organ_name, entry, species):
+        return
+    container = entry.get("container") or container
+    keys = organ_spec_of(entry).get("augment_longdesc_keys")
+    if keys is None:
+        from world.anatomy.species import get_species_organs
+        native = {(spec or {}).get("container")
+                  for spec in (get_species_organs(species) or {}).values()
+                  if hasattr(spec, "get")}
+        keys = [] if container in native else [container]
+    removed = set(getattr(getattr(target, "db", None), "removed_organs", None) or [])
+
+    def _occupied(location):
+        for name, data in organs.items():
+            if name == organ_name or name in removed or not hasattr(data, "get"):
+                continue
+            if (data.get("container") or "") == location and (data.get("current_hp") or 0) > 0:
+                return True
+        return False
+
+    to_drop = {k for k in keys if k and not _occupied(k)}
+    if not to_drop:
+        return
+    longdesc = getattr(target, "longdesc", None)
+    if hasattr(longdesc, "items"):
+        target.longdesc = {k: v for k, v in longdesc.items() if k not in to_drop}
+        return
+    db = getattr(target, "db", None)
+    data = getattr(db, "longdesc_data", None) if db is not None else None
+    if hasattr(data, "items"):
+        db.longdesc_data = {k: v for k, v in data.items() if k not in to_drop}
 
 
 def stamp_chrome_provenance(spec, item):
