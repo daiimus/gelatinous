@@ -1797,6 +1797,24 @@ class Appendage(Item):
             containers=chain,
             source_removed_organs=getattr(corpse.db, "removed_organs", None),
         )
+        # Integrated hardware travels with the limb off a corpse too
+        # (#3487) -- the living sever does this via
+        # carry_hardware_to_appendage. HERE, not in one caller: the typed
+        # `sever`, the amputate chart and the death-time decapitation each
+        # build the part their own way, and every one of them lands on
+        # this method. Snapshot-shaped on purpose: a corpse has no live
+        # Organ objects.
+        try:
+            from world.medical.augments import carry_snapshot_hardware_to_appendage
+            carry_snapshot_hardware_to_appendage(self)
+        except Exception as exc:
+            # Deliberate (#469): hardware bookkeeping must never block
+            # the severance itself.  Audit-logged for investigation.
+            from world.combat.debug import get_splattercast
+            get_splattercast().msg(
+                f"CORPSE_SEVER_HARDWARE_CARRY_ERROR: {getattr(corpse, 'key', '?')} "
+                f"{location_name}: {exc}"
+            )
 
     def configure_from_living_sever(self, *, character, location_name,
                                     injury_type="cut", chain=None):
@@ -2461,20 +2479,6 @@ def spawn_severed_part_from_corpse(corpse, location_arg):
         corpse.db.severed_locations = severed_list
 
     apply_sever_to_corpse(corpse, location_arg)
-    # Integrated hardware travels with the limb off a corpse too (#3487)
-    # -- the living sever already does this via carry_hardware_to_appendage.
-    # Snapshot-shaped on purpose: a corpse has no live Organ objects.
-    try:
-        from world.medical.augments import carry_snapshot_hardware_to_appendage
-        carry_snapshot_hardware_to_appendage(appendage)
-    except Exception as exc:
-        # Deliberate (#469): hardware bookkeeping must never block the
-        # severance itself.  Audit-logged for investigation.
-        from world.combat.debug import get_splattercast
-        get_splattercast().msg(
-            f"CORPSE_SEVER_HARDWARE_CARRY_ERROR: {getattr(corpse, 'key', '?')} "
-            f"{location_arg}: {exc}"
-        )
     return appendage
 
 
@@ -3443,6 +3447,16 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         )
         # Identity / decay / trimmed snapshot overlay (unit-testable).
         apply_severed_head_overlay(self, corpse)
+        # Head-mounted hardware leaves with the head (#3487), same seam
+        # as Appendage.configure_from_sever; guarded the same way.
+        try:
+            from world.medical.augments import carry_snapshot_hardware_to_appendage
+            carry_snapshot_hardware_to_appendage(self)
+        except Exception as exc:
+            from world.combat.debug import get_splattercast
+            get_splattercast().msg(
+                f"CORPSE_SEVER_HARDWARE_CARRY_ERROR: {getattr(corpse, 'key', '?')} head: {exc}"
+            )
         # Re-apply wound + longdesc overlay across the full head-cluster
         # (overrides the head-only set the Appendage super-call laid
         # down).  Per PR #198: face, neck, eyes, ears all visually leave

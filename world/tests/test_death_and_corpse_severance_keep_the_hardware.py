@@ -16,7 +16,7 @@ inside the arm at death and leaves with the arm.
 from unittest import mock
 
 from evennia import create_object
-from evennia.utils.test_resources import EvenniaTest
+from evennia.utils.test_resources import EvenniaCommandTest, EvenniaTest
 
 from typeclasses.characters import Character
 from typeclasses.death_progression import DeathProgressionScript
@@ -109,3 +109,47 @@ class ALimbCutOffACorpseTakesItsHardwareTest(_ChromeDeath):
         leg = spawn_severed_part_from_corpse(corpse, "left_thigh")
         self.assertIsNotNone(leg)
         self.assertIsNone(self.gun.location)
+
+
+class TheTypedSeverVerbIsTheSameDoorTest(EvenniaCommandTest):
+    """Play caught this (2026-09-14): the helper carried the gun, the typed
+    `sever` verb -- which builds its own Appendage inline -- did not. The
+    carry now lives in `configure_from_sever`, where every door lands.
+
+    Driven with ``EvenniaCommandTest.call`` -- ``execute_cmd`` is inert
+    under ``evennia test`` (no reactor)."""
+
+    def setUp(self):
+        super().setUp()
+        self.patient = create_object(Character, key="Chrome", location=self.room1)
+        self.organ = _gun_arm_organ(self.patient.medical_state)
+        self.gun = create_object("typeclasses.items.Item", key="arm shotgun", location=None)
+        self.gun.db.integrated = True
+        self.gun.locks.add("get:false();drop:false()")
+        self.organ.ability_state = {"shotgun": {"weapon_dbref": self.gun.dbref}}
+
+    def _typed_sever(self, corpse, what):
+        from commands import forensics as cmd_module
+        blade = create_object("typeclasses.items.Item", key="cleaver", location=self.char1)
+        blade.db.can_sever = True
+
+        def _immediate(seconds, callback, *args, **kwargs):
+            callback(*args, **kwargs)
+
+        def _roll(char, stat, *args, **kwargs):
+            return {"intellect": 9, "motorics": 9}.get(stat, 9)
+
+        with mock.patch.object(cmd_module, "get_wielded_weapon", return_value=blade), \
+             mock.patch.object(cmd_module.utils, "delay", side_effect=_immediate), \
+             mock.patch.object(cmd_module, "roll_stat", side_effect=_roll):
+            self.said = self.call(cmd_module.CmdSever(), f"{what} from {corpse.key}", caller=self.char1)
+        return [o for o in self.char1.contents if o.typeclass_path.endswith("Appendage")]
+
+    def test_the_typed_verb_hands_the_gun_to_the_limb(self):
+        toggle_ability(self.patient, "shotgun")
+        assert self.gun.location == self.patient, "precondition: deployed gun is not on the body"
+        corpse = DeathProgressionScript()._create_corpse_from_character(self.patient)
+        arms = self._typed_sever(corpse, "right arm")
+        self.assertEqual(len(arms), 1, "fixture: the typed verb did not produce an arm; it said %r" % self.said)
+        self.assertEqual(self.gun.location, arms[0], "the module stayed behind at %r" % self.gun.location)
+        self.assertIn("right_arm", list(corpse.db.severed_locations or []))
