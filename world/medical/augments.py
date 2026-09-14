@@ -576,6 +576,54 @@ def park_organ_hardware(character, organ) -> None:
         character.held_items = held
 
 
+def park_all_hardware(character) -> None:
+    """Park every deployed weapon on the body (#3486): death runs neither
+    retract nor sever, so a character who died with an arm-shotgun out
+    left a locked, undroppable gun loose inside the corpse with
+    ``deployed`` still True in the death snapshot. Called by the corpse
+    factory BEFORE the medical snapshot and the contents sweep, so the
+    gun folds back inside the arm (``location=None``, dbref kept on the
+    organ) and travels with the chrome from there."""
+    state = getattr(character, "medical_state", None)
+    organs = getattr(state, "organs", None) if state else None
+    for organ in list((organs or {}).values()):
+        if getattr(organ, "ability_state", None):
+            park_organ_hardware(character, organ)
+
+
+def carry_snapshot_hardware_to_appendage(appendage) -> None:
+    """The corpse-side twin of :func:`carry_hardware_to_appendage`
+    (#3487): a limb cut off a CORPSE takes its integrated hardware too.
+    Reads the appendage's OWN snapshot (the overlay already copied the
+    chain's organs, ``ability_state`` and ``weapon_dbref`` included)
+    rather than walking live ``Organ`` objects, moves each weapon onto
+    the appendage wherever it sits (parked off-grid, or loose inside a
+    pre-#3486 corpse) and records it retracted. Reassigns the snapshot
+    so the attribute persists."""
+    getter = getattr(appendage, "get_medical_snapshot", None)
+    snapshot = getter() if callable(getter) else None
+    organs = (snapshot or {}).get("organs") if hasattr(snapshot, "get") else None
+    if not organs:
+        return
+    changed = False
+    for entry in organs.values():
+        store = entry.get("ability_state") if hasattr(entry, "get") else None
+        if not store or not hasattr(store, "items"):
+            continue
+        for name, ability_state in store.items():
+            if not hasattr(ability_state, "get"):
+                continue
+            weapon = _find_weapon(ability_state)
+            if weapon is not None and weapon.location is not appendage:
+                weapon.location = appendage
+                changed = True
+            if ability_state.get("deployed"):
+                ability_state["deployed"] = False
+                changed = True
+    if changed:
+        appendage.db.medical_state_at_death = snapshot
+
+
 def carry_hardware_to_appendage(character, chain, appendage) -> None:
     """Move integrated hardware whose organ just severed onto the
     severed appendage (spec decision 7: the limb takes its gear).

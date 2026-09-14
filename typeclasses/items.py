@@ -2461,7 +2461,20 @@ def spawn_severed_part_from_corpse(corpse, location_arg):
         corpse.db.severed_locations = severed_list
 
     apply_sever_to_corpse(corpse, location_arg)
-
+    # Integrated hardware travels with the limb off a corpse too (#3487)
+    # -- the living sever already does this via carry_hardware_to_appendage.
+    # Snapshot-shaped on purpose: a corpse has no live Organ objects.
+    try:
+        from world.medical.augments import carry_snapshot_hardware_to_appendage
+        carry_snapshot_hardware_to_appendage(appendage)
+    except Exception as exc:
+        # Deliberate (#469): hardware bookkeeping must never block the
+        # severance itself.  Audit-logged for investigation.
+        from world.combat.debug import get_splattercast
+        get_splattercast().msg(
+            f"CORPSE_SEVER_HARDWARE_CARRY_ERROR: {getattr(corpse, 'key', '?')} "
+            f"{location_arg}: {exc}"
+        )
     return appendage
 
 
