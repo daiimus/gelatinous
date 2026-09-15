@@ -314,6 +314,8 @@ def _eligible_candidates(room):
             continue
         if soul.db.soul_post is not None:
             continue
+        if engine.is_pinned(soul):
+            continue                     # frozen in time: never a candidate (#3507)
         # leisure never blocks a job offer — a soul out socializing or
         # idling takes the call (only survival-band work is sacred);
         # the old any-job exclusion left the unemployed perpetually

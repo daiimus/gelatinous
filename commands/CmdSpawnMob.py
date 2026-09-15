@@ -1,155 +1,186 @@
-from evennia import Command
-from evennia import create_object
+"""@spawnmob -- manifest a person, or a body, where you stand.
+
+A human or synthetic spawn is a whole PERSON built the way the colony
+builds everyone else: the civilian factory's random archetype for that
+species (persona, voice, wardrobe, stock), the shuttle arrival's rolled
+personhood (style, traits, designation, skills), ensouled with no home
+and no post, and PINNED -- frozen in time until a GM puppets it or a
+developer tests against it (owner ruling 2026-09-14). A rat or a bare
+robot chassis is a body: species surfaces and the flavor pass, no soul.
+``/secbot`` is the production security factory's front door.
+
+There is no hollow-body switch any more. ``/blank`` produced a
+Character that behaved like nothing in the live game; every test that
+passed on one proved nothing about the game.
+"""
 from random import choice, randint
-from world.namebank import (
-    FIRST_NAMES_MALE,
-    FIRST_NAMES_FEMALE,
-    FIRST_NAMES_AMBIGUOUS,
-    LAST_NAMES
-)
-from world.identity import (
-    HEIGHTS, BUILDS, HAIR_COLORS, HAIR_STYLES,
-    RAT_SIZES, RAT_COATS,
-    ROBOT_FINISHES, ROBOT_CHASSIS,
-)
+
+from evennia import Command, create_object
+
+from world.identity import RAT_COATS, RAT_SIZES, ROBOT_CHASSIS, ROBOT_FINISHES
 from world.identity_utils import msg_room_identity
 from world.mob_flavor import apply_random_flavor
+
+#: switch -> species. ``secbot`` is a role, not a species (it is the only
+#: switch that changes typeclass), and is handled on its own.
+SPECIES_SWITCHES = {
+    "human": "human",
+    "synth": "synthetic_humanoid",
+    "rat": "rat",
+    "robot": "robot",
+}
+VALID_SWITCHES = tuple(SPECIES_SWITCHES) + ("secbot",)
+#: species that spawn as a PERSON (soul, persona, wardrobe); the rest are bodies
+PERSON_SPECIES = ("human", "synthetic_humanoid")
 
 
 def roll_stat():
     return randint(1, 3)
 
 
+def archetypes_for(species):
+    """The civilian archetypes a *species* may be spawned as."""
+    from world.director.civilians import CIVILIAN_ROLES
+    return sorted(role for role, spec in CIVILIAN_ROLES.items()
+                  if (spec.get("species") or "human") == species)
+
+
+def spawn_person(species, location, name=None, role=None):
+    """A full person of *species*, pinned where they stand: a random
+    civilian archetype for the species (persona, voice, wardrobe,
+    stock), rolled personhood, a soul with no home and no post, frozen
+    in time. Returns the person, or ``None`` if the species has no
+    archetype."""
+    from world.director.civilians import spawn_civilian
+    from world.souls import ensoul, pin
+    from world.souls.population import roll_person
+    choices = archetypes_for(species)
+    if not choices:
+        return None
+    role = role if role in choices else choice(choices)
+    # Dress in the wings, not on stage: the factory wears its wardrobe
+    # through the real `wear` command, which the room would watch ("puts
+    # on a…" four times from a stranger nobody has been introduced to).
+    # Build in Limbo, then step into the room in one quiet move.
+    from django.conf import settings
+    from evennia.utils.search import search_object
+    wings = search_object(settings.DEFAULT_HOME)
+    wings = wings[0] if wings else location
+    npc = spawn_civilian(role, wings, drift=False)
+    if npc is None:
+        return None
+    if name:
+        npc.key = name
+    roll_person(npc)
+    ensoul(npc, role=role, home=None, post=None, schedule="day")
+    pin(npc)
+    npc.home = location
+    npc.db.post = location
+    if npc.location != location:
+        npc.move_to(location, quiet=True, move_hooks=False)
+    return npc
+
+
+def spawn_body(species, location, name=None):
+    """A body with no soul -- a rat, or a bare robot chassis. Species
+    surfaces through the one helper, then the flavor pass."""
+    from world.anatomy import apply_species
+    if species == "rat":
+        key = name or f"a {choice(RAT_SIZES)} {choice(RAT_COATS)} rat"
+    elif species == "robot":
+        key = name or f"a {choice(ROBOT_FINISHES)} {choice(ROBOT_CHASSIS)} robot"
+    else:
+        key = name or f"a {species}"
+    mob = create_object(
+        typeclass="typeclasses.characters.Character",
+        key=key, location=location, home=location,
+    )
+    mob.db.is_npc = True   # the canonical NPC marker (absence = PC)
+    apply_species(mob, species)
+    mob.sex = "ambiguous" if species == "robot" else choice(["male", "female"])
+    for stat in ("grit", "resonance", "intellect", "motorics"):
+        setattr(mob, stat, roll_stat())
+    apply_random_flavor(mob)
+    return mob
+
+
 class CmdSpawnMob(Command):
     """
-    Spawns an unpossessed Character with randomized identity, stats, and
-    flavor (short description, longdescs, look_place).
+    Manifest a person, or a body, where you stand.
 
     Usage:
-        @spawnmob [optional name]
-        @spawnmob/blank [optional name]
-        @spawnmob/rat [optional name]
+        @spawnmob [<name>]          - a human person (same as /human)
+        @spawnmob/human [<name>]
+        @spawnmob/synth [<name>]
+        @spawnmob/rat [<name>]
+        @spawnmob/robot [<name>]
+        @spawnmob/secbot [<name>]
 
-    If no name is given, one is generated based on randomized sex (for
-    humans) or defaulted to a species-flavored key (for non-humans).
-    Humanoid mobs receive randomized identity attributes (height, build,
-    hair) plus a randomly selected short description, longdescs, and a
-    look_place — drawn from ``world/mob_flavor/``.
+    A human or synthetic spawn is a whole person: a random archetype
+    for that species (persona, voice, clothes, pockets), rolled
+    style, traits and designation, a soul with no home and no job,
+    and PINNED -- frozen in time. It talks like anyone but does not
+    eat, plan or walk until you ``@unpin`` it. Use it for testing, or
+    for a GM to puppet later. Delete it when you are done.
 
-    Switches:
-        /blank   - skip the flavor pass; produces the legacy minimal mob
-                   (stock filler description, no longdescs, no look_place)
-                   for clean diagnostic spawns.
-        /rat     - spawn an anatomically distinct rat instead of a
-                   humanoid. Medical state initializes with rat organs;
-                   flavor (short desc / longdesc / look_place) dispatches
-                   to the rat tables.  See ``SPECIES_AUTHORING.md``.
-        /robot   - spawn a humanoid robot. Mechanical chassis (amber
-                   hydraulic fluid, non-rotting frame, infection-immune,
-                   tougher components); key composes to "a {finish}
-                   {chassis} robot"; renders neutral (they/their); flavor
-                   dispatches to the robot tables.
-        /synth   - spawn a synthetic humanoid (replicant). Passes as
-                   human in appearance and flavor, but its medical state
-                   uses the synthetic anatomy (cobalt fluid, non-rotting,
-                   infection-immune).
-        /secbot  - spawn a complete security unit: a robot wired for
-                   duty — ``role=security`` (answers dispatch, scans
-                   BOLOs, syncs intel) on the LLMNpc typeclass with the
-                   stock security persona seeded and ``llm_driven`` on,
-                   so it also *talks* like a municipal machine.
+    A rat or a robot is a body: species anatomy and flavor, no soul.
+    ``/secbot`` builds a complete security unit through the same
+    factory the director's respawn uses.
+
+    The name you give becomes the object's key; people see and target
+    the short description the game composes, which is echoed back to
+    you on spawn.
     """
-
     key = "@spawnmob"
     locks = "cmd:perm(Builders) or perm(Developers)"
-
-    #: The switches this command understands. Declared so an unknown one
-    #: is REFUSED rather than swallowed (#2569): the old parser was five
-    #: `if`s with no `else` and no validation, so `/rt Fido` silently
-    #: spawned a HUMAN and reported success, and a bare `@spawnmob/`
-    #: created a live Character whose key was "/".
-    VALID_SWITCHES = ("blank", "rat", "robot", "synth", "secbot")
-
-    #: Which species each switch selects. A mapping rather than a chain
-    #: of `if`s, so adding one cannot forget the validation.
-    _SPECIES = {
-        "rat": "rat",
-        "robot": "robot",
-        "synth": "synthetic_humanoid",
-        "secbot": "robot",
-    }
+    help_category = "Admin"
+    #: Declared on the class as well (the #2569 invariants read them
+    #: here): an unknown switch is REFUSED, and every species switch is
+    #: in the valid set. ``secbot`` selects the robot body via its own
+    #: factory.
+    VALID_SWITCHES = VALID_SWITCHES
+    _SPECIES = {**SPECIES_SWITCHES, "secbot": "robot"}
 
     def func(self):
         caller = self.caller
-
-        # Parse switches
-        raw_args = self.args.strip()
-        blank = False
-        secbot = False
+        raw_args = (self.args or "").strip()
         species = "human"
-        if raw_args.startswith('/'):
+        secbot = False
+        if raw_args.startswith("/"):
             parts = raw_args[1:].split(None, 1)
-            switches = ([s.lower() for s in parts[0].split('/') if s]
+            switches = ([s.lower() for s in parts[0].split("/") if s]
                         if parts else [])
             if not switches:
                 caller.msg("Usage: @spawnmob[/switch] [<name>]. A bare "
                            "'/' is not a switch.")
                 return
-            unknown = [sw for sw in switches
-                       if sw not in self.VALID_SWITCHES]
+            if "blank" in switches:
+                caller.msg(
+                    "|r/blank is gone.|n Every spawn is a full person now -- "
+                    "use /human (or /synth, /rat, /robot, /secbot). "
+                    "Nothing was spawned."
+                )
+                return
+            unknown = [sw for sw in switches if sw not in VALID_SWITCHES]
             if unknown:
                 caller.msg(
                     f"|rUnrecognised switch(es):|n /{', /'.join(unknown)}. "
                     f"Nothing was spawned. Valid: "
-                    f"/{', /'.join(self.VALID_SWITCHES)}."
+                    f"/{', /'.join(VALID_SWITCHES)}."
                 )
                 return
-            blank = "blank" in switches
             secbot = "secbot" in switches
             for switch in switches:
-                if switch in self._SPECIES:
-                    species = self._SPECIES[switch]
+                if switch in SPECIES_SWITCHES:
+                    species = SPECIES_SWITCHES[switch]
             raw_args = parts[1] if len(parts) > 1 else ""
+        name = raw_args or None
 
-        # Assign sex with chance of ambiguity
-        sex = choice(["male", "female"])
-        if randint(1, 10) <= 2:  # 20% chance to use ambiguous
-            sex = "ambiguous"
-        if species == "robot":
-            sex = "ambiguous"  # machines render neutral (they/their)
-
-        # Name: humans pull from the name banks; non-humans compose
-        # a rich species-flavored sdesc key (a rat gets a size + coat
-        # pair like "a wiry brown rat" rather than the bare "a rat").
-        # See world.identity.RAT_SIZES / RAT_COATS.
-        if species in ("human", "synthetic_humanoid"):
-            # A synthetic passes as human — same name banks and identity.
-            if sex == "male":
-                first = choice(FIRST_NAMES_MALE)
-            elif sex == "female":
-                first = choice(FIRST_NAMES_FEMALE)
-            else:
-                first = choice(FIRST_NAMES_AMBIGUOUS)
-            last = choice(LAST_NAMES)
-            mob_name = raw_args or f"{first} {last}"
-        elif species == "rat":
-            mob_name = raw_args or (
-                f"a {choice(RAT_SIZES)} {choice(RAT_COATS)} rat"
-            )
-        elif species == "robot":
-            mob_name = raw_args or (
-                f"a {choice(ROBOT_FINISHES)} {choice(ROBOT_CHASSIS)} robot"
-            )
-        else:
-            mob_name = raw_args or f"a {species}"
-
-        # /secbot delegates wholesale to the population factory — the SAME
-        # code the director's respawn loop uses, so a hand-spawned unit and
-        # an alcove replacement are identical (posted to the base, armed,
-        # voiced). See world/director/population.py.
         if secbot:
+            # The SAME factory the director's respawn loop uses, so a
+            # hand-spawned unit and an alcove replacement are identical.
             from world.director.population import spawn_secbot
-            mob = spawn_secbot(caller.location, name=(raw_args or None))
+            mob = spawn_secbot(caller.location, name=name)
             caller.msg(f"You manifest {mob.key} into the world.")
             msg_room_identity(
                 location=caller.location,
@@ -159,73 +190,28 @@ class CmdSpawnMob(Command):
             )
             return
 
-        # Create the character
-        mob = create_object(
-            typeclass="typeclasses.characters.Character",
-            key=mob_name,
-            location=caller.location,
-            home=caller.location
-        )
-        mob.db.is_npc = True   # the canonical NPC marker (absence = PC)
-
-        # Set species before re-initializing the species-dependent
-        # surfaces (longdesc default set, medical state).
-        # ``at_object_creation`` already ran with the default species
-        # (None → human), so for non-human spawns we must overwrite
-        # those surfaces with species-aware values.
-        if species != "human":
-            mob.db.species = species
-            # Re-seed longdesc with the species default surface set.
-            from world.anatomy import get_species_default_longdesc_locations
-            mob.longdesc = get_species_default_longdesc_locations(species)
-            # Re-initialize medical state so organs come from the
-            # species table (humans got the human organ set during
-            # at_object_creation; rats need rat organs).
-            from world.medical.core import MedicalState
-            mob._medical_state = MedicalState(mob)
-            mob.db.medical_state = mob._medical_state.to_dict()
-
-        mob.sex = sex
-
-        mob.grit = roll_stat()
-        mob.resonance = roll_stat()
-        mob.intellect = roll_stat()
-        mob.motorics = roll_stat()
-
-        # Humanoid-identity attributes (height / build / hair) — humans
-        # and synthetics (replicants pass as human).  Rats and robots
-        # skip these; their sdesc renders from the composed ``.key``
-        # ("a wiry brown rat", "a battered security robot") naturally.
-        if species in ("human", "synthetic_humanoid"):
-            # Randomize so the mob gets a proper sdesc (e.g. "a gaunt
-            # man with blonde braids") instead of falling back to
-            # ``.key``.
-            mob.height = choice(HEIGHTS)
-            mob.build = choice(BUILDS)
-            # sdesc_keyword defaults via get_sdesc() based on gender
-            # (man / woman / person), so we leave it unset.
-            # 20% chance of bald (None), otherwise random hair
-            if randint(1, 5) == 1:
-                mob.hair_color = None
-                mob.hair_style = None
-            else:
-                mob.hair_color = choice(HAIR_COLORS)
-                mob.hair_style = choice(HAIR_STYLES)
-
-        # Flavor pass — random short desc, longdescs, and look_place.
-        # /blank preserves the legacy minimal-flavor behavior.
-        # ``apply_random_flavor`` is now species-aware (it dispatches
-        # to ``mob.db.species``'s flavor tables), so non-humans get
-        # rat-shaped / etc. prose automatically.
-        if blank:
-            mob.db.desc = (
-                "A breathing body without an identity."
-                " Its eyes flicker, but it does not move."
+        if species in PERSON_SPECIES:
+            mob = spawn_person(species, caller.location, name=name)
+            if mob is None:
+                caller.msg(f"|rNo archetype is authored for {species}; nothing was spawned.|n")
+                return
+            sdesc = mob.get_sdesc() if hasattr(mob, "get_sdesc") else mob.key
+            role = (mob.db.soul_role or "").replace("_", " ")
+            from world.grammar import get_article
+            caller.msg(
+                f"You manifest |w{mob.key}|n -- {sdesc}, {get_article(role)} {role} -- "
+                f"|ypinned in place|n. @unpin to let them live; delete them when done."
             )
-        else:
-            apply_random_flavor(mob)
+            msg_room_identity(
+                location=caller.location,
+                template="{mob} flickers into existence, then holds perfectly still.",
+                char_refs={"mob": mob},
+                exclude=[caller],
+            )
+            return
 
-        caller.msg(f"You manifest {mob_name} into the world.")
+        mob = spawn_body(species, caller.location, name=name)
+        caller.msg(f"You manifest {mob.key} into the world.")
         msg_room_identity(
             location=caller.location,
             template="{mob} flickers into existence, vacant and twitching.",

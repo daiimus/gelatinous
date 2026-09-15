@@ -475,7 +475,7 @@ def dress_from_role(npc: Any, spec: dict, sex: str | None = None) -> None:
             continue
 
 
-def spawn_civilian(role: str, anchor: Any) -> Any | None:
+def spawn_civilian(role: str, anchor: Any, *, drift: bool = True) -> Any | None:
     """Materialize one *role* civilian anchored at *anchor*: full human
     identity + flavor, dressed from the role wardrobe (worn via the real
     ``wear`` command), tokens in pocket, persona seeded for the LLM,
@@ -484,6 +484,11 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     spec = CIVILIAN_ROLES.get(role)
     if spec is None or anchor is None:
         return None
+    # ``drift=False`` (@spawnmob): the same PERSON -- identity, voice,
+    # persona, wardrobe, stock -- but not a director civilian: no
+    # ``civilian:director`` tag (so `@civilians purge` cannot catch it and
+    # the director never drifts it) and no haunts. The caller owns its
+    # feet from here (a pinned soul, in practice).
     from random import randint as _randint
     from evennia import create_object
     from evennia.prototypes.spawner import spawn as proto_spawn
@@ -519,21 +524,15 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     npc.motorics = _randint(1, 3)
     # Species FIRST: synth roles get the synthetic anatomy (mirrors @spawnmob's
     # generic non-human path — species, longdesc seed, medical re-init).
-    species = spec.get("species")
-    if species:
-        from world.anatomy import get_species_default_longdesc_locations
-        from world.medical.core import MedicalState
-        npc.db.species = species
-        npc.longdesc = get_species_default_longdesc_locations(species)
-        npc._medical_state = MedicalState(npc)
-        npc.db.medical_state = npc._medical_state.to_dict()
-
-    apply_random_flavor(npc)   # AFTER species — sdesc + @longdescs + look_place
+    from world.anatomy import apply_species
+    apply_species(npc, spec.get("species") or "human")   # ONE helper; humans written too
+    apply_random_flavor(npc)   # AFTER species: sdesc + longdescs + look_place
 
     # Role, management tag, pockets, LLM persona, reaction posture.
     npc.db.is_npc = True   # the canonical NPC marker (absence = PC)
     npc.db.role = role
-    npc.tags.add(CIV_TAG, category=CIV_TAG_CATEGORY)
+    if drift:
+        npc.tags.add(CIV_TAG, category=CIV_TAG_CATEGORY)
     # The PROPERTY, not `db.tokens`. `Character.tokens` is an
     # `AttributeProperty(category="shop")`, and a bare `db.tokens` is a
     # DIFFERENT ROW that nothing reads -- `CmdTheft` already carries a
@@ -592,6 +591,8 @@ def spawn_civilian(role: str, anchor: Any) -> Any | None:
     # ("In the Air", the jump/fall transit volume) and rooms with no
     # walkable route — so filter to walkable, floored destinations.
     npc.db.post = anchor
+    if not drift:
+        return npc
     try:
         from world.spatial import is_reachable
         nearby = [

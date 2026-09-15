@@ -130,10 +130,8 @@ def spawn_secbot(location: Any, name: str | None = None) -> Any:
     Returns the unit."""
     from evennia import create_object
     from random import randint as _randint
-    from world.anatomy import get_species_default_longdesc_locations
     from world.identity import ROBOT_FINISHES
     from world.llm.personas import SECURITY_BOT_PERSONA
-    from world.medical.core import MedicalState
     from world.mob_flavor import apply_random_flavor
 
     # A secbot IS a security robot — the varied chassis vocabulary
@@ -144,11 +142,9 @@ def spawn_secbot(location: Any, name: str | None = None) -> Any:
         typeclass="typeclasses.llm_npc.LLMNpc",
         key=key, location=location, home=location,
     )
-    # Robot species surfaces (mirrors @spawnmob's generic non-human path).
-    mob.db.species = "robot"
-    mob.longdesc = get_species_default_longdesc_locations("robot")
-    mob._medical_state = MedicalState(mob)
-    mob.db.medical_state = mob._medical_state.to_dict()
+    # Robot species surfaces -- the one helper every spawner uses.
+    from world.anatomy import apply_species
+    apply_species(mob, "robot")
     mob.sex = "ambiguous"          # machines render neutral (they/their)
     mob.grit = _randint(1, 3)
     mob.resonance = _randint(1, 3)

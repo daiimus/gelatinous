@@ -61,6 +61,16 @@ def _npcs_with_roles(roles) -> list:
     return out
 
 
+def _is_pinned(npc) -> bool:
+    """A pinned soul is frozen in time (#3507): the desk neither counts
+    nor raises it. Defensive: anything without a soul reads unpinned."""
+    try:
+        from world.souls.engine import is_pinned
+        return is_pinned(npc)
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def units_available(console=None) -> int:
     """How many security units the desk could still send.
 
@@ -81,6 +91,7 @@ def units_available(console=None) -> int:
                 db_attributes__db_key="role").distinct():
             if (getattr(obj.db, "role", None) == "security"
                     and not is_assigned(obj)
+                    and not _is_pinned(obj)
                     and hears_emergency_band(obj)
                     and order_reaches(obj, console=console)):
                 try:
@@ -130,6 +141,8 @@ def find_responders(event: WorldEvent) -> list:
     for npc in _npcs_with_roles(roles):
         if npc.location is None or npc is event.source:
             continue
+        if _is_pinned(npc):
+            continue  # frozen in time (#3507): never raised, never counted
         # dispatch orders are radio traffic: a unit that can't hear the
         # band can't be raised — it stands at post, honestly unreachable
         if not hears_emergency_band(npc):

@@ -92,9 +92,11 @@ def poverty_index(souls) -> float:
 
 def unemployed_count(souls) -> int:
     from world.souls import needs as needs_mod
+    from world.souls import engine
     return sum(1 for s in souls
                if s.pk and s.db.soul_post is None
                and not s.db.soul_lawless
+               and not engine.is_pinned(s)      # a mannequin is not a job-seeker (#3507)
                and needs_mod.profile_name(s) != "robot")
 
 
@@ -297,6 +299,28 @@ def _dress_arrival(npc):
         npc.wear_item(garment)
 
 
+def roll_person(npc, lawless=False):
+    """The rolled personhood every soul gets -- style, presentation,
+    traits, manifest designation and seeded skills. Shared by the
+    shuttle arrival and @spawnmob so a hand-spawned person is rolled
+    like anyone who ever stepped off the shuttle."""
+    from world import style as style_mod
+    npc.db.style = list(style_mod.roll_style(
+        role="drifter" if lawless else None))
+    # rolled INDEPENDENTLY of sex, deliberately (world.style rule 3)
+    npc.db.presents = list(style_mod.roll_presentation())
+    # two or three traits, exclusion-safe: the shuttle stops delivering
+    # interchangeable strangers (NPC_TRAITS_SPEC §7)
+    from world.souls import traits as traits_mod
+    npc.db.soul_traits = list(traits_mod.roll())
+    # the manifest: who the dead chart said they were, and what it
+    # rated them for. Identity-level, so it survives every resleeve.
+    from world import manifest as manifest_mod
+    npc.db.designation = manifest_mod.roll_designation()
+    npc.db.skills = manifest_mod.seed_skills(npc.db.designation)
+    return npc
+
+
 def generate_resident(lawless=False):
     """One namebank arrival: cube through the real kiosk, ensouled,
     lawless carrying steel when the colony's poverty called for it."""
@@ -361,20 +385,7 @@ def generate_resident(lawless=False):
     # nobody arrives naked: a style, and an outfit in it. The shuttle
     # used to deliver identical bare strangers who all walked to
     # Cryogenics for the same paper suit (#2122).
-    from world import style as style_mod
-    npc.db.style = list(style_mod.roll_style(
-        role="drifter" if lawless else None))
-    # rolled INDEPENDENTLY of sex, deliberately (world.style rule 3)
-    npc.db.presents = list(style_mod.roll_presentation())
-    # two or three traits, exclusion-safe: the shuttle stops delivering
-    # interchangeable strangers (NPC_TRAITS_SPEC §7)
-    from world.souls import traits as traits_mod
-    npc.db.soul_traits = list(traits_mod.roll())
-    # the manifest: who the dead chart said they were, and what it
-    # rated them for. Identity-level, so it survives every resleeve.
-    from world import manifest as manifest_mod
-    npc.db.designation = manifest_mod.roll_designation()
-    npc.db.skills = manifest_mod.seed_skills(npc.db.designation)
+    roll_person(npc, lawless=lawless)
     # a body, not just a name: souls were the only population that never
     # went through the flavor layer, which is why a random crowd body was
     # better described than the named cast (#2158)

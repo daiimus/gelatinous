@@ -2242,14 +2242,10 @@ def build_npc(blueprint_key, location):
 
     species = ident.get("species")
     if species and species != "human":
-        # non-human: re-seed the species-dependent surfaces (the spawnmob
-        # pattern) BEFORE applying the authored longdescs over them
-        npc.db.species = species
-        from world.anatomy import get_species_default_longdesc_locations
-        npc.longdesc = get_species_default_longdesc_locations(species)
-        from world.medical.core import MedicalState
-        npc._medical_state = MedicalState(npc)
-        npc.db.medical_state = npc._medical_state.to_dict()
+        # non-human: re-seed the species-dependent surfaces BEFORE
+        # applying the authored longdescs over them (the one helper)
+        from world.anatomy import apply_species
+        apply_species(npc, species)
 
     for field in ("sex", "height", "build", "hair_color", "hair_style"):
         if ident.get(field) is not None:

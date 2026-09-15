@@ -14,4 +14,6 @@ State lives on the NPC under plain db attributes (`soul_*`); the global
 LOD-scaled rates and survives reloads the same way patrols do.
 """
 
-from world.souls.engine import ensoul, desoul, get_souls  # noqa: F401
+from world.souls.engine import (  # noqa: F401
+    ensoul, desoul, get_souls, pin, unpin, is_pinned, pinned_souls,
+)

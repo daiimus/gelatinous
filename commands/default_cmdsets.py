@@ -38,6 +38,7 @@ from commands.CmdBug import CmdBug
 from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious
 from commands.CmdFixCharacterOwnership import CmdFixCharacterOwnership
 from commands.CmdSoul import CmdSoul
+from commands.CmdPin import CmdPin, CmdUnpin
 from commands.CmdTrust import CmdDistrust, CmdTrust
 from commands.CmdFollow import (
     CmdEscort, CmdFollow, CmdStopEscorting, CmdStopFollowing,
@@ -359,6 +360,8 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
 
         # Souls engine diagnostic (NPC_NEEDS_AND_GOALS_SPEC §8)
         self.add(CmdSoul())
+        self.add(CmdPin())
+        self.add(CmdUnpin())
         
         # Add medical state testing commands (using real medical system)
         self.add(CmdTestDeath())

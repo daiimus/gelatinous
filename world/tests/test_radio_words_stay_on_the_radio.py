@@ -163,7 +163,7 @@ class TestSpawnmobRefusesAnUnknownSwitch(EvenniaTest):
     def test_the_valid_switches_are_declared(self):
         from commands.CmdSpawnMob import CmdSpawnMob
         self.assertEqual(set(CmdSpawnMob.VALID_SWITCHES),
-                         {"blank", "rat", "robot", "synth", "secbot"})
+                         {"human", "rat", "robot", "synth", "secbot"})  # /blank removed by ruling (#3506)
 
     def test_every_species_switch_is_in_the_valid_set(self):
         """A mapping, so adding one cannot forget the validation."""

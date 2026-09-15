@@ -69,8 +69,29 @@ from .species import (
     species_of,
 )
 
+def apply_species(npc, species):
+    """Re-seed every species-dependent surface on *npc* for *species*:
+    the stored species, the default longdesc location set, and a fresh
+    medical state from that species' organ table. ONE helper -- this
+    block was copied into @spawnmob, the secbot factory, the civilian
+    factory and the blueprint builder, each with a comment saying it
+    mirrored the others. For FRESH bodies: it rebuilds the medical state
+    from the species table, so on a lived-in body it would erase every
+    condition, injury and fitted organ. A human gets human surfaces
+    written explicitly rather than relying on every reader defaulting
+    None to "human"."""
+    from world.medical.core import MedicalState
+    species = species or "human"
+    npc.db.species = species
+    npc.longdesc = get_species_default_longdesc_locations(species)
+    npc._medical_state = MedicalState(npc)
+    npc.db.medical_state = npc._medical_state.to_dict()
+    return npc
+
+
 __all__ = (
     "species_of",
+    "apply_species",
     "BONE_ORGANS",
     "ORGAN_DISPLAY",
     "SEVERED_PART_DESCRIPTIONS",
