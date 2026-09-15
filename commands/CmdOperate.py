@@ -47,7 +47,7 @@ Deferred to follow-on PRs:
 #   ╔═══════════════╗
 #   ║  OPTIONS      ║──┬── 1. Add procedure step
 #   ╚═══════════════╝  ├── 2. View chart detail
-#                      ├── 3. Commence next step
+#                      ├── 3. Commence pending steps
 #                      ├── 4. Save and exit
 #                      ├── 5. Discard chart
 #                      └── x. Exit (no save)
@@ -276,7 +276,7 @@ def render_top_level(caller, target) -> str:
     options = [
         ("1", "Add procedure step"),
         ("2", f"Edit chart  {MUTED}(view / reorder / remove)|n"),
-        ("3", "Commence next step"),
+        ("3", "Commence pending steps"),
         ("4", "Save and exit"),
         ("5", "Discard chart"),
         ("x", "Exit (no save)"),
