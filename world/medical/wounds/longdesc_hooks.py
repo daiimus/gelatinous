@@ -503,6 +503,9 @@ def _resolve_compound_template(injury_type, stage, character=None):
     pack = messages.species_pack(character)
     if pack is not None:
         compound = getattr(pack, 'COMPOUND_DESCRIPTIONS', None)
+        by_injury = getattr(pack, 'COMPOUND_BY_INJURY', None) or {}
+        if isinstance(injury_type, str) and by_injury.get(injury_type):
+            compound = {**(compound or {}), **by_injury[injury_type]}
         if not compound:
             return None   # pack species with no compound set: inline fallback
     else:

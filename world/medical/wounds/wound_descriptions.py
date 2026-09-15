@@ -39,6 +39,14 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
     if pack is not None:
         message_module = pack
         wound_messages = pack.WOUND_DESCRIPTIONS
+        # Per-injury vocabulary (owner 2026-09-14: a synth could not
+        # bruise -- every blow read as a cut in cobalt because the pack
+        # was keyed by stage alone). A pack may carry BY_INJURY =
+        # {injury_type: {stage: [...]}}; the stage-only table stays the
+        # fallback so an unauthored type never leaks human prose.
+        by_injury = getattr(pack, "BY_INJURY", None) or {}
+        if injury_type in by_injury and by_injury[injury_type]:
+            wound_messages = {**pack.WOUND_DESCRIPTIONS, **by_injury[injury_type]}
     else:
         # Get the appropriate message module for this injury type
         try:
