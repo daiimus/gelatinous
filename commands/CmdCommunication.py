@@ -389,12 +389,8 @@ class CmdWhisper(Command):
         # Room observers see that a whisper occurred, but NOT the content —
         # a whisper is a visual event to bystanders (the lean-in), so only
         # those who can see the whisperer perceive it at all.
-        from world.perception import can_see
-        for observer in location.contents:
-            if observer is caller or observer is target:
-                continue
-            if not hasattr(observer, "msg"):
-                continue
+        from world.perception import can_see, perceivers
+        for observer in perceivers(location, {caller, target}):
             if is_hidden_from(caller, observer):
                 continue
             # ...and the same question about the TARGET (#2452). The

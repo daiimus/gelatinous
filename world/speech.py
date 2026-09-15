@@ -30,7 +30,7 @@ from __future__ import annotations
 from random import random
 
 from world.grammar import capitalize_first
-from world.perception import can_hear, can_see
+from world.perception import can_hear, can_see, perceivers
 from world.voice import (
     VOICE_FLAVOR_SPRINKLE_CHANCE,
     garbled_voice_phrase,
@@ -124,9 +124,7 @@ def broadcast_speech(speaker, speech, location, *, target=None, speech_type="say
     expected to have already received their own copy.
     """
     flavor = visible_voice_flavor(speaker)
-    for observer in location.contents:
-        if observer is speaker or not hasattr(observer, "msg"):
-            continue
+    for observer in perceivers(location, {speaker}):
         if not can_hear(observer) and not can_see(observer):
             continue  # no channel — suppressed
         text = render_speech_line(
