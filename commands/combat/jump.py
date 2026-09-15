@@ -159,6 +159,11 @@ class CmdJump(Command):
             return
         
         explosive = explosive[0]  # Take first match
+        # Name the OBJECT to the room, never the string the player typed:
+        # `jump on gren` used to broadcast "leaping onto gren!" (#3354).
+        from world.grammar import capitalize_first, with_article
+        explosive_label = with_article(explosive.key, definite=True)
+        Explosive_label = capitalize_first(explosive_label)
         
         # Validate it's an explosive
         if not explosive.db.is_explosive:
@@ -243,7 +248,7 @@ class CmdJump(Command):
                 location=self.caller.location,
                 template=(
                     "|R{actor} makes the ultimate sacrifice, leaping "
-                    f"onto {self.explosive_name} while still holding "
+                    f"onto {explosive_label} while still holding "
                     "{victim}!|n"
                 ),
                 char_refs={
@@ -256,7 +261,7 @@ class CmdJump(Command):
                 location=self.caller.location,
                 template=(
                     "|R{actor} makes the ultimate sacrifice, leaping "
-                    f"onto {self.explosive_name}!|n"
+                    f"onto {explosive_label}!|n"
                 ),
                 char_refs={"actor": self.caller},
             )
@@ -382,7 +387,7 @@ class CmdJump(Command):
                     msg_room_identity(
                         location=self.caller.location,
                         template=(
-                            f"|R{self.explosive_name} explodes with a "
+                            f"|R{Explosive_label} explodes with a "
                             "deafening blast - {victim} bore the brunt "
                             "while {actor} used them as a shield!|n"
                         ),
@@ -404,7 +409,7 @@ class CmdJump(Command):
                     msg_room_identity(
                         location=self.caller.location,
                         template=(
-                            f"|R{self.explosive_name} explodes with a "
+                            f"|R{Explosive_label} explodes with a "
                             "muffled blast - {actor} absorbed the full "
                             "force to protect everyone!|n"
                         ),
@@ -418,14 +423,14 @@ class CmdJump(Command):
             elif is_armed and not has_active_countdown:
                 # Armed but expired/dud
                 self.caller.location.msg_contents(
-                    f"|y...but {self.explosive_name} makes only a small 'click' sound. It was a dud or the timer expired.|n"
+                    f"|y...but {explosive_label} makes only a small 'click' sound. It was a dud or the timer expired.|n"
                 )
                 splattercast.msg(f"JUMP_SACRIFICE_DUD: {self.caller.key} jumped on expired/dud {explosive.key}")
                 
             else:
                 # Not armed - false heroics
                 self.caller.location.msg_contents(
-                    f"|y...but nothing happens. {self.explosive_name} wasn't even armed.|n"
+                    f"|y...but nothing happens. {Explosive_label} wasn't even armed.|n"
                 )
                 splattercast.msg(f"JUMP_SACRIFICE_FALSE: {self.caller.key} jumped on unarmed {explosive.key} - false heroics")
         
