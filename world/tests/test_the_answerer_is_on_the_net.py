@@ -61,7 +61,7 @@ class _Person:
         self.db.llm_driven = llm
         room.contents.append(self)
 
-    # `_perceives` duck-types a person by these.
+    # `world.perception.perceives` duck-types a person by these.
     def get_sdesc(self):
         return "a figure"
 

@@ -18,18 +18,18 @@ call sites say so. `Character` is the predicate that keeps them.
 from evennia.utils.create import create_object
 from evennia.utils.test_resources import EvenniaCommandTest
 
-from world import emote
+from world.perception import perceivers
 
 
 class TestPerceivers(EvenniaCommandTest):
     def test_an_item_in_the_room_is_not_a_perceiver(self):
         item = create_object("typeclasses.items.Item", key="a crate",
                              location=self.room1)
-        self.assertNotIn(item, emote._perceivers(self.room1))
+        self.assertNotIn(item, perceivers(self.room1))
 
     def test_a_player_character_is_a_perceiver(self):
         self.char1.location = self.room1
-        self.assertIn(self.char1, emote._perceivers(self.room1))
+        self.assertIn(self.char1, perceivers(self.room1))
 
     def test_an_npc_with_no_session_is_still_a_perceiver(self):
         """The load-bearing case. A session gate would drop every NPC,
@@ -38,17 +38,17 @@ class TestPerceivers(EvenniaCommandTest):
                             key="an NPC", location=self.room1)
         npc.db.is_npc = True
         self.assertFalse(npc.sessions.count(), "fixture has a session")
-        self.assertIn(npc, emote._perceivers(self.room1))
+        self.assertIn(npc, perceivers(self.room1))
 
     def test_a_corpse_is_not_a_perceiver(self):
         corpse = create_object("typeclasses.corpse.Corpse", key="a corpse",
                                location=self.room1)
-        self.assertNotIn(corpse, emote._perceivers(self.room1))
+        self.assertNotIn(corpse, perceivers(self.room1))
 
     def test_the_exclude_set_is_honoured(self):
         self.char1.location = self.room1
         self.char2.location = self.room1
-        out = emote._perceivers(self.room1, {self.char1})
+        out = perceivers(self.room1, {self.char1})
         self.assertNotIn(self.char1, out)
         self.assertIn(self.char2, out)
 
@@ -59,9 +59,9 @@ class TestPerceivers(EvenniaCommandTest):
                           location=self.room1)
         self.char1.location = self.room1
         contents = len(self.room1.contents)
-        perceivers = len(emote._perceivers(self.room1))
-        self.assertGreater(contents, perceivers)
-        self.assertEqual(perceivers,
+        people = len(perceivers(self.room1))
+        self.assertGreater(contents, people)
+        self.assertEqual(people,
                          sum(1 for o in self.room1.contents
                              if hasattr(o, "is_dead")))
 

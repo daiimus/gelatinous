@@ -23,7 +23,7 @@ before:  627 unique listeners   (592 of them in Limbo)
 after:     17 unique listeners
 ```
 
-The fan-out fix reuses `world.emote._perceives` rather than re-deriving
+The fan-out fix reuses `world.perception.perceives` rather than re-deriving
 it — the same duck-type that took a pose from 2,036 renders to 75
 (#2788), imported so the audience of a pose and the audience of a radio
 cannot drift apart.

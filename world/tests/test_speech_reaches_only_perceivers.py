@@ -20,7 +20,7 @@ from unittest.mock import patch
 from evennia.utils.create import create_object
 from evennia.utils.test_resources import EvenniaCommandTest
 
-from world import emote, perception, speech
+from world import speech
 
 
 def _recorder(sink):
@@ -109,10 +109,14 @@ class TestWhisperBystandersAreOnlyPerceivers(_RoomWithThings):
         self.assertIn("psst", str(self.heard["char2"][0][0]))
 
 
-class TestOneDefinitionForPoseAndSpeech(EvenniaCommandTest):
-    def test_pose_and_speech_share_the_predicate(self):
-        self.assertIs(emote._perceivers, perception.perceivers)
-        self.assertIs(emote._perceives, perception.perceives)
+class TestThePremise(EvenniaCommandTest):
+    def test_there_is_one_name_for_the_predicate(self):
+        """No second door (#3530): neither emote nor radio carries an alias
+        or a wrapper; every audience imports `world.perception` directly."""
+        from world import emote, radio
+        for mod in (emote, radio):
+            self.assertFalse(hasattr(mod, "_perceivers"), mod.__name__)
+            self.assertFalse(hasattr(mod, "_perceives"), mod.__name__)
 
     def test_the_old_guard_would_have_excluded_nothing(self):
         create_object("typeclasses.items.Item", key="a crate",

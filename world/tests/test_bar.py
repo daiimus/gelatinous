@@ -21,7 +21,7 @@ class _Obs:
     """A minimal listener that records msg kwargs.
 
     Carries `get_sdesc` and `medical_state` because a pose is delivered
-    only to PERCEIVERS now: `world.emote._perceivers` filters room
+    only to PERCEIVERS now: `world.perception.perceivers` filters room
     contents to characters, since every typeclassed object has `.msg`
     and the old `hasattr(observer, "msg")` guard therefore filtered
     nothing — 96% of pose rendering was being spent on furniture
