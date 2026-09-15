@@ -457,7 +457,8 @@ def _resolve_advance_cross_room(
             #
             # Same opposed grit check, same consequence: a successful
             # resist breaks the grapple and cancels the move.
-            from random import randint
+            # (module-level randint -- an in-function import here made the name
+            #  local to the whole function and crashed the plain roll below, #3472)
 
             victim_grit = getattr(grappled_victim, "grit", 1)
             grappler_grit = getattr(char, "grit", 1)
