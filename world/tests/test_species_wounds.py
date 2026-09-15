@@ -133,3 +133,60 @@ class TestCompoundRouting(TestCase):
         )
         template = _resolve_compound_template("cut", "fresh", _char(None))
         self.assertIsNotNone(template)
+
+
+class PacksAnswerByInjuryType(TestCase):
+    """#3512: a blow, a bullet and a blade no longer share one cobalt cut."""
+    INJURIES = ("blunt", "bullet", "stab", "laceration", "burn", "cut")
+    HEAL_STAGES = ("fresh", "treated", "healing", "scarred")
+
+    def test_every_pack_authors_every_injury_type(self):
+        for name, pack in messages.SPECIES_PACKS.items():
+            by = getattr(pack, "BY_INJURY", None) or {}
+            for inj in self.INJURIES:
+                for stage in self.HEAL_STAGES:
+                    self.assertTrue((by.get(inj) or {}).get(stage), f"{name}: {inj}/{stage} unauthored")
+            comp = getattr(pack, "COMPOUND_BY_INJURY", None) or {}
+            for inj in self.INJURIES:
+                self.assertTrue((comp.get(inj) or {}).get("fresh"), f"{name}: compound {inj} unauthored")
+
+    def test_a_synth_blunt_wound_is_not_a_cut(self):
+        synth = _char("synthetic_humanoid")
+        seen = [get_wound_description("blunt", "left_arm", "Severe", "fresh", character=synth) for _ in range(30)]
+        for desc in seen:
+            low = desc.lower()
+            for word in ("cut ", "gash", "puncture", "rent ", "slice"):
+                self.assertNotIn(word, low, f"blunt read as a cut on a synth: {desc}")
+        self.assertTrue(any(w in " ".join(seen).lower() for w in ("bloom", "pool", "dent", "crush", "impact", "blow", "subdermal", "swell", "bruise")), seen[:3])
+
+    def test_a_robot_blunt_wound_dents_and_never_bleeds(self):
+        bot = _char("robot")
+        seen = [get_wound_description("blunt", "chest", "Severe", "fresh", character=bot) for _ in range(30)]
+        joined = " ".join(seen).lower()
+        for word in FLESH_WORDS:
+            self.assertNotIn(word, joined)
+        self.assertTrue(any(w in joined for w in ("dent", "crumpl", "caved", "buckl", "sprung", "seam")), seen[:3])
+
+    def test_injury_types_are_distinguishable_on_a_synth(self):
+        synth = _char("synthetic_humanoid")
+        pools = {inj: set(get_wound_description(inj, "chest", "Severe", "fresh", character=synth) for _ in range(40)) for inj in self.INJURIES}
+        for a in self.INJURIES:
+            for b in self.INJURIES:
+                if a < b:
+                    self.assertFalse(pools[a] & pools[b], f"{a} and {b} share fresh lines on a synth")
+
+    def test_every_authored_template_renders(self):
+        sample = dict(severity="serious", location="left arm", skintone="", suture_color="|K", bandage_color="|W",
+                      medical_tape_color="", medical_staple_color="", ice_pack_color="", compression_wrap_color="",
+                      antiseptic_color="", iodine_color="", organ="", injury_type="")
+        for name, pack in messages.SPECIES_PACKS.items():
+            for table, extra in ((getattr(pack, "BY_INJURY", {}) or {}, {}),
+                                 (getattr(pack, "COMPOUND_BY_INJURY", {}) or {}, {"others_phrase": "another wound"})):
+                for inj, stages in table.items():
+                    for stage, lines in stages.items():
+                        for line in lines:
+                            try:
+                                line.format(**sample, **extra)
+                            except (KeyError, IndexError, ValueError) as exc:
+                                self.fail(f"{name} {inj}/{stage}: {exc}: {line}")
+
