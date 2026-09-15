@@ -96,7 +96,10 @@ Each armor layer processes damage sequentially:
 > the two is a bug, and which one is an owner call.) The live matrix additionally
 > carries two armour types this block omits: `synthetic` (`constants.py:410` —
 > the `armor_type` of both the tactical jumpsuit and the plate carrier itself)
-> and `generic` (`:418`, the fallback for an unrecognised type), and every type
+> `composite` (#3440, 2026-09-15 -- the lightweight plate's row, first-cut
+> values approved as a placeholder for the balance pass; before it the plate
+> mitigated silently on `generic`) and `generic` (`:418`, the fallback for an
+> unrecognised type), and every type
 > defines all six damage keys (`bullet`, `stab`, `cut`, `blunt`, `laceration`,
 > `burn`). Treat `world/combat/constants.py` as the source of truth; the values
 > below are kept as the original design intent.
@@ -505,7 +508,7 @@ Shows detailed protection for each body location:
 ```
 
 Displays effectiveness percentages for each armor type vs damage type:
-- Kevlar, Steel, Leather, Ceramic armor types
+- Every matrix row but the `generic` fallback: Kevlar, Steel, Leather, Ceramic, Synthetic, Composite (the table iterates the matrix since #3440, so a new material cannot go missing)
 - Bullet, Stab, Cut, Blunt, Laceration, Burn damage types
 - Shows base effectiveness percentage
 - Centered table presentation
