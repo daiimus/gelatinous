@@ -190,3 +190,10 @@ class PacksAnswerByInjuryType(TestCase):
                             except (KeyError, IndexError, ValueError) as exc:
                                 self.fail(f"{name} {inj}/{stage}: {exc}: {line}")
 
+    def test_an_unknown_type_on_a_synth_is_never_a_cut(self):
+        """#3514: a damage type added without a bank reads plainly, not as cobalt cut prose."""
+        synth = _char("synthetic_humanoid")
+        for _ in range(10):
+            desc = get_wound_description("plasma", "left_arm", "Severe", "fresh", character=synth)
+            self.assertEqual(desc, "a severe plasma wound on the left arm")
+

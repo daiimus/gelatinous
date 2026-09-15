@@ -36,6 +36,7 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
     # flesh vocabulary can never leak onto the wrong chassis). Humans and
     # pack-less species (rat, ...) keep the shared per-injury-type modules.
     pack = messages.species_pack(character)
+    unauthored = False
     if pack is not None:
         message_module = pack
         wound_messages = pack.WOUND_DESCRIPTIONS
@@ -47,6 +48,13 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
         by_injury = getattr(pack, "BY_INJURY", None) or {}
         if injury_type in by_injury and by_injury[injury_type]:
             wound_messages = {**pack.WOUND_DESCRIPTIONS, **by_injury[injury_type]}
+        elif (by_injury and injury_type not in (None, "generic", "severed", "harvested")
+              and stage != "destroyed"):
+            # A pack that authors by injury type but not THIS one is a
+            # set-up error, not a style (#3514). Say so plainly -- the
+            # neutral line below -- instead of dressing it as a cut,
+            # which is exactly the disguise that hid #3512.
+            unauthored = True
     else:
         # Get the appropriate message module for this injury type
         try:
@@ -72,7 +80,7 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
         if overlay and location in overlay:
             stage_descriptions = overlay[location]
 
-    if stage_descriptions is None:
+    if stage_descriptions is None and not unauthored:
         stage_descriptions = wound_messages.get(
             stage, wound_messages.get("fresh", [])
         )

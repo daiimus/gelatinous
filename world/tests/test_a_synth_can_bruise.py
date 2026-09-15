@@ -41,8 +41,20 @@ class ASynthCanBruiseTest(TestCase):
         # blunt has no 'treated' entry: the stage-only table answers, never human prose
         self.assertIn("STAGEONLY-treated", get_wound_description("blunt", "left_arm", "Moderate", "treated", character=self.c))
 
-    def test_an_unauthored_injury_type_falls_back_to_the_stage_table(self):
-        self.assertIn("STAGEONLY", get_wound_description("stab", "left_arm", "Moderate", "fresh", character=self.c))
+    def test_an_unauthored_injury_type_reads_plainly_not_as_a_cut(self):
+        """#3514: a set-up gap is visible, never disguised as the stage table's prose."""
+        desc = get_wound_description("stab", "left_arm", "Moderate", "fresh", character=self.c)
+        self.assertNotIn("STAGEONLY", desc)
+        self.assertEqual(desc, "a moderate stab wound on the left arm")
+
+    def test_generic_severed_and_destroyed_still_use_the_stage_table(self):
+        self.assertIn("STAGEONLY", get_wound_description("generic", "left_arm", "Moderate", "fresh", character=self.c))
+        self.assertIn("STAGEONLY", get_wound_description("severed", "left_arm", "Critical", "fresh", character=self.c))
+        _FakePack.WOUND_DESCRIPTIONS["destroyed"] = ["the {location} STAGEONLY-destroyed"]
+        try:
+            self.assertIn("STAGEONLY-destroyed", get_wound_description("stab", "left_arm", "Critical", "destroyed", character=self.c))
+        finally:
+            _FakePack.WOUND_DESCRIPTIONS.pop("destroyed", None)
 
     def test_compound_prefers_the_injury_table(self):
         self.assertIn("BLUNT-compound", _resolve_compound_template("blunt", "fresh", self.c))
