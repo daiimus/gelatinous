@@ -365,7 +365,7 @@ class CmdBarTill(Command):
         caller.tokens = int(getattr(caller, "tokens", 0) or 0) + take
         try:
             from world.souls import audit
-            audit.coin(caller, take, "till_take", other=self)
+            audit.coin(caller, take, "till_take", other=bar)   # the COUNTER, not this Command (#3411)
         except Exception:  # noqa: BLE001 — a log never blocks a till
             pass
 
