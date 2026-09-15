@@ -13,6 +13,15 @@ Part of the G.R.I.M. Combat System.
 """
 
 import random
+
+
+def arming_line(name, fuse_time):
+    """The room's arming broadcast, with the house article and a capital
+    letter -- the four sites that used it hardcoded "An", so "An tactical
+    grenade beeps" for half the catalogue (#3429)."""
+    from world.grammar import capitalize_first, with_article
+    return (f"|r{capitalize_first(with_article(name))} beeps and its light "
+            f"begins flashing!|n |y[{fuse_time} seconds]|n")
 from evennia import Command, utils
 from world.combat.debug import get_splattercast
 from world.combat.constants import (
@@ -939,12 +948,12 @@ class CmdDetonate(Command):
         if explosive.location and explosive.location != caller.location:
             # Cross-room - grenade location sees activation
             explosive.location.msg_contents(
-                f"|rAn {explosive.key} beeps and its light begins flashing!|n |y[{fuse_time} seconds]|n"
+                arming_line(explosive.key, fuse_time)
             )
         elif explosive.location == caller.location:
             # Same room - show activation to everyone
             caller.location.msg_contents(
-                f"|rAn {explosive.key} beeps and its light begins flashing!|n |y[{fuse_time} seconds]|n",
+                arming_line(explosive.key, fuse_time),
                 exclude=[caller]
             )
             caller.msg(f"|rThe {explosive.key} beeps and its light begins flashing!|n |y[{fuse_time} seconds]|n")
@@ -1033,13 +1042,13 @@ class CmdDetonate(Command):
                 # Same room - show to everyone including operator
                 for exp_name, fuse in explosives_list:
                     location.msg_contents(
-                        f"|rAn {exp_name} beeps and its light begins flashing!|n |y[{fuse} seconds]|n"
+                        arming_line(exp_name, fuse)
                     )
             else:
                 # Different room - just show activation
                 for exp_name, fuse in explosives_list:
                     location.msg_contents(
-                        f"|rAn {exp_name} beeps and its light begins flashing!|n |y[{fuse} seconds]|n"
+                        arming_line(exp_name, fuse)
                     )
 
         # Debug logging
