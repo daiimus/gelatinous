@@ -721,7 +721,7 @@ def _mutter_into(speaker: Any, message: str) -> None:
     try:
         from world.combat.dice import opposed_roll
         from world.grammar import capitalize_first
-        from world.perception import can_hear, can_see
+        from world.perception import can_hear, can_see, perceivers
         from world.speech import (
             render_speech_line, speech_payload, visible_voice_flavor,
         )
@@ -730,9 +730,7 @@ def _mutter_into(speaker: Any, message: str) -> None:
         contents = getattr(location, "contents", None)
         if not isinstance(contents, (list, tuple)):
             return
-        for observer in contents:
-            if observer is speaker or not hasattr(observer, "msg"):
-                continue
+        for observer in perceivers(location, {speaker}):
             heard = can_hear(observer)
             seen = can_see(observer)
             if not heard and not seen:
@@ -952,12 +950,12 @@ def _deliver(speaker: Any, message: str, frequency: str,
 def _perceives(obj) -> bool:
     """Is this thing a person, and so able to hear a grille?
 
-    `world.emote._perceives` is the definition; imported rather than
-    copied so the audience of a pose and the audience of a radio cannot
+    `world.perception.perceives` is the definition; imported rather than
+    copied so the audience of a pose, a spoken line and a radio cannot
     disagree about who is in the room.
     """
-    from world.emote import _perceives as _emote_perceives
-    return _emote_perceives(obj)
+    from world.perception import perceives
+    return perceives(obj)
 
 
 def _grille_audience(holder: Any) -> list:

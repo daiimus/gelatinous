@@ -44,11 +44,8 @@ def _snapshot_actor_names(caller, char_refs):
     location = caller.location
     if location is None:
         return {}
-    observers = [
-        obs
-        for obs in location.contents
-        if obs is not caller and hasattr(obs, "msg")
-    ]
+    from world.perception import perceivers
+    observers = perceivers(location, {caller})
     return {
         placeholder: {obs: char.get_display_name(obs) for obs in observers}
         for placeholder, char in char_refs.items()

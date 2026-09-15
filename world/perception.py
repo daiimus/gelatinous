@@ -216,3 +216,40 @@ def filter_present(looker, entities):
     """The single enumeration choke (leak-completeness discipline): every
     path that lists 'who is here' for a looker filters through this."""
     return [e for e in entities if can_perceive(looker, e)]
+
+
+def perceives(obj) -> bool:
+    """Is this thing a character, and so able to receive a pose or a line
+    of speech?
+
+    The same duck-type `world/director/medical.py::_is_character` uses,
+    rather than `isinstance(..., Character)`: it does not import a
+    typeclass into a hot path, and it does not exclude a legitimate
+    stand-in that is character-shaped without inheriting. Every NPC
+    typeclass subclasses `Character`, and `Character` is the only class
+    in the game that overrides `msg()`.
+
+    Deliberately NOT the session gate `world/identity_utils.py` uses for
+    appearance (#462): NPCs have no session, and an action-aware NPC
+    reacting to speech or a pose aimed at it is the point.
+    """
+    return hasattr(obj, "get_sdesc") and hasattr(obj, "medical_state")
+
+
+def perceivers(location, exclude_set=frozenset()):
+    """Room contents that can actually receive a pose or a spoken line.
+
+    Replaces `if not hasattr(observer, "msg"): continue`, which excluded
+    NOTHING -- every typeclassed Evennia object has `.msg`, so the guard
+    was always true and the loop body ran for every item, corpse and
+    organ in the room. It read as a safety filter, which is why it
+    survived review. Fixed for poses in #2788 and for speech, whispers,
+    radio grilles and clothing broadcasts in #3420.
+
+    Not free: those loops render per observer. Measured in the live
+    world, a say costs ~2 ms and a whisper ~4 ms per object in the room
+    whether or not it is a person, and 2,662 of 2,782 objects standing
+    in rooms are not people.
+    """
+    return [obj for obj in location.contents
+            if obj not in exclude_set and perceives(obj)]
