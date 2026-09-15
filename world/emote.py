@@ -31,7 +31,7 @@ from world.grammar import (
     conjugate_third_person,
     transform_pronoun,
 )
-from world.perception import perceivers, perceives
+from world.perception import perceivers
 
 if TYPE_CHECKING:
     from typeclasses.characters import Character
@@ -86,11 +86,6 @@ class CharRefToken:
 # =========================================================================
 
 
-# The perceiver predicate lives in world.perception since #3420 so the
-# speech, whisper, radio and clothing loops share it; the names stay bound
-# here for the callers and tests that reached them through this module.
-_perceivers = perceivers
-_perceives = perceives
 
 
 def process_speech(
@@ -1019,7 +1014,7 @@ def render_dot_pose(
     exclude_set = set(exclude) if exclude else set()
     words, referenced = _extract_speech(tokens)
 
-    for observer in _perceivers(location, exclude_set):
+    for observer in perceivers(location, exclude_set):
         rendered = render_for_observer(tokens, actor, observer)
         # An embedded quote rides the shared speech rails: hearing listeners get
         # the words, and a listener the pose points at counts as addressed.
@@ -1169,7 +1164,7 @@ def render_emote(
     exclude_set = set(exclude) if exclude else set()
     words, referenced = _extract_speech(tokens)
 
-    for observer in _perceivers(location, exclude_set):
+    for observer in perceivers(location, exclude_set):
         rendered = render_emote_for_observer(tokens, actor, observer)
         # An embedded quote rides the shared speech rails: hearing listeners get
         # the words, and a listener the emote points at counts as addressed.
@@ -1198,7 +1193,7 @@ def render_think(actor: "Character", thought: str, location: object) -> None:
     here (see EMOTE_POSE_SPEC.md) without touching callers. The actor's name is
     resolved per-observer, exactly like an emote.
     """
-    for observer in _perceivers(location):
+    for observer in perceivers(location):
         if observer is actor:
             observer.msg(f"You think . o O ( {thought} )")
             continue

@@ -22,6 +22,8 @@ from __future__ import annotations
 import random
 from typing import Any, Optional
 
+from world.perception import perceives
+
 RADIO_CHANNEL_KEY = "Radio"
 #: The special "frequency" that receives every band (scanner sweep mode).
 SCAN = "scan"
@@ -861,7 +863,7 @@ def _deliver(speaker: Any, message: str, frequency: str,
             # (#7399, powered, band 27.0) -- Ossie Trelane's crane,
             # which could not be radio-controlled at all. Collected
             # here, off the loop that already has it in hand, rather
-            # than by loosening `_perceives` into something that is no
+            # than by loosening `perceives` into something that is no
             # longer "is this a person".
             if callable(getattr(radio, "_maybe_answer", None)):
                 _collect(radio, tagged=scanning, own=True,
@@ -947,17 +949,6 @@ def _deliver(speaker: Any, message: str, frequency: str,
             pass
 
 
-def _perceives(obj) -> bool:
-    """Is this thing a person, and so able to hear a grille?
-
-    `world.perception.perceives` is the definition; imported rather than
-    copied so the audience of a pose, a spoken line and a radio cannot
-    disagree about who is in the room.
-    """
-    from world.perception import perceives
-    return perceives(obj)
-
-
 def _grille_audience(holder: Any) -> list:
     """Who hears a receiving walkie's grille. A radio carried by someone
     fans to the PEOPLE in their room (holder included); one lying in a
@@ -974,7 +965,7 @@ def _grille_audience(holder: Any) -> list:
     which 35 were people: 18 orphaned radios sit in Limbo, and Limbo
     holds 592 things. Each one cost a render (#2655).
 
-    Same duck-type and same reasoning as `world/emote.py::_perceives`
+    Same duck-type and same reasoning as `world/perception.py::perceives`
     (#2788), which cut a pose from 2,036 renders to 75 for exactly this
     reason. Reused rather than re-derived so the two cannot drift.
     """
@@ -983,12 +974,12 @@ def _grille_audience(holder: Any) -> list:
     room = getattr(holder, "location", None)
     contents = getattr(room, "contents", None) if room is not None else None
     if isinstance(contents, (list, tuple)):          # carried: holder's room
-        audience = [o for o in contents if _perceives(o)]
+        audience = [o for o in contents if perceives(o)]
         if holder not in audience:
             audience.append(holder)
         return audience
     contents = getattr(holder, "contents", None)
     if (isinstance(contents, (list, tuple))
             and not hasattr(holder, "hands")):       # on the floor of a room
-        return [o for o in contents if _perceives(o)]
+        return [o for o in contents if perceives(o)]
     return [holder]                                   # fallback: holder only

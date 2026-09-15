@@ -141,11 +141,12 @@ class CrowdSystem:
         # packed with people had nobody to see a crime and nowhere to
         # disappear into.
         #
-        # Same duck-type `world.emote._perceives` uses, imported rather
+        # Same duck-type `world.perception.perceives` the pose and speech
+        # audiences use, imported rather
         # than re-derived so the audience of a pose and the population of
         # a street cannot drift apart.
-        from world.emote import _perceives
-        characters = [obj for obj in room.contents if _perceives(obj)]
+        from world.perception import perceives
+        characters = [obj for obj in room.contents if perceives(obj)]
         character_bonus = len(characters) * 0.5
         total_level += character_bonus
         

@@ -22,7 +22,7 @@ overwhelming majority of bodies in any room were the uncounted ones — so
 a street packed with people had nobody to see a crime and nowhere to
 disappear into.
 
-Uses the same duck-type `world.emote._perceives` uses, imported rather
+Uses the same duck-type `world.perception.perceives` uses, imported rather
 than re-derived, so the audience of a pose and the population of a
 street cannot drift apart.
 
@@ -92,15 +92,15 @@ class TestTheStreetCountsBodies(EvenniaTest):
         """
         self.assertFalse(self.char1.has_account)
         self.assertIn(self.char1, self.room1.contents)
-        from world.emote import _perceives
-        counted = [o for o in self.room1.contents if _perceives(o)]
+        from world.perception import perceives
+        counted = [o for o in self.room1.contents if perceives(o)]
         self.assertIn(self.char1, counted)
         self.assertIn(self.char2, counted)
 
     def test_it_uses_the_same_predicate_as_the_pose_audience(self):
-        from world.emote import _perceives
-        self.assertTrue(_perceives(self.npc()))
-        self.assertFalse(_perceives(
+        from world.perception import perceives
+        self.assertTrue(perceives(self.npc()))
+        self.assertFalse(perceives(
             create_object("typeclasses.objects.Object", key="a crate",
                           location=self.room1)))
 

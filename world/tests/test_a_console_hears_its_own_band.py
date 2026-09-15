@@ -2,10 +2,10 @@
 
 #2951 stopped a walkie's grille fanning to every OBJECT in the room --
 corpses, organs, blood pools, and the 592 things in Limbo -- by
-filtering the audience through `world.emote._perceives`. That fix is
+filtering the audience through `world.perception.perceives`. That fix is
 right and stays: it cut a 911MHz transmission from 627 renders to 35.
 
-`_perceives` is `hasattr(get_sdesc) and hasattr(medical_state)`, which
+`perceives` is `hasattr(get_sdesc) and hasattr(medical_state)`, which
 is "is this a person". An `AnsweringFixture` is neither: it is a Radio
 subclass. So the filter removed the one class of non-person that has to
 receive radio -- the console that LISTENS on a band and answers.
@@ -23,7 +23,7 @@ End-to-end in a testbed, a person in the room heard the traffic and the
 console's `at_msg_receive` never fired. The radio-controlled crane
 could not be radio-controlled.
 
-Fixed on the delivery side rather than by loosening `_perceives`: the
+Fixed on the delivery side rather than by loosening `perceives`: the
 fixture is ALREADY iterated as one of `_all_powered_radios()`, so it
 collects itself as its own listener. `_grille_audience` keeps meaning
 "the people who hear this grille", which is what it is for, and the
