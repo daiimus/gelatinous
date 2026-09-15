@@ -197,3 +197,32 @@ class PacksAnswerByInjuryType(TestCase):
             desc = get_wound_description("plasma", "left_arm", "Severe", "fresh", character=synth)
             self.assertEqual(desc, "a severe plasma wound on the left arm")
 
+    HARVEST_STAGES = ("fresh", "old", "treated", "healing", "scarred", "destroyed")
+    STUMP_STAGES = ("fresh", "old", "treated_success", "treated_partial", "treated_failure", "treated", "healing", "scarred", "destroyed")
+
+    def test_every_pack_authors_harvest_and_stump_prose(self):
+        for name, pack in messages.SPECIES_PACKS.items():
+            by = getattr(pack, "BY_INJURY", None) or {}
+            for stage in self.HARVEST_STAGES:
+                self.assertTrue((by.get("harvested") or {}).get(stage), f"{name}: harvested/{stage} unauthored")
+            for stage in self.STUMP_STAGES:
+                self.assertTrue((by.get("severed") or {}).get(stage), f"{name}: severed/{stage} unauthored")
+
+    def test_a_synth_extraction_site_names_the_organ_in_cobalt(self):
+        synth = _char("synthetic_humanoid")
+        for _ in range(10):
+            desc = get_wound_description("harvested", "chest", "Critical", "fresh", organ="heart", character=synth).lower()
+            self.assertIn("heart", desc)
+            import re
+            for word in ("|r", "blood", "cut across", "welling slow cobalt"):
+                self.assertNotIn(word, desc, desc)
+            self.assertIsNone(re.search(r"\bred\b", desc), desc)   # "layered" is not "red"
+
+    def test_a_robot_stump_is_mechanical(self):
+        bot = _char("robot")
+        joined = " ".join(get_wound_description("severed", "left_arm", "Critical", stage, character=bot)
+                          for stage in self.STUMP_STAGES for _ in range(4)).lower()
+        for word in FLESH_WORDS:
+            self.assertNotIn(word, joined)
+        self.assertTrue(any(w in joined for w in ("plating", "coupling", "loom", "amber", "housing", "mount", "socket", "flange")), joined[:200])
+

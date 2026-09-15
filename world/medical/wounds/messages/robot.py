@@ -333,11 +333,124 @@ BY_INJURY = {'blunt': {'fresh': ['|ya {severity} dent set into the plating of th
                       'a rippled stretch of the {location} where the plating cooled out of true, '
                       'its colour run from straw to grey|n',
                       'a heat-discoloured halo on the {location}, ringing a pit that was filled '
-                      'and never took paint again|n']}}
+                      'and never took paint again|n']},
+ 'harvested': {'fresh': ['|yThe {location} stands open where the {organ} was drawn out, amber '
+                         'still running from the cut coupling|n',
+                         '|yThe {location} stands open on the socket the {organ} came out of, the '
+                         'mount points bright where it was lifted clear and amber running from the '
+                         'coupling|n',
+                         '|yA sprung panel on the {location} shows the bay the {organ} came out '
+                         'of, cut feed lines dripping amber|n',
+                         '|yThe {location} has been opened and the {organ} pulled clear, its '
+                         'coupling dangling and weeping amber|n',
+                         '|yAmber hydraulic fluid pools in the {location} where the {organ} was '
+                         'lifted off its mounts|n'],
+               'old': ['The {location} gapes where the {organ} was taken, the socket dry and '
+                       'crusted tar-black|n',
+                       'Only a dusty hollow remains in the {location} where the {organ} once '
+                       'seated|n',
+                       'The bay the {organ} came out of has gone dry, tar-black residue caked in '
+                       'the {location} mount|n',
+                       'An open socket in the {location} marks the long-ago extraction of the '
+                       '{organ}|n',
+                       'The {location} carries a hollow where the {organ} was cut out, its loom '
+                       'cabling cracked and dusty|n'],
+               'treated': ['In the {location}, the socket the {organ} came out of is capped off '
+                           'and plated over|n',
+                           'The opening in the {location} where the {organ} came out is taped shut '
+                           'in {medical_tape_color}insulating wrap|n',
+                           'A stock cover plate is welded over the empty bay in the {location} '
+                           'where the {organ} was taken|n',
+                           'The {location} is closed where the {organ} was taken, its coupling '
+                           'capped and lashed with {medical_staple_color}tie wire|n'],
+               'healing': ['Sealant cures amber along the plate bolted over the empty {organ} '
+                           'socket in the {location}|n',
+                           'The housing the {organ} came out of in the {location} sits capped, its '
+                           'sealant curing dull and the amber crust flaking off the rim|n',
+                           'The capped lines in the {location} where the {organ} was taken have '
+                           'set hard, the plate drawing flush|n'],
+               'scarred': ['A blanking plate sits over the {location} where the {organ} was taken '
+                           'out, its finish long since dulled to match|n',
+                           'A plug weld in the {location} marks the socket the {organ} came out '
+                           'of, ground smooth but never flush|n',
+                           'The mount points in the {location} stand empty beneath a dulled plate, '
+                           'the {organ} long gone|n'],
+               'destroyed': ['The {location} has been torn wide and the {organ} ripped out, '
+                             'housing and loom shorn through|n',
+                             'The {location} is wrecked around the socket the {organ} was torn out '
+                             'of, mount points sheared and lines ripped back into the housing|n']},
+ 'severed': {'fresh': ['|yThe {location} has been sheared off at the mount, amber pulsing from the '
+                       'cut lines|n',
+                       '|yWhere the {location} attached, a torn flange stands proud of the '
+                       'plating, its contacts sparking into open air|n',
+                       '|yThe {location} is gone, struck away at the coupling, its loom fanned out '
+                       'and weeping amber|n',
+                       '|yA sheared stub of mount is all that remains of the {location}, weeping '
+                       'amber hydraulic fluid|n',
+                       '|yThe {location} has been parted at its flange, coolant and amber spitting '
+                       'from the lines|n'],
+             'old': ['The {location} is gone, its sheared mount long dry and crusted tar-black|n',
+                     'Where the {location} attached, a stub of torn flange remains, its cut lines '
+                     'varnished|n',
+                     'The {location} ends in a dry shear, the loom cabling cracked and the '
+                     'couplings dusty|n',
+                     'A ragged mount is all that is left of the {location}, the shear caked '
+                     'tar-black|n',
+                     'The {location} has been gone a long while, its dead contacts green with '
+                     'corrosion|n'],
+             'treated_success': ['The sheared mount at the {location} is capped clean and plated '
+                                 'flush|n',
+                                 'Every line at the {location} shear is crimped and capped and the '
+                                 'stub welded shut|n',
+                                 'The stub of the {location} is dressed square, its contacts taped '
+                                 'off in {medical_tape_color}insulating wrap|n',
+                                 'A stock cover plate is bolted over the {location} shear, every '
+                                 'fastener torqued down evenly|n'],
+             'treated_partial': ['The {location} shear is closed, though the cover plate sits '
+                                 'crooked on its bolts|n',
+                                 'Capped lines and a bead of weld hold the {location} stub shut, '
+                                 'the work proud of the plate|n',
+                                 'Rough plate covers the stub where the {location} used to be, '
+                                 'hammered true only in places|n',
+                                 'A patched plate covers the {location} shear, epoxy squeezed out '
+                                 'along the seam|n'],
+             'treated_failure': ['The {location} stub is bound up in {medical_tape_color}tape|n '
+                                 'and clamps, amber tracking out from under it|n',
+                                 'A crooked plate is lashed over the {location} shear with '
+                                 '{medical_staple_color}tie wire|n, the seam seeping amber|n',
+                                 'The {location} shear is packed with epoxy that never took, amber '
+                                 'weeping from the cold joint|n',
+                                 'A banding strap and a scrap of plate hold the {location} stub '
+                                 'shut, amber seeping past both|n'],
+             'treated': ['The sheared mount where the {location} used to be is capped and plated '
+                         'over|n',
+                         'The {location} stub is closed off, its loom crimped and capped short of '
+                         'the shear|n',
+                         'A driven plug shuts the last open line at the {location} shear, the '
+                         'mount face dry|n',
+                         'The stub at the {location} is sealed, welded shut across the old mount '
+                         'face|n'],
+             'healing': ['The weld closing the {location} stub is dulling, its bead losing the '
+                         'colour of the torch|n',
+                         'Sealant cures amber around the plate capping the {location} shear, the '
+                         'joint gone hard|n',
+                         'The cover plate over the {location} mount settles flush as its sealant '
+                         'sets|n',
+                         'The {location} stub is closing over, the last of the amber dried '
+                         'tar-black along the seam|n'],
+             'scarred': ['A blanking plate dulled to the colour of the chassis caps the old '
+                         '{location} mount|n',
+                         'The {location} ends in a plug weld ground smooth, visible only where the '
+                         'light rakes|n',
+                         'An old shear line rings the {location} mount, plated over and buffed '
+                         'near flush|n',
+                         'The capped stub where the {location} used to be has weathered in, its '
+                         'fasteners dark|n'],
+             'destroyed': ['The {location} has been ripped away entirely, the mount burst open and '
+                           'the loom torn out|n',
+                           'Nothing is left of the {location} but a mangled flange and shorn '
+                           'lines|n']}}
 
-
-#: Per-injury vocabulary (#3512): preferred over WOUND_DESCRIPTIONS /
-#: COMPOUND_DESCRIPTIONS by injury type; those tables remain the fallback.
 COMPOUND_BY_INJURY = {'blunt': {'fresh': ['|ya {severity} dent and {others_phrase} beaten into the plating of the '
                      '{location}|n',
                      '|ya {severity} crumple and {others_phrase} driven into the panels of the '
