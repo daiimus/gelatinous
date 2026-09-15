@@ -30,9 +30,18 @@ Identity/Recognition, and Clothing specs all delegate grammar concerns here.
 
 ## Colour Markup
 
-Almost every string handed to this module has already been coloured —
-item keys, sdescs, longdescs, combat lines carry Evennia markup
-(`|555`, `|=lblack`, `|n`) *inside* the text.
+Some strings handed to this module arrive already coloured — combat
+lines and rendered description fragments carry Evennia markup (`|555`,
+`|=lblack`, `|n`) *inside* the text.
+
+**Names never do.** Item keys, sdescs, longdescs and descs are stored
+plain by policy: colour belongs to the renderer, not the data, and a
+coloured name would subvert the colour schema (owner ruling on #3423).
+Measured 2026-09-15: 0 of 4,620 object keys, 0 sdesc/longdesc/desc
+attributes and 0 prototype keys in the live world carry markup. So the
+one branch here that only ever sees names — the self-articled definite
+rewrite in `with_article`, which turns "a bowl of noodles" into "the
+bowl of noodles" — is not colour-safe and does not need to be.
 
 **Markup is not text.** Any rule that inspects "the first character" or
 asks "does this begin with a vowel" must look past it. Three functions
