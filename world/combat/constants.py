@@ -415,6 +415,19 @@ ARMOR_EFFECTIVENESS_MATRIX = {
         'laceration': 0.2,  # Poor vs lacerations
         'burn': 0.1,        # Poor vs fire/chemicals
     },
+    'composite': {
+        # First cut, owner-approved 2026-09-15 as a placeholder for the
+        # balance pass (#3440): a lightweight ballistic plate -- nearly
+        # ceramic against bullets, worse at everything else, melts in fire.
+        # Before this row existed the lightweight plate declared
+        # "composite" and mitigated silently on the `generic` row.
+        'bullet': 0.85,
+        'stab': 0.3,
+        'cut': 0.5,
+        'blunt': 0.5,
+        'laceration': 0.5,
+        'burn': 0.1,
+    },
     'generic': {
         'bullet': 0.2,
         'stab': 0.2,

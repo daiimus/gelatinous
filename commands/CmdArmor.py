@@ -408,19 +408,19 @@ class CmdArmor(Command):
             "Armor Type", "Bullet", "Stab", "Cut", "Blunt", "Laceration", "Burn"
         )
 
-        for armor_type in ["Kevlar", "Steel", "Leather", "Ceramic"]:
-            armor_key = armor_type.lower()
-            if armor_key in effectiveness_display:
-                effectiveness = effectiveness_display[armor_key]
-                table.add_row(
-                    armor_type,
-                    effectiveness.get("bullet", "N/A"),
-                    effectiveness.get("stab", "N/A"),
-                    effectiveness.get("cut", "N/A"),
-                    effectiveness.get("blunt", "N/A"),
-                    effectiveness.get("laceration", "N/A"),
-                    effectiveness.get("burn", "N/A"),
-                )
+        # Every row the matrix carries, bar the `generic` fallback skipped
+        # above. Not a literal list: that went stale the moment a material
+        # was added, and `synthetic` never printed (#3440).
+        for armor_key, effectiveness in effectiveness_display.items():
+            table.add_row(
+                armor_key.title(),
+                effectiveness.get("bullet", "N/A"),
+                effectiveness.get("stab", "N/A"),
+                effectiveness.get("cut", "N/A"),
+                effectiveness.get("blunt", "N/A"),
+                effectiveness.get("laceration", "N/A"),
+                effectiveness.get("burn", "N/A"),
+            )
 
         # Add centered header
         table.add_header("ARMOR EFFECTIVENESS MATRIX", center=center_headers)
