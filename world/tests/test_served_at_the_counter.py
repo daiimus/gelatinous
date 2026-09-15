@@ -113,6 +113,27 @@ class TestAMenuThatPlatesADish(_CounterTest):
         self.assertEqual(self.patron.tokens, 7)
         self.assertEqual(self.counter.db.register, 3)
 
+    def test_the_sale_is_written_to_the_coin_audit(self):
+        """#3417: the audit line named an undefined `bar`, so no bar sale
+        was ever recorded, and the till credit lived inside the except."""
+        from unittest import mock
+        with mock.patch("world.souls.audit.coin") as coin:
+            worldbar.fulfil_now(self.counter, "skewer", self.patron, self.tender)
+        coin.assert_called_once()
+        args, kwargs = coin.call_args
+        self.assertEqual(args[0], self.patron)
+        self.assertEqual(args[1], 3)
+        self.assertEqual(args[2], "drink")
+        self.assertEqual(kwargs.get("other"), self.counter)
+
+    def test_the_till_is_credited_even_when_the_audit_fails(self):
+        """A log never blocks a sale -- and the credit must not DEPEND on
+        the log failing either."""
+        from unittest import mock
+        with mock.patch("world.souls.audit.coin", side_effect=RuntimeError("audit down")):
+            worldbar.fulfil_now(self.counter, "skewer", self.patron, self.tender)
+        self.assertEqual(self.counter.db.register, 3)
+
     def test_a_patron_who_cannot_pay_is_not_served(self):
         self.patron.tokens = 1
         worldbar.fulfil_now(self.counter, "skewer", self.patron, self.tender)

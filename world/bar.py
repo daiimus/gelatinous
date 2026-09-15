@@ -1051,13 +1051,16 @@ def _fulfil_from_board(post, recipe, patron, by):
         patron.tokens = have - price
     try:
         from world.souls import audit
-        audit.coin(patron, price, "drink", other=bar)
+        # the counter is the counterparty, as till_take records it (#3417)
+        audit.coin(patron, price, "drink", other=surface)
     except Exception:  # noqa: BLE001 — a log never blocks a sale
         pass
-        # Sale proceeds must not vanish from the economy — but only a
-        # counter that KEEPS a till gets credited (the FoodCart lesson).
-        if getattr(surface.db, "register", None) is not None:
-            surface.db.register = int(surface.db.register or 0) + price
+    # Sale proceeds must not vanish from the economy — but only a
+    # counter that KEEPS a till gets credited (the FoodCart lesson).
+    # On the SUCCESS path: this sat inside the except above, so the till
+    # was credited only because the audit line crashed (#3417).
+    if getattr(surface.db, "register", None) is not None:
+        surface.db.register = int(surface.db.register or 0) + price
     # Routed through `emote` so the keeper renders by per-observer identity
     # (a stranger sees "a lean man", not "Sully"), and no price is spoken:
     # the swept payment says it. A free drink just gets slid over.
