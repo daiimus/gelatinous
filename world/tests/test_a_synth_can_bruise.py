@@ -49,7 +49,8 @@ class ASynthCanBruiseTest(TestCase):
 
     def test_generic_severed_and_destroyed_still_use_the_stage_table(self):
         self.assertIn("STAGEONLY", get_wound_description("generic", "left_arm", "Moderate", "fresh", character=self.c))
-        self.assertIn("STAGEONLY", get_wound_description("severed", "left_arm", "Critical", "fresh", character=self.c))
+        # severed / harvested are authored in every real pack (test_species_wounds pins it); an unauthored one reads plainly
+        self.assertEqual(get_wound_description("severed", "left_arm", "Critical", "fresh", character=self.c), "a critical severed wound on the left arm")
         _FakePack.WOUND_DESCRIPTIONS["destroyed"] = ["the {location} STAGEONLY-destroyed"]
         try:
             self.assertIn("STAGEONLY-destroyed", get_wound_description("stab", "left_arm", "Critical", "destroyed", character=self.c))

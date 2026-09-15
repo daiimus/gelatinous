@@ -48,7 +48,7 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
         by_injury = getattr(pack, "BY_INJURY", None) or {}
         if injury_type in by_injury and by_injury[injury_type]:
             wound_messages = {**pack.WOUND_DESCRIPTIONS, **by_injury[injury_type]}
-        elif (by_injury and injury_type not in (None, "generic", "severed", "harvested")
+        elif (by_injury and injury_type not in (None, "generic")
               and stage != "destroyed"):
             # A pack that authors by injury type but not THIS one is a
             # set-up error, not a style (#3514). Say so plainly -- the

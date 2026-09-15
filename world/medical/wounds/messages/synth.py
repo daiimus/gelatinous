@@ -308,11 +308,123 @@ BY_INJURY = {'blunt': {'fresh': ['|Ba {severity} impact mark on the {location}, 
                       '{skintone}a {severity} old scorch mark on the {location}, opaline and '
                       'smoke-darkened along the line the heat took|n',
                       '{skintone}a {severity} healed burn mark in the {location}, faintly rippled '
-                      'and discoloured a heat-dulled pearl|n']}}
+                      'and discoloured a heat-dulled pearl|n']},
+ 'harvested': {'fresh': ['|BA machine-straight incision opens the {location}, the housing of the '
+                         '{organ} still wet with cobalt|n',
+                         '|BThe {location} has been cut open and the {organ} taken, cobalt pooling '
+                         'in the socket that held it|n',
+                         '|BWhere the {organ} sat in the {location}, only its housing remains, '
+                         'blue-dark and slick to the rim|n',
+                         '|BA single clean part in the dermis of the {location} bares the seat of '
+                         'the {organ}, cobalt running the seam|n',
+                         '|BThe {organ} has been drawn out of the {location}, cobalt standing in '
+                         'the cavity it left|n',
+                         '|BThe {location} gapes around the empty mount of the {organ}, cobalt '
+                         'beading on its squared walls|n'],
+               'old': ['The {location} carries a dried opening where the {organ} was taken, the '
+                       'housing crusted slate|n',
+                       'The {location} has sunk over the socket the {organ} left, its rim gone '
+                       'dull and dust-grey|n',
+                       'An old incision splits the {location}, the {organ} long gone and the '
+                       'substrate around it shrunken tight|n',
+                       'The vacant housing of the {organ} stands open in the {location}, slate-dry '
+                       'and rimmed with flaking dermis|n',
+                       'A flat dry seam crosses the {location} where the {organ} was cut away, the '
+                       'hollow beneath it shrunken|n'],
+               'treated': ['The extraction site on the {location} has been packed and dressed, '
+                           '{bandage_color}gauze|n filling the cavity the {organ} left|n',
+                           'Machine-even sutures draw the {location} shut above the vacant seat of '
+                           'the {organ}, the dressing dry|n',
+                           'The opening in the {location} where the {organ} was taken is taped '
+                           'flat, {medical_tape_color}strips|n squared across the seam|n',
+                           'An even row of {medical_staple_color}staples|n closes the {location} '
+                           'over the empty {organ} housing, the site swabbed clean|n'],
+               'healing': ['{skintone}The extraction seam on the {location} is knitting closed '
+                           'over the hollow the {organ} left, paler than the dermis around it and '
+                           'setting toward pearl|n',
+                           '{skintone}New dermis creeps across the opening in the {location}, '
+                           'sealing the empty {organ} housing over|n',
+                           '{skintone}The cut in the {location} where the {organ} was taken draws '
+                           'level, slate lifting off the seam|n'],
+               'scarred': ['{skintone}A pearlescent seam runs the length of the {location}, '
+                           'marking where the {organ} was taken out|n',
+                           '{skintone}An old opaline line crosses the {location}, set flush over '
+                           'the housing the {organ} once filled|n',
+                           '{skintone}A lacquer-smooth line closes the {location} over the '
+                           "{organ}'s old seat, no wider than the cut that made it|n"],
+               'destroyed': ['The {location} has been torn wide and the {organ} wrenched out, its '
+                             'blue-dark housing wrecked|n',
+                             'The {location} is ruined where the {organ} was ripped free, '
+                             'substrate crushed into the broken socket|n']},
+ 'severed': {'fresh': ['|BThe {location} has been severed, the stump weeping cobalt from its '
+                       'parted layers|n',
+                       '|BWhere the {location} once joined, a wet stump remains, its dermal bands '
+                       'showing blue-dark|n',
+                       '|BThe {location} is gone, cleaved off at the seam, cobalt sheeting down '
+                       'what is left of it|n',
+                       '|BA crude amputation has taken the {location}, the stump open and pushing '
+                       'cobalt out in slow beats|n',
+                       '|BThe {location} has been struck away, the cut face glistening and the '
+                       'substrate beneath it too orderly to be natural|n'],
+             'old': ['The {location} has been severed, the stump dried to a slate crust|n',
+                     'Where the {location} once joined, only a stiff, powder-slate stump remains|n',
+                     'The {location} is missing, its stump long since set hard and dull|n',
+                     'A shrunken stump marks where the {location} used to be, the layered dermis '
+                     'drawn tight and grey over it|n',
+                     'The old cut face at the {location} has gone matte and brittle, every band in '
+                     'it still perfectly ruled|n'],
+             'treated_success': ['The {location} stump has been sutured shut in machine-even rows, '
+                                 'the dressing clean and dry|n',
+                                 'Neat stitching closes the {location} stump, '
+                                 '{bandage_color}gauze|n bound flat over a seam laid straight|n',
+                                 'The {location} stump is sealed edge to edge, its margins already '
+                                 'fusing smooth beneath the wrap|n',
+                                 'Closure strips of {medical_tape_color}tape|n hold the {location} '
+                                 'stump shut, the line beneath them dead straight|n'],
+             'treated_partial': ['The {location} stump is sutured shut, the stitch line wandering '
+                                 'where the layers would not sit level|n',
+                                 'A rough seam closes the {location} stump, the dressing secure '
+                                 'but slate-stained along one edge|n',
+                                 'The {location} stump is held shut with uneven bites, its dermal '
+                                 'bands meeting a fraction out of true|n',
+                                 'Stitching closes the {location} stump in a crooked line, the '
+                                 'wrap patchy over a seam that puckers|n'],
+             'treated_failure': ['The {location} stump has been crudely bound, cobalt already '
+                                 'seeping through the {bandage_color}dressing|n',
+                                 'A hasty wrap covers the {location} stump, cobalt welling where '
+                                 'its seam pulls open|n',
+                                 'Wide-set stitches close the {location} stump, the seam gaping '
+                                 'between them and the gauze going dark|n',
+                                 'Someone has tied the {location} stump off in haste, cobalt '
+                                 'tracking out from under the {medical_tape_color}tape|n'],
+             'treated': ['The {location} stump has been closed and dressed, the wrap sitting snug '
+                         'against it|n',
+                         'The {location} stump is sutured shut, the seam covered over with '
+                         '{bandage_color}gauze|n',
+                         'A bound stump caps the {location}, the closure holding and unstained|n',
+                         'The {location} stump has been sealed and taped down, nothing showing '
+                         'through the dressing|n'],
+             'healing': ['{skintone}The {location} stump is closing over, new dermis laying itself '
+                         'down in even bands|n',
+                         '{skintone}The {location} stump knits shut, its seam paling toward '
+                         'pearl|n',
+                         '{skintone}Slate flakes from the {location} stump, the closure beneath '
+                         'drawn nearly level|n',
+                         '{skintone}The {location} stump is mending, the sutures gone and the cut '
+                         'face smoothing over|n'],
+             'scarred': ['{skintone}The {location} ends in a smooth capped stump, its seam set '
+                         'faint and pearlescent|n',
+                         '{skintone}An old opaline closure seals the {location}, its edge lying '
+                         'level with the dermis around it|n',
+                         '{skintone}A pale, lacquered seam finishes the stump where the {location} '
+                         'was lost long ago|n',
+                         '{skintone}The {location} stump is closed flush and opal-pale, catching '
+                         'the light like poured glass|n'],
+             'destroyed': ['The {location} has been torn away, the stump mangled and its blue-dark '
+                           'substrate wrenched open|n',
+                           'The {location} has been ripped off, its dermis shredded and the '
+                           'substrate crushed past knitting|n']}}
 
-
-#: Per-injury vocabulary (#3512): preferred over WOUND_DESCRIPTIONS /
-#: COMPOUND_DESCRIPTIONS by injury type; those tables remain the fallback.
 COMPOUND_BY_INJURY = {'blunt': {'fresh': ['|Ba {severity} dent-bloom, the worst of several on the {location}, cobalt '
                      'pooling beneath each|n',
                      '|Ba {severity} impact mark and {others_phrase} on the {location}, the dermis '
