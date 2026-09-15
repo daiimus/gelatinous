@@ -1,12 +1,14 @@
 """A combat handler survives a room deleted out from under it (#3520).
 
-A handler that outlived a deleted room carried ``None`` in
-``db.managed_rooms``; every round its debug line -- ``[r.key for r in
-managed_rooms]`` -- crashed BEFORE the "no valid combatants, stopping"
+Defensive hardening for a staff-only trigger: nothing in the game
+deletes a room at runtime, so this only happens if staff destroy a room
+mid-fight -- or a test does, which is how it was found. A handler that
+outlived a deleted room carried ``None`` in ``db.managed_rooms``; every
+round its debug line crashed BEFORE the "no valid combatants, stopping"
 check, so the script tracebacked every six seconds for ever, and a new
 attack that merged into it crashed the same way and never started.
-``live_rooms()`` is now the one reader: dead rooms are pruned and the
-pruned list written back.
+``live_rooms()`` is the one reader: dead rooms are pruned and the pruned
+list written back.
 """
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaTest

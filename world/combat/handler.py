@@ -382,14 +382,14 @@ class CombatHandler(DefaultScript):
             self.stop_combat_logic(cleanup_combatants=True)
 
     def live_rooms(self):
-        """``db.managed_rooms`` with dead entries pruned -- ``None`` (a room
-        deleted while the fight spanned it resolves to None on the next
-        read) or an object with no row. Writes the pruned list back so the
-        next read is clean. One reader for every site that iterates the
-        rooms (#3520): a stale room used to crash the round timer on a
-        debug line, BEFORE the "no valid combatants, stopping" check, so
-        the script tracebacked every six seconds for ever and poisoned
-        any fight that merged into it."""
+        """``db.managed_rooms`` minus dead entries, written back if pruned.
+
+        Defensive hardening, not a gameplay defect: nothing in the game
+        deletes a room at runtime, so a room can only vanish mid-fight if
+        staff destroy it (or a test does -- which is how #3520 was found).
+        Without this the round timer crashed on a debug line every beat,
+        never reached its own stopping check, and any fight that merged
+        into the handler crashed too."""
         rooms = list(self.db.managed_rooms or [])
         live = [r for r in rooms if r is not None and getattr(r, "pk", None)]
         if len(live) != len(rooms):
