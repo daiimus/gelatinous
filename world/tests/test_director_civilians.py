@@ -125,7 +125,8 @@ class TestRoles(TestCase):
         import inspect
         from world.director import civilians as _c
         source = inspect.getsource(_c.spawn_civilian)
-        self.assertLess(source.index("get_species_default_longdesc_locations"),
+        # the species re-seed is apply_species now (one helper, #3506)
+        self.assertLess(source.index("apply_species(npc"),
                         source.index("apply_random_flavor(npc)"))
 
     def test_register_merged_from_serverconfig(self):

@@ -230,6 +230,12 @@ def assign(npc: Any, event: Any) -> bool:
     previous assignment."""
     if npc is None or event is None or getattr(event, "location", None) is None:
         return False
+    try:
+        from world.souls.engine import is_pinned
+        if is_pinned(npc):
+            return False             # frozen in time (#3507): a job it would never step
+    except Exception:  # noqa: BLE001
+        pass
     clear_assignment(npc)
     post = getattr(getattr(npc, "db", None), "post", None) or npc.location
     assignment = Assignment(npc=npc, event=event, post=post)

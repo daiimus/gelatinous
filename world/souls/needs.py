@@ -99,6 +99,8 @@ def _snapshot(soul, now):
     """The stored snapshot and its age in minutes. Tolerates legacy
     dicts from the pre-derivation engine (no ``_at``, extra ``duty``)."""
     stored = soul.db.soul_needs or {}
+    if getattr(soul.db, "soul_pinned", False):
+        return stored, 0.0               # pinned: the clock does not run
     stamped = stored.get("_at") or float(soul.db.soul_last_decay or now)
     minutes = max(0.0, (now - stamped) / 60.0)
     return stored, minutes

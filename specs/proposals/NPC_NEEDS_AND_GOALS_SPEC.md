@@ -508,3 +508,37 @@ Alongside (same verdict set): labor AUTO-SEEDS (the colony keeps a
 small unemployed pool, rate-limited, so vacancies re-staff), and
 lawless generation SCALES WITH POVERTY (the broke fraction of the
 population is the crime dial — the economy itself governs predation).
+
+## 15 · Pinned souls — frozen in time (owner ruling 2026-09-14, shipped #3507)
+
+A **pinned** soul keeps everything that makes it a person — persona, needs,
+memory, the soul tag — but the engine leaves it alone: **no need decay, no
+thinking, no planning, no walking.** It stands where it was pinned until a
+GM puppets it or a developer tests against it.
+
+Mechanics (`world/souls/engine.py` `pin` / `unpin` / `is_pinned`):
+* `pin()` stops any walk (`director.travel.stop_travel`), drops the running
+  job, steps away from any counter (`_release_placement`), materializes the
+  needs at their current pressure and stamps the clock. While
+  `db.soul_pinned` holds, `needs._snapshot` reports **zero elapsed minutes**,
+  so every derived pressure reads exactly what it was at the pin.
+* The heartbeat's `_beat_soul` returns before wages, wear or thinking;
+  `think()` itself returns for a pinned soul (salience and direct callers
+  included).
+* `unpin()` re-stamps `soul_needs["_at"] = now`: the frozen interval is
+  never paid back as a lump of hunger.
+* `@pin <npc>` / `@unpin <npc>` (Builders+, `commands/CmdPin.py`) act on
+  souls only. A body an account owns, or one holding Builder permissions,
+  is refused no matter who asks. `@pin` alone lists the pinned.
+
+**`@spawnmob` makes pinned people (#3506).** `/human` (and a bare
+`@spawnmob`) and `/synth` build a whole person the way the colony builds
+everyone: the civilian factory's random archetype for the species
+(persona, voice, wardrobe, stock — `spawn_civilian(role, here,
+drift=False)`: no director tag, no haunts), the shuttle arrival's rolled
+personhood (`souls.population.roll_person`: style, presentation, traits,
+designation, skills), `ensoul(role=<archetype>, home=None, post=None)` —
+**no cube, no job** — then `pin()`. `/blank` is gone; `/rat` and `/robot`
+are bodies; `/secbot` is the production factory door. Every spawner writes
+species through one helper, `world.anatomy.apply_species`.
+

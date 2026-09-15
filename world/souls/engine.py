@@ -183,6 +183,64 @@ def ensoul(npc, role="resident", home=None, post=None, schedule="day",
     return npc
 
 
+PIN_ATTR = "soul_pinned"
+
+
+def is_pinned(soul) -> bool:
+    """Frozen in time (owner ruling 2026-09-14): a pinned soul keeps its
+    soul -- persona, needs, memory, the tag -- but the heartbeat leaves
+    it alone: no need decay, no thinking, no planning, no walking.
+    A GM can puppet it later; a developer can test against it."""
+    return bool(getattr(getattr(soul, "db", None), PIN_ATTR, False))
+
+
+def pin(soul, by=None):
+    """Freeze *soul* where it stands. Stops any walk, drops the running
+    job, steps away from any counter, materializes the needs at their
+    current pressure and stamps the clock -- `needs._snapshot` then
+    reads zero elapsed minutes for as long as the pin holds."""
+    if is_pinned(soul):
+        return soul
+    try:
+        from world.director.travel import stop_travel
+        stop_travel(soul)
+    except Exception:  # noqa: BLE001 -- a pin never fails on feet
+        pass
+    job = soul.db.soul_job
+    if job and job.get("goal") == "duty":
+        economy.pay_wage(soul)           # a shift cut short still pays out, like every other teardown
+    soul.db.soul_job = None
+    _release_placement(soul)
+    now = time.time()
+    fresh = needs_mod.pressures(soul, now)
+    fresh["_at"] = now
+    soul.db.soul_needs = fresh
+    setattr(soul.db, PIN_ATTR, True)
+    soul.db.soul_pinned_at = now
+    from world.souls import audit
+    audit.life(soul, "pinned", getattr(by, "key", None) if by is not None else None)
+    return soul
+
+
+def unpin(soul, by=None):
+    """Let *soul* live again from THIS moment: the needs clock restarts
+    at now, so the frozen interval is not paid back as a lump of hunger."""
+    if not is_pinned(soul):
+        return soul
+    stored = dict(soul.db.soul_needs or {})
+    stored["_at"] = time.time()
+    soul.db.soul_needs = stored
+    setattr(soul.db, PIN_ATTR, False)
+    soul.db.soul_pinned_at = None
+    from world.souls import audit
+    audit.life(soul, "unpinned", getattr(by, "key", None) if by is not None else None)
+    return soul
+
+
+def pinned_souls():
+    return [s for s in get_souls() if is_pinned(s)]
+
+
 def desoul(npc):
     npc.tags.remove(SOUL_TAG[0], category=SOUL_TAG[1])
     npc.db.soul_job = None
@@ -246,7 +304,12 @@ def _desired_goal(soul, hour, exclude=()):
     idling (broke-and-hungry still goes home to SLEEP)."""
     derived = needs_mod.pressures(soul)
     body = [n for n in needs_mod.profile_of(soul)
-            if n != "safety" and n not in exclude]
+            if n != "safety" and n not in exclude
+            # `rest` plans only as dwell_home; with no home it can never be
+            # satisfied and would fault into a 15-minute cooldown loop for
+            # ever (a @spawnmob person after @unpin). Skip it, like the
+            # schedule arm below already does.
+            and not (n == "rest" and not soul.db.soul_home)]
     # band 0: survive
     if derived.get("safety", 0.0) >= needs_mod.critical_for(soul, "safety"):
         return (0, "safety")
@@ -416,6 +479,8 @@ def _release_placement(soul):
 
 def think(soul, hour):
     """One decision beat: end lapsed shifts, arbitrate, plan, step."""
+    if is_pinned(soul):
+        return                           # frozen in time (see `pin`)
     from world.director.security import _in_combat
     from world.director.travel import is_travelling
     # An assignment used to return here — the soul was switched OFF for
@@ -621,6 +686,8 @@ class SoulsHeartbeat(DefaultScript):
         is a thundering herd (hardening spec law #4)."""
         if not soul.pk or soul.location is None:
             return
+        if is_pinned(soul):
+            return                       # frozen in time: no wages, no wear, no thinking
         shour = soul_hour(soul, hour_f)
         # wages accrue per BEAT at post, not per think — LOD must not
         # change what a shift pays. Accrual rides ndb and checkpoints
