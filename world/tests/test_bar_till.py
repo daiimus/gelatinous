@@ -95,3 +95,18 @@ class TestBarTill(EvenniaCommandTest):
         self._till("bar = lots")
         self.assertEqual(self.bar.db.register, 60)
         self.assertEqual(self.char1.tokens, 0)
+
+    def test_the_audit_names_the_counter_not_the_command(self):
+        """#3411: `other=self` inside a Command is the Command -- rendered
+        as the meaningless till#0 for every counter in the colony."""
+        from unittest import mock
+        self.bar.db.register = 30
+        with mock.patch("world.souls.audit.coin") as coin:
+            self._till("bar = 10")
+        coin.assert_called_once()
+        args, kwargs = coin.call_args
+        self.assertEqual(args[0], self.char1)
+        self.assertEqual(args[1], 10)
+        self.assertEqual(args[2], "till_take")
+        self.assertIs(kwargs.get("other"), self.bar)
+
