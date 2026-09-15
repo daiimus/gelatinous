@@ -1608,6 +1608,25 @@ def _node_commence(caller, raw_string, **kwargs):
         )
         return _node_top(caller, raw_string, **kwargs)  # a node's string is TEXT, not a goto (#3500)
 
+    # Kit gate up front (#3504). Every procedure verb dispatches through
+    # start_procedure, which raises SurgicalKitRequired when the surgeon
+    # holds no suitable instruments -- and commence_chart swallows that
+    # into a step outcome the surgeon never sees, so a kitless commence
+    # "fails instantly" behind the optimistic in-flight line. Refuse
+    # here, plainly, and leave the chart intact so they can grab a kit
+    # and try again. Charting without a kit stays legal (owner: you can
+    # chart a patient and not act); only ACTING needs the tools. A chart
+    # of only treatment verbs (apply / inject, skipped by the runner)
+    # needs no kit.
+    if any(s.get("verb") in chart_lib.PROCEDURE_VERBS for s in pending):
+        from world.medical.utils import find_surgical_kit, instruments_wanted
+        if find_surgical_kit(caller, target) is None:
+            caller.msg(
+                f"|rYou need {instruments_wanted(target)} to operate.|n  "
+                f"The chart is saved — pick one up and commence again."
+            )
+            return _node_top(caller, raw_string, **kwargs)
+
     step = chart_lib.commence_chart(target, caller)
     if step is None:
         caller.msg("|wChart complete.|n")
