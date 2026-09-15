@@ -74,7 +74,8 @@ class CmdBug(MuxCommand):
     Use @bug/show <number> to view full details of a specific bug report.
     
     Your report will be created as a GitHub issue for the development team
-    to review. All players can submit up to 30 bug reports per day.
+    to review. Reports are capped per player per day; after each one the
+    game tells you how many you have left.
     
     Be clear and descriptive - good bug reports help us fix issues faster!
     """
@@ -138,7 +139,7 @@ class CmdBug(MuxCommand):
         # last line of defence (two doors, one gate).
         account = getattr(caller, "account", None)
         if account is not None and not self.check_rate_limit(account):
-            limit = getattr(settings, 'BUG_REPORT_DAILY_LIMIT', 30)
+            limit = settings.BUG_REPORT_DAILY_LIMIT
             caller.msg(f"|rYou've reached the daily limit of {limit} bug reports.|n")
             caller.msg(f"The limit resets in {self.get_time_until_reset(account)}.")
             return
@@ -157,7 +158,7 @@ class CmdBug(MuxCommand):
             account.db.bug_report_date = today
         
         count = account.db.bug_report_count or 0
-        limit = getattr(settings, 'BUG_REPORT_DAILY_LIMIT', 30)
+        limit = settings.BUG_REPORT_DAILY_LIMIT
         
         return count < limit
     
@@ -738,7 +739,7 @@ class CmdBug(MuxCommand):
                 account = caller.account
                 if not cmd_instance.check_rate_limit(account):
                     remaining_time = cmd_instance.get_time_until_reset(account)
-                    caller.msg("|rYou've reached the daily limit of 30 bug reports.|n")
+                    caller.msg(f"|rYou've reached the daily limit of {settings.BUG_REPORT_DAILY_LIMIT} bug reports.|n")
                     caller.msg(f"The limit resets in {remaining_time}.")
                     return
                 cmd_instance.increment_report_count(account)
@@ -763,7 +764,7 @@ class CmdBug(MuxCommand):
                         issue_url = result.get('html_url', '')
 
                         # The slot was already taken at the check above.
-                        limit = getattr(settings, 'BUG_REPORT_DAILY_LIMIT', 30)
+                        limit = settings.BUG_REPORT_DAILY_LIMIT
                         remaining = limit - (account.db.bug_report_count or 0)
 
                         caller.msg(f"\n|g✓|n Issue created: |c{issue_url}|n")

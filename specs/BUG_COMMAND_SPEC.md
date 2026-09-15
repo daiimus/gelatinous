@@ -185,9 +185,10 @@ POST https://api.github.com/repos/daiimus/gelatinous/issues
 > is not conditional on the limit being "approached": it is sent after
 > **every** successful report (`CmdBug.py:758-764`), as "You have N bug
 > reports remaining today.", merely highlighted in yellow when N ≤ 5.
-> The "30" in the refusal is a hardcoded literal while the limit itself
-> reads `BUG_REPORT_DAILY_LIMIT` (`:730` vs `:149`) — a code-side defect,
-> not a spec correction.
+> The "30" in the refusal was a hardcoded literal while the limit itself
+> read `BUG_REPORT_DAILY_LIMIT` — fixed under #3408 (2026-09-15): the
+> tracked `settings.py` now declares the default, every read is a plain
+> settings lookup, the refusal interpolates it and the help names no number.
 ```python
 # When limit reached
 "You've reached the daily limit of 30 bug reports. Please try again tomorrow."
@@ -702,7 +703,7 @@ GITHUB_REPO = "daiimus/gelatinous"
 BUG_REPORT_DAILY_LIMIT = 30
 ```
 
-### settings.py (if needed)
+### settings.py (done — #3408 declares the default there)
 ```python
 # Bug reporting defaults (can override in secret_settings.py)
 BUG_REPORT_DAILY_LIMIT = getattr(secret_settings, 'BUG_REPORT_DAILY_LIMIT', 30)

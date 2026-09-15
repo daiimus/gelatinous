@@ -314,6 +314,12 @@ GLOBAL_SCRIPTS = {
 }
 LLM_GM_TEMPERATURE = 0.8   # characterful but coherent
 
+# Daily cap on @bug reports per account (commands/CmdBug.py). Declared
+# here so the number has ONE home: the command reads it as a plain
+# settings lookup, never a fallback copy (#3408). Override in
+# secret_settings.py.
+BUG_REPORT_DAILY_LIMIT = 30
+
 ######################################################################
 # Settings given in secret_settings.py override those in this file.
 ######################################################################
