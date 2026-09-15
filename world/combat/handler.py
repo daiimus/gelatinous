@@ -218,7 +218,7 @@ class CombatHandler(DefaultScript):
         self.db.combat_is_running = False
         
         splattercast = get_splattercast()
-        managed_rooms = self.db.managed_rooms or []
+        managed_rooms = self.live_rooms()
         splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_CREATE: New handler {self.key} created on {self.obj.key}, initially managing: {[r.key for r in managed_rooms]}. Combat logic initially not running.")
 
     def start(self):
@@ -239,7 +239,7 @@ class CombatHandler(DefaultScript):
             splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_START: Handler {self.key} on {self.obj.key} - combat logic and Evennia ticker are already active. Skipping redundant start.")
             return
 
-        managed_rooms = self.db.managed_rooms or []
+        managed_rooms = self.live_rooms()
         splattercast.msg(f"{DEBUG_PREFIX_HANDLER}_START: Handler {self.key} on {self.obj.key} (managing {[r.key for r in managed_rooms]}) - ensuring combat logic is running and ticker is scheduled.")
         
         if not combat_is_running:
@@ -381,6 +381,21 @@ class CombatHandler(DefaultScript):
         else:
             self.stop_combat_logic(cleanup_combatants=True)
 
+    def live_rooms(self):
+        """``db.managed_rooms`` with dead entries pruned -- ``None`` (a room
+        deleted while the fight spanned it resolves to None on the next
+        read) or an object with no row. Writes the pruned list back so the
+        next read is clean. One reader for every site that iterates the
+        rooms (#3520): a stale room used to crash the round timer on a
+        debug line, BEFORE the "no valid combatants, stopping" check, so
+        the script tracebacked every six seconds for ever and poisoned
+        any fight that merged into it."""
+        rooms = list(self.db.managed_rooms or [])
+        live = [r for r in rooms if r is not None and getattr(r, "pk", None)]
+        if len(live) != len(rooms):
+            self.db.managed_rooms = live
+        return live
+
     def enroll_room(self, room_to_add):
         """
         Add a room to be managed by this handler.
@@ -388,8 +403,8 @@ class CombatHandler(DefaultScript):
         Args:
             room_to_add: The room to add to managed rooms
         """
-        managed_rooms = self.db.managed_rooms or []
-        if room_to_add not in managed_rooms:
+        managed_rooms = self.live_rooms()
+        if room_to_add is not None and room_to_add not in managed_rooms:
             managed_rooms.append(room_to_add)
             self.db.managed_rooms = managed_rooms
 
@@ -426,8 +441,8 @@ class CombatHandler(DefaultScript):
                 our_combatants.append(entry)
         
         # Merge managed rooms
-        our_rooms = self.db.managed_rooms or []
-        their_rooms = other_handler.db.managed_rooms or []
+        our_rooms = self.live_rooms()
+        their_rooms = [r for r in (other_handler.db.managed_rooms or []) if r is not None and getattr(r, "pk", None)]
         for room in their_rooms:
             if room not in our_rooms:
                 our_rooms.append(room)
@@ -611,7 +626,7 @@ class CombatHandler(DefaultScript):
             splattercast.msg(f"AT_REPEAT: Handler {self.key}. Combatants present. Starting combat in round 1.")
             self.db.round = 1
 
-        managed_rooms = self.db.managed_rooms or []
+        managed_rooms = self.live_rooms()
         splattercast.msg(f"AT_REPEAT: Handler {self.key} (managing {[r.key for r in managed_rooms]}). Round {self.db.round} begins.")
         
         if len(combatants_list) <= 1:

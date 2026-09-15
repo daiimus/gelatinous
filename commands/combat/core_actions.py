@@ -270,7 +270,7 @@ class CmdAttack(Command):
         if caller_handler != target_handler:
             splattercast.msg(f"{DEBUG_PREFIX_ATTACK}: Cross-handler engagement! Caller's handler: {caller_handler.key} (on {caller_handler.obj.key}). Target's handler: {target_handler.key} (on {target_handler.obj.key}). Merging...")
             caller_handler.merge_handler(target_handler)
-            splattercast.msg(f"{DEBUG_PREFIX_ATTACK}: Merge complete. Final handler is {final_handler.key}, now managing rooms: {[r.key for r in final_handler.db.managed_rooms]}.")
+            splattercast.msg(f"{DEBUG_PREFIX_ATTACK}: Merge complete. Final handler is {final_handler.key}, now managing rooms: {[r.key for r in final_handler.live_rooms()]}.")
         else:
             splattercast.msg(f"{DEBUG_PREFIX_ATTACK}: Caller and target are (or will be) in the same handler zone: {final_handler.key} (on {final_handler.obj.key}).")
             final_handler.enroll_room(caller.location)
