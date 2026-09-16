@@ -22,6 +22,25 @@ def arming_line(name, fuse_time):
     from world.grammar import capitalize_first, with_article
     return (f"|r{capitalize_first(with_article(name))} beeps and its light "
             f"begins flashing!|n |y[{fuse_time} seconds]|n")
+
+
+def armed_fuse(explosive):
+    """The fuse a remotely armed charge actually gets -- ONE answer for the
+    single-target door, the `detonate all` door and the `detonate list`
+    row that plans them (#3348, #3349).
+
+    A RIGGED trap is a trap however it is set off (#2547): the tripwire
+    path has always used ``TRAP_FUSE_TIME`` (~1s), so remote detonation
+    must too, or the target is handed the walk-out window the trap exists
+    to deny. Everything else keeps its own prototype fuse, 8 if none is
+    declared. The spec once assumed rigging wrote ``db.fuse_time = 1``;
+    nothing ever did, and mutating the grenade's own fuse would need
+    restoring on un-rig.
+    """
+    from world.combat.constants import TRAP_FUSE_TIME
+    if explosive.db.rigged_to_exit is not None:
+        return TRAP_FUSE_TIME
+    return explosive.db.fuse_time if explosive.db.fuse_time is not None else 8
 from evennia import Command, utils
 from world.combat.debug import get_splattercast
 from world.combat.constants import (
@@ -912,18 +931,7 @@ class CmdDetonate(Command):
 
         # Pull the pin remotely
         explosive.db.pin_pulled = True
-        # A RIGGED trap is a trap however it is set off. The tripwire
-        # path has always used a ~1s fuse; this door read the prototype
-        # value (4-10s), so remote-detonating a trap gave the target
-        # time to walk out of it. The spec assumed rigging wrote
-        # `db.fuse_time = 1`; nothing ever did (#2547).
-        from world.combat.constants import TRAP_FUSE_TIME
-
-        if explosive.db.rigged_to_exit is not None:
-            fuse_time = TRAP_FUSE_TIME
-        else:
-            fuse_time = (explosive.db.fuse_time
-                         if explosive.db.fuse_time is not None else 8)
+        fuse_time = armed_fuse(explosive)   # trap => TRAP_FUSE_TIME (#2547)
         setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
 
         # Start countdown using the shared sticky-aware ticker
@@ -996,7 +1004,7 @@ class CmdDetonate(Command):
 
             # Pull the pin remotely
             explosive.db.pin_pulled = True
-            fuse_time = explosive.db.fuse_time if explosive.db.fuse_time is not None else 8
+            fuse_time = armed_fuse(explosive)   # same answer as the single door (#3348)
             setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
 
             # Start countdown using the shared sticky-aware ticker
@@ -1166,12 +1174,10 @@ class CmdDetonateList(Command):
                 fuse_str = f"|R{countdown}s left!|n"
             elif explosive.db.rigged_to_exit is not None:
                 status = f"|yTRAP|n"
-                fuse_time = explosive.db.fuse_time if explosive.db.fuse_time is not None else 8
-                fuse_str = f"{fuse_time}s (trap)"
+                fuse_str = f"{armed_fuse(explosive)}s (trap)"   # the fuse that will fire (#3349)
             else:
                 status = f"|gREADY|n"
-                fuse_time = explosive.db.fuse_time if explosive.db.fuse_time is not None else 8
-                fuse_str = f"{fuse_time}s"
+                fuse_str = f"{armed_fuse(explosive)}s"
 
             # Get location
             if not explosive.location:
