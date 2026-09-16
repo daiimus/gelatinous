@@ -579,7 +579,6 @@ COMBAT_ACTION_GRAPPLE_INITIATE = "grapple_initiate"
 COMBAT_ACTION_GRAPPLE_JOIN = "grapple_join"
 COMBAT_ACTION_GRAPPLE_TAKEOVER = "grapple_takeover"
 COMBAT_ACTION_RELEASE_GRAPPLE = "release_grapple"
-COMBAT_ACTION_ESCAPE_GRAPPLE = "escape_grapple"
 
 # ===================================================================
 # MESSAGE TEMPLATES

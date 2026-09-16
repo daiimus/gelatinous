@@ -31,7 +31,8 @@ The fix is `getattr(..., None) or default`, which is the idiom the
 codebase already uses (`world/llm/reflex.py:122`).
 
 **Not changed, and deliberately.** Three sites pass a *container*
-default — `set()` in `actions.py` and `attack.py`, `[]` in
+default — `set()` in `attack.py` (and, until #3391 removed that
+resolver, in `actions.py`), `[]` in
 `throwing.py`. Those also receive `None`, but each is followed
 immediately by a real `if not proximity_set:` or `isinstance` check that
 catches it, so the behaviour is correct today. #2487 documented that
@@ -146,11 +147,17 @@ class TestTheHarmlessOnesAreLeftAlone(EvenniaTest):
         return (root / relpath).read_text(errors="ignore")
 
     def test_the_proximity_sites_still_guard_themselves(self):
-        for relpath in ("world/combat/actions.py", "world/combat/attack.py"):
+        # `world/combat/actions.py` used to be in this list: its site was
+        # inside the dict-shaped grapple resolver deleted under #3391,
+        # and the module no longer reads NDB_PROXIMITY at all.
+        for relpath in ("world/combat/attack.py",):
             body = self._source(relpath)
             self.assertIn("if not proximity_set:", body,
                           f"{relpath} lost the check that makes the "
                           f"unreachable default harmless")
+        self.assertNotIn("NDB_PROXIMITY", self._source("world/combat/actions.py"),
+                         "actions.py reads the proximity ndb again; put it "
+                         "back in the guarded list above")
 
     def test_the_grenade_site_still_checks_the_type(self):
         body = self._source("world/combat/throwing.py")

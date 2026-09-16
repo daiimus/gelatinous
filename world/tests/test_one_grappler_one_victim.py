@@ -256,12 +256,14 @@ class TestEveryResolverReleasesFirst(EvenniaTest):
 
     The first version of this test counted one exact assignment string
     in `grappling.py` — the file I happened to be editing — and asserted
-    the count was 3. It passed, and it was wrong: grappling has two
-    dispatch shapes, and the dict-shaped `{"type": "grapple"}` action
-    routes to `resolve_grapple_attempt` in `actions.py`, a fourth
+    the count was 3. It passed, and it was wrong: at the time grappling
+    had two dispatch shapes, and the dict-shaped `{"type": "grapple"}`
+    action routed to `resolve_grapple_attempt` in `actions.py`, a fourth
     resolver that took a grapple with no release. A pin scoped to the
     file you are already looking at cannot tell you about the file you
-    are not.
+    are not. (That dict door had no producer anywhere in the game and
+    was removed under #3391; the scan still walks both files so the
+    next resolver cannot hide either.)
 
     This walks every line that assigns `DB_GRAPPLING_DBREF` to anything
     other than `None` and requires a release call above it in the same
@@ -295,12 +297,16 @@ class TestEveryResolverReleasesFirst(EvenniaTest):
         window = lines[max(0, lineno - 30):lineno]
         return any("release_existing_grapple(" in w for w in window)
 
-    def test_the_scan_finds_more_than_one_file(self):
+    def test_the_scan_finds_the_live_door_and_only_it(self):
         """Guards the guard: if the shape stops matching, this test
-        silently checks nothing."""
+        silently checks nothing. And since #3391 there is ONE door:
+        `actions.py` must take no grapple at all -- if it ever does
+        again, `test_every_take_releases_first` will judge it, and this
+        line makes the reappearance loud."""
         files = {t[0] for t in self.takes()}
         self.assertIn("grappling.py", files)
-        self.assertIn("actions.py", files)
+        self.assertNotIn("actions.py", files,
+                         "a grapple-taking resolver is back in actions.py")
 
     #: `establish_grapple` carries its own "already grappling" REFUSAL
     #: instead, which is the other valid answer — and it is unreferenced
@@ -327,66 +333,11 @@ class TestEveryResolverReleasesFirst(EvenniaTest):
 
     def test_the_release_helper_is_shared_not_copied(self):
         """One implementation — a second copy is how the four resolvers
-        drifted apart in the first place."""
+        drifted apart in the first place. Since #3391 nothing outside
+        `grappling.py` takes a grapple, so the pin is simply: exactly one
+        definition anywhere under world/combat."""
         import pathlib
         root = pathlib.Path(__file__).resolve().parents[2]
-        body = (root / "world" / "combat" / "actions.py").read_text(
-            errors="ignore")
-        self.assertIn(
-            "from world.combat.grappling import release_existing_grapple",
-            body)
-
-
-class TestTheDictShapedGrappleReleasesToo(_GrappleCase):
-    """Driven through `resolve_grapple_attempt` — the door the original
-    fix missed."""
-
-    def setUp(self):
-        super().setUp()
-        from world.combat.proximity import establish_proximity
-        establish_proximity(self.c, self.b)
-        for ch in (self.b, self.c, self.d):
-            ch.location = self.room1
-
-    def attempt(self, entries):
-        from unittest.mock import patch
-
-        from world.combat.actions import resolve_grapple_attempt
-        from world.combat.constants import DB_COMBAT_ACTION
-        handler = self.handler(entries)
-        handler.db.managed_rooms = [self.room1]
-        handler._are_characters_in_mutual_combat.return_value = False
-        grappler = self.by_char(entries, self.c)
-        grappler[DB_COMBAT_ACTION] = {"type": "grapple", "target": self.b}
-        # Explicit rolls. `_GrappleCase` sets no motorics, so both
-        # characters default to 1 and any max/min scheme ties — which
-        # ties favour the defender, so the grapple silently fails and
-        # the test proves nothing. That is how my first version of this
-        # passed against nothing at all.
-        with patch("world.combat.actions.randint", side_effect=[10, 1]):
-            resolve_grapple_attempt(handler, self.c, grappler, entries)
-        return entries
-
-    def test_the_first_victim_is_let_go(self):
-        entries = [self.entry(self.c, grappling=self.d),
-                   self.entry(self.d, grappled_by=self.c),
-                   self.entry(self.b)]
-        self.attempt(entries)
-        self.assertIsNone(self.by_char(entries, self.d)[DB_GRAPPLED_BY_DBREF],
-                          "D is still pinned by a phantom")
-
-    def test_and_the_new_hold_is_taken(self):
-        entries = [self.entry(self.c, grappling=self.d),
-                   self.entry(self.d, grappled_by=self.c),
-                   self.entry(self.b)]
-        self.attempt(entries)
-        self.assertEqual(self.by_char(entries, self.c)[DB_GRAPPLING_DBREF],
-                         get_character_dbref(self.b))
-        self.assertEqual(self.by_char(entries, self.b)[DB_GRAPPLED_BY_DBREF],
-                         get_character_dbref(self.c))
-
-    def test_a_grappler_holding_nobody_is_unaffected(self):
-        entries = [self.entry(self.c), self.entry(self.b), self.entry(self.d)]
-        self.attempt(entries)
-        self.assertEqual(self.by_char(entries, self.c)[DB_GRAPPLING_DBREF],
-                         get_character_dbref(self.b))
+        defs = [p for p in (root / "world" / "combat").glob("*.py")
+                if "def release_existing_grapple(" in p.read_text(errors="ignore")]
+        self.assertEqual([p.name for p in defs], ["grappling.py"])

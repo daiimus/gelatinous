@@ -34,7 +34,7 @@ from world.combat.constants import (
     COMBAT_ACTION_DISARM,
     COMBAT_ACTION_GRAPPLE_INITIATE, COMBAT_ACTION_GRAPPLE_JOIN,
     COMBAT_ACTION_GRAPPLE_TAKEOVER,
-    COMBAT_ACTION_ESCAPE_GRAPPLE, COMBAT_ACTION_RELEASE_GRAPPLE,
+    COMBAT_ACTION_RELEASE_GRAPPLE,
 )
 from world.combat.utils import (
     log_combat_action, initialize_proximity_ndb, get_display_name_safe,
@@ -258,10 +258,16 @@ class CmdEscapeGrapple(Command):
         if was_yielding:
             caller.msg(MSG_GRAPPLE_ESCAPE_VIOLENT_SWITCH.format(grappler=get_display_name_safe(grappler_obj, caller)))
 
-        # Set escape action for the combat handler to process
-        caller_entry[DB_COMBAT_ACTION] = COMBAT_ACTION_ESCAPE_GRAPPLE
+        # The contest itself is the handler's auto-escape, which runs
+        # every round for a grappled, non-yielding victim before any
+        # queued action is read (GRAPPLE_SYSTEM_SPEC: state change now,
+        # contest next round). This used to queue an "escape_grapple"
+        # action that nothing dispatched (#3391); clearing the slot keeps
+        # the one effect that had -- a stale queued intent does not fire
+        # the round after a successful break.
+        caller_entry[DB_COMBAT_ACTION] = None
         caller.msg(f"You prepare to struggle violently against {get_display_name_safe(grappler_obj, caller)}'s hold!")
-        log_combat_action(caller, "escape_action", grappler_obj, details="combat action set to escape_grapple")
+        log_combat_action(caller, "escape_action", grappler_obj, details="yielding cleared; contest is the auto-escape")
 
 
 class CmdReleaseGrapple(Command):

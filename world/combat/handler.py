@@ -35,7 +35,7 @@ from .constants import (
     COMBAT_ACTION_DISARM,
     COMBAT_ACTION_GRAPPLE_INITIATE, COMBAT_ACTION_GRAPPLE_JOIN,
     COMBAT_ACTION_GRAPPLE_TAKEOVER,
-    COMBAT_ACTION_RELEASE_GRAPPLE, COMBAT_ACTION_ESCAPE_GRAPPLE,
+    COMBAT_ACTION_RELEASE_GRAPPLE,
     COMBAT_ROUND_INTERVAL,
 )
 from .utils import (
@@ -67,8 +67,6 @@ from .movement_resolution import (
 )
 from .actions import (
     resolve_disarm,
-    resolve_grapple_attempt,
-    resolve_escape_grapple,
     resolve_auto_escape,
 )
 
@@ -878,7 +876,7 @@ class CombatHandler(DefaultScript):
             char: The acting character.
             entry: The character's combat entry dict.
             combatants_list: List of all combat entry dicts.
-            combat_action: The action to dispatch (str or dict).
+            combat_action: One of the ``COMBAT_ACTION_*`` strings.
             initiative_order: List of entries sorted by initiative.
 
         Returns:
@@ -887,12 +885,11 @@ class CombatHandler(DefaultScript):
         splattercast = get_splattercast()
         splattercast.msg(f"AT_REPEAT: {char.key} has action_intent: {combat_action}")
 
+        # Every action is one of the COMBAT_ACTION_* strings. The
+        # dict-shaped door (`{"type": ...}`) that once sat beside this
+        # branch had no producer anywhere in the game (#3391).
         if isinstance(combat_action, str):
             return self._dispatch_string_action(
-                char, entry, combatants_list, combat_action,
-            )
-        elif isinstance(combat_action, dict):
-            return self._dispatch_dict_action(
                 char, entry, combatants_list, combat_action,
             )
 
@@ -947,32 +944,6 @@ class CombatHandler(DefaultScript):
             entry[DB_COMBAT_ACTION] = None
             entry[DB_COMBAT_ACTION_TARGET] = None
             return True
-
-        return False
-
-    def _dispatch_dict_action(self, char, entry, combatants_list, combat_action):
-        """
-        Dispatch a dict-based combat action (grapple attempt or escape).
-
-        Args:
-            char: The acting character.
-            entry: The character's combat entry dict.
-            combatants_list: List of all combat entry dicts.
-            combat_action: The action dict with ``type`` and ``target``.
-
-        Returns:
-            bool: ``True`` if the action consumed the turn.
-        """
-        intent_type = combat_action.get("type")
-
-        if intent_type == "grapple":
-            return resolve_grapple_attempt(
-                self, char, entry, combatants_list,
-            )
-        elif intent_type == COMBAT_ACTION_ESCAPE_GRAPPLE:
-            return resolve_escape_grapple(
-                self, char, entry, combatants_list,
-            )
 
         return False
 
