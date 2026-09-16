@@ -196,8 +196,11 @@ BLOOD_POOL_FLUSH_TICKS = 5
 
 # Downtime cap (spec §4.3): a single process() applies at most this
 # many minutes of effect, so reloads/crashes never bill players for
-# server downtime.  2x the expected sampling gap.
-ELAPSED_CAP_MINUTES = 2.0
+# server downtime.  Twice the expected sampling gap -- DERIVED from the
+# interval, not typed in beside it (#3401): a literal 2.0 only agreed
+# with a 60s tick by coincidence, and a longer tick would have silently
+# thrown away every minute past the cap on every tick.
+ELAPSED_CAP_MINUTES = 2 * (MEDICAL_TICK_INTERVAL / 60)
 
 # Per-minute hazards for chance-based condition drift (spec §4.4).
 # Authored per minute; sampled at any cadence via

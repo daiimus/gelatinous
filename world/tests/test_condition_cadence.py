@@ -32,6 +32,7 @@ from world.medical.conditions import (
 )
 from world.medical.constants import (
     ELAPSED_CAP_MINUTES,
+    MEDICAL_TICK_INTERVAL,
     INFECTION_IMPROVE_HAZARD_PER_MINUTE,
     INFECTION_WORSEN_HAZARD_PER_MINUTE,
 )
@@ -411,3 +412,18 @@ class TestTourniquets(TestCase):
         data = organ.to_dict()
         del data["tourniqueted"]
         self.assertFalse(Organ.from_dict(data).tourniqueted)
+
+
+class TestTheDowntimeCapFollowsTheTick(TestCase):
+    """§4.3 authors the cap as a derivation, twice the sampling gap, not a
+    value (#3401). A literal 2.0 agreed with a 60s tick by coincidence; at
+    a 300s tick it would have billed 2 of every 5 minutes and dropped the
+    rest, silently, on every tick."""
+
+    def test_the_cap_is_twice_the_sampling_gap(self):
+        self.assertEqual(ELAPSED_CAP_MINUTES, 2 * (MEDICAL_TICK_INTERVAL / 60))
+
+    def test_today_that_is_still_two_minutes(self):
+        """No balance change at the current interval."""
+        self.assertEqual(MEDICAL_TICK_INTERVAL, 60)
+        self.assertEqual(ELAPSED_CAP_MINUTES, 2.0)
