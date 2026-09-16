@@ -8,9 +8,10 @@ no biological infection, a body that is deactivated and stripped for
 parts rather than rotting, and a distinct hydraulic fluid. Appendage
 names stay humanoid (it is a humanoid robot).
 
-The deeper "mechanical presentation" layer (per-organ inorganic prose,
-component organ-name divergence, pruning breathing/blood_filtration) is a
-deliberate follow-up, the same layer the synthetic species also defers.
+Of the deeper "mechanical presentation" layer, component organ-name
+divergence has landed (``robot["organ_display"]``, #842); per-organ
+inorganic flags and pruning breathing/blood_filtration remain deliberate
+follow-ups (the lungs and kidneys are renamed and kept).
 """
 
 from __future__ import annotations

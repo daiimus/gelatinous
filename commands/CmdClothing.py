@@ -619,19 +619,19 @@ class CmdZip(Command):
 #   dress <target> in <item>     — put clothing on someone / something
 #   undress <target> [<item>]    — remove clothing from someone / something
 #
-# Both verbs gate on the target being unwilling-or-incapacitated:
+# Both verbs gate on whether the target can refuse:
 #
 #   * Severed appendages (worn-on-severed structure introduced in
-#     this PR)
-#   * Unconscious characters
-#   * Dead characters / corpses
+#     this PR) are always dressable
+#   * Unconscious, dead and restrained characters cannot contest,
+#     so the action lands freely
+#   * A conscious, unrestrained character must have trusted the
+#     caller for the ``dress`` class
 #
-# Conscious cooperative dressing is intentionally deferred to the
-# future trust/consent layer (per the project memory:
-# project_gelatinous_trust_consent).  Until that ships, conscious
-# targets get a clear rejection that hints at the future system.
-# Do not paint into a corner by hard-coding rejection logic that
-# the consent layer can't gracefully extend.
+# Characters do not answer that question here: they ride the shared
+# consent gate (world/consent.check_consent, TRUST_AND_CONSENT_SPEC
+# ``dress`` class), so any new permission rule belongs there rather
+# than hard-coded into these verbs.
 
 
 def _can_third_party_clothing(caller, target):

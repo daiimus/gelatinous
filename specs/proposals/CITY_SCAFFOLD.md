@@ -1,7 +1,7 @@
 # City Scaffold — every building, named and placed (DRAFT)
 
 > **Status:** 📋 DRAFT FOR OWNER VETO (2026-08-05). Generated against
-> the Roof Plan v2 (flat 1:1 datums per building, stagger between,
+> the Roof Plan v3 (flat 1:1 datums per building, stagger between,
 > the Long Climb street→18, the 14-18 high town with skywalks).
 > Every name, program, and height below is a proposal — strike,
 > rename, or reassign per line; the generator re-derives in seconds.
@@ -12,13 +12,13 @@
 > above. None of them touches the design; the proposal itself is still
 > unbuilt, which is what it claims to be.
 >
-> 1. **It was generated against the Roof Plan v3, not v2.**
+> 1. **It was generated against the Roof Plan v3; the banner said v2.**
 >    `scripts/planning/scaffold.py` titles its own plate "THE ROOF PLAN
 >    v3", `scripts/planning/README.md` calls it v3 (v1 is the superseded
 >    `roofplan.py`; no v2 exists in the repo), `PARKOUR_TEMPLATE_LIBRARY.md`
 >    §1.5 cites "owner law, Roof Plan v3", and the issue that delivered
->    this document (#1681) says v3. The wrong number is hardcoded in
->    `manifest.py`, so a re-run reprints it.
+>    this document (#1681) says v3. The number is corrected above and in
+>    `manifest.py`, so a re-run reprints v3.
 > 2. **KEEP is a 2026-08-05 map snapshot, already overtaken.** The Queen
 >    of Cups was raised to a z12 roof (build 018, #1774) and is listed
 >    here at 6; The Halcyon (builds 014/016/017 — #1766/#1770/#1772) now

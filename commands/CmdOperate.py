@@ -26,7 +26,10 @@ Deferred to follow-on PRs:
   • Resume from arbitrary step
   • Auto-chaining (commence all steps back-to-back)
   • Permission delegation (multi-author charts)
-  • Trust/consent integration for conscious targets
+
+Trust/consent for conscious targets is no longer deferred: the
+shared ``_resolve_target`` gates character patients on ``heal``
+trust (TRUST_AND_CONSENT_SPEC §3).
 
 # ===================================================================
 # VISUAL DESIGN
@@ -1710,10 +1713,10 @@ class CmdOperate(Command):
 
     The chart persists on the patient between sessions — you can
     save a draft, walk away, and have another surgeon (or yourself
-    later) commence the next step.  Conscious targets are gated by
-    the trust/consent system (not yet implemented); for now,
-    operate only resolves to unconscious / dead / severed targets
-    cleanly.
+    later) commence the next step.  Unconscious, dead and severed
+    targets open freely; a conscious patient has to trust you with
+    `heal` (see ``help trust``) or be restrained, or they resist
+    the knife.
 
     See ``help surgery`` for the procedure verbs underneath.
     """

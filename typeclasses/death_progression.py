@@ -11,8 +11,8 @@ The system works as follows:
 4. After time expires, final death occurs (permanent until manual revival)
 
 Duration is configurable via DEATH_PROGRESSION_DURATION in world/combat/constants.py:
-- Default: 360 seconds (6 minutes) - provides RP and revival window
-- Testing: Can be reduced to 60 (1 minute) or 120 (2 minutes) for faster iteration
+- Default: 90 seconds (1.5 minutes) - provides RP and revival window
+- Testing: Can be reduced to 30 or 60 seconds for faster iteration
 
 This creates urgency for medical response while making death less instantaneous.
 """
@@ -222,7 +222,7 @@ class DeathProgressionScript(DefaultScript):
         self._send_initial_message()
         
     def at_repeat(self):
-        """Called every 30 seconds during death progression."""
+        """Called every DEATH_PROGRESSION_CHECK_INTERVAL seconds during death progression."""
         character = self.obj
         if not character:
             # Log cleanup for invalid character

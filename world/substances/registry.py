@@ -4,7 +4,9 @@ Substances *declare* their effects; the existing medical condition
 system *applies and ticks* them.  No new runtime infrastructure —
 ``apply_substance`` translates declarations into mutations on the
 consumer's :class:`~world.medical.core.MedicalState` and lets the
-medical script's 12-second tick handle decay/recovery from there.
+medical script's tick (``MEDICAL_TICK_INTERVAL``, in
+:mod:`world.medical.constants` — the single source of truth for
+medical cadence) handle decay/recovery from there.
 
 Effect vocabulary (v1) — deliberately limited to what the medical
 system supports today:

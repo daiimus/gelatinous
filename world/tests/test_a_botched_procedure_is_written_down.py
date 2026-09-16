@@ -38,10 +38,12 @@ function that carries all of them.
 `_resolve_incise` writes live `Organ` objects through
 `_apply_collateral_damage` — 2 HP off everything in the location on a
 partial, 3 on a failure — and neither persisted nor re-read vitals.
-`save_medical_state` is the only persistence path and
-`MedicalScript.at_repeat` never calls it, so a reload restored those
-organs to their pre-incise HP while `db.surgical_state["incisions"]`
-**did** survive: an open incision on undamaged anatomy.
+`save_medical_state` is the only persistence path; at the time
+`MedicalScript.at_repeat` never called it (it has since #2937, but only
+when that script is running on the target, and a reload inside the tick
+window still lost the collateral), so a reload restored those organs to
+their pre-incise HP while `db.surgical_state["incisions"]` **did**
+survive: an open incision on undamaged anatomy.
 
 Repeated failed incises can also take a vital organ to 0. Nothing on
 this path fired `at_death` or started a script — the "walking dead"

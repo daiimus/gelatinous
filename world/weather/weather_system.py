@@ -72,7 +72,8 @@ class WeatherSystem:
         # Pick one line each from DISTINCT perceivable senses, so the lines we
         # show never echo each other (a visual + a smell, not two near-identical
         # visuals). Senses gate per CAPACITY_CONSUMERS spec §5: sight -> visual,
-        # hearing -> auditory; smell / touch / atmospheric always perceived.
+        # hearing -> auditory, smell -> olfactory; tactile / atmospheric are
+        # always perceived.
         # A looker missing a sense gets one extra line from those that remain.
         from world.perception import blocked_senses, has_reduced_perception
         blocked = blocked_senses(looker)
