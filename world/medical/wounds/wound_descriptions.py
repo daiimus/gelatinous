@@ -95,12 +95,13 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
     # Build format variables
     location_display = get_location_display_name(location, character)
     # (organ_display below depends on it)
-    # Humanize the organ token the same way location is humanized so
-    # templates using {organ} render "left eye" instead of "left_eye".
-    # Cheap str-level transform — organ-spec lookup is intentionally
-    # avoided here to keep this renderer independent of the ORGANS
-    # registry (the registry can grow species-specific entries in PR-G
-    # without rippling into the wound-description pipeline).
+    # Name the organ the way every other surface does (#3537): the
+    # harvested item, the chart and the operate picker call a synth's
+    # liver its "filter gland", and the wound line said "liver". The
+    # renderer already knows the character for its species bank, so the
+    # same species lookup applies here; unknown keys still fall back to
+    # the underscore-stripped name. (An older comment kept this renderer
+    # independent of the organ registry until species packs landed.)
     # FALLS BACK TO THE LOCATION. `DESTROYED_BY_LOCATION` overlays are
     # keyed by location and their prose says "{their} {organ}" — the
     # face overlay, for instance — because at a sensory surface the
@@ -111,7 +112,12 @@ def get_wound_description(injury_type, location, severity="Moderate", stage="fre
     # An empty token is never the right answer here: every template
     # using `{organ}` is describing something, and the location is what
     # that something is when no organ was named.
-    organ_display = (organ or location_display or "").replace("_", " ")
+    if organ:
+        from world.anatomy import get_organ_display_name, species_of
+        organ_display = get_organ_display_name(
+            organ, species_of(character) if character is not None else None)
+    else:
+        organ_display = (location_display or "").replace("_", " ")
     format_vars = {
         'severity': INJURY_SEVERITY_MAP.get(severity, severity.lower()),
         'location': location_display,

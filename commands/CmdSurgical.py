@@ -619,10 +619,12 @@ class CmdInstall(Command):
         # Find the target organ slot and its container.
         snapshot = get_organ_snapshot(target)
         target_organ_data = (snapshot.get("organs") or {}).get(organ_name)
+        from world.anatomy import get_organ_display_name, species_of
+        organ_display = get_organ_display_name(organ_name, species_of(target))  # #3537
         if target_organ_data is None:
             caller.msg(
                 f"{target.get_display_name(caller)} has no slot for a "
-                f"{organ_name.replace('_', ' ')}."
+                f"{organ_display}."
             )
             return
 
@@ -632,7 +634,7 @@ class CmdInstall(Command):
         # are surface-accessible and skip the incision requirement.
         if _incision_required(target_organ_data) and not has_incision(target, container):
             caller.msg(
-                f"You can't reach the {organ_name.replace('_', ' ')} "
+                f"You can't reach the {organ_display} "
                 f"slot — {container.replace('_', ' ')} isn't open. "
                 f"Try ``incise {target_phrase} at {container.replace('_', ' ')}``."
             )
