@@ -1089,7 +1089,7 @@ def first_char_name_first(caller, raw_string, **kwargs):
 
 |wWhat is your FIRST name?|n
 
-(2-30 characters, letters only)
+(2-30 characters, letters only; first and last name together may be at most 30)
 
 |w>|n """
     
@@ -1124,8 +1124,17 @@ def first_char_name_last(caller, raw_string, **kwargs):
             # done), which disconnects a first-time player mid-chargen.
             return first_char_name_last(caller, "", **kwargs)
         
-        # Check full name uniqueness
+        # The budget is COMBINED (#3436): `validate_name` caps the whole
+        # "First Last" at 30 while each field allows 2-30 on its own, so
+        # say so with the numbers instead of a bare "30 characters or
+        # less" the player was never shown coming.
         full_name = f"{first_name} {name}"
+        if len(full_name) > 30:
+            caller.msg(f"|rInvalid name: first and last name together may be at most 30 characters; "
+                       f"'{full_name}' is {len(full_name)}.|n")
+            return first_char_name_last(caller, "", **kwargs)
+
+        # Check full name uniqueness
         is_valid, error = validate_name(full_name)
         if not is_valid:
             caller.msg(f"|r{error}|n")
@@ -1149,7 +1158,7 @@ First name: |c{first_name}|n
 
 |wWhat is your LAST name?|n
 
-(2-30 characters, letters only)
+(2-30 characters, letters only; first and last name together may be at most 30)
 
 |w>|n """
     
@@ -1212,7 +1221,7 @@ def first_char_height(caller, raw_string, **kwargs):
 
     text = f"""
 |w╔════════════════════════════════════════════════════════════════╗
-║  PHYSICAL CONFIGURATION                                         ║
+║  PHYSICAL CONFIGURATION                                        ║
 ╚════════════════════════════════════════════════════════════════╝|n
 
 Name: |c{first_name} {last_name}|n
@@ -1253,7 +1262,7 @@ def first_char_build(caller, raw_string, **kwargs):
 
     text = f"""
 |w╔════════════════════════════════════════════════════════════════╗
-║  PHYSICAL CONFIGURATION                                         ║
+║  PHYSICAL CONFIGURATION                                        ║
 ╚════════════════════════════════════════════════════════════════╝|n
 
 Name: |c{first_name} {last_name}|n
@@ -1295,7 +1304,7 @@ def first_char_hair_color(caller, raw_string, **kwargs):
 
     text = f"""
 |w╔════════════════════════════════════════════════════════════════╗
-║  PHYSICAL CONFIGURATION                                         ║
+║  PHYSICAL CONFIGURATION                                        ║
 ╚════════════════════════════════════════════════════════════════╝|n
 
 Name: |c{first_name} {last_name}|n
@@ -1345,7 +1354,7 @@ def first_char_hair_style(caller, raw_string, **kwargs):
 
     text = f"""
 |w╔════════════════════════════════════════════════════════════════╗
-║  PHYSICAL CONFIGURATION                                         ║
+║  PHYSICAL CONFIGURATION                                        ║
 ╚════════════════════════════════════════════════════════════════╝|n
 
 Name: |c{first_name} {last_name}|n

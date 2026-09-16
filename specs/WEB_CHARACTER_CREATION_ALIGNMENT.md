@@ -145,7 +145,7 @@ charname = f"{first_name} {last_name}"
 > first death renamed the clone straight to "First Last II".
 
 **Validation:**
-- 2-30 characters each
+- 2-30 characters each, and **first and last together at most 30** — the shared `validate_name` caps the combined name; both doors now say so (#3436)
 - Regex: `^[a-zA-Z][a-zA-Z\-']*[a-zA-Z]$`
 - Check uniqueness of full name
 

@@ -71,7 +71,7 @@ class CharacterForm(EvenniaCharacterForm):
         max_length=30,
         min_length=2,
         label="First Name",
-        help_text="Your character's first name (2-30 characters)",
+        help_text="Your character's first name (2-30 characters; first and last together may be at most 30)",
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': 'First name'
@@ -82,7 +82,7 @@ class CharacterForm(EvenniaCharacterForm):
         max_length=30,
         min_length=2,
         label="Last Name",
-        help_text="Your character's last name (2-30 characters)",
+        help_text="Your character's last name (2-30 characters; first and last together may be at most 30)",
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': 'Last name'
@@ -204,10 +204,19 @@ class CharacterForm(EvenniaCharacterForm):
         first_name = cleaned_data.get('first_name')
         last_name = cleaned_data.get('last_name')
         if first_name and last_name:
-            from commands.charcreate import validate_name
-            is_valid, error = validate_name(f"{first_name} {last_name}")
-            if not is_valid:
-                raise forms.ValidationError(error)
+            full_name = f"{first_name} {last_name}"
+            # The budget is COMBINED (#3436): both fields allow 2-30 on
+            # their own, the MUD validator caps the pair at 30. Say so on
+            # the field the player is looking at, with the numbers.
+            if len(full_name) > 30:
+                self.add_error('last_name',
+                               f"First and last name together may be at most 30 characters; "
+                               f"'{full_name}' is {len(full_name)}.")
+            else:
+                from commands.charcreate import validate_name
+                is_valid, error = validate_name(full_name)
+                if not is_valid:
+                    raise forms.ValidationError(error)
         
         # IntegerField should have already converted these to int
         # If a field failed validation, it won't be in cleaned_data
