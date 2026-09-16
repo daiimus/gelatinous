@@ -1241,6 +1241,23 @@ class CmdUndress(Command):
         if not worn_dict:
             return []
 
+        # Heal as we read (#3554), the way `Character.get_worn_items` and
+        # the limb's own `return_appearance` do: an entry whose garment was
+        # destroyed deserializes to None, and one whose garment has left
+        # the limb by any door is no longer worn on it. Write the pruned
+        # ledger back so the drift does not survive to the next verb.
+        healed = {}
+        for loc, items in worn_dict.items():
+            live = [it for it in (items or [])
+                    if it is not None and getattr(it, "pk", None) and it.location is target]
+            if live:
+                healed[loc] = live
+        if healed != worn_dict:
+            target.db.worn_items = healed
+            worn_dict = healed
+            if not worn_dict:
+                return []
+
         all_items = []
         for items in worn_dict.values():
             for item in (items or []):
