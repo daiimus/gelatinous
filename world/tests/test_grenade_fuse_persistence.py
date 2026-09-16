@@ -63,6 +63,36 @@ class TestFuseSweep(TestCase):
         self.assertEqual(rearmed, 1)
 
 
+    def test_a_stuck_grenade_rearms_under_the_sticky_ticker(self):
+        """#3467: a grenade stuck to armor must re-arm under the ticker
+        that narrates it, not the silent standalone one."""
+        g = _grenade(deadline=time.time() + 8)
+        mock_qs = MagicMock(); mock_qs.distinct.return_value = [g]
+        with patch("evennia.objects.models.ObjectDB") as db, \
+                patch.object(xu, "_grenade_is_stuck_to_armor", return_value=True), \
+                patch.object(xu, "start_grenade_ticker") as sticky, \
+                patch.object(xu, "start_standalone_grenade_ticker") as standalone, \
+                patch.object(xu.utils, "delay"):
+            db.objects.filter.return_value = mock_qs
+            rearmed, detonated = xu.sweep_armed_grenades()
+        self.assertEqual((rearmed, detonated), (1, 0))
+        sticky.assert_called_once_with(g)
+        standalone.assert_not_called()
+
+    def test_an_unstuck_grenade_still_uses_the_standalone_ticker(self):
+        """Control: nothing stuck -> the silent standalone ticker, as before."""
+        g = _grenade(deadline=time.time() + 8)
+        mock_qs = MagicMock(); mock_qs.distinct.return_value = [g]
+        with patch("evennia.objects.models.ObjectDB") as db, \
+                patch.object(xu, "_grenade_is_stuck_to_armor", return_value=False), \
+                patch.object(xu, "start_grenade_ticker") as sticky, \
+                patch.object(xu, "start_standalone_grenade_ticker") as standalone, \
+                patch.object(xu.utils, "delay"):
+            db.objects.filter.return_value = mock_qs
+            xu.sweep_armed_grenades()
+        standalone.assert_called_once_with(g)
+        sticky.assert_not_called()
+
 class TestDeadlineStamp(TestCase):
     def test_standalone_ticker_stamps_the_deadline(self):
         g = _grenade()

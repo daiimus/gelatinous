@@ -782,6 +782,15 @@ def explode_standalone_grenade(grenade):
         raise
 
 
+def _grenade_is_stuck_to_armor(grenade):
+    """True when a grenade is magnetically clamped to an armor item — the
+    state ``start_grenade_ticker`` narrates with per-second "live grenade
+    stuck" warnings and ``start_standalone_grenade_ticker`` does not.
+    Mirrors the live ticker's own stuck test (#3467)."""
+    from typeclasses.items import Item
+    return isinstance(grenade.location, Item) and grenade.db.stuck_to_armor is not None
+
+
 def sweep_armed_grenades():
     """#505: fuses don't survive a reload — the per-second utils.delay
     chains die with the process, freezing armed grenades mid-fuse (and
@@ -804,7 +813,14 @@ def sweep_armed_grenades():
             if remaining > 0:
                 setattr(obj.ndb, NDB_COUNTDOWN_REMAINING,
                         max(1, int(remaining)))
-                start_standalone_grenade_ticker(obj)
+                # A grenade stuck to armor was ticking under the
+                # sticky-aware ticker before the reload; re-arm it there
+                # so the room and wearer keep their per-second warnings
+                # rather than a silent countdown (#3467).
+                if _grenade_is_stuck_to_armor(obj):
+                    start_grenade_ticker(obj)
+                else:
+                    start_standalone_grenade_ticker(obj)
                 rearmed += 1
             else:
                 setattr(obj.ndb, NDB_COUNTDOWN_REMAINING, 0)
