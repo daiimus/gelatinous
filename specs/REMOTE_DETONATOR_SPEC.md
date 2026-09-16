@@ -409,16 +409,17 @@ def remote_detonate_explosive(explosive):
     Remotely detonate an explosive by pulling its pin.
     Starts normal fuse countdown - does NOT bypass explosive behavior.
     
-    NOTE: DB_PIN_PULLED constant imported at top of CmdThrow.py via:
+    NOTE (2026-09-15, #3386): the pin flag is the raw attribute `db.pin_pulled`; the `DB_PIN_PULLED` constant this section once cited was never read by any code and was deleted. Explosives are a backbone of the mining experience, so the attribute contract lives HERE: `pin_pulled`, `blast_damage`, `blast_radius`, `dud_chance`, `chain_trigger`, `requires_pin`, `detonation_deadline`.
+    (was:) DB_PIN_PULLED constant imported at top of CmdThrow.py via:
           from world.combat.constants import *
     """
     
     # Check if already detonating (use constant from world.combat.constants)
-    if getattr(explosive.db, DB_PIN_PULLED, False):
+    if explosive.db.pin_pulled:
         return False, "already_active"
     
     # Pull the pin (same as manual pull) - use constant
-    setattr(explosive.db, DB_PIN_PULLED, True)
+    explosive.db.pin_pulled = True
     
     # Get fuse time from explosive
     fuse_time = getattr(explosive.db, 'fuse_time', 8)
@@ -519,7 +520,7 @@ remote_detonate(explosive) → pull_pin(explosive) → start_countdown(explosive
 **Scenario 1: Pin Already Pulled**
 ```python
 # Someone manually pulls pin on grenade → countdown starts
-# Remote detonation attempt → check DB_PIN_PULLED flag
+# Remote detonation attempt → check `db.pin_pulled`
 # Message: "That explosive is already detonating!"
 # No re-trigger, countdown continues normally
 ```
@@ -527,7 +528,7 @@ remote_detonate(explosive) → pull_pin(explosive) → start_countdown(explosive
 **Scenario 2: Multiple Detonators**
 ```python
 # Detonator A detonates grenade → countdown starts
-# Detonator B attempts detonation → check DB_PIN_PULLED flag
+# Detonator B attempts detonation → check `db.pin_pulled`
 # Message: "That explosive is already detonating!"
 # Prevents exploit of resetting/extending countdown
 ```
@@ -546,8 +547,8 @@ remote_detonate(explosive) → pull_pin(explosive) → start_countdown(explosive
 **Scenario 2: Trap + Remote**
 ```python
 # Rigged explosive scanned by detonator
-# Someone triggers trap → DB_PIN_PULLED flag set, 1s countdown starts
-# Remote detonation attempt → check DB_PIN_PULLED flag
+# Someone triggers trap → `db.pin_pulled` set, 1s countdown starts
+# Remote detonation attempt → check `db.pin_pulled`
 # Message: "That explosive is already detonating!"
 # Cannot re-trigger during countdown
 ```
@@ -643,7 +644,7 @@ def at_delete(self):
 **3. New Commands** (`commands/CmdExplosives.py`)
 ```python
 # NOTE: All detonator commands live in CmdExplosives.py (the explosives command file)
-# NOTE: Constants like DB_PIN_PULLED are already imported at top of file via:
+# NOTE (2026-09-15): attributes are addressed by raw name (`db.pin_pulled`); no DB_* constants exist (#3386). (was:) Constants like DB_PIN_PULLED are already imported at top of file via:
 #       from world.combat.constants import *
 
 class CmdScan(Command):
@@ -760,7 +761,7 @@ These decisions were made during the specification phase to resolve implementati
 **1. Already-Active Grenade Behavior**
 - **Decision:** Show "already detonating" message, don't re-trigger
 - **Rationale:** Prevents exploits and maintains predictability
-- **Implementation:** Check `DB_PIN_PULLED` flag before remote detonation (constant from `world.combat.constants`)
+- **Implementation:** Check `db.pin_pulled` before remote detonation (raw attribute; the constant was deleted in #3386)
 
 **2. Code Organization**
 - **Decision:** Detonator commands live in `commands/CmdExplosives.py` (the dedicated explosives command file)
@@ -792,12 +793,12 @@ These decisions were made during the specification phase to resolve implementati
 **7. Pin State Handling**
 - **Decision:** Pin state doesn't matter for remote detonation
 - **Rationale:** Remote detonation can pull pin even if already pulled (though already-active check prevents re-trigger)
-- **Implementation:** `pull_pin()` function handles `DB_PIN_PULLED` constant internally
+- **Implementation:** `pull_pin()` sets `db.pin_pulled` internally
 
 **8. Fuse Countdown Preservation**
 - **Decision:** Remote detonation preserves and respects existing fuse countdown
 - **Rationale:** If someone manually pulled pin, remote detonation doesn't interfere with active countdown
-- **Implementation:** Check `DB_PIN_PULLED` flag before calling `pull_pin()`
+- **Implementation:** Check `db.pin_pulled` before calling `pull_pin()`
 
 ---
 
