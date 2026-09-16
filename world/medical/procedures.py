@@ -945,8 +945,11 @@ def _resolve_harvest(actor, target, *, organ_name: str, location: str,
     # either command's picker, so the rule lives where every door lands.
     from world.medical.removable import can_harvest_organ
     from world.anatomy.species import species_of
+    from world.anatomy.organs import get_organ_display_name
+    # Species-named in every message below (#3537).
+    organ_display = get_organ_display_name(organ_name, species_of(target))
     if not can_harvest_organ(organ_name, organ_data, species_of(target)):
-        actor.msg(f"The {organ_name.replace('_', ' ')} is not something "
+        actor.msg(f"The {organ_display} is not something "
                   f"that can be taken out.")
         return
 
@@ -961,7 +964,7 @@ def _resolve_harvest(actor, target, *, organ_name: str, location: str,
     display = organ_data.get("display_location") or container
     if display == container and not has_incision(target, container):
         actor.msg(
-            f"You reach for the {organ_name.replace('_', ' ')} but "
+            f"You reach for the {organ_display} but "
             f"{target.get_display_name(actor)}'s "
             f"{container.replace('_', ' ')} isn't open — there's no "
             f"incision to work through."
@@ -1016,14 +1019,14 @@ def _resolve_harvest(actor, target, *, organ_name: str, location: str,
             # "skeletal remains" read as plural and "remains is down to
             # bone" is the kind of agreement bug this audit keeps finding.
             actor.msg(
-                f"There is no {organ_name.replace('_', ' ')} left to take in "
+                f"There is no {organ_display} left to take in "
                 f"{target.get_display_name(actor)} — nothing but bone."
             )
             from world.medical.charts import mark_running_step_failed
             mark_running_step_failed(
                 target,
                 outcome=(
-                    f"{organ_name.replace('_', ' ')} long since gone — "
+                    f"{organ_display} long since gone — "
                     f"skeletal remains"
                 ),
             )
@@ -1041,7 +1044,7 @@ def _resolve_harvest(actor, target, *, organ_name: str, location: str,
         seed_infection(target, location)
         seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["harvest"])
         actor.msg(
-            f"Your hands slip mid-extraction. The {organ_name.replace('_', ' ')} "
+            f"Your hands slip mid-extraction. The {organ_display} "
             f"comes out badly mangled."
         )
         # Even failed harvest tears the organ out — mark it removed
@@ -1073,14 +1076,14 @@ def _resolve_harvest(actor, target, *, organ_name: str, location: str,
     seed_pain(target, location, CONSCIOUS_PAIN_SEVERITY["harvest"])
 
     actor.msg(
-        f"You extract the {organ_name.replace('_', ' ')} from "
+        f"You extract the {organ_display} from "
         f"{target.get_display_name(actor)}'s {location.replace('_', ' ')}."
     )
     if room is not None:
         msg_room_identity(
             location=room,
             template=(
-                f"{{actor}} extracts the {organ_name.replace('_', ' ')} "
+                f"{{actor}} extracts the {organ_display} "
                 f"from {{patient}}'s {location.replace('_', ' ')}."
             ),
             char_refs={"actor": actor, "patient": target},

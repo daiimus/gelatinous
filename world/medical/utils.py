@@ -603,10 +603,15 @@ def get_medical_status_summary(character):
                      if organ.current_hp < organ.max_hp]
     if damaged_organs:
         lines.append("Damaged Organs:")
+        # Species-named like the organ table and the chart (#3537): a
+        # synth's liver is its "filter gland" here too.
+        from world.anatomy import get_organ_display_name, species_of
+        species = species_of(character)
         for organ_name in damaged_organs:
             organ = medical_state.organs[organ_name]
             hp_percent = (organ.current_hp / organ.max_hp) * 100
-            lines.append(f"  - {organ_name}: {hp_percent:.1f}% functional")
+            lines.append(f"  - {get_organ_display_name(organ_name, species)}:"
+                         f" {hp_percent:.1f}% functional")
             
     return "\n".join(lines)
 
