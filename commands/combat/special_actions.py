@@ -105,6 +105,16 @@ class CmdGrapple(Command):
             caller.msg(MSG_GRAPPLE_HANDLER_ERROR)
             return
 
+        # A held character cannot start a grapple (GRAPPLE_SYSTEM_SPEC
+        # prerequisites; #3352). Refused HERE, before the named target is
+        # pulled into combat, through the shared guard the other
+        # restrained actions read -- `escape` is the way out of a hold.
+        from world.combat.grappling import validate_grapple_action
+        can_act, why = validate_grapple_action(handler, caller, "grapple")
+        if not can_act:
+            caller.msg(why)
+            return
+
         # --- Add caller and target to combat if not already in ---
         # Record if the caller initiated combat with this action
         caller_initiated_combat_this_action = not any(e["char"] == caller for e in handler.db.combatants)

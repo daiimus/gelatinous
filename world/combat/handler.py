@@ -689,10 +689,17 @@ class CombatHandler(DefaultScript):
                     # Fall through to normal action processing
                 else:
                     self._handle_yielding_turn(char, current_entry)
+                    # The turn is spent. An intent queued before the hold
+                    # must not outlive it and fire rounds later (#3352).
+                    current_entry[DB_COMBAT_ACTION] = None
+                    current_entry[DB_COMBAT_ACTION_TARGET] = None
                     continue
 
             # Handle being grappled (auto resist unless yielding)
             if resolve_auto_escape(self, char, current_entry, combatants_list):
+                # Same expiry: the struggle consumed the turn (#3352).
+                current_entry[DB_COMBAT_ACTION] = None
+                current_entry[DB_COMBAT_ACTION_TARGET] = None
                 continue
 
             # Process combat action intent
