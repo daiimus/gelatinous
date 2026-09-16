@@ -442,6 +442,21 @@ class VerbChoiceRouting(TestCase):
         self.assertEqual(result, "node_suture_location")
         self.assertEqual(caller.ndb._operate_pending_verb, "suture")
 
+    def test_autopsy_confirms_exactly_once(self):
+        """#3540: autopsy needs no further picks, so its branch drops the
+        step on the chart through the shared helper -- which confirms --
+        and then confirmed again itself ("Step added:" then "Added:")."""
+        from commands.CmdOperate import _process_verb_choice
+        target = _make_target()
+        target.db.death_time = 1          # a deceased subject: autopsy is offered
+        caller = _make_caller(target)
+        result = _process_verb_choice(caller, "6")
+        self.assertEqual(result, "node_top")
+        confirmations = [m for m in caller.msg_log if "dded" in str(m)]
+        self.assertEqual(len(confirmations), 1, caller.msg_log)
+        self.assertTrue(str(confirmations[0]).startswith("|wStep added:|n"),
+                        caller.msg_log)
+
 
 # ---------------------------------------------------------------------
 # Install location helper
