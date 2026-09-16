@@ -475,16 +475,13 @@ DB_FUSE_TIME = "fuse_time"
 #: grenade that stayed 1-second after being un-rigged is a worse bug
 #: than the one being fixed.
 TRAP_FUSE_TIME = 1
-DB_BLAST_DAMAGE = "blast_damage"
-DB_CHAIN_TRIGGER = "chain_trigger"
-DB_REQUIRES_PIN = "requires_pin"
-DB_DUD_CHANCE = "dud_chance"
-DB_BLAST_RADIUS = "blast_radius"
-DB_PIN_PULLED = "pin_pulled"
-#: #505 — the PERSISTED detonation deadline (epoch seconds). ndb fuse
-#: chains die on reload; this survives, and the at_server_start sweep
-#: re-arms live fuses / cooks off overdue ones from it.
-DB_DETONATION_DEADLINE = "detonation_deadline"
+# Explosive attributes are addressed by their raw names everywhere —
+# `db.pin_pulled`, `db.blast_damage`, `db.detonation_deadline`, ... — and
+# REMOTE_DETONATOR_SPEC / STICKY_GRENADE_SPEC document that contract.
+# The DB_* constants once declared here were never read by any code
+# and were deleted (#3386). `detonation_deadline` (#505) is the
+# PERSISTED epoch-seconds deadline the at_server_start sweep re-arms
+# fuses from; ndb fuse chains die on reload, that attribute survives.
 
 # Exit properties
 DB_IS_EDGE = "is_edge"
@@ -711,8 +708,6 @@ MSG_WREST_IN_COMBAT = "You cannot wrest items while in combat. Use 'disarm' inst
 MSG_WREST_NO_FREE_HANDS = "You need at least one free hand to grab something."
 MSG_WREST_TARGET_NOT_FOUND = "You cannot find '{target}' here."
 MSG_WREST_OBJECT_NOT_IN_HANDS = "'{target}' is not holding '{object}' in their hands."
-MSG_WREST_OBJECT_NOT_FOUND = "You cannot find '{object}' to wrest."
-MSG_WREST_SAME_ROOM_REQUIRED = "You must be in the same room as '{target}' to wrest from them."
 
 # Throw command messages
 MSG_THROW_NOTHING_WIELDED = "You must be holding something to throw it."

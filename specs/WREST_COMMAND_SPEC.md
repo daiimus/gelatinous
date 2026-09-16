@@ -134,8 +134,7 @@ def is_target_grappled(target):
 - **No free hands**: "You need at least one free hand to grab something."
 - **Target not found**: "You cannot find '<target>' here."
 - **Object not in hands**: "'<target>' is not holding '<object>' in their hands."
-- **Object not found**: "You cannot find '<object>' to wrest."
-- **Same room required**: "You must be in the same room as '<target>' to wrest from them."
+- _(2026-09-15, #3454: two rows deleted here — "Object not found" and "Same room required". Neither could fire: the target lookup was rerouted through the identity pipeline in 2026-05 (room-scoped, perception-filtered), so a cross-room target can never resolve, and the object search covers only the target's hands, so "not in their hands" is already "Target not found"/"nothing in hand". Their constants were deleted rather than widening the searches, which would also have leaked stealth presence.)_
 
 ### Edge Cases
 - **Multiple objects same name**: Grabs first match, user must try again for others
@@ -189,7 +188,6 @@ def is_target_grappled(target):
 - `MSG_WREST_NO_FREE_HANDS`
 - `MSG_WREST_TARGET_NOT_FOUND`
 - `MSG_WREST_OBJECT_NOT_IN_HANDS`
-- `MSG_WREST_OBJECT_NOT_FOUND`
 
 ### Command Location
 - **File**: `commands/CmdInventory.py` — `CmdWrest` (key `"wrest"`), with related logic in `commands/combat/special_actions.py`
