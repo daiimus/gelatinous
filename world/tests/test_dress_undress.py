@@ -264,9 +264,10 @@ class WornItemsRendering(TestCase):
         stub = SimpleNamespace()
         stub.db = SimpleNamespace(worn_items=worn_dict)
         stub.get_display_name = lambda looker: "stub"
-        # The items have to look WORN ON THIS LIMB. `_build_worn_items_line`
-        # skips anything without a `pk` or whose `location` is not the
-        # appendage -- guards added by #2456, because a deleted item
+        # The items have to look WORN ON THIS LIMB. `worn_garments` (the
+        # ledger reader the line is built from, #3575) prunes anything
+        # without a `pk` or whose `location` is not the appendage --
+        # guards added by #2456, because a deleted item
         # deserialised to None and crashed `return_appearance`, and
         # "an item that has left the limb by any door is likewise no
         # longer worn on it".
@@ -280,7 +281,9 @@ class WornItemsRendering(TestCase):
                     item.pk = id(item)
                 if not hasattr(item, "location"):
                     item.location = stub
-        # Bind the unbound method.
+        # Bind the unbound methods: the line is built from the limb's own
+        # `worn_garments` answer.
+        stub.worn_garments = Appendage.worn_garments.__get__(stub, type(stub))
         stub._build_worn_items_line = (
             Appendage._build_worn_items_line.__get__(stub, type(stub))
         )

@@ -54,6 +54,10 @@ can_contest(target) = is_conscious(target) and not is_restrained(target)
 ```
 
 * **Unconscious / dead** → cannot contest → **free action** (the existing gate).
+* **Remains** — a corpse, a severed head, a severed limb — cannot contest →
+  **free action**. `frisk`, `get … from`, `dress` and `undress` need no trust on
+  any of them; a severed part is a corpse fragment and answers to the corpse's
+  verbs (#3575, 2026-09-16).
 * **Restrained** → cannot contest → **free action**. Restraint comes from a
   **grapple** *or* from a **restraint device** — e.g. being strapped into a
   healing pod or a restraint chair. A grappled or pod-bound patient cannot

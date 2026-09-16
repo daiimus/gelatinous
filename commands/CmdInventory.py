@@ -1335,12 +1335,12 @@ class CmdFrisk(Command):
             caller.msg("You can't frisk yourself.")
             return
             
-        # Corpse objects (not characters) are always searchable loot.
-        is_corpse = (
-            (hasattr(target, 'typeclass_path')
-             and 'corpse' in target.typeclass_path.lower())
-            or target.__class__.__name__ == 'Corpse'
-        )
+        # Remains -- a corpse, a severed head, a severed limb -- are always
+        # searchable loot: nothing living contests them (#3575, extending
+        # the corpse rule to every corpse fragment).
+        from typeclasses.corpse import Corpse
+        from typeclasses.items import Appendage
+        is_corpse = isinstance(target, (Corpse, Appendage))
         frisk_reason = "corpse" if is_corpse else "search"
 
         # Trust/consent gate (TRUST_AND_CONSENT_SPEC §3.2, `search`
@@ -1380,6 +1380,8 @@ class CmdFrisk(Command):
         
         pronouns = pronoun_map.get(gender, pronoun_map['neutral'])
         them = pronouns['them']
+        if isinstance(target, Appendage):
+            them = "it"      # a limb is an it, whatever body it came from
         
         # Send action message to caller
         target_name = target.get_display_name(caller)
@@ -1423,7 +1425,12 @@ class CmdFrisk(Command):
         carried — the pockets a mere look never shows — plus tokens."""
         # Worn: the wearer's real registry (the clothing mixin), falling
         # back to legacy per-item flags for non-mixin targets (corpses).
-        get_worn = getattr(target, "get_worn_items", None)
+        # `worn_garments` is the one question every body answers (#3575):
+        # a character from its registry, a corpse from contents + the
+        # death record, a severed part from its ledger. (`get_worn_items`
+        # on a corpse is deliberately only the disguise-essential subset,
+        # which under-reported a frisk.)
+        get_worn = getattr(target, "worn_garments", None)
         if callable(get_worn):
             worn_items = list(get_worn() or [])
         else:
