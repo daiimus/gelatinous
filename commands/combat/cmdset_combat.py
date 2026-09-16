@@ -16,7 +16,8 @@ from .core_actions import CmdAttack, CmdStop
 from .movement import CmdFlee, CmdRetreat, CmdAdvance, CmdCharge
 from .jump import CmdJump
 from .special_actions import CmdEscapeGrapple, CmdReleaseGrapple, CmdDisarm
-# Note: CmdLook moved to main character cmdset to be available outside combat
+# Note: no look command here -- `look` comes from Evennia's default character
+# cmdset, and its combat awareness rides override_place via return_appearance.
 
 
 class CombatCmdSet(CmdSet):
@@ -53,4 +54,4 @@ class CombatCmdSet(CmdSet):
         self.add(CmdReleaseGrapple)
         self.add(CmdDisarm)
         
-        # Note: CmdLook, CmdAim, and CmdGrapple moved to main character cmdset to be available outside combat
+        # Note: CmdAim and CmdGrapple moved to main character cmdset to be available outside combat

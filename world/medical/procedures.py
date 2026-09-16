@@ -913,11 +913,13 @@ def _resolve_incise(actor, target, *, location: str, **_) -> None:
     # objects -- 2 HP off everything in the location on a partial, 3 on
     # a failure -- and nothing here persisted it or re-read vitals.
     #
-    # `save_medical_state` is the only persistence path and
-    # `MedicalScript.at_repeat` never calls it, so a reload restored
-    # those organs to their pre-incise HP while `db.surgical_state`,
-    # written by `open_incision`, DID survive: an open incision on
-    # undamaged anatomy.
+    # `save_medical_state` is the only persistence path. Since #2937
+    # `MedicalScript.at_repeat` calls it on every tick, but that script
+    # is not guaranteed to be running on the target at all, and even
+    # when it is a reload inside the 60s window restored those organs
+    # to their pre-incise HP while `db.surgical_state`, written by
+    # `open_incision`, DID survive: an open incision on undamaged
+    # anatomy.
     #
     # And repeated failed incises can take a vital organ to 0. Nothing
     # on this path fired `at_death` or started a script, which is the

@@ -144,12 +144,14 @@ def release_on_death(npc: Any) -> None:
     * the call it came from stayed open in the ledger forever, with no
       outcome and nothing to answer for
     * the wreck kept its errand, so it read as still working
-    * and because :func:`world.souls.engine.think` returns early for
+    * and because :func:`world.souls.engine.think` returned early for
       any assigned soul, the unit's soul stayed **permanently asleep**
       -- even after being repaired, it would never think again
 
-    That last one is the quiet one: the precedence law that correctly
-    stops a live unit walking off a scene also bricks a dead one.
+    That last one is gone at the root: an assignment no longer silences
+    a soul, it hands it a band-0 `respond` job (#2384), and a dead
+    unit's job clears like any other. What still has to happen here is
+    the settling -- the call answered for, the errand dropped.
 
     Fail-soft throughout. Dying must never raise.
     """

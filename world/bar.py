@@ -833,7 +833,10 @@ def tender_at(fixture):
     return None
 
 
-#: covers thanks/thank you/thank ya, 'obliged' covers much obliged, etc.
+#: Substrings that read as thanks/acknowledgement in something said to an NPC
+#: (``LLMNpcMixin._is_gratitude``). Matched case-insensitively against the
+#: spoken content; 'thank' covers thanks/thank you/thank ya, 'obliged' covers
+#: much obliged, etc.
 GRATITUDE_TRIGGERS = (
     "thank", "cheers", "obliged", "appreciate", "good look", "nice one",
     "ta for", "much love",

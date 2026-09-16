@@ -9,9 +9,12 @@ block cooks them 1:1 into dishes and sells THOSE (GIG_PROTOTYPE_BUTCHER_SPEC
 start circulating through this same catalog — the recipes and contributions
 are already waiting.
 
-Contributions are empty for now (no nutrition substance is registered yet);
-the slots are the point — a future toxin-traced or drugged carcass flows its
-substances through the ingredient into the dish (spec §7 tier 3).
+Contributions are empty for now, but not for want of a substance: nutrition
+is registered (#2074), and a dish's nourishment is declared on its finished
+item as ``drink_effects {"nutrition": N}`` (world/prototypes.py). The catalog
+slots are the point for the tier after that — a future toxin-traced or drugged
+carcass flows its substances through the ingredient into the dish (spec §7
+tier 3).
 """
 
 #: Food component role (the ``ROLE_SPIRIT`` analogue).
@@ -125,7 +128,10 @@ def cook_yields(ingredient_counts):
 
 def dish_contributions(recipe_id):
     """Sum a dish's substance contributions from its ingredients — the same
-    additive model as ``world.bar.project_mix``. Empty today; the seam the
+    additive model as ``world.bar.project_mix``. Returns ``{}`` for every
+    dish today, and nothing in the game calls it (only the regression test
+    that pins the empty result): what an eater actually absorbs comes from
+    the finished item's own ``drink_effects``. This is the seam the
     provenance tier (spec §7 tier 3) flows through."""
     recipe = FOOD_RECIPES.get(recipe_id) or {}
     total = {}

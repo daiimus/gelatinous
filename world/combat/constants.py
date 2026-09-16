@@ -877,8 +877,8 @@ STAT_TIER_RANGES = [
 
 # Death progression timing
 # Total duration before permanent death (in seconds)
-# Default: 360 seconds (6 minutes) - provides RP and revival window
-# For testing: Can be reduced to 60 (1 minute) or 120 (2 minutes) for faster iteration
+# Default: 90 seconds (1.5 minutes) - provides RP and revival window
+# For testing: Can be reduced to 30 or 60 seconds for faster iteration
 DEATH_PROGRESSION_DURATION = 90
 
 # Number of progression messages to send during death window

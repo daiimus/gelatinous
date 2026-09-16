@@ -83,8 +83,9 @@ class CmdRoomProfile(default_cmds.MuxCommand):
     screen. Setting a type reports its crowd-pool routing immediately,
     so a street pool indoors is caught at set time.
 
-    Sense layers are authored with |w@roomsense|n; coordinates come
-    from |w@coordseed|n.
+    Sense layers are authored in build scripts by writing
+    |wroom.db.sense_descs|n — |w@room|n only shows them; coordinates
+    come from |w@coordseed|n.
     """
 
     key = "@room"

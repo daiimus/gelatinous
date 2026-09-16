@@ -2,11 +2,13 @@
 
 A minimal data + helpers layer that names body parts, corpses, and
 locations by species and decay stage.  Designed as a *minimal overlay*
-rather than a full anatomical refactor: humans are the assumed default,
-and the only species shipped at the time of writing; non-humans will
-register here when they exist, and severed items / organs / corpses
-will pick up the new vocabulary automatically because every rendering
-path consults these helpers.
+rather than a full anatomical refactor: humans are the assumed default
+and the fallback for an unknown species.  Non-humans register here
+alongside them: ``rat`` is hand-authored, while ``synthetic_humanoid``
+and ``robot`` are derived from ``human`` by deepcopy + targeted
+overrides — copy whichever of those two patterns fits a new species.
+Severed items / organs / corpses pick up the new vocabulary
+automatically because every rendering path consults these helpers.
 
 Design notes
 ============
@@ -1159,9 +1161,10 @@ SPECIES_DEFINITIONS = {
 #
 # This pass establishes the chassis identity: organs run a bit more
 # durable, and the body does NOT rot (it goes inert, never "rotting" /
-# "skeletal"). Blood-colour and live organ-name divergence are authored
-# in follow-up passes; until then a synthetic still bleeds the human
-# prose. Appendage names stay humanoid (arm/hand/leg) by design.
+# "skeletal"). Blood-colour (cobalt, ``blood_color`` below) and live
+# organ-name divergence (the ``_SYNTH_WETWARE`` table) have both landed;
+# the wound and severed prose ride the species banks. Appendage names
+# stay humanoid (arm/hand/leg) by design.
 SYNTH_ORGAN_DURABILITY = 1.25  # synthetic tissue/frame takes more punishment
 
 
@@ -1285,9 +1288,15 @@ SPECIES_DEFINITIONS["synthetic_humanoid"] = _derive_synthetic_humanoid(
 # the synthetic species also defers): per-organ ``inorganic`` flags
 # (note: ``is_augment_organ`` treats inorganic organs as installed
 # chrome, so a robot's native components must NOT be naively flagged
-# without handling that coupling), component organ-name divergence
-# (brain → "processor core", heart → "power core" — needs a species hook
-# in the organ-display path), and pruning breathing / blood_filtration.
+# without handling that coupling), and pruning breathing /
+# blood_filtration — the lungs and kidneys below are renamed and kept
+# (cooling units, coolant filters), not removed.
+#
+# Component organ-name divergence has since LANDED (#842): the
+# ``robot["organ_display"]`` table below maps 28 organs (brain →
+# "processor core", heart → "power core", left_femur → "left thigh
+# strut"), resolved ahead of the shared organic names by the species
+# hook ``world.anatomy.organs.get_organ_display_name(name, species)``.
 ROBOT_ORGAN_DURABILITY = 1.5  # armored frame + hardened components
 
 

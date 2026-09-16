@@ -622,7 +622,7 @@ System below).
 2. **Equipment System** 🔄 **READY**: Worn item integration architecture prepared  
 3. **Injury System** 🔄 **READY**: Medical condition display hooks established
 4. **Modification System** ◐ **PARTIAL**: Chrome/inorganic cybernetic rendering shipped (#511–#551 — see "Chrome / Inorganic Rendering" above); tattoos/piercings/scars still prepared-not-wired
-5. **Pronoun System** ✅ **COMPLETED**: Dynamic pronoun integration with $pron() support
+5. **Pronoun System** ✅ **COMPLETED**: Dynamic pronoun integration via brace tokens (`{their}`, `{they}`, `{name}`) resolved by `_process_description_variables`; FuncParser `$pron()` was never adopted (#3442/#3447)
 6. **Tailor System** 🔄 **READY**: Custom fitting commands for unique anatomies architecture prepared
 
 ### Architectural Considerations

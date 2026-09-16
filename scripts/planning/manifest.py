@@ -59,7 +59,7 @@ for bl in blocks:
 md=[]
 md.append("# City Scaffold — every building, named and placed (DRAFT)\n")
 md.append("> **Status:** 📋 DRAFT FOR OWNER VETO (2026-08-05). Generated against")
-md.append("> the Roof Plan v2 (flat 1:1 datums per building, stagger between,")
+md.append("> the Roof Plan v3 (flat 1:1 datums per building, stagger between,")
 md.append("> the Long Climb street→18, the 14-18 high town with skywalks).")
 md.append("> Every name, program, and height below is a proposal — strike,")
 md.append("> rename, or reassign per line; the generator re-derives in seconds.")

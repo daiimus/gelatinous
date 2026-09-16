@@ -1,12 +1,14 @@
 """Prompt construction + turn parsing for the LLM Gamemaster — backend-agnostic.
 
 The *portable* half of the LLM layer. The model fills a **constrained schema**
-every turn — ``{speech, action, tool, tool_argument}`` — guaranteed valid by the
-backend's grammar (the game passes ``TURN_SCHEMA``; the MLX sidecar enforces it
-via ``outlines``). ``speech``/``action`` hold the in-character reply; ``tool`` is
-the NPC's decision to act or to inform itself, routed to a **real command**
-(``world/llm`` + ``typeclasses/bar.py``). See
-``specs/proposals/LLM_GAMEMASTER_SPEC.md`` §4.4 (architecture) / §5.3 (loop).
+every turn — ``{speech, action, thought, tool, tool_argument}`` — guaranteed
+valid by the backend's grammar (the game passes ``TURN_SCHEMA``; the MLX sidecar
+enforces it via ``outlines``). ``speech``/``action``/``thought`` are the three
+rendered channels of the in-character turn; ``tool`` is the NPC's decision to
+act or to inform itself, routed to a **real command** (``world/llm`` +
+``typeclasses/llm_npc.py``, whose job tools run through
+``world.service.run_tool``). See ``specs/proposals/LLM_GAMEMASTER_SPEC.md``
+§2 (architecture) / §5.3 (loop).
 """
 
 import json

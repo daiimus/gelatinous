@@ -1,13 +1,14 @@
 """
-Bars (BARS_AND_RECIPES_SPEC) — the crafting station and its bartender.
+Bars (BARS_AND_RECIPES_SPEC) — the crafting station and its counter.
 
 ``BarCounter`` is the interactive counter: an ``@integrate`` room fixture (folds
 into the room description, not listed as a loose object, can't be picked up) that
 holds served drinks on its surface, carries the menu/register/ownership, and
-exposes the `read menu on <bar>` / `use <bar>` verbs. ``Bartender`` is an NPC that
-responds to a patron talking to it (the `to` command's structured directed
-speech) by making a drink from its menu, setting it on the bar, and taking
-payment diegetically (it says the price; no system text).
+exposes the `read menu on <bar>` / `use <bar>` verbs. Whoever is working it is an
+ordinary NPC standing a post, not a typeclass of its own (see the note at the
+foot of this file); `order` is just directed speech to them, and the serve path
+— menu, price, till, emote — is reached the same way a patron who knew their
+name would reach it.
 
 v1 is intentionally lenient where the spec defers (ownership gating, recipe-save
 UX) so the loop is testable; those are later slices.
@@ -533,13 +534,6 @@ class BarCounter(Seating, Item):
             names = iter_to_str([s["name"] for s in snacks])
             base += f"\n\nFree to pick at: {names}."
         return base
-
-
-# ---------------------------------------------------------------------------
-# The bartender NPC
-# ---------------------------------------------------------------------------
-#: Substrings that read as thanks/acknowledgement in something said near the
-#: bartender. Matched case-insensitively against the spoken content; 'thank'
 
 
 # `Bartender` is gone (#2378). An NPC is a `LLMNpc` whose

@@ -19,9 +19,10 @@ Consumers call :func:`check_consent`; the ``trust``/``distrust`` commands
 from evennia.utils.dbserialize import deserialize
 
 #: The grantable action classes (spec §3). A class maps to a set of gated
-#: commands; Phase 1 wires the ``dress`` (third-party clothing) and ``heal``
-#: (all-medical, deliberately blanket) consumers. ``escort``/``grab``/
-#: ``search`` grants are storable now, consumed by later phases.
+#: commands, and all five are live: ``dress`` (third-party clothing),
+#: ``heal`` (all-medical, deliberately blanket), ``search`` (``frisk``),
+#: ``escort`` (``follow`` and the movement coupling), and ``grab``
+#: (grapple as an uncontested hold rather than an attack).
 ACTION_CLASSES = ("dress", "escort", "grab", "heal", "search")
 
 

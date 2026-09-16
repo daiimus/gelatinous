@@ -200,8 +200,12 @@ class Character(
     @property
     def gender(self):
         """
-        Maps the existing sex attribute to Evennia's pronoun system.
-        Returns a string suitable for use with $pron() functions.
+        Maps the existing sex attribute to the grammar layer's gender
+        values. Pronoun-rendering consumers reach it through
+        `world.identity.get_apparent_gender`, which prefers an active
+        disguise keyword and falls back to this; that value selects the
+        `{their}`/`{they}` brace-token pronouns. `get_sdesc` reads this
+        property directly for the default sdesc keyword.
         
         Maps:
         - "male", "man", "masculine" -> "male"

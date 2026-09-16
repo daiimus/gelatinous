@@ -247,13 +247,17 @@ _EVENT_PHRASES = {
 
 
 def _ack_on_air(event: WorldEvent, dispatched: list) -> None:
-    """Dispatch acknowledges on 911MHz — through the base's REAL console
-    (RADIO_COMMS_SPEC §2.1 base station; no console, or console off/broken,
-    = no voice: the physical gate players can sabotage). Deterministic
-    template, delayed a beat so it lands after the report it answers.
-    A drained pool is announced too — "no units available" on a scanner
-    tells a listening crew the force is overwhelmed, which is the finite
-    pool made audible."""
+    """The acknowledgment on 911MHz, in the voices that own it: each
+    dispatched unit through its OWN comms, and a drained pool through
+    the OPERATOR's own `xmit` — the console is equipment, not a voice
+    (#2223). The physical gate is per-speaker rather than one desk
+    (RADIO_COMMS_SPEC §2.1): a unit with a wrecked comms organ stays
+    silent, and an operator with nothing worn or held and no powered
+    board she is seated at cannot key up. Deterministic template,
+    delayed a beat so it lands after the report it answers. A drained
+    pool is announced too — "no units available" on a scanner tells a
+    listening crew the force is overwhelmed, which is the finite pool
+    made audible."""
     try:
         from evennia.utils import delay
         from random import uniform

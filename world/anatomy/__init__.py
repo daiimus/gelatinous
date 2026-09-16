@@ -2,10 +2,10 @@
 
 Species-overlay data and helpers for body-location display, decay-tier
 naming, per-organ presentation prose, and per-severed-part default
-descriptions.  Currently ships only the ``human`` species; the
-registry is structured as a minimal overlay so non-humans can be
-added without refactoring corpse / severed-item / organ rendering
-code.
+descriptions.  Ships ``human``, ``rat``, and the human-derived
+``synthetic_humanoid`` and ``robot``; the registry is structured as a
+minimal overlay so further species can be added without refactoring
+corpse / severed-item / organ rendering code.
 
 Public surface:
 

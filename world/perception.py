@@ -9,11 +9,17 @@ sensory limitations. This module supplies the missing input: its ``can_see`` /
 ``can_hear`` / ``can_smell`` primitives read a looker's ``sight`` / ``hearing`` /
 ``smell`` capacities (honouring the chrome-eye / cyber-ear / cyber-nose override
 seams) and ``blocked_senses`` reports which sense categories are *blocked*.
-(``world.voice`` consumes the same primitives for its speech-attribution chain.)
+They are not a render-only input: stealth, radio, speech, emote, identity,
+exits, the director and the LLM NPC brains all gate on the same primitives, and
+``world.voice`` consumes them for its speech-attribution chain.
 
-Scope (decided, spec §5): this gates the *additive* sensory pools. The single-
-blob base room description stays valid as the visual layer — full base-desc
-sense decomposition is a future authoring lift, not a prerequisite.
+Scope (spec §5): this gates the *additive* sensory pools *and* the base room
+description — ``Room.get_display_desc`` composes the desc from only the sense
+layers the looker can perceive, so the single-blob visual desc drops for a blind
+looker and the authored non-visual layers (``db.sense_descs``) carry the room
+instead. Those layers stay opt-in per room, so a room without them renders for a
+sighted looker exactly as before; authoring them world-wide is the outstanding
+lift, not the mechanism.
 
 ``sight`` → visual, ``hearing`` → auditory, ``smell`` → olfactory (the nose
 organ). Tactile / gustatory / atmospheric are never gated here: ambient touch is

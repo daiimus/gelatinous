@@ -257,8 +257,9 @@ def ensure_comms_fitted() -> int:
 
 def ensure_base_station() -> Any | None:
     """Upkeep: the dispatch room carries its console (the
-    RADIO_COMMS_SPEC §2.1 base station — the voice that acknowledges
-    reports on 911MHz). Idempotent; in-process (heartbeat at_start).
+    RADIO_COMMS_SPEC §2.1 base station — the board an operator hears
+    911MHz through and keys up from, and the gate a dispatch order goes
+    out through). Idempotent; in-process (heartbeat at_start).
     Returns the station (existing or newly installed), or None without
     a designated dispatch room or base."""
     base = get_dispatch_room()
@@ -266,15 +267,15 @@ def ensure_base_station() -> Any | None:
         return None
     for obj in base.contents:
         if getattr(getattr(obj, "db", None), "is_base_station", None) is True:
-            # Typeclass self-heal: consoles installed before the answering
-            # brain existed swap up in place (attributes preserved).
+            # Typeclass self-heal: consoles installed before this
+            # typeclass existed swap up in place (attributes preserved).
             try:
                 from typeclasses.items import DispatchConsole
                 if not isinstance(obj, DispatchConsole):
                     obj.swap_typeclass(
                         "typeclasses.items.DispatchConsole",
                         clean_attributes=False, run_start_hooks=None)
-            except Exception:  # noqa: BLE001 — a dumb console still acks
+            except Exception:  # noqa: BLE001 — the desk works either way
                 pass
             return obj
     try:
@@ -288,9 +289,10 @@ def ensure_base_station() -> Any | None:
 
 
 def spawn_dispatch_operator(base: Any) -> Any:
-    """The human at the desk (Operator v1: Petra). Face-to-face she's a
-    GM-lane NPC; ON THE AIR the console's civic lane speaks AS her — her
-    voice, her register — so the far end of the radio is a person."""
+    """The human at the desk (Operator v1: Petra). A GM-lane NPC face
+    to face and ON THE AIR alike — her radio turns are hers, keyed
+    through her own `xmit` rather than spoken by the console (#2223,
+    #2228) — so the far end of the radio is a person."""
     from evennia import create_object
     from world.llm.personas import DISPATCH_OPERATOR_PERSONA
     op = create_object(

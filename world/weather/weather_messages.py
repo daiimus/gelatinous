@@ -20,8 +20,8 @@ Principles (shared with room and crowd authoring):
     same way; each should bring its own image, opening, and verb.
 
 Five sense layers, matching the room model: visual / auditory / olfactory /
-tactile / atmospheric. The system gates visual on sight and auditory on
-hearing; olfactory, tactile and atmospheric always show.
+tactile / atmospheric. The system gates visual on sight, auditory on hearing,
+and olfactory on smell; tactile and atmospheric always show.
 
 The WEATHER_MESSAGES dict (every weather type x time-of-day x sense) is built
 deterministically at import from:

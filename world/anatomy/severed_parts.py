@@ -18,10 +18,12 @@ Design notes
   :data:`world.anatomy.organs.ORGAN_DISPLAY` separation from
   :data:`world.medical.constants.ORGANS`).
 
-* **Species-keyed** so non-humans (when they exist) can register
-  their own anatomy prose without crowding the human entries.
-  Unknown species fall back to ``"human"`` via
-  :func:`get_severed_part_description`.
+* **Species-keyed** so non-humans register their own anatomy prose
+  without crowding the human entries — ``rat``, ``robot`` and
+  ``synthetic_humanoid`` each hold their own bank below.  A
+  registered species with no bank gets silence rather than somebody
+  else's flesh; only an *unknown* species falls back to ``"human"``
+  via :func:`get_severed_part_description`.
 
 * **Three conditions only** — ``pristine`` / ``damaged`` / ``putrid``,
   matching the :data:`world.combat.constants.ORGAN_CONDITION_BY_DECAY`
@@ -438,11 +440,13 @@ def get_severed_part_description(species, location, condition, inorganic=False):
         # A REGISTERED species with no bank gets SILENCE, not somebody
         # else's flesh. Only an unknown species falls back to human.
         #
-        # `SEVERED_PART_DESCRIPTIONS` covers human and rat;
-        # `SPECIES_DEFINITIONS` registers four. So robot and
-        # synthetic_humanoid landed on the "unknown species" fallback and
-        # a severed robot head described itself as "a severed human head
-        # ... weeping a thin rim of blood" (#2725).
+        # When this guard landed, `SEVERED_PART_DESCRIPTIONS` covered
+        # only human and rat while `SPECIES_DEFINITIONS` registered four,
+        # so robot and synthetic_humanoid fell to the "unknown species"
+        # fallback and a severed robot head described itself as "a severed
+        # human head ... weeping a thin rim of blood" (#2725). Both have
+        # banks now (#3362); the guard stays for the next species
+        # registered before its prose is written.
         #
         # Silence is the lesser wrong here, and it is the contract this
         # function already documents -- "Callers should treat empty as

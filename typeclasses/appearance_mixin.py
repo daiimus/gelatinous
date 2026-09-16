@@ -179,7 +179,7 @@ class AppearanceMixin:
                 # Only add each clothing item once, regardless of how many
                 # locations it covers
                 if clothing_item not in added_clothing_items:
-                    # Use new method with $pron() processing and color integration
+                    # Brace-token perspective substitution and color integration
                     desc = clothing_item.get_current_worn_desc_with_perspective(
                         looker, self
                     )

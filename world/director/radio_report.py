@@ -19,9 +19,11 @@ Consequences kept on purpose:
   cost audible.
 * **Failure is silence.** Refusal, timeout, nonsense, no location,
   debounce — no dispatch. The voice lane's acknowledgment is flavour;
-  only this lane moves steel, and the deterministic ack ("Dispatch
-  copies — an assault at <room>. 2 units responding.") is the honest
-  receipt that it did.
+  only this lane moves steel, and the deterministic ack is the honest
+  receipt that it did — each unit that rolled in its own voice ("Unit
+  42 responding — <room>."), or, when the pool is drained, the
+  operator's "Dispatch copies — an assault at <room>. No units
+  available."
 * **NPC traffic never re-dispatches.** Witness reports raise their
   event directly (world/director/witness.py); classifying their own
   air-traffic would double-roll the same incident.
