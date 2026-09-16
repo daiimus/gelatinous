@@ -10,10 +10,11 @@ The counter never closes; the faces change.
 The vacancy watcher rides the souls heartbeat; a dead, deleted, or
 desouled slot-keeper stamps that slot vacant, and once the grace
 elapses the policy fills it: `resleave` rebuilds the slot's named
-keeper from their blueprint (imprint restored minus the death gap, a
-real premium debited), `successor` offers the slot to the nearest
-unemployed soul. No candidate: the slot stays dark and the venue limps
-on its other shifts — a visibly tired counter, not a closed one.
+keeper from their blueprint (imprint restored minus the death gap —
+`world/imprint.GAP` owns that number — and a real premium debited),
+`successor` offers the slot to the nearest unemployed soul. No
+candidate: the slot stays dark and the venue limps on its other
+shifts — a visibly tired counter, not a closed one.
 """
 
 import time
@@ -24,7 +25,6 @@ POST_TAG = ("post", "souls")
 SWEEP_EVERY_BEATS = 10
 DEFAULT_DELAY = 6 * 3600          # vacancy grace before succession
 RESLEAVE_PREMIUM = 40             # what the insurer's till pays Maxwell
-RESLEAVE_GAP = 5400               # the last ~90min never made the backup
 
 
 def register_post(fixture, role, schedule="day", wage_rate=0.02,

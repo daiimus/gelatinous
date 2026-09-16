@@ -83,13 +83,13 @@ reason this spec is short.
   terminal, and restores everything with a timestamp earlier than
   `taken_at`. The body inherits the recorded `sleeve_uid`, so the face
   is the same face.
-* **The gap:** `taken_at = died_at - RESLEAVE_GAP` (5400s). The last
-  ~90 minutes never made the backup.
-  **Constant moved (noted 2026-09-11):** the live one is
-  `world/imprint.py::GAP` (still 5400). `RESLEAVE_GAP` survives at
-  `world/souls/posts.py:27` but nothing in that module reads it any
-  more — its only importer is the one-off
-  `scripts/builds/085_restore_the_cast.py`.
+* **The gap:** `taken_at = died_at - world/imprint.py::GAP` (5400s).
+  The last ~90 minutes never made the backup. `GAP` is the only place
+  that number lives; every reader goes through `imprint.cutoff_of()`,
+  which prefers a record's stored `taken_at` and falls back to the
+  derived value. (The duplicate `RESLEAVE_GAP` in
+  `world/souls/posts.py` was deleted with #3389; its one importer,
+  `scripts/builds/085_restore_the_cast.py`, now calls `cutoff_of()`.)
 
 ### 1.1 · The one design decision already made
 

@@ -207,10 +207,31 @@ def jump_on_explosive(caller, explosive):
 4. **Fallback**: Direct movement if no sky room configured (graceful degradation)
 
 **Fall Room Strategy**:
-1. **Exit-specified**: `exit.db.fall_room` points to specific crash site
-2. **Tagged rooms**: Fall rooms tagged with `fall_room_{destination_id}`
-3. **Dedicated crash sites**: Rooms with `db.is_fall_room = True` near destination
-4. **Fallback**: Use intended destination for soft landing
+
+> _(2026-09-15: strategies 2 and 3 are UNBUILT, and strategy 1 ships only
+> for edges. `grep -rn "is_fall_room\|fall_room_"` over every `.py` in the
+> repo finds no reader for the `fall_room_{destination_id}` tag or for
+> `db.is_fall_room` — nothing but this spec writes or reads them, so a
+> builder who follows the Builder Workflow below produces a tag and an
+> attribute that no code path consults. The one live `exit.db.fall_room`
+> read that decides where a body lands is the **edge**-landing path
+> (`handle_edge_fall_and_landing`), and only when the landing roll fails;
+> `world/mapping.py` also reads it, as map-export data, for both edge and
+> gap exits — so `fall_room` on a gap exit still matters to the map even
+> though the jump ignores it. The **gap**-failure path ignores
+> `fall_room` entirely and resolves the landing with
+> `follow_gravity_to_ground`, walking one-way `down` exits to `db.is_ground`
+> per the movement kernel in `specs/PARKOUR_TEMPLATE_LIBRARY.md` §0; the
+> helper written for the gap lookup, `get_fall_room_for_gap`, had no callers
+> and was deleted in #3392. Strategy 4's soft landing is therefore also
+> unbuilt for gaps — gravity, not the intended destination, decides.
+> Whether gaps SHOULD honour an authored crash site is an open owner call,
+> not a bug to fix from this note.)_
+
+1. **Exit-specified**: `exit.db.fall_room` points to specific crash site — _built for edges only (failed landing roll); ignored on gap failures_
+2. **Tagged rooms**: Fall rooms tagged with `fall_room_{destination_id}` — _UNBUILT, nothing reads this tag_
+3. **Dedicated crash sites**: Rooms with `db.is_fall_room = True` near destination — _UNBUILT, nothing reads this attribute_
+4. **Fallback**: Use intended destination for soft landing — _gaps fall by gravity to `db.is_ground` instead_
 
 **Future XYZ Integration**:
 - Sky rooms become normal traversable rooms at elevated coordinates
@@ -229,13 +250,17 @@ sky_room.db.desc = "You soar through the air between towering buildings..."
 
 # Create fall room for failures
 crash_site = create_object("typeclasses.rooms.Room", key="Alley Crash Site")
-crash_site.tags.add(f"fall_room_{rooftop_b.id}")
-crash_site.db.is_fall_room = True
+crash_site.tags.add(f"fall_room_{rooftop_b.id}")  # UNBUILT (2026-09-15): no reader
+crash_site.db.is_fall_room = True                 # UNBUILT (2026-09-15): no reader
+# For a gap, neither line above changes where the jumper lands: the failure
+# path walks `follow_gravity_to_ground` from the sky room. Give the column
+# below the gap real one-way `down` exits and set `db.is_ground` on the
+# bottom room — that is what actually places the body.
 
 # Configure gap exit
 gap_exit.db.is_gap = True
 gap_exit.db.gap_difficulty = 10
-gap_exit.db.fall_room = crash_site
+gap_exit.db.fall_room = crash_site  # read on EDGE landing failure only, not gaps
 ```
 
 #### Exit Property System
@@ -251,7 +276,7 @@ exit.db.is_gap = True
 exit.db.gap_difficulty = 10       # Higher difficulty for gap jumps
 exit.db.gap_distance = "wide"     # Descriptive distance category
 exit.db.fall_distance = 2         # Rooms fallen for gap jump failures
-exit.db.fall_room = room_obj       # Specific fall destination (optional)
+exit.db.fall_room = room_obj       # Specific fall destination (optional; EDGE landing failures only)
 
 # Sky room properties (pre-existing rooms)
 sky_room.db.is_sky_room = True     # Marks transit-only sky rooms
@@ -260,6 +285,8 @@ sky_room.db.destination_room = room2  # Where gap jump lands
 sky_room.tags.add("sky_room", category="room_type")  # For lookup
 
 # Fall room properties
+# UNBUILT (2026-09-15): both lines below are documentation only — no code in
+# the repo reads `db.is_fall_room` or the `fall_room_{id}` tag.
 fall_room.db.is_fall_room = True   # Marks crash landing sites
 fall_room.tags.add(f"fall_room_{destination.id}")  # For destination-specific falls
 
@@ -763,9 +790,11 @@ Based on the philosophy of heroic action and tactical depth:
     what the owner-ruled movement kernel in
     `specs/PARKOUR_TEMPLATE_LIBRARY.md` §0 prescribes for falls. But
     `exit.db.fall_room` is never consulted on a gap failure: the helper
-    written for it, `get_fall_room_for_gap` (`jump.py:1006-1022`), has no
-    callers, and the only live `fall_room` read is the edge-landing path at
-    `jump.py:1078-1083`. Whether gravity should override an authored crash
+    written for it, `get_fall_room_for_gap`, had no callers and was deleted
+    in #3392 (2026-09-15); the only live `fall_room` read that places a
+    body is the edge-landing path in `handle_edge_fall_and_landing`
+    (`world/mapping.py` reads it too, as map data). Whether gravity
+    should override an authored crash
     site for gaps is an owner call, not a bug to fix from this note — see
     the Fall Room Strategy note above.)_
 11. **Gap combat**: Counts as movement action if in combat (flee-like timing)

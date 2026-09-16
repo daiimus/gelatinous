@@ -1559,6 +1559,25 @@ def break_stick(grenade):
             grenade.location = armor.location  # same room as armor
 ```
 
+**As shipped** (`world/combat/explosives.py`): the live `break_stick()`
+clears the bond only — it does **not** relocate the grenade, because its
+callers already own that decision (an explosion deletes the object; a
+forcible removal would place it deliberately). It returns `True`/`False`
+for "was there a stick to break", so callers need no guard of their own.
+
+**Callers.** The three explosion terminators in
+`commands/explosion_utils.py` — `explode_standalone_grenade`,
+`explode_rigged_grenade` and `trigger_auto_defuse_explosion` — call it
+immediately before `grenade.delete()`, which is the *Clean up stuck
+state* step of the §Explosion Behavior pseudocode above (#3412). Before
+that wiring the step was skipped entirely: the garment kept a
+`stuck_grenade` Attribute row pointing at the deleted grenade. It was
+never player-visible (Evennia unpacks a deleted dbobj as `None`, so the
+`is not None` / truthiness guards in `CmdRemove.func`,
+`Item.return_appearance` and `get_stuck_grenades_on_character` all
+skipped correctly), but severance was an accident of the serializer
+rather than something the explosion performed.
+
 ---
 
 ## 11. Edge Cases & Special Situations

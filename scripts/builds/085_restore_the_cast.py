@@ -23,20 +23,23 @@ import time
 
 from evennia.utils.search import search_object
 
+from world import imprint
 from world.souls import engine
-from world.souls.posts import _install_keeper, _post_room, RESLEAVE_GAP
+from world.souls.posts import _install_keeper, _post_room
 
 now = time.time()
 
 
 def _restore_imprint(npc, post, shift):
-    """Give back what the imprint kept, minus the death gap."""
+    """Give back what the imprint kept, as of the backup.
+
+    The cutoff comes from `imprint.cutoff_of` — the record's own
+    `taken_at` where it has one, else `died_at - imprint.GAP`."""
     snap = (post.db.post_memory_snapshots or {}).get(shift) \
         or post.db.post_memory_snapshot
     if not snap:
         return 0
-    died = float(snap.get("died_at") or now)
-    cutoff = died - RESLEAVE_GAP
+    cutoff = imprint.cutoff_of(snap, now)
     mems = [r for r in (snap.get("memories") or [])
             if float(r.get("created", 0) or 0) < cutoff]
     npc.db.llm_memories = mems

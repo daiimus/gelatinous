@@ -8,10 +8,15 @@ Evennia conventions and backward compatibility.
 Functions remaining in this module:
     - Character state management (proximity, aim)
     - Weapon & item helpers
-    - Message formatting
-    - Validation helpers
+    - Display-name helpers
     - Stat management helpers
     - Combatant management (add, remove, cleanup)
+
+No combat-target validation helper lives here by design: #1584 rules
+that a downed body stays attackable, and the unreachable
+``validate_combat_target`` deleted in #3387 refused dead and
+unconscious targets — the surviving guards sit at the call sites
+(see ``commands/combat/core_actions.py``).
 
 Functions extracted to dedicated modules (re-exported here for
 backward compatibility):
@@ -31,7 +36,6 @@ from __future__ import annotations
 from random import randint
 
 from .constants import (
-    COLOR_NORMAL,
     DB_CHAR,
     DB_COMBAT_ACTION,
     DB_COMBAT_ACTION_TARGET,
@@ -321,28 +325,8 @@ def surplus_limb_initiative_bonus(char) -> int:
 
 
 # ===================================================================
-# MESSAGE FORMATTING
+# DISPLAY NAME HELPERS
 # ===================================================================
-
-def format_combat_message(template, **kwargs):
-    """
-    Format a combat message template with color codes preserved.
-    
-    Args:
-        template (str): Message template with {placeholders}
-        **kwargs: Values to substitute
-        
-    Returns:
-        str: Formatted message with proper color code termination
-    """
-    message = template.format(**kwargs)
-    
-    # Ensure message ends with color normal if it contains color codes
-    if "|" in message and not message.endswith(COLOR_NORMAL):
-        message += COLOR_NORMAL
-    
-    return message
-
 
 def get_display_name_safe(character, observer=None):
     """
@@ -364,57 +348,6 @@ def get_display_name_safe(character, observer=None):
         return character.key if hasattr(character, "key") else str(character)
     except Exception:
         return "someone"
-
-
-# ===================================================================
-# VALIDATION HELPERS
-# ===================================================================
-
-def validate_combat_target(caller, target, allow_self=False):
-    """
-    Validate a combat target is appropriate.
-    
-    Args:
-        caller: The character initiating combat
-        target: The target character
-        allow_self (bool): Whether self-targeting is allowed
-        
-    Returns:
-        tuple: (is_valid, error_message)
-    """
-    if not target:
-        return False, "Target not found."
-    
-    if not allow_self and target == caller:
-        return False, "You can't target yourself."
-    
-    if not hasattr(target, "location") or not target.location:
-        return False, "Target is not in a valid location."
-    
-    # Check if target is dead or unconscious
-    if hasattr(target, 'is_dead') and target.is_dead():
-        return False, f"{get_display_name_safe(target, caller)} is dead and cannot be targeted."
-    
-    if hasattr(target, 'is_unconscious') and target.is_unconscious():
-        return False, f"{get_display_name_safe(target, caller)} is unconscious and cannot be targeted."
-    
-    return True, ""
-
-
-def validate_in_same_room(char1, char2):
-    """
-    Check if two characters are in the same room.
-    
-    Args:
-        char1: First character
-        char2: Second character
-        
-    Returns:
-        bool: True if in same room
-    """
-    return (hasattr(char1, "location") and hasattr(char2, "location") and 
-            char1.location and char2.location and 
-            char1.location == char2.location)
 
 
 # ===================================================================
@@ -565,34 +498,6 @@ def sweep_stranded_aim_tells():
         except Exception:  # noqa: BLE001 — one bad row never stops the sweep
             continue
     return cleared
-
-
-def clear_mutual_aim(char1, char2):
-    """
-    Clear any mutual aiming relationships between two characters.
-    
-    Args:
-        char1: First character
-        char2: Second character
-    """
-    # Clear char1 aiming at char2
-    if hasattr(char1.ndb, NDB_AIMING_AT) and char1.ndb.aiming_at == char2:
-        del char1.ndb.aiming_at
-        if hasattr(char1.ndb, NDB_AIMING_DIRECTION):
-            del char1.ndb.aiming_direction
-    
-    # Clear char2 aiming at char1
-    if hasattr(char2.ndb, NDB_AIMING_AT) and char2.ndb.aiming_at == char1:
-        del char2.ndb.aiming_at
-        if hasattr(char2.ndb, NDB_AIMING_DIRECTION):
-            del char2.ndb.aiming_direction
-    
-    # Clear being aimed at relationships
-    if hasattr(char1.ndb, NDB_AIMED_AT_BY) and char1.ndb.aimed_at_by == char2:
-        del char1.ndb.aimed_at_by
-    
-    if hasattr(char2.ndb, NDB_AIMED_AT_BY) and char2.ndb.aimed_at_by == char1:
-        del char2.ndb.aimed_at_by
 
 
 # ===================================================================
