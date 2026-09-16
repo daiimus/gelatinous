@@ -256,11 +256,6 @@ def check_rigged_grenade(character, exit_obj):
                         setattr(obj.ndb, NDB_COUNTDOWN_REMAINING, 1)
                         start_standalone_grenade_ticker(obj)
 
-            # Sever the armor bond before the object goes (#3412); no-op
-            # when unstuck -- see `break_stick`'s docstring for the why.
-            from world.combat.utils import break_stick
-            break_stick(rigged_grenade)
-
             # Delete the rigged grenade
             rigged_grenade.delete()
 
@@ -773,11 +768,6 @@ def explode_standalone_grenade(grenade):
                     setattr(obj.ndb, NDB_COUNTDOWN_REMAINING, 1)
                     start_standalone_grenade_ticker(obj)
 
-        # Sever the armor bond before the object goes (#3412); no-op when
-        # unstuck -- see `break_stick`'s docstring for the why.
-        from world.combat.utils import break_stick
-        break_stick(grenade)
-
         # Clean up
         grenade.delete()
 
@@ -1100,11 +1090,6 @@ def trigger_auto_defuse_explosion(grenade):
 
                     # Start immediate explosion timer
                     utils.delay(0.5, trigger_auto_defuse_explosion, obj)
-
-        # Sever the armor bond before the object goes (#3412); no-op when
-        # unstuck -- see `break_stick`'s docstring for the why.
-        from world.combat.utils import break_stick
-        break_stick(grenade)
 
         # Clean up
         grenade.delete()

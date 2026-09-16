@@ -527,10 +527,11 @@ def break_stick(grenade) -> bool:
     Cleans up all bidirectional references.  The grenade's location is
     **not** changed — the caller must handle that separately.
 
-    Called by the three explosion terminators in
-    ``commands/explosion_utils.py`` immediately before ``delete()``
-    (#3412) — that is the spec's "clean up stuck state" step.  Safe to
-    call unconditionally: an unstuck grenade returns ``False`` untouched.
+    Called from ``Item.at_object_delete`` (#3552), so EVERY deletion of a
+    stuck grenade — an explosion, a builder's ``@destroy``, a sweep —
+    performs the spec's "clean up stuck state" step; #3412 first wired
+    it into the three explosion terminators only.  Safe to call
+    unconditionally: an unstuck grenade returns ``False`` untouched.
     Without this call the garment kept a ``stuck_grenade`` Attribute row
     pointing at a dead dbref; Evennia unpacks a deleted dbobj as ``None``
     so every reader skipped it, but the severance was an accident of the

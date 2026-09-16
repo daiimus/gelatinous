@@ -132,21 +132,6 @@ class GrenadeArmorBondSeverance(EvenniaTest):
 
     # -- controls ------------------------------------------------------
 
-    def test_the_dangling_ref_read_as_None(self):
-        """CONTROL for the whole issue, and for the instrument above.
-
-        Delete the grenade WITHOUT severing -- the old behaviour.  The
-        reader-level view (`armor.db.stuck_grenade`) is None, which is
-        why no player ever saw this; the raw row is NOT, which is what
-        the three tests above actually assert on.
-        """
-        self.grenade.delete()
-        self.assertIsNone(self.armor.db.stuck_grenade,
-                          "Evennia should unpack a deleted dbobj as None")
-        self.assertIsNotNone(_raw_bond(self.armor),
-                             "control is broken: the raw row should still "
-                             "hold the dead grenade's packed dbref")
-
     def test_an_unstuck_grenade_needs_no_severance(self):
         """CONTROL: the unconditional `break_stick()` call is a no-op on a
         loose grenade -- it must not blow up the ordinary blast path."""
@@ -159,3 +144,14 @@ class GrenadeArmorBondSeverance(EvenniaTest):
                          "loose grenade should still be deleted")
         # The stuck pair nearby is untouched by someone else's explosion.
         self.assertEqual(self.armor.db.stuck_grenade, self.grenade)
+
+    def test_a_plain_delete_severs_the_bond(self):
+        """#3552: the severance lives in `Item.at_object_delete`, so ANY
+        deletion -- not only the three explosion terminators -- clears the
+        garment's side of the bond. A builder's @destroy is this path."""
+        self._stick()
+        self.grenade.delete()
+        self.assertFalse(ObjectDB.objects.filter(id=self.gid).exists())
+        self.assertIsNone(self.armor.db.stuck_grenade)
+        self.assertIsNone(_raw_bond(self.armor),
+                          "the garment still holds a packed reference to the dead grenade")

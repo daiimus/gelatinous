@@ -671,7 +671,9 @@ class Item(ObjectParent, DefaultObject):
     def at_object_delete(self):
         """
         Called just before this item is deleted.
-        Handles cleanup for remote detonator explosive tracking.
+        Owns the bidirectional cleanups that must run on EVERY delete
+        path: the sticky-grenade <-> armor bond (#3552) and remote
+        detonator explosive tracking (#2590).
 
         `at_object_delete`, not `at_delete` (#2590). Evennia's
         `DefaultObject.delete` calls `at_object_delete()`; `at_delete` is
@@ -680,6 +682,14 @@ class Item(ObjectParent, DefaultObject):
         Returning the super()'s value matters — a False return VETOES
         the deletion.
         """
+        # A sticky grenade clamped to armor: sever the bond on BOTH sides
+        # before the object goes, whatever deletes it -- an explosion, a
+        # builder's @destroy, a sweep (#3552, the general form of #3412).
+        # `break_stick` is a no-op when nothing is stuck.
+        if self.db.stuck_to_armor is not None:
+            from world.combat.explosives import break_stick
+            break_stick(self)
+
         # If this item is an explosive scanned by a detonator, remove it from the detonator's list
         if self.db.scanned_by_detonator:
             from evennia.utils.search import search_object

@@ -1565,12 +1565,12 @@ callers already own that decision (an explosion deletes the object; a
 forcible removal would place it deliberately). It returns `True`/`False`
 for "was there a stick to break", so callers need no guard of their own.
 
-**Callers.** The three explosion terminators in
-`commands/explosion_utils.py` — `explode_standalone_grenade`,
-`explode_rigged_grenade` and `trigger_auto_defuse_explosion` — call it
-immediately before `grenade.delete()`, which is the *Clean up stuck
-state* step of the §Explosion Behavior pseudocode above (#3412). Before
-that wiring the step was skipped entirely: the garment kept a
+**Callers.** `Item.at_object_delete` (`typeclasses/items.py`) calls it
+for any stuck grenade being deleted — so the three explosion terminators
+in `commands/explosion_utils.py`, a builder's `@destroy` and any sweep all
+perform the *Clean up stuck state* step of the §Explosion Behavior
+pseudocode above through one hook (#3552; #3412 first wired the three
+terminators explicitly). Before that the step was skipped entirely: the garment kept a
 `stuck_grenade` Attribute row pointing at the deleted grenade. It was
 never player-visible (Evennia unpacks a deleted dbobj as `None`, so the
 `is not None` / truthiness guards in `CmdRemove.func`,
