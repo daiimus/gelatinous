@@ -293,9 +293,7 @@ the NPC object and die with it. The policy decides what should survive:
   > backup's `taken_at`, and `restore` drops every memory, thought, opinion
   > and newly-met face from inside it — so murder stays a mystery for the
   > player's flash clone and the NPC keeper alike, through one code path.
-  > (`RESLEAVE_PREMIUM`'s neighbour `RESLEAVE_GAP` in `world/souls/posts.py`
-  > is a leftover constant nothing reads; `world/imprint.GAP` is the live
-  > one.) The premium is real: debited from the post's own till — or
+  > (`world/imprint.GAP` is the only home for this number; the duplicate `RESLEAVE_GAP` in `world/souls/posts.py` was deleted in #3389 and its one importer, `scripts/builds/085_restore_the_cast.py`, now calls `imprint.cutoff_of()`.) The premium is real: debited from the post's own till — or
   > `db.post_insurer` where the post has none — and credited to the clinic's
   > Thawn-Harrison billing terminal, with the balance re-read at the write
   > so the credit only happens if the debit did. A till that cannot afford

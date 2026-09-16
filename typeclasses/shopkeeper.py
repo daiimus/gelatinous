@@ -2,16 +2,12 @@
 Shop container and merchant typeclass for Gelatinous shop system.
 
 This module contains the ShopContainer class for managing shop inventory
-and the merchant character integration.
+and the counter-side purchase and stocking helpers (the merchant
+character typeclass was folded into the one NPC typeclass in #2378).
 """
 
 from evennia import DefaultObject
 from evennia.utils import logger
-from evennia.utils.utils import delay
-
-from typeclasses.characters import Character
-from typeclasses.llm_npc import LLMNpcMixin
-from evennia.utils.create import create_object
 from evennia.prototypes.spawner import spawn
 from world.shop.utils import get_prototype_value, format_currency, calculate_shop_price
 

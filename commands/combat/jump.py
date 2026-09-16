@@ -888,7 +888,13 @@ class CmdJump(Command):
         
         def handle_fall_landing():
             if self.caller.location == sky_room:
-                # Use gravity to find ground level instead of specific fall room
+                # Use gravity to find ground level instead of specific fall room.
+                # `exit_obj.db.fall_room` is deliberately NOT consulted here: the
+                # helper written for it (exit-specified crash site, falling back to
+                # the intended destination for a soft landing) was never wired and
+                # was deleted unused in #3392. Whether an authored crash site should
+                # override the gravity walk on a gap failure is an open owner call —
+                # see "Fall Room Strategy" in specs/JUMP_COMMAND_SPEC.md.
                 ground_room, actual_fall_distance = CmdJump.follow_gravity_to_ground(sky_room)
                 
                 # Update fall damage based on actual distance fallen
@@ -1008,24 +1014,6 @@ class CmdJump(Command):
         splattercast.msg(f"SKY_ROOM_DEBUG: No sky room found for {origin.key} -> {destination.key} direction {direction}")
         return None
     
-    def get_fall_room_for_gap(self, intended_destination, exit_obj):
-        """Get the fall room for a failed gap jump."""
-        # Check if exit specifies a fall room
-        fall_room_id = exit_obj.db.fall_room
-        if fall_room_id:
-            # Convert string/int ID to actual room object
-            if isinstance(fall_room_id, (str, int)):
-                # Convert to string with # prefix for search
-                search_id = f"#{fall_room_id}" if not str(fall_room_id).startswith("#") else str(fall_room_id)
-                # Use exit object to search for the room by dbref
-                fall_room = exit_obj.search(search_id, global_search=True, quiet=True)
-                return fall_room[0] if fall_room else intended_destination
-            else:
-                return fall_room_id  # Already an object
-        
-        # Fallback: Use intended destination (soft landing)
-        return intended_destination
-
     def handle_edge_fall_and_landing(self, exit_obj, destination, grappled_victim=None):
         """Handle fall mechanics and landing after jumping off an edge."""
         splattercast = get_splattercast()

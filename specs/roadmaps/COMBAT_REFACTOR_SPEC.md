@@ -423,6 +423,7 @@ def convert_combatants_list(saver_list):
     """Convert SaverList to regular list avoiding corruption during modifications"""
     
 def validate_same_room(character1, character2):
+  > _(2026-09-15: written once as `validate_in_same_room` in `world/combat/utils.py`, never adopted, deleted unused in #3387; the inline `a.location == b.location` comparisons stay inline until an owner decides otherwise.)_
     """Validate that two characters are in the same location"""
     
 def get_same_room_opponents(character, combatants_list):

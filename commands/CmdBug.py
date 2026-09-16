@@ -141,7 +141,7 @@ class CmdBug(MuxCommand):
         if account is not None and not self.check_rate_limit(account):
             limit = settings.BUG_REPORT_DAILY_LIMIT
             caller.msg(f"|rYou've reached the daily limit of {limit} bug reports.|n")
-            caller.msg(f"The limit resets in {self.get_time_until_reset(account)}.")
+            caller.msg(f"The limit resets in {self.get_time_until_reset()}.")
             return
 
         # Open the detailed bug report workflow
@@ -187,8 +187,16 @@ class CmdBug(MuxCommand):
         account.db.bug_report_count = max(
             0, (account.db.bug_report_count or 0) - 1)
 
-    def get_time_until_reset(self, account):
-        """Get human-readable time until rate limit resets."""
+    def get_time_until_reset(self):
+        """Get human-readable time until rate limit resets.
+
+        Takes no account: the reset is global. Every account's quota
+        rolls at the same UTC midnight, which is exactly what
+        ``check_rate_limit`` and ``increment_report_count`` implement by
+        comparing ``account.db.bug_report_date`` against today's date.
+        The parameter this used to take was never read and advertised a
+        per-account reset that does not exist (#3441).
+        """
         now = datetime.now(timezone.utc)
         tomorrow = datetime(now.year, now.month, now.day, tzinfo=timezone.utc) + timedelta(days=1)
         
@@ -738,7 +746,7 @@ class CmdBug(MuxCommand):
                 # passed. Refunded below if the POST fails.
                 account = caller.account
                 if not cmd_instance.check_rate_limit(account):
-                    remaining_time = cmd_instance.get_time_until_reset(account)
+                    remaining_time = cmd_instance.get_time_until_reset()
                     caller.msg(f"|rYou've reached the daily limit of {settings.BUG_REPORT_DAILY_LIMIT} bug reports.|n")
                     caller.msg(f"The limit resets in {remaining_time}.")
                     return
