@@ -487,9 +487,10 @@ def _process_verb_choice(caller, raw_string, **kwargs):
     if verb == "amputate":
         return "node_amputate_location"
     if verb == "autopsy":
-        # No further args — drop straight onto the chart.
+        # No further args — drop straight onto the chart. The helper
+        # confirms ("Step added:" / "Step inserted:"); nothing else
+        # should (#3540: this branch used to confirm a second time).
         _add_step_to_chart(caller, "autopsy", {})
-        caller.msg("|gAdded:|n conduct autopsy")
         return "node_top"
     return "node_top"
 
