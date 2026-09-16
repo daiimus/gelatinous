@@ -1688,6 +1688,44 @@ class Appendage(Item):
         except Exception:  # noqa: BLE001 — prose never blocks a room entry
             pass
 
+    def release_slots(self, obj):
+        """Forget *obj* in this limb's wardrobe (#3554).
+
+        The mirror of ``Character.release_slots``: a severed part keeps a
+        ``worn_items`` ledger for the garments that travelled with it, and
+        the generic delete hook in ``typeclasses/objects.py`` already calls
+        ``release_slots`` on a departing garment's location -- it just
+        no-oped here because only characters defined the method, so a
+        destroyed glove left a dead entry and bare ``undress <limb>``
+        crashed on it. Also prunes entries that already hold nothing, so a
+        limb repairs its own drift the next time anything leaves it.
+        Idempotent; safe for an object this limb never wore.
+        """
+        def _is(item):
+            if item is None:
+                return False
+            return item is obj or getattr(item, "id", None) == getattr(obj, "id", "")
+        worn = dict(self.db.worn_items or {})
+        changed = False
+        for location, layers in list(worn.items()):
+            if isinstance(layers, str) or not hasattr(layers, "__iter__"):
+                continue
+            remaining = [item for item in layers
+                         if item is not None and getattr(item, "pk", None) and not _is(item)]
+            if len(remaining) != len(layers):
+                changed = True
+                if remaining:
+                    worn[location] = remaining
+                else:
+                    del worn[location]
+        if changed:
+            self.db.worn_items = worn
+
+    def at_object_leave(self, moved_obj, target_location, **kwargs):
+        """Anything leaving the limb gives up its wardrobe slot (#3554)."""
+        self.release_slots(moved_obj)
+        return super().at_object_leave(moved_obj, target_location, **kwargs)
+
     def configure_from_sever(self, *, location_name, condition, corpse):
         """Populate forensic-chain fields immediately after spawn.
 
