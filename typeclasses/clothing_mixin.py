@@ -533,6 +533,19 @@ class ClothingMixin:
                 return True
         return False
 
+    def worn_garments(self):
+        """Everything this body is wearing, live and deduplicated.
+
+        The one question every body kind answers -- a character from its
+        registry, a corpse from its contents and death record, a severed
+        part from its ledger -- so `frisk`, `undress` and the renderers
+        all read the same list (#3575). `get ... from` reaches the same
+        garments by a different door: it takes from the body's contents
+        and releases the ledger on the way out. For a character it is
+        exactly `get_worn_items()`.
+        """
+        return list(self.get_worn_items() or [])
+
     def get_worn_items(self, location=None):
         """
         Get worn items, optionally filtered by location.

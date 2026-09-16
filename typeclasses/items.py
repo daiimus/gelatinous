@@ -1688,6 +1688,29 @@ class Appendage(Item):
         except Exception:  # noqa: BLE001 — prose never blocks a room entry
             pass
 
+    def worn_garments(self):
+        """What this severed part is wearing: the garments that travelled
+        with it at severance (or were put on it since), read from its
+        ledger. Heals as it reads -- an entry whose garment was destroyed
+        deserializes to None, one whose garment left by any door is no
+        longer worn -- and writes the pruned ledger back, the way
+        `ClothingMixin.get_worn_items` does. Shared question with
+        characters and corpses (#3575).
+        """
+        worn = dict(self.db.worn_items or {})
+        healed, seen = {}, []
+        for loc, items in worn.items():
+            live = [it for it in (items or [])
+                    if it is not None and getattr(it, "pk", None) and it.location is self]
+            if live:
+                healed[loc] = live
+                for it in live:
+                    if it not in seen:
+                        seen.append(it)
+        if healed != worn:
+            self.db.worn_items = healed
+        return seen
+
     def release_slots(self, obj):
         """Forget *obj* in this limb's wardrobe (#3554).
 
@@ -2172,29 +2195,7 @@ class Appendage(Item):
         appendage — keeps the calling renderer's whitespace handling
         clean.
         """
-        worn = self.db.worn_items or {}
-        # Collect each unique item once, preserving first-seen order
-        # (location iteration order, then within-list order).  A
-        # multi-location worn item (e.g. coat) wouldn't reach here in
-        # PR-H3 since the sever pipeline only registers items whose
-        # coverage was fully contained in the severed cluster, but
-        # the dedup is defensive for future expansion.
-        # Prune as we read (#2456). `ClothingMixin.get_worn_items` heals
-        # dangling refs; the appendage ledger had no equivalent, so an
-        # entry whose object was deleted deserialized to None, went into
-        # `seen`, and then raised AttributeError on
-        # `None.get_display_name` — inside `return_appearance`, so
-        # LOOKING at the limb crashed. An item that has left the limb by
-        # any door is likewise no longer worn on it.
-        seen = []
-        for loc_items in worn.values():
-            for item in (loc_items or []):
-                if item is None or not getattr(item, "pk", None):
-                    continue
-                if item.location is not self:
-                    continue
-                if item not in seen:
-                    seen.append(item)
+        seen = self.worn_garments()
         if not seen:
             return ""
         if len(seen) == 1:

@@ -699,39 +699,6 @@ def _is_corpse(target) -> bool:
     return isinstance(target, Corpse)
 
 
-def _corpse_garments(target):
-    """What a corpse is "wearing": anything in its contents with
-    coverage.
-
-    ...filtered by `worn_at_death` where the corpse HAS that record.
-
-    The original reasoning was that
-    `_build_corpse_clothing_coverage_map` "already renders every item in
-    `contents` that declares `coverage` as covering the body", so
-    contents-wide was the corpse's real model. That was true only while
-    `worn_at_death` was never written -- the defect #3107 fixed. With
-    the record in place the map filters and this did not, so `undress`
-    offered a coat the corpse had been CARRYING, was never shown
-    wearing, and whose removal changed nothing in the description.
-
-    `get_worn_items` is still the wrong list (it is narrower on purpose
-    -- only disguise-essential items, because that is all the identity
-    signature consumes). The right question is the one the renderer
-    asks.
-
-    No record means contents-wide, exactly as `Corpse.note_dressed`
-    states: "No record means the map still renders contents-wide". A
-    corpse from before the record existed undresses as it renders.
-    """
-    covered = [item for item in target.contents
-               if getattr(item, "db", None) is not None and item.db.coverage]
-    worn = getattr(getattr(target, "db", None), "worn_at_death", None)
-    if worn is None:
-        return covered
-    worn = set(worn)
-    return [item for item in covered if item.id in worn]
-
-
 def _resolve_clothing_target(caller, target_phrase, quiet=False):
     """Resolve a third-party clothing target with identity-layer
     obfuscation.
@@ -1129,11 +1096,9 @@ class CmdUndress(Command):
         undress_pre_resolved = _snapshot_actor_names(caller, undress_refs)
 
         from typeclasses.items import Appendage
-        if isinstance(target, Appendage):
-            removed = self._undress_appendage(target, item_phrase)
-        elif _is_corpse(target):
-            removed = self._undress_corpse(target, item_phrase)
-        elif hasattr(target, "get_worn_items"):
+        if isinstance(target, Appendage) or _is_corpse(target):
+            removed = self._undress_remains(target, item_phrase)
+        elif hasattr(target, "worn_garments"):
             removed = self._undress_character(target, item_phrase)
         else:
             caller.msg(
@@ -1194,7 +1159,7 @@ class CmdUndress(Command):
         """Strip worn items off ``target`` and return the removed
         list.  Uses ``remove_item`` so layer-conflict / state
         cleanup runs the same way it does for self-removal."""
-        worn = target.get_worn_items() or []
+        worn = target.worn_garments()
         if not worn:
             return []
 
@@ -1213,15 +1178,14 @@ class CmdUndress(Command):
                 removed.append(item)
         return removed
 
-    def _undress_corpse(self, target, item_phrase):
-        """Take a garment off a corpse and return the removed list.
-
-        The mirror of `_dress_corpse`: out of `contents`, into the
-        caller's hands. `_undress_character` would have raised
-        AttributeError here — `Corpse` has no `remove_item` — which is
-        the latent half #2519 warned about when the gate was opened.
-        """
-        garments = _corpse_garments(target)
+    def _undress_remains(self, target, item_phrase):
+        """Take garments off a corpse or a severed part and return the
+        removed list. Both answer `worn_garments()` from their own store
+        (the corpse from contents + `worn_at_death`, the part from its
+        ledger), and both clean up on the move -- the corpse clears its
+        death-time signature, the part releases the wardrobe slot -- so
+        this is the same three lines for either (#3575)."""
+        garments = target.worn_garments()
         if not garments:
             return []
         if item_phrase:
@@ -1232,51 +1196,3 @@ class CmdUndress(Command):
             item.move_to(self.caller, quiet=True)
             removed.append(item)
         return removed
-
-    def _undress_appendage(self, target, item_phrase):
-        """Strip worn items off a severed appendage and return the
-        removed list.  Updates the appendage's ``worn_items`` dict
-        in place to reflect the removal."""
-        worn_dict = dict(target.db.worn_items or {})
-        if not worn_dict:
-            return []
-
-        # Heal as we read (#3554), the way `Character.get_worn_items` and
-        # the limb's own `return_appearance` do: an entry whose garment was
-        # destroyed deserializes to None, and one whose garment has left
-        # the limb by any door is no longer worn on it. Write the pruned
-        # ledger back so the drift does not survive to the next verb.
-        healed = {}
-        for loc, items in worn_dict.items():
-            live = [it for it in (items or [])
-                    if it is not None and getattr(it, "pk", None) and it.location is target]
-            if live:
-                healed[loc] = live
-        if healed != worn_dict:
-            target.db.worn_items = healed
-            worn_dict = healed
-            if not worn_dict:
-                return []
-
-        all_items = []
-        for items in worn_dict.values():
-            for item in (items or []):
-                if item not in all_items:
-                    all_items.append(item)
-
-        if item_phrase:
-            # The item the player NAMED, by key or alias (#2517).
-            chosen = pick_worn(item_phrase, all_items)
-            all_items = [chosen] if chosen else []
-        if not all_items:
-            return []
-
-        new_worn = {}
-        for loc, items in worn_dict.items():
-            kept = [
-                it for it in (items or []) if it not in all_items
-            ]
-            if kept:
-                new_worn[loc] = kept
-        target.db.worn_items = new_worn
-        return all_items

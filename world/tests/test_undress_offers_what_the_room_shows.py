@@ -1,6 +1,6 @@
 """`undress <corpse>` offers what the corpse is shown wearing (#2977).
 
-`_corpse_garments` returns everything in a corpse's contents that
+`Corpse.worn_garments` returns everything in a corpse's contents that
 declares `coverage`, and its docstring gives the reason:
 
     That is the corpse's real model -- `_build_corpse_clothing_coverage_map`
@@ -33,7 +33,6 @@ from evennia import create_object
 from evennia.prototypes.spawner import spawn
 from evennia.utils.test_resources import EvenniaTest
 
-from commands.CmdClothing import _corpse_garments
 from typeclasses.death_progression import DeathProgressionScript
 
 
@@ -61,19 +60,19 @@ class TestUndressMatchesTheDescription(EvenniaTest):
         """Control: this must not become 'undress offers nothing'."""
         corpse = self._corpse()
         self.assertIn(self.worn.key,
-                      [g.key for g in _corpse_garments(corpse)])
+                      [g.key for g in corpse.worn_garments()])
 
     def test_a_merely_carried_garment_is_not_offered(self):
         corpse = self._corpse()
         self.assertNotIn(
-            self.carried.key, [g.key for g in _corpse_garments(corpse)],
+            self.carried.key, [g.key for g in corpse.worn_garments()],
             "undress offered a garment the corpse was only carrying")
 
     def test_the_two_lists_agree(self):
         """The property that matters: you can take off what you can see."""
         corpse = self._corpse()
         self.assertEqual(self._shown(corpse),
-                         {g.key for g in _corpse_garments(corpse)})
+                         {g.key for g in corpse.worn_garments()})
 
     def test_a_corpse_with_no_record_still_undresses_contents_wide(self):
         """`note_dressed`: "No record means the map still renders
@@ -81,6 +80,6 @@ class TestUndressMatchesTheDescription(EvenniaTest):
         down to nothing."""
         corpse = self._corpse()
         corpse.attributes.remove("worn_at_death")
-        offered = {g.key for g in _corpse_garments(corpse)}
+        offered = {g.key for g in corpse.worn_garments()}
         self.assertIn(self.carried.key, offered)
         self.assertIn(self.worn.key, offered)

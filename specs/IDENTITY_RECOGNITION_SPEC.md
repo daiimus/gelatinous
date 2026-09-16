@@ -2621,6 +2621,20 @@ mirroring the corpse-side helpers but leaving the character alive.
     `SEVER_HAND_BY_CONTAINER`) always follows — you cannot keep gripping
     with a hand that just left your body.  Leg containers (thigh / shin /
     foot) carry no hand and so never pull a weapon.
+- **Severed parts are corpse fragments** (owner ruling 2026-09-16, #3575):
+  a limb or head with things on it answers to the corpse's verbs. `frisk`
+  treats `Appendage`/`SeveredHead` as remains — always searchable, no
+  consent gate — and `get … from` takes from them as from a corpse.
+  `dress`/`undress` stay (dress only where the garment's coverage fits the
+  part; an accepted outlier). One question, "what is this body wearing",
+  is answered by `worn_garments()` on `ClothingMixin`, `Corpse` (contents
+  with coverage, filtered by `worn_at_death` where the record exists) and
+  `Appendage` (its ledger, self-healing); `frisk`, `undress` and both
+  renderers read it, so no verb keeps a private copy. `Corpse.get_worn_items`
+  stays the disguise-essential subset the identity signature consumes.
+  Spanning garments (a jacket over chest and both arms) stay on the body when
+  one arm comes off — the subset rule above — and the sleeve oddity is
+  accepted rather than modelled as garment damage.
 - **`SEVER_HAND_BY_CONTAINER`** (`world/combat/constants.py`) maps
   `left_arm` / `left_hand` → `"left"`, `right_arm` / `right_hand` →
   `"right"`; legs are deliberately absent.

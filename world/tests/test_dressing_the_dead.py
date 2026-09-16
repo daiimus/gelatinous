@@ -137,7 +137,7 @@ class TestDressingAndUndressingACorpse(_ClothCase):
         shroud.move_to(body, quiet=True)
         cmd = CmdUndress()
         cmd.caller = self.char1
-        removed = cmd._undress_corpse(body, None)
+        removed = cmd._undress_remains(body, None)
         self.assertEqual(removed, [shroud])
         self.assertEqual(shroud.location, self.char1)
 
@@ -148,7 +148,7 @@ class TestDressingAndUndressingACorpse(_ClothCase):
         boots = self.garment("black leather combat boots", where=body)
         cmd = CmdUndress()
         cmd.caller = self.char1
-        removed = cmd._undress_corpse(body, "shroud")
+        removed = cmd._undress_remains(body, "shroud")
         self.assertEqual(removed, [shroud])
         self.assertEqual(boots.location, body, "an unnamed garment moved")
 
@@ -156,7 +156,7 @@ class TestDressingAndUndressingACorpse(_ClothCase):
         from commands.CmdClothing import CmdUndress
         cmd = CmdUndress()
         cmd.caller = self.char1
-        self.assertEqual(cmd._undress_corpse(self.corpse(), None), [])
+        self.assertEqual(cmd._undress_remains(self.corpse(), None), [])
 
     def test_loose_loot_is_not_clothing(self):
         """Only items declaring coverage count — a corpse's pockets are
@@ -167,7 +167,7 @@ class TestDressingAndUndressingACorpse(_ClothCase):
                       location=body)
         cmd = CmdUndress()
         cmd.caller = self.char1
-        self.assertEqual(cmd._undress_corpse(body, None), [])
+        self.assertEqual(cmd._undress_remains(body, None), [])
 
 
 class TestThePickerTakesWhatWasNamed(_ClothCase):

@@ -42,6 +42,7 @@ class _CorpseStub:
     _build_corpse_clothing_coverage_map = (
         Corpse._build_corpse_clothing_coverage_map
     )
+    worn_garments = Corpse.worn_garments
     _build_decay_desc_paragraph = Corpse._build_decay_desc_paragraph
     get_preserved_wound_descriptions = Corpse.get_preserved_wound_descriptions
     get_decay_stage = Corpse.get_decay_stage
