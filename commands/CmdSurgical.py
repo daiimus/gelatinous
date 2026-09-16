@@ -466,6 +466,9 @@ class CmdHarvest(Command):
             )
             return
         organ_arg = found
+        # Species-named in the messages below (#3537): a synth's liver is
+        # its "filter gland" here as on the chart and the harvested item.
+        organ_display = get_organ_display_name(organ_arg, species)
 
         organ_data = organs[organ_arg]
         container = organ_data.get("container")
@@ -475,7 +478,7 @@ class CmdHarvest(Command):
         # organs (eyes, ears, jaw, nose, tongue on humans) skip this.
         if _incision_required(organ_data) and not has_incision(target, container):
             caller.msg(
-                f"You can't reach the {organ_arg.replace('_', ' ')} — "
+                f"You can't reach the {organ_display} — "
                 f"{container.replace('_', ' ')} isn't open. "
                 f"Try ``incise {target_phrase} at {container.replace('_', ' ')}``."
             )
@@ -495,7 +498,7 @@ class CmdHarvest(Command):
             organ_name=organ_arg, location=container or "",
         )
         caller.msg(
-            f"You begin extracting the {organ_arg.replace('_', ' ')} "
+            f"You begin extracting the {organ_display} "
             f"from {target.get_display_name(caller)}..."
         )
 

@@ -10,6 +10,8 @@ on the chart and "liver" in the wound line about the same organ.
 
 Humans are the control: they still read "liver" everywhere.
 """
+from unittest import mock
+
 from evennia.utils.create import create_object
 from evennia.utils.test_resources import EvenniaTest
 
@@ -74,3 +76,32 @@ class TestTheHarvestRefusal(_Bodies):
 
     def test_reaching_for_a_closed_human_liver(self):
         self.assertIn("liver", self._reach(self.body("human", "Hume")))
+
+
+class TestTheHarvestCommandItself(_Bodies):
+    """The typed `harvest` command has its own incision refusal ahead of
+    the resolver's; the post-deploy play check of PR #3538 caught it
+    still saying "liver"."""
+
+    def _harvest(self, who):
+        from commands.CmdSurgical import CmdHarvest
+        seen = []
+        self.char1.msg = lambda text=None, **kw: seen.append(str(text))
+        cmd = CmdHarvest()
+        cmd.caller = self.char1
+        cmd.args = f"liver from {who.key}"
+        cmd.cmdstring = "harvest"
+        cmd.switches = []
+        with mock.patch("commands.CmdSurgical._resolve_target", return_value=who):
+            cmd.func()
+        return " ".join(seen)
+
+    def test_a_synth_refusal_names_the_filter_gland(self):
+        said = self._harvest(self.body("synthetic_humanoid", "Synthy"))
+        self.assertIn("isn't open", said, said)
+        self.assertIn("filter gland", said, said)
+        self.assertNotIn("liver", said, said)
+
+    def test_a_human_refusal_still_names_the_liver(self):
+        said = self._harvest(self.body("human", "Hume"))
+        self.assertIn("liver", said, said)
