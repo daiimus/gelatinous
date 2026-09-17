@@ -75,8 +75,12 @@ class TestClosedCompoundsStillMiss(EvenniaTest):
     "zebra" a bra. A compound the tables should know belongs in the
     tables."""
 
-    def test_a_trenchcoat_is_not_derived_from_coat(self):
-        self.assertIsNone(derive_rung("trenchcoat"))
+    def test_a_compound_is_not_derived_from_its_head_word(self):
+        # "raincoat" is not in the table, and the matcher does not split
+        # it to find "coat": a compound the tables should know belongs
+        # in the tables (#3425 put "trenchcoat" and "longcoat" there).
+        self.assertIsNone(derive_rung("raincoat"))
+        self.assertEqual(derive_rung("trenchcoat"), 4)
 
     def test_and_zebra_is_not_a_bra(self):
         self.assertEqual(derive_presentation("zebra print top"), ())

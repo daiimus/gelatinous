@@ -346,7 +346,13 @@ RUNGS = {
         "cut"),
     4: ("coat", "labcoat", "trench", "overcoat", "topcoat", "greatcoat",
         "duster", "robe", "apron", "coverall", "parka",
-        "bathrobe", "cloak", "poncho"),
+        "bathrobe", "cloak", "poncho",
+        # Closed compounds the both-ends matcher cannot split, so they
+        # belong in the table (#3425): "trenchcoat" is the layer spec's
+        # own worked example ("'trenchcoat' beats 'coat'"), and neither
+        # it nor "longcoat" was ever listed, so both fell to rung 1
+        # and a trenchcoat layered like a t-shirt.
+        "trenchcoat", "longcoat"),
     5: ("boot", "boots", "shoe", "shoes", "sneaker", "sneakers", "oxford",
         "oxfords", "wader", "waders", "sandal", "sandals", "loafer",
         "heel", "heels", "slipper", "slippers", "clog", "clogs", "belt",
