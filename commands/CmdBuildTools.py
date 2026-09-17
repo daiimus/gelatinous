@@ -228,9 +228,13 @@ class CmdBuildingAudit(default_cmds.MuxCommand):
 # @airfill — generate the aerial lattice (parkour substrate, 2026-07-13).
 # The atom is hand-proven at "In the Air" #190: a SkyRoom over the street,
 # plain exits out to adjacent rooftops, a one-way `down` fall edge, and
-# is_edge+is_gap exits FROM the rooftops in (jump-only). This command
-# stamps that atom over empty cells so rooftop routes exist wherever the
-# geometry allows.
+# jump-only exits FROM the rooftops in: always an EDGE (jump off into the
+# cell), and a GAP only when another walkable surface stands exactly one
+# cell across, in which case the far perch is written with it (#3415 --
+# a gap without a perch is refused on the roof, so the generator never
+# stamps one). This command stamps that atom over empty cells so rooftop
+# routes exist wherever the geometry allows, and `@airfill/audit` reports
+# where the built world falls short of it (#3582).
 # ---------------------------------------------------------------------------
 
 #: Cardinal steps the lattice links across (diagonals read badly in jumps).
@@ -264,6 +268,21 @@ def _room_cell_index():
 
 def _is_sky(room):
     return getattr(getattr(room, "db", None), "is_sky_room", None) is True
+
+
+def _is_walkable_surface(room):
+    """A rooftop or any outdoor room that is not air: somewhere a body can
+    stand beside the sky. Interiors never qualify (the B-line incident)."""
+    if room is None or _is_sky(room):
+        return False
+    db = getattr(room, "db", None)
+    return (getattr(db, "type", None) == "rooftop"
+            or getattr(db, "outside", None) is True)
+
+
+#: The four diagonals, for the audit's tally only -- the lattice never
+#: links across them (diagonals read badly in jumps).
+_AIR_DIAGONALS = ((1, 1), (1, -1), (-1, 1), (-1, -1))
 
 
 def air_candidates(z, index, box=None):
@@ -325,17 +344,143 @@ def fill_air_cell(cell, index):
         if _is_sky(neighbour):
             _exit(room, neighbour, direction)
             _exit(neighbour, room, _AIR_BACK[direction])
-        elif (getattr(neighbour.db, "type", None) == "rooftop"
-                or neighbour.db.outside is True):
+        elif _is_walkable_surface(neighbour):
             # air reaches a walkable OUTDOOR surface plainly; its way IN
-            # is a jump
+            # is a jump. Always an EDGE (jump off into this cell). A GAP
+            # only when another walkable surface stands exactly one cell
+            # across, and then the far perch is written with it -- a gap
+            # exit with no perch is refused on the roof (#3579), so
+            # stamping one would build a crossing nobody can make (#3415).
             _exit(room, neighbour, direction)
-            _exit(neighbour, room, _AIR_BACK[direction],
-                  is_edge=True, is_gap=True)
+            far = index.get((x - dx, y - dy, z))
+            flags = {"is_edge": True}
+            if _is_walkable_surface(far):
+                flags.update(is_gap=True, gap_destination=far.id)
+            _exit(neighbour, room, _AIR_BACK[direction], **flags)
         # interiors get NO links: the helper cannot tell a rooftop from
         # an apartment behind a wall, and it once gave six tenants
         # jump-out-window edges (the B-line incident, 2026-07-25)
     return room, made
+
+
+def audit_air(z, index):
+    """The edge audit (#3582), read-only: where the built world at *z*
+    falls short of the atom. Returns a dict of findings:
+
+    - ``missing_edges``: ``(room, cell, direction)`` for every walkable
+      surface with an air cell beside it (cardinal) and no ``is_edge``
+      exit into that cell. A room carrying ``db.no_edge = "<reason>"``
+      is deliberate and skipped.
+    - ``bad_gaps``: ``(exit, reason)`` for every ``is_gap`` exit whose
+      far perch is missing, unresolvable, not a walkable surface, or not
+      exactly one cell across the air it leads into.
+    - ``bare_cells``: air cells with no ``down`` exit (the parked
+      impasse, #3581 -- reported, never repaired here).
+    - ``diagonal_only``: a count of walkable surfaces that touch air only
+      diagonally with no edge, which the lattice never wires.
+    """
+    from world.gravity import down_exit
+    findings = {"missing_edges": [], "bad_gaps": [], "bare_cells": [],
+                "diagonal_only": 0}
+    level = {xyz: room for xyz, room in index.items() if xyz[2] == z}
+    where = {room: xyz for xyz, room in index.items()}
+    by_id = {getattr(room, "id", None): room for room in index.values()}
+
+    def edge_into(room, cell):
+        for ex in (getattr(room, "exits", None) or []):
+            if getattr(ex.db, "is_edge", None) is True \
+                    and getattr(ex, "destination", None) is cell:
+                return True
+        return False
+
+    for (x, y, _z), room in sorted(level.items(), key=lambda kv: kv[0]):
+        if _is_sky(room):
+            if down_exit(room) is None:
+                findings["bare_cells"].append(room)
+            continue
+        if not _is_walkable_surface(room):
+            continue
+        if getattr(room.db, "no_edge", None):
+            continue                     # deliberate, and the reason is on the room
+        for direction, (dx, dy) in _AIR_STEPS.items():
+            cell = level.get((x + dx, y + dy, z))
+            if cell is None or not _is_sky(cell):
+                continue
+            if not edge_into(room, cell):
+                findings["missing_edges"].append((room, cell, direction))
+        touched_diagonally = False
+        for dx, dy in _AIR_DIAGONALS:
+            cell = level.get((x + dx, y + dy, z))
+            if cell is not None and _is_sky(cell) and not edge_into(room, cell):
+                touched_diagonally = True
+        if touched_diagonally:
+            findings["diagonal_only"] += 1
+
+    for (x, y, _z), room in sorted(level.items(), key=lambda kv: kv[0]):
+        if _is_sky(room):
+            continue
+        for ex in (getattr(room, "exits", None) or []):
+            if getattr(ex.db, "is_gap", None) is not True:
+                continue
+            air = getattr(ex, "destination", None)
+            if not _is_sky(air):
+                findings["bad_gaps"].append((ex, "gap exit does not lead into air"))
+                continue
+            raw = getattr(ex.db, "gap_destination", None)
+            if not raw:
+                findings["bad_gaps"].append((ex, "no gap_destination"))
+                continue
+            perch = raw if not isinstance(raw, (int, str)) else by_id.get(int(raw))
+            if perch is None:
+                findings["bad_gaps"].append(
+                    (ex, f"gap_destination #{raw} does not resolve on the grid"))
+                continue
+            if not _is_walkable_surface(perch):
+                findings["bad_gaps"].append(
+                    (ex, "gap_destination is not a walkable surface"))
+                continue
+            ax, ay, _az = where.get(air, (None, None, None))
+            if ax is None:
+                continue                 # off-grid air: nothing to measure
+            expected = (2 * ax - x, 2 * ay - y, z)
+            if where.get(perch) != expected:
+                findings["bad_gaps"].append(
+                    (ex, f"gap_destination is not one cell across "
+                         f"(expected the room at {expected[:2]})"))
+    return findings
+
+
+def format_air_audit(z, findings, index):
+    """The audit as the builder reads it. Every row carries a dbref and a
+    coordinate; the last line says whether it is clean."""
+    where = {room: xyz for xyz, room in index.items()}
+
+    def at(room):
+        xyz = where.get(room)
+        return f"#{getattr(room, 'id', '?')} at ({xyz[0]},{xyz[1]})" if xyz \
+            else f"#{getattr(room, 'id', '?')}"
+
+    lines = [f"|wEdge audit at z={z}|n |x(read-only -- nothing written)|n"]
+    for room, cell, direction in findings["missing_edges"]:
+        lines.append(f"  |ymissing edge|n  {room.key} {at(room)}: air to the "
+                     f"{direction} (#{getattr(cell, 'id', '?')}) with no is_edge "
+                     f"exit into it")
+    for ex, reason in findings["bad_gaps"]:
+        src = getattr(ex, "location", None)
+        lines.append(f"  |rbad gap|n       {getattr(src, 'key', '?')} "
+                     f"{at(src)} exit '{ex.key}' (#{getattr(ex, 'id', '?')}): {reason}")
+    for cell in findings["bare_cells"]:
+        lines.append(f"  |xbare cell|n     {cell.key} {at(cell)}: no down "
+                     f"(the parked impasse, #3581)")
+    if findings["diagonal_only"]:
+        lines.append(f"  |x{findings['diagonal_only']} surface(s) touch air only "
+                     f"diagonally with no edge; the lattice never wires diagonals.|n")
+    problems = (len(findings["missing_edges"]) + len(findings["bad_gaps"])
+                + len(findings["bare_cells"]))
+    lines.append("|gClean.|n" if not problems else
+                 f"|y{problems} finding(s).|n Mark a deliberate omission with "
+                 f"`db.no_edge = \"<reason>\"` on the room.")
+    return "\n".join(lines)
 
 
 class CmdAirFill(default_cmds.MuxCommand):
@@ -344,6 +489,7 @@ class CmdAirFill(default_cmds.MuxCommand):
 
     Usage:
         @airfill/check <z>                    - dry run: report, write nothing
+        @airfill/audit <z>                    - the edge audit: report, write nothing
         @airfill <z>                          - fill every eligible cell at z
         @airfill <z> = <x1,y1> : <x2,y2>      - limit to a bounding box
 
@@ -352,9 +498,17 @@ class CmdAirFill(default_cmds.MuxCommand):
     occupied cell directly below (somewhere to fall). Each new cell is a
     SkyRoom (jump-only, no exit display, civilians excluded) with a
     one-way |wdown|n fall edge, plain exits onto adjacent rooftops, and
-    |wis_edge+is_gap|n exits from those rooftops in — the hand-built
-    "In the Air" atom, stamped wherever geometry allows. Existing exits
-    are never overwritten; re-runs only add what's missing.
+    jump-only exits from those rooftops in: |wis_edge|n always, and
+    |wis_gap|n with its |wgap_destination|n only where another walkable
+    surface stands one cell across — the hand-built "In the Air" atom,
+    stamped wherever geometry allows. Existing exits are never
+    overwritten; re-runs only add what's missing.
+
+    |w/audit|n closes an air build: it lists every walkable surface beside
+    air with no edge into it, every gap whose far perch is missing or not
+    one cell across, and every air cell with no |wdown|n. Nothing is
+    written. Mark a deliberate omission with |wdb.no_edge = "<reason>"|n
+    on the room and the audit skips it.
     """
 
     key = "@airfill"
@@ -384,6 +538,9 @@ class CmdAirFill(default_cmds.MuxCommand):
             return
 
         index = _room_cell_index()
+        if "audit" in (self.switches or []):
+            caller.msg(format_air_audit(z, audit_air(z, index), index))
+            return
         cells = air_candidates(z, index, box=box)
         if not cells:
             caller.msg(f"No eligible empty cells at z={z}"
