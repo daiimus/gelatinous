@@ -2348,10 +2348,13 @@ hand ends up.
 >   balaclava at hair and head.  `db.chain` is untouched -- the part's
 >   display name reads it, and a multi-location chain on a head would
 >   rename it.
-> * **One limit, recorded not fixed.**  A part has no
->   `refresh_worn_coverage`, so a style changed while the garment is on
->   the part does not re-derive the ledger; the ledger is style-current
->   as of severance or dressing.
+> * **Style on a part: a non-issue (owner ruling 2026-09-17).**  A part
+>   has no `refresh_worn_coverage`, so a style changed while the garment
+>   is on the part would not re-derive the ledger -- but no verb can do
+>   that: `rollup` / `zip` search only the caller's own worn items, and
+>   dressing re-derives placement from the garment's current coverage.
+>   Unreachable today; revisit only if a verb that restyles a garment on
+>   another body or a part ever exists.
 > * **Whitespace.**  The composed prose joins the engine base (name +
 >   seeded `db.desc`) with a **blank line**, not a space —
 >   `f"{base}\n\n{body}"`.  The name still owns its header line (#236).
