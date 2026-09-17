@@ -66,7 +66,7 @@ def _clear_aim_override_place(aimer, target):
             aimer.override_place = ""
 
 
-def break_aim_lock(caller, *, bonus=0, label=None):
+def break_aim_lock(caller, *, bonus=0, label=None, immediate_attack=False):
     """The price of leaving while someone has you in their aim. One
     contest, shared by `flee` and by the jump verbs (#3583).
 
@@ -82,6 +82,9 @@ def break_aim_lock(caller, *, bonus=0, label=None):
     `label` names the door on splattercast (default the flee prefix; the
     jump verbs pass "JUMP_AWAY") so a jump contest is never read as a
     flee contest in the one channel combat is reviewed on.
+    `immediate_attack` resolves the aimer's shot on the spot instead of
+    on the next round -- the jump verbs pass True, because the jumper is
+    gone before any round comes (#3593).
 
     Returns True when the caller is free to go, False when the aimer
     kept them and the attack has already landed.
@@ -140,7 +143,7 @@ def break_aim_lock(caller, *, bonus=0, label=None):
     caller.msg(caller_msg_flee_fail)
     if aimer.access(caller, "view"):
         aimer.msg(aimer_msg_flee_fail)
-    opportunity_attack(aimer, caller)
+    opportunity_attack(aimer, caller, immediate=immediate_attack)
     return False
 
 
@@ -182,9 +185,22 @@ def roll_to_disengage(caller, handler, *, bonus=0, label=None):
     return flee_roll > block_roll, blocking_opponent, opponents
 
 
-def opportunity_attack(attacker, target):
-    """One immediate attack through the real `attack` command, from the
-    attacker's perspective, with the RESOLVED target (#1002)."""
+def opportunity_attack(attacker, target, *, immediate=False):
+    """One attack through the real `attack` command, from the attacker's
+    perspective, with the RESOLVED target (#1002).
+
+    The command ENROLS: it puts the attacker in the handler with the
+    target and prints the weapon's initiate line; the shot itself is
+    resolved by the handler's next round. That is enough for a blocked
+    fleer, who is still standing there when the round fires. It is
+    nothing at all for a jumper, who is out of the handler and off the
+    roof within the same command -- so the jump verbs pass
+    ``immediate=True`` and the shot is resolved here, once, before they
+    leave (#3593), through `resolve_bonus_attack`, the same immediate
+    attack a failed advance or charge already hands a ranged defender.
+    `process_attack` applies its own guards (a dead or unconscious
+    target, melee reach and proximity).
+    """
     from commands.combat.core_actions import CmdAttack
     attack_cmd = CmdAttack()
     attack_cmd.caller = attacker
@@ -192,6 +208,24 @@ def opportunity_attack(attacker, target):
     attack_cmd.args = target.get_display_name(attacker)
     attack_cmd.cmdstring = "attack"
     attack_cmd.func()
+    if not immediate:
+        return
+    # The immediate resolution is the bonus attack a ranged character
+    # already gets when an advance or charge at them fails
+    # (`resolve_bonus_attack`): one `process_attack` through the
+    # attacker's fresh handler entry, now. One implementation, two doors.
+    handler = getattr(attacker.ndb, NDB_COMBAT_HANDLER, None)
+    if handler is None:
+        get_splattercast().msg(
+            f"OPPORTUNITY_ATTACK_UNRESOLVED: {attacker.key} has no combat "
+            f"handler after enrolling against {target.key}; no shot.")
+        return
+    try:
+        from world.combat.utils import resolve_bonus_attack
+        resolve_bonus_attack(handler, attacker, target)
+    except Exception:  # noqa: BLE001 -- the price was already announced
+        from evennia.utils import logger
+        logger.log_trace("opportunity_attack: immediate resolution failed")
 
 
 class CmdFlee(Command):

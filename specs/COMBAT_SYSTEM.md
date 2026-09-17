@@ -187,8 +187,11 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 >   attack on a loss.
 >
 > Both losses go through one more shared helper,
-> `opportunity_attack(attacker, target)`, which runs a real `attack`
-> against the RESOLVED target (#1002). The jump verbs pass
+> `opportunity_attack(attacker, target, *, immediate=False)`, which runs a
+> real `attack` against the RESOLVED target (#1002) — immediately for a
+> jump, through the shared `resolve_bonus_attack` that failed advance and
+> charge already use; on the next round for a flee (#3593, below). The
+> jump verbs pass
 > `bonus=JUMP_AWAY_BONUS` (20) to both rolls and `label="JUMP_AWAY"` to
 > both — the label only re-prefixes the splattercast lines, so a jump
 > logs `JUMP_AWAY_` rather than `FLEE_`.
@@ -206,11 +209,31 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 > handler, *, bonus=0, label=None)` in commands/combat/movement.py, the
 > best-Motorics opponent targeting the jumper, ties to the blocker — with
 > the bold-move bonus on both. A lost disengage hands the blocker an
-> immediate attack via the shared `opportunity_attack(attacker, target)`
+> immediate attack via the shared `opportunity_attack(attacker, target, *,
+> immediate=True)`
 > ("catches you as you break for the edge"), and the jump still goes; only
 > death or unconsciousness stops it. Never a refusal, never a lost round.
 > Both `jump off` and `jump across`. Flee keeps its own consequence on a
 > lost disengage: blocked and a round skipped.)_
+>
+> _(2026-09-16, #3593: the shot is resolved IMMEDIATELY for a jump, on the
+> next round for a flee — and NOT by a new path. `CmdAttack.func` only
+> ENROLS: it puts the attacker in the handler with the target and prints the
+> weapon's initiate line, and the shot itself fires on the handler's next
+> round. That is enough for a blocked fleer, who is still standing there
+> when the round comes round, but it was nothing at all for a jumper, who is
+> out of the handler and off the roof inside the same command — the
+> opportunity attack read as a price and cost nothing. So
+> `opportunity_attack(attacker, target, *, immediate=False)` now finishes
+> the job under `immediate=True` by calling
+> `world.combat.utils.resolve_bonus_attack(handler, attacker, target)` — the
+> same helper that already hands a ranged defender an immediate attack when
+> an advance or a charge at them fails. It does the combat-entry lookup and
+> the `process_attack` itself, with its own guards (a dead or unconscious
+> target, melee reach, proximity). One immediate-attack implementation,
+> three doors: a failed advance, a failed charge, and a jumper who lost a
+> leaving contest. `break_aim_lock` forwards the flag as `immediate_attack`,
+> and the jump verbs pass True on both halves. Flee is unchanged.)_
 
 ### Special Actions (`commands/combat/special_actions.py`)
 - **`grapple <target>`**: Attempt to grab and restrain target

@@ -447,7 +447,9 @@ class CmdJump(Command):
         #3591): the AIM contest against whoever has taken aim at the
         jumper, and the DISENGAGE roll against the best-Motorics opponent
         targeting them in the handler. A lost roll hands that opponent
-        an immediate attack. The jump then goes regardless; the only
+        an immediate attack -- resolved on the spot, not on the next
+        round, because the jumper is gone before any round (#3593). The
+        jump then goes regardless; the only
         thing that stops it is an attack leaving the jumper dead or out
         cold. Nobody aiming and nobody targeting: nothing to pay.
         Returns True when the jump may proceed."""
@@ -457,7 +459,8 @@ class CmdJump(Command):
         caller = self.caller
         paid_with_blood = False
         if getattr(caller.ndb, NDB_AIMED_AT_BY, None) is not None:
-            if not break_aim_lock(caller, bonus=JUMP_AWAY_BONUS, label="JUMP_AWAY"):
+            if not break_aim_lock(caller, bonus=JUMP_AWAY_BONUS, label="JUMP_AWAY",
+                                  immediate_attack=True):
                 paid_with_blood = True
                 if caller.is_dead() or caller.is_unconscious():
                     return False
@@ -471,7 +474,7 @@ class CmdJump(Command):
                 caller.msg(f"|r{capitalize_first(who)} catches you as you break for the edge!|n")
                 if blocker:
                     blocker.msg(f"|gYou catch {caller.get_display_name(blocker)} breaking for the edge!|n")
-                    opportunity_attack(blocker, caller)
+                    opportunity_attack(blocker, caller, immediate=True)
                 if caller.is_dead() or caller.is_unconscious():
                     return False
         if paid_with_blood:
