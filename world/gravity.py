@@ -428,8 +428,11 @@ def _strand(obj, record, cell, reason="no_down") -> None:
 def _announce_pass(obj, cell, dest, companion) -> None:
     """Three audiences per cell -- the cell left, the cell entered, and the
     walkable surfaces beside the cell entered -- plus one line for the
-    faller. Every line goes through ``msg_room_identity`` so a watcher
-    sees a resolved sdesc, and an item renders through its own
+    faller, ON TOP OF the cell's full description: each step is a real
+    move, so Evennia's arrival look fires in every air cell the way it
+    does for anyone entering a room. Owner-ruled by design (#3585), not
+    a bug. Every line here goes through ``msg_room_identity`` so a
+    watcher sees a resolved sdesc, and an item renders through its own
     ``get_display_name``. A broadcast that raises is logged and skipped:
     the fall is already persisted and re-armed."""
     try:
