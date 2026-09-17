@@ -544,21 +544,19 @@ class Corpse(IdentityBearerMixin, Item):
 
     def _build_corpse_clothing_coverage_map(self):
         """Build a map of body locations covered by clothing items in corpse."""
-        coverage_map = {}
-
         # WORN, not merely CARRIED (#2460): only what `worn_garments()`
         # answers -- contents with coverage, filtered by the death record
         # where one exists -- covers the body. A jacket taken off before
         # dying, a looted coat, a newly-bought shirt: carried, not worn.
-        clothing_items = self.worn_garments()
-
-        # For each clothing item, map its coverage to body locations
-        for item in clothing_items:
-            coverage = item.db.coverage or []
-            for location in coverage:
-                # Use outermost item (last one wins for now - could be enhanced)
+        # A corpse keeps no worn stack, only the flat list, so the layer
+        # decides who shows: outermost (highest layer) wins a location,
+        # and a styled garment covers what it currently covers (#3578).
+        coverage_map = {}
+        garments = sorted(self.worn_garments(),
+                          key=lambda it: getattr(it, "layer", 0) or 0)
+        for item in garments:
+            for location in item.get_current_coverage() or []:
                 coverage_map[location] = item
-        
         return coverage_map
     
     def get_preserved_wound_descriptions(self, location=None):
@@ -675,7 +673,9 @@ class Corpse(IdentityBearerMixin, Item):
         self._current_item_context = clothing_item
         
         # Try to get worn description first
-        worn_desc = clothing_item.db.worn_desc
+        # The accessor the living body reads: the active style's sentence
+        # over the base worn desc (#3578) -- coverage and prose must agree.
+        worn_desc = clothing_item.get_current_worn_desc()
         if worn_desc:
             # Process template variables like living characters do
             processed_desc = self._process_corpse_description_variables(worn_desc)

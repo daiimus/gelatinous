@@ -43,6 +43,56 @@ Clothing uses the exact same body location constants as longdesc:
 - **Layering order**: Multiple items on same location follow layering rules (outer layers visible)
 - **Partial coverage**: Items can cover multiple locations (e.g., shirt covers chest, back, abdomen)
 
+> **Note 2026-09-16 (#3578) — these rules belong to the *body*, not to
+> the living character.**  Owner ruling: a severed part must display
+> garments *"just like it does on a character, mixing the worn descs and
+> longdesc where appropriate."*  Hidden longdescs, clothing descriptions
+> and partial coverage are now honoured by three renderers —
+> `AppearanceMixin._get_visible_body_descriptions` (living),
+> `Corpse._get_preserved_longdesc_descriptions`, and
+> `Appendage.return_appearance` (severed limbs and heads).  **Layering
+> order is the one rule that does not carry over**: see the builder note
+> immediately below.
+>
+> **Two builders, one rule, and which shape each reads (corrected
+> 2026-09-17 after the #3578 review).** "Outermost wins the location" is
+> the rule everywhere; the data shape decides how it is read.  A living
+> character and a severed part both carry a **worn stack**
+> `{location: [garments, outermost first]}` — the character's
+> `worn_items`, the part's self-healing `worn_items` ledger, which
+> `detach_items_to_appendage` copies in that order and `undress`/`dress`
+> maintain — so both read the first entry at each location through the
+> module-level **`coverage_from_worn_stack(worn_items)`** in
+> `typeclasses/clothing_mixin.py` (`ClothingMixin._build_clothing_coverage_map`
+> delegates to it; `Appendage.return_appearance` heals the ledger with
+> `worn_garments()` and then reads it).  A `Corpse` keeps **no stack**,
+> only the flat `worn_garments()` list (contents filtered by
+> `worn_at_death`), so `_build_corpse_clothing_coverage_map` orders that
+> list by `layer` and lets the highest layer win, and reads each garment's
+> **current** coverage (`get_current_coverage()`, so a rolled cap does not
+> cover the ears it is rolled off).  The first #3578 cut fed the part's
+> flat list to a "later wins" builder; the ledger lists outermost FIRST,
+> so that showed the innermost garment and lost the helmet over a
+> balaclava entirely — the review caught it.
+>
+> **What a garment does on a dead body.** It renders its `worn_desc`
+> **once**, in place of the covered location's longdesc, and everything
+> under it — authored prose *and* preserved wounds — is hidden.  Neither
+> a corpse nor a severed part lists what it is WEARING as contents (a
+> part still lists what it merely carries — retracted hardware, a thing
+> put in a severed hand — through Evennia's own `You see:` line, since
+> that line is the only way such contents are found: `Appendage.filter_visible`
+> drops worn garments from it, nothing else), and the severed part's
+> old "It still wears a bloodstained glove" sentence was deleted with
+> `_build_worn_items_line`.  What gets hidden is exactly the garment
+> **prototype's `coverage` list** and nothing more — `MINING_HELMET`
+> declares `["head"]`, so a severed head wearing one still shows its
+> `hair` line — the same binary, location-shaped limit the sheer-garment
+> gap below describes.  And a carried longdesc prints verbatim, so prose
+> authored for a living body ("He holds his head slightly forward") reads
+> the same way on a detached one.  Both are pre-existing corpse
+> properties, not new to #3578.
+
 ## Clothing Item Architecture
 
 ### Wearable Item Class

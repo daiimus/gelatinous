@@ -248,7 +248,9 @@ the end of their region).  Wound rendering follows
 > spec change.  Note also that only the LIVING renderer and the
 > Appendage renderer append extras — `typeclasses/corpse.py` iterates
 > the species order alone, so a corpse never renders an augment
-> location.
+> location.  (#3578, 2026-09-16: the Appendage extras pass now walks
+> its garment coverage-map keys as well as its longdesc keys, so a
+> garment worn on an added-anatomy location renders too.)
 
 **Chrome rendering** (shipped): a body location whose organs are
 `inorganic` renders in a light steel grey (`CHROME_DEFAULT_COLOR`)

@@ -466,6 +466,32 @@ currently done.)
 - **Unset Locations**: Body parts without longdesc descriptions remain invisible
 - **Template Processing**: All visible descriptions processed for third-person perspective consistency
 
+> **Extended 2026-09-16 (#3578) — the visibility rules are not
+> character-only.**  Owner ruling: a severed part must display garments
+> *"just like it does on a character, mixing the worn descs and longdesc
+> where appropriate."*  All four rules above now hold on the three body
+> kinds alike — living character, `Corpse`, and `Appendage` /
+> `SeveredHead`.  The living character and the severed part read the
+> same outermost-first worn stack through one builder,
+> `coverage_from_worn_stack` (`typeclasses/clothing_mixin.py`); the
+> corpse, which keeps no stack, orders its flat `worn_garments()` list
+> by layer in `_build_corpse_clothing_coverage_map` and reads current
+> (styled) coverage.  A
+> covered location on a severed part renders the garment's `worn_desc`
+> once, in place of the carried longdesc, and the preserved wounds at
+> that location are hidden with it — the same "clothing hides what is
+> under it" rule, applied to prose that was snapshotted at sever time.
+> The part's worn garments leave Evennia's contents line
+> (`Appendage.filter_visible`; what it merely carries is still listed)
+> and it no longer appends an "It still wears ..." sentence.
+>
+> Two limits carry over from the corpse path unchanged: the garment
+> **prototype's `coverage` list** is the whole of what gets hidden (a
+> helmet declaring `["head"]` leaves the `hair` line visible), and a
+> carried longdesc prints **verbatim**, so prose written for a living
+> body ("He holds his head slightly forward") still reads that way on a
+> detached one.
+
 ## Data Storage
 
 ### Character Database Structure

@@ -1013,7 +1013,17 @@ class CmdDress(Command):
         for loc in applicable:
             existing = list(appendage_worn.get(loc) or ())
             if item not in existing:
-                existing.append(item)
+                # Outermost first, the living stack's order (#3578): the
+                # renderer takes the first entry at each location, so a
+                # higher layer goes in front of every lower one, the way
+                # ClothingMixin.wear_item inserts.
+                index = 0
+                for i, worn in enumerate(existing):
+                    if (getattr(item, "layer", 0) or 0) <= (getattr(worn, "layer", 0) or 0):
+                        index = i + 1
+                    else:
+                        break
+                existing.insert(index, item)
                 appendage_worn[loc] = existing
         target.db.worn_items = appendage_worn
         return True, ""

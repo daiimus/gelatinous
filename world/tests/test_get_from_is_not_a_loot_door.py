@@ -31,10 +31,17 @@ the code is correct on the target it was written for.
 
 **2. The severed limb's ledger.** `undress <limb> <item>` prunes
 `appendage.db.worn_items`; this door reached the same physical contents
-through a resolver that knows nothing about it. The limb went on saying
-*"It still wears a bloodstained glove"* — and once the glove was
-deleted, the dangling entry crashed `look` on the limb, because
-`_build_worn_items_line` had no prune of its own.
+through a resolver that knows nothing about it. The limb went on
+describing a glove that was gone — and once the glove was deleted, the
+dangling entry crashed `look` on the limb, because the renderer had no
+prune of its own.
+
+(The limb's forensic prose used to be a bolted-on *"It still wears a
+bloodstained glove."* sentence; since #3578 the garment renders as a
+worn desc standing in for the location it covers, the way it does on a
+living body. The question these tests ask is unchanged — *is the limb
+still describing a glove it no longer has?* — so they ask it of
+`return_appearance`, which is where a player meets the answer.)
 
 **3. `at_drop` had no caller.** This game's `drop` replaced Evennia's,
 and Evennia's was the only thing that called `at_drop`. So single-use
@@ -124,12 +131,27 @@ class TestAPersonIsNotAContainer(_LootCase):
 
 
 class TestTheSeveredLimbKeepsAnHonestLedger(_LootCase):
+    #: The glove's ``worn_desc`` — what the limb prints when it believes
+    #: it is still wearing the thing (#3578). ``_LootCase.garment`` sets
+    #: ``worn_desc`` to the key, so this is the glove's whole sentence.
+    GLOVE_PROSE = "a bloodstained glove"
+
     def limb(self):
         arm = create_object("typeclasses.items.Appendage",
                             key="a severed left arm", location=self.room1)
-        glove = self.garment(arm, key="a bloodstained glove")
+        glove = self.garment(arm, key=self.GLOVE_PROSE)
         arm.db.worn_items = {"left_hand": [glove]}
         return arm, glove
+
+    def described(self, arm):
+        """What a player looking at the limb actually reads.
+
+        Asserted through ``return_appearance`` rather than any helper
+        under it: the limb's key is "a severed left arm", which shares no
+        words with the glove's prose, so a hit here is the glove and
+        nothing else.
+        """
+        return arm.return_appearance(self.char1)
 
     def test_taking_the_glove_clears_the_entry(self):
         arm, glove = self.limb()
@@ -142,20 +164,21 @@ class TestTheSeveredLimbKeepsAnHonestLedger(_LootCase):
     def test_the_limb_stops_advertising_it(self):
         arm, _glove = self.limb()
         self.call(CmdGet(), "glove from arm", caller=self.char1)
-        self.assertNotIn("still wears",
-                         arm._build_worn_items_line(self.char1))
+        self.assertNotIn(self.GLOVE_PROSE, self.described(arm))
 
     def test_a_glove_still_on_the_limb_is_still_described(self):
+        """CONTROL for the test above: the instrument can see a glove
+        that IS still worn, so the absence there means something."""
         arm, _glove = self.limb()
-        self.assertIn("glove", arm._build_worn_items_line(self.char1))
+        self.assertIn(self.GLOVE_PROSE, self.described(arm))
 
     def test_a_deleted_garment_does_not_crash_look(self):
         """The escalation: a dangling entry deserializes to None and
-        `None.get_display_name` raised inside `return_appearance`."""
+        raised inside `return_appearance`."""
         arm, glove = self.limb()
         glove.delete()
-        self.assertEqual(arm._build_worn_items_line(self.char1), "")
-        arm.return_appearance(self.char1)      # must not raise
+        self.assertNotIn(self.GLOVE_PROSE,
+                         self.described(arm))          # must not raise
 
 
 class TestSingleUseClothingPerishesOnTheWayDown(_LootCase):

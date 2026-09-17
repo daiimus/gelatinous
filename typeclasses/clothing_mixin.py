@@ -10,6 +10,18 @@ Extracted from typeclasses/characters.py in Phase 4 refactoring.
 from world.grammar import with_article
 
 
+def coverage_from_worn_stack(worn_items):
+    """Map each body location to the garment showing there, from a worn
+    stack ``{location: [garments, outermost first]}``: the first entry
+    at each location. The living body's rule, and a severed part's,
+    since a part carries the same stack in its ledger (#3578)."""
+    coverage = {}
+    for location, items in (worn_items or {}).items():
+        if items:
+            coverage[location] = items[0]
+    return coverage
+
+
 class ClothingMixin:
     """
     Mixin class providing clothing and wearable-item management methods.
@@ -674,13 +686,4 @@ class ClothingMixin:
         Returns:
             dict: Mapping of location str to outermost clothing item.
         """
-        coverage = {}
-        if not self.worn_items:
-            return coverage
-
-        for location, items in self.worn_items.items():
-            if items:
-                # First item is outermost due to layer ordering
-                coverage[location] = items[0]
-
-        return coverage
+        return coverage_from_worn_stack(self.worn_items)
