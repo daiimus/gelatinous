@@ -109,9 +109,11 @@ class Exit(DefaultExit):
         # --- END SKY ROOM RESTRICTION CHECK ---
         
         # --- EDGE/GAP RESTRICTION CHECK ---
-        # Block normal traversal of edge and gap exits - these require jump command
-        is_edge = self.db.is_edge
-        is_gap = self.db.is_gap
+        # Block normal traversal of edge and gap exits - these require jump command.
+        # Strict, like every other reader of the flags (#3583): a literal True
+        # is an edge; an unspecced double is not.
+        is_edge = self.db.is_edge is True
+        is_gap = self.db.is_gap is True
         
         if is_edge or is_gap:
             if is_edge and is_gap:

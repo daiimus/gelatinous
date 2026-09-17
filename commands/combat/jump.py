@@ -441,6 +441,27 @@ class CmdJump(Command):
         # Schedule the revelation with calculated timing
         delay(revelation_delay, reveal_outcome)
     
+    def pay_the_price_of_leaving(self):
+        """Jumping away while someone has you in their aim pays flee's
+        AIM contest first: Motorics against the aimer, the jumper's roll
+        plus the bold-move bonus, and the aimer's opportunity attack on
+        a loss (#3583). The jump then goes regardless; the only thing
+        that stops it is the attack leaving the jumper dead or out cold.
+        Nobody aiming: nothing to pay. (Flee's OTHER contest, the melee
+        disengage roll against whoever targets you, is not paid here --
+        an open owner question, recorded in the spec.) Returns True when
+        the jump may proceed."""
+        from world.combat.constants import JUMP_AWAY_BONUS, NDB_AIMED_AT_BY
+        if getattr(self.caller.ndb, NDB_AIMED_AT_BY, None) is None:
+            return True
+        from commands.combat.movement import break_aim_lock
+        if break_aim_lock(self.caller, bonus=JUMP_AWAY_BONUS, label="JUMP_AWAY"):
+            return True
+        if self.caller.is_dead() or self.caller.is_unconscious():
+            return False
+        self.caller.msg("|yYou throw yourself at the edge regardless.|n")
+        return True
+
     def handle_edge_descent(self):
         """``jump off <dir> edge``. Stepping off always succeeds; what
         happens next is the ROOM's business (#3579): air below and the
@@ -467,9 +488,6 @@ class CmdJump(Command):
 
                 # Check if caller is grappling someone - take them along for the ride
                 grappled_victim = get_grappling_target(handler, caller_entry)
-                if grappled_victim:
-                    self.caller.msg(f"|yYou leap from the {self.direction} edge while dragging {get_display_name_safe(grappled_victim, self.caller)} with you!|n")
-                    splattercast.msg(f"JUMP_EDGE_WITH_VICTIM: {self.caller.key} edge jumping while grappling {grappled_victim.key}")
 
         if not self.direction:
             self.caller.msg("Jump off which direction?")
@@ -481,7 +499,7 @@ class CmdJump(Command):
             return
 
         # Validate it's an edge
-        if not exit_obj.db.is_edge:
+        if exit_obj.db.is_edge is not True:
             self.caller.msg(f"The {self.direction} exit is not an edge you can jump from.")
             return
 
@@ -493,6 +511,14 @@ class CmdJump(Command):
         edge_difficulty = (exit_obj.db.edge_difficulty
                            if exit_obj.db.edge_difficulty is not None
                            else FALL_EDGE_DIFFICULTY_DEFAULT)
+
+        # In a fight, leaving costs what flee costs (#3583). Paid only
+        # once the edge is real, so a typo never feeds an aimer a shot.
+        if not self.pay_the_price_of_leaving():
+            return
+        if grappled_victim:
+            self.caller.msg(f"|yYou leap from the {self.direction} edge while dragging {get_display_name_safe(grappled_victim, self.caller)} with you!|n")
+            splattercast.msg(f"JUMP_EDGE_WITH_VICTIM: {self.caller.key} edge jumping while grappling {grappled_victim.key}")
 
         # Captured BEFORE the move -- see #2424: the broadcast below used
         # `previous_location`, which nothing in the repo assigns, so the
@@ -615,6 +641,7 @@ class CmdJump(Command):
         with no token and the cell's gravity takes over. A gap whose far
         perch no longer exists is refused on the roof (#3559)."""
         splattercast = get_splattercast()
+        grappled_victim = None
 
         # Check if caller is being grappled (can't jump while restrained)
         handler = getattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
@@ -629,14 +656,11 @@ class CmdJump(Command):
                     splattercast.msg(f"JUMP_GAP_BLOCKED: {self.caller.key} attempted gap jump while grappled by {grappler.key}")
                     return
 
-                # Check if caller is grappling someone - break grapple for gap jump
+                # Grappling someone: the grip is released for the leap --
+                # but only once the leap is real (after the gap is
+                # validated and the price of leaving is paid), or an
+                # aborted jump would free the victim for nothing.
                 grappled_victim = get_grappling_target(handler, caller_entry)
-                if grappled_victim:
-                    from world.combat.grappling import break_grapple
-                    break_grapple(handler, grappler=self.caller, victim=grappled_victim)
-                    self.caller.msg(f"|yYou release your grip on {get_display_name_safe(grappled_victim, self.caller)} to focus on the gap jump!|n")
-                    grappled_victim.msg(f"|g{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} releases their grip on you to attempt a gap jump!|n")
-                    splattercast.msg(f"JUMP_GAP_GRAPPLE_BREAK: {self.caller.key} broke grapple with {grappled_victim.key} for gap jump")
 
         if not self.direction:
             self.caller.msg("Jump across which direction?")
@@ -648,7 +672,7 @@ class CmdJump(Command):
             return
 
         # Validate it's a gap
-        if not exit_obj.db.is_gap:
+        if exit_obj.db.is_gap is not True:
             self.caller.msg(f"The {self.direction} exit is not a gap you can jump across.")
             return
 
@@ -659,6 +683,16 @@ class CmdJump(Command):
             self.caller.msg(f"The {self.direction} gap doesn't lead anywhere safe to land.")
             splattercast.msg(f"JUMP_GAP_NO_PERCH: exit #{exit_obj.id} gap_destination={exit_obj.db.gap_destination!r} does not resolve")
             return
+
+        # In a fight, leaving costs what flee costs (#3583).
+        if not self.pay_the_price_of_leaving():
+            return
+        if handler and grappled_victim:
+            from world.combat.grappling import break_grapple
+            break_grapple(handler, grappler=self.caller, victim=grappled_victim)
+            self.caller.msg(f"|yYou release your grip on {get_display_name_safe(grappled_victim, self.caller)} to focus on the gap jump!|n")
+            grappled_victim.msg(f"|g{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} releases their grip on you to attempt a gap jump!|n")
+            splattercast.msg(f"JUMP_GAP_GRAPPLE_BREAK: {self.caller.key} broke grapple with {grappled_victim.key} for gap jump")
 
         # Gap jumping requires Motorics check vs gap difficulty
         caller_motorics = get_numeric_stat(self.caller, "motorics")

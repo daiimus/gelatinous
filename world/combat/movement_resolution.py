@@ -422,6 +422,35 @@ def _resolve_advance_cross_room(
         )
         return
 
+    # Find exit from current room to target room. An edge, a gap or a
+    # way into air is not a way to advance for anyone who cannot stay up
+    # (#3583: refused at the edge) -- combat relocates with `move_to`
+    # and never reaches the exit's own refusal, so it asks here.
+    from world.gravity import can_leave_by
+    exit_to_target = None
+    over_the_edge = None
+    for exit_obj in char.location.exits:
+        if exit_obj.destination == target_room:
+            if can_leave_by(char, exit_obj):
+                exit_to_target = exit_obj
+                break
+            over_the_edge = exit_obj
+
+    if not exit_to_target:
+        if over_the_edge is not None:
+            char.msg(
+                f"|rThe only way to "
+                f"{get_display_name_safe(target, char)} is over the "
+                f"{over_the_edge.key} edge -- that is a jump, not an "
+                f"advance.|n"
+            )
+        else:
+            char.msg(
+                f"|rYou cannot find a way to "
+                f"{get_display_name_safe(target, char)}'s location.|n"
+            )
+        return
+
     # Check if advancing character is grappling someone and should drag them
     grappled_victim = handler.get_grappling_obj(entry)
     should_drag_victim = False
@@ -504,19 +533,6 @@ def _resolve_advance_cross_room(
             )
             return
 
-    # Find exit from current room to target room
-    exit_to_target = None
-    for exit_obj in char.location.exits:
-        if exit_obj.destination == target_room:
-            exit_to_target = exit_obj
-            break
-
-    if not exit_to_target:
-        char.msg(
-            f"|rYou cannot find a way to "
-            f"{get_display_name_safe(target, char)}'s location.|n"
-        )
-        return
 
     # You cannot stroll out of a melee somebody has hold of (#3158).
     if not _break_away(handler, char, splattercast, grappled_victim):
@@ -1038,17 +1054,30 @@ def _resolve_charge_cross_room(
         )
         return
 
-    # Check for valid path
+    # Check for valid path. An edge, a gap or a way into air is not a
+    # path to charge down for anyone who cannot stay up (#3583).
+    from world.gravity import can_leave_by
     target_room = target.location
-    exits_to_target = [
+    all_exits_to_target = [
         ex for ex in char.location.exits if ex.destination == target_room
+    ]
+    exits_to_target = [
+        ex for ex in all_exits_to_target if can_leave_by(char, ex)
     ]
 
     if not exits_to_target:
-        char.msg(
-            f"|rThere is no clear path to charge at "
-            f"{get_display_name_safe(target, char)}.|n"
-        )
+        if all_exits_to_target:
+            char.msg(
+                f"|rThe only way to "
+                f"{get_display_name_safe(target, char)} is over the "
+                f"{all_exits_to_target[0].key} edge -- that is a jump, "
+                f"not a charge.|n"
+            )
+        else:
+            char.msg(
+                f"|rThere is no clear path to charge at "
+                f"{get_display_name_safe(target, char)}.|n"
+            )
         return
 
     # Check if target has ranged weapon

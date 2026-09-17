@@ -66,14 +66,15 @@ per-exit `fall_damage` whose default was 8 — and now charges 3 and 1
 The ratios in the four rows above are the shipped transit-fall splits
 preserved verbatim; it is the *base* they multiply that moved.
 
-### Pending knobs
+### Fights at the edge (#3583)
 
-Not rows yet, because the constants do not exist yet:
+Declared in the same section of `world/combat/constants.py`, consumed by
+`commands/combat/jump.py` (`pay_the_price_of_leaving`) through the flee
+contest in `commands/combat/movement.py`.
 
-- The jump-away bonus from #3583 joins this table when it ships. It is a
-  gravity-adjacent number (it modifies a leap's odds, and a missed leap is
-  a fall), so it belongs in the same section rather than in a table of its
-  own.
+| Constant (declaration site) | Value | What it tunes | Set by | Tuned? | What to watch in play |
+|---|---|---|---|---|---|
+| `JUMP_AWAY_BONUS` (`world/combat/constants.py`) | `20` | Added to the jumper's Motorics roll in the contest against whoever has them in their aim when they jump off or across mid-fight. Flee's contest is roll-vs-roll on Motorics; this is the bold move's edge. | #3583 owner ruling 2026-09-16 ("the difficulty should be half or there should be a bonus. It's a bold move.") | No | Whether jumping away is a meaningful choice next to `flee` or a strictly better one. Rolls are `randint(1, Motorics)` with player Motorics defaulting to 75 and NPC blueprints at 1–3, so 20 is decisive against an NPC aimer and modest against a player. Whether it should scale with the aimer's Motorics is the balance-pass question. |
 
 ---
 

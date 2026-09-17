@@ -133,6 +133,65 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 - **`advance <target>`**: Close distance for melee combat
 - **`charge <target>`**: Reckless rush attack with bonuses/penalties
 
+> **Refused at the edge (#3583, owner ruling 2026-09-16).** None of the
+> three room-changing movement commands will take a body over a drop.
+> `flee`, `advance` and `charge` all filter their exit pool through one
+> predicate — `can_leave_by(mover, exit)` in `world/gravity.py` — which
+> fails an exit that is an edge (`db.is_edge`), a gap (`db.is_gap`) or
+> that leads into an air cell, unless the mover's `db.stays_aloft is
+> True`. The predicate lives in the gravity module rather than in combat
+> because it is the same question gravity asks everywhere else, and
+> because combat movement relocates with `move_to` and so never reaches
+> the refusal in `Exit.at_traverse` that already stops walking. `advance`
+> (`world/combat/movement_resolution.py`) and `charge` keep the rejected
+> exit so they can say why: *"The only way to X is over the N edge — that
+> is a jump, not a charge."* Going over the edge is a deliberate act with
+> its own verb and its own consequences (`specs/JUMP_COMMAND_SPEC.md`),
+> never something a movement command does to you.
+>
+> Owner: *"It would be refused at the edge… Ideally, very few rooftops
+> will exist without exits though — so ending up on one where all you can
+> do is jump is a tactical challenge."* A roof with nothing but edges is
+> therefore a designed predicament, not a bug — see
+> `specs/PARKOUR_TEMPLATE_LIBRARY.md` §1.5.
+>
+> Three details worth not re-deriving:
+>
+> * **The edge question comes first.** `advance` asks `can_leave_by`
+>   BEFORE it rolls the grapple drag-resist contest
+>   (`world/combat/movement_resolution.py`), so a grappler who cannot go
+>   that way never drags their victim into a roll that was going to be
+>   thrown out anyway.
+> * **The flags are read strictly.** `can_leave_by`, the jump verbs
+>   (`exit_obj.db.is_edge is not True` / `is_gap is not True`) and the
+>   edge/gap block in `Exit.at_traverse` (`is_edge = self.db.is_edge is
+>   True`) all require a literal `True`. A truthy-but-not-True attribute
+>   left on an exit by an old build script does not make it an edge in
+>   one place and a plain exit in another.
+> * **Souls ask the same predicate.** An NPC soul's `flee` job
+>   (`world/souls/jobs.py`) filters its exits through `can_leave_by`
+>   too, and reports "cornered — nowhere to flee" when none survive — so
+>   an NPC will not walk itself off a roof to escape.
+>
+> **Flee's AIM contest is now shared — its disengage roll is not.** The
+> Motorics-vs-Motorics roll that breaks an aimer's lock (and the
+> opportunity attack the aimer gets on a win) was inline in `CmdFlee`;
+> #3583 extracts it as `break_aim_lock(caller, *, bonus=0, label=None)`
+> in `commands/combat/movement.py`, so `flee` and the jump verbs contest
+> the aim by exactly the same rule. `jump` passes
+> `bonus=JUMP_AWAY_BONUS` (20) and `label="JUMP_AWAY"` — the label only
+> re-prefixes the splattercast lines, so a jump logs `JUMP_AWAY_` rather
+> than `FLEE_`. See the jump spec's "Fights at the edge" block for why
+> the bonus exists and why the jump goes even on a lost roll.
+>
+> Flee's **second** contest — Part 2, the melee disengage roll against
+> the highest-Motorics opponent targeting you, a loss of which blocks the
+> flee and sets `NDB_SKIP_ROUND` — was **not** extracted and the jump
+> verbs do not pay it. In a melee with nobody aiming, `jump off` costs
+> nothing where `flee` rolls and can be blocked; and since flee is now
+> refused at the edge, the melee opponent has no way to punish the
+> departure at all. _(2026-09-16: open owner call — should a jump out of a melee also pay the disengage roll, with a non-refusing cost (a round, the attack) since the ruling is "never refused"? Not built.)_
+
 ### Special Actions (`commands/combat/special_actions.py`)
 - **`grapple <target>`**: Attempt to grab and restrain target
 - **`escape`**: Break free from grapple (switches to violent mode)

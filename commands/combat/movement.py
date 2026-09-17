@@ -38,6 +38,122 @@ from world.combat.utils import (
 from world.identity_utils import msg_room_identity
 
 
+def _clear_aim_override_place(aimer, target):
+    """Clear override_place for aiming when someone breaks an aim lock,
+    handling mutual-showdown cleanup.
+
+    Args:
+        aimer: The character who was aiming (their aim is being broken)
+        target: The character who broke the aim
+    """
+    # Check if they were in a mutual showdown
+    if (hasattr(aimer, 'override_place') and hasattr(target, 'override_place') and
+        aimer.override_place == "locked in a deadly showdown." and
+        target.override_place == "locked in a deadly showdown."):
+        # They were in a showdown - clear aimer's place, check if target should revert to normal aiming
+        aimer.override_place = ""
+
+        # If target is still aiming at aimer, revert them to normal aiming
+        target_still_aiming = getattr(target.ndb, NDB_AIMING_AT, None)
+        if target_still_aiming == aimer:
+            target.override_place = "aiming carefully at {aim_target}."
+        else:
+            # Target isn't aiming at anyone, clear their place too
+            target.override_place = ""
+    else:
+        # Normal aiming cleanup
+        if hasattr(aimer, 'override_place'):
+            aimer.override_place = ""
+
+
+def break_aim_lock(caller, *, bonus=0, label=None):
+    """The price of leaving while someone has you in their aim. One
+    contest, shared by `flee` and by the jump verbs (#3583).
+
+    A stale or absent lock is released for free. Otherwise it is
+    Motorics against Motorics, `standard_roll` each, the caller's roll
+    plus `bonus` (the jump verbs pass the bold-move bonus, flee passes
+    none). A won roll clears the aimer's state and frees the caller. A
+    lost roll hands the aimer an immediate attack through the real
+    `attack` command with the RESOLVED target -- args carries only the
+    aimer's perceived name for messages; a raw key would fail the
+    identity pipeline AND leak the real name (#1002).
+
+    `label` names the door on splattercast (default the flee prefix; the
+    jump verbs pass "JUMP_AWAY") so a jump contest is never read as a
+    flee contest in the one channel combat is reviewed on.
+
+    Returns True when the caller is free to go, False when the aimer
+    kept them and the attack has already landed.
+    """
+    splattercast = get_splattercast()
+    prefix = label or DEBUG_PREFIX_FLEE
+    aimer = getattr(caller.ndb, NDB_AIMED_AT_BY, None)
+    if not aimer:
+        return True
+    # Stale/Invalid Aim Check
+    if not aimer.location or aimer.location != caller.location \
+            or getattr(aimer.ndb, NDB_AIMING_AT, None) != caller:
+        caller.msg(f"The one aiming at you ({aimer.get_display_name(caller)}) seems to have stopped or departed; you are no longer locked by their aim.")
+        if hasattr(caller.ndb, NDB_AIMED_AT_BY): del caller.ndb.aimed_at_by
+        if hasattr(aimer.ndb, NDB_AIMING_AT) and aimer.ndb.aiming_at == caller:
+            del aimer.ndb.aiming_at
+        splattercast.msg(f"{prefix}_CMD (AIM_BREAK_PHASE): NDB Aim lock on {caller.key} by {aimer.key} was stale/invalid. Lock broken.")
+        return True
+    # Active Aim Lock - Attempt to Break
+    splattercast.msg(f"{prefix}_CMD (AIM_BREAK_PHASE): {caller.key} is attempting to break NDB aim lock by {aimer.key}.")
+    aimer_motorics_to_resist = get_numeric_stat(aimer, "motorics")
+    caller_motorics = get_numeric_stat(caller, "motorics")
+    flee_roll, _, _ = standard_roll(caller_motorics)
+    resist_roll, _, _ = standard_roll(aimer_motorics_to_resist)
+    flee_roll += int(bonus or 0)
+    splattercast.msg(f"{prefix}_AIM_ROLL: {caller.key}(motorics:{flee_roll}, bonus:{bonus}) vs {aimer.key}(motorics:{resist_roll})")
+
+    if flee_roll > resist_roll:
+        caller.msg(MSG_FLEE_BREAK_FREE_AIM.format(aimer=aimer.get_display_name(caller)))
+        if aimer.access(caller, "view"):
+            aimer.msg(f"|y{caller.get_display_name(aimer)} breaks free from your aim!|n")
+
+        if hasattr(aimer, "clear_aim_state"):
+            aimer.clear_aim_state(reason_for_clearing=f"as {caller.key} breaks free")
+        else: # Fallback if clear_aim_state is missing on aimer
+            if hasattr(aimer.ndb, NDB_AIMING_AT):
+                del aimer.ndb.aiming_at
+            # Clear override_place and handle mutual showdown cleanup
+            _clear_aim_override_place(aimer, caller)
+
+        if hasattr(caller.ndb, NDB_AIMED_AT_BY): del caller.ndb.aimed_at_by # Clear on caller too
+
+        splattercast.msg(f"{prefix}_AIM_SUCCESS: {caller.key} broke free from {aimer.key}'s NDB aim.")
+        return True
+
+    # Failed to break NDB aim - AIMER ATTACKS!
+    caller_msg_flee_fail = MSG_FLEE_FAILED_BREAK_AIM.format(aimer=aimer.get_display_name(caller))
+    aimer_msg_flee_fail = ""
+    if aimer.access(caller, "view"):
+        aimer_msg_flee_fail = f"{caller.get_display_name(aimer)} tries to break your aim, but you maintain focus."
+
+    splattercast.msg(f"{prefix}_AIM_FAIL: {caller.key} failed to break {aimer.key}'s NDB aim. {aimer.key} initiates an attack.")
+
+    # Aimer gets an immediate attack on the failed attempt, through the
+    # real attack command from the aimer's perspective.
+    from commands.combat.core_actions import CmdAttack
+    attack_cmd = CmdAttack()
+    attack_cmd.caller = aimer
+    attack_cmd.pre_resolved_target = caller
+    attack_cmd.args = caller.get_display_name(aimer)
+    attack_cmd.cmdstring = "attack"
+
+    # Display messages about the aimer's opportunity attack
+    caller.msg(caller_msg_flee_fail)
+    if aimer.access(caller, "view"):
+        aimer.msg(aimer_msg_flee_fail)
+
+    # Execute the attack
+    attack_cmd.func()
+    return False
+
+
 class CmdFlee(Command):
     """
     Attempt to flee from an aimer or combat.
@@ -105,17 +221,20 @@ class CmdFlee(Command):
             splattercast.msg(f"{DEBUG_PREFIX_FLEE}_ATTEMPT: {caller.key} marked as having attempted flee this round.")
 
         # --- PRE-FLEE SAFETY CHECK: PINNED BY RANGED TARGETERS IN ADJACENT ROOMS ---
-        # Filter out sky rooms - can't flee into the air!
+        # An edge, a gap or a way into air is not a way to flee for anyone
+        # who cannot stay up (#3583: refused at the edge -- a roof with
+        # nothing but edges is a tactical spot, and leaving it is a jump).
+        from world.gravity import can_leave_by
         all_exits = [ex for ex in caller.location.exits if ex.access(caller, 'traverse')]
         available_exits = [
-            ex for ex in all_exits 
-            if ex.destination and not ex.destination.db.is_sky_room
+            ex for ex in all_exits
+            if ex.destination and can_leave_by(caller, ex)
         ]
-        
-        # Debug log if sky rooms were filtered out
-        sky_exits_filtered = len(all_exits) - len(available_exits)
-        if sky_exits_filtered > 0:
-            splattercast.msg(f"{DEBUG_PREFIX_FLEE}_SKY_FILTER: {caller.key} - filtered out {sky_exits_filtered} sky room exits from {len(all_exits)} total exits.")
+
+        # Debug log if edges were filtered out
+        edge_exits_filtered = len(all_exits) - len(available_exits)
+        if edge_exits_filtered > 0:
+            splattercast.msg(f"{DEBUG_PREFIX_FLEE}_EDGE_FILTER: {caller.key} - filtered out {edge_exits_filtered} edge/gap/air exits from {len(all_exits)} total exits.")
         
         if not available_exits:
             # No exits at all.
@@ -176,76 +295,13 @@ class CmdFlee(Command):
         aim_successfully_broken = False
 
         if current_aimer_for_break_attempt:
-            # Stale/Invalid Aim Check
-            if not current_aimer_for_break_attempt.location or \
-               current_aimer_for_break_attempt.location != caller.location or \
-               getattr(current_aimer_for_break_attempt.ndb, NDB_AIMING_AT, None) != caller:
-                caller.msg(f"The one aiming at you ({current_aimer_for_break_attempt.get_display_name(caller)}) seems to have stopped or departed; you are no longer locked by their aim.")
-                if hasattr(caller.ndb, NDB_AIMED_AT_BY): del caller.ndb.aimed_at_by
-                if hasattr(current_aimer_for_break_attempt.ndb, NDB_AIMING_AT) and current_aimer_for_break_attempt.ndb.aiming_at == caller:
-                    del current_aimer_for_break_attempt.ndb.aiming_at
-                splattercast.msg(f"{DEBUG_PREFIX_FLEE}_CMD (AIM_BREAK_PHASE): NDB Aim lock on {caller.key} by {current_aimer_for_break_attempt.key} was stale/invalid. Lock broken.")
-                current_aimer_for_break_attempt = None 
-                aim_successfully_broken = True 
-            else:
-                # Active Aim Lock - Attempt to Break
-                splattercast.msg(f"{DEBUG_PREFIX_FLEE}_CMD (AIM_BREAK_PHASE): {caller.key} is attempting to break NDB aim lock by {current_aimer_for_break_attempt.key}.")
-                aimer_motorics_to_resist = get_numeric_stat(current_aimer_for_break_attempt, "motorics")
-                caller_motorics = get_numeric_stat(caller, "motorics")
-                flee_roll, _, _ = standard_roll(caller_motorics)
-                resist_roll, _, _ = standard_roll(aimer_motorics_to_resist)
-                splattercast.msg(f"{DEBUG_PREFIX_FLEE}_AIM_ROLL: {caller.key}(motorics:{flee_roll}) vs {current_aimer_for_break_attempt.key}(motorics:{resist_roll})")
+            # The contest against the aimer, shared with the jump verbs
+            # (#3583): a stale lock is released, a won roll frees the
+            # caller, a lost roll hands the aimer an opportunity attack.
+            if not break_aim_lock(caller):
+                return # Flee attempt ends here, aimer gets an attack.
+            aim_successfully_broken = True
 
-                if flee_roll > resist_roll:
-                    caller.msg(MSG_FLEE_BREAK_FREE_AIM.format(aimer=current_aimer_for_break_attempt.get_display_name(caller)))
-                    if current_aimer_for_break_attempt.access(caller, "view"): 
-                        current_aimer_for_break_attempt.msg(f"|y{caller.get_display_name(current_aimer_for_break_attempt)} breaks free from your aim!|n")
-                    
-                    if hasattr(current_aimer_for_break_attempt, "clear_aim_state"):
-                        current_aimer_for_break_attempt.clear_aim_state(reason_for_clearing=f"as {caller.key} breaks free")
-                    else: # Fallback if clear_aim_state is missing on aimer
-                        if hasattr(current_aimer_for_break_attempt.ndb, NDB_AIMING_AT): 
-                            del current_aimer_for_break_attempt.ndb.aiming_at
-                        # Clear override_place and handle mutual showdown cleanup
-                        self._clear_aim_override_place_on_flee(current_aimer_for_break_attempt, caller)
-                    
-                    if hasattr(caller.ndb, NDB_AIMED_AT_BY): del caller.ndb.aimed_at_by # Clear on caller too
-                    
-                    splattercast.msg(f"{DEBUG_PREFIX_FLEE}_AIM_SUCCESS: {caller.key} broke free from {current_aimer_for_break_attempt.key}'s NDB aim.")
-                    current_aimer_for_break_attempt = None # Successfully broke this aim
-                    aim_successfully_broken = True
-                else: # Failed to break NDB aim - AIMER ATTACKS!
-                    caller_msg_flee_fail = MSG_FLEE_FAILED_BREAK_AIM.format(aimer=current_aimer_for_break_attempt.get_display_name(caller))
-                    aimer_msg_flee_fail = ""
-                    if current_aimer_for_break_attempt.access(caller, "view"):
-                        aimer_msg_flee_fail = f"{caller.get_display_name(current_aimer_for_break_attempt)} tries to break your aim, but you maintain focus."
-                    
-                    splattercast.msg(f"{DEBUG_PREFIX_FLEE}_AIM_FAIL: {caller.key} failed to break {current_aimer_for_break_attempt.key}'s NDB aim. {current_aimer_for_break_attempt.key} initiates an attack.")
-                    
-                    # Aimer gets an immediate attack on the failed flee attempt
-                    # Import and execute the attack command from the aimer's perspective
-                    from commands.combat.core_actions import CmdAttack
-                    
-                    # Create a temporary attack command instance for the aimer.
-                    # Pass the RESOLVED object — args carries only the aimer's
-                    # perceived name for messages; a raw key would fail the
-                    # identity pipeline AND leak the real name (#1002).
-                    attack_cmd = CmdAttack()
-                    attack_cmd.caller = current_aimer_for_break_attempt
-                    attack_cmd.pre_resolved_target = caller
-                    attack_cmd.args = caller.get_display_name(
-                        current_aimer_for_break_attempt)
-                    attack_cmd.cmdstring = "attack"
-                    
-                    # Display messages about the aimer's opportunity attack
-                    caller.msg(caller_msg_flee_fail)
-                    if current_aimer_for_break_attempt.access(caller, "view"):
-                        current_aimer_for_break_attempt.msg(aimer_msg_flee_fail)
-                    
-                    # Execute the attack
-                    attack_cmd.func()
-                    
-                    return # Flee attempt ends here, aimer gets an attack.
 
         # --- Part 2: Combat Disengagement and Movement ---
         # If we reach here, any aim locks have been handled. Now attempt to flee from combat.
@@ -434,33 +490,6 @@ class CmdFlee(Command):
         if original_handler_at_flee_start and hasattr(original_handler_at_flee_start, 'is_active'):
             if not original_handler_at_flee_start.is_active:
                 original_handler_at_flee_start.start()
-
-    def _clear_aim_override_place_on_flee(self, aimer, target):
-        """
-        Clear override_place for aiming when someone flees and breaks aim, handling mutual showdown cleanup.
-        
-        Args:
-            aimer: The character who was aiming (their aim is being broken)
-            target: The character who fled and broke the aim
-        """
-        # Check if they were in a mutual showdown
-        if (hasattr(aimer, 'override_place') and hasattr(target, 'override_place') and
-            aimer.override_place == "locked in a deadly showdown." and 
-            target.override_place == "locked in a deadly showdown."):
-            # They were in a showdown - clear aimer's place, check if target should revert to normal aiming
-            aimer.override_place = ""
-            
-            # If target is still aiming at aimer, revert them to normal aiming
-            target_still_aiming = getattr(target.ndb, NDB_AIMING_AT, None)
-            if target_still_aiming == aimer:
-                target.override_place = "aiming carefully at {aim_target}."
-            else:
-                # Target isn't aiming at anyone, clear their place too
-                target.override_place = ""
-        else:
-            # Normal aiming cleanup
-            if hasattr(aimer, 'override_place'):
-                aimer.override_place = ""
 
 
 class CmdRetreat(Command):

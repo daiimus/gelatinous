@@ -229,6 +229,22 @@ heights, stitched by furniture. The law of the mesh:
   face (hook country). A lower one makes it a drop (one-way, or
   two-way once furniture arrives). No height change ever silently
   deletes a direction.
+- **A roof with nothing but edges is a tactical spot, not a trap**
+  (owner ruling 2026-09-16, #3583). Combat movement will not carry
+  anyone over a drop: `flee`, `advance` and `charge` all refuse an edge
+  exit, a gap exit or an exit into air for anyone whose `db.stays_aloft`
+  is not `True` (one predicate, `can_leave_by`, in `world/gravity.py`).
+  So nobody can be chased onto such a roof and nobody can back off it —
+  the only way out is the jump, and the jump costs flee's contest plus
+  the aimer's opportunity attack on a lost roll. Owner: *"It would be
+  refused at the edge… Ideally, very few rooftops will exist without
+  exits though — so ending up on one where all you can do is jump is a
+  tactical challenge."* Read that as a **budget, not a ban**: build the
+  edges-only roof deliberately and rarely, as the beat where a corridor
+  commits the player, and give every other plate a walkable way off per
+  invariant 5. The stakes come free — the drop below is already the
+  price — but only if the column beneath it is wired (see the wiring
+  requirement below).
 
 **Street width is a design tool.** One cell wide = the roof city can
 cross it (span-1 law). Two wide = a wall at roof level. Widen streets

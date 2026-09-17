@@ -926,6 +926,14 @@ FALL_BODYSHIELD_FAILED_VICTIM = 1.5
 #: BALANCE: the grappler's share when they land BADLY on a dragged victim.
 FALL_BODYSHIELD_FAILED_GRAPPLER = 0.5
 
+#: BALANCE: the bold-move bonus. Jumping off or across while someone has
+#: you in their aim pays flee's price -- the Motorics contest and their
+#: opportunity attack on a loss -- but the jumper adds this to their
+#: roll. Owner (2026-09-16, #3583): "the difficulty should be half or
+#: there should be a bonus. It's a bold move." A flat bonus for now;
+#: whether it should scale with the aimer is a balance-pass question.
+JUMP_AWAY_BONUS = 20
+
 #: Persisted record of a fall in progress (`obj.db.falling`), the
 #: at_server_start sweep's key -- the grenade fuse's shape (#505).
 DB_FALLING = "falling"

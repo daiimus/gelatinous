@@ -132,6 +132,22 @@ def _falls_at_all(obj) -> bool:
     return isinstance(obj, (Character, Item))
 
 
+def can_leave_by(mover, exit_obj) -> bool:
+    """Can this mover leave by this exit without falling? An exit that is
+    an edge or a gap, or that leads into air, refuses anyone who cannot
+    stay up -- the one predicate flee, advance and charge ask before
+    relocating (#3583: "refused at the edge"). Walking already refuses
+    these at ``Exit.at_traverse``; combat movement relocates with
+    ``move_to`` and never reaches it, so it asks here."""
+    if exit_obj is None:
+        return False
+    db = getattr(exit_obj, "db", None)
+    over_the_edge = (getattr(db, "is_edge", None) is True
+                     or getattr(db, "is_gap", None) is True
+                     or is_sky(getattr(exit_obj, "destination", None)))
+    return not over_the_edge or can_stay_up(mover)
+
+
 def is_stranded_aloft(obj) -> bool:
     """The boot sweep's cold-half predicate: in air, no record, cannot stay
     up, and somewhere to fall TO -- a body parked in a bare cell by the
