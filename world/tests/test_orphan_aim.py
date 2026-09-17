@@ -164,3 +164,22 @@ class TestAGoneTargetIsNoRelationship(TestOrphanAim):
         self.assertEqual(removed, [])
         self.assertEqual(ea[DB_TARGET_DBREF], 2)
         a.msg.assert_not_called()
+
+
+class TestAGhostCannotHoldYou(TestOrphanAim):
+    """The deleted character's own entry survives until the validator
+    prunes it, its char deserialized to None but its target_dbref still
+    naming you. That entry must not count as someone targeting you, or
+    the sweep tells you to choose a new target and then drops you a round
+    later (seen in play, 2026-09-17)."""
+
+    def test_the_deleted_target_s_entry_does_not_keep_you_in(self):
+        a = _char(1)
+        ghost = {DB_CHAR: None, DB_TARGET_DBREF: 1,
+                 DB_GRAPPLING_DBREF: None, DB_GRAPPLED_BY_DBREF: None}
+        with patch.object(cu, "logger"):
+            removed = self._run(self._handler([_entry(a, target=999), ghost]))
+        self.assertIn(a, removed)
+        line = a.msg.call_args[0][0]
+        self.assertIn("no longer there", line)
+        self.assertNotIn("Choose a new target", line)

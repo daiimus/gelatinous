@@ -1215,6 +1215,12 @@ def detect_and_remove_orphaned_combatants(handler):
     # Build a set of all character DBREFs that are being targeted
     targeted_dbrefs = set()
     for entry in combatants:
+        if not entry.get(DB_CHAR):
+            # A deleted character's own entry (char deserializes to None)
+            # still names its target; a ghost cannot hold anyone in the
+            # fight (#3568). _validate_combatants prunes the entry after
+            # this sweep.
+            continue
         target_dbref = entry.get(DB_TARGET_DBREF)
         if target_dbref is not None:
             targeted_dbrefs.add(target_dbref)
