@@ -353,13 +353,10 @@ def complete_flight(obj):
                 deflected = True
                 return
 
-        # Handle landing and proximity
+        # Handle landing and proximity. If `destination` is an air cell
+        # the move above already handed the object to the cell's gravity
+        # (world/gravity.py, #3579); nothing to do here.
         handle_landing(obj, destination, target, thrower)
-
-        # Apply gravity if item landed in a sky room (lazy import —
-        # commands package cross-import, resolved at call time)
-        from commands.combat.movement import apply_gravity_to_items
-        apply_gravity_to_items(destination)
     finally:
         if not deflected:
             _clear_flight_state(obj)

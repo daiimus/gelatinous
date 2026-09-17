@@ -19,7 +19,6 @@ organization and readability.
 # Import all commands for backward compatibility
 from .core_actions import CmdAttack, CmdStop
 from .movement import CmdFlee, CmdRetreat, CmdAdvance, CmdCharge
-from .jump import CmdJump
 from .special_actions import CmdGrapple, CmdEscapeGrapple, CmdReleaseGrapple, CmdDisarm, CmdAim
 
 __all__ = [
@@ -27,8 +26,6 @@ __all__ = [
     "CmdAttack", "CmdStop",
     # Movement
     "CmdFlee", "CmdRetreat", "CmdAdvance", "CmdCharge",
-    # Jump
-    "CmdJump",
     # Special actions
     "CmdGrapple", "CmdEscapeGrapple", "CmdReleaseGrapple", "CmdDisarm", "CmdAim"
 ]

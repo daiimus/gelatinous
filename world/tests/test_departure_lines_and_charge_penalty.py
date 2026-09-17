@@ -120,3 +120,23 @@ class TestThePhantomAttributeIsGone(EvenniaTest):
         for name in self.MODULES:
             src = inspect.getsource(importlib.import_module(name))
             self.assertIn("old_location = ", src)
+
+    def test_the_jump_verb_still_captures_it_after_the_gravity_rework(self):
+        """#3579 rewrote both of jump.py's departure branches -- the
+        edge descent now hands the air cell a flight plan and steps off,
+        and the gap jump now carries a leap token. Both still make a
+        `quiet=True` move, so both still need the room captured first,
+        and the rework is exactly the kind of change that quietly drops
+        a pre-move read. Named per-module rather than in the loop above,
+        because a module list is easy to shorten by accident."""
+        import inspect
+        from commands.combat import jump
+
+        src = inspect.getsource(jump)
+        self.assertIn("old_location = ", src)
+        self.assertGreaterEqual(
+            src.count("old_location = "), 2,
+            "jump.py has two departure branches (edge descent and gap "
+            "jump); each captures its own room before moving",
+        )
+        self.assertIn("location=old_location", src)

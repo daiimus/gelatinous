@@ -33,9 +33,15 @@ class TestExportMap(BaseEvenniaTest):
                                 key="Interior", location=None)
         self._exit("north", street, roof)
         self._exit("south", roof, street, is_door=True, door_locked=True)
-        self._exit("east", roof, sky, is_edge=True, sky_room=sky.id,
-                   fall_room=street.id, fall_distance=1, fall_damage=10,
-                   edge_difficulty=8)
+        # #3579 retired the edge-carried flight plan (sky_room /
+        # fall_distance / fall_damage): the exit's destination IS the
+        # air cell and the column below it is the fall, re-resolved
+        # every tick. What an edge still carries is the landing room
+        # (`fall_room`, #3580) and the two difficulties.
+        self._exit("east", roof, sky, is_edge=True,
+                   fall_room=street.id, edge_difficulty=8)
+        self._exit("northeast", roof, sky, is_gap=True,
+                   gap_difficulty=12, gap_destination=street.id)
         self._exit("down", sky, street)
         self._exit("in", street, offgrid)      # off-grid end: absent
         return street, roof, sky
@@ -69,8 +75,16 @@ class TestExportMap(BaseEvenniaTest):
         self.assertNotIn("door", kinds[("south", "door")])
         self.assertIn(("east", "edge"), kinds)
         edge = kinds[("east", "edge")]["edge"]
-        self.assertEqual(edge["fall_distance"], 1)
         self.assertEqual(edge["fall_room"], street.id)
+        self.assertEqual(edge["edge_difficulty"], 8)
+        # The retired flight plan must not come back: an exporter that
+        # still shipped `sky_room`/`fall_distance`/`fall_damage` would be
+        # publishing numbers no longer read by anything (#3579).
+        for retired in ("sky_room", "fall_distance", "fall_damage"):
+            self.assertNotIn(retired, edge)
+        gap = kinds[("northeast", "gap")]["edge"]
+        self.assertEqual(gap["gap_difficulty"], 12)
+        self.assertEqual(gap["gap_destination"], street.id)
         self.assertIn(("down", "fall"), kinds)   # one-way out of the sky
 
     def test_deterministic(self):

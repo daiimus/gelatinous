@@ -143,6 +143,21 @@ def at_server_start():
         from evennia.utils import logger
         logger.log_trace("Combat re-link sweep failed.")
 
+    # #3579: a fall is a delay() chain that dies on reload; the persisted
+    # `db.falling` record survives. Resume every recorded fall at its
+    # true remaining time, and start one for anything found hanging in
+    # an air cell with no record that cannot stay up.
+    try:
+        from world.gravity import sweep_airborne
+        resumed, started = sweep_airborne()
+        if resumed or started:
+            from evennia.utils import logger
+            logger.log_info(f"Airborne sweep: {resumed} falls resumed, "
+                            f"{started} started.")
+    except Exception:  # noqa: BLE001 — a broken sweep must not stop the boot
+        from evennia.utils import logger
+        logger.log_trace("Airborne sweep failed.")
+
 
 def at_server_stop():
     """
