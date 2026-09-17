@@ -1,6 +1,6 @@
 # Jump Command Implementation Specification
 
-> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. ~~Verified 2026-08-02~~ ~~re-checked 2026-09-11: 24 claim(s) false~~ **re-checked 2026-09-16: 40 claim(s) false, annotated inline.** Gravity layer #3579 shipped 2026-09-16: falls traverse the column; `sky_room`/`fall_distance`/`fall_damage` retired. #3580 followed the same day and retired `fall_room` — the four Fall Room Strategies are struck. #3583 ("fights at the edge") followed too: edge/gap/air exits are refused to `flee`/`advance`/`charge`, and jumping away mid-fight now pays flee's aim contest. Count raised to **40**: #3580 only changed the disposition of claims already counted, but #3583 falsified two more (Edge Position Combat Advantages, Turn-Based Considerations).
+> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. ~~Verified 2026-08-02~~ ~~re-checked 2026-09-11: 24 claim(s) false~~ **re-checked 2026-09-16: 40 claim(s) false, annotated inline.** Gravity layer #3579 shipped 2026-09-16: falls traverse the column; `sky_room`/`fall_distance`/`fall_damage` retired. #3580 followed the same day and retired `fall_room` — the four Fall Room Strategies are struck. #3583 ("fights at the edge") followed too: edge/gap/air exits are refused to `flee`/`advance`/`charge`, and jumping away mid-fight now pays flee's price — the aim contest, and, since #3591, the melee disengage roll too. Count raised to **40**: #3580 and #3591 only changed the disposition of claims already counted, but #3583 falsified two more (Edge Position Combat Advantages, Turn-Based Considerations).
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The header claimed "IMPLEMENTATION COMPLETE ✅". Phase 3 (elevated-position combat bonuses, enhanced aim from edges) has **no code**.
@@ -748,13 +748,22 @@ if destination_is_sky and not (is_edge or is_gap):
 > no opportunity attack, nothing an opponent could do about it. That made
 > `jump` **strictly the best escape in the game**: `flee` rolls Motorics
 > against the aimer and eats an opportunity attack on a loss, and `jump`
-> off the same roof did not. It now pays flee's AIM contest —
+> off the same roof did not. It now pays BOTH halves of flee's price —
 > `pay_the_price_of_leaving` (`commands/combat/jump.py`) runs
-> `break_aim_lock` first, the helper shared with `CmdFlee`. It does NOT
-> pay flee's other contest, the melee disengage roll. The last bullet
-> remains unbuilt (Phase 3).)_
+> `break_aim_lock` and then `roll_to_disengage`, both helpers shared with
+> `CmdFlee`. The last bullet remains unbuilt (Phase 3).)_
 >
-> _(2026-09-16: open owner call — should a jump out of a melee also pay the disengage roll, with a non-refusing cost (a round, the attack) since the ruling is "never refused"? Not built.)_
+> _(2026-09-16, #3591: RULED and built. A jump in a fight pays BOTH halves
+> of flee's price: the aim contest (`break_aim_lock`) AND the melee
+> disengage roll — flee's Part 2 extracted into `roll_to_disengage(caller,
+> handler, *, bonus=0, label=None)` in commands/combat/movement.py, the
+> best-Motorics opponent targeting the jumper, ties to the blocker — with
+> the bold-move bonus on both. A lost disengage hands the blocker an
+> immediate attack via the shared `opportunity_attack(attacker, target)`
+> ("catches you as you break for the edge"), and the jump still goes; only
+> death or unconsciousness stops it. Never a refusal, never a lost round.
+> Both `jump off` and `jump across`. Flee keeps its own consequence on a
+> lost disengage: blocked and a round skipped.)_
 
 ## Room Announcements
 
@@ -821,47 +830,82 @@ not a dead end: you cannot be chased onto it, you cannot back off it, and
 leaving is a deliberate act with a price. The building doctrine that
 keeps such rooms rare is `specs/PARKOUR_TEMPLATE_LIBRARY.md` §1.5.
 
-**2. Jumping away in a fight pays flee's aim contest.** As shipped, both jumps
-called `handler.remove_combatant(self.caller)` and left — no contest, no
-opportunity attack — which made `jump` strictly the best escape in the
-game, since `flee` rolls for it and can be punished. `jump` now pays
-flee's **aim** contest, through the same code:
-`pay_the_price_of_leaving` (`commands/combat/jump.py`) calls
-`break_aim_lock(caller, bonus=JUMP_AWAY_BONUS, label="JUMP_AWAY")` — the
-contest extracted out of `CmdFlee` into `commands/combat/movement.py` so
-the two verbs cannot drift apart. The signature is
-`break_aim_lock(caller, *, bonus=0, label=None)`; the `label` only
-re-prefixes the splattercast lines, so a jump shows `JUMP_AWAY_` rather
-than `FLEE_` and the two can be told apart in the log.
+**2. Jumping away in a fight pays flee's price — both halves of it.** As
+shipped, both jumps called `handler.remove_combatant(self.caller)` and
+left — no contest, no opportunity attack — which made `jump` strictly the
+best escape in the game, since `flee` rolls for it and can be punished.
+`pay_the_price_of_leaving` (`commands/combat/jump.py`) now charges what
+fleeing charges, through the same code, so the two verbs cannot drift
+apart:
 
-- The contest is Motorics vs Motorics, two `standard_roll`s, the jumper's
-  roll plus the bold-move bonus.
-- A won roll frees the jumper; a lost roll hands the aimer their
-  opportunity attack.
+- **The aim contest** — `break_aim_lock(caller, *, bonus=0, label=None)`,
+  Motorics vs Motorics, two `standard_roll`s, the jumper's roll plus the
+  bold-move bonus. A won roll frees the jumper; a lost roll hands the
+  aimer their opportunity attack. (#3583)
+- **The melee disengage roll** — `roll_to_disengage(caller, handler, *,
+  bonus=0, label=None)`, the same shape against the best-Motorics
+  opponent targeting the jumper, ties to the blocker, bonus again on the
+  jumper's roll. A lost roll hands the blocker their opportunity attack:
+  *"X catches you as you break for the edge!"* (#3591)
+- Both losses run the shared `opportunity_attack(attacker, target)`,
+  which issues a real `attack` against the RESOLVED target (#1002). The
+  jump passes `label="JUMP_AWAY"` to both rolls, so the splattercast
+  lines read `JUMP_AWAY_` rather than `FLEE_` and the two verbs can be
+  told apart in the log.
 - **The jump goes regardless** — *"You throw yourself at the edge
-  regardless."* The only thing that stops it is the opportunity attack
-  leaving the jumper dead or unconscious. It is never refused.
+  regardless."* The only thing that stops it is an opportunity attack
+  leaving the jumper dead or unconscious. It is never refused, and it
+  never costs a round.
+- Each roll only happens if there is someone to roll against: no aimer,
+  no aim contest; no combat handler or nobody targeting the jumper, no
+  disengage roll. Jumping out of an empty room costs nothing, and the
+  "regardless" line only prints when something was actually paid.
 
 > Owner: *"I agree with 2, however, the difficulty should be half or
 > there should be a bonus. It's a bold move."*
 
-**What it does NOT pay: flee's melee disengage roll.** `CmdFlee` has a
+**It also pays flee's melee disengage roll (#3591).** `CmdFlee` has a
 second contest (Part 2 in `commands/combat/movement.py`) — Motorics
-against the highest-Motorics opponent currently targeting you — and
-losing it *blocks the flee outright* and sets `NDB_SKIP_ROUND`. Only the
-aim contest was extracted; the jump verbs never roll the disengage. So in
-a melee brawl with nobody aiming, `jump off` costs **nothing**, where
-`flee` rolls and can be stopped. And because #3583's first ruling refuses
-`flee` at the edge, a melee opponent on an edges-only roof has no way at
-all to punish the departure.
+against the best-Motorics opponent currently targeting you, ties to the
+blocker. #3583 extracted only the aim contest, which left a hole: in a
+melee brawl with nobody aiming, `jump off` cost **nothing** where `flee`
+rolled and could be stopped, and since flee is refused at the edge, a
+melee opponent on an edges-only roof had no way at all to punish the
+departure. #3591 closes it. `roll_to_disengage(caller, handler, *,
+bonus=0, label=None)` is now shared the same way `break_aim_lock` is, and
+`pay_the_price_of_leaving` rolls both, with `JUMP_AWAY_BONUS` on each.
 
-_(2026-09-16: open owner call — should a jump out of a melee also pay the disengage roll, with a non-refusing cost (a round, the attack) since the ruling is "never refused"? Not built.)_
+The two verbs differ only in the consequence of a loss, which is the
+point of the ruling:
+
+| | lost aim contest | lost disengage roll |
+|---|---|---|
+| `flee` | aimer's opportunity attack, flee continues | **blocked**, and `NDB_SKIP_ROUND` |
+| `jump off` / `jump across` | aimer's opportunity attack, jump continues | blocker's opportunity attack, **jump continues** |
+
+A jump is never refused and never costs a round — *"You throw yourself at
+the edge regardless."* — and only an attack that leaves the jumper dead
+or unconscious stops it.
+
+_(2026-09-16, #3591: RULED and built. A jump in a fight pays BOTH halves of
+flee's price: the aim contest (`break_aim_lock`) AND the melee disengage
+roll — flee's Part 2 extracted into `roll_to_disengage(caller, handler, *,
+bonus=0, label=None)` in commands/combat/movement.py, the best-Motorics
+opponent targeting the jumper, ties to the blocker — with the bold-move
+bonus on both. A lost disengage hands the blocker an immediate attack via
+the shared `opportunity_attack(attacker, target)` ("catches you as you break
+for the edge"), and the jump still goes; only death or unconsciousness stops
+it. Never a refusal, never a lost round. Both `jump off` and `jump across`.
+Flee keeps its own consequence on a lost disengage: blocked and a round
+skipped.)_
 
 `JUMP_AWAY_BONUS` is 20, `#: BALANCE:`-tagged, with a row in
 `specs/roadmaps/BALANCE_LEDGER.md` under "Fights at the edge (#3583)" —
-**Tuned? No**. This aim contest is separate from and earlier than the gap
-takeoff roll: leaving is contested first, then `jump across` rolls
-Motorics vs `gap_difficulty` to decide whether the leap is made.
+**Tuned? No** — and it is now charged twice per departure, once on each
+roll, which is the first thing the balance pass should look at. Both
+contests are separate from and earlier than the gap takeoff roll: leaving
+is contested first, then `jump across` rolls Motorics vs `gap_difficulty`
+to decide whether the leap is made.
 
 ### Fall Announcements — the three-audience model (#3579, 2026-09-16)
 
@@ -1246,17 +1290,32 @@ Based on the philosophy of heroic action and tactical depth:
     flee's two contests, not just its timing. Jumping off or across while
     someone has you in their aim pays flee's **aim** contest: a
     Motorics-vs-Motorics `standard_roll` against the aimer via
-    `break_aim_lock`, their opportunity attack on a loss. It does not pay
-    flee's melee disengage roll — with nobody aiming, the jump is still
-    free. _(2026-09-16: open owner call — should a jump out of a melee also pay the disengage roll, with a non-refusing cost (a round, the attack) since the ruling is "never refused"? Not built.)_ What it does NOT do is refuse: the jump
+    `break_aim_lock`, their opportunity attack on a loss — **and** flee's
+    melee disengage roll against the best-Motorics opponent targeting
+    them, via the equally shared `roll_to_disengage`, their opportunity
+    attack on that loss too.
+
+    _(2026-09-16, #3591: RULED and built. A jump in a fight pays BOTH halves
+    of flee's price: the aim contest (`break_aim_lock`) AND the melee
+    disengage roll — flee's Part 2 extracted into `roll_to_disengage(caller,
+    handler, *, bonus=0, label=None)` in commands/combat/movement.py, the
+    best-Motorics opponent targeting the jumper, ties to the blocker — with
+    the bold-move bonus on both. A lost disengage hands the blocker an
+    immediate attack via the shared `opportunity_attack(attacker, target)`
+    ("catches you as you break for the edge"), and the jump still goes; only
+    death or unconsciousness stops it. Never a refusal, never a lost round.
+    Both `jump off` and `jump across`. Flee keeps its own consequence on a
+    lost disengage: blocked and a round skipped.)_
+
+    What it does NOT do is refuse: the jump
     goes regardless — "You throw yourself at the edge regardless." — and
     the only thing that stops it is the opportunity attack leaving the
     jumper dead or unconscious. The jumper adds `JUMP_AWAY_BONUS` (20) to
     their roll, by owner ruling: "the difficulty should be half or there
     should be a bonus. It's a bold move." Decision 9's gap roll is
-    unchanged and is a separate roll: the aim contest happens first, at
-    the point of leaving; the Motorics-vs-`gap_difficulty` takeoff roll
-    happens after.)_
+    unchanged and is a separate roll: both leaving contests happen first,
+    at the point of leaving; the Motorics-vs-`gap_difficulty` takeoff
+    roll happens after.)_
 12. **Gap difficulty**: 1-5 scale (trivial to nearly impossible)
 13. **Jump syntax**: Uses direction-based syntax (`jump off north edge`, `jump across east edge`)
 14. **Proximity inheritance**: Hero inherits ALL proximity relationships from explosive

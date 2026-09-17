@@ -442,24 +442,40 @@ class CmdJump(Command):
         delay(revelation_delay, reveal_outcome)
     
     def pay_the_price_of_leaving(self):
-        """Jumping away while someone has you in their aim pays flee's
-        AIM contest first: Motorics against the aimer, the jumper's roll
-        plus the bold-move bonus, and the aimer's opportunity attack on
-        a loss (#3583). The jump then goes regardless; the only thing
-        that stops it is the attack leaving the jumper dead or out cold.
-        Nobody aiming: nothing to pay. (Flee's OTHER contest, the melee
-        disengage roll against whoever targets you, is not paid here --
-        an open owner question, recorded in the spec.) Returns True when
-        the jump may proceed."""
+        """Jumping away in a fight pays flee's price first, both halves
+        of it, with the bold-move bonus on the jumper's roll (#3583,
+        #3591): the AIM contest against whoever has taken aim at the
+        jumper, and the DISENGAGE roll against the best-Motorics opponent
+        targeting them in the handler. A lost roll hands that opponent
+        an immediate attack. The jump then goes regardless; the only
+        thing that stops it is an attack leaving the jumper dead or out
+        cold. Nobody aiming and nobody targeting: nothing to pay.
+        Returns True when the jump may proceed."""
         from world.combat.constants import JUMP_AWAY_BONUS, NDB_AIMED_AT_BY
-        if getattr(self.caller.ndb, NDB_AIMED_AT_BY, None) is None:
-            return True
-        from commands.combat.movement import break_aim_lock
-        if break_aim_lock(self.caller, bonus=JUMP_AWAY_BONUS, label="JUMP_AWAY"):
-            return True
-        if self.caller.is_dead() or self.caller.is_unconscious():
-            return False
-        self.caller.msg("|yYou throw yourself at the edge regardless.|n")
+        from commands.combat.movement import (
+            break_aim_lock, opportunity_attack, roll_to_disengage)
+        caller = self.caller
+        paid_with_blood = False
+        if getattr(caller.ndb, NDB_AIMED_AT_BY, None) is not None:
+            if not break_aim_lock(caller, bonus=JUMP_AWAY_BONUS, label="JUMP_AWAY"):
+                paid_with_blood = True
+                if caller.is_dead() or caller.is_unconscious():
+                    return False
+        handler = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
+        if handler:
+            won, blocker, opponents = roll_to_disengage(
+                caller, handler, bonus=JUMP_AWAY_BONUS, label="JUMP_AWAY")
+            if opponents and not won:
+                paid_with_blood = True
+                who = get_display_name_safe(blocker, caller) if blocker else "your opponents"
+                caller.msg(f"|r{capitalize_first(who)} catches you as you break for the edge!|n")
+                if blocker:
+                    blocker.msg(f"|gYou catch {caller.get_display_name(blocker)} breaking for the edge!|n")
+                    opportunity_attack(blocker, caller)
+                if caller.is_dead() or caller.is_unconscious():
+                    return False
+        if paid_with_blood:
+            caller.msg("|yYou throw yourself at the edge regardless.|n")
         return True
 
     def handle_edge_descent(self):

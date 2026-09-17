@@ -135,23 +135,63 @@ def break_aim_lock(caller, *, bonus=0, label=None):
 
     splattercast.msg(f"{prefix}_AIM_FAIL: {caller.key} failed to break {aimer.key}'s NDB aim. {aimer.key} initiates an attack.")
 
-    # Aimer gets an immediate attack on the failed attempt, through the
-    # real attack command from the aimer's perspective.
-    from commands.combat.core_actions import CmdAttack
-    attack_cmd = CmdAttack()
-    attack_cmd.caller = aimer
-    attack_cmd.pre_resolved_target = caller
-    attack_cmd.args = caller.get_display_name(aimer)
-    attack_cmd.cmdstring = "attack"
-
-    # Display messages about the aimer's opportunity attack
+    # Display messages about the aimer's opportunity attack, then the
+    # attack itself: one immediate `attack` from the aimer's perspective.
     caller.msg(caller_msg_flee_fail)
     if aimer.access(caller, "view"):
         aimer.msg(aimer_msg_flee_fail)
-
-    # Execute the attack
-    attack_cmd.func()
+    opportunity_attack(aimer, caller)
     return False
+
+
+def opponents_targeting(caller, handler):
+    """Every combatant in *handler* whose target is *caller*."""
+    out = []
+    for entry in (handler.db.combatants or []):
+        if entry["char"] != caller and handler.get_target_obj(entry) == caller:
+            out.append(entry["char"])
+    return out
+
+
+def roll_to_disengage(caller, handler, *, bonus=0, label=None):
+    """Flee's second price: leaving a fight is an opposed Motorics roll
+    against the best-Motorics opponent targeting you. Shared by `flee`
+    (a loss blocks the flee and skips a round) and the jump verbs (a loss
+    hands the blocker an opportunity attack and the jump still goes,
+    #3591). The caller's roll takes `bonus` -- the jump verbs pass the
+    bold-move bonus, flee passes none. Ties go to the blocker, as they
+    always did.
+
+    Returns ``(won, blocking_opponent, opponents)``. With nobody targeting
+    the caller nothing is rolled: ``(True, None, [])``.
+    """
+    splattercast = get_splattercast()
+    prefix = label or DEBUG_PREFIX_FLEE
+    opponents = opponents_targeting(caller, handler)
+    if not opponents:
+        return True, None, []
+    valid_opponents = filter_valid_opponents(opponents)
+    highest_opponent_motorics, blocking_opponent = get_highest_opponent_stat(valid_opponents, "motorics")
+    caller_motorics = get_numeric_stat(caller, "motorics")
+
+    flee_roll, _, _ = standard_roll(caller_motorics)
+    block_roll, _, _ = standard_roll(highest_opponent_motorics)
+    flee_roll += int(bonus or 0)
+
+    splattercast.msg(f"{prefix}_DISENGAGE_ROLL: {caller.key} (motorics:{caller_motorics}, roll:{flee_roll}, bonus:{bonus}) vs opponents (highest:{highest_opponent_motorics}, blocker:{blocking_opponent.key if blocking_opponent else 'None'}, roll:{block_roll})")
+    return flee_roll > block_roll, blocking_opponent, opponents
+
+
+def opportunity_attack(attacker, target):
+    """One immediate attack through the real `attack` command, from the
+    attacker's perspective, with the RESOLVED target (#1002)."""
+    from commands.combat.core_actions import CmdAttack
+    attack_cmd = CmdAttack()
+    attack_cmd.caller = attacker
+    attack_cmd.pre_resolved_target = target
+    attack_cmd.args = target.get_display_name(attacker)
+    attack_cmd.cmdstring = "attack"
+    attack_cmd.func()
 
 
 class CmdFlee(Command):
@@ -372,29 +412,14 @@ class CmdFlee(Command):
                 splattercast.msg(f"{DEBUG_PREFIX_FLEE}_BLOCKED: {caller.key} cannot flee while grappled by {grappled_by_char.key}.")
                 return
                 
-            # Attempt to disengage from combat
-            # Get all opponents targeting the caller
-            opponents_targeting_caller = []
-            combatants_list = original_handler_at_flee_start.db.combatants or []
-            if combatants_list:
-                for entry in combatants_list:
-                    if entry["char"] != caller:
-                        target_obj = original_handler_at_flee_start.get_target_obj(entry)
-                        if target_obj == caller:
-                            opponents_targeting_caller.append(entry["char"])
-            
-            # Opposed roll to disengage
+            # Attempt to disengage from combat: the opposed roll against
+            # the best-Motorics opponent targeting the caller, shared with
+            # the jump verbs (#3591). Flee keeps its own consequence on a
+            # loss -- blocked, and a round skipped.
+            won, blocking_opponent, opponents_targeting_caller = roll_to_disengage(
+                caller, original_handler_at_flee_start)
             if opponents_targeting_caller:
-                valid_opponents = filter_valid_opponents(opponents_targeting_caller)
-                highest_opponent_motorics, blocking_opponent = get_highest_opponent_stat(valid_opponents, "motorics")
-                caller_motorics = get_numeric_stat(caller, "motorics")
-                
-                flee_roll, _, _ = standard_roll(caller_motorics)
-                block_roll, _, _ = standard_roll(highest_opponent_motorics)
-                
-                splattercast.msg(f"{DEBUG_PREFIX_FLEE}_DISENGAGE_ROLL: {caller.key} (motorics:{caller_motorics}, roll:{flee_roll}) vs opponents (highest:{highest_opponent_motorics}, blocker:{blocking_opponent.key if blocking_opponent else 'None'}, roll:{block_roll})")
-                
-                if flee_roll <= block_roll:
+                if not won:
                     # Failed to disengage
                     caller.msg(f"|rYou try to flee but {blocking_opponent.get_display_name(caller) if blocking_opponent else 'your opponents'} block your escape!|n")
                     if blocking_opponent:

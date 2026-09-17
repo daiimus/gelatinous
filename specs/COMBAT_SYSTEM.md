@@ -173,24 +173,44 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 >   too, and reports "cornered — nowhere to flee" when none survive — so
 >   an NPC will not walk itself off a roof to escape.
 >
-> **Flee's AIM contest is now shared — its disengage roll is not.** The
-> Motorics-vs-Motorics roll that breaks an aimer's lock (and the
-> opportunity attack the aimer gets on a win) was inline in `CmdFlee`;
-> #3583 extracts it as `break_aim_lock(caller, *, bonus=0, label=None)`
-> in `commands/combat/movement.py`, so `flee` and the jump verbs contest
-> the aim by exactly the same rule. `jump` passes
-> `bonus=JUMP_AWAY_BONUS` (20) and `label="JUMP_AWAY"` — the label only
-> re-prefixes the splattercast lines, so a jump logs `JUMP_AWAY_` rather
-> than `FLEE_`. See the jump spec's "Fights at the edge" block for why
-> the bonus exists and why the jump goes even on a lost roll.
+> **Both of flee's contests are now shared.** Leaving a fight has always
+> had two prices, and `CmdFlee` held both inline. #3583 extracted the
+> first and #3591 the second, so `flee` and the jump verbs charge them by
+> exactly the same rules:
 >
-> Flee's **second** contest — Part 2, the melee disengage roll against
-> the highest-Motorics opponent targeting you, a loss of which blocks the
-> flee and sets `NDB_SKIP_ROUND` — was **not** extracted and the jump
-> verbs do not pay it. In a melee with nobody aiming, `jump off` costs
-> nothing where `flee` rolls and can be blocked; and since flee is now
-> refused at the edge, the melee opponent has no way to punish the
-> departure at all. _(2026-09-16: open owner call — should a jump out of a melee also pay the disengage roll, with a non-refusing cost (a round, the attack) since the ruling is "never refused"? Not built.)_
+> * `break_aim_lock(caller, *, bonus=0, label=None)` — the
+>   Motorics-vs-Motorics roll that breaks an aimer's lock, with the
+>   aimer's opportunity attack on a loss.
+> * `roll_to_disengage(caller, handler, *, bonus=0, label=None)` — the
+>   Motorics-vs-Motorics roll against the best-Motorics opponent
+>   targeting you, ties to the blocker, with that blocker's opportunity
+>   attack on a loss.
+>
+> Both losses go through one more shared helper,
+> `opportunity_attack(attacker, target)`, which runs a real `attack`
+> against the RESOLVED target (#1002). The jump verbs pass
+> `bonus=JUMP_AWAY_BONUS` (20) to both rolls and `label="JUMP_AWAY"` to
+> both — the label only re-prefixes the splattercast lines, so a jump
+> logs `JUMP_AWAY_` rather than `FLEE_`.
+>
+> **The consequence of a lost roll is where the two verbs part.** Flee
+> keeps its own: a lost disengage blocks the flee outright and sets
+> `NDB_SKIP_ROUND`. A jump is never refused and never costs a round — the
+> blocker gets their attack, the jumper says *"You throw yourself at the
+> edge regardless."*, and only being left dead or unconscious stops the
+> departure. See the jump spec's "Fights at the edge" block.
+>
+> _(2026-09-16, #3591: RULED and built. A jump in a fight pays BOTH halves
+> of flee's price: the aim contest (`break_aim_lock`) AND the melee
+> disengage roll — flee's Part 2 extracted into `roll_to_disengage(caller,
+> handler, *, bonus=0, label=None)` in commands/combat/movement.py, the
+> best-Motorics opponent targeting the jumper, ties to the blocker — with
+> the bold-move bonus on both. A lost disengage hands the blocker an
+> immediate attack via the shared `opportunity_attack(attacker, target)`
+> ("catches you as you break for the edge"), and the jump still goes; only
+> death or unconsciousness stops it. Never a refusal, never a lost round.
+> Both `jump off` and `jump across`. Flee keeps its own consequence on a
+> lost disengage: blocked and a round skipped.)_
 
 ### Special Actions (`commands/combat/special_actions.py`)
 - **`grapple <target>`**: Attempt to grab and restrain target
