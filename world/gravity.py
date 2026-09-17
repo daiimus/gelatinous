@@ -148,6 +148,100 @@ def can_leave_by(mover, exit_obj) -> bool:
     return not over_the_edge or can_stay_up(mover)
 
 
+def is_surface(room) -> bool:
+    """A rooftop or any outdoor room that is not air: somewhere a body can
+    stand beside the sky. Interiors never qualify (the B-line incident):
+    for the builder's air fill they are not a place to jump from, and for
+    a shot from above an interior straight below an air cell means an
+    unbuilt roof is in the way."""
+    if room is None or is_sky(room):
+        return False
+    db = getattr(room, "db", None)
+    return (getattr(db, "type", None) == "rooftop"
+            or getattr(db, "outside", None) is True)
+
+
+def ground_below(cell):
+    """What is under *cell*, by geometry, without moving anyone (#3589):
+    the highest room straight below it in the same column that is not
+    air. A shot needs this answer whether or not the column is wired, so
+    geometry comes first: on the grid, the coordinate index decides, and
+    a bare column (no ``down``, #3581) still resolves to the street a
+    body would reach once the column is wired -- the fall stopping short
+    there is the parked impasse, not the shot's business. Off the grid,
+    or with nothing seeded below, the ``down`` chain the fall itself
+    walks decides instead. An interior straight below is an unbuilt roof
+    in the way: ``None``, nothing to hit. ``None`` too when nothing solid
+    is below at all. A cell that is not air is its own ground."""
+    if cell is None:
+        return None
+    if not is_sky(cell):
+        return cell
+    try:
+        from world.spatial import coordinate_index, get_xyz
+        xyz = get_xyz(cell)
+    except Exception:  # noqa: BLE001 -- no spatial layer in a bare harness
+        xyz = None
+    if xyz is not None:
+        x, y, z = xyz
+        best = None
+        for (cx, cy, cz), room in coordinate_index().items():
+            if cx != x or cy != y or cz >= z or is_sky(room):
+                continue
+            if best is None or cz > best[0]:
+                best = (cz, room)
+        if best is not None:
+            return best[1] if is_surface(best[1]) else None
+    seen = 0
+    while cell is not None and is_sky(cell) and seen < FALL_MAX_CELLS:
+        ex = down_exit(cell)
+        cell = getattr(ex, "destination", None) if ex is not None else None
+        seen += 1
+    return cell if cell is not None and not is_sky(cell) else None
+
+
+def gap_destination(exit_obj):
+    """The room a made leap across *exit_obj* lands on: its
+    ``gap_destination`` (a dbref or an object), else the exit's own
+    destination when that is not air. ``None`` when nothing usable
+    exists. Shared by the leap (jump across) and the shot (#3589)."""
+    raw = getattr(getattr(exit_obj, "db", None), "gap_destination", None)
+    if raw:
+        if isinstance(raw, (str, int)):
+            from evennia import search_object
+            found = search_object(f"#{raw}")
+            room = found[0] if found else None
+        else:
+            room = raw if getattr(raw, "pk", None) else None
+        return room if room is not None and not is_sky(room) else None
+    dest = getattr(exit_obj, "destination", None)
+    if dest is not None and not is_sky(dest):
+        return dest
+    return None
+
+
+def room_through(exit_obj):
+    """The room a shot, a look or a throw through *exit_obj* is really
+    aimed at (#3589). A gap: the far perch. An edge, or any exit into
+    air: the ground below it (:func:`ground_below`). Any other exit: its
+    destination. ``None`` when there is nothing to aim at down there. A
+    gap with no perch is aimed like an edge: the leap refuses it, the
+    shot drops to whatever is under it."""
+    if exit_obj is None:
+        return None
+    db = getattr(exit_obj, "db", None)
+    dest = getattr(exit_obj, "destination", None)
+    if getattr(db, "is_gap", None) is True:
+        perch = gap_destination(exit_obj)
+        if perch is not None:
+            return perch
+    if dest is None:
+        return None
+    if is_sky(dest) or getattr(db, "is_edge", None) is True:
+        return ground_below(dest)
+    return dest
+
+
 def is_stranded_aloft(obj) -> bool:
     """The boot sweep's cold-half predicate: in air, no record, cannot stay
     up, and somewhere to fall TO -- a body parked in a bare cell by the

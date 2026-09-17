@@ -11,6 +11,9 @@ instead of an investigation.
 
 from evennia import default_cmds
 
+from world.gravity import is_sky, is_surface
+from world.spatial import coordinate_index
+
 #: The sense layers a room can author (visual = db.desc itself).
 _SENSE_KEYS = ("auditory", "olfactory", "tactile", "atmospheric")
 
@@ -252,34 +255,6 @@ _AIR_DESC = (
 )
 
 
-def _room_cell_index():
-    """Every on-grid room, keyed by (x, y, z)."""
-    from evennia.objects.models import ObjectDB
-    from world.spatial import get_xyz
-    index = {}
-    for room in ObjectDB.objects.filter(
-            db_typeclass_path__startswith="typeclasses.rooms",
-            db_attributes__db_key="xyz").distinct():
-        xyz = get_xyz(room)
-        if xyz:
-            index[xyz] = room
-    return index
-
-
-def _is_sky(room):
-    return getattr(getattr(room, "db", None), "is_sky_room", None) is True
-
-
-def _is_walkable_surface(room):
-    """A rooftop or any outdoor room that is not air: somewhere a body can
-    stand beside the sky. Interiors never qualify (the B-line incident)."""
-    if room is None or _is_sky(room):
-        return False
-    db = getattr(room, "db", None)
-    return (getattr(db, "type", None) == "rooftop"
-            or getattr(db, "outside", None) is True)
-
-
 #: The four diagonals, for the audit's tally only -- the lattice never
 #: links across them (diagonals read badly in jumps).
 _AIR_DIAGONALS = ((1, 1), (1, -1), (-1, 1), (-1, -1))
@@ -292,7 +267,7 @@ def air_candidates(z, index, box=None):
     directly below (somewhere for gravity to deliver you)."""
     out, seen = [], set()
     for (x, y, cz), room in index.items():
-        if cz != z or _is_sky(room):
+        if cz != z or is_sky(room):
             continue
         for dx, dy in _AIR_STEPS.values():
             cell = (x + dx, y + dy, z)
@@ -341,10 +316,10 @@ def fill_air_cell(cell, index):
         neighbour = index.get((x + dx, y + dy, z))
         if neighbour is None:
             continue
-        if _is_sky(neighbour):
+        if is_sky(neighbour):
             _exit(room, neighbour, direction)
             _exit(neighbour, room, _AIR_BACK[direction])
-        elif _is_walkable_surface(neighbour):
+        elif is_surface(neighbour):
             # air reaches a walkable OUTDOOR surface plainly; its way IN
             # is a jump. Always an EDGE (jump off into this cell). A GAP
             # only when another walkable surface stands exactly one cell
@@ -354,7 +329,7 @@ def fill_air_cell(cell, index):
             _exit(room, neighbour, direction)
             far = index.get((x - dx, y - dy, z))
             flags = {"is_edge": True}
-            if _is_walkable_surface(far):
+            if is_surface(far):
                 flags.update(is_gap=True, gap_destination=far.id)
             _exit(neighbour, room, _AIR_BACK[direction], **flags)
         # interiors get NO links: the helper cannot tell a rooftop from
@@ -394,36 +369,36 @@ def audit_air(z, index):
         return False
 
     for (x, y, _z), room in sorted(level.items(), key=lambda kv: kv[0]):
-        if _is_sky(room):
+        if is_sky(room):
             if down_exit(room) is None:
                 findings["bare_cells"].append(room)
             continue
-        if not _is_walkable_surface(room):
+        if not is_surface(room):
             continue
         if getattr(room.db, "no_edge", None):
             continue                     # deliberate, and the reason is on the room
         for direction, (dx, dy) in _AIR_STEPS.items():
             cell = level.get((x + dx, y + dy, z))
-            if cell is None or not _is_sky(cell):
+            if cell is None or not is_sky(cell):
                 continue
             if not edge_into(room, cell):
                 findings["missing_edges"].append((room, cell, direction))
         touched_diagonally = False
         for dx, dy in _AIR_DIAGONALS:
             cell = level.get((x + dx, y + dy, z))
-            if cell is not None and _is_sky(cell) and not edge_into(room, cell):
+            if cell is not None and is_sky(cell) and not edge_into(room, cell):
                 touched_diagonally = True
         if touched_diagonally:
             findings["diagonal_only"] += 1
 
     for (x, y, _z), room in sorted(level.items(), key=lambda kv: kv[0]):
-        if _is_sky(room):
+        if is_sky(room):
             continue
         for ex in (getattr(room, "exits", None) or []):
             if getattr(ex.db, "is_gap", None) is not True:
                 continue
             air = getattr(ex, "destination", None)
-            if not _is_sky(air):
+            if not is_sky(air):
                 findings["bad_gaps"].append((ex, "gap exit does not lead into air"))
                 continue
             raw = getattr(ex.db, "gap_destination", None)
@@ -435,7 +410,7 @@ def audit_air(z, index):
                 findings["bad_gaps"].append(
                     (ex, f"gap_destination #{raw} does not resolve on the grid"))
                 continue
-            if not _is_walkable_surface(perch):
+            if not is_surface(perch):
                 findings["bad_gaps"].append(
                     (ex, "gap_destination is not a walkable surface"))
                 continue
@@ -537,7 +512,7 @@ class CmdAirFill(default_cmds.MuxCommand):
             caller.msg("The sky starts at z=1 — ground level is not air.")
             return
 
-        index = _room_cell_index()
+        index = coordinate_index()
         if "audit" in (self.switches or []):
             caller.msg(format_air_audit(z, audit_air(z, index), index))
             return

@@ -110,8 +110,16 @@ class CmdAttack(Command):
             if not exit_obj or not exit_obj.destination:
                 caller.msg(f"You are aiming {aiming_direction}, but there's no clear path to attack through.")
                 return
-            target_room = exit_obj.destination
-            splattercast.msg(f"{DEBUG_PREFIX_ATTACK}: Remote attack target room is {target_room.key}.")
+            # Over an edge the shot goes to the ground the edge drops to,
+            # not the empty air cell the exit leads into; across a gap, to
+            # the far perch (#3589, owner: "aiming at an edge typically
+            # means aiming at the ground area it drops to").
+            from world.gravity import room_through
+            target_room = room_through(exit_obj)
+            if target_room is None:
+                caller.msg(f"You are aiming {aiming_direction}, but there's nothing down there to hit.")
+                return
+            splattercast.msg(f"{DEBUG_PREFIX_ATTACK}: Remote attack target room is {target_room.key} (through {exit_obj.key} -> {exit_obj.destination.key}).")
         # --- END AIMING DIRECTION ATTACK ---
 
         potential_targets = [

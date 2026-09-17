@@ -406,6 +406,30 @@ consumer of Phase 2 and gets its own spec.
   * **Room layer / entity broad-phase** — a roll-our-own **3D spatial hash**
     (dict keyed by `(x,y,z)` cells; O(1) churn, 3D-native, ~50 lines; ref:
     pygame `SpatialHashMap`, `dankolbman/spatialpartitioning`). The workhorse.
+    _(2026-09-16, #3589: **the seam now exists as one named function with
+    four consumers, and the newest of them is a combat action.**
+    `coordinate_index()` in `world/spatial/coordinates.py` is **the one
+    cell-addressed lookup in the game**: a single query over
+    `all_coordinate_rooms()` building `{(x, y, z): room}`, exits skipped
+    (an exit never carries a cell), later row winning on a duplicate
+    cell. Build it once per action, not per step — that is the contract
+    the hash will inherit. It did not start as new code: three private
+    copies of the same scan already existed and were folded into it —
+    `_room_cell_index` in `commands/CmdBuildTools.py` (the air fill),
+    `_room_at` on `CraneCarRoom` in `typeclasses/rooms.py` plus its
+    caller in `world/director/courier.py`, and `at()` in
+    `scripts/builds/030_marlowe_lot_skeleton.py`. The fourth consumer is
+    the new one: `world/gravity.py`'s `ground_below`, which reads the
+    index to find the highest non-air room in a rooftop's column so a
+    shot or a look over a parapet reaches the street (owner ruling:
+    "Aiming at an edge typically means aiming at the ground area it drops
+    to because of sniping"). That is the first time the coordinate grid
+    is read at runtime to decide a **combat outcome** rather than to draw
+    a map, seed a build, or plan a path — and it is read
+    coordinates-FIRST, with the `down` exit chain kept only for off-grid
+    rooms and for columns the grid has nothing seeded under. If anything
+    profiles this hash into existence, it will be that call site; when it
+    does, there is exactly one function to change.)_
     Caveat: a large-radius range query scans the covering ring of cells — fine
     for small radii; for clustered/sparse volumes (mines, sky) an **octree** is
     the escalation if the hash degrades.

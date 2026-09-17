@@ -390,12 +390,17 @@ class CmdThrow(Command):
         aim_direction = getattr(self.caller.ndb, NDB_AIMING_DIRECTION, None)
 
         if aim_direction:
-            destination = self.get_destination_room(aim_direction)
-            if destination:
+            # The room the aim REACHES, not the exit's own destination:
+            # over an edge that is the ground below, across a gap the far
+            # perch (#3589). The object then flies to the target's room.
+            from world.gravity import room_through
+            exit_obj = self.find_throw_exit(aim_direction)
+            reach = room_through(exit_obj) if exit_obj else None
+            if reach:
                 target = resolve_character_target(
                     self.caller,
                     self.target_name,
-                    candidates=destination.contents,
+                    candidates=reach.contents,
                 )
                 target_hands = getattr(target, 'hands', None) if target else None
                 if target and target_hands is not None:
@@ -411,7 +416,17 @@ class CmdThrow(Command):
         return None
 
     def get_destination_room(self, direction):
-        """Get destination room for directional throwing."""
+        """The room a thrown object physically flies into: the exit's own
+        destination. Over an edge that is the air cell, and gravity
+        carries the object down from there (#3579); what the throw is
+        AIMED at is a different question, answered by
+        :func:`world.gravity.room_through` in :meth:`find_target`."""
+        exit_obj = self.find_throw_exit(direction)
+        return exit_obj.destination if exit_obj else None
+
+    def find_throw_exit(self, direction):
+        """The exit *direction* names from here, or ``None`` with the
+        thrower told why."""
         splattercast = get_splattercast()
 
         if not direction:
@@ -435,7 +450,7 @@ class CmdThrow(Command):
                 return None
 
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: get_destination_room: Found valid exit {exit_obj} -> {exit_obj.destination}(#{exit_obj.destination.id})")
-            return exit_obj.destination
+            return exit_obj
 
         # If not found or invalid, check if it might be a character name mistaken for direction
         if exit_obj:

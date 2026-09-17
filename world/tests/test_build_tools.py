@@ -369,7 +369,7 @@ class TestTheEdgeAudit(TestCase):
         cmd = bt.CmdAirFill()
         cmd.caller = MagicMock()
         cmd.args = "1"; cmd.lhs = "1"; cmd.rhs = None; cmd.switches = ["audit"]
-        with patch.object(bt, "_room_cell_index", return_value={}), \
+        with patch.object(bt, "coordinate_index", return_value={}), \
              patch.object(bt, "fill_air_cell") as fill, \
              patch.object(bt, "air_candidates") as cands:
             cmd.func()

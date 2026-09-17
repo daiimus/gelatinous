@@ -257,7 +257,8 @@ def _the_crane():
         cars = [o for o in search_tag(*CRANE_TAG) if o and o.pk]
         car = cars[0] if cars else None
         _crane_cache["car"] = car
-        _crane_cache["dock"] = car._room_at(car.UC_ROOF) if car else None
+        from world.spatial import coordinate_index
+        _crane_cache["dock"] = coordinate_index().get(tuple(car.UC_ROOF)) if car else None
         _crane_cache["at"] = now
     return _crane_cache["car"], _crane_cache["dock"]
 

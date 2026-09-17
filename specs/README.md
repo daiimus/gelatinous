@@ -22,12 +22,13 @@ describes how the game works today. Each entry is a running system
 >   false claims** inside them (worst: `LOOK_COMMAND_SPEC` 28,
 >   `EMOTE_POSE_SPEC` 26, `MODULAR_ARMOR_SYSTEM_SPEC` and `STYLING_SPEC`
 >   25 each, `BARS_AND_RECIPES_SPEC` and ~~`JUMP_COMMAND_SPEC`~~ 24 each).
->   _(2026-09-16: `JUMP_COMMAND_SPEC` is now **40** — the gravity layer
+>   _(2026-09-16: `JUMP_COMMAND_SPEC` is now **42** — the gravity layer
 >   (#3579) retired `sky_room` / `fall_distance` / `fall_damage` and moved
 >   falling out of the verb into the room, falsifying fourteen more of its
->   claims; #3583 ("fights at the edge") falsified two more. #3580 retired
->   `fall_room` without adding to the count. Its own banner is
->   authoritative; this headline is a snapshot.)_
+>   claims; #3583 ("fights at the edge") falsified two more, and #3589
+>   ("aiming over an edge") two more again. #3580, #3591 and #3593 changed
+>   the disposition of claims already counted without adding any. Its own
+>   banner is authoritative; this headline is a snapshot.)_
 >   Six top-level specs are 🚧 **PARTIAL**, not shipped-whole:
 >   `BARS_AND_RECIPES_SPEC`, `JUMP_COMMAND_SPEC`, `LOOK_COMMAND_SPEC`,
 >   `MODULAR_ARMOR_SYSTEM_SPEC`, `SHOP_SYSTEM_SPEC`,

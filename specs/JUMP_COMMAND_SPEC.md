@@ -1,6 +1,6 @@
 # Jump Command Implementation Specification
 
-> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. ~~Verified 2026-08-02~~ ~~re-checked 2026-09-11: 24 claim(s) false~~ **re-checked 2026-09-16: 40 claim(s) false, annotated inline.** Gravity layer #3579 shipped 2026-09-16: falls traverse the column; `sky_room`/`fall_distance`/`fall_damage` retired. #3580 followed the same day and retired `fall_room` — the four Fall Room Strategies are struck. #3583 ("fights at the edge") followed too: edge/gap/air exits are refused to `flee`/`advance`/`charge`, and jumping away mid-fight now pays flee's price — the aim contest, and, since #3591, the melee disengage roll too. Count raised to **40**: #3580 and #3591 only changed the disposition of claims already counted, but #3583 falsified two more (Edge Position Combat Advantages, Turn-Based Considerations).
+> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. ~~Verified 2026-08-02~~ ~~re-checked 2026-09-11: 24 claim(s) false~~ **re-checked 2026-09-16: 40 claim(s) false, annotated inline.** Gravity layer #3579 shipped 2026-09-16: falls traverse the column; `sky_room`/`fall_distance`/`fall_damage` retired. #3580 followed the same day and retired `fall_room` — the four Fall Room Strategies are struck. #3583 ("fights at the edge") followed too: edge/gap/air exits are refused to `flee`/`advance`/`charge`, and jumping away mid-fight now pays flee's price — the aim contest, and, since #3591, the melee disengage roll too. #3589 pointed aim, fire and look over an edge at the ground it drops to. Count raised to **42**: #3580, #3591 and #3593 only changed the disposition of claims already counted; #3583 falsified two more (Edge Position Combat Advantages, Turn-Based Considerations) and #3589 two more (the Sniper Positioning scenario, the Observation advantage).
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The header claimed "IMPLEMENTATION COMPLETE ✅". Phase 3 (elevated-position combat bonuses, enhanced aim from edges) has **no code**.
@@ -194,6 +194,15 @@ Others damage = 0 (complete protection)
 - **Protected position**: Not adjacent to ground level - prevents melee advancement
 - **Sniper mechanics**: Enhanced aim and attack capabilities
 - **Observation**: Can look down on ground level (enhanced reconnaissance)
+  - _(2026-09-16, #3589: **built, downward only, and only through an
+    aim.** Aiming through an edge and looking renders the ground below —
+    the air cell is skipped — and the aimed-room target search sees the
+    people standing there, so reconnaissance over a parapet is real. Two
+    limits: there is no `look <direction>` verb, so the aim is the only
+    door; and the reverse, street → roof, is **parked with Phase 3
+    (#1511)**, because there is no exit to aim up through and no
+    line-of-sight concept to replace one. "Enhanced" range is still
+    unbuilt — the reach is one exit, as it is everywhere else.)_
 - **Melee immunity**: Ground-level opponents cannot advance for melee attacks
 
 ## Technical Implementation
@@ -274,7 +283,7 @@ def jump_on_explosive(caller, explosive):
 > `handle_gap_jump` (`commands/combat/jump.py`) read `exit.destination`,
 > ask `world.gravity.is_sky` whether it is air, and branch; the far perch
 > of a gap lives in `gap_destination`, resolved by
-> `resolve_gap_destination`. `exit.db.sky_room` is gone from the runtime,
+> `gap_destination` (world/gravity.py). `exit.db.sky_room` is gone from the runtime,
 > so strategy 4's "graceful degradation" has no trigger, and
 > `get_sky_room_for_gap` — the only bidirectional behaviour the 2026-09-11
 > note found — is deleted. The four strategies above are historical
@@ -557,7 +566,7 @@ All eleven constants named above are registered in
 > refusal:** a gap whose `gap_destination` no longer resolves to a real
 > non-air room is refused ON THE ROOF — "The X gap doesn't lead anywhere
 > safe to land." — rather than silently swapped for the air cell (#3559,
-> via `resolve_gap_destination`). **Step 4 is unchanged** and is still the
+> via `gap_destination` (world/gravity.py)). **Step 4 is unchanged** and is still the
 > only roll a gap makes: Motorics vs `gap_difficulty`, default
 > `GAP_DIFFICULTY_DEFAULT` (10), rolled at TAKEOFF. **Step 5 is now two
 > beats:** a make sets a one-tick `ndb.airborne_token`, moves into the air
@@ -797,6 +806,102 @@ if destination_is_sky and not (is_edge or is_gap):
 - **Failure caller**: "You leap toward the gap but fall short, tumbling down!"
 - **Failure origin**: "Alice attempts the jump but falls short, disappearing below!"
 - **Failure destination**: "Alice crashes down from above, having missed the jump!"
+
+### Aiming over an edge (#3589, 2026-09-16)
+
+> Owner: *"Aiming at an edge typically means aiming at the ground area it
+> drops to because of sniping. Rooftop to street for example."* And:
+> *"We also have the coordinate system which can be applicable."*
+
+An edge exit leads into an air cell, and nobody is standing in the air.
+Before #3589 a shot or a look through an edge therefore landed on an
+empty room. Three predicates in `world/gravity.py` fix that:
+
+- **`is_surface(room)`** — a rooftop (`db.type == "rooftop"`) or any
+  outdoor room (`db.outside is True`) that is not itself air: somewhere a
+  body can stand beside the sky. Not new code — it is
+  `_is_walkable_surface` moved out of `commands/CmdBuildTools.py`, and
+  the builder's air fill now imports it from gravity, so the question
+  "what counts as a surface?" has exactly one answer for the builder and
+  for the shooter.
+- **`ground_below(cell)`** — what is under `cell`, by geometry, without
+  moving anyone: **the highest non-air room in the same column below it**.
+  No cell limit and no floor at z=0 — a column over the Drifts resolves
+  downward past zero. On the grid the answer comes from
+  `world/spatial`'s `coordinate_index()`; with nothing seeded below, or
+  off the grid entirely, it falls back to the `down` chain the fall
+  itself walks. Two `None` cases: nothing solid below at all, and —
+  **the occlusion rule** — a room straight below that is not a surface.
+  An interior under an air cell means **an unbuilt roof is in the way**,
+  so there is nothing to hit; you are looking at the top of a building
+  whose roof nobody has made yet, not through it.
+- **`room_through(exit_obj)`** — the room a shot, a look or a throw
+  through this exit is really aimed at. A **gap** resolves to its far
+  perch (`gap_destination`); an **edge, or any exit into air**, resolves
+  to `ground_below(destination)`; anything else is just its destination.
+  A **gap with no perch is aimed like an edge**: the leap refuses it
+  (#3559) and the shot drops to whatever is under it.
+
+Geometry first is the point of the ruling's second half — *"We also have
+the coordinate system which can be applicable."* The grid answers what is
+under a parapet whether or not anyone wired a column of `down` exits; the
+exits are the fallback, not the source of truth.
+
+**Consumers repointed:**
+
+| Where | Behaviour |
+|---|---|
+| Directional attack (`commands/combat/core_actions.py`) | Fires into `room_through(exit)`. `None` refuses the shot: "You are aiming `<dir>`, but there's nothing down there to hit." |
+| Aiming look (`typeclasses/rooms.py` `return_appearance`) | Renders the ground below rather than the air cell, and composes that room's own layers (graffiti, weather, `@integrate` content). |
+| Aimed-room target search (`typeclasses/rooms.py`) | The unified candidate list is drawn from the room the aim really reaches. |
+| Throw, the **`at`** form (`CmdThrow.find_target`) | Resolves the aimed room through `room_through(find_throw_exit(aim))`, so `throw grenade at thug` finds the thug on the street below and the object flies to the **target's** room. |
+
+Both look paths fall back to the air cell when `room_through` answers
+`None`, so a bare column still renders something rather than erroring;
+only the attack refuses.
+
+**Throw is split, deliberately.** The `at` form reaches through the edge;
+the **directional** forms (`throw grenade east`) still fly into the
+exit's own destination — the air cell — and gravity carries the object
+down the column from there (#3579). Target *reach* and flight *room* are
+two different questions: a grenade thrown at someone below should land
+where they are, and a grenade thrown over a parapet at nothing in
+particular should fall.
+
+**Deliberately NOT repointed** — recorded so the next reader does not
+file them as misses:
+
+- **Flee's pre-check.** Edges are no longer flee options at all (#3583),
+  so there is nothing left for it to resolve.
+- **Adjacent sightings.** Look prose about neighbouring rooms, not the
+  ruling.
+
+**Upward is parked.** Street → roof stays with Phase 3 (#1511): there is
+no exit to aim up through and no line-of-sight concept to stand in for
+one. The *aim* reaches downward only.
+
+**Two exposures the adversarial review named, both recorded rather than
+fixed:**
+
+- **The aimed room widens every bare search.**
+  `Character.get_search_candidates` merges the aimed room's contents into
+  any search made while aiming — so `get shiv` can reach an object in the
+  room you are aiming into. That is pre-existing and was inert over an
+  edge only because air cells are empty. #3589 makes an edge behave like
+  a doorway for that widening: the same exposure a door already has, not
+  new in kind.
+- **The asymmetry cuts the other way once shots land.** Aiming upward is
+  unbuilt, but a shot from the roof merges the two combat handlers — and
+  from then on the street target can return fire at the roof with any
+  ranged weapon, needing neither an aim nor an exit. The parked upward
+  case (#1511) constrains who can *open*, not who can *answer*.
+
+**The one place a shot and a fall disagree, by design.** Geometry wins
+over wiring: a bare column (#3581) still resolves the shot to the seeded
+street below, while the fall down that same column parks in the first
+cell with no `down`. You can shoot someone in a street you cannot fall
+to. That holds until the airspace is built (#2945) — the geometry being
+right ahead of the world data, not two answers to one question.
 
 ### Fights at the edge (#3583, 2026-09-16)
 
@@ -1135,6 +1240,18 @@ aim street       # Target ground level
 attack bob       # Snipe from elevated position
 jump off edge    # Tactical descent when position compromised
 ```
+
+> _(2026-09-16, #3589: **partially built — the aim half is real, the
+> `look down` verb is not.** What ships: `aim <direction>` through an
+> edge, then `look`, renders the GROUND the edge drops to, and `attack
+> <target>` fires into it. The scenario's second and third lines work,
+> and they work through the drop rather than into the empty air cell. The
+> first line does not: there is no directional `look` anywhere in
+> `commands/` — the aimed view is rendered by `Room.return_appearance`
+> off `ndb.aiming_direction`, which only `aim` sets, so you aim first and
+> look second. Line 2's `aim street` is also still wrong in form: aim
+> takes a DIRECTION (`aim north`) or a target, not a room name. See
+> "Aiming over an edge (#3589)" under Room Announcements.)_
 
 ### Gap Crossing
 ```
