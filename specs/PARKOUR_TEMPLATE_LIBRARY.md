@@ -50,7 +50,13 @@ a number reopens the templates.
   place the fiction promises a death sentence still delivers a pause in
   mid-air. Build the columns; the code will fall down them. (The related
   `fall_room` asymmetry the correction describes is gone with the rest:
-  no fall path reads `fall_room` at all now, and it retires with #3580.)*
+  no fall path reads `fall_room` at all, and **`fall_room` is retired
+  (#3580, 2026-09-16)** — no reader anywhere, the map exporter included.
+  A fall always follows gravity straight down the column: in a sky room,
+  proceed down; the fall ends at the first room that is not a sky room.
+  There is no authored landing. An apron, awning or terrace that should
+  catch a fall is a ROOM in the column (`is_sky_room` False), never an
+  attribute.)*
 
   *__(c) "Everything downstream inherits (a)" — RESOLVED.__ The verb
   table's "5×height" row below and §1 invariant 3's apron cap now
@@ -73,8 +79,8 @@ a number reopens the templates.
   see someone fall past me." One cell per second
   (`FALL_SECONDS_PER_CELL`), announced to the cell left, the cell
   entered, and every walkable surface beside it. Related: #2945 (open —
-  the missing columns), #3581 (parked — the clean stop), #3580 (retire
-  `fall_room`), #2441, #2944.)*
+  the missing columns), #3581 (parked — the clean stop), #3580 (done
+  2026-09-16 — `fall_room` retired), #2441, #2944.)*
 - **Field facts (learned building the Brackett escape, 2026-08-06):**
   ~~an edge exit into air REQUIRES `sky_room` (int dbref) or the jump
   silently degrades to a plain walk — the full edge-to-air attr set is
@@ -88,9 +94,10 @@ a number reopens the templates.
   *(2026-09-16, #3579 — the first three sentences are struck above as
   superseded; the fire-escape sentence still stands. **`sky_room` is not required and no
   longer exists**: the edge's own `destination` is the air cell and the
-  authored set is now is_edge / edge_difficulty (+ is_gap /
-  gap_difficulty / gap_destination / gap_width on a gap), with `fall_room`
-  surviving as map data only until #3580. There is no degraded plain-walk
+  authored set is now exactly is_edge / edge_difficulty (+ is_gap /
+  gap_difficulty / gap_destination / gap_width on a gap) — `fall_room`
+  is off the list too, **retired (#3580, 2026-09-16)** with no reader
+  left, the map exporter included. There is no degraded plain-walk
   fallback to guard against. **Walking into a sky room DOES trigger
   falling** — gravity is a property of the ROOM now:
   `Room.at_object_receive` calls `world.gravity.on_enter_air` for every

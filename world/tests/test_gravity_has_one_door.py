@@ -62,6 +62,7 @@ def _code_only(source: str) -> str:
 
 #: Every name the one gravity layer replaced.
 RETIRED = (
+    "fall_room",              # #3580: no authored landing, ever
     "follow_gravity_to_ground",
     "apply_gravity_to_items",
     "jump_movement_allowed",

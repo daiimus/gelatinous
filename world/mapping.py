@@ -92,9 +92,10 @@ def export_map():
             # The flight plan an edge still carries (#3579 retired
             # sky_room / fall_distance / fall_damage: the exit's
             # destination is the air cell and the column is the fall).
-            # `fall_room` goes with #3580.
+            # #3580 retired fall_room: the fall ends where the column
+            # does, there is no authored landing.
             edge = {}
-            for attr in ("fall_room", "edge_difficulty", "gap_difficulty",
+            for attr in ("edge_difficulty", "gap_difficulty",
                          "gap_destination"):
                 val = ex.attributes.get(attr)
                 if val is not None:

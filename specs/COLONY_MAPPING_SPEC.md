@@ -82,18 +82,23 @@ export_map() -> {
      #     fall_damage, edge_difficulty, gap_destination (ints). Each
      #     appears only when that attribute is set, and the whole "edge"
      #     key is ABSENT (not null) for any kind but edge/gap.
-     #     DRIFT-ON-DRIFT (2026-09-16, #3579): three of those six names
-     #     are now gone from the exporter as well. `export_map()` copies
-     #     exactly FOUR attributes onto an edge/gap link —
-     #     fall_room, edge_difficulty, gap_difficulty, gap_destination.
-     #     sky_room, fall_distance and fall_damage are retired: the
-     #     exit's destination IS the air cell, the column below it IS
-     #     the distance, and the damage is a constant
+     #     DRIFT-ON-DRIFT (2026-09-16, #3579 then #3580): four of those
+     #     six names are now gone from the exporter as well.
+     #     `export_map()` copies exactly THREE attributes onto an
+     #     edge/gap link — edge_difficulty, gap_difficulty,
+     #     gap_destination. sky_room, fall_distance and fall_damage went
+     #     with #3579: the exit's destination IS the air cell, the column
+     #     below it IS the distance, and the damage is a constant
      #     (FALL_DAMAGE_PER_STORY), so none of the three has a writer or
-     #     a reader left. gap_difficulty was always exported and was
-     #     missing from the list above. fall_room survives as map data
-     #     only and goes with #3580. The "appears only when set" and
-     #     "ABSENT for any kind but edge/gap" rules still hold.
+     #     a reader left. fall_room went with #3580, on the owner ruling
+     #     that a fall "would always follow gravity straight down": in a
+     #     sky room, proceed down; the fall ends at the first room that
+     #     is not a sky room. There is no authored landing, so there is
+     #     nothing for the map to carry. An apron, awning or terrace that
+     #     should catch a fall is a ROOM in the column (is_sky_room
+     #     False), never an attribute. gap_difficulty was always exported
+     #     and was missing from the list above. The "appears only when
+     #     set" and "ABSENT for any kind but edge/gap" rules still hold.
      #   * door: lock state REMOVED 2026-09-07 (#2682). `export_map()`
      #     feeds the PUBLIC /atlas/ page, so shipping live lock state let
      #     anyone with the URL read which of 470 doors stood locked (348
@@ -104,6 +109,10 @@ export_map() -> {
      #     payload.
      "edge": {"sky_room": ..., "fall_room": ..., "distance": n,
               "damage": n, "difficulty": n} | null,
+     #     ^ 2026-09-16 (#3579, #3580): illustrative and now wrong in
+     #     every key. The shipped shape is
+     #     {"edge_difficulty": n, "gap_difficulty": n,
+     #      "gap_destination": n}, each present only when set.
      "door": {"locked": bool} | null},
     ...
   ],
