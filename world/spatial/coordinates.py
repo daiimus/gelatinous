@@ -170,6 +170,21 @@ def all_coordinate_rooms() -> list:
     return [r for r in rooms if get_xyz(r) is not None]
 
 
+def coordinate_index() -> dict:
+    """Every on-grid room keyed by its ``(x, y, z)``: one query, one pass.
+    Exits never carry cells (an exit with an ``xyz`` is skipped). The one
+    cell-addressed lookup in the game -- the builder's air fill, the crane
+    car, the gravity layer's ground-below all read it -- and the seam a
+    spatial hash slots behind later. Build it once per action, not per
+    step. On a duplicate cell the later row wins."""
+    index = {}
+    for room in all_coordinate_rooms():
+        if room.destination is not None:
+            continue
+        index[get_xyz(room)] = room
+    return index
+
+
 def rooms_within(room: Any, n: float) -> list:
     """On-grid rooms within straight-line distance *n* of *room* (excluding
     *room* itself). Empty when *room* is off-grid."""

@@ -269,9 +269,12 @@ class Room(ObjectParent, DefaultRoom):
                     exit_obj = ex
                     break
             
-            # If we found the exit and it has a destination, return that room's appearance
+            # If we found the exit and it has a destination, return that room's appearance.
+            # Over an edge that is the ground the edge drops to, not the air
+            # cell the exit leads into (#3589); a bare column shows the air.
             if exit_obj and exit_obj.destination:
-                aimed_room = exit_obj.destination
+                from world.gravity import room_through
+                aimed_room = room_through(exit_obj) or exit_obj.destination
                 # Call the parent's return_appearance directly to avoid aiming recursion
                 base = super(Room, aimed_room).return_appearance(looker, **kwargs)
                 # ...then compose the aimed room's OWN layers onto it (#3374).
@@ -358,8 +361,10 @@ class Room(ObjectParent, DefaultRoom):
                     break
             
             # If we found the exit and it has a destination, create unified search space
+            # -- in the room the aim really reaches (#3589).
             if exit_obj and exit_obj.destination:
-                aimed_room = exit_obj.destination
+                from world.gravity import room_through
+                aimed_room = room_through(exit_obj) or exit_obj.destination
                 
                 # Combine candidates from both rooms for unified ordinal numbering
                 current_candidates = list(self.contents)
@@ -1393,14 +1398,6 @@ class CraneContainer(Room):
         self.db.level = self.MIN_Z
 
     # -- helpers ---------------------------------------------------------
-    def _room_at(self, xyz):
-        from evennia.objects.models import ObjectDB
-        from world.spatial import get_xyz
-        for r in ObjectDB.objects.filter(db_attributes__db_key="xyz"):
-            if r.destination is None and get_xyz(r) == tuple(xyz):
-                return r
-        return None
-
     def _mk(self, loc, dest, key, aliases=None, **attrs):
         """Create an exit and record it so the next move can tear it down."""
         from evennia import create_object
@@ -1437,11 +1434,13 @@ class CraneContainer(Room):
         set_xyz(self, self.COL[0], self.COL[1], z)
         self.db.level = z
 
-        sky = self._room_at(self.SKY)
+        from world.spatial import coordinate_index
+        index = coordinate_index()
+        sky = index.get(tuple(self.SKY))
 
         if z == self.MIN_Z:
             # dock: a plain walk-off west onto the Urgent Care roof
-            uc = self._room_at(self.UC_ROOF)
+            uc = index.get(tuple(self.UC_ROOF))
             self._mk(self, uc, "west", ["w"])
             self._mk(uc, self, "east", ["e"])
             self.db.desc = (
@@ -1450,7 +1449,7 @@ class CraneContainer(Room):
                 "at the 2nd floor, its open end level with the Kaspar "
                 "Urgent Care roof to the west — step across.")
         else:
-            qoc = self._room_at((-1, -16, 12))       # QoC Rack Roof Southeast
+            qoc = index.get((-1, -16, 12))       # QoC Rack Roof Southeast
             off = abs(z - self.QOC_Z)
             diff = 8 + 2 * off                       # level=8, +2 / storey off
             # The exit's destination IS the air cell and the column is the

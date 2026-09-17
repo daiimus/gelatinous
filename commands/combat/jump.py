@@ -16,7 +16,7 @@ CmdJump handles three distinct sub-systems:
   3. Gap jumping with skill checks (jump across <direction> edge)
 """
 
-from evennia import Command, search_object
+from evennia import Command
 from twisted.internet.error import AlreadyCalled, AlreadyCancelled
 from evennia.utils.utils import delay
 
@@ -46,6 +46,7 @@ from world.gravity import (
     NDB_FALL_INTENT,
     NDB_LEAP,
     apply_fall_damage,
+    gap_destination,
     is_sky,
 )
 from world.identity_utils import msg_room_identity
@@ -697,7 +698,7 @@ class CmdJump(Command):
 
         # The far perch. A raw dbref that no longer resolves is REFUSED
         # here rather than silently swapped for the air cell (#3559).
-        destination = self.resolve_gap_destination(exit_obj)
+        destination = gap_destination(exit_obj)
         if destination is None:
             self.caller.msg(f"The {self.direction} gap doesn't lead anywhere safe to land.")
             splattercast.msg(f"JUMP_GAP_NO_PERCH: exit #{exit_obj.id} gap_destination={exit_obj.db.gap_destination!r} does not resolve")
@@ -785,24 +786,6 @@ class CmdJump(Command):
             )
         self.caller.msg(f"|rYou leap for the {self.direction} gap but don't make it far enough... you're falling!|n")
         splattercast.msg(f"JUMP_GAP_FAIL: {self.caller.key} fell short into {air.key}")
-
-    @staticmethod
-    def resolve_gap_destination(exit_obj):
-        """The room a made leap lands on: ``gap_destination`` (a dbref or
-        an object), else the exit's own destination when that is not air.
-        ``None`` when nothing usable exists."""
-        raw = exit_obj.db.gap_destination
-        if raw:
-            if isinstance(raw, (str, int)):
-                found = search_object(f"#{raw}")
-                room = found[0] if found else None
-            else:
-                room = raw if getattr(raw, "pk", None) else None
-            return room if room is not None and not is_sky(room) else None
-        dest = exit_obj.destination
-        if dest is not None and not is_sky(dest):
-            return dest
-        return None
 
     def find_edge_exit(self, direction):
         """Find and validate an exit in the specified direction."""

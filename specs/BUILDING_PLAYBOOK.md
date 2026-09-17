@@ -178,6 +178,18 @@ never canon. NPC-run factions remain the only factions.
   2026-09-16: the generator stays; `@airfill` now stamps a roof's way
   into air as an edge only, and a gap only with a computed far perch
   (#3415).)_
+  _(2026-09-16, #3589: **"walkable surface" now has one definition,
+  shared.** `@airfill`'s private `_is_walkable_surface` moved to
+  `world/gravity.py` as `is_surface` — a rooftop (`db.type ==
+  "rooftop"`) or any outdoor room (`db.outside is True`) that is not
+  itself air — and `CmdBuildTools` imports it from there. The same
+  predicate now decides what a shot over an edge can reach: an interior
+  straight below an air cell reads as an unbuilt roof in the way and the
+  shot finds nothing. So a plate that the audit will not link is also a
+  plate nobody can snipe onto, by construction. The cell-addressed
+  lookup behind the fill moved with it: `_room_cell_index` is now
+  `world.spatial.coordinate_index()`, shared with the crane car, the
+  courier and the gravity layer.)_
 
 **Doors and tenancy** (`VERTICALITY_AND_BUILDINGS_SPEC` §2–§3, live):
 - A door IS the exit, with state; passage requires it open.

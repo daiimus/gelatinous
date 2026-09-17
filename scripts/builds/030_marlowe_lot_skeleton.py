@@ -24,6 +24,8 @@ Re-run-safe: rooms/exits skip if already present.
 from evennia import create_object
 from evennia.objects.models import ObjectDB
 
+from world.spatial import coordinate_index
+
 ROOM_TC = "typeclasses.rooms.Room"
 SKY_TC = "typeclasses.rooms.SkyRoom"
 EXIT_TC = "typeclasses.exits.Exit"
@@ -34,8 +36,7 @@ LOT = -1                # x of the whole site
 
 
 def at(xyz):
-    return next((r for r in ObjectDB.objects.filter(db_attributes__db_key="xyz")
-                 if r.db.xyz == xyz and r.destination is None), None)
+    return coordinate_index().get(tuple(xyz))
 
 
 def has_exit(room, key):
