@@ -186,6 +186,20 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 >   targeting you, ties to the blocker, with that blocker's opportunity
 >   attack on a loss.
 >
+>   **The opponent need not be in your room — suppressive fire, by
+>   design (owner 2026-09-16).** `opponents_targeting` takes every
+>   combatant in the merged fight whose target is you, wherever they
+>   stand, so someone being shot from a rooftop (#3589) still rolls
+>   against the shooter's Motorics to get off the street, and a loss
+>   reads "blocked by their opponents" with nobody beside them. Owner:
+>   *"That is the intended function. It would be suppressive fire pinning
+>   someone down."* The pin is the **constant attacking**, not the
+>   bullets: when ammunition exists it is the attacker's willingness to
+>   keep firing every round that holds the target, and running dry ends
+>   the pin because the attacks stop, not because a counter did. Purely
+>   thematic/gameplay justification, and the intended one — do not
+>   "fix" the roll to filter by room.
+>
 > Both losses go through one more shared helper,
 > `opportunity_attack(attacker, target, *, immediate=False)`, which runs a
 > real `attack` against the RESOLVED target (#1002) — immediately for a

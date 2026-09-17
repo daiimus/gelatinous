@@ -905,7 +905,14 @@ one. The *aim* reaches downward only.
   no exit to the roof (*"You cannot find a way to …"*) and `charge`
   likewise (*"There is no clear path to charge at …"*). The parked
   upward case constrains who can *open*; the gun decides who can
-  *answer*.
+  *answer*. `flee` still works for the target: no aim-break contest (a
+  directional aim marks nobody), no ranged-exit pre-check (no street
+  exit leads to the roof), but the disengage roll is against every
+  opponent targeting them wherever they stand, the rooftop shooter
+  included — **suppressive fire, by design** (owner 2026-09-16: *"It
+  would be suppressive fire pinning someone down"*; the pin is the
+  constant attacking, not the ammunition — see COMBAT_SYSTEM.md,
+  `roll_to_disengage`).
 
 **The one place a shot and a fall disagree, by design.** Geometry wins
 over wiring: a bare column (#3581) still resolves the shot to the seeded
