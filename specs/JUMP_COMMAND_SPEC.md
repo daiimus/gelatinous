@@ -759,7 +759,8 @@ if destination_is_sky and not (is_edge or is_gap):
 > handler, *, bonus=0, label=None)` in commands/combat/movement.py, the
 > best-Motorics opponent targeting the jumper, ties to the blocker — with
 > the bold-move bonus on both. A lost disengage hands the blocker an
-> immediate attack via the shared `opportunity_attack(attacker, target)`
+> immediate attack via the shared `opportunity_attack(attacker, target, *,
+> immediate=True)`
 > ("catches you as you break for the edge"), and the jump still goes; only
 > death or unconsciousness stops it. Never a refusal, never a lost round.
 > Both `jump off` and `jump across`. Flee keeps its own consequence on a
@@ -847,11 +848,35 @@ apart:
   opponent targeting the jumper, ties to the blocker, bonus again on the
   jumper's roll. A lost roll hands the blocker their opportunity attack:
   *"X catches you as you break for the edge!"* (#3591)
-- Both losses run the shared `opportunity_attack(attacker, target)`,
-  which issues a real `attack` against the RESOLVED target (#1002). The
+- Both losses run the shared
+  `opportunity_attack(attacker, target, *, immediate=False)`, which
+  issues a real `attack` against the RESOLVED target (#1002) — and for a
+  jump passes `immediate=True`, which finishes the shot through
+  `resolve_bonus_attack`, the same helper a failed advance or charge
+  already uses, so it lands *before* the jumper leaves rather than on a
+  round they will not be there for (#3593). The
   jump passes `label="JUMP_AWAY"` to both rolls, so the splattercast
   lines read `JUMP_AWAY_` rather than `FLEE_` and the two verbs can be
   told apart in the log.
+
+  _(2026-09-16, #3593: the shot is resolved IMMEDIATELY for a jump, on the
+  next round for a flee — and NOT by a new path. `CmdAttack.func` only
+  ENROLS: it puts the attacker in the handler with the target and prints the
+  weapon's initiate line, and the shot itself fires on the handler's next
+  round. That is enough for a blocked fleer, who is still standing there
+  when the round comes round, but it was nothing at all for a jumper, who is
+  out of the handler and off the roof inside the same command — the
+  opportunity attack read as a price and cost nothing. So
+  `opportunity_attack(attacker, target, *, immediate=False)` now finishes
+  the job under `immediate=True` by calling
+  `world.combat.utils.resolve_bonus_attack(handler, attacker, target)` — the
+  same helper that already hands a ranged defender an immediate attack when
+  an advance or a charge at them fails. It does the combat-entry lookup and
+  the `process_attack` itself, with its own guards (a dead or unconscious
+  target, melee reach, proximity). One immediate-attack implementation,
+  three doors: a failed advance, a failed charge, and a jumper who lost a
+  leaving contest. `break_aim_lock` forwards the flag as `immediate_attack`,
+  and the jump verbs pass True on both halves. Flee is unchanged.)_
 - **The jump goes regardless** — *"You throw yourself at the edge
   regardless."* The only thing that stops it is an opportunity attack
   leaving the jumper dead or unconscious. It is never refused, and it
@@ -880,8 +905,8 @@ point of the ruling:
 
 | | lost aim contest | lost disengage roll |
 |---|---|---|
-| `flee` | aimer's opportunity attack, flee continues | **blocked**, and `NDB_SKIP_ROUND` |
-| `jump off` / `jump across` | aimer's opportunity attack, jump continues | blocker's opportunity attack, **jump continues** |
+| `flee` | aimer's opportunity attack (next round), flee continues | **blocked**, and `NDB_SKIP_ROUND` |
+| `jump off` / `jump across` | aimer's opportunity attack (**immediate**), jump continues | blocker's opportunity attack (**immediate**), **jump continues** |
 
 A jump is never refused and never costs a round — *"You throw yourself at
 the edge regardless."* — and only an attack that leaves the jumper dead
@@ -898,6 +923,24 @@ for the edge"), and the jump still goes; only death or unconsciousness stops
 it. Never a refusal, never a lost round. Both `jump off` and `jump across`.
 Flee keeps its own consequence on a lost disengage: blocked and a round
 skipped.)_
+
+_(2026-09-16, #3593: the shot is resolved IMMEDIATELY for a jump, on the
+next round for a flee — and NOT by a new path. `CmdAttack.func` only ENROLS:
+it puts the attacker in the handler with the target and prints the weapon's
+initiate line, and the shot itself fires on the handler's next round. That
+is enough for a blocked fleer, who is still standing there when the round
+comes round, but it was nothing at all for a jumper, who is out of the
+handler and off the roof inside the same command — the opportunity attack
+read as a price and cost nothing. So `opportunity_attack(attacker, target,
+*, immediate=False)` now finishes the job under `immediate=True` by calling
+`world.combat.utils.resolve_bonus_attack(handler, attacker, target)` — the
+same helper that already hands a ranged defender an immediate attack when an
+advance or a charge at them fails. It does the combat-entry lookup and the
+`process_attack` itself, with its own guards (a dead or unconscious target,
+melee reach, proximity). One immediate-attack implementation, three doors: a
+failed advance, a failed charge, and a jumper who lost a leaving contest.
+`break_aim_lock` forwards the flag as `immediate_attack`, and the jump verbs
+pass True on both halves. Flee is unchanged.)_
 
 `JUMP_AWAY_BONUS` is 20, `#: BALANCE:`-tagged, with a row in
 `specs/roadmaps/BALANCE_LEDGER.md` under "Fights at the edge (#3583)" —
@@ -1301,7 +1344,8 @@ Based on the philosophy of heroic action and tactical depth:
     handler, *, bonus=0, label=None)` in commands/combat/movement.py, the
     best-Motorics opponent targeting the jumper, ties to the blocker — with
     the bold-move bonus on both. A lost disengage hands the blocker an
-    immediate attack via the shared `opportunity_attack(attacker, target)`
+    immediate attack via the shared `opportunity_attack(attacker, target,
+    *, immediate=True)`
     ("catches you as you break for the edge"), and the jump still goes; only
     death or unconsciousness stops it. Never a refusal, never a lost round.
     Both `jump off` and `jump across`. Flee keeps its own consequence on a

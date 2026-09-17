@@ -339,6 +339,13 @@ class TestThePriceIsFleesPricePlusTheBonus(_PriceCase):
                 self.price()
         self.assertEqual(broke.call_args.kwargs.get("bonus"), 1234)
 
+    def test_the_aim_half_is_resolved_on_the_spot(self):
+        """The jumper is gone before the handler's next round, so the
+        aimer's shot has to be thrown here or not at all (#3593)."""
+        with self.charged() as broke:
+            self.price()
+        self.assertIs(broke.call_args.kwargs.get("immediate_attack"), True)
+
     def test_the_door_is_named_on_splattercast(self):
         """Combat is reviewed on one channel, so a jump contest must not
         read as a flee contest there."""
@@ -819,7 +826,8 @@ class TestTheDisengageHalfIsPaidByTheJumper(_PriceCase):
 
     def test_a_lost_roll_hands_the_blocker_a_shot(self):
         self.pay(win=False)
-        self.attacked.assert_called_once_with(self.blocker, self.jumper)
+        self.attacked.assert_called_once_with(
+            self.blocker, self.jumper, immediate=True)
 
     def test_and_the_jumper_is_told_who_caught_them(self):
         self.pay(win=False)
@@ -858,9 +866,19 @@ class TestTheAimHalfAttacksThroughTheSharedHelper(_AimLockCase):
         return freed, hit
 
     def test_a_lost_aim_contest_fires_one_shot(self):
+        """Called plainly -- the way `flee` calls it -- the shot is
+        enrolled for the next round, not resolved here."""
         freed, hit = self.shot(caller_rolls=10, aimer_rolls=25)
         self.assertFalse(freed)
-        hit.assert_called_once_with(self.aimer, self.runner)
+        hit.assert_called_once_with(self.aimer, self.runner, immediate=False)
+
+    def test_the_flag_is_forwarded_when_it_is_asked_for(self):
+        """And the jump verbs ask for it."""
+        with mock.patch("commands.combat.movement.standard_roll",
+                        side_effect=[(10, 0, 0), (25, 0, 0)]), \
+             mock.patch("commands.combat.movement.opportunity_attack") as hit:
+            _break_aim_lock(self.runner, immediate_attack=True)
+        hit.assert_called_once_with(self.aimer, self.runner, immediate=True)
 
     def test_a_won_aim_contest_fires_none(self):
         freed, hit = self.shot(caller_rolls=99, aimer_rolls=1)
@@ -1027,8 +1045,11 @@ class TestAGapJumpPaysTheDisengageHalf(EvenniaTest):
         return " ".join(self.said)
 
     def test_a_lost_roll_hands_the_blocker_a_shot(self):
+        """Resolved on the spot: the leaper is off the roof inside this
+        same command, so a shot left for the next round is no shot."""
         self.leap(win=False)
-        self.attacked.assert_called_once_with(self.blocker, self.jumper)
+        self.attacked.assert_called_once_with(
+            self.blocker, self.jumper, immediate=True)
 
     def test_and_the_leap_still_happens(self):
         """Never refused -- the ruling holds on this door too."""
@@ -1042,3 +1063,345 @@ class TestAGapJumpPaysTheDisengageHalf(EvenniaTest):
         self.attacked.assert_not_called()
         self.assertNotIn("regardless", out)
         self.assertIs(self.jumper.location, self.far)
+
+
+# ---------------------------------------------------------------------
+# 8. the shot has to actually go off (#3593)
+# ---------------------------------------------------------------------
+#
+# Owner, watching it in play: *"It doesn't look like EdgeAimer actually
+# fired a shot though..."* -- and they were right. `opportunity_attack`
+# ran the real `attack` command, which ENROLS: it puts the attacker in
+# the handler with the target and prints the weapon's initiate line
+# ("levels the pistol"). The shot itself is resolved by the handler on
+# its next round.
+#
+# For a blocked fleer that is fine; they are still standing there when
+# the round fires. For a jumper it is nothing at all: they are out of
+# the handler and off the roof inside the same command, so the round
+# that would have resolved the shot never finds them. The price was
+# announced, the attack was "made", and no dice were ever thrown.
+#
+# So the jump verbs pass `immediate=True` and the shot is resolved on
+# the spot -- once, before they leave. Flee keeps the enrolling
+# behaviour it always had.
+
+
+class _ShotCase(EvenniaTest):
+    """An attacker holding a real-shaped handler with their own entry in
+    it, which is what the immediate resolution needs to find."""
+
+    def setUp(self):
+        super().setUp()
+        self.attacker = self.char1
+        self.target = self.char2
+        self.attacker.location = self.room1
+        self.target.location = self.room1
+        self.entry = {"char": self.attacker}
+        self.fight = mock.MagicMock()
+        self.fight.db.combatants = [self.entry, {"char": self.target}]
+        setattr(self.attacker.ndb, NDB_COMBAT_HANDLER, self.fight)
+
+    def fire(self, **kwargs):
+        """Watches the SHOT -- `process_attack`, the function that
+        actually throws dice. `resolve_bonus_attack` calls it, so this
+        catches the whole chain and answers the owner's question ("did
+        a shot go off?") rather than "was a helper called?"."""
+        from commands.combat.movement import opportunity_attack
+
+        with mock.patch("commands.combat.core_actions.CmdAttack.func") as enrol, \
+             mock.patch("world.combat.attack.process_attack") as resolved:
+            opportunity_attack(self.attacker, self.target, **kwargs)
+        self.enrolled = enrol
+        return resolved
+
+    def fire_watching_the_helper(self, **kwargs):
+        """Watches the DELEGATION instead -- one rung higher up."""
+        from commands.combat.movement import opportunity_attack
+
+        with mock.patch("commands.combat.core_actions.CmdAttack.func"), \
+             mock.patch("world.combat.utils.resolve_bonus_attack") as bonus:
+            opportunity_attack(self.attacker, self.target, **kwargs)
+        return bonus
+
+
+class TestAnImmediateShotIsActuallyResolved(_ShotCase):
+    def test_it_resolves_exactly_once(self):
+        resolved = self.fire(immediate=True)
+        resolved.assert_called_once_with(
+            self.fight, self.attacker, self.target, self.entry,
+            self.fight.db.combatants)
+
+    def test_it_still_enrols_first(self):
+        """The enrolment is what puts the attacker in the handler and
+        prints the initiate line; resolving replaces the WAIT, not the
+        command."""
+        self.fire(immediate=True)
+        self.enrolled.assert_called_once()
+
+    def test_without_the_flag_nothing_is_resolved(self):
+        """The control, and flee's behaviour: enrol and let the round
+        fire it."""
+        resolved = self.fire()
+        resolved.assert_not_called()
+        self.enrolled.assert_called_once()
+
+    def test_it_goes_through_the_bonus_attack_helper_that_already_existed(self):
+        """One implementation, two doors: this is the same immediate
+        attack a ranged defender already gets when an advance or charge
+        at them fails. A private second copy of the entry lookup and the
+        `process_attack` call is exactly how two doors drift (#3530)."""
+        bonus = self.fire_watching_the_helper(immediate=True)
+        bonus.assert_called_once_with(self.fight, self.attacker, self.target)
+
+    def test_and_not_when_the_flag_is_absent(self):
+        self.fire_watching_the_helper().assert_not_called()
+
+
+class TestAnImmediateShotWithNowhereToResolveIsQuiet(_ShotCase):
+    """`process_attack` needs the attacker's own combat entry. If the
+    enrolment did not produce one, the honest answer is no shot -- not
+    a traceback in the middle of somebody's jump."""
+
+    def test_no_entry_for_the_attacker_fires_nothing(self):
+        self.fight.db.combatants = [{"char": self.target}]
+        resolved = self.fire(immediate=True)
+        resolved.assert_not_called()
+
+    def test_no_handler_at_all_fires_nothing(self):
+        setattr(self.attacker.ndb, NDB_COMBAT_HANDLER, None)
+        resolved = self.fire(immediate=True)
+        resolved.assert_not_called()
+
+    def test_an_empty_handler_fires_nothing(self):
+        self.fight.db.combatants = None
+        resolved = self.fire(immediate=True)
+        resolved.assert_not_called()
+
+    def test_no_handler_does_not_even_reach_the_helper(self):
+        setattr(self.attacker.ndb, NDB_COMBAT_HANDLER, None)
+        self.fire_watching_the_helper(immediate=True).assert_not_called()
+
+    def test_a_resolution_that_blows_up_does_not_blow_up_the_jump(self):
+        """The price was already announced and the jumper is mid-leap;
+        a traceback out of here would abort a jump that the ruling says
+        is never refused."""
+        from commands.combat.movement import opportunity_attack
+
+        with mock.patch("commands.combat.core_actions.CmdAttack.func"), \
+             mock.patch("world.combat.utils.resolve_bonus_attack",
+                        side_effect=RuntimeError("boom")):
+            opportunity_attack(self.attacker, self.target, immediate=True)
+
+
+class _JumperUnderFireCase(EvenniaTest):
+    """A roof, an edge into an air cell with a street under it, and one
+    opponent who is both able to aim and able to block."""
+
+    def setUp(self):
+        super().setUp()
+        self.jumper = self.char1
+        self.opponent = self.char2
+        self.roof = self.room1
+        self.roof.key = "Test Roof"
+        self.jumper.location = self.roof
+        self.opponent.location = self.roof
+        self.jumper.motorics = 10
+        self.opponent.motorics = 30
+        self.street = create_object("typeclasses.rooms.Room",
+                                    key="Test Street")
+        self.air = create_object("typeclasses.rooms.SkyRoom",
+                                 key="In the Air")
+        create_object("typeclasses.exits.Exit", key="down",
+                      location=self.air, destination=self.street,
+                      aliases=["d"])
+        self.edge = create_object("typeclasses.exits.Exit", key="south",
+                                  location=self.roof, destination=self.air)
+        self.edge.db.is_edge = True
+        self.said = []
+        self.jumper.msg = lambda text=None, **kw: self.said.append(str(text))
+
+        self.opponent_entry = {"char": self.opponent}
+        self.fight = mock.MagicMock()
+        self.fight.db.combatants = [{"char": self.jumper},
+                                    self.opponent_entry]
+        self.fight.get_target_obj.side_effect = lambda e: None
+        setattr(self.opponent.ndb, NDB_COMBAT_HANDLER, self.fight)
+
+    def aim_at_the_jumper(self):
+        setattr(self.jumper.ndb, NDB_AIMED_AT_BY, self.opponent)
+        setattr(self.opponent.ndb, NDB_AIMING_AT, self.jumper)
+
+    def attack_the_jumper(self):
+        setattr(self.jumper.ndb, NDB_COMBAT_HANDLER, self.fight)
+        self.fight.get_target_obj.side_effect = lambda e: (
+            self.jumper if e["char"] is self.opponent else None)
+
+    def descend(self, *, win):
+        """`jump off south edge`, with the shot's resolution recorded
+        ALONG WITH where the jumper was standing when it fired."""
+        from commands.combat.jump import CmdJump
+
+        rolls = ([(999, 0, 0), (1, 0, 0)] if win
+                 else [(1, 0, 0), (999, 0, 0)])
+        self.fired_from = []
+        cmd = CmdJump()
+        cmd.caller = self.jumper
+        cmd.direction = "south"
+        with ExitStack() as stack:
+            for target in ("commands.combat.jump.msg_room_identity",
+                           "commands.combat.jump.clear_aim_state",
+                           "commands.combat.core_actions.CmdAttack.func",
+                           "commands.explosion_utils.check_rigged_grenade",
+                           "commands.explosion_utils.check_auto_defuse"):
+                stack.enter_context(mock.patch(target))
+            stack.enter_context(mock.patch.object(gravity, "msg_room_identity"))
+            delayed = stack.enter_context(mock.patch.object(gravity, "delay"))
+            stack.enter_context(mock.patch(
+                "commands.combat.movement.standard_roll", side_effect=rolls))
+            stack.enter_context(mock.patch.object(
+                type(cmd), "find_edge_exit", return_value=self.edge))
+            self.resolved = stack.enter_context(
+                mock.patch("world.combat.attack.process_attack"))
+            self.resolved.side_effect = (
+                lambda *a, **kw: self.fired_from.append(self.jumper.location))
+            pending = _queue(delayed)
+            cmd.handle_edge_descent()
+            _drain(pending)
+        return " ".join(self.said)
+
+
+class TestTheAimersShotGoesOffBeforeTheyLeave(_JumperUnderFireCase):
+    def setUp(self):
+        super().setUp()
+        self.aim_at_the_jumper()
+
+    def test_one_shot_is_resolved(self):
+        self.descend(win=False)
+        self.resolved.assert_called_once()
+
+    def test_the_jumper_is_the_one_shot_at(self):
+        self.descend(win=False)
+        self.assertIs(self.resolved.call_args.args[2], self.jumper)
+
+    def test_and_it_fires_while_they_are_still_on_the_roof(self):
+        """The whole finding. A shot resolved after the move is a shot
+        at an empty rooftop."""
+        self.descend(win=False)
+        self.assertEqual(self.fired_from, [self.roof])
+
+    def test_they_still_go_over(self):
+        self.descend(win=False)
+        self.assertIs(self.jumper.location, self.street)
+
+    def test_a_won_contest_resolves_nothing(self):
+        """The control."""
+        self.descend(win=True)
+        self.resolved.assert_not_called()
+        self.assertIs(self.jumper.location, self.street)
+
+
+class TestTheBlockersShotGoesOffBeforeTheyLeave(_JumperUnderFireCase):
+    """The other half of the price, same requirement."""
+
+    def setUp(self):
+        super().setUp()
+        self.attack_the_jumper()
+
+    def test_one_shot_is_resolved(self):
+        self.descend(win=False)
+        self.resolved.assert_called_once()
+
+    def test_the_jumper_is_the_one_shot_at(self):
+        self.descend(win=False)
+        self.assertIs(self.resolved.call_args.args[2], self.jumper)
+
+    def test_and_it_fires_while_they_are_still_on_the_roof(self):
+        self.descend(win=False)
+        self.assertEqual(self.fired_from, [self.roof])
+
+    def test_they_still_go_over(self):
+        out = self.descend(win=False)
+        self.assertIn("regardless", out)
+        self.assertIs(self.jumper.location, self.street)
+
+    def test_a_won_roll_resolves_nothing(self):
+        """The control."""
+        self.descend(win=True)
+        self.resolved.assert_not_called()
+        self.assertIs(self.jumper.location, self.street)
+
+
+class TestFleeStillWaitsForTheRound(EvenniaTest):
+    """Flee's loss leaves the fleer standing in the room, so the
+    handler's next round is a perfectly good time to resolve the shot.
+    Nothing about #3593 changes that -- and an immediate resolution here
+    would be a second shot the round is also going to fire.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.runner = self.char1
+        self.opponent = self.char2
+        self.runner.location = self.room1
+        self.opponent.location = self.room1
+        self.runner.motorics = 10
+        self.opponent.motorics = 30
+        self.said = []
+        self.runner.msg = lambda text=None, **kw: self.said.append(str(text))
+        self.fight = mock.MagicMock()
+        self.fight.db.combatants = [{"char": self.runner},
+                                    {"char": self.opponent}]
+        self.fight.db.combat_is_running = True
+        self.fight.get_grappled_by_obj.return_value = None
+        self.fight.get_grappling_obj.return_value = None
+        self.fight.get_target_obj.side_effect = lambda e: None
+
+    def flee(self):
+        from commands.combat.movement import CmdFlee
+
+        cmd = CmdFlee()
+        cmd.caller = self.runner
+        cmd.args = ""
+        cmd.obj = self.runner
+        with mock.patch("commands.combat.movement.standard_roll",
+                        side_effect=[(1, 0, 0), (999, 0, 0)]), \
+             mock.patch("commands.combat.core_actions.CmdAttack.func"), \
+             mock.patch("commands.combat.movement.msg_room_identity"), \
+             mock.patch("commands.explosion_utils.check_rigged_grenade"), \
+             mock.patch("commands.explosion_utils.check_auto_defuse"), \
+             mock.patch("world.combat.attack.process_attack") as resolved:
+            cmd.func()
+        return resolved
+
+    def test_a_lost_aim_contest_resolves_nothing_on_the_spot(self):
+        setattr(self.runner.ndb, NDB_AIMED_AT_BY, self.opponent)
+        setattr(self.opponent.ndb, NDB_AIMING_AT, self.runner)
+        resolved = self.flee()
+        self.assertIs(self.runner.location, self.room1)
+        resolved.assert_not_called()
+
+    def test_flee_never_asks_the_aim_half_to_resolve_on_the_spot(self):
+        setattr(self.runner.ndb, NDB_AIMED_AT_BY, self.opponent)
+        setattr(self.opponent.ndb, NDB_AIMING_AT, self.runner)
+        with mock.patch("commands.combat.movement.break_aim_lock",
+                        return_value=False) as broke, \
+             mock.patch("commands.combat.movement.msg_room_identity"), \
+             mock.patch("commands.explosion_utils.check_rigged_grenade"), \
+             mock.patch("commands.explosion_utils.check_auto_defuse"):
+            from commands.combat.movement import CmdFlee
+            cmd = CmdFlee()
+            cmd.caller = self.runner
+            cmd.args = ""
+            cmd.obj = self.runner
+            cmd.func()
+        broke.assert_called_once()
+        self.assertFalse(broke.call_args.kwargs.get("immediate_attack"))
+
+    def test_a_lost_disengage_roll_resolves_nothing_on_the_spot(self):
+        setattr(self.runner.ndb, NDB_COMBAT_HANDLER, self.fight)
+        self.fight.get_target_obj.side_effect = lambda e: (
+            self.runner if e["char"] is self.opponent else None)
+        resolved = self.flee()
+        self.assertIs(self.runner.location, self.room1)
+        resolved.assert_not_called()
