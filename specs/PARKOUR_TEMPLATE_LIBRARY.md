@@ -235,8 +235,10 @@ heights, stitched by furniture. The law of the mesh:
   exit, a gap exit or an exit into air for anyone whose `db.stays_aloft`
   is not `True` (one predicate, `can_leave_by`, in `world/gravity.py`).
   So nobody can be chased onto such a roof and nobody can back off it —
-  the only way out is the jump, and the jump costs flee's contest plus
-  the aimer's opportunity attack on a lost roll. Owner: *"It would be
+  the only way out is the jump, and the jump costs what fleeing costs —
+  the aim contest and the melee disengage roll both, each with an
+  opportunity attack waiting on a lost roll (#3583, #3591) — though it is
+  never refused and never costs a round. Owner: *"It would be
   refused at the edge… Ideally, very few rooftops will exist without
   exits though — so ending up on one where all you can do is jump is a
   tactical challenge."* Read that as a **budget, not a ban**: build the

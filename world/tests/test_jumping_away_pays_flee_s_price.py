@@ -2,9 +2,15 @@
 
 Owner ruling, 2026-09-16. `flee` is refused at the edge, so the edge has
 to stay a way out for the person who MEANS it. Leaving a fight by
-stepping off a roof or leaping a gap costs exactly what fleeing costs:
-the Motorics contest against whoever has you in their aim
-(``ndb.aimed_at_by``), and their opportunity attack if you lose it.
+stepping off a roof or leaping a gap costs exactly what fleeing costs --
+BOTH halves of it (#3591):
+
+* the AIM contest against whoever has you in their aim
+  (``ndb.aimed_at_by``), and their opportunity attack if you lose it;
+* the DISENGAGE roll against the best-Motorics opponent actually
+  attacking you in the handler, and theirs if you lose that.
+
+Either loss is paid in blood and neither is a refusal.
 
 Two things separate it from `flee`, and both are the ruling:
 
@@ -46,6 +52,7 @@ from world.combat.constants import (
     NDB_AIMED_AT_BY,
     NDB_AIMING_AT,
     NDB_COMBAT_HANDLER,
+    NDB_SKIP_ROUND,
 )
 
 
@@ -53,6 +60,12 @@ def _break_aim_lock(caller, **kwargs):
     """Imported here, not at module scope -- see the module docstring."""
     from commands.combat.movement import break_aim_lock
     return break_aim_lock(caller, **kwargs)
+
+
+def _roll_to_disengage(caller, handler, **kwargs):
+    """The second half of flee's price, imported the same way."""
+    from commands.combat.movement import roll_to_disengage
+    return roll_to_disengage(caller, handler, **kwargs)
 
 
 def _queue(mocked):
@@ -246,6 +259,20 @@ class _PriceCase(EvenniaTest):
         return mock.patch("commands.combat.movement.break_aim_lock",
                           return_value=freed)
 
+    def handler(self, *others, targeting=()):
+        """A handler shaped like the real one: `combatants` is a list of
+        entries and `get_target_obj` answers who each one is attacking.
+        A bare MagicMock lies here -- every attribute of one is truthy,
+        so a fight nobody is fighting reads as a fight."""
+        entries = [{"char": self.jumper}] + [{"char": o} for o in others]
+        h = mock.MagicMock()
+        h.db.combatants = entries
+        h.get_target_obj.side_effect = lambda e: (
+            self.jumper if e["char"] in targeting else None)
+        h.get_grappled_by_obj.return_value = None
+        h.get_grappling_obj.return_value = None
+        return h
+
 
 class TestOnlyAnAimLockCostsAnything(_PriceCase):
     def test_no_fight_and_no_aim_costs_nothing(self):
@@ -261,14 +288,29 @@ class TestOnlyAnAimLockCostsAnything(_PriceCase):
             self.assertTrue(self.price())
         broke.assert_called_once()
 
-    def test_a_fight_with_nobody_aiming_costs_nothing(self):
-        """Being in a fight is NOT the trigger. Nobody has you sighted,
-        so there is no contest to run: the aim door is never opened and
-        the jump is free."""
-        setattr(self.jumper.ndb, NDB_COMBAT_HANDLER, mock.MagicMock())
-        with mock.patch("commands.combat.movement.break_aim_lock") as broke:
+    def test_a_fight_nobody_is_fighting_you_in_costs_nothing(self):
+        """Being enrolled in a fight is NOT the trigger. Nobody has the
+        jumper sighted and nobody is attacking them, so neither half of
+        the price has anything to charge: no aim contest, no disengage
+        roll, and the jump is free."""
+        setattr(self.jumper.ndb, NDB_COMBAT_HANDLER,
+                self.handler(self.aimer))          # present, on nobody
+        with mock.patch("commands.combat.movement.break_aim_lock") as broke, \
+             mock.patch("commands.combat.movement.standard_roll") as rolled:
             self.assertTrue(self.price())
         broke.assert_not_called()
+        self.assertEqual(rolled.call_count, 0, "rolled against nobody")
+
+    def test_but_somebody_attacking_you_is_charged(self):
+        """The twin, and the control for it: the same fight with the
+        same opponent, now on the jumper, DOES cost a disengage roll."""
+        self.aimer.motorics = 30
+        setattr(self.jumper.ndb, NDB_COMBAT_HANDLER,
+                self.handler(self.aimer, targeting=(self.aimer,)))
+        with mock.patch("commands.combat.movement.standard_roll",
+                        side_effect=[(999, 0, 0), (1, 0, 0)]) as rolled:
+            self.assertTrue(self.price())
+        self.assertEqual(rolled.call_count, 2)
 
 
 class TestThePriceIsFleesPricePlusTheBonus(_PriceCase):
@@ -628,3 +670,375 @@ class TestWinningTheContestIsJustAJump(_JumpAwayCase):
     def test_they_still_end_up_in_the_street(self):
         self.jump(win=True)
         self.assertIs(self.jumper.location, self.street)
+
+
+# ---------------------------------------------------------------------
+# 5. the other half of the price: the disengage roll
+# ---------------------------------------------------------------------
+
+
+class _DisengageCase(EvenniaTest):
+    """A fight whose opponents' targets can be steered.
+
+    What holds you is somebody ATTACKING you, not somebody merely
+    enrolled in the same fight -- the distinction
+    ``test_you_cannot_stroll_out_of_a_fight.py`` draws on the advance
+    door, drawn again here.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.runner = self.char1
+        self.blocker = self.char2
+        self.runner.location = self.room1
+        self.blocker.location = self.room1
+        self.runner.motorics = 10
+        self.blocker.motorics = 30
+        self.said = []
+        self.runner.msg = lambda text=None, **kw: self.said.append(str(text))
+
+    def handler(self, *others, targeting=()):
+        entries = [{"char": self.runner}] + [{"char": o} for o in others]
+        h = mock.MagicMock()
+        h.db.combatants = entries
+        h.get_target_obj.side_effect = lambda e: (
+            self.runner if e["char"] in targeting else None)
+        h.get_grappled_by_obj.return_value = None
+        h.get_grappling_obj.return_value = None
+        return h
+
+    def disengage(self, handler, *, runner_rolls=1, blocker_rolls=1, bonus=0):
+        with mock.patch("commands.combat.movement.standard_roll",
+                        side_effect=[(runner_rolls, 0, 0),
+                                     (blocker_rolls, 0, 0)]) as rolled:
+            out = _roll_to_disengage(self.runner, handler, bonus=bonus)
+        self.rolled = rolled
+        return out
+
+
+class TestNobodyIsHoldingTheDoor(_DisengageCase):
+    def test_an_empty_fight_costs_nothing(self):
+        won, blocker, opponents = self.disengage(self.handler())
+        self.assertTrue(won)
+        self.assertIsNone(blocker)
+        self.assertEqual(opponents, [])
+        self.assertEqual(self.rolled.call_count, 0, "rolled against nobody")
+
+    def test_an_opponent_fighting_someone_else_does_not_hold_you(self):
+        """Enrolled, in the room, and no claim on where you go."""
+        won, blocker, opponents = self.disengage(self.handler(self.blocker))
+        self.assertTrue(won)
+        self.assertIsNone(blocker)
+        self.assertEqual(opponents, [])
+        self.assertEqual(self.rolled.call_count, 0)
+
+
+class TestTheDisengageRollTakesTheBonusToo(_DisengageCase):
+    """The decisive pair again, on the second contest: same rolls, and
+    the bold-move bonus is the only difference."""
+
+    def setUp(self):
+        super().setUp()
+        self.fight = self.handler(self.blocker, targeting=(self.blocker,))
+
+    def test_the_bonus_wins_a_roll_that_would_have_lost(self):
+        won, blocker, opponents = self.disengage(
+            self.fight, runner_rolls=10, blocker_rolls=25, bonus=20)
+        self.assertTrue(won)
+        self.assertIs(blocker, self.blocker)
+        self.assertEqual(opponents, [self.blocker])
+
+    def test_without_it_the_same_roll_loses(self):
+        won, blocker, _ = self.disengage(
+            self.fight, runner_rolls=10, blocker_rolls=25, bonus=0)
+        self.assertFalse(won)
+        self.assertIs(blocker, self.blocker)
+
+    def test_a_tie_goes_to_the_one_holding_on(self):
+        won, _, _ = self.disengage(
+            self.fight, runner_rolls=25, blocker_rolls=25)
+        self.assertFalse(won)
+
+    def test_a_big_enough_roll_still_beats_the_bonus(self):
+        won, _, _ = self.disengage(
+            self.fight, runner_rolls=1, blocker_rolls=999, bonus=20)
+        self.assertFalse(won)
+
+
+class TestTheBestOpponentHoldsTheDoor(_DisengageCase):
+    """One roll, against the hardest of them -- not one roll each."""
+
+    def setUp(self):
+        super().setUp()
+        self.weak = create_object("typeclasses.characters.Character",
+                                  key="Weakling", location=self.room1)
+        self.weak.motorics = 3
+        self.blocker.motorics = 30
+        self.fight = self.handler(self.weak, self.blocker,
+                                  targeting=(self.weak, self.blocker))
+
+    def test_the_hardest_opponent_is_the_blocker(self):
+        _, blocker, opponents = self.disengage(self.fight)
+        self.assertIs(blocker, self.blocker)
+        self.assertEqual(len(opponents), 2)
+
+    def test_the_roll_is_against_that_opponents_motorics(self):
+        """The control on the line above: naming the blocker is only
+        worth anything if the dice are rolled against their number."""
+        self.disengage(self.fight)
+        self.assertEqual(self.rolled.call_count, 2)
+        self.assertEqual(self.rolled.call_args_list[0].args[0], 10)
+        self.assertEqual(self.rolled.call_args_list[1].args[0], 30)
+
+
+class TestTheDisengageHalfIsPaidByTheJumper(_PriceCase):
+    """`pay_the_price_of_leaving` with nobody aiming and somebody
+    attacking: the second half on its own."""
+
+    def setUp(self):
+        super().setUp()
+        self.blocker = self.aimer          # same body, different role
+        self.blocker.motorics = 30
+        self.jumper.motorics = 10
+        setattr(self.jumper.ndb, NDB_COMBAT_HANDLER,
+                self.handler(self.blocker, targeting=(self.blocker,)))
+
+    def pay(self, *, win, downed=False):
+        rolls = ([(999, 0, 0), (1, 0, 0)] if win
+                 else [(1, 0, 0), (999, 0, 0)])
+        with mock.patch("commands.combat.movement.standard_roll",
+                        side_effect=rolls), \
+             mock.patch("commands.combat.movement.opportunity_attack") as hit, \
+             mock.patch.object(type(self.jumper), "is_dead",
+                               return_value=downed), \
+             mock.patch.object(type(self.jumper), "is_unconscious",
+                               return_value=False):
+            out = self.price()
+        self.attacked = hit
+        return out
+
+    def test_a_lost_roll_hands_the_blocker_a_shot(self):
+        self.pay(win=False)
+        self.attacked.assert_called_once_with(self.blocker, self.jumper)
+
+    def test_and_the_jumper_is_told_who_caught_them(self):
+        self.pay(win=False)
+        self.assertIn("catches you", self.said_text())
+
+    def test_and_they_go_over_anyway(self):
+        self.assertTrue(self.pay(win=False))
+        self.assertIn("regardless", self.said_text())
+
+    def test_a_won_roll_costs_nothing(self):
+        """The control."""
+        self.assertTrue(self.pay(win=True))
+        self.attacked.assert_not_called()
+        self.assertNotIn("regardless", self.said_text())
+
+    def test_a_blocker_who_downs_them_stops_the_jump(self):
+        self.assertFalse(self.pay(win=False, downed=True))
+
+
+class TestTheAimHalfAttacksThroughTheSharedHelper(_AimLockCase):
+    """#3591 pulled the CmdAttack construction out into
+    `opportunity_attack`, shared by both contests. The aim half must
+    still reach it -- an extraction that quietly drops one caller is the
+    whole risk."""
+
+    def setUp(self):
+        super().setUp()
+        self.lock()
+
+    def shot(self, *, caller_rolls, aimer_rolls):
+        with mock.patch("commands.combat.movement.standard_roll",
+                        side_effect=[(caller_rolls, 0, 0),
+                                     (aimer_rolls, 0, 0)]), \
+             mock.patch("commands.combat.movement.opportunity_attack") as hit:
+            freed = _break_aim_lock(self.runner)
+        return freed, hit
+
+    def test_a_lost_aim_contest_fires_one_shot(self):
+        freed, hit = self.shot(caller_rolls=10, aimer_rolls=25)
+        self.assertFalse(freed)
+        hit.assert_called_once_with(self.aimer, self.runner)
+
+    def test_a_won_aim_contest_fires_none(self):
+        freed, hit = self.shot(caller_rolls=99, aimer_rolls=1)
+        self.assertTrue(freed)
+        hit.assert_not_called()
+
+
+# ---------------------------------------------------------------------
+# 6. flee still behaves exactly as it did (a behaviour-preserving lift)
+# ---------------------------------------------------------------------
+
+
+class _FleeDisengageCase(EvenniaTest):
+    """`CmdFlee` Part 2 now calls the extracted `roll_to_disengage`. The
+    extraction is only safe if flee's own consequence for a loss is
+    unchanged: blocked, told so, a round skipped, and NOT moved."""
+
+    def setUp(self):
+        super().setUp()
+        self.runner = self.char1
+        self.blocker = self.char2
+        self.runner.location = self.room1
+        self.blocker.location = self.room1
+        self.runner.motorics = 10
+        self.blocker.motorics = 30
+        self.said = []
+        self.runner.msg = lambda text=None, **kw: self.said.append(str(text))
+        h = mock.MagicMock()
+        h.db.combatants = [{"char": self.runner}, {"char": self.blocker}]
+        h.db.combat_is_running = True
+        h.get_target_obj.side_effect = lambda e: (
+            self.runner if e["char"] is self.blocker else None)
+        h.get_grappled_by_obj.return_value = None
+        h.get_grappling_obj.return_value = None
+        self.fight = h
+        setattr(self.runner.ndb, NDB_COMBAT_HANDLER, h)
+
+    def flee(self, *, win=True):
+        from commands.combat.movement import CmdFlee
+
+        rolls = ([(999, 0, 0), (1, 0, 0)] if win
+                 else [(1, 0, 0), (999, 0, 0)])
+        cmd = CmdFlee()
+        cmd.caller = self.runner
+        cmd.args = ""
+        cmd.obj = self.runner
+        with mock.patch("commands.combat.movement.standard_roll",
+                        side_effect=rolls), \
+             mock.patch("commands.combat.movement.msg_room_identity"), \
+             mock.patch("commands.explosion_utils.check_rigged_grenade"), \
+             mock.patch("commands.explosion_utils.check_auto_defuse"):
+            cmd.func()
+        return " ".join(self.said)
+
+    def skipping(self):
+        return bool(getattr(self.runner.ndb, NDB_SKIP_ROUND, False))
+
+
+class TestALostDisengageStillBlocksTheFlee(_FleeDisengageCase):
+    def test_they_do_not_move(self):
+        self.flee(win=False)
+        self.assertIs(self.runner.location, self.room1)
+
+    def test_they_are_told_who_blocked_them(self):
+        self.assertIn("block your escape", self.flee(win=False))
+
+    def test_and_they_skip_a_round_for_it(self):
+        self.flee(win=False)
+        self.assertTrue(self.skipping())
+
+    def test_a_won_disengage_still_gets_them_out(self):
+        """The control."""
+        out = self.flee(win=True)
+        self.assertIs(self.runner.location, self.room2)
+        self.assertIn("successfully flee", out)
+
+    def test_and_costs_no_skipped_round(self):
+        self.flee(win=True)
+        self.assertFalse(self.skipping())
+
+
+class TestFleeingIsStillNotABoldMove(_FleeDisengageCase):
+    def test_flee_passes_no_bonus_to_the_disengage_roll(self):
+        """The bonus belongs to the jump. Flee asks the same function
+        and must ask it plainly, or `flee` silently became the better
+        escape the moment the helper was shared."""
+        with mock.patch("commands.combat.movement.roll_to_disengage",
+                        return_value=(True, None, [])) as rolled, \
+             mock.patch("commands.combat.movement.msg_room_identity"), \
+             mock.patch("commands.explosion_utils.check_rigged_grenade"), \
+             mock.patch("commands.explosion_utils.check_auto_defuse"):
+            from commands.combat.movement import CmdFlee
+            cmd = CmdFlee()
+            cmd.caller = self.runner
+            cmd.args = ""
+            cmd.obj = self.runner
+            cmd.func()
+        rolled.assert_called_once()
+        self.assertFalse(rolled.call_args.kwargs.get("bonus"))
+        self.assertFalse(rolled.call_args.kwargs.get("label"))
+
+
+# ---------------------------------------------------------------------
+# 7. and the gap verb pays it as well
+# ---------------------------------------------------------------------
+
+
+class TestAGapJumpPaysTheDisengageHalf(EvenniaTest):
+    """`jump across` and `jump off` share one price, so the second half
+    has to be charged on both doors -- the Two Doors problem, which is
+    what put `pay_the_price_of_leaving` on the command in the first
+    place."""
+
+    def setUp(self):
+        super().setUp()
+        self.jumper = self.char1
+        self.blocker = self.char2
+        self.jumper.location = self.room1
+        self.blocker.location = self.room1
+        self.jumper.motorics = 10
+        self.blocker.motorics = 30
+        self.said = []
+        self.jumper.msg = lambda text=None, **kw: self.said.append(str(text))
+        self.far = create_object("typeclasses.rooms.Room", key="Far Roof")
+        self.gap = self.exit
+        self.gap.key = "east"
+        self.gap.db.is_gap = True
+        self.gap.db.gap_destination = self.far
+        h = mock.MagicMock()
+        h.db.combatants = [{"char": self.jumper}, {"char": self.blocker}]
+        h.get_target_obj.side_effect = lambda e: (
+            self.jumper if e["char"] is self.blocker else None)
+        setattr(self.jumper.ndb, NDB_COMBAT_HANDLER, h)
+
+    def leap(self, *, win):
+        from commands.combat.jump import CmdJump
+
+        rolls = ([(999, 0, 0), (1, 0, 0)] if win
+                 else [(1, 0, 0), (999, 0, 0)])
+        cmd = CmdJump()
+        cmd.caller = self.jumper
+        cmd.direction = "east"
+        with ExitStack() as stack:
+            for target in ("commands.combat.jump.msg_room_identity",
+                           "commands.combat.jump.clear_aim_state",
+                           "commands.explosion_utils.check_rigged_grenade",
+                           "commands.explosion_utils.check_auto_defuse"):
+                stack.enter_context(mock.patch(target))
+            stack.enter_context(mock.patch.object(gravity, "msg_room_identity"))
+            stack.enter_context(mock.patch.object(gravity, "delay"))
+            stack.enter_context(mock.patch(
+                "world.combat.grappling.get_grappled_by", return_value=None))
+            stack.enter_context(mock.patch(
+                "world.combat.grappling.get_grappling_target",
+                return_value=None))
+            stack.enter_context(mock.patch(
+                "commands.combat.jump.standard_roll",
+                return_value=(999, 999, 999)))
+            stack.enter_context(mock.patch(
+                "commands.combat.movement.standard_roll", side_effect=rolls))
+            self.attacked = stack.enter_context(mock.patch(
+                "commands.combat.movement.opportunity_attack"))
+            cmd.handle_gap_jump()
+        return " ".join(self.said)
+
+    def test_a_lost_roll_hands_the_blocker_a_shot(self):
+        self.leap(win=False)
+        self.attacked.assert_called_once_with(self.blocker, self.jumper)
+
+    def test_and_the_leap_still_happens(self):
+        """Never refused -- the ruling holds on this door too."""
+        out = self.leap(win=False)
+        self.assertIn("regardless", out)
+        self.assertIs(self.jumper.location, self.far)
+
+    def test_a_won_roll_costs_nothing(self):
+        """The control."""
+        out = self.leap(win=True)
+        self.attacked.assert_not_called()
+        self.assertNotIn("regardless", out)
+        self.assertIs(self.jumper.location, self.far)
