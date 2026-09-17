@@ -607,8 +607,10 @@ class CombatHandler(DefaultScript):
         # Remove orphaned combatants (no target, not grappling, not grappled, not targeted)
         from .utils import detect_and_remove_orphaned_combatants
         orphaned_chars = detect_and_remove_orphaned_combatants(self)
-        if orphaned_chars:
-            combatants_list = self._refetch_combatants()
+        # Always re-read: the sweep also clears a target that no longer
+        # exists (#3568) without necessarily orphaning anyone, and the
+        # snapshot taken above would write the stale dbref back (#2422).
+        combatants_list = self._refetch_combatants()
 
         # Prune invalid combatants (dead, no location, wrong room)
         combatants_list = self._validate_combatants(combatants_list)

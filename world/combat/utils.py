@@ -34,6 +34,7 @@ backward compatibility):
 from __future__ import annotations
 
 from random import randint
+from evennia.utils import logger
 
 from .constants import (
     DB_CHAR,
@@ -1150,6 +1151,32 @@ def get_character_by_dbref(dbref):
         return None
 
 
+def queued_action_target(entry, char, action_name):
+    """The target a queued combat action (advance, charge, disarm) was
+    aimed at, or ``None`` after telling *char* why (#3569).
+
+    The entry stores the target as a direct object reference; a target
+    deleted between the queueing command and the round deserializes to
+    ``None`` with the key still present. That is "your target is gone",
+    not "you gave no target": the two used to share one message that
+    blamed the player for a target they supplied.
+    """
+    target = entry.get(DB_COMBAT_ACTION_TARGET)
+    if target:
+        return target
+    if DB_COMBAT_ACTION_TARGET in entry:
+        char.msg("|yYour target is no longer there.|n")
+        get_splattercast().msg(
+            f"ACTION_TARGET_GONE: {char.key}'s queued {action_name} "
+            f"target no longer exists.")
+        logger.log_warn(
+            f"combat: {char.key}'s queued {action_name} target no longer "
+            f"exists; action dropped.")
+    else:
+        char.msg(f"|rNo target specified for {action_name} action.|n")
+    return None
+
+
 def detect_and_remove_orphaned_combatants(handler):
     """
     Detect and remove combatants who are orphaned (no valid combat relationships).
@@ -1174,7 +1201,7 @@ def detect_and_remove_orphaned_combatants(handler):
         list: List of orphaned combatants that were removed
     """
     from .constants import (
-        DB_COMBATANTS, DB_CHAR, DB_TARGET_DBREF,
+        DB_COMBATANTS, DB_CHAR, DB_COMBAT_ACTION, DB_TARGET_DBREF,
         DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF, DB_IS_YIELDING
     )
     
@@ -1191,6 +1218,7 @@ def detect_and_remove_orphaned_combatants(handler):
         target_dbref = entry.get(DB_TARGET_DBREF)
         if target_dbref is not None:
             targeted_dbrefs.add(target_dbref)
+    target_gone = []          # #3568: told after the orphan decision
     
     # Check each combatant for orphan status
     for entry in combatants:
@@ -1201,7 +1229,30 @@ def detect_and_remove_orphaned_combatants(handler):
         char_dbref = get_character_dbref(char)
         
         # Check all orphan conditions (excluding yielding status)
-        has_target = entry.get(DB_TARGET_DBREF) is not None
+        target_dbref = entry.get(DB_TARGET_DBREF)
+        has_target = target_dbref is not None
+        if has_target and get_character_by_dbref(target_dbref) is None:
+            # #3568: the target is GONE from the database -- a deletion,
+            # not a combat outcome. The death path clears targets before
+            # a body is deleted, so this is a builder's or a system's
+            # deletion under a live fight: clear it on the stored entry,
+            # log it, and tell the combatant once the sweep has decided
+            # whether they stay (below). A queued action at that same
+            # dead target is dropped here too, so the round does not
+            # report the loss a second time.
+            entry[DB_TARGET_DBREF] = None
+            has_target = False
+            if (DB_COMBAT_ACTION_TARGET in entry
+                    and entry.get(DB_COMBAT_ACTION_TARGET) is None):
+                entry[DB_COMBAT_ACTION] = None
+            target_gone.append(char)
+            splattercast.msg(
+                f"TARGET_GONE: {char.key}'s target #{target_dbref} no "
+                f"longer exists in the database; target cleared.")
+            logger.log_warn(
+                f"combat: {char.key}(#{char_dbref}) was targeting "
+                f"#{target_dbref}, which no longer exists; target cleared "
+                f"(handler {getattr(handler, 'key', '?')}).")
         is_grappling = entry.get(DB_GRAPPLING_DBREF) is not None
         is_grappled = entry.get(DB_GRAPPLED_BY_DBREF) is not None
         is_targeted = char_dbref in targeted_dbrefs
@@ -1240,6 +1291,15 @@ def detect_and_remove_orphaned_combatants(handler):
             orphaned_chars.append(char)
     
     # Remove all orphaned combatants
+    for char in target_gone:
+        if not hasattr(char, "msg"):
+            continue
+        if char in orphaned_chars:
+            # leaving in a moment (remove_combatant says the rest)
+            char.msg("|yYour target is no longer there.|n")
+        else:
+            char.msg("|yYour target is no longer there. Choose a new "
+                     "target if you wish to continue fighting.|n")
     for orphaned_char in orphaned_chars:
         splattercast.msg(f"ORPHAN_REMOVE: Removing {orphaned_char.key} from combat (orphaned state)")
         remove_combatant(handler, orphaned_char)

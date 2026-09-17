@@ -21,8 +21,7 @@ from world.identity_utils import msg_room_identity
 
 from .constants import (
     DEBUG_PREFIX_HANDLER,
-    DB_CHAR, DB_COMBAT_ACTION, DB_COMBAT_ACTION_TARGET,
-    DB_IS_YIELDING,
+    DB_CHAR, DB_COMBAT_ACTION, DB_IS_YIELDING,
     DB_GRAPPLING_DBREF, DB_GRAPPLED_BY_DBREF,
     MSG_DISARM_FAILED, MSG_DISARM_RESISTED,
     MSG_DISARM_TARGET_EMPTY_HANDS, MSG_DISARM_NOTHING_TO_DISARM,
@@ -32,6 +31,7 @@ from .constants import (
 from .debug import get_splattercast, log_combat_action
 from .dice import roll_stat
 from .utils import (
+    queued_action_target,
     get_numeric_stat, initialize_proximity_ndb,
     get_character_dbref, get_display_name_safe,
 )
@@ -51,10 +51,8 @@ def resolve_disarm(handler, char, entry):
         entry: The character's combat entry dict.
     """
     splattercast = get_splattercast()
-    target = entry.get(DB_COMBAT_ACTION_TARGET)
-
+    target = queued_action_target(entry, char, "disarm")
     if not target:
-        char.msg("|rNo target specified for disarm action.|n")
         return
 
     target_name = get_display_name_safe(target, char)
