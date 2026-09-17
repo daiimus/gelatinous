@@ -699,8 +699,9 @@ class CmdGet(Command):
         # door reaches the same physical contents through a resolver
         # that knows nothing about it, so the limb went on describing a
         # glove that was gone — and once the glove was deleted the
-        # dangling entry crashed `look` on the limb, because
-        # `_build_worn_items_line` has no prune of its own.
+        # dangling entry crashed `look` on the limb. `worn_garments()`
+        # now prunes as it reads (#3575) and the part renders from it
+        # (#3578); releasing here keeps the ledger honest all the same.
         _release_from_worn_ledger(from_container, item)
 
         # A found item stops being a stash (#2476). `active_search`

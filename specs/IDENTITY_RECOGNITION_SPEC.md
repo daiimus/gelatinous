@@ -2262,6 +2262,90 @@ not their own. This keeps a severed left hand readable as "a severed
 left hand. <tattoo prose> <old slash wound>" regardless of where the
 hand ends up.
 
+> **Correction 2026-09-16 (#3578) — a severed part wears its clothes.**
+> Owner ruling: a severed part must display garments *"just like it does
+> on a character, mixing the worn descs and longdesc where appropriate."*
+> The paragraph above predates the garment layer and is now narrower than
+> shipped behaviour in three places.
+>
+> * **Coverage, from the part's own ledger.**
+>   `Appendage.return_appearance` heals the self-healing `worn_items`
+>   ledger with `worn_garments()` (see §Phase B) and builds the coverage
+>   map from the ledger itself — outermost garment first at each
+>   location — through the module-level builder the living body uses,
+>   **`coverage_from_worn_stack`** (`typeclasses/clothing_mixin.py`; a
+>   corpse, which keeps no stack, orders its flat list by layer instead),
+>   then walks the species display order with it.  The garment's prose
+>   comes through `Item.get_current_worn_desc()`, so an active style's
+>   sentence wins and the terminating period is added, as on the body.  A **covered** location
+>   renders that garment's `worn_desc` — colour codes through
+>   `Item._process_color_codes`, brace tokens through
+>   `substitute_pronoun_tokens` against the snapshotted
+>   `original_gender` / `original_character_name` / `source_species`
+>   — **once per garment**, in place of that location's longdesc.  An
+>   **uncovered** location renders longdesc + its wounds exactly as
+>   before.  Paired locations carrying the same prose collapse into
+>   one plural line when neither side is covered or destroyed ("His eyes
+>   are", not "His eye is" twice), a lone side reads with its side
+>   ("His left eye is"), and a collapsed pair renders BOTH sides' wounds
+>   after the plural line -- forensic detail is never dropped, which is
+>   one place the part is stricter than the living body.  A garment that covers only locations outside the display
+>   order still renders: the defensive extras pass walks the longdesc
+>   keys **and** the coverage-map keys.  This is the corpse's rule
+>   (`Corpse._get_preserved_longdesc_descriptions`) and the living
+>   character's (`AppearanceMixin._get_visible_body_descriptions`), not
+>   a third one.
+> * **What is under a garment stays under it.**  A preserved wound at a
+>   covered location is marked handled and **not** rendered, so
+>   "wounds whose location has no carried longdesc still render
+>   (appended last)" above now means *uncovered* locations only.  Take
+>   the glove off and the wound is there.
+> * **The "It still wears ..." sentence is retired.**
+>   `Appendage._build_worn_items_line` is **deleted**, not deprecated —
+>   there is no bolted-on inventory sentence — and
+>   `Appendage.filter_visible` drops WORN garments from Evennia's
+>   contents line, so `You see: a mining helmet` never repeats a garment
+>   the prose described.  What a part merely carries (retracted hardware
+>   moved with it, #3487; a thing put in a severed hand) is still listed
+>   there, since that line is its only way of being seen.  A part answers
+>   "what is this body wearing" the only way a body does: by describing
+>   itself.
+> * **The ledger is outermost first, and both writers keep it so
+>   (2026-09-17, second review).**  `detach_items_to_appendage` copies
+>   each of the character's per-location lists in their own order, and
+>   `dress <part>` inserts by layer the way `wear_item` does; the first
+>   cut appended, which put the innermost garment first and made a helmet
+>   over a balaclava vanish (not described, and filtered from contents).
+> * **Three limits, recorded not fixed.**  No sever path but
+>   `apply_sever_to_character` calls `detach_items_to_appendage`: a
+>   living decapitation and `sever head from corpse` leave the head's
+>   garments behind (#3577 covers the corpse half), so today a head is
+>   dressed only through `dress`.  `dress` fits a garment to the part's
+>   `db.chain`, and a head's chain is `("head",)` — goggles, earrings, a
+>   collar are refused, and a balaclava registers at `head` only.  And
+>   a part has no `refresh_worn_coverage`, so a style changed while the
+>   garment is on the part does not re-derive the ledger; the ledger is
+>   style-current as of severance or dressing.
+> * **Whitespace.**  The composed prose joins the engine base (name +
+>   seeded `db.desc`) with a **blank line**, not a space —
+>   `f"{base}\n\n{body}"`.  The name still owns its header line (#236).
+>
+> **Two consequences, both pre-existing properties shared with corpses
+> rather than new failures of this change.**
+>
+> 1. **The prototype's `coverage` list decides what is hidden.**
+>    `MINING_HELMET` declares `coverage: ["head"]`, so a severed head
+>    wearing one renders the helmet for `head` and still renders `hair`,
+>    `face`, the eyes and the ears.  Reads right for a helmet; it is the
+>    same binary, location-shaped coverage limit recorded in
+>    `CLOTHING_SYSTEM_SPEC.md` §"Coverage is binary, and two real
+>    garments need it not to be".
+> 2. **Carried longdesc prose prints verbatim.**  Prose authored for a
+>    living body — "He holds his head slightly forward" — reads the
+>    same way on a detached one.  The renderer substitutes pronoun /
+>    name / number tokens; it never rewrites an author's verb.  True of
+>    corpses today for the same reason.
+
 **Pronoun-token substitution (#234)**: carried longdesc prose may
 contain author-written `{their}` / `{they}` / `{name}` brace tokens.
 Because the living-character renderer is no longer in play, both the
@@ -2635,6 +2719,19 @@ mirroring the corpse-side helpers but leaving the character alive.
   Spanning garments (a jacket over chest and both arms) stay on the body when
   one arm comes off — the subset rule above — and the sleeve oddity is
   accepted rather than modelled as garment damage.
+- **A severed part is *described* like a body, not like a container**
+  (owner ruling 2026-09-16, #3578): garments display *"just like it does
+  on a character, mixing the worn descs and longdesc where appropriate."*
+  The same `worn_items` ledger `frisk` and `undress` read (healed by
+  `worn_garments()`) now feeds the part's renderer through
+  `coverage_from_worn_stack` (`typeclasses/clothing_mixin.py`), the very
+  builder the living character's `_build_clothing_coverage_map` delegates
+  to, since both carry an outermost-first stack; `Corpse` orders its flat
+  list by layer in its own builder.  A covered location
+  shows the garment's worn desc once and hides the longdesc and wounds
+  beneath it; the old "It still wears a bloodstained glove" sentence and
+  the `You see:` contents listing are both gone.  Shipped rule and its
+  consequences: §Surgical Sever → Severed-item rendering.
 - **`SEVER_HAND_BY_CONTAINER`** (`world/combat/constants.py`) maps
   `left_arm` / `left_hand` → `"left"`, `right_arm` / `right_hand` →
   `"right"`; legs are deliberately absent.

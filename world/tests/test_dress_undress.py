@@ -30,6 +30,9 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
+from evennia import create_object
+from evennia.utils.test_resources import EvenniaTest
+
 from commands.CmdClothing import _can_third_party_clothing
 
 
@@ -246,92 +249,113 @@ class WornItemsCarryForward(TestCase):
 # ---------------------------------------------------------------------
 
 
-class WornItemsRendering(TestCase):
-    """``Appendage._build_worn_items_line`` surfaces the "still
-    wears" forensic line in the appendage's appearance prose."""
+class WornItemsRendering(EvenniaTest):
+    """A severed part describes its garments the way a body does (#3578).
 
-    def _appendage_with_worn(self, worn_dict):
-        """Build an object exposing the same _build_worn_items_line
-        method without instantiating a real Appendage (which would
-        need full Evennia DB setup)."""
-        from typeclasses.items import Appendage
+    This class used to pin ``Appendage._build_worn_items_line`` — a
+    bolted-on *"It still wears a glove, a ring, and a bracelet."*
+    sentence with its own comma-and-and grammar. Owner ruling
+    2026-09-16 deleted that sentence: a garment on a severed part now
+    renders its ``worn_desc`` in place of the longdesc at the location
+    it covers, exactly as it does on a living character and on a corpse.
 
-        class _Stub(Appendage):
-            pass
+    The intents carry over one-for-one — nothing renders when nothing is
+    worn; each worn garment is surfaced; a garment registered at several
+    locations is surfaced once — but they are asked of the real
+    ``return_appearance``, because the one-garment-per-location rule is
+    a property of the whole render pass, not of any line-builder inside
+    it. Real objects, too: ``worn_garments()`` prunes anything without a
+    ``pk`` or living anywhere but this limb (#2456/#3575), so stubs are
+    pruned away and a renderer asked about a limb wearing nothing
+    answers "" no matter what it does.
+    """
 
-        # Patch the at_object_creation guard so we can construct
-        # without going through Evennia's typeclass machinery.
-        stub = SimpleNamespace()
-        stub.db = SimpleNamespace(worn_items=worn_dict)
-        stub.get_display_name = lambda looker: "stub"
-        # The items have to look WORN ON THIS LIMB. `worn_garments` (the
-        # ledger reader the line is built from, #3575) prunes anything
-        # without a `pk` or whose `location` is not the appendage --
-        # guards added by #2456, because a deleted item
-        # deserialised to None and crashed `return_appearance`, and
-        # "an item that has left the limb by any door is likewise no
-        # longer worn on it".
-        #
-        # These doubles carried neither, so every item was pruned and the
-        # renderer correctly returned "". The test had been asserting
-        # against a limb wearing nothing.
-        for _loc, items in (worn_dict or {}).items():
-            for item in items or []:
-                if not hasattr(item, "pk"):
-                    item.pk = id(item)
-                if not hasattr(item, "location"):
-                    item.location = stub
-        # Bind the unbound methods: the line is built from the limb's own
-        # `worn_garments` answer.
-        stub.worn_garments = Appendage.worn_garments.__get__(stub, type(stub))
-        stub._build_worn_items_line = (
-            Appendage._build_worn_items_line.__get__(stub, type(stub))
-        )
-        return stub
+    def setUp(self):
+        super().setUp()
+        self.limb = create_object("typeclasses.items.Appendage",
+                                  key="a severed left arm",
+                                  location=self.room1)
+        self.limb.db.longdesc_data = {
+            "left_arm": "His left arm is ropy with old scar tissue.",
+            "left_hand": "His left hand is missing the little finger.",
+        }
+        self.limb.db.original_gender = "male"
+        self.limb.db.source_species = "human"
 
-    def test_empty_returns_empty_string(self):
-        stub = self._appendage_with_worn({})
-        self.assertEqual(stub._build_worn_items_line(None), "")
+    def wear(self, prose, coverage):
+        """Put a garment on the limb: inside it, and in its ledger."""
+        item = create_object("typeclasses.items.Item", key=prose,
+                             location=self.limb)
+        item.db.worn_desc = prose
+        item.db.coverage = list(coverage)
+        ledger = dict(self.limb.db.worn_items or {})
+        for location in coverage:
+            ledger.setdefault(location, []).append(item)
+        self.limb.db.worn_items = ledger
+        return item
 
-    def test_single_item_renders(self):
-        glove = SimpleNamespace(get_display_name=lambda lk: "a glove")
-        stub = self._appendage_with_worn({"left_hand": [glove]})
-        line = stub._build_worn_items_line(None)
-        self.assertIn("a glove", line)
-        self.assertTrue(line.startswith("It still wears"))
+    def look(self):
+        return self.limb.return_appearance(self.char1)
 
-    def test_two_items_renders_with_and(self):
-        glove = SimpleNamespace(get_display_name=lambda lk: "a glove")
-        ring = SimpleNamespace(get_display_name=lambda lk: "a ring")
-        stub = self._appendage_with_worn({
-            "left_hand": [glove, ring],
-        })
-        line = stub._build_worn_items_line(None)
-        self.assertIn("a glove", line)
-        self.assertIn("a ring", line)
-        self.assertIn("and", line)
+    def test_nothing_worn_describes_no_garment(self):
+        out = self.look()
+        self.assertNotIn("still wears", out)
+        self.assertNotIn("You see", out)
+        self.assertIn("His left hand is missing the little finger.", out)
 
-    def test_three_items_uses_comma_and_and(self):
-        items = [
-            SimpleNamespace(get_display_name=lambda lk, n=n: n)
-            for n in ("a glove", "a ring", "a bracelet")
-        ]
-        stub = self._appendage_with_worn({"left_hand": items})
-        line = stub._build_worn_items_line(None)
-        self.assertIn("a glove,", line)
-        self.assertIn("a ring,", line)
-        self.assertIn("and a bracelet", line)
+    def test_a_worn_garment_is_described(self):
+        self.wear("a torn glove", ["left_hand"])
+        self.assertIn("a torn glove", self.look())
+
+    def test_it_stands_in_for_the_flesh_it_covers(self):
+        self.wear("a torn glove", ["left_hand"])
+        out = self.look()
+        self.assertNotIn("His left hand is missing the little finger.", out)
+        self.assertIn("His left arm is ropy with old scar tissue.", out)
+
+    def test_two_garments_are_both_described(self):
+        self.wear("a torn glove", ["left_hand"])
+        self.wear("a leather bracer", ["left_arm"])
+        out = self.look()
+        self.assertIn("a torn glove", out)
+        self.assertIn("a leather bracer", out)
+
+    def test_three_garments_are_all_described(self):
+        self.wear("a torn glove", ["left_hand"])
+        self.wear("a leather bracer", ["left_arm"])
+        self.wear("a signet ring", ["left_ring_finger"])
+        out = self.look()
+        for prose in ("a torn glove", "a leather bracer", "a signet ring"):
+            self.assertIn(prose, out, f"{prose!r} went unrendered")
 
     def test_dedup_across_locations(self):
-        """An item registered at multiple locations renders once."""
-        coat = SimpleNamespace(get_display_name=lambda lk: "a coat")
-        stub = self._appendage_with_worn({
-            "chest": [coat],
-            "left_arm": [coat],
-        })
-        line = stub._build_worn_items_line(None)
-        # "a coat" should appear once, not twice.
-        self.assertEqual(line.count("a coat"), 1)
+        """A garment registered at several locations renders once."""
+        self.wear("a long leather coat", ["left_arm", "left_hand"])
+        self.assertEqual(self.look().count("a long leather coat"), 1)
+
+    def test_a_carried_garment_is_listed_not_worn(self):
+        """Inside the limb is not worn on it: the ledger is the only
+        authority, so a glove shoved into the hand is never described as
+        worn and the hand under it still reads -- but it IS contents, and
+        contents are listed (that line is how carried hardware is found,
+        #3487)."""
+        loose = create_object("typeclasses.items.Item", key="a spare glove",
+                              location=self.limb)
+        loose.db.worn_desc = "A spare glove, stiff with old blood, sits on {their} hand"
+        loose.db.coverage = ["left_hand"]
+        out = self.look()
+        self.assertNotIn("stiff with old blood", out)
+        self.assertIn("His left hand is missing the little finger.", out)
+        self.assertIn("You see", out)
+        self.assertIn("spare glove", out)
+
+    def test_a_deleted_garment_leaves_no_trace(self):
+        """The #2456 crash, asked of the renderer players actually hit."""
+        glove = self.wear("a torn glove", ["left_hand"])
+        glove.delete()
+        out = self.look()                                # must not raise
+        self.assertNotIn("a torn glove", out)
+        self.assertIn("His left hand is missing the little finger.", out)
 
 
 # ---------------------------------------------------------------------

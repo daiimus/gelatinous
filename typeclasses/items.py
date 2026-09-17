@@ -1529,8 +1529,10 @@ class Appendage(Item):
         #
         # Populated by ``detach_items_to_appendage`` for any worn
         # item whose coverage was fully contained in the severed
-        # cluster.  Read by ``return_appearance`` (forensic prose)
-        # and the third-party ``undress`` verb.
+        # cluster, and by ``dress <part>``.  Each list is OUTERMOST
+        # FIRST, the living stack's order; ``return_appearance`` reads
+        # the first entry at each location (#3578), and the third-party
+        # ``undress`` verb reads the whole ledger.
         self.db.worn_items = {}
         # Decay clock — a severed limb keeps rotting after it leaves the
         # body, exactly like the corpse and severed head.  ``creation_time``
@@ -1695,7 +1697,11 @@ class Appendage(Item):
         deserializes to None, one whose garment left by any door is no
         longer worn -- and writes the pruned ledger back, the way
         `ClothingMixin.get_worn_items` does. Shared question with
-        characters and corpses (#3575).
+        characters and corpses (#3575). The ledger's per-location lists
+        are outermost first; this flat answer keeps each list's order
+        but says nothing about layers across locations -- readers that
+        need the outermost garment at a location read the ledger itself
+        (`coverage_from_worn_stack`, #3578).
         """
         worn = dict(self.db.worn_items or {})
         healed, seen = {}, []
@@ -2033,18 +2039,25 @@ class Appendage(Item):
         return self.db.medical_state_at_death
 
     def return_appearance(self, looker, **kwargs):
-        """Compose appearance from base desc + carried longdesc + wounds.
+        """Compose appearance from base desc + carried longdesc + wounds
+        + worn garments, the way the body this part came from reads.
 
         PR #198: severed limbs and heads carry forward the source
         corpse's per-location longdesc prose and wound records.
 
         Issue #236: the carried prose renders as a single flowing
-        paragraph appended to the base ``return_appearance`` output (the
-        name stays on its own header line via ``base``).  Composition is
+        paragraph under the base ``return_appearance`` output (name and
+        seeded desc), separated from it by a blank line.  Composition is
         **per location**, in anatomical order: each location's longdesc
         is immediately followed by that location's wound description(s),
         so a wound stays connected to the body part it belongs to —
         mirroring :meth:`typeclasses.corpse.Corpse` rendering.
+
+        #3578: a covered location renders the covering garment's prose
+        instead (once per garment; what is under it stays under it),
+        read from the part's outermost-first worn ledger; identical
+        paired locations collapse into one plural line and a lone side
+        reads with its side, as on a corpse and a living body.
 
         Longdesc text is shown verbatim (decay-modulated only by the
         condition prefix already baked into the key).  Pronoun / name
@@ -2120,25 +2133,98 @@ class Appendage(Item):
 
         # Compose one chunk per location: longdesc first, then any
         # wounds at that location, so they stay connected.
+        # #3578: a garment renders the way it does on the body this part
+        # came from (Corpse / AppearanceMixin): a covered location shows
+        # the garment's worn desc, once, in place of its longdesc, and
+        # whatever is under it -- prose and wounds alike -- stays under
+        # it. Worn garments leave Evennia's contents line (filter_visible);
+        # what the part merely carries is still listed there. No
+        # bolted-on "still wears" sentence.
+        from typeclasses.clothing_mixin import coverage_from_worn_stack
+        self.worn_garments()                    # heals the ledger as it reads
+        coverage_map = coverage_from_worn_stack(self.db.worn_items)
+        shown_garments = set()
+
+        def _garment_chunk(item):
+            # The same accessor the living body reads through: the active
+            # style's prose over the base worn desc, and the terminating
+            # period the prototypes are authored without.
+            text = item.get_current_worn_desc()
+            if not text:
+                return ""
+            text = item._process_color_codes(text)
+            return substitute_pronoun_tokens(
+                text, gender=gender, name=name, species=species,
+            )
+
+        # Paired locations collapse into one plural line when both sides
+        # carry the same prose and neither is covered or destroyed -- the
+        # corpse's and the living body's rule (#3578): "His eyes are",
+        # not "His eye is" twice. A lone side reads with its side.
+        try:
+            from world.anatomy import get_species_pair_keys
+            pair_keys = dict(get_species_pair_keys(species) or {})
+        except ImportError:
+            pair_keys = {}
+        partner_of = {}
+        for _pair_key, (left_loc, right_loc) in pair_keys.items():
+            partner_of[left_loc] = right_loc
+            partner_of[right_loc] = left_loc
+        collapse_anchor, collapse_skip = {}, set()
+        for _pair_key, (left_loc, right_loc) in pair_keys.items():
+            if left_loc in coverage_map or right_loc in coverage_map:
+                continue
+            if left_loc in destroyed_locs or right_loc in destroyed_locs:
+                continue
+            left_desc = longdescs.get(left_loc)
+            if not left_desc or left_desc != longdescs.get(right_loc):
+                continue
+            collapse_anchor[left_loc] = substitute_pronoun_tokens(
+                left_desc, gender=gender, name=name, species=species,
+                number="plural",
+            )
+            collapse_skip.add(right_loc)
+
+        def _side_of(loc):
+            if loc.startswith("left_"):
+                return "left"
+            if loc.startswith("right_"):
+                return "right"
+            return None
+
         chunks = []
         seen_locs = set()
         handled_wounds = set()
 
         def _build_location_chunk(loc):
+            if loc in collapse_skip:
+                return ""            # rendered with its partner
+            garment = coverage_map.get(loc)
+            if garment is not None:
+                # Under the garment: its wounds are handled by being hidden.
+                for idx, wound in enumerate(wounds):
+                    if _wound_location(wound) == loc:
+                        handled_wounds.add(idx)
+                if garment in shown_garments:
+                    return ""
+                shown_garments.add(garment)
+                return _garment_chunk(garment)
             pieces = []
-            text = longdescs.get(loc)
-            if text and loc not in destroyed_locs:
-                # Suppression rule mirrors the living-character /
-                # corpse paths (PR-B): a destroyed organ surfaces its
-                # destruction through the wound layer, so the authored
-                # body-part prose is dropped to avoid contradicting it.
-                pieces.append(
-                    substitute_pronoun_tokens(
-                        text, gender=gender, name=name, species=species,
+            if loc in collapse_anchor:
+                pieces.append(collapse_anchor[loc])
+                wound_locs = (loc, partner_of.get(loc))
+            else:
+                text = longdescs.get(loc)
+                if text and loc not in destroyed_locs:
+                    pieces.append(
+                        substitute_pronoun_tokens(
+                            text, gender=gender, name=name, species=species,
+                            side=_side_of(loc),
+                        )
                     )
-                )
+                wound_locs = (loc,)
             for idx, wound in enumerate(wounds):
-                if idx in handled_wounds or _wound_location(wound) != loc:
+                if idx in handled_wounds or _wound_location(wound) not in wound_locs:
                     continue
                 rendered = _render_wound(wound)
                 handled_wounds.add(idx)
@@ -2154,9 +2240,7 @@ class Appendage(Item):
             if chunk:
                 chunks.append(chunk)
 
-        # Longdesc locations outside the canonical order (defensive —
-        # preserves prose + connected wounds for nonstandard anatomy).
-        for loc in longdescs:
+        for loc in list(longdescs) + list(coverage_map):
             if loc in seen_locs:
                 continue
             seen_locs.add(loc)
@@ -2164,8 +2248,8 @@ class Appendage(Item):
             if chunk:
                 chunks.append(chunk)
 
-        # Any wounds whose location had no longdesc chunk above — render
-        # them so forensic detail is never silently dropped.
+        # Any wounds whose location had no chunk above -- render them so
+        # forensic detail is never silently dropped.
         for idx, wound in enumerate(wounds):
             if idx in handled_wounds:
                 continue
@@ -2175,35 +2259,20 @@ class Appendage(Item):
                 chunks.append(rendered)
 
         body = " ".join(chunks)
-
-        # PR-H3 (#307): worn-items carry-forward.  Severed appendages
-        # remember the clothing that travelled with them and surface
-        # it in forensic prose ("the severed hand still wears a
-        # bloodstained glove").  Skip when nothing's there.
-        worn_line = self._build_worn_items_line(looker)
-        if worn_line:
-            body = f"{body} {worn_line}" if body else worn_line
-
         if not body:
             return base
-        return f"{base} {body}" if base else body
+        return f"{base}\n\n{body}" if base else body
 
-    def _build_worn_items_line(self, looker):
-        """Build the "still wearing ..." sentence for forensic prose.
-
-        Returns the empty string when no items are worn on the
-        appendage — keeps the calling renderer's whitespace handling
-        clean.
-        """
-        seen = self.worn_garments()
-        if not seen:
-            return ""
-        if len(seen) == 1:
-            name = seen[0].get_display_name(looker)
-            return f"It still wears {name}."
-        names = [item.get_display_name(looker) for item in seen]
-        joined = ", ".join(names[:-1]) + f", and {names[-1]}"
-        return f"It still wears {joined}."
+    def filter_visible(self, obj_list, looker, **kwargs):
+        """What a severed part WEARS is prose, not contents: Evennia's
+        "You see: a mining helmet" line must not repeat a garment the
+        coverage walk already described (#3578). Anything else inside
+        the part -- retracted hardware carried with it (#3487), a thing
+        someone put in a severed hand -- is still listed, since that
+        line is its only way of being seen."""
+        worn = set(self.worn_garments())
+        return super().filter_visible(
+            [obj for obj in obj_list if obj not in worn], looker, **kwargs)
 
 
 def apply_wound_and_longdesc_overlay(appendage, corpse, locations):
@@ -2925,9 +2994,15 @@ def detach_items_to_appendage(character, appendage, containers):
         for item in items_to_move:
             _relocate_item(item, appendage)
             moved.append(item)
-            if appendage_worn is not None:
-                for loc in item_locations.get(item, ()):
-                    appendage_worn.setdefault(loc, []).append(item)
+        if appendage_worn is not None:
+            # The character's per-location order is the truth -- outermost
+            # first -- and the part's renderer reads the first entry at
+            # each location (#3578), so copy each list in that order
+            # rather than in order of first sighting.
+            for loc, items in worn.items():
+                moving = [it for it in (items or []) if it in items_to_move]
+                if moving:
+                    appendage_worn.setdefault(loc, []).extend(moving)
         if appendage_db is not None:
             appendage_db.worn_items = appendage_worn
 
@@ -3461,12 +3536,14 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         return self.db.medical_state_at_death
 
     def get_worn_items(self, location=None):
-        """Heads carry no worn clothing — return ``[]``.
+        """The identity axis reads no live clothing off a head: ``[]``.
 
-        Renderer compatibility shim for any code path that calls
+        Compatibility shim for any code path that calls
         :func:`world.identity.get_essential_item_type_ids` against a
         severed head (the identity signature is the snapshotted one,
-        not a re-derived live signature).
+        not a re-derived live signature). What the head WEARS lives in
+        ``db.worn_items`` and is read by :meth:`worn_garments` and the
+        renderer (#3578); this is not that ledger.
         """
         del location  # parity with ClothingMixin.get_worn_items signature
         return []
