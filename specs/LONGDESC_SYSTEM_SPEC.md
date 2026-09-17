@@ -474,9 +474,9 @@ currently done.)
 > `SeveredHead`.  The living character and the severed part read the
 > same outermost-first worn stack through one builder,
 > `coverage_from_worn_stack` (`typeclasses/clothing_mixin.py`); the
-> corpse, which keeps no stack, orders its flat `worn_garments()` list
-> by layer in `_build_corpse_clothing_coverage_map` and reads current
-> (styled) coverage.  A
+> corpse, which keeps no stack, derives one (`Corpse.worn_stack()`: layer
+> orders each location, styled coverage places the garment) and reads it
+> through the same builder (#3577).  A
 > covered location on a severed part renders the garment's `worn_desc`
 > once, in place of the carried longdesc, and the preserved wounds at
 > that location are hidden with it — the same "clothing hides what is

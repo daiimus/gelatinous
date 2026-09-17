@@ -210,8 +210,13 @@ def _sever_env(*, weapon=None, intel=None, motor=None, create_return=None):
         cmd_module.utils, "delay", side_effect=_immediate_delay
     ), patch.object(
         cmd_module, "roll_stat", side_effect=_rolls(intel, motor)
-    ), patch.object(
-        cmd_module, "create_object", create_mock
+    ), patch(
+        # #3577: the spawn moved into
+        # ``typeclasses.items.spawn_severed_part_from_corpse``, which
+        # does ``from evennia import create_object`` INSIDE the
+        # function — so the name is resolved at call time and the
+        # patch has to land on the ``evennia`` module itself.
+        "evennia.create_object", create_mock
     ):
         yield create_mock
 
@@ -362,7 +367,7 @@ class CmdSeverTests(TestCase):
         with patch.object(
             cmd_module, "get_wielded_weapon", return_value=_make_weapon()
         ), patch.object(cmd_module.utils, "delay") as delay, \
-                patch.object(cmd_module, "create_object") as mk:
+                patch("evennia.create_object") as mk:
             _make_cmd(caller=caller, args="left_arm from corpse").func()
             delay.assert_called_once()
             self.assertEqual(delay.call_args[0][0], SEVER_TIME_SECONDS)
@@ -397,7 +402,7 @@ class CmdSeverTests(TestCase):
             cmd_module, "get_wielded_weapon", side_effect=[weapon, None]
         ), patch.object(
             cmd_module.utils, "delay", side_effect=_immediate_delay
-        ), patch.object(cmd_module, "create_object") as mk:
+        ), patch("evennia.create_object") as mk:
             _make_cmd(caller=caller, args="left_arm from corpse").func()
             mk.assert_not_called()
         self.assertEqual(corpse.db.severed_locations, [])

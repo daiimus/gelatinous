@@ -54,8 +54,8 @@ Clothing uses the exact same body location constants as longdesc:
 > order is the one rule that does not carry over**: see the builder note
 > immediately below.
 >
-> **Two builders, one rule, and which shape each reads (corrected
-> 2026-09-17 after the #3578 review).** "Outermost wins the location" is
+> **One builder, one rule, three sources of the stack (corrected
+> 2026-09-17 after the #3578 review; unified by #3577).** "Outermost wins the location" is
 > the rule everywhere; the data shape decides how it is read.  A living
 > character and a severed part both carry a **worn stack**
 > `{location: [garments, outermost first]}` — the character's
@@ -67,10 +67,12 @@ Clothing uses the exact same body location constants as longdesc:
 > delegates to it; `Appendage.return_appearance` heals the ledger with
 > `worn_garments()` and then reads it).  A `Corpse` keeps **no stack**,
 > only the flat `worn_garments()` list (contents filtered by
-> `worn_at_death`), so `_build_corpse_clothing_coverage_map` orders that
-> list by `layer` and lets the highest layer win, and reads each garment's
+> `worn_at_death`), so `Corpse.worn_stack()` derives one — the layer
+> orders each location, highest outermost, and each garment sits at its
 > **current** coverage (`get_current_coverage()`, so a rolled cap does not
-> cover the ears it is rolled off).  The first #3578 cut fed the part's
+> cover the ears it is rolled off) — and the same builder reads it
+> (#3577, 2026-09-17).  One rule, one builder, three wearers; only the
+> stack's source differs.  The first #3578 cut fed the part's
 > flat list to a "later wins" builder; the ledger lists outermost FIRST,
 > so that showed the innermost garment and lost the helmet over a
 > balaclava entirely — the review caught it.

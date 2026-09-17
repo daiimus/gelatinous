@@ -2406,6 +2406,22 @@ def _chain_organs_inorganic_snapshot(snapshot, chain):
     return False
 
 
+def severed_cluster(species, location_arg, head_locations=None):
+    """The body locations a sever at *location_arg* takes with it: the
+    species' head cluster for ``"head"``, else the limb's downstream
+    chain (issue #339; a location with no chain declared is its own
+    cluster). One answer for the corpse mutation and for the garments
+    that travel with the part (#3577)."""
+    if location_arg == "head":
+        if head_locations is None:
+            from world.anatomy import get_species_severed_head_locations
+            head_locations = get_species_severed_head_locations(species)
+        return tuple(head_locations)
+    from world.anatomy import get_species_limb_downstream_chain
+    chain_map = get_species_limb_downstream_chain(species)
+    return tuple(chain_map.get(location_arg, (location_arg,)))
+
+
 def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
     """Mutate ``corpse`` to reflect a successful sever at ``location_arg``.
 
@@ -2450,19 +2466,13 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
                 and existing.get("organ") is None):
             return
 
-    if location_arg == "head":
-        locs = frozenset(head_locations)
-    else:
-        # Issue #339: limb severance on a corpse should also clear the
-        # downstream chain (severing a thigh on a corpse takes the
-        # shin and foot). Mirrors the living-character chain semantics.
-        # Issue #356 Phase 2: chain map is species-aware.
-        from world.anatomy import get_species_limb_downstream_chain
-        chain_map = get_species_limb_downstream_chain(
-            getattr(getattr(corpse, "db", None), "species", None)
-        )
-        chain = chain_map.get(location_arg, (location_arg,))
-        locs = frozenset(chain)
+    # Issue #339: limb severance on a corpse also clears the downstream
+    # chain (severing a thigh takes the shin and foot), mirroring the
+    # living-character chain; issue #356 Phase 2: species-aware.
+    locs = frozenset(severed_cluster(
+        getattr(getattr(corpse, "db", None), "species", None),
+        location_arg, head_locations,
+    ))
 
     # Drop longdesc prose for the cleared locations.
     src_longdescs = corpse.db.longdesc_data or {}
@@ -2518,7 +2528,7 @@ def apply_sever_to_corpse(corpse, location_arg, *, head_locations=None):
         corpse.db.head_severed = True
 
 
-def spawn_severed_part_from_corpse(corpse, location_arg):
+def spawn_severed_part_from_corpse(corpse, location_arg, *, location=None):
     """Spawn + configure a severed appendage from a corpse.
 
     Generalises the head-only ``spawn_severed_head_for_corpse`` to any
@@ -2544,6 +2554,9 @@ def spawn_severed_part_from_corpse(corpse, location_arg):
       chart-driven amputation on a corpse.
     * ``spawn_severed_head_for_corpse`` (legacy alias, head-only) —
       death-progression combat decapitation.
+
+    ``location`` is where the part lands; the corpse's room unless the
+    caller says otherwise (``CmdSever`` puts it in the cutter's hands).
 
     Args:
         corpse: Source corpse.
@@ -2588,7 +2601,7 @@ def spawn_severed_part_from_corpse(corpse, location_arg):
     appendage = create_object(
         typeclass,
         key=f"{condition} {readable_name}",
-        location=room,
+        location=room if location is None else location,
     )
     appendage.configure_from_sever(
         location_name=location_arg, condition=condition, corpse=corpse,
@@ -2600,6 +2613,12 @@ def spawn_severed_part_from_corpse(corpse, location_arg):
         corpse.db.severed_locations = severed_list
 
     apply_sever_to_corpse(corpse, location_arg)
+    # The garments worn only inside the cluster travel with the part,
+    # on this door as on the living one (#3577) -- after the corpse is
+    # mutated and the sever recorded, as the limb door orders it.
+    detach_items_to_appendage(
+        corpse, appendage, severed_cluster(species, location_arg),
+    )
     return appendage
 
 
@@ -2686,7 +2705,6 @@ def spawn_severed_head_for_living(character, *, injury_type="cut"):
     head.configure_from_living_decap(
         character=character, injury_type=injury_type,
     )
-
     # Strip the head-cluster from the living body. ``sever_character_body``
     # drops the longdesc entries and sets head-container organs to
     # ``wound_stage="severed"`` / ``current_hp=0`` — matching the limb
@@ -2711,6 +2729,11 @@ def spawn_severed_head_for_living(character, *, injury_type="cut"):
     # makes "head severed off a living body" a single coherent state
     # change regardless of caller.
     character.db.decapitation_pending = True
+    # The helmet goes with the head (#3577): the same travel rule the
+    # limb path applies, every garment worn only inside the cluster --
+    # after the body is stripped and the flags set, so a failure here
+    # cannot leave a configured head with no flag behind it.
+    detach_items_to_appendage(character, head, severed_head_locations)
 
     # Severance leaves an open stump at the cut point.  Recording it
     # in ``surgical_state["incisions"]`` makes the suture verb work
@@ -2907,7 +2930,11 @@ def detach_items_to_appendage(character, appendage, containers):
     pure bookkeeping remains exercisable against plain-Python stubs.
 
     Args:
-        character: The living character losing the limb.
+        character: The body losing the part: a living character, or a
+            corpse (#3577) -- a corpse keeps no worn stack, so one is
+            derived from its flat list (:meth:`Corpse.worn_stack`) and
+            nothing is written back to it; a garment that has left its
+            contents is no longer worn by it.
         appendage: Destination :class:`Appendage` item.
         containers: Canonical severed-limb locations. Either a single
             container string for the legacy single-container path, or
@@ -2954,7 +2981,16 @@ def detach_items_to_appendage(character, appendage, containers):
     moved = []
 
     # --- Worn items fully contained within the severed cluster --------
-    worn = character.worn_items or {}
+    # The worn stack, outermost first per location: a living character's
+    # own, or one a corpse derives from its flat list (#3577).
+    # (getattr, like the hand bookkeeping below: the pure bookkeeping
+    # stays exercisable against plain-Python stubs.)
+    if getattr(character, "worn_items", None) is not None:
+        worn, write_back = (character.worn_items or {}), True   # the living stack
+    else:
+        derive_stack = getattr(character, "worn_stack", None)      # a corpse derives one
+        worn = (derive_stack() if callable(derive_stack) else None) or {}
+        write_back = False
     item_locations = {}
     for loc, items in worn.items():
         for item in items or []:
@@ -2971,7 +3007,8 @@ def detach_items_to_appendage(character, appendage, containers):
             kept = [it for it in (items or []) if it not in items_to_move]
             if kept:
                 new_worn[loc] = kept
-        character.worn_items = new_worn
+        if write_back:
+            character.worn_items = new_worn
 
         # PR-H3 (#307): register the moved items in the appendage's
         # own worn_items dict so they remain structurally "worn at
@@ -3013,7 +3050,9 @@ def detach_items_to_appendage(character, appendage, containers):
         if hand:
             hands_to_clear.add(hand)
 
-    if hands_to_clear:
+    has_hand_store = (getattr(character, "held_items", None) is not None
+                      or getattr(character, "hands", None) is not None)
+    if hands_to_clear and has_hand_store:      # a corpse holds nothing (#3577)
         from typeclasses.characters import _canonical_hand
 
         # PR-H0: held items drop to the character's current location
@@ -3035,7 +3074,7 @@ def detach_items_to_appendage(character, appendage, containers):
         # in a ``_SaverDict`` which is NOT a ``dict`` subclass.
         store = getattr(character, "held_items", None)
         using_backing = hasattr(store, "get")
-        store = dict(store if using_backing else (character.hands or {}))
+        store = dict(store if using_backing else (getattr(character, "hands", None) or {}))
 
         drop_room = getattr(character, "location", None)
         dropped = []
