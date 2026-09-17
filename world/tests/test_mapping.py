@@ -36,10 +36,10 @@ class TestExportMap(BaseEvenniaTest):
         # #3579 retired the edge-carried flight plan (sky_room /
         # fall_distance / fall_damage): the exit's destination IS the
         # air cell and the column below it is the fall, re-resolved
-        # every tick. What an edge still carries is the landing room
-        # (`fall_room`, #3580) and the two difficulties.
+        # every tick. What an edge still carries is the two difficulties
+        # and the far perch; `fall_room` is retired too (#3580).
         self._exit("east", roof, sky, is_edge=True,
-                   fall_room=street.id, edge_difficulty=8)
+                   edge_difficulty=8)
         self._exit("northeast", roof, sky, is_gap=True,
                    gap_difficulty=12, gap_destination=street.id)
         self._exit("down", sky, street)
@@ -75,7 +75,7 @@ class TestExportMap(BaseEvenniaTest):
         self.assertNotIn("door", kinds[("south", "door")])
         self.assertIn(("east", "edge"), kinds)
         edge = kinds[("east", "edge")]["edge"]
-        self.assertEqual(edge["fall_room"], street.id)
+        self.assertNotIn("fall_room", edge)   # retired, #3580
         self.assertEqual(edge["edge_difficulty"], 8)
         # The retired flight plan must not come back: an exporter that
         # still shipped `sky_room`/`fall_distance`/`fall_damage` would be

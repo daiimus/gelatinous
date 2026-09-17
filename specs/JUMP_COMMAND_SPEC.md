@@ -1,6 +1,6 @@
 # Jump Command Implementation Specification
 
-> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. ~~Verified 2026-08-02~~ ~~re-checked 2026-09-11: 24 claim(s) false~~ **re-checked 2026-09-16: 38 claim(s) false, annotated inline.** Gravity layer #3579 shipped 2026-09-16: falls traverse the column; `sky_room`/`fall_distance`/`fall_damage` retired.
+> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. ~~Verified 2026-08-02~~ ~~re-checked 2026-09-11: 24 claim(s) false~~ **re-checked 2026-09-16: 38 claim(s) false, annotated inline.** Gravity layer #3579 shipped 2026-09-16: falls traverse the column; `sky_room`/`fall_distance`/`fall_damage` retired. #3580 followed the same day and retired `fall_room` — the four Fall Room Strategies are struck, the count is unchanged because #3580 changes the disposition of claims already counted, not the number of false ones.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The header claimed "IMPLEMENTATION COMPLETE ✅". Phase 3 (elevated-position combat bonuses, enhanced aim from edges) has **no code**.
@@ -313,16 +313,30 @@ def jump_on_explosive(caller, explosive):
 > air. The gravity-WALK the 2026-09-15 note describes is gone with it:
 > `follow_gravity_to_ground` is deleted, `db.is_ground` no longer decides
 > anything about a fall, and so is `handle_edge_fall_and_landing` — the
-> last runtime reader of `exit.db.fall_room`. `fall_room` itself SURVIVES
-> as world data only: `world/mapping.py` still exports it on edge and gap
-> links, and it is scheduled for retirement with **#3580** (the ruling
-> quoted above), not with this change. Strategies 2 and 3 remain unbuilt
-> and are now unbuildable without reopening that ruling.)_
+> last runtime reader of `exit.db.fall_room`. Strategies 2 and 3 remain
+> unbuilt and are now unbuildable without reopening that ruling.)_
+>
+> _(**Retired (#3580, 2026-09-16).** `exit.db.fall_room` outlived #3579 by
+> one issue, as map-export data; #3580 finishes the job on the ruling
+> quoted above. The four strategies below are struck. A fall always
+> follows gravity straight down the column: in a sky room, proceed down;
+> the fall ends at the first room that is not a sky room. There is no
+> authored landing. An apron, awning or terrace that should catch a fall
+> is a ROOM in the column (`is_sky_room` False), never an attribute.
+> The exporter no longer copies it either — `world/mapping.py` copies
+> `edge_difficulty`, `gap_difficulty` and `gap_destination` onto an
+> edge/gap link and nothing else.)_
 
-1. **Exit-specified**: `exit.db.fall_room` points to specific crash site — _built for edges only (failed landing roll); ignored on gap failures_
-2. **Tagged rooms**: Fall rooms tagged with `fall_room_{destination_id}` — _UNBUILT, nothing reads this tag_
-3. **Dedicated crash sites**: Rooms with `db.is_fall_room = True` near destination — _UNBUILT, nothing reads this attribute_
-4. **Fallback**: Use intended destination for soft landing — _gaps fall by gravity to `db.is_ground` instead_
+1. ~~**Exit-specified**: `exit.db.fall_room` points to specific crash site — _built for edges only (failed landing roll); ignored on gap failures_~~
+2. ~~**Tagged rooms**: Fall rooms tagged with `fall_room_{destination_id}` — _UNBUILT, nothing reads this tag_~~
+3. ~~**Dedicated crash sites**: Rooms with `db.is_fall_room = True` near destination — _UNBUILT, nothing reads this attribute_~~
+4. ~~**Fallback**: Use intended destination for soft landing — _gaps fall by gravity to `db.is_ground` instead_~~
+
+_(#3580, 2026-09-16 — in place of the four struck strategies.)_ A fall
+always follows gravity straight down the column: in a sky room, proceed
+down; the fall ends at the first room that is not a sky room. There is no
+authored landing. An apron, awning or terrace that should catch a fall is
+a ROOM in the column (`is_sky_room` False), never an attribute.
 
 **Future XYZ Integration**:
 - Sky rooms become normal traversable rooms at elevated coordinates
@@ -371,8 +385,8 @@ gap_exit.db.is_gap = True
 gap_exit.db.gap_difficulty = 10          # omit for GAP_DIFFICULTY_DEFAULT (10)
 gap_exit.db.gap_destination = far_roof.id
 gap_exit.db.gap_width = "medium"         # descriptive only
-# gap_exit.db.fall_room = crash_site     # SURVIVES as map data only (world/mapping.py);
-#                                        # no jump or fall path reads it. Retires with #3580.
+# gap_exit.db.fall_room = crash_site     # RETIRED (#3580): no reader anywhere, not even
+#                                        # the map exporter. The column decides the landing.
 ```
 
 #### Exit Property System
@@ -384,11 +398,17 @@ gap_exit.db.gap_width = "medium"         # descriptive only
 > relevant." The exit's destination is the air cell, the column below it
 > is the distance, and `FALL_DAMAGE_PER_STORY` is the damage, so
 > `sky_room`, `fall_distance` and `fall_damage` have nothing left to say.
-> Survivors: `is_edge`, `edge_difficulty`, `is_gap`, `gap_difficulty`,
-> `gap_destination`, `gap_width` and `fall_room` — of which `gap_width`
-> is descriptive world data with no runtime reader at all, and
-> `fall_room` is read only by the map exporter, until #3580 retires it. Retired lines are commented rather than
-> deleted so a builder meeting one on a live exit knows it is inert.)_
+> The surviving authored attribute set is now exactly `is_edge`,
+> `edge_difficulty`, `is_gap`, `gap_difficulty`, `gap_destination` and
+> `gap_width` — of which `gap_width` is descriptive world data with no
+> runtime reader at all. `fall_room` is **retired (#3580, 2026-09-16)**:
+> it outlived #3579 as map-export data, and the exporter has dropped it
+> too. A fall always follows gravity straight down the column: in a sky
+> room, proceed down; the fall ends at the first room that is not a sky
+> room. There is no authored landing. An apron, awning or terrace that
+> should catch a fall is a ROOM in the column (`is_sky_room` False),
+> never an attribute. Retired lines are commented rather than deleted so
+> a builder meeting one on a live exit knows it is inert.)_
 
 ```python
 # Exit object properties for edge designation
@@ -404,7 +424,7 @@ exit.db.gap_destination = far_roof.id   # REQUIRED: the far perch a made leap la
 exit.db.gap_width = "medium"      # Descriptive; authored on live gaps, no runtime reader
 # exit.db.gap_distance = "wide"   # RETIRED: superseded by gap_width; never had a reader
 # exit.db.fall_distance = 2       # RETIRED (#3579): the column below the cell IS the distance
-exit.db.fall_room = room_obj      # SURVIVES as map data only (world/mapping.py); retires with #3580
+# exit.db.fall_room = room_obj    # RETIRED (#3580): no reader left, map exporter included
 
 # Sky room properties (pre-existing rooms)
 sky_room.db.is_sky_room = True     # The flag, and only a literal True, makes a cell air
@@ -1109,8 +1129,13 @@ Based on the philosophy of heroic action and tactical depth:
     charged once when the column ends on something that is not air; and a
     failed leap never rolls to land, so none of it is absorbed. Gravity
     overrides any authored crash site everywhere, not just on gaps —
-    `exit.db.fall_room` has no runtime reader left and retires with
-    **#3580**. The recommendation's INTENT (distance-based damage rather
+    `exit.db.fall_room` is **retired (#3580, 2026-09-16)**, with no reader
+    left anywhere, the map exporter included. A fall always follows
+    gravity straight down the column: in a sky room, proceed down; the
+    fall ends at the first room that is not a sky room. There is no
+    authored landing. An apron, awning or terrace that should catch a
+    fall is a ROOM in the column (`is_sky_room` False), never an
+    attribute. The recommendation's INTENT (distance-based damage rather
     than a flat number) is what shipped; its mechanism is retired.)_
 11. **Gap combat**: Counts as movement action if in combat (flee-like timing)
 12. **Gap difficulty**: 1-5 scale (trivial to nearly impossible)

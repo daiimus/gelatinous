@@ -1359,7 +1359,6 @@ class CraneContainer(Room):
     UC_ROOF = (-2, -17, 1)   # Urgent Care roof (North) — the 2nd-floor dock
     SKY = (-1, -16, 13)      # transit air: north over Kaspar Street, at the
                              # Queen's roofline — the apex of the actual leap
-    FALL = (-1, -17, 0)      # the rebar pit under the cable
 
     #: The shaft is described in two units by two different speakers.
     #:
@@ -1439,7 +1438,6 @@ class CraneContainer(Room):
         self.db.level = z
 
         sky = self._room_at(self.SKY)
-        fall = self._room_at(self.FALL)
 
         if z == self.MIN_Z:
             # dock: a plain walk-off west onto the Urgent Care roof
@@ -1456,12 +1454,12 @@ class CraneContainer(Room):
             off = abs(z - self.QOC_Z)
             diff = 8 + 2 * off                       # level=8, +2 / storey off
             # The exit's destination IS the air cell and the column is the
-            # distance (#3579): no sky_room / fall_distance / fall_damage.
+            # distance, and the fall ends where the column does (#3579,
+            # #3580): no sky_room / fall_distance / fall_damage / fall_room.
             self._mk(self, sky, "north", ["n"],
                      is_edge=True, is_gap=True,
                      edge_difficulty=diff, gap_difficulty=diff,
                      gap_width="medium",
-                     fall_room=(fall.id if fall else None),
                      gap_destination=(qoc.id if qoc else None))
             if z == self.QOC_Z and qoc is not None:
                 # level: the Queen's roof gets a way back onto the car
@@ -1469,7 +1467,6 @@ class CraneContainer(Room):
                          is_edge=True, is_gap=True,
                          edge_difficulty=8, gap_difficulty=8,
                          gap_width="medium",
-                         fall_room=(fall.id if fall else None),
                          gap_destination=self.id)
             floor = z + 1
             if z == self.QOC_Z:
