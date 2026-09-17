@@ -200,6 +200,21 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 >   thematic/gameplay justification, and the intended one — do not
 >   "fix" the roll to filter by room.
 >
+>   **Future consideration (owner, 2026-09-16), open — revisit when
+>   ammunition is designed:** whether the pin should instead be *ammo
+>   burn*. Today the ruling is "the pin is the constant attacking":
+>   a shooter holds a target by being enrolled against them round after
+>   round, and ammunition, once it exists, only sets how long that can
+>   last. The alternative is that suppression is what the bullets buy —
+>   the shooter spends rounds to pin without needing to hit, a dry gun
+>   pins nothing, and a loaded one pins whether or not a shot is fired
+>   that round. The two disagree on exactly one thing: whether an
+>   attacker who is enrolled but not firing (empty, jammed, reloading,
+>   a melee weapon in hand) still counts in `opponents_targeting` for
+>   the disengage roll. Under the current ruling they do. Do not build
+>   the ammunition system on either answer without asking; the owner
+>   flagged this as something they may change their mind on.
+>
 > Both losses go through one more shared helper,
 > `opportunity_attack(attacker, target, *, immediate=False)`, which runs a
 > real `attack` against the RESOLVED target (#1002) — immediately for a
