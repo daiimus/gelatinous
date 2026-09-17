@@ -880,21 +880,32 @@ file them as misses:
 no exit to aim up through and no line-of-sight concept to stand in for
 one. The *aim* reaches downward only.
 
-**Two exposures the adversarial review named, both recorded rather than
-fixed:**
+**Two exposures the adversarial review named; owner rulings 2026-09-16:**
 
-- **The aimed room widens every bare search.**
-  `Character.get_search_candidates` merges the aimed room's contents into
-  any search made while aiming — so `get shiv` can reach an object in the
-  room you are aiming into. That is pre-existing and was inert over an
-  edge only because air cells are empty. #3589 makes an edge behave like
-  a doorway for that widening: the same exposure a door already has, not
-  new in kind.
-- **The asymmetry cuts the other way once shots land.** Aiming upward is
-  unbuilt, but a shot from the roof merges the two combat handlers — and
-  from then on the street target can return fire at the roof with any
-  ranged weapon, needing neither an aim nor an exit. The parked upward
-  case (#1511) constrains who can *open*, not who can *answer*.
+- **The aimed room widens every bare search — FILED #3596, to be
+  addressed.** `Character.get_search_candidates` merges the aimed room's
+  contents into any search made while aiming that supplies no candidate
+  list of its own — so `get shiv` can reach an object in the room you
+  are aiming into. Pre-existing, and inert over an edge only because air
+  cells are empty; #3589 makes an edge behave like a doorway for that
+  widening, and the aimed room is now a populated street. Owner:
+  *"Document this as an issue. We'll need to address this somehow."*
+  The issue holds the audit needed (which commands do a bare search with
+  no distance guard after it) and three directions.
+- **The target answers without the shooter's constraints — BY DESIGN.**
+  Aiming upward is unbuilt (#1511), but the attack command enrols the
+  victim with the shooter as their target
+  (`commands/combat/core_actions.py`, `add_combatant(target,
+  target=caller)`), so from the next round the street target's own
+  attack resolves against the roof: with a ranged weapon it fires,
+  needing neither an aim nor an exit. Owner: *"This is by design.
+  Automagic self-defense and the perk of carrying a gun."* With a melee
+  weapon nothing lands: `process_attack` refuses a melee attack across
+  rooms every round (*"You can't reach … from here."*), `advance` finds
+  no exit to the roof (*"You cannot find a way to …"*) and `charge`
+  likewise (*"There is no clear path to charge at …"*). The parked
+  upward case constrains who can *open*; the gun decides who can
+  *answer*.
 
 **The one place a shot and a fall disagree, by design.** Geometry wins
 over wiring: a bare column (#3581) still resolves the shot to the seeded
