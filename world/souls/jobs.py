@@ -1194,8 +1194,11 @@ def step_job(soul):
 
     if do == "flee":
         from world.souls import thoughts
+        # The one predicate every door asks (#3583): an edge, a gap or a
+        # way into air is not a way to flee for a soul who cannot stay up.
+        from world.gravity import can_leave_by
         exits = [e for e in (soul.location.exits if soul.location else [])
-                 if e.destination and not e.db.is_edge and not e.db.is_gap]
+                 if e.destination and can_leave_by(soul, e)]
         if not exits:
             fault(soul, "cornered — nowhere to flee")
             return False

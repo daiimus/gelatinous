@@ -1,6 +1,6 @@
 # Jump Command Implementation Specification
 
-> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. ~~Verified 2026-08-02~~ ~~re-checked 2026-09-11: 24 claim(s) false~~ **re-checked 2026-09-16: 38 claim(s) false, annotated inline.** Gravity layer #3579 shipped 2026-09-16: falls traverse the column; `sky_room`/`fall_distance`/`fall_damage` retired. #3580 followed the same day and retired `fall_room` — the four Fall Room Strategies are struck, the count is unchanged because #3580 changes the disposition of claims already counted, not the number of false ones.
+> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. ~~Verified 2026-08-02~~ ~~re-checked 2026-09-11: 24 claim(s) false~~ **re-checked 2026-09-16: 40 claim(s) false, annotated inline.** Gravity layer #3579 shipped 2026-09-16: falls traverse the column; `sky_room`/`fall_distance`/`fall_damage` retired. #3580 followed the same day and retired `fall_room` — the four Fall Room Strategies are struck. #3583 ("fights at the edge") followed too: edge/gap/air exits are refused to `flee`/`advance`/`charge`, and jumping away mid-fight now pays flee's aim contest. Count raised to **40**: #3580 only changed the disposition of claims already counted, but #3583 falsified two more (Edge Position Combat Advantages, Turn-Based Considerations).
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The header claimed "IMPLEMENTATION COMPLETE ✅". Phase 3 (elevated-position combat bonuses, enhanced aim from edges) has **no code**.
@@ -721,11 +721,40 @@ if destination_is_sky and not (is_edge or is_gap):
 - **Melee immunity**: Ground opponents cannot advance to edge positions (not adjacent)
 - **Retreat limitation**: Limited escape routes from elevated position
 
+> _(2026-09-16, #3583: bullets 1 and 2 are still unbuilt Phase 3 — no
+> code reads elevation in the to-hit roll, and `aim` grants no accuracy
+> at all any more (owner ruling #3355, see `COMBAT_SYSTEM.md`). Bullets 3
+> and 4 are now REAL, and for one reason rather than two: **`advance`,
+> `charge` and `flee` all refuse to cross an edge, a gap or a way into
+> air** for anyone whose `db.stays_aloft` is not `True`
+> (`can_leave_by(mover, exit)` in `world/gravity.py`). Melee immunity is
+> therefore not about adjacency — a ground-level opponent cannot advance
+> up onto a rooftop because the only exit between the two rooms is a
+> thing you jump off, and `advance` says so: "The only way to X is over
+> the N edge — that is a jump, not a charge." The same predicate is what
+> limits the retreat: on a roof with nothing but edges, the escape route
+> is the jump, and the jump has a price. See "Fights at the edge (#3583)"
+> below.)_
+
 ### Turn-Based Considerations
 - **Jump on explosive**: Immediate action, bypasses turn system (heroic emergency action)
 - **Jump off edge**: Counts as movement action if in combat (flee-like timing)
 - **Jump across gap**: Counts as movement action if in combat (flee-like timing)
 - **Position bonuses**: Elevated positions provide combat modifiers
+
+> _(2026-09-16, #3583: "flee-like timing" was the whole of it, and timing
+> was never the expensive part of fleeing. As shipped, both jumps simply
+> called `handler.remove_combatant(self.caller)` and left — no contest,
+> no opportunity attack, nothing an opponent could do about it. That made
+> `jump` **strictly the best escape in the game**: `flee` rolls Motorics
+> against the aimer and eats an opportunity attack on a loss, and `jump`
+> off the same roof did not. It now pays flee's AIM contest —
+> `pay_the_price_of_leaving` (`commands/combat/jump.py`) runs
+> `break_aim_lock` first, the helper shared with `CmdFlee`. It does NOT
+> pay flee's other contest, the melee disengage roll. The last bullet
+> remains unbuilt (Phase 3).)_
+>
+> _(2026-09-16: open owner call — should a jump out of a melee also pay the disengage roll, with a non-refusing cost (a round, the attack) since the ruling is "never refused"? Not built.)_
 
 ## Room Announcements
 
@@ -758,6 +787,81 @@ if destination_is_sky and not (is_edge or is_gap):
 - **Failure caller**: "You leap toward the gap but fall short, tumbling down!"
 - **Failure origin**: "Alice attempts the jump but falls short, disappearing below!"
 - **Failure destination**: "Alice crashes down from above, having missed the jump!"
+
+### Fights at the edge (#3583, 2026-09-16)
+
+Two owner rulings, one about who may cross an edge and one about what it
+costs to cross it while someone is shooting at you.
+
+**1. Refused at the edge.** `flee`, `advance` and `charge` never take an
+edge exit, a gap exit, or an exit into an air cell. One predicate answers
+for all three — `can_leave_by(mover, exit)` in `world/gravity.py` — and
+it fails any exit carrying `db.is_edge` or `db.is_gap`, or whose
+destination is air, unless the mover's `db.stays_aloft is True`. It lives
+in the gravity module because it is the same question gravity asks
+everywhere else, and it is asked at the command rather than at the exit
+because combat movement relocates with `move_to` and never reaches
+`Exit.at_traverse`. `advance` and `charge` keep the rejected exit so they
+can name it: *"The only way to X is over the N edge — that is a jump, not
+a charge."* `advance` asks this before it rolls the grapple drag-resist
+contest, so a grappler who cannot go that way never drags their victim
+into a doomed roll. NPC souls ask it too (`world/souls/jobs.py`'s flee
+job, which reports "cornered — nowhere to flee"). The flags are read
+strictly everywhere — `can_leave_by`, the jump verbs
+(`exit_obj.db.is_edge is not True`) and `Exit.at_traverse` all require a
+literal `True`, so a truthy-but-not-`True` attribute left by an old build
+script cannot be an edge in one place and a plain exit in another.
+
+> Owner: *"It would be refused at the edge… Ideally, very few rooftops
+> will exist without exits though — so ending up on one where all you can
+> do is jump is a tactical challenge."*
+
+So a rooftop whose only ways out are edges is a **designed predicament**,
+not a dead end: you cannot be chased onto it, you cannot back off it, and
+leaving is a deliberate act with a price. The building doctrine that
+keeps such rooms rare is `specs/PARKOUR_TEMPLATE_LIBRARY.md` §1.5.
+
+**2. Jumping away in a fight pays flee's aim contest.** As shipped, both jumps
+called `handler.remove_combatant(self.caller)` and left — no contest, no
+opportunity attack — which made `jump` strictly the best escape in the
+game, since `flee` rolls for it and can be punished. `jump` now pays
+flee's **aim** contest, through the same code:
+`pay_the_price_of_leaving` (`commands/combat/jump.py`) calls
+`break_aim_lock(caller, bonus=JUMP_AWAY_BONUS, label="JUMP_AWAY")` — the
+contest extracted out of `CmdFlee` into `commands/combat/movement.py` so
+the two verbs cannot drift apart. The signature is
+`break_aim_lock(caller, *, bonus=0, label=None)`; the `label` only
+re-prefixes the splattercast lines, so a jump shows `JUMP_AWAY_` rather
+than `FLEE_` and the two can be told apart in the log.
+
+- The contest is Motorics vs Motorics, two `standard_roll`s, the jumper's
+  roll plus the bold-move bonus.
+- A won roll frees the jumper; a lost roll hands the aimer their
+  opportunity attack.
+- **The jump goes regardless** — *"You throw yourself at the edge
+  regardless."* The only thing that stops it is the opportunity attack
+  leaving the jumper dead or unconscious. It is never refused.
+
+> Owner: *"I agree with 2, however, the difficulty should be half or
+> there should be a bonus. It's a bold move."*
+
+**What it does NOT pay: flee's melee disengage roll.** `CmdFlee` has a
+second contest (Part 2 in `commands/combat/movement.py`) — Motorics
+against the highest-Motorics opponent currently targeting you — and
+losing it *blocks the flee outright* and sets `NDB_SKIP_ROUND`. Only the
+aim contest was extracted; the jump verbs never roll the disengage. So in
+a melee brawl with nobody aiming, `jump off` costs **nothing**, where
+`flee` rolls and can be stopped. And because #3583's first ruling refuses
+`flee` at the edge, a melee opponent on an edges-only roof has no way at
+all to punish the departure.
+
+_(2026-09-16: open owner call — should a jump out of a melee also pay the disengage roll, with a non-refusing cost (a round, the attack) since the ruling is "never refused"? Not built.)_
+
+`JUMP_AWAY_BONUS` is 20, `#: BALANCE:`-tagged, with a row in
+`specs/roadmaps/BALANCE_LEDGER.md` under "Fights at the edge (#3583)" —
+**Tuned? No**. This aim contest is separate from and earlier than the gap
+takeoff roll: leaving is contested first, then `jump across` rolls
+Motorics vs `gap_difficulty` to decide whether the leap is made.
 
 ### Fall Announcements — the three-audience model (#3579, 2026-09-16)
 
@@ -1138,6 +1242,21 @@ Based on the philosophy of heroic action and tactical depth:
     attribute. The recommendation's INTENT (distance-based damage rather
     than a flat number) is what shipped; its mechanism is retired.)_
 11. **Gap combat**: Counts as movement action if in combat (flee-like timing)
+    _(2026-09-16, #3583: restated — "flee-like" now reaches one of
+    flee's two contests, not just its timing. Jumping off or across while
+    someone has you in their aim pays flee's **aim** contest: a
+    Motorics-vs-Motorics `standard_roll` against the aimer via
+    `break_aim_lock`, their opportunity attack on a loss. It does not pay
+    flee's melee disengage roll — with nobody aiming, the jump is still
+    free. _(2026-09-16: open owner call — should a jump out of a melee also pay the disengage roll, with a non-refusing cost (a round, the attack) since the ruling is "never refused"? Not built.)_ What it does NOT do is refuse: the jump
+    goes regardless — "You throw yourself at the edge regardless." — and
+    the only thing that stops it is the opportunity attack leaving the
+    jumper dead or unconscious. The jumper adds `JUMP_AWAY_BONUS` (20) to
+    their roll, by owner ruling: "the difficulty should be half or there
+    should be a bonus. It's a bold move." Decision 9's gap roll is
+    unchanged and is a separate roll: the aim contest happens first, at
+    the point of leaving; the Motorics-vs-`gap_difficulty` takeoff roll
+    happens after.)_
 12. **Gap difficulty**: 1-5 scale (trivial to nearly impossible)
 13. **Jump syntax**: Uses direction-based syntax (`jump off north edge`, `jump across east edge`)
 14. **Proximity inheritance**: Hero inherits ALL proximity relationships from explosive
