@@ -483,10 +483,9 @@ TRAP_FUSE_TIME = 1
 # PERSISTED epoch-seconds deadline the at_server_start sweep re-arms
 # fuses from; ndb fuse chains die on reload, that attribute survives.
 
-# Exit properties
-DB_IS_EDGE = "is_edge"
-DB_EDGE_TYPE = "edge_type"
-DB_HEIGHT_ADVANTAGE = "height_advantage"
+# Exit properties are addressed by their raw names (`db.is_edge`,
+# `db.is_gap`, `db.gap_destination`, ...) everywhere; the DB_* constants
+# once declared here were never read by any code and were deleted (#3579).
 
 # ===================================================================
 # PERMISSIONS & ACCESS
@@ -864,6 +863,74 @@ STAT_TIER_RANGES = [
     (73, 78), (67, 72), (61, 66), (55, 60), (49, 54), (43, 48),
     (37, 42), (31, 36), (25, 30), (19, 24), (13, 18), (7, 12), (1, 6), (0, 0)
 ]
+
+# ===================================================================
+# GRAVITY & FALLING (#3579)
+# ===================================================================
+# The one gravity layer (world/gravity.py): anything in an air cell that
+# cannot stay up falls one cell per tick down the `down` chain and pays
+# for the cells it passed when it lands. Every number below is a
+# `# BALANCE:` knob and has a row in specs/roadmaps/BALANCE_LEDGER.md;
+# the test test_every_balance_knob_is_in_the_ledger pins the two lists
+# to each other. No verb carries its own damage number any more.
+
+#: BALANCE: seconds a body spends in each air cell on the way down.
+#: Owner (2026-09-16): 0.5 s "is faster than any beat in the game";
+#: combat rounds are 6 s, the shortest channeled act 3 s. One second
+#: lets a watcher in the cell see the body pass.
+FALL_SECONDS_PER_CELL = 1.0
+
+#: BALANCE: damage per storey actually fallen (cells passed). The
+#: PARKOUR_TEMPLATE_LIBRARY §0 kernel ("5 damage/story"); a made
+#: landing roll subtracts FALL_LANDING_ABSORBED_CELLS storeys first.
+#: Sized against nothing yet -- a 12-storey fall (60) fills both feet
+#: and cracks the shins; see the ledger for what it is NOT sized against
+#: (bleeding, which is untuned).
+FALL_DAMAGE_PER_STORY = 5
+
+#: BALANCE: storeys a MADE landing roll absorbs. Owner (2026-09-16):
+#: skill turns a fall into a shorter fall rather than dividing a number,
+#: so a two-storey drop landed well is free and a twelve-storey one is
+#: not survivable by skill alone.
+FALL_LANDING_ABSORBED_CELLS = 2
+
+#: BALANCE: base difficulty of the landing roll on an edge that authors
+#: none (`exit.db.edge_difficulty`). Every @airfill edge is bare, so this
+#: is the number most of the colony's roofs roll against.
+FALL_EDGE_DIFFICULTY_DEFAULT = 8
+
+#: BALANCE: landing difficulty added per storey fallen (Motorics vs
+#: edge_difficulty + this x cells). Altitude is the difficulty curve
+#: (PARKOUR_TEMPLATE_LIBRARY §1 invariant 2) -- authors must not also
+#: inflate `gap_difficulty` with height.
+FALL_LANDING_DIFFICULTY_PER_CELL = 2
+
+#: BALANCE: base difficulty of the takeoff roll on a gap that authors
+#: none (`exit.db.gap_difficulty`).
+GAP_DIFFICULTY_DEFAULT = 10
+
+#: BALANCE: cells a single fall may traverse before it stops where it
+#: is (a runaway-column guard, not a design number). The crane column is
+#: 17 storeys; the old walk's cap of 10 stranded anything taller.
+FALL_MAX_CELLS = 30
+
+#: BALANCE: the dragged victim's share of the fall when the grappler
+#: lands WELL on them (a cushion, not a crash).
+FALL_BODYSHIELD_MADE_VICTIM = 0.75
+#: BALANCE: the grappler's share of the fall when they land WELL on a
+#: dragged victim.
+FALL_BODYSHIELD_MADE_GRAPPLER = 0.25
+#: BALANCE: the dragged victim's share when the grappler lands BADLY --
+#: crushed on impact, more than the whole fall.
+FALL_BODYSHIELD_FAILED_VICTIM = 1.5
+#: BALANCE: the grappler's share when they land BADLY on a dragged victim.
+FALL_BODYSHIELD_FAILED_GRAPPLER = 0.5
+
+#: Persisted record of a fall in progress (`obj.db.falling`), the
+#: at_server_start sweep's key -- the grenade fuse's shape (#505).
+DB_FALLING = "falling"
+#: Transient stay-up token the leap grants for one air cell.
+NDB_AIRBORNE_TOKEN = "airborne_token"
 
 # ===================================================================
 # DEATH SYSTEM CONSTANTS

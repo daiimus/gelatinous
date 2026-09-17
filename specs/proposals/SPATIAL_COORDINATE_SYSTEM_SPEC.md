@@ -218,12 +218,42 @@ Gravity is **already partially built** in `commands/combat/jump.py`
 vertical descent). This spec **generalizes that existing mechanic onto the Z
 axis** rather than inventing a parallel one:
 
+> _(2026-09-16, #3579 — the paragraph above names a mechanism that no
+> longer exists, and the generalization it proposes has largely happened
+> without the coordinates. Gravity now lives in **`world/gravity.py`** and
+> is driven by the ROOM: `Room.at_object_receive` calls `on_enter_air` for
+> every arrival, and anything in a cell flagged `db.is_sky_room is True`
+> that cannot stay up (`db.stays_aloft is not True`) falls one cell per
+> `FALL_SECONDS_PER_CELL` down that cell's `down` exit, by any door — a
+> jump, a throw, a drop, a shove, a reconnect. `apply_gravity_to_items` is
+> deleted (items fall through the same room hook as bodies);
+> `exit.db.sky_room` and `exit.db.fall_damage` are retired — the exit's
+> `destination` IS the air cell, the column of cells below it IS the
+> distance, and `FALL_DAMAGE_PER_STORY` × cells passed IS the damage.
+> Read the three bullets below against that: the second one is now a
+> **description of shipped behaviour** rather than a proposal, minus the
+> coordinates.)_
+
 * A room declares whether it has a floor — proposed `db.passable` /
   `db.has_floor` (naming TBD; reconcile with the current `sky_room` flagging).
+  _(2026-09-16: the flag to reconcile with is `db.is_sky_room`, strict
+  `is True`, and its complement on the moving side is `db.stays_aloft`.
+  Both are live and both are single predicates — the naming question is
+  still open, the shape is not.)_
 * **Falling = −Z traversal:** an unsupported body moves down one room at a time
   through `passable` rooms until it reaches one with a floor (or a landing
   surface), accruing the existing `fall_damage`. The current sky-room transit
   becomes the first concrete case of this general rule.
+  _(2026-09-16, #3579: **built, without the Z axis.** A fall is exactly
+  this — one real move per cell, one second apart, until the next room is
+  not an air cell — except that it walks the cell's authored `down` exit
+  rather than decrementing a coordinate, and the damage is
+  `FALL_DAMAGE_PER_STORY` × cells passed rather than the retired
+  `fall_damage`. What this spec would add is the ability to fall where no
+  `down` exit was authored: today a cell with no `down` stops the fall
+  cleanly where it is (the parked impasse, #3581) and the missing columns
+  are world data (#2945). A coordinate substrate would make the column
+  derivable instead of authored.)_
 * Flight/lift moves the inverse direction; jump-across stays a horizontal
   special case already handled by `jump`.
 

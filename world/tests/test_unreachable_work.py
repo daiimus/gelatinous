@@ -38,9 +38,9 @@ class TestSkyRoomsAreNotAWalk(EvenniaCommandTest):
         self.assertNotIn(ex, offered)
 
     def test_not_even_to_a_roof_runner(self):
-        """Unlike a gap, this is not a matter of taste: entering a sky
-        room needs `jump_movement_allowed`, which the jump COMMAND sets
-        and travel never does."""
+        """Unlike a gap, this is not a matter of taste: walking into a sky
+        room is refused at the exit; only a jump puts you in the air, and
+        the air's gravity takes over from there (#3579)."""
         from world.spatial.pathfind import _neighbors
         ex, _sky = self._sky_exit()
         self.char1.db.route_taste = 0.2

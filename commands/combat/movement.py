@@ -7,8 +7,7 @@ Contains commands related to movement and positioning in combat:
 - CmdAdvance: Close distance with a target
 - CmdCharge: Recklessly charge at a target
 
-CmdJump and apply_gravity_to_items have been extracted to
-commands/combat/jump.py and are re-exported here for backward compatibility.
+CmdJump lives in commands/combat/jump.py; falling lives in world/gravity.py.
 """
 
 from evennia import Command
@@ -31,9 +30,6 @@ from world.combat.constants import (
     COMBAT_ACTION_CHARGE, MSG_CHARGE_PREPARE,
 )
 
-# Re-export CmdJump and apply_gravity_to_items for backward compatibility.
-# Canonical location: commands.combat.jump
-from commands.combat.jump import CmdJump, apply_gravity_to_items  # noqa: F401
 from commands._identity_targeting import resolve_character_in_rooms
 from world.combat.utils import (
     get_highest_opponent_stat, get_numeric_stat, filter_valid_opponents,

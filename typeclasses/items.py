@@ -2826,9 +2826,9 @@ def detach_items_to_appendage(character, appendage, containers):
       **drops to the ground** at the character's current location
       (PR-H0, #307). Severance loosens the dead hand's grip; the weapon
       lands separately from the severed limb. Uses
-      :func:`commands.combat.jump.drop_to_room` so gravity / sky-room /
-      proximity tracking apply uniformly with the player ``drop``
-      command. Prior behaviour (weapon carried on the appendage) was
+      :func:`commands.combat.jump.drop_to_room` so the weapon lands the
+      way a player ``drop`` lands it -- proximity set, and if the room is
+      an air cell its own gravity takes it down the column (#3579). Prior behaviour (weapon carried on the appendage) was
       surprising during salvage — players couldn't pick up the sword
       without first interacting with the severed arm.
 

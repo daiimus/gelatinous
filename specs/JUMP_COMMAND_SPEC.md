@@ -1,6 +1,6 @@
 # Jump Command Implementation Specification
 
-> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 24 claim(s) false, annotated inline**.
+> **Status:** 🚧 **PARTIAL** — Phases 1, 2, 2b shipped; **Phase 3 not built**. ~~Verified 2026-08-02~~ ~~re-checked 2026-09-11: 24 claim(s) false~~ **re-checked 2026-09-16: 38 claim(s) false, annotated inline.** Gravity layer #3579 shipped 2026-09-16: falls traverse the column; `sky_room`/`fall_distance`/`fall_damage` retired.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The header claimed "IMPLEMENTATION COMPLETE ✅". Phase 3 (elevated-position combat bonuses, enhanced aim from edges) has **no code**.
@@ -13,13 +13,65 @@
 > (jump.py:496-524) rather than stranding you. The surviving fallback is
 > not a plain walk either — it applies flat `exit.db.fall_damage`, default
 > 8 (jump.py:548-551). What it still skips is the landing roll and the
-> per-story scaling.)_ (2) Walking into a
+> per-story scaling.)_
+> _(2026-09-16: SUPERSEDED — `sky_room` is retired (#3579). An edge's own
+> `destination` IS the air cell, the column of cells below it IS the
+> distance, and `FALL_DAMAGE_PER_STORY` is the damage; nothing in the
+> runtime reads `exit.db.sky_room`, `db.fall_distance` or `db.fall_damage`
+> any more. The #2944 refusal went with them: `handle_edge_descent`
+> (`commands/combat/jump.py`) now branches only on whether the
+> destination is air — air means hand the cell a flight plan
+> (`ndb.fall_intent`) and step off, not-air means a one-storey direct
+> drop with no roll and no traversal. There is no degraded fallback left
+> to fall into, so the field note's warning has no failure mode to warn
+> about.)_
+> (2) Walking into a
 > sky room never triggers falling; the entire fall experience lives in
-> this command's flow. (3) The landing runs on a delayed callback
+> this command's flow.
+> _(2026-09-16: SUPERSEDED — exactly backwards since #3579. Gravity is a
+> property of the ROOM. `Room.at_object_receive`
+> (`typeclasses/rooms.py`) calls `world.gravity.on_enter_air` for EVERY
+> arrival, and anything in a room flagged `db.is_sky_room is True` that
+> cannot stay up starts falling — by any door: a jump, a throw, a drop, a
+> shove, a reconnect, a build script. Characters and Items fall; exits do
+> not. The fall no longer lives in this command at all — the verb only
+> supplies the flight plan. Walking into air is separately refused at the
+> sky block in `Exit.at_traverse` (`typeclasses/exits.py`), which now has
+> NO exception (see the `ndb.jump_movement_allowed` note below), so "a
+> walk into air falls" describes a shove, a drop or a rebuilt column,
+> not a player typing a direction.)_
+> (3) The landing runs on a delayed callback
 > (0.5s/story): a server reload during that window orphans the jumper in
 > the sky room — do not reload while players are airborne; hardening
 > item: resolve airborne characters at server start.
-> - No dedicated jump test module exists — only incidental coverage in `test_drop_to_room.py` and `test_build_tools.py`.
+> **✅ FIXED (#3579, 2026-09-16):** the hardening item shipped, and the
+> reload warning is retired with it. A fall is now a persistent
+> `db.falling` record — `{cells, origin, edge_difficulty, roll,
+> companion, next_step_at}`, the grenade-fuse shape (#505) — and
+> `sweep_airborne` (`world/gravity.py`) runs from `at_server_start`
+> (`server/conf/at_server_startstop.py`): it resumes every recorded fall
+> at its TRUE remaining time, defers a step that came due during the
+> outage by 2 s so the world is loaded first, and starts a fall for
+> anything found stranded in an air cell that cannot stay up. A
+> logged-out faller keeps its record and is resumed by the reconnect
+> path. The cadence is no longer 0.5 s/story either: it is
+> `FALL_SECONDS_PER_CELL` (1.0 s), and each tick is a real move into the
+> next cell rather than a single deferred landing. Owner (2026-09-16):
+> 0.5 s "is faster than any beat in the game".
+> - ~~No dedicated jump test module exists — only incidental coverage in `test_drop_to_room.py` and `test_build_tools.py`.~~
+>   _(2026-09-16: false as of #3579, which shipped seven dedicated modules
+>   under `world/tests/`: `test_a_fall_walks_the_column.py` (the traversal
+>   and its three audiences), `test_a_fall_lands_on_the_legs.py` and
+>   `test_a_fall_finds_the_legs.py` (the feet→shins→thighs fill and the
+>   `moving`-capacity predicate behind it), `test_a_leap_is_not_a_fall.py`
+>   (the one-tick `ndb.airborne_token`),
+>   `test_gravity_catches_you_on_the_way_in.py` (the room hook, for every
+>   door), `test_nobody_hangs_across_a_reload.py` (`sweep_airborne`) and
+>   `test_edge_jump_never_strands.py` (the bare-cell impasse). An eighth,
+>   `test_every_balance_knob_is_in_the_ledger.py`, pins the gravity
+>   constants to `specs/roadmaps/BALANCE_LEDGER.md` in both directions.
+>   The incidental coverage in `test_drop_to_room.py` and
+>   `test_build_tools.py` still exists alongside them.)_
 
 **Status: IMPLEMENTATION COMPLETE** ✅
 
@@ -102,6 +154,16 @@ Others damage = 0 (complete protection)
 - **Elevated positioning**: Edge exits represent rooftops, ledges, balconies
 - **One-way descent**: Jump down only (climbing back up requires different mechanics)
 - **Safe landing**: No fall damage (tactical descent, not accidental fall)
+  - _(2026-09-16: false since #3579 — and never true of the shipped code
+    either. Stepping off an edge always succeeds; the LANDING is what is
+    rolled for, Motorics vs `edge_difficulty` (default
+    `FALL_EDGE_DIFFICULTY_DEFAULT` = 8) + `FALL_LANDING_DIFFICULTY_PER_CELL`
+    (2) x cells fallen. A make does not zero the damage: it absorbs
+    `FALL_LANDING_ABSORBED_CELLS` (2) storeys, so a 1-2 storey tactical
+    descent landed well IS free and anything taller is not. A miss pays
+    `FALL_DAMAGE_PER_STORY` (5) x every cell passed. The one genuinely
+    roll-free case left is a DIRECT DROP — an edge whose destination is not
+    air — charged one storey, no roll, no traversal.)_
 
 ### Function 3: Horizontal Leap
 
@@ -206,6 +268,18 @@ def jump_on_explosive(caller, explosive):
 3. **Bidirectional**: Sky rooms that work for both directions of travel
 4. **Fallback**: Direct movement if no sky room configured (graceful degradation)
 
+> _(2026-09-16: the whole section is retired by #3579. **No lookup of any
+> kind exists** — there is nothing left to look a sky room UP by, because
+> the exit's own `destination` IS the air cell. `handle_edge_descent` and
+> `handle_gap_jump` (`commands/combat/jump.py`) read `exit.destination`,
+> ask `world.gravity.is_sky` whether it is air, and branch; the far perch
+> of a gap lives in `gap_destination`, resolved by
+> `resolve_gap_destination`. `exit.db.sky_room` is gone from the runtime,
+> so strategy 4's "graceful degradation" has no trigger, and
+> `get_sky_room_for_gap` — the only bidirectional behaviour the 2026-09-11
+> note found — is deleted. The four strategies above are historical
+> design, not a menu a builder chooses from.)_
+
 **Fall Room Strategy**:
 
 > _(2026-09-15: strategies 2 and 3 are UNBUILT, and strategy 1 ships only
@@ -227,6 +301,23 @@ def jump_on_explosive(caller, explosive):
 > unbuilt for gaps — gravity, not the intended destination, decides.
 > Whether gaps SHOULD honour an authored crash site is an open owner call,
 > not a bug to fix from this note.)_
+>
+> _(2026-09-16 — #3579 answers that owner call and retires the mechanism
+> the four strategies describe. **Gravity only.** Owner ruling: "it would
+> always follow gravity straight down. Essentially it's checking if it's a
+> skyroom and if it is proceeding down." A fall is no longer a lookup that
+> produces a destination — it is a traversal. `world/gravity.py`
+> re-resolves the cell's `down` exit every tick (by key or by alias `d`, so
+> a column the crane rebuilds on every trip still works), moves the body
+> one cell per `FALL_SECONDS_PER_CELL`, and lands when the next room is not
+> air. The gravity-WALK the 2026-09-15 note describes is gone with it:
+> `follow_gravity_to_ground` is deleted, `db.is_ground` no longer decides
+> anything about a fall, and so is `handle_edge_fall_and_landing` — the
+> last runtime reader of `exit.db.fall_room`. `fall_room` itself SURVIVES
+> as world data only: `world/mapping.py` still exports it on edge and gap
+> links, and it is scheduled for retirement with **#3580** (the ruling
+> quoted above), not with this change. Strategies 2 and 3 remain unbuilt
+> and are now unbuildable without reopening that ruling.)_
 
 1. **Exit-specified**: `exit.db.fall_room` points to specific crash site — _built for edges only (failed landing roll); ignored on gap failures_
 2. **Tagged rooms**: Fall rooms tagged with `fall_room_{destination_id}` — _UNBUILT, nothing reads this tag_
@@ -240,66 +331,117 @@ def jump_on_explosive(caller, explosive):
 - No dynamic creation/deletion required
 
 **Builder Workflow**:
+
+> _(2026-09-16: rewritten to the surviving attribute set (#3579). Retired
+> lines are kept below, marked RETIRED with what replaced them, rather
+> than deleted — a builder who finds one of these attributes already
+> written on a live exit needs to know it is inert, not wonder what it
+> did. The load-bearing change: **the column is the flight plan**. An air
+> cell needs a `down` exit to the next cell and the bottom cell's `down`
+> needs to reach something that is not air; nothing else places a body.)_
+
 ```python
-# Create sky room between rooftops
+# The air cell. The FLAG is the truth (`world.gravity.is_sky` requires a
+# literal True); the typeclass is not consulted, so a plain Room flagged
+# in place is a legal air cell and a SkyRoom flipped into a catwalk is
+# legally walkable.
 sky_room = create_object("typeclasses.rooms.Room", key="Sky above Downtown")
-sky_room.tags.add("sky_room", category="room_type")
-sky_room.db.origin_room = rooftop_a
-sky_room.db.destination_room = rooftop_b
+sky_room.db.is_sky_room = True
 sky_room.db.desc = "You soar through the air between towering buildings..."
+# sky_room.tags.add("sky_room", category="room_type")   # RETIRED: no reader
+# sky_room.db.origin_room = rooftop_a                   # RETIRED: no reader
+# sky_room.db.destination_room = rooftop_b              # RETIRED: no reader
 
-# Create fall room for failures
-crash_site = create_object("typeclasses.rooms.Room", key="Alley Crash Site")
-crash_site.tags.add(f"fall_room_{rooftop_b.id}")  # UNBUILT (2026-09-15): no reader
-crash_site.db.is_fall_room = True                 # UNBUILT (2026-09-15): no reader
-# For a gap, neither line above changes where the jumper lands: the failure
-# path walks `follow_gravity_to_ground` from the sky room. Give the column
-# below the gap real one-way `down` exits and set `db.is_ground` on the
-# bottom room — that is what actually places the body.
+# THE COLUMN IS MANDATORY. Each air cell gets a one-way `down` (key
+# "down", alias "d") to the cell beneath it, and the bottom one lands on
+# something that is not air. A cell with no `down`, or a `down` whose
+# destination no longer resolves, stops the fall cleanly IN that cell
+# with a message and no damage — the parked impasse, #3581.
+create_object("typeclasses.exits.Exit", key="down", aliases=["d"],
+              location=sky_room, destination=cell_below)
 
-# Configure gap exit
+# Fall rooms are not a thing any more: the fall lands wherever the column
+# ends, and `db.is_ground` no longer decides anything about a fall.
+# crash_site.tags.add(f"fall_room_{rooftop_b.id}")  # RETIRED: never had a reader
+# crash_site.db.is_fall_room = True                 # RETIRED: never had a reader
+
+# Configure gap exit: destination = the air cell, gap_destination = the
+# far perch a MADE leap lands on.
 gap_exit.db.is_gap = True
-gap_exit.db.gap_difficulty = 10
-gap_exit.db.fall_room = crash_site  # read on EDGE landing failure only, not gaps
+gap_exit.db.gap_difficulty = 10          # omit for GAP_DIFFICULTY_DEFAULT (10)
+gap_exit.db.gap_destination = far_roof.id
+gap_exit.db.gap_width = "medium"         # descriptive only
+# gap_exit.db.fall_room = crash_site     # SURVIVES as map data only (world/mapping.py);
+#                                        # no jump or fall path reads it. Retires with #3580.
 ```
 
 #### Exit Property System
+
+> _(2026-09-16: rewritten to the surviving attribute set (#3579).
+> **Geometry is the base and the per-exit damage numbers are retired** —
+> owner ruling: "we'll have cyberlegs... parachutes, flight... but
+> calculating potential damage based on geometry will always be
+> relevant." The exit's destination is the air cell, the column below it
+> is the distance, and `FALL_DAMAGE_PER_STORY` is the damage, so
+> `sky_room`, `fall_distance` and `fall_damage` have nothing left to say.
+> Survivors: `is_edge`, `edge_difficulty`, `is_gap`, `gap_difficulty`,
+> `gap_destination`, `gap_width` and `fall_room` — of which `gap_width`
+> is descriptive world data with no runtime reader at all, and
+> `fall_room` is read only by the map exporter, until #3580 retires it. Retired lines are commented rather than
+> deleted so a builder meeting one on a live exit knows it is inert.)_
+
 ```python
 # Exit object properties for edge designation
 exit.db.is_edge = True
 exit.db.edge_type = "rooftop"     # Optional categorization
-exit.db.edge_difficulty = 8       # Motorics check difficulty (1-20 scale)
-exit.db.fall_damage = 8           # Damage for failed edge descent
+exit.db.edge_difficulty = 8       # Landing-roll base; omit for FALL_EDGE_DIFFICULTY_DEFAULT (8)
+# exit.db.fall_damage = 8         # RETIRED (#3579): damage is FALL_DAMAGE_PER_STORY x cells passed
 
 # Gap jump properties (can combine with is_edge)
 exit.db.is_gap = True
-exit.db.gap_difficulty = 10       # Higher difficulty for gap jumps
-exit.db.gap_distance = "wide"     # Descriptive distance category
-exit.db.fall_distance = 2         # Rooms fallen for gap jump failures
-exit.db.fall_room = room_obj       # Specific fall destination (optional; EDGE landing failures only)
+exit.db.gap_difficulty = 10       # Takeoff roll; omit for GAP_DIFFICULTY_DEFAULT (10)
+exit.db.gap_destination = far_roof.id   # REQUIRED: the far perch a made leap lands on
+exit.db.gap_width = "medium"      # Descriptive; authored on live gaps, no runtime reader
+# exit.db.gap_distance = "wide"   # RETIRED: superseded by gap_width; never had a reader
+# exit.db.fall_distance = 2       # RETIRED (#3579): the column below the cell IS the distance
+exit.db.fall_room = room_obj      # SURVIVES as map data only (world/mapping.py); retires with #3580
 
 # Sky room properties (pre-existing rooms)
-sky_room.db.is_sky_room = True     # Marks transit-only sky rooms
-sky_room.db.origin_room = room1    # Where gap jump originates
-sky_room.db.destination_room = room2  # Where gap jump lands
-sky_room.tags.add("sky_room", category="room_type")  # For lookup
+sky_room.db.is_sky_room = True     # The flag, and only a literal True, makes a cell air
+# sky_room.db.origin_room = room1          # RETIRED: no reader
+# sky_room.db.destination_room = room2     # RETIRED: no reader
+# sky_room.tags.add("sky_room", category="room_type")   # RETIRED: no lookup exists
+
+# Anything that must NOT fall carries the one predicate gravity asks:
+flier.db.stays_aloft = True        # strict `is True`; the seam for flight / vehicles
 
 # Fall room properties
-# UNBUILT (2026-09-15): both lines below are documentation only — no code in
-# the repo reads `db.is_fall_room` or the `fall_room_{id}` tag.
-fall_room.db.is_fall_room = True   # Marks crash landing sites
-fall_room.tags.add(f"fall_room_{destination.id}")  # For destination-specific falls
+# RETIRED (#3579), and never built: nothing has ever read `db.is_fall_room`
+# or the `fall_room_{id}` tag, and there is no fall-destination lookup left
+# to read them. The column decides where a body lands.
+# fall_room.db.is_fall_room = True
+# fall_room.tags.add(f"fall_room_{destination.id}")
 
-# 3D Room Structure Example:
-# Rooftop (origin) --east--> Sky Room (transit only) --east--> Adjacent Rooftop (destination)
+# 3D Room Structure Example (2026-09-16: still the right SHAPE, with the
+# bottom of the diagram corrected — the `down` chain is not an escape
+# hatch to a designated Fall Room, it is the whole fall, one cell per
+# tick, all the way to the first room that is not air):
+# Rooftop (origin) --east--> Air cell (transit) --east--> Adjacent Rooftop (destination)
+#                                 |
+#                               down          <- one cell per FALL_SECONDS_PER_CELL
+#                                 |
+#                             Air cell
 #                                 |
 #                               down
 #                                 |
-#                            Fall Room (failure destination)
-# Each sky room has corresponding directional exits (east sky room has west back to origin)
+#                          Street (not air)   <- lands here; damage charged for cells passed
+# Each air cell has corresponding directional exits (east cell has west back to origin);
+# those sideways exits are ALSO what the fall announces to — every walkable
+# surface beside a cell a body passes through sees it go by.
 #
-# Future Compatibility: Sky rooms will naturally support flying vehicles/characters
-# who can traverse these exits normally without jump mechanics
+# Future Compatibility: air cells already support flying vehicles/characters —
+# `db.stays_aloft is True` is the single predicate gravity asks, and anything
+# that answers True sits in the cell and watches other people fall past.
 ```
 
 #### Jump Descent Flow
@@ -311,6 +453,70 @@ fall_room.tags.add(f"fall_room_{destination.id}")  # For destination-specific fa
 5. Announce dramatic descent
 6. Update character position
 ```
+
+> _(2026-09-16: steps 4-6 are wrong since #3579 — stepping off an edge
+> always succeeds, and the verb's whole job now ends at the air cell.
+> `handle_edge_descent` (`commands/combat/jump.py`) parses, finds the
+> edge, validates `is_edge` plus a destination, and then **branches on
+> whether that destination is air** (`world.gravity.is_sky`). NOT AIR is
+> a direct drop: one `move_to`, one storey of `FALL_DAMAGE_PER_STORY`, no
+> roll, no traversal, done. AIR writes the flight plan onto
+> `ndb.fall_intent` (`edge_difficulty`, `roll=True`), moves into the
+> cell, attaches a dragged companion to the leader's fall record, drops
+> combat and aim state, announces the departure to the room left — and
+> stops. The cell's `at_object_receive` hook starts the fall from there,
+> stepping down the column one cell per `FALL_SECONDS_PER_CELL` and
+> rolling for the landing at the bottom. Step 6, "update character
+> position", is no longer something the verb does at all: the faller's
+> position updates once per tick until the column ends.)_
+
+#### Landing and damage placement (#3579, 2026-09-16)
+
+New section — the spec had no account of where fall damage LANDS, only
+of how much there was.
+
+**The landing roll** fires on edge descents only (`roll=True` in the
+`db.falling` record). Motorics vs `edge_difficulty` (default
+`FALL_EDGE_DIFFICULTY_DEFAULT` = 8) + `FALL_LANDING_DIFFICULTY_PER_CELL`
+(2) × cells fallen. A **make absorbs `FALL_LANDING_ABSORBED_CELLS` (2)
+cells** rather than dividing the damage — owner's shape: skill turns a
+fall into a shorter fall, so a two-storey drop landed well is free and a
+twelve-storey one is not survivable by skill alone. A **failed leap never
+rolls**, and neither does an **item**: things take no damage at all, they
+arrive and are heard arriving.
+
+**Damage** is `FALL_DAMAGE_PER_STORY` (5) × effective cells, `blunt`,
+charged once at the bottom, and it is **filled from the feet up** —
+owner: damage lands "legs -> limbs -> other randomly":
+
+1. **Legs first.** A leg is *every destroyable organ that feeds the
+   `moving` capacity* — read off the live organ, so a chrome leg counts
+   and a rat fills its hind paws first. Ordered by the species'
+   anatomical display order, reversed: feet, then shins, then thighs.
+2. **Then the other severable limbs**, excluding the head.
+3. **Then random surviving containers** the first two tiers did not
+   cover.
+
+Each organ is exhausted before the next; armour on a container softens
+the chunk that container receives and the fill **moves on** (a partial
+fill under armour is the honest reading, not a re-roll); and the fill
+**stops the instant a chunk kills**. The result is the owner's target
+shape — a long fall is more survivable than a lethal hit to the chest and
+leaves the body wrecked from the ground up.
+
+**Bodyshield** (an edge descent taken while grappling): the shipped
+splits are preserved, now as constants — a made landing charges the
+victim `FALL_BODYSHIELD_MADE_VICTIM` (0.75) and the grappler
+`FALL_BODYSHIELD_MADE_GRAPPLER` (0.25) of the fall; a failed one charges
+1.5 and 0.5. Both survivors have their grapple rebuilt in a fresh handler
+at the landing room, the grappler yielding.
+
+**Direct drop** (an edge whose destination is not air): one storey of
+`FALL_DAMAGE_PER_STORY`, no roll, no traversal — and with a grappled
+victim, the made split applied to that one storey.
+
+All eleven constants named above are registered in
+`specs/roadmaps/BALANCE_LEDGER.md`, all currently **Tuned? No**.
 
 #### Gap Jump Flow
 ```
@@ -325,6 +531,24 @@ fall_room.tags.add(f"fall_room_{destination.id}")  # For destination-specific fa
 9. Consume combat turn (flee-like timing)
 10. Calculate fall damage: rooms_fallen × damage_multiplier
 ```
+
+> _(2026-09-16: steps 3, 5, 7 and 10 are restated by #3579
+> (`handle_gap_jump`, `commands/combat/jump.py`). **Step 3 gains a
+> refusal:** a gap whose `gap_destination` no longer resolves to a real
+> non-air room is refused ON THE ROOF — "The X gap doesn't lead anywhere
+> safe to land." — rather than silently swapped for the air cell (#3559,
+> via `resolve_gap_destination`). **Step 4 is unchanged** and is still the
+> only roll a gap makes: Motorics vs `gap_difficulty`, default
+> `GAP_DIFFICULTY_DEFAULT` (10), rolled at TAKEOFF. **Step 5 is now two
+> beats:** a make sets a one-tick `ndb.airborne_token`, moves into the air
+> cell, and lands on `gap_destination` one `FALL_SECONDS_PER_CELL` later —
+> the leaper is genuinely in the air for a tick and is seen there. **Step
+> 7 has no failure_room:** a miss enters the cell with no token, gravity
+> takes over, and the body falls down whatever column is under the gap.
+> **Step 10's multiplier is gone:** damage is `FALL_DAMAGE_PER_STORY` (5)
+> x cells actually passed, charged once at the bottom, and a failed leap
+> never rolls to land. Step 6 still happens, in
+> `finalize_successful_gap_jump`, on the made branch only.)_
 
 #### Rigged Grenade Integration for Gap Jumps
 
@@ -378,8 +602,19 @@ for obj in destination.contents:
 **Philosophy**: Sky rooms are transit-only spaces that cannot be accessed through normal movement commands. This prevents bypassing the gap jump mechanics while maintaining their function as aerial transit zones.
 
 **Restriction Implementation**:
+
+> _(2026-09-16: the exemption is deleted (#3579), and it never gated
+> anything. `ndb.jump_movement_allowed` was read in `Exit.at_traverse` —
+> but jumps and falls relocate with `move_to`, which never reaches
+> `at_traverse`, so the flag guarded a door no jump ever used. The sky
+> block in `typeclasses/exits.py` now refuses ALL walking into, out of and
+> between air cells with no exception, and gravity works through the room
+> hook rather than through the exit. Everything else in this section still
+> holds: the block, the visibility filtering, and the three error strings
+> below are live.)_
+
 - **Normal movement blocked**: Characters cannot use standard movement commands (n, s, e, w, up, down) to enter or exit sky rooms
-- **Jump system exempt**: Jump commands can move through sky rooms using `ndb.jump_movement_allowed` flag
+- ~~**Jump system exempt**: Jump commands can move through sky rooms using `ndb.jump_movement_allowed` flag~~ — _RETIRED (#3579): the flag is deleted; there is no exemption_
 - **Visibility filtering**: Pure sky rooms are hidden from room exit displays (not shown in "Exits:" listing)
 - **Edge/gap exception**: Sky rooms that are also edges/gaps are visible but blocked by existing edge/gap restrictions
 - **Clear error messages**: Informative feedback when players attempt forbidden movement
@@ -390,10 +625,13 @@ for obj in destination.contents:
 # In Exit.at_traverse() - sky room restriction check
 current_room_is_sky = getattr(traversing_object.location.db, "is_sky_room", False)
 target_room_is_sky = getattr(target_location.db, "is_sky_room", False)
-is_jump_movement = getattr(traversing_object.ndb, "jump_movement_allowed", False)
+# RETIRED (#3579, 2026-09-16) -- both lines below are gone:
+# is_jump_movement = getattr(traversing_object.ndb, "jump_movement_allowed", False)
+# if (current_room_is_sky or target_room_is_sky) and not is_jump_movement:
 
-if (current_room_is_sky or target_room_is_sky) and not is_jump_movement:
-    # Block traversal with appropriate error message
+if current_room_is_sky or target_room_is_sky:
+    # Block traversal with appropriate error message. No exception: jumps
+    # and falls relocate with move_to and never reach at_traverse.
     return
 
 # In Room.get_custom_exit_display() - visibility filtering
@@ -422,10 +660,22 @@ if destination_is_sky and not (is_edge or is_gap):
 - **Result**: Players cannot see or access pure transit sky rooms
 
 **Jump System Integration**:
-- Jump commands temporarily set `ndb.jump_movement_allowed = True` before sky room movement
-- Flag is cleared immediately after successful movement
-- Ensures only legitimate jump mechanics can use sky rooms
-- Maintains security while allowing intended functionality
+
+> _(2026-09-16: all four bullets are retired (#3579). They describe a
+> mechanism that was deleted because it never did anything: jumps and
+> falls relocate with `move_to`, which does not call `at_traverse`, so no
+> jump ever needed the flag and no jump ever set it on a path that
+> mattered. The security the last two bullets claim was already provided
+> by the block itself. What replaces the integration: the verb hands the
+> air cell a flight plan on `ndb.fall_intent` (or a one-tick
+> `ndb.airborne_token` for a made leap) and steps off with `move_to`;
+> `Room.at_object_receive` -> `world.gravity.on_enter_air` decides what
+> happens next, for a jumper and a shoved body alike.)_
+
+- ~~Jump commands temporarily set `ndb.jump_movement_allowed = True` before sky room movement~~ — _RETIRED_
+- ~~Flag is cleared immediately after successful movement~~ — _RETIRED_
+- ~~Ensures only legitimate jump mechanics can use sky rooms~~ — _RETIRED: the flag gated nothing_
+- ~~Maintains security while allowing intended functionality~~ — _RETIRED: the sky block does this unaided_
 
 ## Combat Integration
 
@@ -489,6 +739,37 @@ if destination_is_sky and not (is_edge or is_gap):
 - **Failure origin**: "Alice attempts the jump but falls short, disappearing below!"
 - **Failure destination**: "Alice crashes down from above, having missed the jump!"
 
+### Fall Announcements — the three-audience model (#3579, 2026-09-16)
+
+A fall is now a sequence of real moves, so it is narrated per CELL rather
+than once at the bottom. Owner ruling: *"if I'm flying in a room or in a
+flying vehicle in one of the sky rooms, I'd see someone fall past me."*
+Every step of `world/gravity.py` announces to three audiences plus the
+faller, all through `msg_room_identity` so each watcher resolves the
+faller by their own perceived identity (and an item renders through its
+own `get_display_name`):
+
+1. **The cell left** — "{actor} drops away beneath you." (an item:
+   "tumbles away beneath you.")
+2. **The cell entered**, when it is still air — "{actor} falls past you,
+   still dropping." (an item: "tumbles past you.") This is the audience
+   the ruling is about: anyone who can stay up in that cell sees the body
+   go by.
+3. **Every walkable surface beside the cell entered** — "{actor} falls
+   past the edge to the <direction>." The list is data-driven, not
+   authored: `neighbour_surfaces` reads the cell's own non-`down`
+   exits whose destination is not air, and the direction is REVERSED with
+   `DIRECTION_OPPOSITES` — a body in the cell east of a roof is seen from
+   that roof falling past to the east, even though the cell's exit to the
+   roof is keyed "west".
+4. **The faller** gets one line of their own ("You plummet downward
+   through open air."), and a dragged companion gets theirs ("You are
+   dragged down through open air.").
+
+The landing then narrates once more, to the landing room and the faller,
+and a fall that runs out of column stops with the impasse message instead
+(see Edge Descent Errors).
+
 ### Message Variations by Context
 - **Different explosives**: "Alice dives onto the flashbang!" vs "Alice covers the pipe bomb!"
 - **Edge types**: "Alice leaps from the fire escape!" vs "Alice jumps down from the balcony!"
@@ -522,6 +803,23 @@ if destination_is_sky and not (is_edge or is_gap):
 > list: the #2944 refusal at `jump.py:496-524` — "You lean out over the X
 > edge and stop. There's nothing to land on down there — no ledge, no fire
 > escape, nothing but air." (`jump.py:520-523`).)_
+>
+> _(2026-09-16: **the #2944 refusal is gone** (#3579). It existed to catch
+> an edge into air with no `sky_room`, and `sky_room` is retired — an edge
+> into air is now always legal, because the air cell itself is the
+> destination and the column below it is the fall. Stepping off ALWAYS
+> succeeds. The failure mode that replaces it happens mid-fall, not at
+> the roof: when a cell has no `down` exit, its `down` no longer resolves,
+> or `FALL_MAX_CELLS` (30) is exceeded, the fall **stops cleanly in that
+> cell** — "You come to a stop in open air. There is nothing beneath you
+> here — no ledge, no street, only more sky that nobody has finished.
+> Gravity is patient." — with no damage, no crash and no strand
+> (`world/gravity.py`, `_strand`). The room sees "{actor} hangs in the
+> open air, with nothing beneath." That is the **parked impasse, #3581**:
+> the code's answer is deliberate and correct; the missing column below
+> the colony's highest crossings is world data (#2945), not a bug in this
+> command. The two gap refusals that DO fire at the roof are the
+> not-a-gap message and the unresolvable-perch message (#3559).)_
 - **No edge exit**: "There is no edge to jump off here."
 - **Invalid exit**: "That is not an edge you can jump from."
 - **Blocked exit**: "The edge is blocked - you cannot jump off."
@@ -797,6 +1095,17 @@ Based on the philosophy of heroic action and tactical depth:
     should override an authored crash
     site for gaps is an owner call, not a bug to fix from this note — see
     the Fall Room Strategy note above.)_
+    _(2026-09-16: the owner call came down with #3579 and the decision is
+    restated. **There is no failure_room and no multiplier.** A missed
+    gap enters the air cell with no stay-up token; gravity walks the body
+    down the cell's `down` chain one cell per `FALL_SECONDS_PER_CELL`;
+    damage is `FALL_DAMAGE_PER_STORY` (5) x the cells actually passed,
+    charged once when the column ends on something that is not air; and a
+    failed leap never rolls to land, so none of it is absorbed. Gravity
+    overrides any authored crash site everywhere, not just on gaps —
+    `exit.db.fall_room` has no runtime reader left and retires with
+    **#3580**. The recommendation's INTENT (distance-based damage rather
+    than a flat number) is what shipped; its mechanism is retired.)_
 11. **Gap combat**: Counts as movement action if in combat (flee-like timing)
 12. **Gap difficulty**: 1-5 scale (trivial to nearly impossible)
 13. **Jump syntax**: Uses direction-based syntax (`jump off north edge`, `jump across east edge`)
@@ -809,14 +1118,26 @@ Based on the philosophy of heroic action and tactical depth:
 Learned the hard way on the Brackett build; this is the full flight plan a
 jump edge needs, or jump.py silently takes a degraded fallback:
 
-- **Transit edge**: exit ``destination`` = the sky/transit room;
-  ``db.sky_room`` = that room's id; ``db.fall_room`` = the ground id;
-  ``db.fall_distance`` (stories); ``db.fall_damage`` (PER-STORY — total =
-  damage × distance); ``db.edge_difficulty`` (landing = Motorics vs
-  difficulty + 2×distance). Gravity then walks one-way ``down`` exits
-  until ``db.is_ground`` — set it on every landing.
+- **Transit edge** _(rewritten 2026-09-16 to the #3579 contract; the
+  2026-07-28 version required ``sky_room``, ``fall_distance`` and
+  ``fall_damage``, all three now retired — the exit's destination IS the
+  air cell, the column IS the distance, and
+  ``FALL_DAMAGE_PER_STORY`` IS the damage)_: exit ``destination`` = the
+  air cell; ``db.is_edge = True``; ``db.edge_difficulty`` optional
+  (landing = Motorics vs difficulty + ``FALL_LANDING_DIFFICULTY_PER_CELL``
+  × cells, default difficulty ``FALL_EDGE_DIFFICULTY_DEFAULT`` = 8).
+  **The column is the rest of the flight plan and it is mandatory**: each
+  air cell needs a one-way ``down`` (key ``down`` or alias ``d``) and the
+  bottom one must land on something that is not air. There is no
+  ``db.is_ground`` terminator any more — "not air" is the terminator. A
+  column that runs out mid-air is the parked impasse (#3581): the fall
+  stops cleanly in that cell, no damage, no strand.
 - **Direct edge** (no open column below, e.g. clearing an oversailing
-  plate): no ``sky_room`` — flat ``fall_damage``, always lands, no check.
+  plate): destination is simply not an air cell — one storey of
+  ``FALL_DAMAGE_PER_STORY``, always lands, no roll, no traversal. _(2026-09-16:
+  the old "no ``sky_room`` — flat ``fall_damage``" wording described the
+  same case through two retired attributes; the branch is now just "is the
+  destination air?".)_
 - **Gaps**: ``is_gap`` requires ``gap_destination`` (the far same-level
   surface); omit ``is_gap`` when nothing faces the edge.
 - **Named edges**: ``find_edge_exit`` resolves arbitrary exit names —
@@ -825,3 +1146,35 @@ jump edge needs, or jump.py silently takes a degraded fallback:
   as if it were a rooftop; as of this addendum it only auto-links
   walkable OUTDOOR neighbors, and interiors are never linked (the B-line
   window-edge incident). Always run the edge audit after an air build.
+
+
+## Addendum (2026-09-16) — the gravity layer's known limits (#3579)
+
+Recorded, not filed as defects. Each is a thing the layer knowingly does
+not do; a reader who meets one in play should recognise it rather than
+re-discover it as a bug.
+
+- **A reload during a leap's one tick drops the leaper.** The stay-up
+  token a made `jump across` carries is `ndb.airborne_token` — deliberately
+  transient, so a far perch that is itself air cannot re-grant it forever.
+  A reload inside that single `FALL_SECONDS_PER_CELL` window therefore
+  finds a body in an air cell with no token and no record, and
+  `sweep_airborne` correctly starts a fall for it. Falls survive a reload;
+  a leap in flight does not. The window is one second wide.
+- **Pulped legs do not stop anyone walking.** The damage placement fills
+  the legs first by design — owner: "more likely to survive a long fall
+  but leaving them crippled" — but the `moving` capacity's only consumer
+  today is dodge. The crippling is real in the medical readout and
+  invisible in movement. Wiring it up is a separate issue (the
+  movement-policing substrate, `specs/roadmaps/MEDICAL_SUBSTRATE_READINESS.md`
+  Phase 7) if it is wanted; nothing in #3579 depends on it.
+- **Fall damage is untuned, and its knock-on is untuned twice over.**
+  Every chunk that lands adds pain and, at ≥10 to a container, a bleeding
+  condition — and bleeding has never been through a balance pass. So the
+  real lethality of a fall is the damage number plus an unknown. All
+  eleven gravity constants are registered in
+  `specs/roadmaps/BALANCE_LEDGER.md` with "Tuned? No"; do not size a new
+  consumer against them.
+- **A fall never severs.** It lands as `blunt` damage, so no limb comes
+  off however far the body drops. Deliberate — a fall crushes, it does not
+  cut — but it means a lethal fall produces an intact corpse.

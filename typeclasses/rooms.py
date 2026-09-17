@@ -136,6 +136,14 @@ class Room(ObjectParent, DefaultRoom):
             self._check_corpse_decay()
             # Let any LLM-driven occupant clock the arrival (roster + reaction).
             self._notify_llm_presence(moved_obj, entered=True)
+        # Gravity is a property of the ROOM (#3579): anything that arrives
+        # in an air cell and cannot stay up starts falling, by any door --
+        # a jump, a throw, a drop, a shove, a reconnect. Keyed on the flag,
+        # never the typeclass: the colony's highest crossings are plain
+        # Rooms flagged in place. The hook never raises (a raise here makes
+        # Evennia report a completed move as a failure).
+        from world.gravity import on_enter_air
+        on_enter_air(self, moved_obj)
 
     def at_object_leave(self, moved_obj, target_location, **kwargs):
         """Called when an object leaves this room. Let LLM-driven occupants
@@ -1447,11 +1455,12 @@ class CraneContainer(Room):
             qoc = self._room_at((-1, -16, 12))       # QoC Rack Roof Southeast
             off = abs(z - self.QOC_Z)
             diff = 8 + 2 * off                       # level=8, +2 / storey off
+            # The exit's destination IS the air cell and the column is the
+            # distance (#3579): no sky_room / fall_distance / fall_damage.
             self._mk(self, sky, "north", ["n"],
                      is_edge=True, is_gap=True,
                      edge_difficulty=diff, gap_difficulty=diff,
-                     gap_width="medium", fall_distance=z, fall_damage=6,
-                     sky_room=(sky.id if sky else None),
+                     gap_width="medium",
                      fall_room=(fall.id if fall else None),
                      gap_destination=(qoc.id if qoc else None))
             if z == self.QOC_Z and qoc is not None:
@@ -1459,8 +1468,7 @@ class CraneContainer(Room):
                 self._mk(qoc, self, "south", ["s"],
                          is_edge=True, is_gap=True,
                          edge_difficulty=8, gap_difficulty=8,
-                         gap_width="medium", fall_distance=z, fall_damage=6,
-                         sky_room=(sky.id if sky else None),
+                         gap_width="medium",
                          fall_room=(fall.id if fall else None),
                          gap_destination=self.id)
             floor = z + 1

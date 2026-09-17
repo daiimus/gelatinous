@@ -409,7 +409,8 @@ def release_to_ground(caller, obj):
        That desync has now been found four times (PR-H2 family);
     4. **`at_drop` + `drop_to_room`** — the item's own hook (single-use
        kit perishes rather than stockpiling) and then the canonical
-       landing pipeline, which applies gravity and proximity.
+       landing pipeline, which sets proximity; an item let go in an air
+       cell is taken down the column by the cell's own gravity (#3579).
 
     `hide <object>` carried NONE of them: it resolved anything in
     `caller.contents` — which holds worn clothing and held weapons alike

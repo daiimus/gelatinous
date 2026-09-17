@@ -477,9 +477,12 @@ class TestFlight(TestCase):
         destination = make_room("dest")
         self._start(caller, obj, destination)
 
+        # #3579 retired `apply_gravity_to_items`: the landing move is
+        # made with hooks ON and the destination room's own
+        # `at_object_receive` is what takes a thrown thing down an air
+        # column. There is no gravity helper left to patch here.
         with patch("world.combat.throwing.handle_landing") as mock_landing, \
-             patch("world.combat.throwing.msg_room_identity"), \
-             patch("commands.combat.movement.apply_gravity_to_items"):
+             patch("world.combat.throwing.msg_room_identity"):
             throwing.complete_flight(obj)
 
         obj.move_to.assert_called_once_with(destination, quiet=True)

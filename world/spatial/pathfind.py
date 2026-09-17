@@ -171,10 +171,10 @@ def _neighbors(room: Any, traverser: Any):
         # -- 61% of every fault in the colony, from one man who could
         # not get to work (#2331).
         #
-        # Excluded for everyone, including roof-runners: entering a sky
-        # room needs `ndb.jump_movement_allowed`, which the jump
-        # COMMAND sets and travel never does. This is not a taste, it
-        # is a different mechanism.
+        # Excluded for everyone, including roof-runners: WALKING into a
+        # sky room is refused at the exit (typeclasses/exits.py); jumps
+        # relocate with `move_to` and the cell's own gravity takes over
+        # (world/gravity.py, #3579). A route cannot carry an air cell.
         # `is True`, not truthiness: authored as a literal on every room
         # (917 False, 155 True), and an identity check will not mistake
         # an ordinary room for the sky because an unspecced mock

@@ -582,6 +582,17 @@ class TestWhatAFallCosts(EvenniaCommandTest):
         from commands.combat import jump
         self.assertNotIn("courier_package", inspect.getsource(jump))
 
+    def test_nor_does_the_fall_itself(self):
+        """#3579 moved the fall out of the jump verb and into
+        world/gravity.py -- the room, not the command, is what takes her
+        down the column. The pin has to follow the code it was written
+        about, or it goes on passing against a module that no longer
+        contains the behaviour."""
+        import inspect
+        import world.gravity
+        self.assertNotIn("courier_package",
+                         inspect.getsource(world.gravity))
+
     def test_she_keeps_it_through_a_hard_landing(self):
         """The parcel is ordinary inventory and stays that way — no
         special handling means no special loss."""

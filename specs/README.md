@@ -21,7 +21,11 @@ describes how the game works today. Each entry is a running system
 >   pass re-checked fifteen of the top-level specs and annotated **285
 >   false claims** inside them (worst: `LOOK_COMMAND_SPEC` 28,
 >   `EMOTE_POSE_SPEC` 26, `MODULAR_ARMOR_SYSTEM_SPEC` and `STYLING_SPEC`
->   25 each, `BARS_AND_RECIPES_SPEC` and `JUMP_COMMAND_SPEC` 24 each).
+>   25 each, `BARS_AND_RECIPES_SPEC` and ~~`JUMP_COMMAND_SPEC`~~ 24 each).
+>   _(2026-09-16: `JUMP_COMMAND_SPEC` is now **38** — the gravity layer
+>   (#3579) retired `sky_room` / `fall_distance` / `fall_damage` and moved
+>   falling out of the verb into the room, falsifying fourteen more of its
+>   claims. Its own banner is authoritative; this headline is a snapshot.)_
 >   Six top-level specs are 🚧 **PARTIAL**, not shipped-whole:
 >   `BARS_AND_RECIPES_SPEC`, `JUMP_COMMAND_SPEC`, `LOOK_COMMAND_SPEC`,
 >   `MODULAR_ARMOR_SYSTEM_SPEC`, `SHOP_SYSTEM_SPEC`,

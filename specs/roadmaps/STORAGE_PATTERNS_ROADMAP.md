@@ -281,7 +281,7 @@ on first touch; not worth a sweeping migration PR.
 | attr                          | uses | rightness                         |
 |-------------------------------|------|-----------------------------------|
 | `charcreate_data`             | 72   | ✓ chargen menu scratch            |
-| `jump_movement_allowed`       | 16   | ✓ transient movement flag         |
+| ~~`jump_movement_allowed`~~   | ~~16~~ | **0 — DELETED (#3579, 2026-09-16)** |
 | `_operate_target`             | 15   | ✓ EvMenu scratch                  |
 | `_operate_pickable`           | 15   | ✓ menu picker scratch             |
 | `in_proximity_with`           | 14   | ? combat — could be plain attr    |
@@ -291,6 +291,22 @@ on first touch; not worth a sweeping migration PR.
 | `death_curtain_pending`       | 7    | ✓ one-shot transition state       |
 | `sever_task`                  | 6    | ? procedure delay handle          |
 | `unconsciousness_pending`     | 3    | ✓ flag                            |
+
+> _(2026-09-16, #3579: `jump_movement_allowed` is gone — **zero uses**,
+> down from the 16 counted here, and the row's "✓ transient movement
+> flag" was generous even then. It was read in `Exit.at_traverse` to
+> exempt jumps from the sky-room block, but jumps and falls relocate with
+> `move_to`, which never reaches `at_traverse`, so the flag gated a door
+> no jump ever used. The gravity layer deleted it: the sky block now
+> refuses all walking with no exception, and falling is driven by
+> `world/gravity.py` off `Room.at_object_receive` instead. Two new ndb
+> keys replace it and are deliberately transient —
+> `ndb.airborne_token` (a leap's one-tick stay-up grant, so a far perch
+> that is itself air cannot re-grant it forever) and `ndb.fall_intent`
+> (the verb's flight plan, consumed by the arriving room's hook). The
+> durable half of a fall is a `db.falling` attribute, swept at boot: the
+> split is the pattern this section argues for. The 256 total above is
+> pre-#3579 and not re-counted.)_
 
 ndb usage is *mostly* appropriate — menu scratch, transition
 flags, one-shot timers. The dubious ones are combat-state items

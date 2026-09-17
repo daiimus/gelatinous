@@ -89,9 +89,12 @@ def export_map():
         entry = {"from": f"#{src.id}", "to": f"#{dst.id}",
                  "key": ex.key, "kind": kind}
         if kind in ("edge", "gap"):
+            # The flight plan an edge still carries (#3579 retired
+            # sky_room / fall_distance / fall_damage: the exit's
+            # destination is the air cell and the column is the fall).
+            # `fall_room` goes with #3580.
             edge = {}
-            for attr in ("sky_room", "fall_room", "fall_distance",
-                         "fall_damage", "edge_difficulty",
+            for attr in ("fall_room", "edge_difficulty", "gap_difficulty",
                          "gap_destination"):
                 val = ex.attributes.get(attr)
                 if val is not None:

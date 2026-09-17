@@ -89,13 +89,14 @@ class Exit(DefaultExit):
         splattercast = get_splattercast()
         
         # --- SKY ROOM RESTRICTION CHECK ---
-        # Block normal traversal to/from sky rooms - these are transit-only spaces
-        # Exception: Allow jump command system to use sky rooms for aerial transit
+        # Block WALKING to/from sky rooms - these are transit-only spaces.
+        # Jumps and falls never come through here: they relocate with
+        # `move_to` directly and the air cell's own gravity takes over
+        # (world/gravity.py, #3579), so this gate has no exception.
         current_room_is_sky = traversing_object.location.db.is_sky_room
         target_room_is_sky = target_location.db.is_sky_room
-        is_jump_movement = getattr(traversing_object.ndb, "jump_movement_allowed", False)
-        
-        if (current_room_is_sky or target_room_is_sky) and not is_jump_movement:
+
+        if current_room_is_sky or target_room_is_sky:
             if current_room_is_sky and target_room_is_sky:
                 traversing_object.msg(f"|rYou cannot traverse between sky rooms! Sky rooms are transit-only spaces.|n")
             elif current_room_is_sky:

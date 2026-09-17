@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from collections.abc import Mapping
+
 from evennia.utils import delay
 
 from world.spatial import find_path_exits
@@ -199,6 +201,20 @@ def _travel_step(npc: Any) -> None:
     if state["steps"] > TRAVEL_MAX_STEPS:
         _finish(npc, state, "on_fail",
                 f"gave up after {TRAVEL_MAX_STEPS} steps")
+        return
+    # Airborne (#3579): a leap sits in the air cell for a tick and a miss
+    # is a fall down the column. Neither is a routing problem -- wait it
+    # out ABOVE the route reconciliation, or a step fired mid-fall would
+    # re-pathfind from an air cell (no route: the travel faults), cache a
+    # walk the exit refuses, and pop the real route's head.
+    # Strict shapes, never truthiness: a mocked `db` answers an object to
+    # every attribute, and an unspecced double must not read as airborne.
+    falling = getattr(getattr(npc, "db", None), "falling", None)
+    token = getattr(getattr(npc, "ndb", None), "airborne_token", None)
+    if isinstance(falling, Mapping) \
+            or (isinstance(token, (int, float)) and not isinstance(token, bool) and token > 0) \
+            or getattr(getattr(npc.location, "db", None), "is_sky_room", None) is True:
+        delay(state["step_delay"], _travel_step, npc)
         return
     # Walk the cached route; re-pathfind only when reality disagrees
     # with it (a bounced exit, a lock change, the npc moved by force).
