@@ -56,6 +56,8 @@ can have coherent taste without anyone hand-writing their wardrobe.
 A garment's name is scanned for the first matching type keyword; that
 type fixes its layer and supplies default coverage when the prototype
 doesn't override. Names are checked longest-first so "trenchcoat"
+
+> **Note (2026-09-17, #3425):** this example was not expressible until now. `derive_rung` matches whole words bounded at both ends (#2478, #2657), so a closed compound like "trenchcoat" names neither "trench" nor "coat" and derived nothing, falling to rung 1 — a trenchcoat layered like a t-shirt. The matcher stays strict; "trenchcoat" and "longcoat" are now IN `RUNGS[4]`, where the matcher's docstring said compounds belong. An unlisted compound ("raincoat") still derives nothing by design.
 beats "coat" and "labcoat" beats "coat". (Note 2026-09-11: in the
 shipped `derive_rung` the `labcoat` half holds, but the `trenchcoat`
 half does not. The matcher anchors a word boundary at **both** ends
