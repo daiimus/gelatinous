@@ -1177,6 +1177,7 @@ jump edge needs, or jump.py silently takes a degraded fallback:
   as if it were a rooftop; as of this addendum it only auto-links
   walkable OUTDOOR neighbors, and interiors are never linked (the B-line
   window-edge incident). Always run the edge audit after an air build.
+  _(2026-09-16, #3415 + #3582: `fill_air_cell` now stamps a roof's way into air as `is_edge` only, and `is_gap` + `gap_destination` only when another walkable surface stands exactly one cell across; a gap with no perch is never generated (the verb refuses one on the roof, #3579). The edge audit is `@airfill/audit <z>`, read-only: surfaces beside air with no edge, gaps whose perch is missing or not one cell across, bare cells. The 69 cells generated before this rule still carry `is_gap` without a perch; the owner chose not to run a re-stamp pass, so those exits stay refused at the roof until one is run.)_
 
 
 ## Addendum (2026-09-16) — the gravity layer's known limits (#3579)

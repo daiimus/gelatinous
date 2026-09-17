@@ -169,6 +169,15 @@ never canon. NPC-run factions remain the only factions.
   negative space: fall lanes now, flight later.
 - **Every air build closes with the edge audit** — "edges accountable."
   No unexplained adjacency between a plate and the air beside it.
+  _(2026-09-16, #3582: the audit is a command now, not a sentence —
+  `@airfill/audit <z>` lists every walkable surface beside air with no
+  edge into it, every gap whose far perch is missing or not one cell
+  across, and every air cell with no `down`; it writes nothing. Paste its
+  output in the build issue. A deliberate omission is marked on the room
+  with `db.no_edge = "<reason>"` and the audit skips it. Owner ruling
+  2026-09-16: the generator stays; `@airfill` now stamps a roof's way
+  into air as an edge only, and a gap only with a computed far perch
+  (#3415).)_
 
 **Doors and tenancy** (`VERTICALITY_AND_BUILDINGS_SPEC` §2–§3, live):
 - A door IS the exit, with state; passage requires it open.

@@ -186,7 +186,194 @@ class TestAirFill(TestCase):
         roof_exit = next(e for src, key, dest, e in made_exits
                          if key == "east")
         self.assertIs(roof_exit.db.is_edge, True)
-        self.assertIs(roof_exit.db.is_gap, True)
+        # No walkable surface stands across the cell, so this is a DROP,
+        # not a crossing: no gap, no perch (#3415). A gap stamped here
+        # would be refused on the roof (#3579) -- a crossing nobody can
+        # make.
+        self.assertIsNone(roof_exit.db.is_gap)
+        self.assertIsNone(roof_exit.db.gap_destination)
         # down is one-way: no exit hung on the street below
         street = index[(1, 0, 0)]
         self.assertEqual(street.exits, [])
+
+    def _fill(self, index, cell):
+        from commands import CmdBuildTools as bt
+        made_exits = []
+
+        def fake_create(tclass, key=None, aliases=None, location=None,
+                        destination=None):
+            obj = MagicMock()
+            obj.key = key
+            obj.db = _RoomDB(is_sky_room="rooms" in tclass)
+            obj.exits = []
+            if "exits" in tclass:
+                made_exits.append((location, key, destination, obj))
+                if hasattr(location, "exits"):
+                    location.exits.append(obj)
+            return obj
+
+        with patch("evennia.create_object", side_effect=fake_create), \
+             patch("world.spatial.set_xyz"):
+            room, count = bt.fill_air_cell(cell, index)
+        return room, made_exits
+
+    def test_a_gap_is_stamped_only_with_a_perch_one_cell_across(self):
+        """Two roofs one air cell apart: each roof's edge into the cell is
+        a GAP whose gap_destination is the OTHER roof (#3415)."""
+        index = self._index({
+            (0, 0, 1): False,      # west roof
+            (2, 0, 1): False,      # east roof, one cell across
+            (1, 0, 0): False,      # street under the air
+        })
+        west, east = index[(0, 0, 1)], index[(2, 0, 1)]
+        west.db.type = "rooftop"; west.id = 100
+        east.db.type = "rooftop"; east.id = 200
+        room, made = self._fill(index, (1, 0, 1))
+        west_exit = next(e for src, key, dest, e in made if src is west)
+        east_exit = next(e for src, key, dest, e in made if src is east)
+        self.assertIs(west_exit.db.is_edge, True)
+        self.assertIs(west_exit.db.is_gap, True)
+        self.assertEqual(west_exit.db.gap_destination, 200)
+        self.assertIs(east_exit.db.is_gap, True)
+        self.assertEqual(east_exit.db.gap_destination, 100)
+
+    def test_an_interior_across_the_air_is_not_a_perch(self):
+        """The far cell exists but is not a walkable surface: edge only."""
+        index = self._index({
+            (0, 0, 1): False, (2, 0, 1): False, (1, 0, 0): False,
+        })
+        index[(0, 0, 1)].db.type = "rooftop"
+        index[(2, 0, 1)].db.type = "apartment"      # a wall, not a perch
+        room, made = self._fill(index, (1, 0, 1))
+        west_exit = next(e for src, key, dest, e in made
+                         if src is index[(0, 0, 1)])
+        self.assertIs(west_exit.db.is_edge, True)
+        self.assertIsNone(west_exit.db.is_gap)
+        # and the interior got NO links at all (the B-line incident)
+        self.assertEqual(index[(2, 0, 1)].exits, [])
+
+
+class TestTheEdgeAudit(TestCase):
+    """@airfill/audit (#3582): the closing question of every air build,
+    answered by a read-only report instead of a sentence in the playbook."""
+
+    def _room(self, sky=False, type_=None, outside=None, rid=1, exits=None):
+        room = MagicMock()
+        room.db = _RoomDB(is_sky_room=sky, type=type_, outside=outside)
+        room.exits = exits or []
+        room.id = rid
+        room.key = "In the Air" if sky else f"Roof {rid}"
+        return room
+
+    def _exit(self, src, dest, key, **flags):
+        ex = MagicMock()
+        ex.key = key
+        ex.destination = dest
+        ex.location = src
+        ex.db = _RoomDB(**flags)
+        ex.id = 900 + len(src.exits)
+        src.exits.append(ex)
+        return ex
+
+    def test_a_roof_beside_air_with_no_edge_is_reported(self):
+        from commands.CmdBuildTools import audit_air
+        roof = self._room(type_="rooftop", rid=1)
+        air = self._room(sky=True, rid=2)
+        street = self._room(outside=True, rid=3)
+        self._exit(air, street, "down")
+        index = {(0, 0, 1): roof, (1, 0, 1): air, (1, 0, 0): street}
+        f = audit_air(1, index)
+        self.assertEqual([(r.id, c.id, d) for r, c, d in f["missing_edges"]],
+                         [(1, 2, "east")])
+        self.assertEqual(f["bare_cells"], [])
+        self.assertEqual(f["bad_gaps"], [])
+
+    def test_a_wired_edge_is_not_reported(self):
+        from commands.CmdBuildTools import audit_air
+        roof = self._room(type_="rooftop", rid=1)
+        air = self._room(sky=True, rid=2)
+        street = self._room(outside=True, rid=3)
+        self._exit(air, street, "down")
+        self._exit(roof, air, "east", is_edge=True)
+        f = audit_air(1, {(0, 0, 1): roof, (1, 0, 1): air, (1, 0, 0): street})
+        self.assertEqual(f["missing_edges"], [])
+
+    def test_a_deliberate_omission_is_skipped(self):
+        from commands.CmdBuildTools import audit_air
+        roof = self._room(type_="rooftop", rid=1)
+        roof.db.no_edge = "the parapet is a metre of blast glass"
+        air = self._room(sky=True, rid=2)
+        self._exit(air, self._room(outside=True, rid=3), "down")
+        f = audit_air(1, {(0, 0, 1): roof, (1, 0, 1): air})
+        self.assertEqual(f["missing_edges"], [])
+
+    def test_a_bare_cell_is_reported_not_repaired(self):
+        from commands.CmdBuildTools import audit_air
+        air = self._room(sky=True, rid=2)          # no down
+        f = audit_air(1, {(1, 0, 1): air})
+        self.assertEqual([c.id for c in f["bare_cells"]], [2])
+        self.assertEqual(air.exits, [])            # nothing was hung
+
+    def test_a_gap_without_a_perch_is_a_bad_gap(self):
+        from commands.CmdBuildTools import audit_air
+        roof = self._room(type_="rooftop", rid=1)
+        air = self._room(sky=True, rid=2)
+        self._exit(air, self._room(outside=True, rid=3), "down")
+        self._exit(roof, air, "east", is_edge=True, is_gap=True)   # @airfill's old stamp
+        f = audit_air(1, {(0, 0, 1): roof, (1, 0, 1): air})
+        self.assertEqual([reason for _e, reason in f["bad_gaps"]],
+                         ["no gap_destination"])
+
+    def test_a_gap_whose_perch_is_not_one_cell_across_is_a_bad_gap(self):
+        from commands.CmdBuildTools import audit_air
+        roof = self._room(type_="rooftop", rid=1)
+        air = self._room(sky=True, rid=2)
+        far = self._room(type_="rooftop", rid=4)
+        self._exit(air, self._room(outside=True, rid=3), "down")
+        self._exit(roof, air, "east", is_edge=True, is_gap=True, gap_destination=4)
+        # the perch sits two cells across, not one
+        index = {(0, 0, 1): roof, (1, 0, 1): air, (3, 0, 1): far}
+        f = audit_air(1, index)
+        self.assertEqual(len(f["bad_gaps"]), 1)
+        self.assertIn("not one cell across", f["bad_gaps"][0][1])
+
+    def test_a_correct_gap_is_clean(self):
+        from commands.CmdBuildTools import audit_air, format_air_audit
+        roof = self._room(type_="rooftop", rid=1)
+        air = self._room(sky=True, rid=2)
+        far = self._room(type_="rooftop", rid=4)
+        self._exit(air, self._room(outside=True, rid=3), "down")
+        self._exit(roof, air, "east", is_edge=True, is_gap=True, gap_destination=4)
+        self._exit(far, air, "west", is_edge=True, is_gap=True, gap_destination=1)
+        index = {(0, 0, 1): roof, (1, 0, 1): air, (2, 0, 1): far}
+        f = audit_air(1, index)
+        self.assertEqual(f["bad_gaps"], [])
+        self.assertEqual(f["missing_edges"], [])
+        self.assertIn("Clean.", format_air_audit(1, f, index))
+
+    def test_the_report_names_dbrefs_and_coordinates(self):
+        from commands.CmdBuildTools import audit_air, format_air_audit
+        roof = self._room(type_="rooftop", rid=1)
+        air = self._room(sky=True, rid=2)
+        index = {(5, -3, 1): roof, (6, -3, 1): air}
+        text = format_air_audit(1, audit_air(1, index), index)
+        self.assertIn("#1 at (5,-3)", text)
+        self.assertIn("air to the east (#2)", text)
+        self.assertIn("bare cell", text)
+        self.assertIn("nothing written", text)
+        self.assertNotIn("Clean.", text)
+
+    def test_the_command_audit_switch_writes_nothing(self):
+        """`@airfill/audit 1` reports and returns before any fill."""
+        from commands import CmdBuildTools as bt
+        cmd = bt.CmdAirFill()
+        cmd.caller = MagicMock()
+        cmd.args = "1"; cmd.lhs = "1"; cmd.rhs = None; cmd.switches = ["audit"]
+        with patch.object(bt, "_room_cell_index", return_value={}), \
+             patch.object(bt, "fill_air_cell") as fill, \
+             patch.object(bt, "air_candidates") as cands:
+            cmd.func()
+        fill.assert_not_called()
+        cands.assert_not_called()
+        cmd.caller.msg.assert_called_once()
+        self.assertIn("Edge audit", cmd.caller.msg.call_args.args[0])
