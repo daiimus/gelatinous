@@ -171,7 +171,7 @@ class TestTheWritersKeepOutermostFirst(EvenniaTest):
         head = create_object("typeclasses.items.Appendage", key="human head",
                              location=self.room1)
         head.db.location_name = "head"
-        head.db.chain = ("head", "hair")
+        head.db.source_species = "human"
         head.db.worn_items = {}
         return head
 
@@ -206,3 +206,61 @@ class TestTheWritersKeepOutermostFirst(EvenniaTest):
         self.assertEqual(set(moved), {glove, sleeve, bracer})
         self.assertEqual(list(arm.db.worn_items["left_arm"]), [bracer, sleeve])
         self.assertEqual(list(arm.db.worn_items["left_hand"]), [sleeve, glove])
+
+
+class TestDressFitsTheClusterThePartCarries(EvenniaTest):
+    """``dress`` fits against the severed cluster, not the limb chain:
+    a head carries its eyes, hair, face, ears and neck too."""
+
+    def _part(self, location_name):
+        part = create_object("typeclasses.items.Appendage", key=f"severed {location_name}",
+                             location=self.room1)
+        part.db.location_name = location_name
+        part.db.source_species = "human"
+        part.db.worn_items = {}
+        return part
+
+    def _dress(self, part, item):
+        from commands.CmdClothing import CmdDress
+        cmd = CmdDress(); cmd.caller = self.char1
+        return cmd._dress_appendage(part, item)
+
+    def test_goggles_fit_a_head_at_both_eyes(self):
+        head = self._part("head")
+        goggles = garment("goggles", coverage=["left_eye", "right_eye"], layer=4,
+                          worn_desc="Goggles", location=self.char1)
+        ok, msg = self._dress(head, goggles)
+        self.assertTrue(ok, msg)
+        self.assertIs(goggles.location, head)
+        self.assertEqual(list(head.db.worn_items["left_eye"]), [goggles])
+        self.assertEqual(list(head.db.worn_items["right_eye"]), [goggles])
+
+    def test_a_balaclava_registers_at_hair_and_head(self):
+        head = self._part("head")
+        balaclava = garment("balaclava", coverage=["hair", "head"], layer=2,
+                            worn_desc="A balaclava", location=self.char1)
+        ok, _ = self._dress(head, balaclava)
+        self.assertTrue(ok)
+        self.assertEqual(sorted(head.db.worn_items), ["hair", "head"])
+
+    def test_a_glove_still_does_not_fit_a_head(self):
+        head = self._part("head")
+        glove = garment("glove", coverage=["left_hand"], layer=1,
+                        worn_desc="A glove", location=self.char1)
+        ok, msg = self._dress(head, glove)
+        self.assertFalse(ok)
+        self.assertIn("doesn't fit", msg)
+        self.assertIs(glove.location, self.char1)
+
+    def test_a_limb_is_unchanged_chain_and_cluster_agree(self):
+        arm = self._part("left_arm")
+        coat = garment("coat", coverage=["chest", "left_arm", "right_arm"], layer=3,
+                       worn_desc="A coat", location=self.char1)
+        glove = garment("glove", coverage=["left_hand"], layer=1,
+                        worn_desc="A glove", location=self.char1)
+        ok, _ = self._dress(arm, coat)
+        self.assertTrue(ok)                       # it covers the arm: fits at the arm
+        self.assertEqual(sorted(arm.db.worn_items), ["left_arm"])
+        ok, _ = self._dress(arm, glove)
+        self.assertTrue(ok)                       # the hand is downstream of the arm
+        self.assertEqual(list(arm.db.worn_items["left_hand"]), [glove])

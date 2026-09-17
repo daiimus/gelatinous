@@ -988,14 +988,26 @@ class CmdDress(Command):
 
     def _dress_appendage(self, target, item):
         """Worn-on-severed-appendage path.  Match the item's
-        coverage against the appendage's chain locations; wear at
-        the intersection.
+        coverage against the locations the part carries; wear at the
+        intersection.
 
-        Rejects items that don't cover any chain location (a right
+        Those locations are the severed cluster -- the same set the
+        travel rule chose the part's garments by and the renderer
+        walks: a limb's downstream chain, a head's whole head cluster
+        (hair, eyes, face, ears, neck too), so goggles fit a severed
+        head and a balaclava registers at hair AND head.  Not
+        ``db.chain``: that is the limb table, which has no head entry,
+        and the part's display name reads it.
+
+        Rejects items that don't cover any carried location (a right
         glove can't wear on a severed left arm; a chest piece can't
-        wear on a severed leg).
+        wear on a severed leg; a glove can't wear on a head).
         """
-        chain = set(target.db.chain or (target.db.location_name,))
+        from typeclasses.items import severed_cluster
+        chain = set(severed_cluster(
+            target.db.source_species or "human",
+            target.db.location_name or "",
+        ))
         if hasattr(item, "get_current_coverage"):
             coverage = set(item.get_current_coverage() or ())
         else:
