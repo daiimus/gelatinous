@@ -77,23 +77,25 @@ class TestTheCorpseKnowsWhatWasWorn(EvenniaTest):
         corpse = DeathProgressionScript._create_corpse_from_character(None, who)
         self.assertNotIn(carried.id, list(corpse.db.worn_at_death or []))
 
-    def test_a_naked_death_still_writes_no_record(self):
-        """Documenting EXISTING behaviour, not asserting a fix.
+    def test_a_naked_death_writes_an_empty_record(self):
+        """A body wearing nothing writes an EMPTY record, not none (#3577).
 
-        A body wearing nothing writes no record, so the coverage map
-        renders contents-wide and a carried coat on a naked corpse still
-        reads as worn. That predates #2912 -- the guard has always been
-        `if worn_items:` -- so it is not part of this regression and is
-        not changed here.
+        Without a record `worn_garments()` falls back to contents-wide,
+        so a carried coat on a naked corpse read as worn -- and since
+        #3577 what a corpse wears travels with a severed part, that
+        fallback would have handed a pocketed garment to a severed
+        head. The record is written always; empty means naked.
 
-        Written as an explicit `is None` rather than
-        `list(x or []) == []`, which was the first version and passes
-        for `None` just as happily as for `[]` -- an assertion that
-        cannot tell the two apart is not testing the thing it names.
+        Asserted as `== []` AND `is not None`: an assertion that cannot
+        tell the two apart is not testing the thing it names.
         """
         who = create_object("typeclasses.characters.Character",
                             key="Testnude", location=self.room1)
         carried = spawn("LAB_COAT")[0]
         carried.location = who
         corpse = DeathProgressionScript._create_corpse_from_character(None, who)
-        self.assertIsNone(corpse.db.worn_at_death)
+        self.assertIsNotNone(corpse.db.worn_at_death)
+        self.assertEqual(list(corpse.db.worn_at_death), [])
+        self.assertIs(carried.location, corpse)          # carried across
+        self.assertEqual(corpse.worn_garments(), [])     # but not worn
+        self.assertEqual(corpse._build_corpse_clothing_coverage_map(), {})

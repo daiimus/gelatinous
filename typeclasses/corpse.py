@@ -542,22 +542,28 @@ class Corpse(IdentityBearerMixin, Item):
             out.append(item)
         return out
 
-    def _build_corpse_clothing_coverage_map(self):
-        """Build a map of body locations covered by clothing items in corpse."""
-        # WORN, not merely CARRIED (#2460): only what `worn_garments()`
-        # answers -- contents with coverage, filtered by the death record
-        # where one exists -- covers the body. A jacket taken off before
-        # dying, a looted coat, a newly-bought shirt: carried, not worn.
-        # A corpse keeps no worn stack, only the flat list, so the layer
-        # decides who shows: outermost (highest layer) wins a location,
-        # and a styled garment covers what it currently covers (#3578).
-        coverage_map = {}
+    def worn_stack(self):
+        """The corpse's garments as a worn stack, ``{location: [garments,
+        outermost first]}``, derived from the flat :meth:`worn_garments`
+        list: a corpse keeps no stack, so the layer orders each location
+        (highest layer outermost) and a styled garment sits at what it
+        currently covers. The shape the living body keeps natively and a
+        severed part keeps in its ledger, so one builder and one travel
+        rule serve all three (#3578, #3577)."""
+        stack = {}
         garments = sorted(self.worn_garments(),
-                          key=lambda it: getattr(it, "layer", 0) or 0)
+                          key=lambda it: getattr(it, "layer", 0) or 0,
+                          reverse=True)
         for item in garments:
             for location in item.get_current_coverage() or []:
-                coverage_map[location] = item
-        return coverage_map
+                stack.setdefault(location, []).append(item)
+        return stack
+
+    def _build_corpse_clothing_coverage_map(self):
+        """Body locations covered by what the corpse wears -- WORN, not
+        merely CARRIED (#2460): only what `worn_garments()` answers."""
+        from typeclasses.clothing_mixin import coverage_from_worn_stack
+        return coverage_from_worn_stack(self.worn_stack())
     
     def get_preserved_wound_descriptions(self, location=None):
         """

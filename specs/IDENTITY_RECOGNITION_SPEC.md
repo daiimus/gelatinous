@@ -2316,11 +2316,26 @@ hand ends up.
 >   `dress <part>` inserts by layer the way `wear_item` does; the first
 >   cut appended, which put the innermost garment first and made a helmet
 >   over a balaclava vanish (not described, and filtered from contents).
-> * **Three limits, recorded not fixed.**  No sever path but
->   `apply_sever_to_character` calls `detach_items_to_appendage`: a
->   living decapitation and `sever head from corpse` leave the head's
->   garments behind (#3577 covers the corpse half), so today a head is
->   dressed only through `dress`.  `dress` fits a garment to the part's
+> * **Garments travel on every door (#3577, 2026-09-17; owner: "Why
+>   would we ignore a living decapitation?").**  `detach_items_to_appendage`
+>   is now called by all three severance paths: `apply_sever_to_character`
+>   (limbs, as before), `spawn_severed_head_for_living` (the instant head
+>   of #343) and `spawn_severed_part_from_corpse` (`sever … from corpse`,
+>   head or limb — the typed `sever` command itself now goes through that
+>   helper, landing the part in the cutter's hands as it always did; it
+>   used to inline its own copy of the severance, the fourth door the
+>   review found).  The death transfer now always writes
+>   `worn_at_death`, even empty, so a naked corpse's pocketed garments do
+>   not read as worn and travel.  A corpse keeps no worn stack, so `Corpse.worn_stack()`
+>   derives one from its flat list (layer orders each location, styled
+>   coverage decides where a garment sits) and the travel function reads
+>   it without writing back — a garment that has left the corpse's
+>   contents is no longer worn by it.  The same travel rule as the limb
+>   door: a garment goes when every location it is worn at lies inside
+>   the severed cluster (`severed_cluster`, one computation shared with
+>   the corpse mutation); spanning garments stay.  The head arrives with
+>   its ledger outermost first and renders them at once.
+> * **Two limits, recorded not fixed.**  `dress` fits a garment to the part's
 >   `db.chain`, and a head's chain is `("head",)` — goggles, earrings, a
 >   collar are refused, and a balaclava registers at `head` only.  And
 >   a part has no `refresh_worn_coverage`, so a style changed while the

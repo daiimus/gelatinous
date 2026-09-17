@@ -27,11 +27,11 @@ Currently ships:
 
 from __future__ import annotations
 
-from evennia import Command, create_object
+from evennia import Command
 from evennia.utils import utils
 
 from typeclasses.corpse import Corpse
-from typeclasses.items import SeveredHead, apply_sever_to_corpse
+from typeclasses.items import SeveredHead, spawn_severed_part_from_corpse
 from world.combat.constants import (
     AUTOPSY_DC_BASIC,
     NDB_COMBAT_HANDLER,
@@ -656,34 +656,17 @@ class CmdSever(Command):
         condition = ORGAN_CONDITION_BY_DECAY.get(
             target.get_decay_stage(), "damaged"
         )
-        severed_list = list(target.db.severed_locations or ())
-        severed_list.append(location_arg)
-        target.db.severed_locations = severed_list
-
-        # Route ``head`` to the super-item typeclass so the head
-        # carries identity / decay / trimmed snapshot state forward
-        # for downstream autopsy and harvest.  All other severable
-        # locations spawn a plain Appendage.
-        if location_arg == "head":
-            appendage_typeclass = "typeclasses.items.SeveredHead"
-        else:
-            appendage_typeclass = "typeclasses.items.Appendage"
-
-        appendage = create_object(
-            appendage_typeclass,
-            key=f"{condition} {readable_name}",
-            location=caller,
+        # One severance for every door (#3577): the helper spawns the
+        # right typeclass, copies identity / decay / prose / snapshot,
+        # records the sever, mutates the corpse and moves the garments
+        # worn only inside the cluster onto the part. It lands in the
+        # cutter's hands, as this command always put it.
+        appendage = spawn_severed_part_from_corpse(
+            target, location_arg, location=caller,
         )
-        appendage.configure_from_sever(
-            location_name=location_arg, condition=condition, corpse=target,
-        )
-
-        # PR #198: mirror the appendage-side wound/longdesc overlay by
-        # clearing that prose off the corpse and synthesizing a stump
-        # wound at the canonical severed location.  Handles the
-        # head-cluster fan-out internally (head sever also clears
-        # face / neck / eyes / ears prose).
-        apply_sever_to_corpse(target, location_arg)
+        if appendage is None:
+            caller.msg(f"There is no {readable_name} left to sever.")
+            return
 
         caller.msg(
             f"You sever the {readable_name} from {corpse_display} — "

@@ -843,8 +843,11 @@ class DeathProgressionScript(DefaultScript):
         # below: that guard is now always falsy by this point, because
         # the loop above released every slot on its way out, and it was
         # what swallowed the write entirely.
-        if worn_at_death:
-            corpse.db.worn_at_death = worn_at_death
+        # Always, even empty: without a record `worn_garments()` falls
+        # back to contents-wide, and since #3577 what a corpse "wears"
+        # travels with a severed part -- a naked corpse must not hand a
+        # pocketed balaclava to its own severed head.
+        corpse.db.worn_at_death = list(worn_at_death or [])
 
         # Transfer worn clothing items
         if hasattr(character, 'worn_items') and character.worn_items:
