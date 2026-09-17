@@ -2335,12 +2335,23 @@ hand ends up.
 >   the severed cluster (`severed_cluster`, one computation shared with
 >   the corpse mutation); spanning garments stay.  The head arrives with
 >   its ledger outermost first and renders them at once.
-> * **Two limits, recorded not fixed.**  `dress` fits a garment to the part's
->   `db.chain`, and a head's chain is `("head",)` — goggles, earrings, a
->   collar are refused, and a balaclava registers at `head` only.  And
->   a part has no `refresh_worn_coverage`, so a style changed while the
->   garment is on the part does not re-derive the ledger; the ledger is
->   style-current as of severance or dressing.
+> * **Dressing fits the cluster the part carries (#3602, 2026-09-17;
+>   owner: "goggles being refused seems like a gap since its coverage
+>   locations would be on the head").**  `dress <part> in <garment>`
+>   used to fit the garment's coverage against `db.chain`, which is the
+>   limb downstream table -- no head entry, so a head's chain was
+>   `("head",)`, goggles were refused and a balaclava registered at
+>   `head` only.  It now fits against `severed_cluster(species,
+>   location_name)`, the same set the travel rule chose the part's
+>   garments by and the renderer walks: unchanged for limbs, the whole
+>   head cluster for a head, so goggles land at both eyes and a
+>   balaclava at hair and head.  `db.chain` is untouched -- the part's
+>   display name reads it, and a multi-location chain on a head would
+>   rename it.
+> * **One limit, recorded not fixed.**  A part has no
+>   `refresh_worn_coverage`, so a style changed while the garment is on
+>   the part does not re-derive the ledger; the ledger is style-current
+>   as of severance or dressing.
 > * **Whitespace.**  The composed prose joins the engine base (name +
 >   seeded `db.desc`) with a **blank line**, not a space —
 >   `f"{base}\n\n{body}"`.  The name still owns its header line (#236).
