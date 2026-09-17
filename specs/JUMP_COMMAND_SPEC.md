@@ -764,7 +764,13 @@ own `get_display_name`):
    roof is keyed "west".
 4. **The faller** gets one line of their own ("You plummet downward
    through open air."), and a dragged companion gets theirs ("You are
-   dragged down through open air.").
+   dragged down through open air.") — **on top of** each cell's full
+   description. Every step is a real move, so Evennia's arrival look
+   fires in every air cell exactly as it does for anyone entering a room:
+   the faller reads the cell's prose, its weather and whoever is hovering
+   in it on the way past. _(2026-09-16: seen in play and filed as #3585;
+   owner ruling: "I don't think that's a bug." Closed, by design. The
+   faller reads each cell as an arrival, not as a line.)_
 
 The landing then narrates once more, to the landing room and the faller,
 and a fall that runs out of column stops with the impasse message instead
