@@ -215,6 +215,28 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 >   the ammunition system on either answer without asking; the owner
 >   flagged this as something they may change their mind on.
 >
+>   **A deleted target is not a relationship (#3568 / #3569, 2026-09-17;
+>   owner: "shouldn't happen in actual combat but addressing it makes
+>   sense … one of those things that should be logged").**  The orphan
+>   sweep (`detect_and_remove_orphaned_combatants`) used to count a
+>   recorded `target_dbref` as a relationship whether or not the
+>   character still existed, so a combatant whose target was deleted
+>   mid-fight stayed "locked in combat" for as long as a third party kept
+>   the handler alive.  It now resolves the dbref; a target that no longer
+>   exists is cleared on the stored entry, a `TARGET_GONE` splattercast
+>   line and a `logger.log_warn` are emitted, and the combatant is told
+>   *after* the sweep has decided their fate -- "Your target is no longer
+>   there." if they are leaving with it, "… Choose a new target if you
+>   wish to continue fighting." if someone still holds them in.  A queued
+>   `advance` / `charge` / `disarm` reads its target through one resolver,
+>   `queued_action_target`, which tells a missing key (the player gave no
+>   target, old message) from a key holding `None` (the target was deleted
+>   between rounds: "Your target is no longer there.", logged); the sweep
+>   drops such an action when it clears the target so one deletion reports
+>   once.  `at_repeat` re-reads the round snapshot after the sweep every
+>   time (#2422).  The death path clears targets before a body is deleted,
+>   so the warning is a builder's or a system's deletion, never a kill.
+>
 > Both losses go through one more shared helper,
 > `opportunity_attack(attacker, target, *, immediate=False)`, which runs a
 > real `attack` against the RESOLVED target (#1002) — immediately for a

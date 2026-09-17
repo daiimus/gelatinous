@@ -27,6 +27,7 @@ from world.identity_utils import msg_room_identity
 
 from .dice import roll_with_disadvantage, standard_roll
 from .utils import (
+    queued_action_target,
     get_numeric_stat, initialize_proximity_ndb,
     is_wielding_ranged_weapon, clear_aim_state,
     get_character_by_dbref, get_display_name_safe,
@@ -202,10 +203,8 @@ def resolve_advance(handler, char, entry):
         entry: The character's combat entry dict.
     """
     splattercast = get_splattercast()
-    target = entry.get(DB_COMBAT_ACTION_TARGET)
-
+    target = queued_action_target(entry, char, "advance")
     if not target:
-        char.msg("|rNo target specified for advance action.|n")
         return
 
     # Check if target is still in combat
@@ -792,10 +791,8 @@ def resolve_charge(handler, char, entry, combatants_list):
         combatants_list: List of all combat entry dicts.
     """
     splattercast = get_splattercast()
-    target = entry.get(DB_COMBAT_ACTION_TARGET)
-
+    target = queued_action_target(entry, char, "charge")
     if not target:
-        char.msg("|rNo target specified for charge action.|n")
         return
 
     # Validate target is still in combat
@@ -852,7 +849,7 @@ def resolve_charge(handler, char, entry, combatants_list):
 
 
 def _release_grapple_for_charge(
-    handler, char, entry, combatants_list, splattercast, cross_room=False
+    handler, char, entry, target, combatants_list, splattercast, cross_room=False
 ):
     """
     Release grapple hold when a character charges, if applicable.
@@ -879,7 +876,8 @@ def _release_grapple_for_charge(
         elif combatant_entry.get(DB_CHAR) == grappled_victim:
             combatant_entry[DB_GRAPPLED_BY_DBREF] = None
 
-    target = entry.get(DB_COMBAT_ACTION_TARGET)
+    # `target` is the charge's resolved target, handed down by
+    # resolve_charge; the entry is not re-read here (#3569).
 
     if cross_room:
         # Cross-room: victim might be in different room now
@@ -948,7 +946,7 @@ def _resolve_charge_same_room(
 
         # Release grapple if holding someone
         _release_grapple_for_charge(
-            handler, char, entry, combatants_list, splattercast,
+            handler, char, entry, target, combatants_list, splattercast,
         )
 
         establish_proximity(char, target)
@@ -1118,7 +1116,7 @@ def _resolve_charge_cross_room(
 
         # Release grapple if holding someone
         _release_grapple_for_charge(
-            handler, char, entry, combatants_list, splattercast,
+            handler, char, entry, target, combatants_list, splattercast,
             cross_room=True,
         )
 
