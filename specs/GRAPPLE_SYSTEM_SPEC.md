@@ -130,7 +130,7 @@ Two rendering rules that came with the move, both player-visible:
 
 **Also still hardcoded, deliberately:** `establish_grapple` (`grappling.py:58`) returns a `(success, message)` tuple with its own string. It is imported at `world/combat/handler.py:49` and called by nothing in production — only the tests that pin its one-grappler-one-victim guard reach it — so it was left alone rather than converted.
 
-**Known drift — four other doors end a hold in their own words (recorded 2026-09-18, not fixed).** `_say_from_bank` is the only door onto the `release` bank, but it is not the only way a grapple ends. Four paths break one and write fixed prose inline, and none of them tells the **room** — bystanders watching a hold simply never learn it broke, which the bank path would have handled through `msg_room_identity`:
+**Known drift — four other doors end a hold in their own words (recorded 2026-09-18; filed as #3615).** `_say_from_bank` is the only door onto the `release` bank, but it is not the only way a grapple ends. Four paths break one and write fixed prose inline, and none of them tells the **room** — bystanders watching a hold simply never learn it broke, which the bank path would have handled through `msg_room_identity`:
 
 | door | prose | shape |
 |---|---|---|
