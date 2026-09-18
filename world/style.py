@@ -340,12 +340,17 @@ RUNGS = {
         # this word today.
         "scrubs"),
     2: ("vest", "waistcoat", "hoodie", "sweater", "jumper", "cardigan",
+        # A coverall is a MID layer -- over a shirt, under a jacket or a
+        # coat (owner ruling 2026-09-17, #3610). The prototype always
+        # said 2; the table said outer, and the ladder test had flagged
+        # the disagreement since the table landed.
+        "coverall",
         "glasses", "sunglasses", "shades", "mirrorshades", "mask",
         "respirator", "rebreather", "balaclava", "carrier", "lenses"),
     3: ("jacket", "windbreaker", "blazer", "harness", "hood", "slicker",
         "cut"),
     4: ("coat", "labcoat", "trench", "overcoat", "topcoat", "greatcoat",
-        "duster", "robe", "apron", "coverall", "parka",
+        "duster", "robe", "apron", "parka",
         "bathrobe", "cloak", "poncho",
         # Closed compounds the both-ends matcher cannot split, so they
         # belong in the table (#3425): "trenchcoat" is the layer spec's
