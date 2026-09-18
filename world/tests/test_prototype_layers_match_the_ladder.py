@@ -52,7 +52,11 @@ CORRECTED = {
 
 #: Deliberate overrides, left alone. `layer` explicitly beats the
 #: ladder, and these have a reason or no evidence either way.
-KEPT = {"COLORED_CONTACTS", "DUST_PONCHO", "KEVLAR_VEST"}
+KEPT = {"COLORED_CONTACTS", "DUST_PONCHO", "KEVLAR_VEST",
+        # The HIVE-MIND Mark VII coverall is a protective over-suit worn
+        # over everything: outerwear by design, while "coverall" itself
+        # is the mid-layer workwear rung (owner ruling 2026-09-17, #3610).
+        "BEE_HIVE_COVERALL"}
 
 
 def _layer_of(proto):

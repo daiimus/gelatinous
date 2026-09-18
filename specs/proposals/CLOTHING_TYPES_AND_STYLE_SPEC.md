@@ -66,15 +66,15 @@ says a compound the table should know belongs in the table — so this
 is a gap in the code, not a change of intent here. **Resolved
 2026-09-17, #3425:** both words are now in `RUNGS[4]`; the matcher is
 unchanged, and an unlisted compound such as "raincoat" still derives
-nothing, by design — the example now holds as written.)
+nothing, by design — the example now holds as written. And per the owner's ruling of the same day (#3610), `coverall` moved from the outer rung to rung 2: a mid layer over a shirt and under a jacket or coat, which is what the `WORK_COVERALLS` prototype had said since July.)
 
 | Layer | Register | Type keywords |
 |---|---|---|
 | **0 — skin** | worn under everything | bra, briefs, boxers, panties, thong, underwear, undershirt, socks, stockings, tights |
-| **1 — base** | the default; anything unlisted lands here | shirt, tee, t-shirt, blouse, henley, tank, trousers, pants, jeans, skirt, dress, jumpsuit, coveralls, scrubs, leggings |
-| **2 — mid** | over the base, under outerwear | vest, waistcoat, sweater, jumper, hoodie, cardigan, glasses, goggles, mask, respirator, balaclava |
+| **1 — base** | the default; anything unlisted lands here | shirt, tee, t-shirt, blouse, henley, tank, trousers, pants, jeans, skirt, dress, jumpsuit, scrubs, leggings |
+| **2 — mid** | over the base, under outerwear | vest, waistcoat, sweater, jumper, hoodie, cardigan, glasses, goggles, mask, respirator, balaclava, coverall |
 | **3 — shell** | jackets and the like | jacket, windbreaker, blazer, poncho, cut, harness, hood |
-| **4 — outer** | the big coats and the working over-layers | coat, longcoat, trenchcoat, overcoat, topcoat, greatcoat, duster, labcoat, slicker, apron, robe, bathrobe, coverall, parka |
+| **4 — outer** | the big coats and the working over-layers | coat, longcoat, trenchcoat, overcoat, topcoat, greatcoat, duster, labcoat, slicker, apron, robe, bathrobe, parka |
 | **5 — carried & fastened** | accessories, worn over everything | belt, tie, necktie, scarf, shawl, bandana, armband, badge, choker, boots, shoes, slippers, clogs, gloves, hat, cap, helmet |
 
 Two rules make the convention enforceable rather than advisory:
