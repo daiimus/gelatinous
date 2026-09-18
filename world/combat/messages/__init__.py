@@ -35,7 +35,7 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
     )
     # Identity-aware names for victim_msg (attacker seen by target)
     target_sees_attacker = (
-        capitalize_first(get_display_name_safe(attacker, target))
+        get_display_name_safe(attacker, target)
         if attacker
         else "Someone"
     )
@@ -174,6 +174,19 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
 
     def _apply_color(msg: str) -> str:
         """Wrap message in phase-appropriate color codes."""
+        if not msg:
+            return msg                      # nothing to colour (#3427)
+        if weapon_type == "grapple":
+            # A hold is not a wound: the grapple bank keeps the colours
+            # its hardcoded lines wore -- green for a hold taken, kept
+            # or released, yellow for one that failed (#3427).
+            if msg.startswith("|") and msg.endswith("|n"):
+                return msg
+            if phase in ("hit", "release", "escape_hit"):
+                return f"|g{msg}|n"
+            if phase in ("miss", "escape_miss"):
+                return f"|y{msg}|n"
+            return msg
         if phase in successful_hit_phases:
             if not (msg.startswith("|") and msg.endswith("|n")):
                 if phase in ("kill", "grapple_damage_kill"):
@@ -199,7 +212,11 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
         )
         try:
             formatted_msg = template_str.format(**fmt_kwargs)
-            final_messages[msg_key] = _apply_color(formatted_msg)
+            # Capitalisation is decided per occurrence (#3209, #3427): a
+            # name that opens the sentence takes its capital here, and a name
+            # mid-sentence keeps its article -- the way the observer path
+            # already decides it.
+            final_messages[msg_key] = _apply_color(capitalize_first(formatted_msg))
         except KeyError as e_key:
             final_messages[msg_key] = (
                 f"(Error: Missing placeholder {e_key} in template for '{msg_key}')"

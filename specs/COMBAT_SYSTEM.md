@@ -6,7 +6,7 @@
 > - **No cover system.** §Ranged Combat's "Cover System" has no implementation; nothing about the room, an object or terrain reaches the hit math (`world/combat/attack.py:422-470`).
 > - **No environmental modifier.** §Multi-Room Combat's "Environmental Factors" contradicts this spec's own "Planned Enhancements", which still lists weather/terrain/lighting as unbuilt.
 > - **`aim` grants no accuracy bonus.** The to-hit roll is `randint(1,20) + motorics × sight × manipulation` (`world/combat/attack.py:437`, `:469`) and never reads the aim state. Aim locks the target, posts a visible tell, enables cross-room fire along an aimed exit, and buys an opportunity attack if the target flees.
-> - **Grappling auto-yields only the grappler**, not both parties (`world/combat/grappling.py:353-356`, matching `GRAPPLE_SYSTEM_SPEC.md:91-92` and `:413-414`).
+> - **Grappling auto-yields only the grappler**, not both parties (`world/combat/grappling.py:410-413`, matching `GRAPPLE_SYSTEM_SPEC.md:91-92` and `:413-414`).
 > - **Resonance is unused by combat.** It appears under `world/combat/` only as `STAT_RESONANCE` (`constants.py:24`) and a descriptor-table entry (`:830`), and nowhere at all under `commands/combat/`; its live consumers are perception and recognition (`world/stealth.py:162`, `world/identity.py:1758`, `world/voice.py:485`, `world/radio.py:744`). There is no social-combat resolver.
 > - **Grit drives no health pool and no damage resistance.** There is no character-level hit-point stat; health is the organ model (`world/medical/core.py:15`) and mitigation is armor (`typeclasses/armor_mixin.py:320`).
 > - **No per-weapon accuracy stat.** Weapons carry `db.damage` and `db.is_ranged` only; every weapon lands on the attacker's motorics alone.
@@ -96,7 +96,7 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 
 #### **Restraint Mode** (Default)
 - **Auto-Yielding**: Both parties start in non-violent mode
-  > **⚠ Corrected 2026-09-11 — only the grappler auto-yields.** `world/combat/grappling.py:353-356` sets `char_entry[DB_IS_YIELDING] = True` for the grappler and deliberately leaves the victim non-yielding (the line that would yield them is commented out) so the victim auto-resists every turn. `GRAPPLE_SYSTEM_SPEC.md:91-92` and `:413-414` document the shipped behaviour correctly; this line is the outlier. A knock-on: `escape`'s "you switch to violent struggle" message only fires if the victim *was* yielding (`commands/combat/special_actions.py:248-252`), so in a default grapple it never appears. Both parties yielding is reachable, but only if the victim chooses it.
+  > **⚠ Corrected 2026-09-11 — only the grappler auto-yields.** `world/combat/grappling.py:410-413` sets `char_entry[DB_IS_YIELDING] = True` for the grappler and deliberately leaves the victim non-yielding (the line that would yield them is commented out) so the victim auto-resists every turn. `GRAPPLE_SYSTEM_SPEC.md:91-92` and `:413-414` document the shipped behaviour correctly; this line is the outlier. A knock-on: `escape`'s "you switch to violent struggle" message only fires if the victim *was* yielding (`commands/combat/special_actions.py:248-252`), so in a default grapple it never appears. Both parties yielding is reachable, but only if the victim chooses it.
 - **Gentle Hold**: Grappler maintains control without harm
 - **Peaceful Resolution**: Preferred method for conflicts
 - **De-escalation**: Allows for roleplay and negotiation

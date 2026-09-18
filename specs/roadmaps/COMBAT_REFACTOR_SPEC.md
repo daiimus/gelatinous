@@ -949,7 +949,7 @@ standardising: `attack.py`/`movement_resolution.py`/`actions.py` put the handler
 `process_attack(handler, attacker, target, attacker_entry, combatants_list)` —
 while `grappling.py` puts it **last**:
 `resolve_grapple_initiate(char_entry, combatants_list, handler)`
-(`grappling.py:296, :412, :529, :655`). `handler.py:1125-1140` holds four
+(`grappling.py:323, :455, :572, :698`). `handler.py:1125-1140` holds four
 one-line delegators that exist only to bridge the two orders. This priority is
 fully unbuilt.)*
 - **Handler Reference**: Some methods take `handler`, others access via `self`
