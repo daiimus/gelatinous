@@ -4,8 +4,8 @@
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - "Required Phases: initiate, hit, miss, kill" — **33 weapon files have no `initiate` phase** (knife, katana, machete, staff, sledgehammer, whip, chainsaw…).
-> - The colour scheme documented here is not what ships: `__init__.py:175-185` colours only hit/kill/miss, `initiate` gets none, and miss uses `|W` not `|w`.
-> - The third-person contract has moved on. `observer_msg` with `{attacker_name}`/`{target_name}` is now a **legacy fallback**; the shipped path is the identity-aware `observer_template` + `observer_char_refs` (`__init__.py:222-243`; re-measured 2026-09-12 the block sits at `__init__.py:212-245`). *This bullet is accurate: `observer_template` is built at `:212-240`, `observer_char_refs` at `:242-245`, and the live consumers pass `observer_msg` only as a fallback — `world/combat/attack.py` uses `observer_template` exclusively (`:618`, `:653`, `:698-717`), as does `resolve_auto_escape` (`world/combat/actions.py:623`, `:676`).*
+> - The colour scheme documented here is not what ships: `_apply_color` (`__init__.py:175-198`) colours hit/initiate/kill and miss only, and miss uses `|W` not `|w`. *Re-measured 2026-09-18 (#3427): `initiate` sits in `successful_hit_phases` (`:163-169`) and renders `|R` exactly like `hit`, so "initiate gets none" was wrong even in 2026-08; and the phase lists are no longer the whole story — `weapon_type == "grapple"` takes an override branch ahead of them (`:179-189`, see §Special Extended Phases), and an empty message string is now returned uncoloured (`:177-178`) instead of being wrapped into a bare `|R|n`.*
+> - The third-person contract has moved on. `observer_msg` with `{attacker_name}`/`{target_name}` is now a **legacy fallback**; the shipped path is the identity-aware `observer_template` + `observer_char_refs` (`__init__.py:222-243`; re-measured 2026-09-18 the block sits at `__init__.py:229-262`). *This bullet is accurate: `observer_template` is built at `:232-257`, `observer_char_refs` at `:259-262`, and the live consumers pass `observer_msg` only as a fallback — `world/combat/attack.py` uses `observer_template` exclusively (`:618`, `:653`, `:698-717`), as does `resolve_auto_escape` (`world/combat/actions.py:623`, `:676`).*
 > - `{damage}` is listed as a standard placeholder; 2 of 101 message files use it.
 
 **Version 1.0 - Message Refactoring Guidelines**
@@ -56,22 +56,35 @@ MESSAGES = {
 2. **`hit`** - Successful attack messages  
 3. **`miss`** - Failed attack messages
 4. **`kill`** - Fatal blow messages (optional, can fall back to hit)
-   - *Corrected 2026-09-12 — it does not fall back to `hit`.* A bank with no `kill` phase falls through to the loader's **generic** `fallback_template_set` (`world/combat/messages/__init__.py:66-71`, selected at `:105-107`), which renders `"You kill {target_name} with {item_name}."` from the phase name — not to that weapon's richer `hit` prose. `_handle_kill` (`world/combat/attack.py:684-717`) asks only for `"kill"` and has no second lookup. In practice this never fires, because all 99 non-grapple banks author a `kill` phase; but an author who omits one on the strength of this line gets the flat generic sentence, not graceful degradation. (This is the "is the phase genuinely optional?" half of **#1513**: optional, yes — but the fallback is not what the parenthesis promises.)
+   - *Corrected 2026-09-12 — it does not fall back to `hit`.* A bank with no `kill` phase falls through to the loader's **generic** `fallback_template_set` (`world/combat/messages/__init__.py:66-71`, selected at `:107-108`), which renders `"You kill {target_name} with {item_name}."` from the phase name — not to that weapon's richer `hit` prose. `_handle_kill` (`world/combat/attack.py:684-717`) asks only for `"kill"` and has no second lookup. In practice this never fires, because all 99 non-grapple banks author a `kill` phase; but an author who omits one on the strength of this line gets the flat generic sentence, not graceful degradation. (This is the "is the phase genuinely optional?" half of **#1513**: optional, yes — but the fallback is not what the parenthesis promises.)
 
 ### Special Extended Phases (for specific weapons):
 - **`escape_hit`** / **`escape_miss`** - Grappling escape attempts
 - **`release`** - Voluntary release of grapples
 - **`grapple_damage_hit`** / **`grapple_damage_miss`** / **`grapple_damage_kill`** - Damage while grappling
 
-> **Reachability re-measured 2026-09-12 — 72 of `grapple.py`'s 76 authored variants are unreachable.** `get_combat_message` is asked for `grapple` phases at six call sites, and only two of them run in production:
+> **Reachability re-measured 2026-09-18 (#3427) — 39 of `grapple.py`'s 76 authored variants now reach players.** This supersedes the 2026-09-12 measurement ("72 of 76 unreachable"): the wiring that measurement called for shipped, and what remains unreached is one unbuilt mechanic rather than a plumbing gap. `get_combat_message` is now asked for `grapple` phases at three production call sites, and all three run.
 >
-> - **Live:** `escape_hit` / `escape_miss` from `resolve_auto_escape` (`world/combat/actions.py:623`, `:676`), which the round loop calls for anyone grappled (`world/combat/handler.py:682`). Reachable variants: 2 + 2.
-> - **Never requested since #3391 (2026-09-15):** `hit` / `miss`. They were requested only by `resolve_grapple_attempt`, reached only through the dict-shaped `handler._dispatch_dict_action`, which no production code ever fed — the grapple/escape commands set strings. That door, both its resolvers and the `escape_grapple` constant are deleted; `escape_hit` / `escape_miss` stay live in `resolve_auto_escape`. Whether the `hit`/`miss` banks get wired or retired is #3427's question.
-> - **Never requested at all:** `release` (2 variants), `grapple_damage_hit` (30), `grapple_damage_miss` (5), `grapple_damage_kill` (2).
+> | phase | variants | reaches players | requested by |
+> |---|---|---|---|
+> | `hit` | 30 | ✅ new 2026-09-18 | `_say_from_bank(char, target, "hit")` on a won roll in `resolve_grapple_initiate` (`world/combat/grappling.py:421`) |
+> | `miss` | 3 | ✅ new 2026-09-18 | `_say_from_bank(char, target, "miss")` on a lost roll, same resolver (`:427`) |
+> | `release` | 2 | ✅ new 2026-09-18 | `_say_from_bank(char, grappling_target, "release")` in `resolve_release_grapple` (`:735`) |
+> | `escape_hit` | 2 | ✅ unchanged | `resolve_auto_escape` (`world/combat/actions.py:316`), which the round loop runs for anyone grappled (`world/combat/handler.py:701`) |
+> | `escape_miss` | 2 | ✅ unchanged | `resolve_auto_escape` (`world/combat/actions.py:369`) |
+> | `grapple_damage_hit` | 30 | ❌ | nothing |
+> | `grapple_damage_miss` | 5 | ❌ | nothing |
+> | `grapple_damage_kill` | 2 | ❌ | nothing |
 >
-> The live resolvers in `world/combat/grappling.py` never call `get_combat_message`; they hardcode their prose — `"|gYou successfully grapple …|n"` (`grappling.py:358-368`) and `"|gYou release your grapple on …|n"` (`:690-698`). Unreachable total: `hit` 30 + `miss` 3 + `release` 2 + `grapple_damage_*` 37 = **72 of 76**.
+> **Live: 39. Unreached: 37 — all of them `grapple_damage_*`.** No code path deals damage *for* a grapple, so there is no beat for those three banks to narrate. They are pending content behind an unbuilt mechanic, not a wiring gap: the owner question "was a grapple-damage exchange ever meant to ship?" is open on **#3285** (`specs/GRAPPLE_SYSTEM_SPEC.md` §Grapple Damage System carries the verified not-built note). Nothing should be hooked up to them until that is answered.
 >
-> Most of this is already on record and should not be re-filed: `specs/GRAPPLE_SYSTEM_SPEC.md:169` carries the verified note that **grapple damage was never built**, and the owner question "was a grapple-damage exchange ever meant to ship?" is open on **#3285**. The `release` bank is covered by neither — its code path *does* ship, just with hardcoded prose — and it is the only part of this that resembles **#2823**.
+> **Delivery.** `_say_from_bank(actor, target, phase)` (`world/combat/grappling.py:296`) is the single door for the three new phases and it delivers exactly as the weapon banks do: `attacker_msg` to the actor, `victim_msg` to the target, and `observer_template` + `observer_char_refs` through `msg_room_identity` with the pair excluded — so every bystander sees the pair rendered through their own recognition state instead of a pre-baked name. It passes `hit_location` **for the `hit` phase only** — `select_hit_location(target, attacker=actor)` (`world/medical/utils.py:120`), the same anatomy-weighted, armour-aware draw an attack makes, the attacker reading the target's weak points — because `hit` is the one reachable grapple phase that spends the placeholder. `miss` and `release` are asked for without it and none of their five variants uses it, as with the escape call sites in `world/combat/actions.py`. There is no `or "arm"` fallback and no placeholder default dict: both were dead and were deleted on 2026-09-18 (#3427), so an unpassed `hit_location` would surface as the loader's `(Error: Missing placeholder …)` rather than a silent limb — which is the contract the other banks live under (`specs/archive/WEAPON_MESSAGE_CONVERSION_SPEC.md`, #1583).
+>
+> Two second-order, player-visible consequences of routing through the loader:
+> - **Colour stayed the grapple's own** (re-measured 2026-09-18, after review). The deleted hardcoded lines were green on success (`|g`) and yellow on failure (`|y`), and the loader now preserves that rather than repainting the hold in the attack palette: `_apply_color` takes a `weapon_type == "grapple"` branch *ahead* of the phase lists (`world/combat/messages/__init__.py:179-189`) — `hit`, `release` and `escape_hit` → `|g`; `miss` and `escape_miss` → `|y`; anything else in the bank uncoloured. A hold is not a wound, and the consensual uncontested hold that still writes its own lines beside this one wears the same green. *(An intermediate version of #3427 let these phases fall through to the attack palette — `hit` → `|R`, `miss` → `|W`, `release` bare. That is not what ships; ignore any note describing it.)* Two side effects worth knowing: `escape_hit` / `escape_miss` are **coloured for the first time** — they had shipped bare since #3391, because their phase names were in neither colour list — and an empty message string is now returned untouched (`:177-178`) instead of becoming a bare `"|R|n"`.
+> - **`{hit_location}` is always the TARGET's location, in every audience's line** — and as of 2026-09-18 every `hit` variant spends it that way. Three variants misused it and all three were corrected in #3427: one used it for a face on the attacker and observer lines (now the literal word `face`, `world/combat/messages/grapple.py:125`, `:127`, matching the victim line that already said "their face"); and two spent a target-side draw on the *attacker's own* limbs, `"locking your {hit_location}s around {target_name}'s {hit_location}"` (`grapple.py:10`) and `"Like a vise, your/{attacker_name}'s {hit_location}s clamp around …"` (`:70-72`), which rendered as "your left arms" — both now say `arms` outright (`grapple.py:10-12`, `:70-72`), keeping the target-side `{hit_location}` only where it describes the target. **No `hit` variant pluralises the placeholder any more**; the survivors all read `{target_name}'s {hit_location}` or `your {hit_location}`. The 30 unreached `grapple_damage_hit` variants are *not* clean — `:226` and `:311` still put `{hit_location}` on the attacker's own arm/shoulder — but that bank narrates an unbuilt mechanic (#3285) and was left alone.
+>
+> **What deliberately keeps bespoke prose**, because no bank phase carries its meaning: the consensual uncontested hold (`grappling.py:371-390` — the `hit` bank is all violent shoot-ins and vises, and a trusted `grab` involves no contest and no roll); `resolve_grapple_join` (`:457`) and `resolve_grapple_takeover` (`:574`), whose beats are three-party and name a *current grappler* or a *third victim* that a two-party bank line has no slot for. `establish_grapple` (`grappling.py:58`) also still returns a hardcoded string — it is imported at `world/combat/handler.py:49` and called by nothing in production; only tests exercise it, to pin its one-grappler-one-victim guard.
 
 ### Standard Placeholders:
 - **`{attacker_name}`** - Attacker's display name (for victim/observer messages)
@@ -115,6 +128,14 @@ MESSAGES = {
 ```
 "{attacker_name} meticulously lines up the shot with the anti-material rifle, knowing a single round can vaporize {target_name}."
 ```
+
+#### Name Capitalisation (all banks)
+
+> **Recorded 2026-09-18 (#3427) — this is bank-wide, not a grapple detail.** Templates are handed **bare** names and the *rendered sentence* is capitalised once, so the sentence decides the capital instead of the placeholder. `get_combat_message` builds `target_sees_attacker` with no capitalisation of its own (`world/combat/messages/__init__.py:37-41`) and passes each formatted `attacker_msg` / `victim_msg` / `observer_msg` through `capitalize_first` before colouring (`:219`). This is the rule the identity-aware observer path has followed since #3209; the three audiences now agree.
+>
+> **What this replaced.** The accessor used to force-capitalise `{attacker_name}` in *every* victim line and never capitalised a `{target_name}` that opened an attacker line. A multi-word sdesc therefore took a capital mid-sentence — "You stumble as **A** lanky man ties you up!" — while an attacker line that opened on the target began lowercase — "a lanky man finds themselves trapped in your unyielding grapple!". Both are fixed for all 100 banks at once.
+>
+> **What it means for authors.** A name may sit anywhere in a line. An sdesc keeps its lowercase article mid-sentence ("as a lanky man ties you up") and takes the capital only when it opens the sentence ("A lanky man ties you up"). **Proper names are unaffected** — `capitalize_first` uppercases the first *visible* letter and one that is already a capital stays as it is; it also steps over colour markup, so a pre-coloured line is not silently promoted from `|r` to `|R` (`world/grammar.py:754-784`, #2207).
 
 ## Tone and Style Guidelines
 
@@ -288,6 +309,8 @@ The combat message system now automatically applies contextual colors based on m
 - **Initiate Messages**: `|R{message}|n` (Regular red for threat establishment)
 - **Miss Messages**: `|w{message}|n` (White for failed attempts)
 - **Other Messages**: No automatic coloring (neutral phases)
+
+> **Amended 2026-09-18 (#3427) — the table above describes the *attack* palette, which is no longer the only one.** `_apply_color` (`world/combat/messages/__init__.py:175-198`) now checks two things before the phase lists: an **empty** message is returned as-is (`:177-178`), where it previously became the bare colour pair `"|R|n"`; and `weapon_type == "grapple"` takes its own branch (`:179-189`) — `hit` / `release` / `escape_hit` → `|g`, `miss` / `escape_miss` → `|y`, everything else uncoloured. A grapple is a hold, not a wound, so it keeps the green/yellow its hardcoded lines wore and its bespoke consensual-hold prose still wears. `escape_hit` / `escape_miss` are coloured by this for the first time (bare since #3391). The pre-coloured-template bypass (a message already wrapped `|…`…`|n`) applies in both branches.
 
 #### Benefits:
 - **Threat Escalation**: Visual progression from initiate → hit → kill

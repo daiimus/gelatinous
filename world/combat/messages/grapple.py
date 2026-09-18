@@ -7,7 +7,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} lunges, wrapping {target_name} in a crushing embrace."
         },
         {
-            "attacker_msg": "You shoot in, locking your {hit_location}s around {target_name}'s {hit_location}!",
+            "attacker_msg": "You shoot in, locking your arms around {target_name}'s {hit_location}!",
             "victim_msg": "{attacker_name} shoots in, locking their arms around your {hit_location}!",
             "observer_msg": "{attacker_name} shoots in, locking their arms around {target_name}'s {hit_location}."
         },
@@ -67,9 +67,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} explodes forward, entangling {target_name} before they can react."
         },
         {
-            "attacker_msg": "Like a vise, your {hit_location}s clamp around {target_name}!",
-            "victim_msg": "Like a vise, {attacker_name}'s {hit_location}s clamp around you!",
-            "observer_msg": "Like a vise, {attacker_name}'s {hit_location}s clamp around {target_name}."
+            "attacker_msg": "Like a vise, your arms clamp around {target_name}!",
+            "victim_msg": "Like a vise, {attacker_name}'s arms clamp around you!",
+            "observer_msg": "Like a vise, {attacker_name}'s arms clamp around {target_name}."
         },
         {
             "attacker_msg": "You drag {target_name} into a messy, desperate clinch!",
@@ -122,9 +122,9 @@ MESSAGES = {
             "observer_msg": "A sudden shift, and {attacker_name} has {target_name} all tied up."
         },
         {
-            "attacker_msg": "You grab hold of {target_name}, a look of grim determination on your {hit_location}!",
+            "attacker_msg": "You grab hold of {target_name}, a look of grim determination on your face!",
             "victim_msg": "{attacker_name} grabs hold of you, a look of grim determination on their face!",
-            "observer_msg": "{attacker_name} grabs hold of {target_name}, a look of grim determination on their {hit_location}."
+            "observer_msg": "{attacker_name} grabs hold of {target_name}, a look of grim determination on their face."
         },
         {
             "attacker_msg": "{target_name} finds themselves trapped in your unyielding grapple!",
