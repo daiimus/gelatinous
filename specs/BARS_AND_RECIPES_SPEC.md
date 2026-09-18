@@ -400,6 +400,20 @@ lands is different.
  "proto": "snail_skewer", "price": 3, "craft": "lays six on the grill-pan…"}
 ```
 
+> **Note 2026-09-18 (#3413) — `craft` here, `serve_line` at a shop counter.**
+> A plated dish served from a BAR board uses the menu entry's `craft` string
+> (`world/bar.py`); it never reaches `world/shop/service.py hand_over`, so an
+> item's `serve_line` has no effect on this path. The same prototype sold
+> over a SHOP counter (`buy`, or a spoken order at a shelf/board post) does
+> reach `hand_over`, which prefers the item's `serve_line` over the counter
+> style's gesture. The **snailery is served entirely by the BAR path**:
+> build 137 (#2342) turned counter #8119 into a `BarCounter` with no
+> prototype inventory, so `snail_skewer`, `snail_jar` and the kuro are
+> plated with `SNAILERY_MENU`'s `craft` prose and never reach `hand_over` at
+> all. Those dishes carry no `serve_line`, and should not: `serve_line` is a
+> shop-counter mechanism and does nothing here — authored on a dish only a
+> bar serves, it is dead prose. See `SHOP_SYSTEM_SPEC.md` §8.
+
 This is what makes a **restaurant** expressible. Before it, a bar could pour but
 not feed: the serve path always ended in `make_drink_from_recipe`, and the other
 half — free `snacks` (§10) — are bottomless, priced at nothing and never enter

@@ -62,10 +62,6 @@ class FoodCart(Seating, ShopContainer):
         self.db.owner = None
         self.db.integrate = True
         self.db.integration_priority = 8
-        self.db.purchase_msg_buyer = ("You count out {price}, and the butcher "
-                                      "sets {item} on the board.")
-        self.db.purchase_msg_room = ("{buyer} counts chits onto the cart, and "
-                                     "the butcher sets {item} on the board.")
         # Seating: the stools ARE the cart (BarCounter pattern) — `sit at
         # cart` takes one of these slots.
         self.db.postures = ("sitting",)

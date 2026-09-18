@@ -193,15 +193,32 @@ def hand_over(by, patron, item, price, gesture=None):
     """The final gesture. A manned counter is never self-service — the
     thing reaches the buyer through somebody's hands."""
     from world.grammar import with_article
-    gesture = gesture or STYLES["shelf"]["gesture"]
+    # The ITEM knows how it is served (#3413): a bowl is ladled, a bun
+    # is tonged, whoever's hands it passes through. Its `serve_line`
+    # wins; the counter style's gesture is for everything without one.
+    style_gesture = gesture or STYLES["shelf"]["gesture"]
+    own = getattr(getattr(item, "db", None), "serve_line", None)
+    if not isinstance(own, str) or not own.strip():
+        own = None                      # only an authored line counts
     handle = None
     try:
         handle = by._address_handle(patron)
     except Exception:  # noqa: BLE001 — a missing handle is not a failed sale
         pass
-    by.execute_cmd("emote " + gesture.format(
-        item=with_article(item.key), target=handle or "the customer",
-        price=price))
+    fields = dict(item=with_article(item.key), target=handle or "the customer",
+                  price=price)
+    try:
+        text = (own or style_gesture).format(**fields)
+    except (KeyError, IndexError, ValueError) as err:
+        # A malformed authored line is not a failed sale either: the
+        # buyer has already paid and holds the item. The counter's own
+        # gesture prints instead, and the log says why, once per sale.
+        from evennia.utils import logger
+        logger.log_warn(
+            f"shop: serve_line on {item.key!r} could not be rendered "
+            f"({err!r}); using the counter gesture instead.")
+        text = style_gesture.format(**fields)
+    by.execute_cmd("emote " + text)
 
 
 def serve_from_board_cart(post, speech, patron, by, addressed=False):

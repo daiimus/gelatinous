@@ -111,13 +111,11 @@ class CmdBuy(Command):
         keeper = self._find_keeper(caller, container)
         if keeper:
             caller.msg(f"You pay {format_currency(price)}.")
-            # The keeper's own gesture when they have one; else the job's.
-            serve = getattr(keeper, "serve_purchase", None)
-            if callable(serve):
-                serve(caller, item, price)
-            else:
-                from world.shop.service import hand_over
-                hand_over(keeper, caller, item, price)
+            # One door for serve flavour (#3413): the item's own line if
+            # it has one, else the counter style's gesture. Nothing on
+            # the keeper, nothing on the counter.
+            from world.shop.service import hand_over
+            hand_over(keeper, caller, item, price)
             # NO self-service notice here. `_notify_merchant` says
             # "<buyer> bought <item> OFF THE SHELF", which is the whole
             # point of it -- it exists to tell a merchant standing
@@ -133,9 +131,12 @@ class CmdBuy(Command):
             # Vantomme, Auntie Lin, Nonna Escallier).
             return
 
-        # Get custom messages from shop or use defaults
-        msg_buyer = container.db.purchase_msg_buyer or "You purchase {item} for {price}."
-        msg_room = container.db.purchase_msg_room or "{buyer} purchases {item} from {shop}."
+        # Self-service lines (unmanned shelves only). The counter used to
+        # carry two authored overrides for these; on every staffed
+        # counter they could never print, so they are retired and serve
+        # flavour lives on the item instead (#3413).
+        msg_buyer = "You purchase {item} for {price}."
+        msg_room = "{buyer} purchases {item} from {shop}."
         
         # Format messages with placeholders
         format_data = {
