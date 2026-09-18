@@ -63,9 +63,6 @@ class ShopContainer(DefaultObject):
         # the fast path; a typeclass-path scan is not)
         self.tags.add("till", category="souls")
         
-        # Purchase messages (support {buyer}, {item}, {price}, {shop} placeholders)
-        self.db.purchase_msg_buyer = "You purchase {item} for {price}."
-        self.db.purchase_msg_room = "{buyer} purchases {item} from {shop}."
         
         # Lock down the container
         self.locks.add("get:false()")  # Can't pick up the container itself

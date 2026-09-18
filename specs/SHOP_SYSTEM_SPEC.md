@@ -107,8 +107,22 @@ self.db.markup_percent = 0        # `add_prototype(price=None)` derives the
 self.db.is_infinite = True        # Infinite stock enabled
 self.db.shop_name = "Shop"        # Display name
 self.db.container_type = "shelf"   # Container type
-self.db.purchase_msg_buyer = "You purchase {item} for {price}."
-self.db.purchase_msg_room = "{buyer} purchases {item} from {shop}."
+#
+# RETIRED 2026-09-18 (#3413) — this block used to end with:
+#     self.db.purchase_msg_buyer = "You purchase {item} for {price}."
+#     self.db.purchase_msg_room  = "{buyer} purchases {item} from {shop}."
+# `ShopContainer.at_object_creation` no longer seeds them, `FoodCart` no
+# longer seeds its own pair, builds 048/066 no longer author theirs, and
+# `commands/shop.py` no longer reads them; they are stripped from the live
+# objects by build 165
+# (`scripts/builds/165_retire_counter_purchase_lines.py` — one-shot,
+# idempotent, run once on the live DB after the merge, 2026-09-18).
+# They were dead on every MANNED counter — the buy command hands the item
+# over through the keeper and returns before it ever reaches these lines.
+# The one window where a pair could still print — a `TAKES_BUY` counter
+# whose keeper is off shift — is the known cost recorded in the 2026-09-18
+# addendum. Serve flavour now lives on the ITEM: see
+# "8. Serve Flavour — `serve_line` on the item" below.
 ```
 
 **Key Methods:**
@@ -201,7 +215,9 @@ if hasattr(target, 'validate_attack_target'):
 **Features:**
 - Fuzzy matching by item name
 - Matches by display name (handles cans via `get_display_name_for_prototype`)
-- Customizable purchase messages via container attributes
+- Serve flavour through the keeper's hand-over: the item's own `serve_line`
+  if it has one, else the counter style's gesture (§8). The container's
+  `purchase_msg_buyer`/`purchase_msg_room` are RETIRED — #3413, 2026-09-18
 - Auto-wields items in hands if available
 
 **Syntax:**
@@ -211,14 +227,33 @@ buy spraypaint from shop
 buy solvent from shop
 ```
 
-**Purchase Flow:**
-1. Parse `buy <item> from <container>` syntax
-2. Find container in room
-3. Call `container._find_prototype_key(item_name)` - uses display names
-4. Call `container.purchase_item(caller, prototype_key)`
-5. Call `_give_item_to_buyer(buyer, item)` - wields if hands empty
-6. Send customizable messages from container.db.purchase_msg_*
-7. Notify merchant if present via `_notify_merchant()`
+**Purchase Flow** (rewritten 2026-09-18, #3413 — the old steps 5-7 were stale):
+1. Refuse if the buyer is channeling (`refuse_if_channeling`, #3376)
+2. Parse `buy <item> from <container>`; find the container in the room and
+   verify it is a `ShopContainer`
+3. Refuse if the fixture does not take the typed door
+   (`TAKES_BUY = False` — `FoodCart` follows the bar model, #3375; the
+   refusal names the keeper if one is working it)
+4. `container._find_prototype_key(item_name)` — the buyer's own `[001]`
+   numbering, then exact/fuzzy display-name match
+5. `container.purchase_item(caller, prototype_key)` — spawns the item,
+   deducts tokens, credits the till, and places the item (hand placement
+   happens INSIDE `purchase_item`, or the fixture's override lands it on
+   the counter/board). There is no `_give_item_to_buyer` step
+6. **Manned counter** — `_find_keeper` (`world.souls.posts.keeper_on_duty`,
+   and the keeper must be in the buyer's room): the buyer is told
+   `You pay <price>.` and the handover is emoted by the keeper through
+   `world.shop.service.hand_over(keeper, caller, item, price)` — the item's
+   `serve_line` if it has one, else the shelf gesture (§8). The command then
+   RETURNS: no self-service lines, and deliberately no `_notify_merchant`,
+   whose "bought <item> off the shelf" notice would contradict the keeper's
+   own emote (and, for an LLM keeper, write that contradiction into the
+   observation buffer their next turn reads)
+7. **Unmanned shelf** — the two FIXED self-service lines, no longer
+   overridable: `"You purchase {item} for {price}."` to the buyer, and
+   `"{buyer} purchases {item} from {shop}."` to the room through
+   `msg_room_identity` (per-observer, so `{buyer}` resolves to whatever each
+   onlooker recognises). Then `_notify_merchant()`
 
 **Display Name Matching:**
 ```python
@@ -319,42 +354,134 @@ def parse_currency(text):
     # Implementation...
 ```
 
-### 8. Customizable Purchase Messages
+### 8. Serve Flavour — `serve_line` on the item
 
-**Container Attributes:**
+> **Rewritten 2026-09-18 (#3413).** This section used to document
+> "Customizable Purchase Messages": two authored attributes on the COUNTER,
+> `purchase_msg_buyer` and `purchase_msg_room`. They are **retired**. Owner
+> ruling, in his words: *"custom serve messages are awesome, but should
+> probably live on the food/drink/consumable not the counter"*, and
+> *"retirement makes sense. We should standardize"*.
+
+**Why they went.** Both branches of `CmdBuy` are exhaustive: if a keeper is
+on duty in the room the command emotes the handover and returns, and only
+the no-keeper branch ever reached the `purchase_msg_*` reads. So whenever a
+counter was MANNED — Lin's noodle cart with Lin behind it, the butcher's
+cart — the authored lines could not print, no matter how good they were.
+(The Escallier snailery counter carried an authored pair too, from build
+066, but build 137 made it a `BarCounter` with no shelf, so its pair had
+stopped being reachable by either branch.) The one window that DID print —
+Lin's cart with her off shift — is recorded as a known cost in the
+2026-09-18 addendum. The counter is the wrong object to hang serve prose on
+anyway: the same bowl is ladled the same way whoever is standing there, and
+one counter sells four different dishes.
+
+**The standard (one door for serve flavour):**
+
+1. A manned counter is never self-service. The sale ends in
+   `world.shop.service.hand_over(by, patron, item, price, gesture=None)`,
+   which emotes in the KEEPER's voice.
+2. `hand_over` prefers, in order:
+   - the item's own **`serve_line`** (an authored non-empty string on
+     `item.db.serve_line`),
+   - else the `gesture` the caller passed — the counter STYLE's gesture from
+     `STYLES` in `world/shop/service.py` (`shelf` presses it into your hand
+     and sweeps the price into the till; `board` sets it on the board),
+   - else `STYLES["shelf"]["gesture"]`.
+3. A consumable prototype may carry **ONE optional `serve_line`**. That is
+   the whole customisation surface. The per-keeper `serve_purchase` hook
+   that `CmdBuy` used to duck-type for is **gone** — no keeper in the repo
+   ever defined one — so there is exactly one place serve flavour can come
+   from.
+
+**Both doors reach it:**
+
+| door | call | gesture passed |
+|---|---|---|
+| typed `buy … from …` at a manned counter (`commands/shop.py`) | `hand_over(keeper, caller, item, price)` | none → shelf default |
+| spoken order at a shelf-styled counter (`serve_from_shelf` → `_fulfil_from_shelf`) | `hand_over(by, patron, item, price, STYLES["shelf"]["gesture"])` | shelf |
+| spoken order at a board-styled cart (`serve_from_board_cart`) | same, with `STYLES["board"]["gesture"]` | board |
+
+In all three the item's `serve_line` wins when it has one.
+
+**Writing a `serve_line`.** It is an **emote**, in the keeper's voice, and it
+is run as `emote <line>` — so it starts mid-sentence, after the actor's name,
+and never names the keeper itself:
+
 ```python
-self.db.purchase_msg_buyer = "You purchase {item} for {price}."
-self.db.purchase_msg_room = "{buyer} purchases {item} from {shop}."
+("serve_line", "ladles {item} up out of the broth pot and passes it across "
+               "to {target}, {price} into the tin."),
 ```
 
-**Available Placeholders:**
-- `{buyer}` - Buyer's display name
-- `{item}` - Item's display name
-- `{price}` - Formatted price (e.g., "50₮")
-- `{shop}` - Shop container's display name
-
-**Customization Example:**
 ```python
-@py shop = me.search("shop")
-@py shop.db.purchase_msg_buyer = "|gAh, excellent choice!|n You purchase {item} for {price}."
-@py shop.db.purchase_msg_room = "{buyer} haggles with Juan before purchasing {item}."
+# Same thing on a live object (owner's example):
+@py dish.db.serve_line = "ladles {item} up and passes it across to {target}, {price} into the tin."
 ```
 
-**Implementation** (`commands/shop.py`):
-```python
-msg_buyer = container.db.purchase_msg_buyer or "You purchase {item} for {price}."
-msg_room = container.db.purchase_msg_room or "{buyer} purchases {item} from {shop}."
+**Placeholders — exactly three, supplied by `hand_over`:**
 
-format_data = {
-    "buyer": caller.get_display_name(caller),
-    "item": item.get_display_name(caller),
-    "price": format_currency(price),
-    "shop": container.get_display_name(caller)
-}
+- `{item}` — `with_article(item.key)` ("a bowl of noodles")
+- `{target}` — the keeper's own address handle for the buyer (perceived
+  identity: "the tall woman", a known name); falls back to `"the customer"`
+- `{price}` — the **bare integer** token count. Note it is NOT run through
+  `format_currency`, so there is no `₮` glyph: write "`{price} into the tin`",
+  not a line where a naked number has to stand on its own.
 
-caller.msg(msg_buyer.format(**format_data))
-caller.location.msg_contents(msg_room.format(**format_data), exclude=caller)
-```
+Two cautions, both real:
+
+- Any OTHER `{placeholder}`, or a stray brace, fails to render — but this is
+  **caught**. `hand_over` wraps the `.format()` in
+  `try/except (KeyError, IndexError, ValueError)`, so a malformed line no
+  longer raises after the buyer has already paid. The counter style's
+  gesture prints in its place, and the failure is logged once per sale with
+  `logger.log_warn` ("shop: serve_line on … could not be rendered"), which
+  lands in the container log. The sale always completes; what you lose is
+  the authored prose, silently, unless you read the log. Stick to the three.
+- Only a non-empty string counts as authored; anything else falls through to
+  the style gesture.
+
+**Four dishes carry lines today** (`world/prototypes.py`):
+`pessoa_noodles`, `pessoa_bun`, `pessoa_skewer`, `pessoa_tea` — all four
+Auntie Lin's, sold over her shelf-styled `ShopContainer`. Nothing else in
+the repo carries one, and the two obvious candidates deliberately do not:
+
+- The **Escallier snailery is not a shop counter**. Build 137 (#2342)
+  turned counter #8119 into a `typeclasses.bar.BarCounter` with no
+  prototype inventory; `snail_skewer`, `snail_jar` and the kuro are plated
+  off the bar's board using the `craft` strings in `SNAILERY_MENU`
+  (`scripts/builds/137_the_snailery_serves.py`). That path never reaches
+  `hand_over`, so a `serve_line` there would be dead prose. Those dishes
+  carry none.
+- The **butcher's five dishes** (`world.food.FOOD_RECIPES`:
+  `rat_tail_stew`, `grilled_rat_chops`, `roast_rat_haunch`,
+  `butchers_breakfast`, `mystery_skewer`) carry none either. The board
+  style's gesture already says exactly what a board line would say — "sets
+  {item} on the board and sweeps {price} into the till" — so all five take
+  it, and the cart speaks with one voice instead of some dishes sounding
+  different from the rest.
+
+Everything else on every shelf serves with the counter style's gesture,
+which is the intended default — a `serve_line` is for a thing with a
+distinctive handover, not for stock.
+
+**Self-service lines are no longer customisable.** The unmanned-shelf branch
+prints fixed text (`"You purchase {item} for {price}."` /
+`"{buyer} purchases {item} from {shop}."`). A vending-tier shelf has nobody
+to have a manner, so there is nothing to author.
+
+**Known residual (open).** `CmdBuy`'s keeper branch passes no style, so an
+item with **no** `serve_line`, bought with the typed command at a
+**board-styled** counter, would be handed over with the SHELF gesture while
+the same keeper serving the same dish by spoken order uses the BOARD gesture.
+Nothing masks it: every dish on the only board-styled counter is line-less,
+and Lin's four lines sit on a shelf-styled counter, where the command's
+default and the post's style are the same anyway. It stays latent only
+because the only board-styled role is
+`butcher`, whose counter is a `FoodCart` with `TAKES_BUY = False`, so the
+typed door is refused there before any coin moves (#3375). It becomes
+reachable the moment a board-styled keeper stands a plain `ShopContainer`.
+The fix, when it is wanted, is for `CmdBuy` to read the keeper's post style
+rather than defaulting.
 
 ## Core Components - Phase 1 (ORIGINAL SPEC - NOT IMPLEMENTED)
 
@@ -1917,7 +2044,7 @@ def validate_container_inventory(prototype_list):
 # Set description
 @desc shop = A well-stocked shop shelf displaying various items.
 
-# Set shop name (for purchase messages)
+# Set shop name (the {shop} token in the unmanned-shelf room line, and the browse header)
 @py shop.db.shop_name = "Juan's Corner Market"
 ```
 
@@ -1952,16 +2079,26 @@ def validate_container_inventory(prototype_list):
 # (`world/prototypes.py:3509`) stocks "SPRAYPAINT_CAN": 25, "SOLVENT_CAN": 30.
 ```
 
-**Step 3: (Optional) Customize Purchase Messages**
+**Step 3: (Optional) Give a Dish Its Own Serve Line**
 
 ```python
-# Customize buyer message
-@py shop.db.purchase_msg_buyer = "|gExcellent choice!|n You purchase {item} for {price}."
+# RETIRED 2026-09-18 (#3413). This step used to read:
+#   @py shop.db.purchase_msg_buyer = "|gExcellent choice!|n You purchase {item} for {price}."
+#   @py shop.db.purchase_msg_room  = "{buyer} haggles with Juan before purchasing {item}."
+# Those attributes are gone — dead on any manned counter, and they are
+# stripped from the live objects by build 165 (run once on the live DB
+# after the merge, 2026-09-18). Serve flavour belongs to the ITEM.
 
-# Customize room message
-@py shop.db.purchase_msg_room = "{buyer} haggles with Juan before purchasing {item}."
+# On the prototype (preferred — every spawn gets it):
+#   ("serve_line", "ladles {item} up and passes it across to {target}, {price} into the tin."),
 
-# Available placeholders: {buyer}, {item}, {price}, {shop}
+# Or on a single live object:
+@py dish = me.search("bowl of noodles")
+@py dish.db.serve_line = "ladles {item} up and passes it across to {target}, {price} into the tin."
+
+# Placeholders: {item} {target} {price} — and only those three. It is an
+# EMOTE in the keeper's voice, so it follows their name and never spells it.
+# {price} is the bare number, no ₮. See §8.
 ```
 
 **Step 4: Spawn Merchant (Optional)**
@@ -2020,9 +2157,10 @@ def validate_container_inventory(prototype_list):
 # there is no machete in `world/prototypes.py` at all. This "Complete Shop
 # Setup Example" therefore builds a two-item shop, without an error.
 
-# Customize messages
-@py shop.db.purchase_msg_buyer = "|gGracias, amigo!|n You purchase {item} for {price}."
-@py shop.db.purchase_msg_room = "{buyer} buys {item} from Juan's shop."
+# Serve flavour, if a line deserves one (2026-09-18, #3413): NOT on the
+# shop — `purchase_msg_buyer`/`purchase_msg_room` are retired. Put it on the
+# thing being handed over, in the keeper's emote voice:
+#   @py dish.db.serve_line = "ladles {item} up and passes it across to {target}, {price} into the tin."
 
 # Spawn merchant
 @spawn CORNERSTORE_MERCHANT
@@ -2188,7 +2326,7 @@ else:
 - [x] Buy command works with fuzzy item name matching
 - [x] Dynamic display names work (cans use aerosol_contents)
 - [x] Purchased items appear in hands system
-- [x] Purchase messages are customizable per container
+- [~] ~~Purchase messages are customizable per container~~ — RETIRED 2026-09-18 (#3413); self-service lines are fixed, serve flavour is the item's `serve_line` (§8)
 - [x] Token deduction works correctly
 
 ### Merchant System
@@ -2200,7 +2338,7 @@ else:
 ### Builder Workflow
 - [x] Can create shops with @create and @py commands
 - [x] Can add items with shop.add_prototype(key, price)
-- [x] Can customize purchase messages
+- [~] ~~Can customize purchase messages~~ — RETIRED 2026-09-18 (#3413); author a `serve_line` on the dish instead (§8)
 - [x] Can spawn merchants with @spawn
 - [x] Can give tokens with char.tokens = amount
 - [x] Look at shop shows formatted inventory
@@ -2311,3 +2449,88 @@ Shipped well past the Phase-1 vending machine (#1293–#1298):
 - **Shelf grounding**: the persona card carries the counter's complete
   stock and token prices, with anti-invention and no-haggling clauses.
 - Sell/pawn (P3) explicitly rejected — "not ready for a pawn economy."
+
+## Addendum (2026-09-18) — the counter's purchase lines are retired (#3413)
+
+**Owner ruling.** *"custom serve messages are awesome, but should probably
+live on the food/drink/consumable not the counter"* — and, on the counter
+attributes themselves, *"retirement makes sense. We should standardize"*.
+
+**What was retired.** `container.db.purchase_msg_buyer` and
+`container.db.purchase_msg_room`. They were seeded by
+`ShopContainer.at_object_creation` and by `FoodCart`, authored by builds 048
+(Lin's noodle cart) and 066 (the Escallier snailery counter), and read in one
+place — the tail of `CmdBuy`. They are gone from all of it, and they are
+stripped from the live objects by build 165
+(`scripts/builds/165_retire_counter_purchase_lines.py` — one-shot,
+idempotent, safe to re-run; run once on the live DB after the merge,
+2026-09-18).
+
+**Why.** They were **dead on every MANNED counter**. `CmdBuy` has two
+exhaustive branches: a keeper on duty in the room serves the handover by
+emote and the command returns; only the no-keeper branch ever reached those
+attributes. And the counter is the wrong owner for the prose — one counter
+sells four dishes, and the same bowl is ladled the same way whoever is
+behind it.
+
+**The known cost, recorded.** "Dead on a manned counter" is not "never
+printed anywhere", and the honest version is worth writing down. Lin's
+noodle cart is a plain `ShopContainer` with `TAKES_BUY = True` and a single
+vendor shift (build 072), so in the hours when her keeper is off shift — or
+simply not standing at the cart — `CmdBuy` took the self-service branch and
+the cart's authored buyer line, *"Lin ladles up {item} and passes it over —
+{price}."*, DID print to the buyer, with the authored room line to the room.
+That flavour is **lost** by the retirement: the self-service window now
+prints the fixed text, and `serve_line` cannot cover it, because
+`serve_line` is read inside `hand_over` — which self-service never reaches.
+The owner ruled for the standard anyway: *"retirement makes sense. We should
+standardize"*. So this is a cost taken knowingly, not an oversight. If the
+unmanned-cart voice is ever wanted back, it needs a home on the self-service
+branch; a `serve_line` will not give it one. (The Escallier counter's pair
+from build 066 is a different case: build 137 made #8119 a `BarCounter` with
+no shelf, so `CmdBuy` stopped reaching it by either branch.)
+
+**The standard now.** One door for serve flavour:
+
+- The sale ends in `world/shop/service.py` `hand_over(by, patron, item,
+  price, gesture=None)`, emoted in the keeper's voice.
+- Preference order: the item's authored **`serve_line`** → the counter
+  style's gesture passed by the caller (`STYLES["shelf"]` / `STYLES["board"]`)
+  → the shelf gesture as the floor.
+- A consumable prototype may carry **one optional `serve_line`** in the emote
+  voice, with exactly `{item}`, `{target}` and `{price}` available; the
+  keeper's name is supplied by the emote itself.
+- The unused per-keeper **`serve_purchase` hook is gone** — `CmdBuy` no
+  longer looks for it, and nothing in the repo defined one. The name
+  survives in exactly one place: a `MagicMock` attached to a test keeper in
+  `world/tests/test_a_bowl_knows_how_it_is_served.py`, which pins the
+  deletion shut by proving the buy command never consults the hook — with a
+  control asserting the hook really was there to be consulted.
+- Unmanned-shelf lines are fixed text. A vending-tier shelf has no manner to
+  author.
+
+**Four dishes carry lines** (`world/prototypes.py`): `pessoa_noodles`,
+`pessoa_bun`, `pessoa_skewer`, `pessoa_tea` — Auntie Lin's four, replacing
+the prose that used to sit on her cart. Nothing else carries one. The
+snailery's dishes are served by the bar's `craft` prose rather than by a
+shop counter (build 137, #2342), so a `serve_line` would never run on them;
+and the butcher's five all take the board style's gesture, which already
+says what a board line would have said ("sets {item} on the board and sweeps
+{price} into the till").
+
+**Residual, open and honest.** `CmdBuy`'s keeper branch passes no style, so a
+line-LESS item bought by the typed command at a board-styled counter would
+take the shelf gesture while the same keeper serving by spoken order uses the
+board one. Every dish on the board is line-less, so nothing hides it; it is
+latent only because the only board-styled role (`butcher`) stands a
+`FoodCart`, which refuses the typed `buy` outright (`TAKES_BUY = False`,
+#3375). See §8 for the fix shape.
+
+**Not affected: bar drinks and plated bar dishes.** The bar's serve path
+(`world/bar.py serve_from_board` → the recipe's `craft` string) does not go
+through `hand_over`, so a `serve_line` has no effect there. That is exactly
+why the Escallier snailery's dishes carry none: since build 137 (#2342)
+counter #8119 is a `BarCounter` with no prototype inventory, and
+`snail_skewer`, `snail_jar` and the kuro are plated with `SNAILERY_MENU`'s
+`craft` prose. No prototype in the repo is served by both paths today, so
+none has to keep two voices in step. See `BARS_AND_RECIPES_SPEC.md` §7.2.

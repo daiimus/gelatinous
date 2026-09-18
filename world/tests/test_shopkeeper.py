@@ -58,6 +58,7 @@ class TestShopOrderFulfilment(TestCase):
         counter.db.item_inventory = {match: stock} if match else {}
         counter.get_price = lambda k: price
         item = MagicMock(); item.key = "pack of Noir cigarettes"
+        item.db.serve_line = None      # a Mock is truthy; the item has no line
         counter.purchase_item = MagicMock(return_value=(True, item))
         b._find_counter = lambda: counter
         b._match_shop_order = lambda s: match
@@ -65,8 +66,6 @@ class TestShopOrderFulfilment(TestCase):
         patron = MagicMock(); patron.location = "room"; patron.tokens = tokens
         b._fulfil_shop_order = lambda text, patron: shopsvc._fulfil_from_shelf(
             counter, b._match_shop_order(text), patron, b)
-        b.serve_purchase = lambda patron, item, price: shopsvc.hand_over(
-            b, patron, item, price)
         return b, counter, patron
 
     def test_serve_hands_item_over(self):
@@ -211,10 +210,14 @@ class TestBuyRoutesThroughKeeper(TestCase):
         with patch("world.souls.posts.keeper_on_duty", return_value=keeper):
             self.assertIsNone(cmd._find_keeper(buyer, counter))
 
-    def test_serve_purchase_emote(self):
+    def test_the_hand_over_emote(self):
+        """One door for the gesture (#3413): the buy command reaches
+        `hand_over` directly, and an item with no `serve_line` of its own
+        is served the shelf's way."""
         b = MagicMock()
         b._address_handle = lambda p: "the lean man"
         item = MagicMock(); item.key = "syringe of guttervenom"
+        item.db.serve_line = None
         shopsvc.hand_over(b, MagicMock(), item, 15)
         emote = b.execute_cmd.call_args.args[0]
         self.assertIn("presses it into the lean man's hand", emote)

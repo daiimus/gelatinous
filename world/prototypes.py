@@ -5141,6 +5141,7 @@ PESSOA_NOODLES = {
             "scattered with scallion ash and a slick of chili oil. The broth "
             "has been going so long nobody remembers starting it.",
     "attrs": [
+        ("serve_line", "ladles {item} up out of the broth pot and passes it across to {target}, {price} into the till."),
         ("drink_taste", "Deep, salty, faintly scorched — the broth of a "
                         "thousand shifts, and it sticks to your ribs like one."),
         ("drink_effects", {"nutrition": 2}),
@@ -5159,6 +5160,7 @@ PESSOA_BUN = {
             "the hand, its underside stuck to a square of waxed paper. "
             "Whatever's inside is dark, sweet, and generously salted.",
     "attrs": [
+        ("serve_line", "lifts the steamer lid, tongs {item} into a paper twist and hands it to {target} for {price}."),
         ("drink_taste", "Cloud-soft dough over a hot, savoury-sweet filling — "
                         "a whole meal you can eat one-handed on the walk."),
         ("drink_effects", {"nutrition": 2}),
@@ -5213,6 +5215,7 @@ PESSOA_SKEWER = {
             "brushed with the same chili oil as everything on the cart and "
             "dusted with a rust-coloured spice.",
     "attrs": [
+        ("serve_line", "picks {item} off the cart's edge and hands it to {target}, {price} into the till."),
         ("drink_taste", "Char, fat, and a spice that builds — gone in four "
                         "bites and worth every one."),
         ("drink_effects", {"nutrition": 3}),
@@ -5231,6 +5234,7 @@ PESSOA_TEA = {
             "could pass for broth, cut with a spoonful of condensed something "
             "gone to the bottom.",
     "attrs": [
+        ("serve_line", "sets {item} down in front of {target}, steam still on it, and takes {price} for it."),
         ("drink_taste", "Smoke, tannin, and a cloying sweetness — scalding "
                         "enough to remind you you're alive on a cold shift."),
         ("drink_effects", {}),

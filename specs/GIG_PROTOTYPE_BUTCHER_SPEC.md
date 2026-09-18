@@ -27,6 +27,32 @@
 
 > **Owner ruling 2026-09-13 (#3375):** the cart is the **bar model** -- dishes are bought by speaking to whoever is working it (deterministic shelf match onto the board); the typed `buy` is refused at the cart (`FoodCart.TAKES_BUY = False`). Stores keep `buy`.
 
+> **Owner ruling 2026-09-18 (#3413) — serve prose moved off the cart.**
+> `FoodCart.at_object_creation` used to seed `purchase_msg_buyer` /
+> `purchase_msg_room` ("You count out {price}, and the butcher sets {item} on
+> the board."). Those attributes are **retired everywhere** — dead on any
+> manned counter, and doubly dead here, since the cart refuses the typed
+> `buy` at all. Owner: *"custom serve messages are awesome, but should
+> probably live on the food/drink/consumable not the counter"*; *"retirement
+> makes sense. We should standardize"*.
+>
+> **Nothing replaces them on the cart's dishes.** None of the five in
+> `world.food.FOOD_RECIPES` — `rat_tail_stew`, `grilled_rat_chops`,
+> `roast_rat_haunch`, `butchers_breakfast`, `mystery_skewer` — carries a
+> `serve_line`, so all five are handed over with the BOARD style's gesture
+> from `world/shop/service.py` (`STYLES["board"]`): *"sets {item} on the
+> board and sweeps {price} into the till."* That is already the sentence a
+> per-dish board line would have written, and taking it for the whole board
+> keeps the cart speaking with one voice — no split where some dishes have
+> authored prose and the rest fall back. `hand_over` prefers an item's
+> `serve_line` over the counter style's gesture when a dish has one; here
+> none does, so the spoken order through `serve_from_board_cart` prints the
+> board gesture for dishes and raw cuts alike. The retired attributes are
+> stripped from the live objects by build 165
+> (`scripts/builds/165_retire_counter_purchase_lines.py`, run once on the
+> live DB after the merge, 2026-09-18). Full reasoning:
+> `SHOP_SYSTEM_SPEC.md` §8 + the 2026-09-18 addendum.
+
 ## 0 · Purpose & the capstone connection
 
 The world is a rich sandbox with no *pull* — nobody wants anything from the
