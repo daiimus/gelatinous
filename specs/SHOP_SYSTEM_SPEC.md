@@ -117,11 +117,16 @@ self.db.container_type = "shelf"   # Container type
 # objects by build 165
 # (`scripts/builds/165_retire_counter_purchase_lines.py` — one-shot,
 # idempotent, run once on the live DB after the merge, 2026-09-18).
-# They were dead on every MANNED counter — the buy command hands the item
-# over through the keeper and returns before it ever reaches these lines.
-# The one window where a pair could still print — a `TAKES_BUY` counter
-# whose keeper is off shift — is the known cost recorded in the 2026-09-18
-# addendum. Serve flavour now lives on the ITEM: see
+# They were dead on every post-bound counter: with a keeper on duty the
+# buy command hands the item over through them and returns before it
+# reaches these lines, and with nobody on duty `purchase_item` refuses
+# the sale (`any_keeper_present` is `keeper_on_duty`, present AND on
+# shift, #2146), so the self-service branch never runs on a staffed
+# counter at all. Only the unstaffed vending-tier fixtures self-serve,
+# and those only ever carried the seeded default text. (An earlier
+# draft of this note claimed Lin's cart sold itself off shift and
+# printed its pair then; that was a reviewer's claim, unverified, and
+# wrong — corrected 2026-09-18.) Serve flavour now lives on the ITEM: see
 # "8. Serve Flavour — `serve_line` on the item" below.
 ```
 
@@ -370,9 +375,12 @@ counter was MANNED — Lin's noodle cart with Lin behind it, the butcher's
 cart — the authored lines could not print, no matter how good they were.
 (The Escallier snailery counter carried an authored pair too, from build
 066, but build 137 made it a `BarCounter` with no shelf, so its pair had
-stopped being reachable by either branch.) The one window that DID print —
-Lin's cart with her off shift — is recorded as a known cost in the
-2026-09-18 addendum. The counter is the wrong object to hang serve prose on
+stopped being reachable by either branch.) And with nobody on duty a
+post-bound counter refuses the sale outright (`purchase_item` asks
+`any_keeper_present`, which is `keeper_on_duty`: present AND on shift,
+#2146), so there was no off-shift self-service window either: the pair was
+dead on every staffed counter in every hour. The counter is the wrong
+object to hang serve prose on
 anyway: the same bowl is ladled the same way whoever is standing there, and
 one counter sells four different dishes.
 
@@ -2473,21 +2481,22 @@ attributes. And the counter is the wrong owner for the prose — one counter
 sells four dishes, and the same bowl is ladled the same way whoever is
 behind it.
 
-**The known cost, recorded.** "Dead on a manned counter" is not "never
-printed anywhere", and the honest version is worth writing down. Lin's
-noodle cart is a plain `ShopContainer` with `TAKES_BUY = True` and a single
-vendor shift (build 072), so in the hours when her keeper is off shift — or
-simply not standing at the cart — `CmdBuy` took the self-service branch and
-the cart's authored buyer line, *"Lin ladles up {item} and passes it over —
-{price}."*, DID print to the buyer, with the authored room line to the room.
-That flavour is **lost** by the retirement: the self-service window now
-prints the fixed text, and `serve_line` cannot cover it, because
-`serve_line` is read inside `hand_over` — which self-service never reaches.
-The owner ruled for the standard anyway: *"retirement makes sense. We should
-standardize"*. So this is a cost taken knowingly, not an oversight. If the
-unmanned-cart voice is ever wanted back, it needs a home on the self-service
-branch; a `serve_line` will not give it one. (The Escallier counter's pair
-from build 066 is a different case: build 137 made #8119 a `BarCounter` with
+**No cost after all (corrected 2026-09-18).** The review of this change
+claimed Lin's cart sold itself when her keeper was off shift, and that the
+authored buyer line DID print in that window, so the retirement lost it.
+That claim was wrong and briefly stood here unverified. `purchase_item`
+refuses any post-bound counter unless `any_keeper_present` is true, and
+`any_keeper_present` is `keeper_on_duty(fixture) is not None` — the same
+present-AND-on-shift test `CmdBuy._find_keeper` uses (#2146: a proprietor
+standing at her counter after her day is over says "I'm off" and points
+you at whoever's on; with nobody there the counter says nobody is minding
+it). So the self-service branch never runs on a staffed counter, on or off
+shift, and the authored pairs never printed anywhere. Nothing is lost by
+the retirement. The five unstaffed vending-tier fixtures (the Ramirez
+counter, the Armory crates, Gaia's shelving, the cigarette machine, the
+Community Thrift rail) are the only ones that self-serve, and they only
+ever carried the seeded default text. (The Escallier counter's pair from
+build 066 is a different case: build 137 made #8119 a `BarCounter` with
 no shelf, so `CmdBuy` stopped reaching it by either branch.)
 
 **The standard now.** One door for serve flavour:
