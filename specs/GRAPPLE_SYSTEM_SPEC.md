@@ -103,26 +103,35 @@ Failure: Defender >= Grappler
 
 ### Grapple Messaging
 
-> **Recorded 2026-09-18 (#3427) — the authored bank now speaks for the grapple.** Until this date the live resolvers wrote their own one-line prose and the bank went unread: 72 of `world/combat/messages/grapple.py`'s 76 variants were unreachable (measured 2026-09-12, `specs/COMBAT_MESSAGE_FORMAT_SPEC.md` §Special Extended Phases). They are reachable now, and 39 of the 76 reach players.
+> **Recorded 2026-09-18 (#3427, completed the same day by #3615) — the authored bank now speaks for the grapple, and for every way a grapple ends.** Until this date the live resolvers wrote their own one-line prose and the bank went unread: 72 of `world/combat/messages/grapple.py`'s 76 variants were unreachable (measured 2026-09-12, `specs/COMBAT_MESSAGE_FORMAT_SPEC.md` §Special Extended Phases). #3427 wired the three resolver beats (39 of 76 live). #3615 then authored **five new phases, 11 variants**, for the four doors that had still been writing prose inline, and wired them: the bank is now **13 phases / 87 variants, 50 of them live**.
 
 **Where each beat gets its words**
 
 | beat | source | phase / variants |
 |---|---|---|
-| Contested grapple won (`resolve_grapple_initiate`, `world/combat/grappling.py:421`) | bank | `hit` — 30 |
-| Contested grapple lost (same resolver, `:427`) | bank | `miss` — 3 |
-| Voluntary release (`resolve_release_grapple`, `:735`) | bank | `release` — 2 |
+| Contested grapple won (`resolve_grapple_initiate`, `world/combat/grappling.py:426`) | bank | `hit` — 30 |
+| Contested grapple lost (same resolver, `:432`) | bank | `miss` — 3 |
+| Voluntary release (`resolve_release_grapple`, `:740`) | bank | `release` — 2 |
 | Auto-escape won / lost (`resolve_auto_escape`, `world/combat/actions.py:316`, `:369`) | bank | `escape_hit` / `escape_miss` — 2 + 2 |
+| Let go to charge someone else in the room (`_release_grapple_for_charge`, `world/combat/movement_resolution.py:887`) | bank, since #3615 | `release_charge` — 3, names the charge target |
+| Let go to charge out of the room (same helper, `:885`) | bank, since #3615 | `release_charge_away` — 2 |
+| Let go for a gap jump (`commands/combat/jump.py:714`) | bank, since #3615 | `release_jump` — 3 |
+| Blast tears the pair apart on a sacrifice jump (`jump.py:411`) | bank, since #3615 | `release_blast` — 2 |
+| Queue-time charge preview, actor only (`commands/combat/movement.py:779`) | bank, since #3615 | `release_intent` — 1 |
 | Consensual uncontested hold (`grappling.py:371-390`) | bespoke prose in the resolver | — |
 | Contest for a held victim (`resolve_grapple_join`, `:457`) | bespoke prose | — |
 | Grappling an active grappler (`resolve_grapple_takeover`, `:574`) | bespoke prose | — |
 | Grapple damage | nothing — mechanic unbuilt, see §Grapple Damage System and #3285 | `grapple_damage_*` — 37, unreached |
 
-**Delivery.** One module-level helper, `_say_from_bank(actor, target, phase)` (`world/combat/grappling.py:296`), is the only door onto the bank from the grapple resolvers. It asks `get_combat_message("grapple", phase, …)` and then delivers the result the way the weapon banks are delivered: `attacker_msg` to the actor, `victim_msg` to the target, and `observer_template` with `observer_char_refs` through `msg_room_identity`, excluding the pair — so each bystander reads the two of them through their own recognition state rather than a name baked in at send time. `hit_location` is passed **for the `hit` phase only**, from `select_hit_location(target, attacker=actor)` (`world/medical/utils.py:120`) — the same anatomy-weighted, armour-aware draw an attack makes, the attacker reading the target's weak points. `hit` is the one reachable phase that spends the placeholder (the unreached `grapple_damage_*` banks use it heavily; the `miss`, `release` and escape banks not at all), so the miss/release calls pass nothing and the dead `or "arm"` fallback was removed. All 30 `hit` variants spend it on the **target's** body: the two that used to put it on the grappler's own limbs ("locking your {hit_location}s", "Like a vise, your {hit_location}s") now say `arms` outright, and the one that meant a face says `face` (`world/combat/messages/grapple.py:10-12`, `:70-72`, `:125-127`).
+**Delivery.** One module-level helper, `speak_grapple_beat(actor, target, phase, *, audiences=("actor", "victim", "room"), **extra_chars)` (`world/combat/grappling.py:296`), is the only door onto the bank — from the grapple resolvers and, since #3615, from every other place a hold ends. It was `_say_from_bank` until #3615 made it public and repointed the three in-file callers; three modules outside `grappling.py` now call it, so the underscore had stopped being true. It asks `get_combat_message("grapple", phase, …)` and then delivers the result the way the weapon banks are delivered: `attacker_msg` to the actor, `victim_msg` to the target, and `observer_template` with `observer_char_refs` through `msg_room_identity`, excluding the pair — so each bystander reads the two of them through their own recognition state rather than a name baked in at send time. `hit_location` is passed **for the `hit` phase only**, from `select_hit_location(target, attacker=actor)` (`world/medical/utils.py:120`) — the same anatomy-weighted, armour-aware draw an attack makes, the attacker reading the target's weak points. `hit` is the one reachable phase that spends the placeholder (the unreached `grapple_damage_*` banks use it heavily; `miss`, `release`, the escapes and the five #3615 release phases not at all), so every other call passes nothing and the dead `or "arm"` fallback was removed. All 30 `hit` variants spend it on the **target's** body: the two that used to put it on the grappler's own limbs ("locking your {hit_location}s", "Like a vise, your {hit_location}s") now say `arms` outright, and the one that meant a face says `face` (`world/combat/messages/grapple.py:10-12`, `:70-72`, `:125-127`).
+
+Two parameters #3615 added to that helper, both narrow and both worth knowing before you add a sixth door:
+- **`audiences`** picks which of `("actor", "victim", "room")` actually receive the beat. Default is all three, and only the queue-time preview narrows it.
+- **`**extra_chars`** forwards a named third party to the accessor as `extra_chars={name: obj}`, where it is rendered **per audience** — the actor's line uses `get_display_name_safe(obj, actor)`, the victim's uses `get_display_name_safe(obj, target)`, and the room's keeps the literal `{name}` in `observer_template` while `observer_char_refs` carries the object, so `msg_room_identity` resolves it once per bystander through their own recognition state. Only `charge_target` uses it today. The full contract is in `specs/COMBAT_MESSAGE_FORMAT_SPEC.md` §Third parties — `extra_chars`.
 
 Two rendering rules that came with the move, both player-visible:
-- **Colour is the grapple's own.** `_apply_color` branches on `weapon_type == "grapple"` ahead of the attack phase lists (`world/combat/messages/__init__.py:179-189`): `hit`, `release` and `escape_hit` are `|g`; `miss` and `escape_miss` are `|y`. A hold is not a wound — this is the green/yellow the deleted hardcoded lines wore and the consensual hold below still wears, not the attack palette's red/white. `escape_hit` / `escape_miss` gain colour here for the first time; they had shipped bare since #3391.
-- **Names arrive bare and the sentence takes the capital.** Every rendered line goes through `capitalize_first` once (`__init__.py:219`) instead of the accessor force-capitalising `{attacker_name}`, so a victim line reads "You stumble as a lanky man ties you up!" and an attacker line that opens on the target reads "A lanky man finds themselves trapped in your unyielding grapple!". This is bank-wide, not grapple-only — see `specs/COMBAT_MESSAGE_FORMAT_SPEC.md` §Name Capitalisation.
+- **Colour is the grapple's own.** `_apply_color` branches on `weapon_type == "grapple"` ahead of the attack phase lists (`world/combat/messages/__init__.py:186-198`): `hit`, `release` and `escape_hit` are `|g`; `miss`, `escape_miss` and the five #3615 phases (`release_charge`, `release_charge_away`, `release_jump`, `release_blast`, `release_intent`) are `|y` — green for a hold taken, kept or let go on purpose, yellow for a grip lost or about to be. A hold is not a wound — this is the green/yellow the deleted hardcoded lines wore and the consensual hold below still wears, not the attack palette's red/white. `escape_hit` / `escape_miss` gain colour here for the first time; they had shipped bare since #3391.
+- **Names arrive bare and the sentence takes the capital.** Every rendered line goes through `capitalize_first` once (`__init__.py:228`) instead of the accessor force-capitalising `{attacker_name}`, so a victim line reads "You stumble as a lanky man ties you up!" and an attacker line that opens on the target reads "A lanky man finds themselves trapped in your unyielding grapple!". This is bank-wide, not grapple-only — see `specs/COMBAT_MESSAGE_FORMAT_SPEC.md` §Name Capitalisation.
 
 **Why three beats keep bespoke prose.** No bank phase carries their meaning, so routing them through it would misdescribe what happened.
 - *Consensual hold* — the `hit` variants are all violent shoot-ins, vises and trapped victims. A `grab`-trusted or free-path hold (#3363, `TRUST_AND_CONSENT_SPEC` §3) is uncontested: no roll was made and nobody chose violence, and both parties end up yielding. Its three lines say so plainly.
@@ -130,16 +139,27 @@ Two rendering rules that came with the move, both player-visible:
 
 **Also still hardcoded, deliberately:** `establish_grapple` (`grappling.py:58`) returns a `(success, message)` tuple with its own string. It is imported at `world/combat/handler.py:49` and called by nothing in production — only the tests that pin its one-grappler-one-victim guard reach it — so it was left alone rather than converted.
 
-**Known drift — four other doors end a hold in their own words (recorded 2026-09-18; filed as #3615).** `_say_from_bank` is the only door onto the `release` bank, but it is not the only way a grapple ends. Four paths break one and write fixed prose inline, and none of them tells the **room** — bystanders watching a hold simply never learn it broke, which the bank path would have handled through `msg_room_identity`:
+**RESOLVED 2026-09-18 (#3615) — the four other doors now speak from the bank too.** Until this change `speak_grapple_beat` was the only door onto the `release` bank but not the only way a grapple ends: four paths broke a hold and wrote fixed prose inline, and none of them told the **room**, so bystanders watching a hold never learned it broke. The `release` bank could not simply be pointed at them — its two variants ("You decide to release your hold on X", "You shove X away, ending the grapple") describe a *choice*, and would misdescribe a hold ended by a charge, a jump or an explosion. The owner's call was to author the missing beats rather than reuse a wrong one or patch four broadcasts in place:
 
-| door | prose | shape |
+> *"adding the missing messages to our list that can be expanded/subtracted like all our combat messages and then wiring it in - makes the most sense."*
+
+So five phases were written into `world/combat/messages/grapple.py` — 11 variants, expandable and subtractable exactly like every other bank entry — and each door was repointed at one:
+
+| door | phase (variants) | what changed |
 |---|---|---|
-| `_release_grapple_for_charge` (`world/combat/movement_resolution.py:851`, prose at `:882-905`) | "You release your grapple on X as you charge Y!" / "…as you charge away!", plus a victim line gated on `access(char, "view")` | same-room and cross-room variants, `\|y` |
-| Gap jump (`commands/combat/jump.py:710-715`) | "You release your grip on X to focus on the gap jump!" / "X releases their grip on you…" | `\|y` actor, `\|g` victim |
-| Blast release on a sacrifice jump (`jump.py:406-412`) | "The explosion breaks your hold!" / "The blast throws you clear of your captor's grasp!" | `\|y`, names nowhere in it |
-| Queue-time charge warning (`commands/combat/movement.py:778`) | "You prepare to release your grapple on X and charge Y!" | actor only, printed when the command is queued — the release itself resolves later, in `_release_grapple_for_charge` |
+| `_release_grapple_for_charge`, same room (`world/combat/movement_resolution.py:887`) | `release_charge` (3) | The old inline `\|y` pair is gone. The line names the third party through `charge_target=target`, rendered per audience |
+| the same helper, cross-room (`:885`) | `release_charge_away` (2) | Same; no third party is named, because the charge target is in another room |
+| Gap jump (`commands/combat/jump.py:714`) | `release_jump` (3) | The old `\|y` actor / `\|g` victim pair is gone; the beat is `\|y` for all three audiences now |
+| Blast on a sacrifice jump (`jump.py:411`) | `release_blast` (2) | The old pair named nobody ("The explosion breaks your hold!"). The new variants name the other party in every audience's line |
+| Queue-time charge preview (`commands/combat/movement.py:779`) | `release_intent` (1) | Still actor-only, and now deliberately so — see below |
 
-Left alone on purpose for now, but recorded rather than forgotten: none of the four is the deliberate beat the `release` bank narrates, and its two variants ("You decide to release your hold on X", "You shove X away, ending the grapple") would misdescribe a hold broken by a charge, a jump or an explosion. What all four do share — and what each could fix on its own, without the bank — is the missing room broadcast. Written down here so the next author sees all five doors at once instead of finding this one by accident.
+**The room now hears all three real endings.** A charge, a gap jump and a blast each broadcast through `msg_room_identity` with the pair excluded, so every bystander reads the grappler and the victim through their own recognition state instead of a baked-in name — the same delivery the `hit` / `miss` / `release` beats have had since #3427. One measured caveat on the cross-room charge: the mover calls `char.move_to(target_room)` (`movement_resolution.py:1098`) *before* the release helper (`:1101`), and the helper broadcasts to `actor.location`, so `release_charge_away` is heard in the room the charger **arrived in**, not the one the hold was in. The victim's own line is sent directly and is unaffected. Recorded as measured; whether the broadcast should come from the origin room is for whoever next touches the charge mover.
+
+**The queue-time line is an actor-only preview by design.** `release_intent` is printed when `charge` is *queued* while you are holding someone — nothing has happened to the hold yet; the release itself resolves a round later in `_release_grapple_for_charge`. Telling the victim or the room at that moment would describe a world that does not exist, so the door passes `audiences=("actor",)` **and** the phase's one variant authors empty strings for `victim_msg` and `observer_msg`. Either would be enough on its own; both are there so neither a new caller nor a new variant can leak the preview by accident. An empty message is never coloured (`world/combat/messages/__init__.py:184-185`), so the unused audiences produce nothing at all rather than a bare colour pair.
+
+**The victim's old `access(char, "view")` gate is gone.** The same-room charge door used to send the victim's line only if `grappled_victim.access(char, "view")` passed — a lock check no other bank delivery makes, on the person whose own arms are being let go of. It went with the inline prose. The victim now receives `victim_msg` on the same terms as in every other grapple beat: directly, always, with the grappler rendered through the victim's own recognition state.
+
+**Still bespoke, and still correct:** the three beats in the list above (consensual hold, join, takeover) and `establish_grapple`. #3615 changed nothing about them.
 
 **Not yet reached:** the 37 `grapple_damage_hit` / `_miss` / `_kill` variants. Wiring them needs the damage exchange itself, which was never built; see §Grapple Damage System and the open owner question on #3285.
 
@@ -210,7 +230,7 @@ Failure: Current Grappler >= Challenger → Maintains control
 
 > **Re-verified 2026-09-11 — grapple damage was never built.** No code path in the repo deals damage *for* a grapple. The `grapple_damage_hit` / `grapple_damage_miss` / `grapple_damage_kill` message banks exist (`world/combat/messages/grapple.py:214`, `:366`, `:394`) and the phase-colouring lists know their names (`world/combat/messages/__init__.py:163-173`), but no `get_combat_message()` call anywhere requests them. *Amended 2026-09-18 (#3427): those lists no longer decide the colour for this bank. `_apply_color` intercepts every `weapon_type == "grapple"` message first (`:179-189`) and names only `hit` / `release` / `escape_hit` (green) and `miss` / `escape_miss` (yellow), so if the damage exchange is ever built its three phases will ship **uncoloured** until someone decides what a damaging grapple should look like — a live question for #3285, not a bug to patch blind.*
 >
-> **Updated 2026-09-18 (#3427).** Every grapple phase that has a beat in shipped code now draws its prose from the bank. `escape_hit` / `escape_miss` come from `resolve_auto_escape` (`world/combat/actions.py:316`, `:369`) — the contest a grappled, non-yielding victim makes every round, and the whole of what the `escape` command's "contest next round" means (2026-09-15, #3391: the command flips yielding→violent and the auto-escape is the contest; the dict-shaped `resolve_grapple_attempt` / `resolve_escape_grapple` door that also requested `hit`/`miss` had no producer in the game and was deleted). `hit`, `miss` and `release` are now requested too, through `_say_from_bank` in `world/combat/grappling.py:296` — see §Grapple Messaging. The three `grapple_damage_*` banks (37 variants) are the only ones left unrequested, and they stay that way while #3285 is open: there is no damage exchange for them to narrate.
+> **Updated 2026-09-18 (#3427).** Every grapple phase that has a beat in shipped code now draws its prose from the bank. `escape_hit` / `escape_miss` come from `resolve_auto_escape` (`world/combat/actions.py:316`, `:369`) — the contest a grappled, non-yielding victim makes every round, and the whole of what the `escape` command's "contest next round" means (2026-09-15, #3391: the command flips yielding→violent and the auto-escape is the contest; the dict-shaped `resolve_grapple_attempt` / `resolve_escape_grapple` door that also requested `hit`/`miss` had no producer in the game and was deleted). `hit`, `miss` and `release` are now requested too, through `speak_grapple_beat` in `world/combat/grappling.py:296` — see §Grapple Messaging. *(Extended the same day by #3615: the five new `release_charge` / `release_charge_away` / `release_jump` / `release_blast` / `release_intent` phases are requested through the same helper from the four doors that used to write prose inline.)* The three `grapple_damage_*` banks (37 variants) are the only ones left unrequested, and they stay that way while #3285 is open: there is no damage exchange for them to narrate.
 >
 > In shipped code "violent mode" means only this: neither party is yielding, so the victim auto-resists every round (`world/combat/actions.py:506`). Whether a damage exchange was ever meant to ship — and therefore whether those three banks are pending content or dead weight — is an open owner question.
 
@@ -315,7 +335,7 @@ The grenade explosion system (`CmdThrow.py`, with detonation logic now largely i
 
 #### **Combat Movement Restrictions**
 - **Being Grappled**: Blocks flee, retreat, advance, charge
-- **Grappling Someone**: Charge auto-releases grapple if targeting others
+- **Grappling Someone**: Charge auto-releases grapple if targeting others — narrated from the `release_charge` / `release_charge_away` bank and broadcast to the room since #3615 (§Grapple Messaging)
 
 ### Needed Implementations ⚠️
 
@@ -370,7 +390,7 @@ The grenade explosion system (`CmdThrow.py`, with detonation logic now largely i
 - **No Contest**: Automatic success
 - **State Preservation**: Yielding states maintained
 - **Proximity**: Both remain in proximity
-- **Messaging**: The `release` bank's two variants, since 2026-09-18 (#3427) — see §Grapple Messaging
+- **Messaging**: The `release` bank's two variants, since 2026-09-18 (#3427) — see §Grapple Messaging. That bank narrates a *chosen* release only; a hold ended by a charge, a gap jump or a blast draws on the five `release_*` phases #3615 added instead
 
 #### **Strategic Use**
 - **De-escalation**: Peaceful resolution option

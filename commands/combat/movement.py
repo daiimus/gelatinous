@@ -775,7 +775,9 @@ class CmdCharge(Command):
                 elif target_search:
                     # Charging someone else - prepare to potentially release grapple on successful charge
                     # (Grapple release will be handled by combat handler only on successful charge)
-                    caller.msg(f"|yYou prepare to release your grapple on {grappling_victim_obj.get_display_name(caller)} and charge {target_search.get_display_name(caller)}!|n")
+                    from world.combat.grappling import speak_grapple_beat
+                    speak_grapple_beat(caller, grappling_victim_obj, "release_intent",
+                                       audiences=("actor",), charge_target=target_search)   # #3615
                     splattercast.msg(f"{DEBUG_PREFIX_CHARGE}_GRAPPLE_CHARGE: {caller.key} preparing to charge {target_search.key} while grappling {grappling_victim_obj.key}.")
                     # Continue with normal charge logic using target_search
                 else:

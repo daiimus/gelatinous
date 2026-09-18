@@ -293,14 +293,21 @@ def validate_grapple_action(combat_handler, character, action_name):
 # GRAPPLE ACTION RESOLVERS (moved from handler.py)
 # ===================================================================
 
-def _say_from_bank(actor, target, phase):
+def speak_grapple_beat(actor, target, phase, *, audiences=("actor", "victim", "room"),
+                       **extra_chars):
     """Tell the three parties one grapple beat from the authored bank
     (`world/combat/messages/grapple.py`): the actor's line, the
     victim's, and the room's per-observer template, exactly as the
-    weapon banks are delivered (#3427). `hit_location` is where the
-    hold landed, chosen the way an attack chooses it."""
+    weapon banks are delivered (#3427). The one door for grapple prose:
+    the resolvers here and every other way a hold ends (#3615) speak
+    through it. `hit_location` is where the hold landed, chosen the way
+    an attack chooses it. A third party a line names -- the one the
+    actor charges, say -- comes in as `charge_target=obj` and renders
+    per audience. `audiences` narrows delivery (a preview is actor-only)."""
     from .messages import get_combat_message
-    extra = {}
+    extra = {"audiences": tuple(audiences)}
+    if extra_chars:
+        extra["extra_chars"] = extra_chars
     if phase == "hit":
         # Only the hit variants place the hold on a body part; chosen the
         # way an attack chooses one, with the attacker's read on the
@@ -310,12 +317,12 @@ def _say_from_bank(actor, target, phase):
     msgs = get_combat_message(
         "grapple", phase, attacker=actor, target=target, **extra,
     )
-    if msgs.get("attacker_msg"):
+    if "actor" in audiences and msgs.get("attacker_msg"):
         actor.msg(msgs["attacker_msg"])
-    if msgs.get("victim_msg"):
+    if "victim" in audiences and msgs.get("victim_msg"):
         target.msg(msgs["victim_msg"])
     template = msgs.get("observer_template") or ""
-    if template and actor.location:
+    if "room" in audiences and template and actor.location:
         msg_room_identity(
             location=actor.location,
             template=template,
@@ -418,13 +425,13 @@ def resolve_grapple_initiate(char_entry, combatants_list, handler):
 
         # The authored bank, not a hardcoded line (#3427): thirty "hit"
         # variants sat unreachable behind this door.
-        _say_from_bank(char, target, "hit")
+        speak_grapple_beat(char, target, "hit")
         # Note: No auto-yield message for victim since they remain non-yielding to auto-resist
 
         splattercast.msg(f"GRAPPLE_SUCCESS: {char.key} grappled {target.key}.")
     else:
         # Failure
-        _say_from_bank(char, target, "miss")      # the bank's three "miss" variants (#3427)
+        speak_grapple_beat(char, target, "miss")      # the bank's three "miss" variants (#3427)
 
         # Check if grappler initiated combat - if so, they should become yielding on failure
         grappler_initiated_combat = char_entry.get("initiated_combat_this_action", False)
@@ -732,7 +739,7 @@ def resolve_release_grapple(char_entry, combatants_list, handler):
     # The yielding state reflects the original intent when combat/grapple was initiated
     # If they want to become violent again, they need to explicitly take a hostile action
 
-    _say_from_bank(char, grappling_target, "release")   # the bank's two "release" variants (#3427)
+    speak_grapple_beat(char, grappling_target, "release")   # the bank's two "release" variants (#3427)
 
     splattercast.msg(f"GRAPPLE_RELEASE: {char.key} released {grappling_target.key}.")
 

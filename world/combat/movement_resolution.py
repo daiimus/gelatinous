@@ -879,30 +879,13 @@ def _release_grapple_for_charge(
     # `target` is the charge's resolved target, handed down by
     # resolve_charge; the entry is not re-read here (#3569).
 
+    # The hold ends in the bank's words, and the room hears it (#3615).
+    from .grappling import speak_grapple_beat
     if cross_room:
-        # Cross-room: victim might be in different room now
-        char.msg(
-            f"|yYou release your grapple on "
-            f"{grappled_victim.get_display_name(char)} as you charge "
-            f"away!|n"
-        )
-        if grappled_victim.access(char, "view"):
-            grappled_victim.msg(
-                f"|y{char.get_display_name(grappled_victim)} releases "
-                f"their grapple on you and charges away!|n"
-            )
+        speak_grapple_beat(char, grappled_victim, "release_charge_away")
     else:
-        char.msg(
-            f"|yYou release your grapple on "
-            f"{grappled_victim.get_display_name(char)} as you charge "
-            f"{get_display_name_safe(target, char)}!|n"
-        )
-        if grappled_victim.access(char, "view"):
-            grappled_victim.msg(
-                f"|y{char.get_display_name(grappled_victim)} releases "
-                f"their grapple on you to charge "
-                f"{target.get_display_name(grappled_victim)}!|n"
-            )
+        speak_grapple_beat(char, grappled_victim, "release_charge",
+                           charge_target=target)
 
     label = "cross-room " if cross_room else ""
     splattercast.msg(
@@ -1109,16 +1092,18 @@ def _resolve_charge_cross_room(
         # NOTE: Strict > means ties favor the target (defender).
         # This is intentional.
         exit_to_use = exits_to_target[0]
-        # Cross-room charge is a direct `move_to` too (#2490).
-        from world.combat.proximity import clear_proximity_on_room_change
-        clear_proximity_on_room_change(char)
-        char.move_to(target_room)
-
-        # Release grapple if holding someone
+        # Release grapple if holding someone -- BEFORE the move, so the
+        # room that watched the hold is the room that hears it end
+        # (#3615); the helper broadcasts where the actor stands.
         _release_grapple_for_charge(
             handler, char, entry, target, combatants_list, splattercast,
             cross_room=True,
         )
+
+        # Cross-room charge is a direct `move_to` too (#2490).
+        from world.combat.proximity import clear_proximity_on_room_change
+        clear_proximity_on_room_change(char)
+        char.move_to(target_room)
 
         # Check for rigged grenades after successful movement
         from commands.explosion_utils import (

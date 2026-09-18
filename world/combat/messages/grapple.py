@@ -403,5 +403,76 @@ MESSAGES = {
             "observer_msg": "With a final, brutal twist, {attacker_name} snaps something vital and {target_name} stops moving."
         },
         # ... (Continue converting the rest of your "kill" messages here)
-    ]
+    ],
+    # ── A hold that ends for a reason other than choosing to (#3615) ──
+    # Charging someone else, jumping a gap, or a blast tearing the pair
+    # apart. `{charge_target}` is the third party the actor goes for,
+    # rendered per audience like the principals. `release_intent` is the
+    # actor-only preview printed when the charge is queued; the room
+    # hears nothing until the hold actually ends.
+    "release_charge": [
+        {
+            "attacker_msg": "You let go of {target_name} and go for {charge_target}!",
+            "victim_msg": "{attacker_name} lets go of you and goes for {charge_target}!",
+            "observer_msg": "{attacker_name} lets go of {target_name} and goes for {charge_target}!"
+        },
+        {
+            "attacker_msg": "You shove {target_name} aside and charge at {charge_target}.",
+            "victim_msg": "{attacker_name} shoves you aside and charges at {charge_target}.",
+            "observer_msg": "{attacker_name} shoves {target_name} aside and charges at {charge_target}."
+        },
+        {
+            "attacker_msg": "Your hold on {target_name} breaks as you throw yourself at {charge_target}.",
+            "victim_msg": "{attacker_name}'s hold on you breaks as they throw themselves at {charge_target}.",
+            "observer_msg": "{attacker_name}'s hold on {target_name} breaks as they throw themselves at {charge_target}."
+        },
+    ],
+    "release_charge_away": [
+        {
+            "attacker_msg": "You let go of {target_name} and charge away.",
+            "victim_msg": "{attacker_name} lets go of you and charges away.",
+            "observer_msg": "{attacker_name} lets go of {target_name} and charges away."
+        },
+        {
+            "attacker_msg": "You drop {target_name} and bolt after your quarry.",
+            "victim_msg": "{attacker_name} drops you and bolts after their quarry.",
+            "observer_msg": "{attacker_name} drops {target_name} and bolts after their quarry."
+        },
+    ],
+    "release_jump": [
+        {
+            "attacker_msg": "You let go of {target_name} and turn for the jump.",
+            "victim_msg": "{attacker_name} lets go of you and turns for the jump.",
+            "observer_msg": "{attacker_name} lets go of {target_name} and turns for the jump."
+        },
+        {
+            "attacker_msg": "You shove {target_name} clear and take your run at the gap.",
+            "victim_msg": "{attacker_name} shoves you clear and takes their run at the gap.",
+            "observer_msg": "{attacker_name} shoves {target_name} clear and takes their run at the gap."
+        },
+        {
+            "attacker_msg": "Your grip on {target_name} opens; the edge has your attention now.",
+            "victim_msg": "{attacker_name}'s grip on you opens; the edge has their attention now.",
+            "observer_msg": "{attacker_name}'s grip on {target_name} opens; the edge has their attention now."
+        },
+    ],
+    "release_blast": [
+        {
+            "attacker_msg": "The blast tears {target_name} out of your arms!",
+            "victim_msg": "The blast tears you out of {attacker_name}'s arms!",
+            "observer_msg": "The blast tears {target_name} out of {attacker_name}'s arms!"
+        },
+        {
+            "attacker_msg": "Your hold on {target_name} comes apart in the shockwave.",
+            "victim_msg": "{attacker_name}'s hold on you comes apart in the shockwave.",
+            "observer_msg": "{attacker_name}'s hold on {target_name} comes apart in the shockwave."
+        },
+    ],
+    "release_intent": [
+        {
+            "attacker_msg": "You set yourself to let go of {target_name} and charge {charge_target}.",
+            "victim_msg": "",
+            "observer_msg": ""
+        },
+    ],
 }

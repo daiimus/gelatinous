@@ -5,7 +5,8 @@ from world.combat.utils import get_display_name_safe
 from world.grammar import capitalize_first
 
 
-def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None, **kwargs):
+def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None, extra_chars=None,
+                       audiences=None, **kwargs):
     """
     Load the appropriate combat message from a specific weapon_type module.
     Returns a dictionary with "attacker_msg", "victim_msg", "observer_msg",
@@ -29,15 +30,21 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
             - "observer_char_refs": Dict mapping placeholder names to
               character objects for ``msg_room_identity``
     """
+    # Which audiences the caller will actually deliver (#3615). A view
+    # is rendered only for an audience that will read it: rendering a
+    # name through the identity system rolls -- and caches -- a
+    # disguise pierce for that observer, so a line nobody receives must
+    # not spend anyone's roll. Undelivered audiences come back "".
+    audiences = set(audiences or ("actor", "victim", "room"))
     # Identity-aware names for attacker_msg (target seen by attacker)
     attacker_sees_target = (
-        get_display_name_safe(target, attacker) if target else "someone"
+        (get_display_name_safe(target, attacker) if target else "someone")
+        if "actor" in audiences else ""
     )
     # Identity-aware names for victim_msg (attacker seen by target)
     target_sees_attacker = (
-        get_display_name_safe(attacker, target)
-        if attacker
-        else "Someone"
+        (get_display_name_safe(attacker, target) if attacker else "Someone")
+        if "victim" in audiences else ""
     )
 
     item_s = item.key if item else "fists"  # Default item name if None
@@ -118,6 +125,9 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
             getattr(getattr(target, "db", None), "species", None))["name"]
     except Exception:  # noqa: BLE001 — colour flavour never breaks combat
         _blood = "crimson"
+    # `extra_chars={"charge_target": obj}`: a third party rendered per
+    # audience like the principals; the room gets a per-observer ref.
+    extra_chars = dict(extra_chars or {})
     shared_kwargs = {
         "blood": _blood,
         "Blood": _blood.capitalize(),
@@ -137,6 +147,9 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
         "target_name": attacker_sees_target,
         "attacker": "You",
         "target": attacker_sees_target,
+        # A THIRD party a line names (#3615), as the actor knows them
+        **({name: get_display_name_safe(obj, attacker) for name, obj in extra_chars.items()}
+           if "actor" in audiences else {name: "" for name in extra_chars}),
     }
 
     # Victim sees attacker via identity system
@@ -146,6 +159,8 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
         "target_name": "you",
         "attacker": target_sees_attacker,
         "target": "you",
+        **({name: get_display_name_safe(obj, target) for name, obj in extra_chars.items()}
+           if "victim" in audiences else {name: "" for name in extra_chars}),
     }
 
     # Legacy observer format (pre-resolved with .key for backward compat)
@@ -157,6 +172,7 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
         "target_name": target_key,
         "attacker": attacker_key,
         "target": target_key,
+        **{name: getattr(obj, "key", "someone") for name, obj in extra_chars.items()},
     }
 
     # ── Phase coloring ──────────────────────────────────────────────
@@ -184,8 +200,10 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
                 return msg
             if phase in ("hit", "release", "escape_hit"):
                 return f"|g{msg}|n"
-            if phase in ("miss", "escape_miss"):
-                return f"|y{msg}|n"
+            if phase in ("miss", "escape_miss", "release_charge",
+                         "release_charge_away", "release_jump",
+                         "release_blast", "release_intent"):
+                return f"|y{msg}|n"     # a grip lost, or about to be (#3615)
             return msg
         if phase in successful_hit_phases:
             if not (msg.startswith("|") and msg.endswith("|n")):
@@ -259,8 +277,16 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
     final_messages["observer_char_refs"] = {
         "actor": attacker,
         "target_char": target,
+        **extra_chars,
     }
-
+    if "actor" not in audiences:
+        final_messages["attacker_msg"] = ""
+    if "victim" not in audiences:
+        final_messages["victim_msg"] = ""
+    if "room" not in audiences:
+        final_messages["observer_msg"] = ""
+        final_messages["observer_template"] = ""
+        final_messages["observer_char_refs"] = {}
     return final_messages
 
 

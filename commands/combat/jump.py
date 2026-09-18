@@ -407,8 +407,8 @@ class CmdJump(Command):
                     if handler and grappled_victim:
                         from world.combat.grappling import break_grapple
                         break_grapple(handler, grappler=self.caller, victim=grappled_victim)
-                        grappled_victim.msg("|yThe blast throws you clear of your captor's grasp!|n")
-                        self.caller.msg("|yThe explosion breaks your hold!|n")
+                        from world.combat.grappling import speak_grapple_beat
+                        speak_grapple_beat(self.caller, grappled_victim, "release_blast")   # #3615
                         splattercast.msg(f"JUMP_SACRIFICE_GRAPPLE_BREAK: Blast broke grapple between {self.caller.key} and {grappled_victim.key}")
                 else:
                     msg_room_identity(
@@ -710,8 +710,8 @@ class CmdJump(Command):
         if handler and grappled_victim:
             from world.combat.grappling import break_grapple
             break_grapple(handler, grappler=self.caller, victim=grappled_victim)
-            self.caller.msg(f"|yYou release your grip on {get_display_name_safe(grappled_victim, self.caller)} to focus on the gap jump!|n")
-            grappled_victim.msg(f"|g{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} releases their grip on you to attempt a gap jump!|n")
+            from world.combat.grappling import speak_grapple_beat
+            speak_grapple_beat(self.caller, grappled_victim, "release_jump")   # #3615
             splattercast.msg(f"JUMP_GAP_GRAPPLE_BREAK: {self.caller.key} broke grapple with {grappled_victim.key} for gap jump")
 
         # Gap jumping requires Motorics check vs gap difficulty

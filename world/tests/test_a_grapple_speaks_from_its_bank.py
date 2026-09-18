@@ -9,14 +9,14 @@ lines were unreachable. The bank itself was fine: #2823 pins that every
 bank exports the name the loader reads, and this one does. Nothing
 called the loader for a grapple.
 
-`_say_from_bank(actor, target, phase)` is the door now: one
+`speak_grapple_beat(actor, target, phase)` is the door now: one
 `get_combat_message("grapple", phase, ...)` per beat, the actor's line
 to the actor, the victim's to the victim, and the room's per-observer
 template through `msg_room_identity`.
 
 These tests drive `resolve_grapple_initiate` and
 `resolve_release_grapple` -- what the command layer calls -- rather than
-`_say_from_bank`. A helper-level test passes just as happily against a
+`speak_grapple_beat`. A helper-level test passes just as happily against a
 resolver that never calls the helper.
 
 ## Four corrections to the plan these tests were written from
@@ -68,7 +68,7 @@ from world.combat.utils import (add_combatant, get_character_dbref,
 from world.consent import grant_trust
 from world.grammar import capitalize_first
 
-#: What `_say_from_bank` is made to hand the accessor while a rendered
+#: What `speak_grapple_beat` is made to hand the accessor while a rendered
 #: line is being compared, so the comparison has one known answer. The
 #: accessor spaces the underscore out; the bank sees "left arm".
 PINNED_LOCATION = "left_arm"
