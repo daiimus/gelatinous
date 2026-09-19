@@ -89,6 +89,43 @@ def notify_adjacent_rooms_of_explosion(explosion_room):
             destination.msg_contents(MSG_GRENADE_EXPLODE_ADJACENT.format(direction=direction))
 
 
+
+def clear_exit_rigging(grenade):
+    """Erase *grenade*'s registration from the exit it was rigged to and
+    from that exit's return exit. The one eraser for every door a trap
+    can go off through: the tripwire, `defuse`, and the remote detonator.
+    Before #3388 the tripwire's inline copy cleared only the exit that was
+    walked (its return-exit match ran post-move against the wrong room),
+    and the remote doors cleared nothing, so for the fuse second a second
+    walker could re-fire the same live grenade, and afterwards both exits
+    kept a stored reference to the deleted one (it read back as None).
+    Leaves the grenade's own `rigged_to_exit` alone: `defuse` reads it
+    (is-this-a-trap, time-pressure difficulty) and restores the
+    integration state from it, `scan` reads it for the ownership guard,
+    `detonate list` for the TRAP row, and `defuse` clears it itself.
+    Returns the exits it cleared."""
+    exit_obj = grenade.db.rigged_to_exit
+    if not exit_obj:
+        return []
+    cleared = []
+    if exit_obj.db.rigged_grenade == grenade:
+        exit_obj.db.rigged_grenade = None
+        cleared.append(exit_obj)
+    destination = getattr(exit_obj, "destination", None)
+    here = getattr(exit_obj, "location", None)
+    if destination and here:
+        for obj in destination.contents:
+            if (getattr(obj, "destination", None) == here
+                    and obj.db.rigged_grenade == grenade):
+                obj.db.rigged_grenade = None
+                cleared.append(obj)
+                break
+    if cleared:
+        get_splattercast().msg(
+            f"{DEBUG_PREFIX_THROW}_RIG_CLEARED: {grenade.key} erased from "
+            f"{', '.join(str(x) for x in cleared)}")
+    return cleared
+
 def check_rigged_grenade(character, exit_obj):
     """Check if character triggers a rigged grenade. Character should already be at destination."""
     # Initialize Splattercast for debug logging
@@ -271,24 +308,8 @@ def check_rigged_grenade(character, exit_obj):
     # Start the timer
     start_standalone_grenade_ticker(rigged_grenade, explode_rigged_grenade)
 
-    # Clean up rigging from both exits
-    exit_obj.db.rigged_grenade = None
-
-    # Find and clean up return exit too
-    original_exit = rigged_grenade.db.rigged_to_exit
-    if original_exit and original_exit.destination:
-        destination_room = original_exit.destination
-        character_room = character.location
-
-        # Look for return exit that might also be rigged
-        for obj in destination_room.contents:
-            if (hasattr(obj, 'destination') and
-                obj.destination == character_room and
-                obj.db.rigged_grenade == rigged_grenade):
-                obj.db.rigged_grenade = None
-                splattercast = get_splattercast()
-                splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: Cleaned up return exit rigging on {obj}")
-                break
+    # Clean up rigging from both exits (one eraser for all three doors, #3388)
+    clear_exit_rigging(rigged_grenade)
 
     # Announce timer start
     character.location.msg_contents(f"The {rigged_grenade.key} starts counting down! {fuse_time} seconds!")

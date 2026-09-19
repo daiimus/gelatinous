@@ -534,6 +534,8 @@ remote_detonate(explosive) → pull_pin(explosive) → start_countdown(explosive
 
 ### Rigged Explosives
 
+> **One eraser, three doors (#3388, 2026-09-18).** A trap's registration (`exit.db.rigged_grenade` on the rigged exit and on its return exit) is cleared by `commands/explosion_utils.clear_exit_rigging(grenade)`, called by the tripwire door, by `defuse`, and by both remote doors (`detonate e-<id>` and `detonate all`) right after the fuse starts. Before this, `defuse` cleared both exits, the tripwire's inline copy cleared only the exit that was walked (its return-exit match ran post-move against the wrong room, so the other side of the doorway stayed armed and a second walker crossing during the fuse second re-fired the same live grenade), and the remote doors cleared nothing. Played 2026-09-18 on the remote door: after the blast the exits' stored records still named the deleted grenade (`('__packed_dbobj__', ..., 22506)`) while every read resolved them to `None`, so the doorway could be walked and re-rigged. The grenade's own `rigged_to_exit` stays set until `defuse` clears it: `defuse`, `scan`'s ownership guard and `detonate list` read it.
+
 **Scenario 1: Trap Override**
 ```python
 # Rigged explosive set up as trap in doorway
