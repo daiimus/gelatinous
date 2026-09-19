@@ -11,12 +11,13 @@ side.
 Counting `initiate` calls rather than matching text: the banks are
 random, so a specific line would pass or fail on a dice roll.
 """
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaTest
 
 from world.combat import messages as combat_messages
+from world.combat import utils as combat_utils
 from world.combat.constants import (
     DB_CHAR, DB_GRAPPLED_BY_DBREF, DB_GRAPPLING_DBREF, DB_IS_YIELDING, DB_TARGET_DBREF,
 )
@@ -27,11 +28,13 @@ from world.combat.utils import add_combatant
 class _InitiateSpy:
     def __init__(self):
         self.initiators = []
+        self.initiate_kwargs = []
         self._real = combat_messages.get_combat_message
 
     def __call__(self, weapon_type, phase, attacker=None, target=None, **kw):
         if phase == "initiate":
             self.initiators.append(attacker)
+            self.initiate_kwargs.append(kw)
         return self._real(weapon_type, phase, attacker=attacker, target=target, **kw)
 
 
@@ -77,6 +80,11 @@ class BodyDoesNotRetargetTest(EvenniaTest):
     def test_control_a_live_fighter_is_retargeted_and_poses(self):
         spy = self._remove(self.alpha)
         self.assertIn(self.bravo, spy.initiators, "control: live Bravo did not retarget")
+        # The pose is requested the way the attack command requests it:
+        # with a hit location, or fourteen bank lines leak a raw
+        # {hit_location} into the room now that the room line sends (#3620).
+        self.assertTrue(spy.initiate_kwargs and all("hit_location" in kw for kw in spy.initiate_kwargs),
+                        "initiate requested without hit_location: %r" % spy.initiate_kwargs)
         self.assertEqual(self._entry(self.bravo).get(DB_TARGET_DBREF), self.handler._get_dbref(self.charlie))
 
     # --- the defect ------------------------------------------------------
@@ -157,3 +165,28 @@ class BodyDoesNotRetargetTest(EvenniaTest):
         spy = self._remove(self.alpha)
         self.assertIn(self.bravo, spy.initiators)
         self.assertFalse(self._entry(self.bravo).get(DB_IS_YIELDING, False))
+
+    # --- the announcement reaches the room (#3620) --------------------------
+
+    def test_the_room_hears_a_live_survivor_turn_on_someone(self):
+        # Bravo (alive, not yielding) is re-pointed at Charlie. The room
+        # line goes through msg_room_identity; a late local import had
+        # made that name local to remove_combatant, so this call raised
+        # before it was bound and the room never heard anything.
+        room_line = MagicMock()
+        with patch.object(combat_utils, "msg_room_identity", room_line):
+            self.handler.remove_combatant(self.alpha)
+        calls = [c for c in room_line.call_args_list
+                 if c.kwargs.get("char_refs", {}).get("actor") == self.bravo]
+        self.assertTrue(calls, "the room never heard Bravo turn on Charlie: %r" % room_line.call_args_list)
+        kw = calls[0].kwargs
+        self.assertEqual(kw.get("location"), self.room1)
+        self.assertEqual(kw["char_refs"].get("target_char"), self.charlie)
+        self.assertIn(self.bravo, kw.get("exclude", []))
+        self.assertIn(self.charlie, kw.get("exclude", []))
+
+    def test_a_repointed_survivor_hears_exactly_one_line(self):
+        # The swallowed error used to add a second, different line on top.
+        with patch.object(self.bravo, "msg") as told:
+            self.handler.remove_combatant(self.alpha)
+        self.assertEqual(told.call_count, 1, told.call_args_list)

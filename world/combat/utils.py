@@ -847,8 +847,13 @@ def remove_combatant(handler, char):
                 
                 # Send initiate messages (same as attack command)
                 try:
-                    initiate_msg_obj = get_combat_message(weapon_type, "initiate", 
-                                                        attacker=other_char, target=new_target, item=weapon_obj)
+                    # hit_location as the attack command passes it: fourteen
+                    # initiate observer lines name one, and a missing key
+                    # reaches the room as a raw {hit_location} (#3620 review).
+                    from world.medical.utils import select_hit_location
+                    initiate_msg_obj = get_combat_message(
+                        weapon_type, "initiate", attacker=other_char, target=new_target,
+                        item=weapon_obj, hit_location=select_hit_location(new_target, 0, other_char))
                     
                     if isinstance(initiate_msg_obj, dict):
                         attacker_msg = initiate_msg_obj.get("attacker_msg", f"You turn your attention to {get_display_name_safe(new_target, other_char)}!")
@@ -932,7 +937,10 @@ def remove_combatant(handler, char):
         except Exception:  # noqa: BLE001
             pass
         if alive and conscious and getattr(char, "location", None):
-            from world.identity_utils import msg_room_identity
+            # No local import here: one made `msg_room_identity` local to
+            # the whole function and the retarget announcement above
+            # raised before it was bound, so the room line never sent
+            # (#3620). The module import covers it.
             msg_room_identity(
                 location=char.location,
                 template="{actor} lowers their guard and steps back "
