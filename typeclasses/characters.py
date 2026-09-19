@@ -2262,17 +2262,12 @@ class Character(
         this is almost always a no-op. It never vetoes the delete.
         """
         try:
-            from evennia.scripts.models import ScriptDB
-            from world.combat.constants import COMBAT_SCRIPT_KEY, DB_CHAR, NDB_COMBAT_HANDLER
-            handlers = []
+            from world.combat.constants import NDB_COMBAT_HANDLER
+            from world.combat.utils import find_character_handlers
+            handlers = find_character_handlers(self)
             mine = getattr(self.ndb, NDB_COMBAT_HANDLER, None)
-            if mine is not None and getattr(mine, "pk", None):
+            if mine is not None and getattr(mine, "pk", None) and mine not in handlers:
                 handlers.append(mine)
-            for script in ScriptDB.objects.filter(db_key=COMBAT_SCRIPT_KEY, db_is_active=True):
-                if script in handlers:
-                    continue
-                if any(e.get(DB_CHAR) == self for e in (script.db.combatants or [])):
-                    handlers.append(script)
             for handler in handlers:
                 try:
                     handler.remove_combatant(self)
