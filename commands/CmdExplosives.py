@@ -590,28 +590,9 @@ class CmdDefuse(Command):
         """Clean up rigging references when grenade is defused."""
         rigged_to_exit = grenade.db.rigged_to_exit
         if rigged_to_exit:
-            splattercast = get_splattercast()
-
-            # Clean up main exit
-            if rigged_to_exit.db.rigged_grenade is not None:
-                rigged_to_exit.db.rigged_grenade = None
-                if splattercast:
-                    splattercast.msg(f"DEFUSE_CLEANUP: Removed rigging from {rigged_to_exit}")
-
-            # Find and clean up return exit
-            if rigged_to_exit.destination:
-                destination_room = rigged_to_exit.destination
-                grenade_room = grenade.location if hasattr(grenade, 'location') else self.caller.location
-
-                for obj in destination_room.contents:
-                    if (hasattr(obj, 'destination') and
-                        obj.destination == grenade_room and
-                        obj.db.rigged_grenade is not None and
-                        obj.db.rigged_grenade == grenade):
-                        obj.db.rigged_grenade = None
-                        if splattercast:
-                            splattercast.msg(f"DEFUSE_CLEANUP: Removed rigging from return exit {obj}")
-                        break
+            # Both exits' records, through the one eraser (#3388)
+            from commands.explosion_utils import clear_exit_rigging
+            clear_exit_rigging(grenade)
 
             # Clean up grenade's rigging reference
             grenade.db.rigged_to_exit = None
@@ -649,8 +630,7 @@ class CmdDefuse(Command):
                 exclude=[self.caller],
             )
 
-            if splattercast:
-                splattercast.msg(f"DEFUSE_CLEANUP: Fully cleaned up rigging for {grenade.key}")
+            get_splattercast().msg(f"DEFUSE_CLEANUP: Fully cleaned up rigging for {grenade.key}")
 
     def handle_defuse_failure(self, grenade):
         """Handle failed defuse attempt with potential early detonation."""
@@ -950,9 +930,13 @@ class CmdDetonate(Command):
         fuse_time = armed_fuse(explosive)   # trap => TRAP_FUSE_TIME (#2547)
         setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
 
-        # Start countdown using the shared sticky-aware ticker
-        from commands.explosion_utils import start_grenade_ticker
+        # Start countdown using the shared sticky-aware ticker, then erase
+        # the trap's registration from both exits like the tripwire and
+        # defuse doors do (#3388). The fuse was read first: it still wants
+        # the trap timing.
+        from commands.explosion_utils import start_grenade_ticker, clear_exit_rigging
         start_grenade_ticker(explosive)
+        clear_exit_rigging(explosive)
 
         # Operator messaging
         caller.msg(
@@ -1023,9 +1007,11 @@ class CmdDetonate(Command):
             fuse_time = armed_fuse(explosive)   # same answer as the single door (#3348)
             setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
 
-            # Start countdown using the shared sticky-aware ticker
-            from commands.explosion_utils import start_grenade_ticker
+            # Start countdown using the shared sticky-aware ticker, then
+            # erase the trap's registration from both exits (#3388)
+            from commands.explosion_utils import start_grenade_ticker, clear_exit_rigging
             start_grenade_ticker(explosive)
+            clear_exit_rigging(explosive)
 
             detonated_count += 1
 
