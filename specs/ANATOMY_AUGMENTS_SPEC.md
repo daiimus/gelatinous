@@ -124,6 +124,8 @@ installed tail:
 the species set, and severance already subtracts locations
 per-character — the substrate is half-built; this spec finishes it.
 
+> **Corrected 2026-09-19 (#3400):** the overlay was the last zombie-organ door. `from_dict` seeded the species template and copied the snapshot's organs over it, so any organ the template has and the snapshot lacks came back at full HP on every load (proved on a live reload: a body saved with 27 organs read back with 28). It now clears the seeded template when the snapshot carries organ data and builds the body from the snapshot alone; the template is the fallback only for a legacy snapshot with no organ data. Harvest and severance tombstones (0 HP) were never affected and still round-trip.
+
 > **Note 2026-09-11 (re-verification):** the table above is the
 > **pre-implementation census** (2026-06-11), kept for its reasoning.
 > Six of its seven "Per-character today?" answers are now **yes**:
