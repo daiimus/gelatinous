@@ -256,10 +256,17 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 > the sweep do), so anyone killed by a fall, a grenade, a blast or a
 > bleed-out on the medical tick is still enrolled until the end of the
 > round. And a body knocked out before it was attacked is enrolled with its
-> attacker as its target. Recorded, not changed: the auto-retarget forces
-> the survivor's yielding flag off (owner, 2026-09-18: "I don't think a
-> retarget should turn the survivor's yielding flag off", discussion open);
-> and the announcement reaches the announcer and the new target, but the
+> attacker as its target. **A hold is a hold (#3622, owner ruling
+> 2026-09-18):** a yielding survivor is not re-pointed and not un-yielded.
+> They are told who left, who is still targeting them, and that yielding
+> means not fighting back ("use 'attack' or 'kill' to resume malicious
+> intentions"); the orphan sweep lets them
+> out if nobody is on them, and their own next `attack` names the target.
+> That was the one place the system un-yielded someone for a reason not
+> their own: it broke a `stop` when a third party left, and turned a
+> consensual hold into a struggle (the held person's flag drives the shield
+> chance and the every-round auto-escape). Recorded, not changed: the
+> announcement reaches the announcer and the new target, but the
 > room line has never been sent and the announcer gets a second fallback
 > line, because a local import shadows `msg_room_identity` (#3620).
 >

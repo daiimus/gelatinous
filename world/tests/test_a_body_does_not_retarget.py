@@ -17,7 +17,9 @@ from evennia import create_object
 from evennia.utils.test_resources import EvenniaTest
 
 from world.combat import messages as combat_messages
-from world.combat.constants import DB_CHAR, DB_TARGET_DBREF
+from world.combat.constants import (
+    DB_CHAR, DB_GRAPPLED_BY_DBREF, DB_GRAPPLING_DBREF, DB_IS_YIELDING, DB_TARGET_DBREF,
+)
 from world.combat.handler import get_or_create_combat
 from world.combat.utils import add_combatant
 
@@ -115,3 +117,43 @@ class BodyDoesNotRetargetTest(EvenniaTest):
         self.assertNotIn(self.bravo, spy.initiators, "an unconscious body squared up during the sweep")
         names = [e.get(DB_CHAR).key for e in (self.handler.db.combatants or []) if e.get(DB_CHAR)] if self.handler.pk else []
         self.assertNotIn("Bravo", names)
+
+    # --- a hold is a hold (#3622) ------------------------------------------
+
+    def _set_entry(self, char, **fields):
+        combatants = self.handler.db.combatants or []
+        for e in combatants:
+            if e.get(DB_CHAR) == char:
+                e.update(fields)
+        self.handler.db.combatants = combatants
+
+    def test_a_yielding_survivor_is_not_repointed_and_keeps_yielding(self):
+        # Bravo typed `stop attacking`: yielding, still pointed at Alpha, Charlie on him.
+        self._set_entry(self.bravo, **{DB_IS_YIELDING: True})
+        with patch.object(self.bravo, "msg") as told:
+            spy = self._remove(self.alpha)
+        self.assertNotIn(self.bravo, spy.initiators, "a yielder squared up")
+        entry = self._entry(self.bravo)
+        self.assertIsNone(entry.get(DB_TARGET_DBREF), "a yielder was re-pointed")
+        self.assertTrue(entry.get(DB_IS_YIELDING), "the retarget un-yielded a holder")
+        said = " ".join(str(c) for c in told.call_args_list)
+        self.assertIn("has left combat", said)
+        self.assertIn("still targeting you", said, "the yielder was not told who is still on them")
+        self.assertIn("resume malicious intentions", said, "the yielder was not reminded they are yielding")
+
+    def test_a_held_yielder_stays_held_and_yielding(self):
+        # The shield case: Charlie holds Bravo consensually (both yield),
+        # Bravo still pointed at Alpha from before the hold. Alpha leaves.
+        self._set_entry(self.charlie, **{DB_IS_YIELDING: True, DB_GRAPPLING_DBREF: self.handler._get_dbref(self.bravo)})
+        self._set_entry(self.bravo, **{DB_IS_YIELDING: True, DB_GRAPPLED_BY_DBREF: self.handler._get_dbref(self.charlie)})
+        spy = self._remove(self.alpha)
+        entry = self._entry(self.bravo)
+        self.assertTrue(entry.get(DB_IS_YIELDING), "a held person was turned violent by a third party leaving")
+        self.assertIsNone(entry.get(DB_TARGET_DBREF))
+        self.assertNotIn(self.bravo, spy.initiators)
+        self.assertEqual(entry.get(DB_GRAPPLED_BY_DBREF), self.handler._get_dbref(self.charlie))
+
+    def test_control_a_non_yielding_survivor_stays_non_yielding(self):
+        spy = self._remove(self.alpha)
+        self.assertIn(self.bravo, spy.initiators)
+        self.assertFalse(self._entry(self.bravo).get(DB_IS_YIELDING, False))

@@ -207,6 +207,8 @@ Failure: Current Grappler >= Challenger → Maintains control
 - **Failure**: Remain grappled, continue struggling
 
 #### **Yielding Victims**
+
+> **A hold survives someone else's exit (#3622, 2026-09-18).** When a yielding party's target leaves the fight, the auto-retarget in `remove_combatant` leaves them yielding and un-pointed instead of turning them violent; the held person's shield chance and auto-escape state therefore do not change because a third party left. Described in COMBAT_SYSTEM.md.
 - **No Auto-Escape**: Accept restraint peacefully
 - **Manual Escape**: Can use `escape` command to switch to violent mode
 - **Roleplay Focus**: Emphasis on negotiation and de-escalation
