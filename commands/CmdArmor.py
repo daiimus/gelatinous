@@ -1322,6 +1322,71 @@ def parse_unslot_args(words):
     return " ".join(parts).strip(), None
 
 
+def hand_holding(character, item):
+    """The hand (canonical key) holding *item*, or None. The Mr. Hands
+    ledger is the truth: an item loose in the pack is not held."""
+    for hand, held in (character.hands or {}).items():
+        if held == item:
+            return hand
+    return None
+
+
+def free_hand(character):
+    """A free hand (canonical key), or None. Severed hands are not in
+    the view at all, so limb loss is felt here: one hand means one
+    thing at a time, none means nothing."""
+    for hand, held in (character.hands or {}).items():
+        if held is None:
+            return hand
+    return None
+
+
+def has_hands(character):
+    """False when the hands view is empty: both severed, or a species
+    with no grasping containers. A different refusal from "hands full"
+    (the #2456 convention in CmdInventory): there is nothing to free."""
+    return bool(dict(character.hands or {}))
+
+
+def worn_by(character):
+    """Everything on *character*'s body, as a set."""
+    worn = set()
+    for items in (character.worn_items or {}).values():
+        worn.update(items or [])
+    return worn
+
+
+def pull_plate_into_hand(caller, plate, carrier, slot_name):
+    """Take *plate* out of *slot_name* of *carrier* and into a free hand,
+    or leave it where it is (#3463, the Mr. Hands rule: a plate comes
+    out into a hand, and no free hand means it stays put). Returns True
+    when the plate came out. Shared by every unslot door."""
+    if not has_hands(caller):
+        caller.msg(f"You have no hands to take the {plate.key} out with.")
+        return False
+    hand = free_hand(caller)
+    if hand is None:
+        caller.msg(f"Your hands are full. Free one to take the {plate.key} out.")
+        return False
+    installed_plates = carrier.installed_plates
+    installed_plates[slot_name] = None
+    carrier.installed_plates = installed_plates
+    plate.move_to(caller, quiet=True)
+    caller.wield_item(plate, hand=hand)
+    caller.msg(
+        f"You pull the {plate.key} out of the {slot_name}"
+        f" slot of your {carrier.key} and hold it."
+    )
+    if caller.location:
+        msg_room_identity(
+            location=caller.location,
+            template=f"{{actor}} pulls a plate out of their {carrier.key}.",
+            char_refs={"actor": caller},
+            exclude=[caller],
+        )
+    return True
+
+
 class CmdSlot(Command):
     """
     Install armor plates into plate carriers.
@@ -1335,7 +1400,7 @@ class CmdSlot(Command):
     Plates and carriers have multi-word names; write them out in full.
     Put 'in' between the plate and the carrier. Slots are front, back,
     left side and right side. If you name no slot, the best free one is
-    chosen.
+    chosen. You must be holding the plate to slot it; wield it first.
 
     Examples:
         slot standard plate in plate carrier
@@ -1509,6 +1574,15 @@ class CmdSlot(Command):
         plate = self._find_plate_by_name(caller, plate_name)
         if not plate:
             return
+        # In your HAND (#3463, owner: use the Mr. Hands system so limb
+        # loss is meaningful). A plate loose in the pack is not being
+        # handled; the move into the carrier releases the hand.
+        if not has_hands(caller):
+            caller.msg(f"You have no hands to slot the {plate.key} with.")
+            return
+        if hand_holding(caller, plate) is None:
+            caller.msg(f"You need to be holding the {plate.key} to slot it.")
+            return
 
         # Find the carrier
         carrier = self._find_carrier_by_name(caller, carrier_name)
@@ -1556,7 +1630,7 @@ class CmdSlot(Command):
                 f" {existing_plate.key}."
             )
             caller.msg(
-                f"Use 'plate remove {existing_plate.key}"
+                f"Use 'unslot {existing_plate.key}"
                 f" from {carrier.key}' first."
             )
             return
@@ -1624,34 +1698,11 @@ class CmdSlot(Command):
             )
             return
 
-        # Remove the plate
-        installed_plates[target_slot] = None
-        carrier.installed_plates = installed_plates
-
-        # Move plate back to caller's inventory
-        target_plate.move_to(caller, quiet=True)
-
-        # Success messages
-        caller.msg(
-            f"|yYou remove the {target_plate.key} from the {target_slot}"
-            f" slot of your {carrier.key}.|n"
-        )
-
-        # Show new rating
+        # Out of the carrier and into a free hand, or not at all (#3463)
+        if not pull_plate_into_hand(caller, target_plate, carrier, target_slot):
+            return
         total_rating = _calculate_total_carrier_rating(carrier)
         caller.msg(f"New total protection: {total_rating}")
-
-        # Location message
-        if caller.location:
-            msg_room_identity(
-                location=caller.location,
-                template=(
-                    f"{{actor}} removes an armor plate from"
-                    f" their {carrier.key}."
-                ),
-                char_refs={"actor": caller},
-                exclude=[caller],
-            )
 
     def _swap_plates(self, caller, old_plate_name, new_plate_name):
         """Quick swap between plates in carriers."""
@@ -1666,9 +1717,16 @@ class CmdSlot(Command):
             )
             return
 
-        # Find new plate (must be in inventory)
+        # Find new plate (must be in your hand, #3463)
         new_plate = self._find_plate_by_name(caller, new_plate_name)
         if not new_plate:
+            return
+        if not has_hands(caller):
+            caller.msg(f"You have no hands to slot the {new_plate.key} with.")
+            return
+        hand = hand_holding(caller, new_plate)
+        if hand is None:
+            caller.msg(f"You need to be holding the {new_plate.key} to slot it.")
             return
 
         if not new_plate.is_armor_plate:
@@ -1680,9 +1738,10 @@ class CmdSlot(Command):
         installed_plates[old_slot] = new_plate
         old_carrier.installed_plates = installed_plates
 
-        # Move plates
-        old_plate.move_to(caller, quiet=True)
+        # Move plates: the new one leaves the hand, the old one takes it
         new_plate.move_to(old_carrier, quiet=True)
+        old_plate.move_to(caller, quiet=True)
+        caller.wield_item(old_plate, hand=hand)
 
         # Success messages
         caller.msg(
@@ -1813,13 +1872,15 @@ class CmdUnslot(Command):
     Remove armor plates from plate carriers.
 
     Usage:
-        unslot <plate>                      - Remove plate from any carrier
-        unslot <plate> from <carrier>       - Remove plate from a specific carrier
+        unslot <plate>                      - Remove plate from a carrier you wear
+        unslot <plate> from <carrier>       - Remove plate from a carrier you carry
         unslot <slot> from <carrier>        - Empty a specific slot
 
     Plates and carriers have multi-word names; write them out in full.
-    Slots are front, back, left_side and right_side. The plate goes to
-    your inventory if you have space, otherwise to the ground.
+    Slots are front, back, left_side and right_side. On its own, unslot
+    looks in the carriers you are wearing; name the carrier with 'from'
+    to reach one you are carrying. The plate comes out into a free hand,
+    so free one first.
 
     Examples:
         unslot standard plate
@@ -1866,34 +1927,35 @@ class CmdUnslot(Command):
 
     def _remove_plate_by_name(self, caller, plate_name):
         """Remove a plate by name from any carrier the player is wearing."""
-        # Find all worn plate carriers across all body locations
-        all_worn = set()
-        if caller.worn_items:
-            for items_list in caller.worn_items.values():
-                all_worn.update(items_list)
+        all_worn = worn_by(caller)
+        carriers = [item for item in caller.contents if item.is_plate_carrier]
+        worn_carriers = [c for c in carriers if c in all_worn]
+        carried_carriers = [c for c in carriers if c not in all_worn]
 
-        worn_carriers = [
-            item
-            for item in caller.contents
-            if item.is_plate_carrier and item in all_worn
-        ]
+        # Two doors on purpose (#3463, owner ruling): `unslot <plate>`
+        # alone means a carrier you are WEARING; a carrier in your pack
+        # is reached by `unslot <plate> from <carrier>`.
+        for carrier in worn_carriers:
+            for slot_name, plate in carrier.installed_plates.items():
+                if plate and plate_name.lower() in plate.key.lower():
+                    pull_plate_into_hand(caller, plate, carrier, slot_name)
+                    return
+        for carrier in carried_carriers:
+            for slot_name, plate in carrier.installed_plates.items():
+                if plate and plate_name.lower() in plate.key.lower():
+                    caller.msg(
+                        f"The {plate.key} is in your {carrier.key}, which"
+                        " you're carrying, not wearing. Use: unslot"
+                        f" {plate.key} from {carrier.key}"
+                    )
+                    return
 
         if not worn_carriers:
             caller.msg("You are not wearing any plate carriers.")
             return
-
-        # Search for the plate in all carriers
-        for carrier in worn_carriers:
-            installed_plates = carrier.installed_plates
-            for slot_name, plate in installed_plates.items():
-                if plate and plate_name.lower() in plate.key.lower():
-                    return self._do_remove_plate(
-                        caller, plate, carrier, slot_name
-                    )
-
         caller.msg(
             f"You don't have any plate matching '{plate_name}'"
-            " installed in your carriers."
+            " installed in the carriers you're wearing."
         )
 
     def _remove_from_carrier(self, caller, item_name, carrier_name):
@@ -1922,9 +1984,8 @@ class CmdUnslot(Command):
             slot_name = item_name.lower()
             plate = installed_plates[slot_name]
             if plate:
-                return self._do_remove_plate(
-                    caller, plate, carrier, slot_name
-                )
+                pull_plate_into_hand(caller, plate, carrier, slot_name)
+                return
             else:
                 caller.msg(f"The {slot_name} slot is already empty.")
                 return
@@ -1932,35 +1993,10 @@ class CmdUnslot(Command):
         # Try as plate name
         for slot_name, plate in installed_plates.items():
             if plate and item_name.lower() in plate.key.lower():
-                return self._do_remove_plate(
-                    caller, plate, carrier, slot_name
-                )
+                pull_plate_into_hand(caller, plate, carrier, slot_name)
+                return
 
         caller.msg(
             f"No plate or slot matching '{item_name}'"
             f" found in {carrier.key}."
         )
-
-    def _do_remove_plate(self, caller, plate, carrier, slot_name):
-        """Actually perform the plate removal."""
-        # Remove from carrier
-        installed_plates = carrier.installed_plates
-        installed_plates[slot_name] = None
-
-        # Add to player inventory
-        plate.move_to(caller, quiet=True)
-
-        # Success messages
-        caller.msg(
-            f"You remove the {plate.key} from the {slot_name}"
-            f" slot of your {carrier.key}."
-        )
-        if caller.location:
-            msg_room_identity(
-                location=caller.location,
-                template=(
-                    f"{{actor}} removes a plate from their {carrier.key}."
-                ),
-                char_refs={"actor": caller},
-                exclude=[caller],
-            )

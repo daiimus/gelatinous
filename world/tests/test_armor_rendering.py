@@ -182,6 +182,7 @@ class TestArmorPerObserverRendering(TestCase):
                     return_value=5,
                 )
             )
+            self.actor.hands = {"left": self.plate, "right": None}
             cmd._install_plate(self.actor, "ceramic", "carrier", None)
 
         ktext = _observer_text(self.knower)
@@ -217,7 +218,7 @@ class TestArmorPerObserverRendering(TestCase):
         ktext = _observer_text(self.knower)
         self.assertIn("Jorge", ktext)
         self.assertIn("plate carrier", ktext)
-        self.assertIn("removes", ktext)
+        self.assertIn("pulls", ktext)
         stext = _observer_text(self.stranger)
         self.assertIn("gaunt man", stext)
 
@@ -247,6 +248,7 @@ class TestArmorPerObserverRendering(TestCase):
                     return_value=5,
                 )
             )
+            self.actor.hands = {"left": new_plate, "right": None}
             cmd._swap_plates(self.actor, "ceramic", "steel")
 
         ktext = _observer_text(self.knower)
@@ -259,17 +261,15 @@ class TestArmorPerObserverRendering(TestCase):
     # ---- unslot ---------------------------------------------------
 
     def test_unslot_broadcast(self):
-        from commands.CmdArmor import CmdUnslot
+        from commands.CmdArmor import pull_plate_into_hand
 
-        cmd = self._make_cmd(CmdUnslot)
-        cmd._do_remove_plate(
-            self.actor, self.plate, self.carrier, "front"
-        )
+        self.carrier.installed_plates = {"front": self.plate}
+        pull_plate_into_hand(self.actor, self.plate, self.carrier, "front")
 
         ktext = _observer_text(self.knower)
         self.assertIn("Jorge", ktext)
         self.assertIn("plate carrier", ktext)
-        self.assertIn("removes", ktext)
+        self.assertIn("pulls", ktext)
         stext = _observer_text(self.stranger)
         self.assertIn("gaunt man", stext)
 
@@ -277,24 +277,22 @@ class TestArmorPerObserverRendering(TestCase):
 
     def test_actor_excluded_from_broadcast(self):
         """Actor receives only first-person msgs, not the room broadcast."""
-        from commands.CmdArmor import CmdUnslot
+        from commands.CmdArmor import pull_plate_into_hand
 
-        cmd = self._make_cmd(CmdUnslot)
-        cmd._do_remove_plate(
-            self.actor, self.plate, self.carrier, "front"
-        )
+        self.carrier.installed_plates = {"front": self.plate}
+        pull_plate_into_hand(self.actor, self.plate, self.carrier, "front")
 
         actor_texts = [
             (c.args[0] if c.args else c.kwargs.get("text", ""))
             for c in self.actor.msg.call_args_list
         ]
-        # Actor's first-person message uses "You remove"
+        # Actor's first-person message uses "You pull"
         self.assertTrue(
-            any("You remove" in t for t in actor_texts),
+            any("You pull" in t for t in actor_texts),
             f"Actor missing first-person remove msg: {actor_texts}",
         )
         # Actor must NOT receive the third-person broadcast
         self.assertFalse(
-            any("Jorge Jackson removes a plate" in t for t in actor_texts),
+            any("Jorge Jackson pulls a plate" in t for t in actor_texts),
             f"Actor unexpectedly received broadcast: {actor_texts}",
         )
