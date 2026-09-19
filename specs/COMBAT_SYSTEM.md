@@ -237,6 +237,32 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 >   time (#2422).  The death path clears targets before a body is deleted,
 >   so the warning is a builder's or a system's deletion, never a kill.
 >
+> **A body does not square up when its target leaves (#3347, 2026-09-18).**
+> When a combatant leaves the fight -- `remove_combatant`, every door: the
+> end-of-round sweep, the attack path's kill, flee, the jump verbs, a
+> dragged traversal, the deferred knockout ejection, the orphan sweep -- everyone
+> who was targeting them is re-pointed at someone who is targeting *them*
+> and announced with the weapon's initiate pose. That is the auto-retarget,
+> and this paragraph is its only description. The announcer is now checked
+> the way #1584 checks the target on the attack command's side: a dead or
+> unconscious combatant gets no new target and says nothing; the sweep
+> ejects them. Three things put a body in that loop. A knockout in combat
+> does not eject on the hit: `_handle_unconsciousness` defers the message
+> and the ejection behind a five-second timer (nothing in combat clears
+> `unconsciousness_pending`), and the round is six seconds, so a fighter
+> knocked out mid-round is enrolled and unconscious for the rest of it;
+> two knockouts in one round, one targeting the other, is the common case.
+> Death does not eject a combatant at all (only the attack path's kill and
+> the sweep do), so anyone killed by a fall, a grenade, a blast or a
+> bleed-out on the medical tick is still enrolled until the end of the
+> round. And a body knocked out before it was attacked is enrolled with its
+> attacker as its target. Recorded, not changed: the auto-retarget forces
+> the survivor's yielding flag off (owner, 2026-09-18: "I don't think a
+> retarget should turn the survivor's yielding flag off", discussion open);
+> and the announcement reaches the announcer and the new target, but the
+> room line has never been sent and the announcer gets a second fallback
+> line, because a local import shadows `msg_room_identity` (#3620).
+>
 > Both losses go through one more shared helper,
 > `opportunity_attack(attacker, target, *, immediate=False)`, which runs a
 > real `attack` against the RESOLVED target (#1002) — immediately for a
