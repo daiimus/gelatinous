@@ -1349,10 +1349,21 @@ class MedicalState:
         # ``_has_disabling_conditions`` to fire correctly on
         # post-restore organs.
         organ_data = data.get("organs", {})
+        if organ_data:
+            # The snapshot IS the body (#3400, ANATOMY_AUGMENTS_SPEC 3.7:
+            # "absence is meaningful"). cls() seeded the species template,
+            # and overlaying the snapshot on top of it resurrected, at
+            # full HP, every organ the template has and the snapshot lacks:
+            # a bone cleared by an augment install or a reattach grew back
+            # on the next load. The template stays only for legacy
+            # snapshots that carry no organ data at all.
+            medical_state.organs.clear()
         for organ_name, organ_dict in organ_data.items():
             organ = Organ.from_dict(organ_dict)
             organ.medical_state = medical_state
             medical_state.organs[organ_name] = organ
+        if organ_data:
+            medical_state._invalidate_derived_state()
             
         # Restore conditions via the shared factory (#307) so harvest /
         # install / persistence layers all reconstruct conditions the
