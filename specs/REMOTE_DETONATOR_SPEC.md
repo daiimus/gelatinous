@@ -68,7 +68,7 @@ Same Room (if operator and grenade in same location):
 **Tactical Gameplay:**
 - Plan complex multi-stage detonations with timed delays
 - Create distractions with long-fuse grenades while rigged traps explode quickly
-- Override rigged traps remotely before they're triggered by victims
+- Override your own rigged traps remotely before they're triggered by victims (a trap answers only to its rigger's detonator; anyone else must defuse it -- owner ruling 2026-09-18, #3351)
 - Mass detonation creates chaos with staggered explosion timing
 
 ---
@@ -164,8 +164,7 @@ detonator.db.scanned_explosives = [explosive_dbref1, explosive_dbref2, ...]
 
 **Behavior:**
 ```python
-1. Validate both objects exist and in inventory/room
-   *(2026-09-12: inventory ONLY as shipped — `commands/CmdExplosives.py:743` and `:753` both call `caller.search(name, location=caller)`, so room contents are never candidates. Because `CmdRig.rig_grenade` moves the grenade into the room (`:173`), a trap can only be scanned BEFORE rigging, and another person's trap or dropped charge cannot be scanned at all. Whether room reach was intended is an open owner question (#3285); `CmdDefuse` does reach into the room by proximity — it searches `self.caller.location.contents` as well as the caller's own (`:287-344`, candidate list at `:293`).)*
+1. Validate both objects exist: the explosive in the caller's inventory OR the caller's room (#3351, 2026-09-18; before that `caller.search(name, location=caller)` reached inventory only, so a rigged grenade -- moved onto the exit by `rig` -- could be scanned only before it was set); the detonator in the caller's inventory. A rigged explosive (`db.rigged_to_exit` set) is refused unless `db.rigged_by` is the caller: "X is someone else's trap. Defuse it if you want it gone."
 2. Confirm explosive has is_explosive attribute
 3. Check detonator capacity (< 20)
 4. Check if explosive already scanned by different detonator:

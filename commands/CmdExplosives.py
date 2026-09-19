@@ -744,7 +744,9 @@ class CmdScan(Command):
     only be scanned by one detonator at a time - scanning with a new detonator
     will override the previous link.
 
-    You must be wielding or holding the detonator to use it.
+    The explosive can be in your hands, your pockets, or here in the room. A
+    trap rigged to an exit can only be scanned by whoever rigged it; anyone
+    else has to defuse it. You must be wielding or holding the detonator.
     """
 
     key = "scan"
@@ -768,13 +770,27 @@ class CmdScan(Command):
         detonator_name = parts[1].strip()
 
         # Find explosive
-        explosive = caller.search(explosive_name, location=caller)
+        # In your hands or pockets, or here in the room (#3351). Rigging moves
+        # the grenade onto the exit, so a caller-only search reached a trap
+        # only BEFORE it was set. The DEFAULT search has exactly that reach
+        # (inventory + room) and keeps the identity/presence gate; an explicit
+        # candidates= list bypasses it and would let `scan <name>` confirm a
+        # hidden or unrecognised person by their real key.
+        explosive = caller.search(explosive_name)
         if not explosive:
             return
 
-        # Validate explosive
+        # Validate explosive. Name it as the caller sees it: a person can
+        # match here, and their key is not the caller's to read.
         if not explosive.db.is_explosive:
-            caller.msg(f"{explosive.key} is not an explosive device.")
+            caller.msg(f"{explosive.get_display_name(caller)} is not an explosive device.")
+            return
+        # A deployed trap answers only to the hand that rigged it (owner
+        # ruling 2026-09-18, #3351). Anyone else has to defuse it: a new
+        # detonator overrides the old link, so a stranger scanning your
+        # trap would own its trigger.
+        if explosive.db.rigged_to_exit is not None and explosive.db.rigged_by != caller:
+            caller.msg(f"{explosive.key} is someone else's trap. Defuse it if you want it gone.")
             return
 
         # Find detonator
