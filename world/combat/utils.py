@@ -1143,23 +1143,34 @@ def validate_character_handler_reference(char):
 
 def find_character_handler(char):
     """The character's live combat handler, reload-proof: prefer the ndb
-    ref when it validates, else scan active handler scripts' DB entries —
-    ndb dies on every reload while the entries are the durable truth."""
+    ref when it validates, else the first handler whose stored rows list
+    them -- ndb dies on every reload while the entries are the durable
+    truth."""
     valid, handler, _err = validate_character_handler_reference(char)
     if valid:
         return handler
-    from evennia.scripts.models import ScriptDB
+    handlers = find_character_handlers(char)
+    return handlers[0] if handlers else None
 
+
+def find_character_handlers(char):
+    """Every active handler whose stored rows list *char*, from the durable
+    truth (the scripts' DB entries), never the ndb ref. The one scan for
+    "which fights is this character in": `find_character_handler` takes
+    its first match, and `Character.at_object_delete` leaves all of them
+    (#3555). A broken handler is not a match."""
+    from evennia.scripts.models import ScriptDB
     from .constants import COMBAT_SCRIPT_KEY
+    found = []
     for script in ScriptDB.objects.filter(db_key=COMBAT_SCRIPT_KEY,
                                           db_is_active=True):
         try:
             if any(e.get(DB_CHAR) == char
                    for e in (script.db.combatants or [])):
-                return script
-        except Exception:  # noqa: BLE001 — a broken handler is not a match
+                found.append(script)
+        except Exception:  # noqa: BLE001 -- a broken handler is not a match
             continue
-    return None
+    return found
 
 
 def get_character_dbref(char):
