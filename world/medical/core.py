@@ -519,6 +519,14 @@ class MedicalState:
         """
         self.character = character
         self.organs = {}
+        # Organs taken out of THIS body on purpose (#3400): the record of
+        # meaningful absence. `remove_organ` writes it; `to_dict` keeps
+        # only the names still absent, so an organ seated again under the
+        # same name (a reattach, an augment) drops off by itself; and
+        # `from_dict` refills a species-table organ only when it is
+        # neither present nor recorded here, so a table addition still
+        # reaches every saved body on its next load.
+        self.removed_organs = set()
         self.conditions = []
         
         # Cached death verdict (issue #462).  ``None`` = stale,
@@ -639,6 +647,7 @@ class MedicalState:
         """
         organ = self.organs.pop(organ_name, None)
         if organ is not None:
+            self.removed_organs.add(organ_name)
             self._invalidate_derived_state()
         return organ
 
@@ -1332,6 +1341,7 @@ class MedicalState:
         """Serialize medical state for persistence."""
         return {
             "organs": {name: organ.to_dict() for name, organ in self.organs.items()},
+            "removed_organs": sorted(n for n in self.removed_organs if n not in self.organs),
             "conditions": [condition.to_dict() for condition in self.conditions],
             "blood_level": self.blood_level,
             "pain_level": self.pain_level,
@@ -1349,11 +1359,40 @@ class MedicalState:
         # ``_has_disabling_conditions`` to fire correctly on
         # post-restore organs.
         organ_data = data.get("organs", {})
-        for organ_name, organ_dict in organ_data.items():
-            organ = Organ.from_dict(organ_dict)
-            organ.medical_state = medical_state
-            medical_state.organs[organ_name] = organ
-            
+        removed = set(data.get("removed_organs", None) or [])
+        if organ_data:
+            # The snapshot is the body (#3400, ANATOMY_AUGMENTS_SPEC 3.7:
+            # "absence is meaningful"). cls() seeded the species template;
+            # overlaying the snapshot on it resurrected, at full HP, every
+            # organ the template has and the snapshot lacks, so a bone
+            # cleared by an augment install or a reattach grew back on the
+            # next load. Now the template is set aside, the snapshot is
+            # copied in, and a template organ is added back only when it
+            # is neither present nor on the body's removed list -- that is
+            # how a species-table addition still reaches a body saved
+            # before it (53 live bodies predate `cervical_spine`/`nose`).
+            # Same order the overlay produced: table position for every
+            # species organ, snapshot-only organs (augments) after, so
+            # order-walking consumers (wound descriptions) see no change.
+            template = dict(medical_state.organs)
+            medical_state.organs.clear()
+            restored = {}
+            for organ_name, organ_dict in organ_data.items():
+                organ = Organ.from_dict(organ_dict)
+                organ.medical_state = medical_state
+                restored[organ_name] = organ
+            for organ_name, organ in template.items():
+                if organ_name in restored:
+                    medical_state.organs[organ_name] = restored[organ_name]
+                elif organ_name not in removed:
+                    medical_state.organs[organ_name] = organ
+            for organ_name, organ in restored.items():
+                if organ_name not in medical_state.organs:
+                    medical_state.organs[organ_name] = organ
+            medical_state.removed_organs = {n for n in removed if n not in medical_state.organs}
+            medical_state._invalidate_derived_state()
+        # A legacy snapshot with no organ data keeps the seeded template.
+
         # Restore conditions via the shared factory (#307) so harvest /
         # install / persistence layers all reconstruct conditions the
         # same way.  Tickers are NOT restarted here: starting one reads
