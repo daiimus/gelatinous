@@ -2244,6 +2244,46 @@ class Character(
         if changed:
             self.worn_items = worn
 
+    def at_object_delete(self):
+        """Leave every fight before the row goes (#3555).
+
+        A character deleted mid-fight left its combat row behind with the
+        character deserialised to nothing. The round tick prunes such a
+        row, but for the rest of that round every removal that retargets
+        (a flee, a jump, a kill) walked it and dereferenced the missing
+        character. Riding the delete hook is the #3552 pattern: the
+        detonator unlinks its explosives, armor severs its grenade bond,
+        and a fighter leaves the fight, through the same door a flee uses,
+        so the people targeting them are told and re-pointed at once and
+        no stale row ever exists.
+
+        Deletion mid-fight is a builder's or a system's act, never a
+        combat outcome (the kill path removes the body first), so in play
+        this is almost always a no-op. It never vetoes the delete.
+        """
+        try:
+            from evennia.scripts.models import ScriptDB
+            from world.combat.constants import COMBAT_SCRIPT_KEY, DB_CHAR, NDB_COMBAT_HANDLER
+            handlers = []
+            mine = getattr(self.ndb, NDB_COMBAT_HANDLER, None)
+            if mine is not None and getattr(mine, "pk", None):
+                handlers.append(mine)
+            for script in ScriptDB.objects.filter(db_key=COMBAT_SCRIPT_KEY, db_is_active=True):
+                if script in handlers:
+                    continue
+                if any(e.get(DB_CHAR) == self for e in (script.db.combatants or [])):
+                    handlers.append(script)
+            for handler in handlers:
+                try:
+                    handler.remove_combatant(self)
+                except Exception:  # noqa: BLE001 -- one handler's fault must not skip the rest
+                    from evennia.utils import logger
+                    logger.log_trace(f"combat release failed for {self!r} in {handler!r} at delete")
+        except Exception:  # noqa: BLE001 -- never what stops a delete; logged, not swallowed
+            from evennia.utils import logger
+            logger.log_trace(f"combat release failed for {self!r} at delete")
+        return super().at_object_delete()
+
     def at_object_leave(self, moved_obj, target_location, **kwargs):
         """Anything leaving this body gives up its hand and clothing slots.
 

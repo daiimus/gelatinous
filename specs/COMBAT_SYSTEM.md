@@ -236,6 +236,15 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 >   once.  `at_repeat` re-reads the round snapshot after the sweep every
 >   time (#2422).  The death path clears targets before a body is deleted,
 >   so the warning is a builder's or a system's deletion, never a kill.
+>   **The row never goes stale now (#3555, 2026-09-19).** `Character.at_object_delete`
+>   removes the character from every active handler that lists it, through
+>   `remove_combatant`, before the object goes: whoever was targeting them is
+>   told and re-pointed at once, and no deserialised-to-None row is left for
+>   the rest of the round. Belt and braces, the retarget candidate scan in
+>   `remove_combatant` skips a row whose character is gone, as its two sibling
+>   loops always did; that scan crashed on such a row when a fighter left
+>   inside the same round (played: `AttributeError: 'NoneType' object has no
+>   attribute 'key'`). The #3552 delete-hook pattern, applied to fighters.
 >
 > **A body does not square up when its target leaves (#3347, 2026-09-18).**
 > When a combatant leaves the fight -- `remove_combatant`, every door: the
