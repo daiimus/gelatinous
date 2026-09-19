@@ -77,8 +77,14 @@ class TestDetonateAllHonoursTheTrapFuse(EvenniaTest):
         det = _detonator(self, explosive.id); caller = _caller(det, self.room2)
         _capture_room(self.room1)
         cmd = xp.CmdDetonate(); cmd.caller = caller
+        # The arming line reaches the trap room through the identity door
+        # now (#3350); capture what that door was handed for room1. char1
+        # (a Developer) stands there, so the builders' copy carries the fuse.
+        def room_door(**kw):
+            if kw.get("location") == self.room1:
+                self.room1.seen.append(str(kw.get("template")))
         with patch("commands.explosion_utils.start_grenade_ticker", lambda g: None), \
-             patch.object(xp, "msg_room_identity", lambda **kw: None):
+             patch.object(xp, "msg_room_identity", room_door):
             cmd.detonate_all(caller, det)
         return explosive
 

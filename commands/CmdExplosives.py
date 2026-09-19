@@ -15,13 +15,113 @@ Part of the G.R.I.M. Combat System.
 import random
 
 
-def arming_line(name, fuse_time):
+def arming_line(name):
     """The room's arming broadcast, with the house article and a capital
     letter -- the four sites that used it hardcoded "An", so "An tactical
-    grenade beeps" for half the catalogue (#3429)."""
+    grenade beeps" for half the catalogue (#3429). The countdown is not
+    part of it: `fuse_tag` adds that per viewer."""
     from world.grammar import capitalize_first, with_article
-    return (f"|r{capitalize_first(with_article(name))} beeps and its light "
-            f"begins flashing!|n |y[{fuse_time} seconds]|n")
+    return f"|r{capitalize_first(with_article(name))} beeps and its light begins flashing!|n"
+
+
+def arming_audience(explosive):
+    """Where a remotely armed charge actually is, and who has it on them.
+
+    Returns ``(room, bearer, armor)``: the room the beep is heard in, the
+    character carrying or wearing the charge (None when it lies loose), and
+    the worn armor it is stuck to (None unless stuck). A charge's
+    ``location`` is often not a room (#3350): stuck, it is the armor item;
+    carried, the character. Broadcasting to that location reached the
+    armor's contents or the holder's other pockets, so the two people the
+    fuse exists to warn heard nothing.
+    """
+    from typeclasses.characters import Character
+    from typeclasses.rooms import Room
+    node = explosive.location
+    bearer = None
+    armor = None
+    for _ in range(6):
+        if node is None or isinstance(node, Room):
+            break
+        if isinstance(node, Character):
+            if bearer is None:
+                bearer = node
+        elif armor is None and explosive.db.stuck_to_armor == node:
+            armor = node
+        node = node.location
+    room = node if isinstance(node, Room) else None
+    return room, bearer, armor
+
+
+def fuse_tag(viewer, fuse_time):
+    """The bracketed countdown, for builders only (owner, 2026-09-18): the
+    fuse is the operator's tactical knowledge and reads as a debug readout
+    to everyone else. Appended to a line, so it carries its own space."""
+    # The perm() lock function, not check_permstring: a player's rank lives
+    # on the ACCOUNT and check_permstring on the character ignores it, and
+    # perm() also honours quelling, so a builder playing quelled sees what
+    # a player sees.
+    try:
+        if viewer.locks.check_lockstring(viewer, f"view:perm({PERM_BUILDER})"):
+            return f" |y[{fuse_time} seconds]|n"
+    except Exception:  # noqa: BLE001 -- an NPC or item viewer has no locks
+        pass
+    return ""
+
+
+def tell_room_arming(room, template, char_refs, exclude, fuse_time):
+    """One identity-door broadcast of an arming line, rendered with the
+    countdown for the builders in the room and without it for everyone
+    else. Two calls into `msg_room_identity`; each viewer gets one copy."""
+    from typeclasses.characters import Character
+    exclude = list(exclude or [])
+    viewers = [o for o in room.contents if isinstance(o, Character) and o not in exclude]
+    builders = [v for v in viewers if fuse_tag(v, fuse_time)]
+    plain = [v for v in viewers if v not in builders]
+    if builders:
+        msg_room_identity(location=room, template=template + f" |y[{fuse_time} seconds]|n",
+                          char_refs=char_refs, exclude=exclude + plain)
+    if plain:
+        msg_room_identity(location=room, template=template,
+                          char_refs=char_refs, exclude=exclude + builders)
+
+
+def announce_arming(caller, explosive, fuse_time):
+    """The arming beep, to the people who can hear it. One door for
+    ``detonate e-<id>`` and ``detonate all`` (#3350). Called after the
+    operator's own lines and BEFORE the ticker starts: the sticky ticker's
+    first countdown warning fires synchronously, and the beep that starts
+    the fuse has to come before the count it starts.
+
+    Someone carrying, holding or wearing the charge gets one personal line
+    and is left out of the room line; the room they stand in hears the
+    beep on them. A charge lying loose is announced to its room as before,
+    with the operator's own copy when they share it. Nobody is told twice.
+    The bracketed countdown is for builders only (`fuse_tag`).
+    """
+    room, bearer, armor = arming_audience(explosive)
+    name = explosive.key
+    if bearer is not None:
+        if armor is not None:
+            mine = f"The {name} stuck to your {armor.key} beeps and its light begins flashing!"
+            theirs = "The " + name + " stuck to {target_char}'s " + armor.key + " beeps and its light begins flashing!"
+        elif explosive in (getattr(bearer, "hands", None) or {}).values():
+            mine = f"The {name} in your hand beeps and its light begins flashing!"
+            theirs = "The " + name + " in {target_char}'s hand beeps and its light begins flashing!"
+        else:
+            mine = f"The {name} in your pocket beeps and its light begins flashing!"
+            theirs = "Something in {target_char}'s pocket beeps!"
+        bearer.msg(f"|r{mine}|n" + fuse_tag(bearer, fuse_time))
+        if room is not None:
+            tell_room_arming(room, "|r" + theirs + "|n", {"target_char": bearer}, [bearer], fuse_time)
+        return
+    if room is None:
+        return
+    if room == caller.location:
+        tell_room_arming(room, arming_line(name), {}, [caller], fuse_time)
+        caller.msg(f"|rThe {name} beeps and its light begins flashing!|n" + fuse_tag(caller, fuse_time))
+    else:
+        tell_room_arming(room, arming_line(name), {}, [], fuse_time)
 
 
 def armed_fuse(explosive):
@@ -45,6 +145,7 @@ from evennia import Command, utils
 from world.combat.debug import get_splattercast
 from world.combat.constants import (
     DEBUG_PREFIX_THROW,
+    PERM_BUILDER,
     NDB_PROXIMITY_UNIVERSAL,
     NDB_COUNTDOWN_REMAINING,
     NDB_GRENADE_TIMER,
@@ -930,13 +1031,6 @@ class CmdDetonate(Command):
         fuse_time = armed_fuse(explosive)   # trap => TRAP_FUSE_TIME (#2547)
         setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
 
-        # Start countdown using the shared sticky-aware ticker, then erase
-        # the trap's registration from both exits like the tripwire and
-        # defuse doors do (#3388). The fuse was read first: it still wants
-        # the trap timing.
-        from commands.explosion_utils import start_grenade_ticker, clear_exit_rigging
-        start_grenade_ticker(explosive)
-        clear_exit_rigging(explosive)
 
         # Operator messaging
         caller.msg(
@@ -952,19 +1046,15 @@ class CmdDetonate(Command):
             exclude=[caller],
         )
 
-        # Grenade's location messaging (activation)
-        if explosive.location and explosive.location != caller.location:
-            # Cross-room - grenade location sees activation
-            explosive.location.msg_contents(
-                arming_line(explosive.key, fuse_time)
-            )
-        elif explosive.location == caller.location:
-            # Same room - show activation to everyone
-            caller.location.msg_contents(
-                arming_line(explosive.key, fuse_time),
-                exclude=[caller]
-            )
-            caller.msg(f"|rThe {explosive.key} beeps and its light begins flashing!|n |y[{fuse_time} seconds]|n")
+        # The arming beep, to whoever can hear it (#3350), BEFORE the ticker:
+        # its first countdown warning fires synchronously. Then the ticker,
+        # then erase the trap's registration from both exits like the
+        # tripwire and defuse doors do (#3388); armed_fuse read the trap
+        # timing above.
+        announce_arming(caller, explosive, fuse_time)
+        from commands.explosion_utils import start_grenade_ticker, clear_exit_rigging
+        start_grenade_ticker(explosive)
+        clear_exit_rigging(explosive)
 
         # Debug logging
         splattercast = get_splattercast()
@@ -987,8 +1077,8 @@ class CmdDetonate(Command):
         detonated_count = 0
         already_active_count = 0
 
-        # Track locations for messaging
-        activation_locations = {}  # location: [explosive_names]
+        # Announced after the operator's own lines (#3350)
+        armed = []
 
         for explosive_dbref in list(detonator.db.scanned_explosives):
             explosive = search_object(f"#{explosive_dbref}")
@@ -1007,19 +1097,12 @@ class CmdDetonate(Command):
             fuse_time = armed_fuse(explosive)   # same answer as the single door (#3348)
             setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
 
-            # Start countdown using the shared sticky-aware ticker, then
-            # erase the trap's registration from both exits (#3388)
-            from commands.explosion_utils import start_grenade_ticker, clear_exit_rigging
-            start_grenade_ticker(explosive)
-            clear_exit_rigging(explosive)
+            # Ticker and rigging cleanup run in the pass below, after the
+            # operator's lines and each charge's arming beep (#3350)
 
             detonated_count += 1
 
-            # Track for location messaging
-            if explosive.location:
-                if explosive.location not in activation_locations:
-                    activation_locations[explosive.location] = []
-                activation_locations[explosive.location].append((explosive.key, fuse_time))
+            armed.append((explosive, fuse_time))
 
         if detonated_count == 0:
             if already_active_count > 0:
@@ -1046,20 +1129,14 @@ class CmdDetonate(Command):
             exclude=[caller],
         )
 
-        # Send activation messages to each location
-        for location, explosives_list in activation_locations.items():
-            if location == caller.location:
-                # Same room - show to everyone including operator
-                for exp_name, fuse in explosives_list:
-                    location.msg_contents(
-                        arming_line(exp_name, fuse)
-                    )
-            else:
-                # Different room - just show activation
-                for exp_name, fuse in explosives_list:
-                    location.msg_contents(
-                        arming_line(exp_name, fuse)
-                    )
+        # Per charge: the arming beep to whoever can hear it (#3350), then
+        # the ticker (its first countdown warning fires synchronously), then
+        # the trap's registration erased from both exits (#3388)
+        from commands.explosion_utils import start_grenade_ticker, clear_exit_rigging
+        for explosive, fuse in armed:
+            announce_arming(caller, explosive, fuse)
+            start_grenade_ticker(explosive)
+            clear_exit_rigging(explosive)
 
         # Debug logging
         splattercast = get_splattercast()
