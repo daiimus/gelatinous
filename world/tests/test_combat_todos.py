@@ -48,7 +48,9 @@ class TestCombatExitNarrative(TestCase):
         handler = MagicMock()
         handler._active_combatants_list = None
         handler.db.combatants = [{DB_CHAR: char}]
-        with patch("world.identity_utils.msg_room_identity") as broadcast, \
+        # Patch the name remove_combatant reads (its module-level import),
+        # not the identity_utils attribute a since-removed local import read (#3620).
+        with patch("world.combat.utils.msg_room_identity") as broadcast, \
                 patch("world.combat.utils.get_splattercast",
                       return_value=MagicMock()), \
                 patch("world.combat.utils.cleanup_combatant_state"):

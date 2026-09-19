@@ -265,10 +265,10 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 > That was the one place the system un-yielded someone for a reason not
 > their own: it broke a `stop` when a third party left, and turned a
 > consensual hold into a struggle (the held person's flag drives the shield
-> chance and the every-round auto-escape). Recorded, not changed: the
-> announcement reaches the announcer and the new target, but the
-> room line has never been sent and the announcer gets a second fallback
-> line, because a local import shadows `msg_room_identity` (#3620).
+> chance and the every-round auto-escape). The announcement reaches the announcer, the new
+> target and the room; the room line had never been sent, because a late
+> local import made `msg_room_identity` local to the whole function and
+> the announcement raised before it was bound (#3620, fixed).
 >
 > Both losses go through one more shared helper,
 > `opportunity_attack(attacker, target, *, immediate=False)`, which runs a
