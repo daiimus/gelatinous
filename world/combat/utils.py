@@ -676,7 +676,20 @@ def remove_combatant(handler, char):
             if not other_char:
                 continue
             splattercast.msg(f"RMV_COMB: Cleared {other_char.key}'s target_dbref (was {char.key})")
-            
+
+            # A BODY DOES NOT SQUARE UP (#3347; the #1584 rule, this side).
+            # Death does not eject a combatant -- only the attack path and
+            # the end-of-round sweep do -- and a body knocked out before it
+            # was attacked is enrolled with its attacker as its target. So
+            # a dead or unconscious fighter can be standing here when their
+            # target leaves. No new target, no pose, no "choose a new
+            # target": the sweep ejects them.
+            if ((hasattr(other_char, "is_dead") and other_char.is_dead())
+                    or (hasattr(other_char, "is_unconscious")
+                        and other_char.is_unconscious())):
+                splattercast.msg(f"RMV_COMB: {other_char.key} is dead/unconscious - no retarget, no pose")
+                continue
+
             # Attempt smart auto-retargeting: find someone who is actively attacking this character
             # For melee weapons, prioritize targets in proximity; for ranged weapons, any attacker is fine
             other_char_weapon = get_wielded_weapon(other_char)
