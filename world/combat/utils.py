@@ -668,6 +668,42 @@ def remove_combatant(handler, char):
         if getattr(other_char.ndb, NDB_AIMED_AT_BY, None) == char:
             setattr(other_char.ndb, NDB_AIMED_AT_BY, None)
 
+    def tell_target_left(other_char):
+        if hasattr(other_char, "msg"):
+            other_char.msg(
+                f"|yYour target {get_display_name_safe(char, other_char)} has left combat."
+                " Choose a new target if you wish to continue fighting.|n"
+            )
+
+    def tell_yielder(other_char):
+        """A yielder is told who left, who is still targeting them, and
+        that holding means not fighting back (#3622, owner wording)."""
+        if not hasattr(other_char, "msg"):
+            return
+        me_ref = get_character_dbref(other_char)
+        still_on = [
+            e.get(DB_CHAR) for e in combatants
+            if e.get(DB_TARGET_DBREF) == me_ref
+            and e.get(DB_CHAR) not in (char, other_char, None)
+            and not ((hasattr(e.get(DB_CHAR), "is_dead") and e.get(DB_CHAR).is_dead())
+                     or (hasattr(e.get(DB_CHAR), "is_unconscious") and e.get(DB_CHAR).is_unconscious()))
+        ]
+        left = get_display_name_safe(char, other_char)
+        if still_on:
+            names = [get_display_name_safe(x, other_char) for x in still_on]
+            who = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+            verb = "is" if len(names) == 1 else "are"
+            other_char.msg(
+                f"|y{capitalize_first(left)} has left combat. {capitalize_first(who)} {verb} still"
+                " targeting you. You are yielding and will not fight back; use 'attack' or"
+                " 'kill' to resume malicious intentions.|n"
+            )
+        else:
+            other_char.msg(
+                f"|y{capitalize_first(left)} has left combat. No one is targeting you now."
+                " You are still yielding.|n"
+            )
+
     # Remove references to this character from other combatants and attempt auto-retargeting
     for other_entry in combatants:
         if other_entry.get(DB_TARGET_DBREF) == get_character_dbref(char):
@@ -688,6 +724,19 @@ def remove_combatant(handler, char):
                     or (hasattr(other_char, "is_unconscious")
                         and other_char.is_unconscious())):
                 splattercast.msg(f"RMV_COMB: {other_char.key} is dead/unconscious - no retarget, no pose")
+                continue
+
+            # A HOLD IS A HOLD (#3622, owner ruling 2026-09-18). A yielding
+            # survivor is not re-pointed and not un-yielded: they are told
+            # their target left, and they hold. If nobody is on them the
+            # orphan sweep lets them out; if someone is, their own next
+            # attack names the target. This was the one place the system
+            # un-yielded someone for a reason that was not theirs; it broke
+            # a `stop` when a third party left, and turned a consensual
+            # hold into a struggle (shield chance, auto-escape).
+            if other_entry.get(DB_IS_YIELDING, False):
+                splattercast.msg(f"RMV_COMB: {other_char.key} is yielding - not re-pointed, still yielding")
+                tell_yielder(other_char)
                 continue
 
             # Attempt smart auto-retargeting: find someone who is actively attacking this character
@@ -775,7 +824,6 @@ def remove_combatant(handler, char):
                     other_char_entry_working[DB_TARGET_DBREF] = get_character_dbref(new_target)
                     other_char_entry_working[DB_COMBAT_ACTION] = None
                     other_char_entry_working[DB_COMBAT_ACTION_TARGET] = None 
-                    other_char_entry_working[DB_IS_YIELDING] = False
                     splattercast.msg(f"RMV_COMB: Updated working list for {other_char.key} -> target_dbref={other_char_entry_working[DB_TARGET_DBREF]}")
                 
                 # Also update database to ensure persistence (same as attack command)
@@ -785,7 +833,6 @@ def remove_combatant(handler, char):
                     other_char_entry_copy[DB_TARGET_DBREF] = get_character_dbref(new_target)
                     other_char_entry_copy[DB_COMBAT_ACTION] = None
                     other_char_entry_copy[DB_COMBAT_ACTION_TARGET] = None 
-                    other_char_entry_copy[DB_IS_YIELDING] = False
                     
                     # Save the modified combatants list back (same as attack command)
                     handler.db.combatants = combatants_copy
@@ -845,10 +892,9 @@ def remove_combatant(handler, char):
                     # Fallback message
                     other_char.msg(f"|yYour target has left combat, but you quickly turn your attention to {get_display_name_safe(new_target, other_char)}!|n")
             else:
-                # No auto-retarget found - send original message
-                if hasattr(other_char, 'msg'):
-                    other_char.msg(f"|yYour target {get_display_name_safe(char, other_char)} has left combat. Choose a new target if you wish to continue fighting.|n")
-    
+                # No auto-retarget found
+                tell_target_left(other_char)
+
     # Remove from combatants list using in-place mutation so the active
     # working list (handler._active_combatants_list) stays in sync.
     combatants[:] = [e for e in combatants if e.get(DB_CHAR) != char]
