@@ -10,6 +10,8 @@ the phrase); this applies that shape to slot/unslot.
 Asserts on STATE (carrier.installed_plates, plate.location), not on
 captured text -- the command's messages are the wrong thing to pin.
 """
+from unittest.mock import patch
+
 from evennia.prototypes.spawner import spawn
 from evennia.utils.test_resources import EvenniaCommandTest
 
@@ -30,6 +32,9 @@ class SlotTakesWholeNamesTest(EvenniaCommandTest):
         self.trauma = spawn(CERAMIC_PLATES)[0]
         for o in (self.carrier, self.plate, self.trauma):
             o.move_to(self.char1, quiet=True)
+        # A plate goes in from a hand and comes out into one (#3463).
+        self.char1.wield_item(self.plate, hand="right")
+        self.char1.wield_item(self.trauma, hand="left")
 
     def _installed(self):
         return {k: v for k, v in (self.carrier.installed_plates or {}).items() if v}
@@ -51,20 +56,73 @@ class SlotTakesWholeNamesTest(EvenniaCommandTest):
         self.assertIs(self._installed().get("left_side"), self.trauma)
 
     def test_unslot_by_full_plate_name(self):
-        # The by-name path searches WORN carriers only (#3463, filed
-        # separately); wear it so this test exercises the parse, not that.
+        # The by-name path searches WORN carriers only (#3463, owner
+        # ruling); wear it so this test exercises the parse, not that.
         self.char1.wear_item(self.carrier)
         self.call(CmdSlot(), "standard plate in plate carrier")
         assert self.plate in self._installed().values()
         self.call(CmdUnslot(), "standard plate")
         self.assertNotIn(self.plate, self._installed().values(), "plate still installed after unslot")
         self.assertEqual(self.plate.location, self.char1)
+        self.assertIn(self.plate, self.char1.hands.values(), "plate did not land in a hand")
+
+    # --- the Mr. Hands rule (#3463) ---------------------------------------
+
+    def test_slot_requires_the_plate_in_a_hand(self):
+        self.char1.unwield_item("right")
+        assert self.plate not in self.char1.hands.values()
+        self.call(CmdSlot(), "standard plate in plate carrier")
+        self.assertNotIn(self.plate, self._installed().values(),
+                         "a plate loose in the pack was slotted")
+        self.assertEqual(self.plate.location, self.char1)
+
+    def test_slot_frees_the_hand(self):
+        # Not a discriminator: release_slots already frees a hand when
+        # the item leaves the body. Pinned because the slot gate above
+        # depends on it (a move_hooks=False regression would break it).
+        self.call(CmdSlot(), "standard plate in plate carrier")
+        assert self.plate in self._installed().values()
+        self.assertNotIn(self.plate, self.char1.hands.values())
+        self.assertIsNone(self.char1.hands.get("right_hand"), self.char1.hands)
+
+    def test_unslot_refused_when_hands_are_full(self):
+        self.call(CmdSlot(), "standard plate in plate carrier front")
+        filler = spawn(CERAMIC_PLATES)[0]
+        filler.move_to(self.char1, quiet=True)
+        self.char1.wield_item(filler, hand="right")
+        assert all(self.char1.hands.values()), self.char1.hands
+        self.call(CmdUnslot(), "standard plate from plate carrier")
+        self.assertIs(self._installed().get("front"), self.plate,
+                      "plate came out with no free hand")
+        self.assertEqual(self.plate.location, self.carrier)
+
+    def test_no_hands_is_its_own_refusal(self):
+        # Both hands severed: the view is {}, not "full". Nothing to free.
+        self.call(CmdSlot(), "standard plate in plate carrier front")
+        both = {"left_hand", "right_hand"}
+        with patch.object(type(self.char1), "_get_severed_locations", return_value=both):
+            assert self.char1.hands == {}, self.char1.hands
+            out = self.call(CmdUnslot(), "standard plate from plate carrier")
+            self.assertIn("no hands", out or "")
+            self.assertNotIn("hands are full", out or "")
+            self.assertIs(self._installed().get("front"), self.plate)
+            out = self.call(CmdSlot(), "trauma plate in plate carrier back")
+            self.assertIn("no hands", out or "")
+            self.assertIsNone(self._installed().get("back"))
+
+    def test_bare_unslot_points_a_carried_carrier_at_the_from_form(self):
+        # Carrier in the pack, not worn: `unslot <plate>` does not reach it.
+        self.call(CmdSlot(), "standard plate in plate carrier front")
+        out = self.call(CmdUnslot(), "standard plate")
+        self.assertIs(self._installed().get("front"), self.plate)
+        self.assertIn("from plate carrier", out or "")
 
     def test_unslot_from_full_carrier_name(self):
         self.call(CmdSlot(), "standard plate in plate carrier front")
         assert self.plate in self._installed().values(), "precondition: install failed"
         self.call(CmdUnslot(), "standard plate from plate carrier")
         self.assertNotIn(self.plate, self._installed().values())
+        self.assertIn(self.plate, self.char1.hands.values(), "plate did not land in a hand")
 
     def test_unslot_slot_from_carrier(self):
         self.call(CmdSlot(), "standard plate in plate carrier back")

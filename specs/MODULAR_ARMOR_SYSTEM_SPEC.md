@@ -627,6 +627,14 @@ Total Weight: 4.5 kg
 ### Equipment Management Commands
 
 #### `slot <plate> [in] <carrier> [<slot>]` - Install Armor Plate
+
+The plate must be **in your hand** (#3463, 2026-09-18). Plates move through
+the hands ledger (`character.hands`), so a plate loose in the pack is not
+being handled and is refused ("You need to be holding the standard plate
+to slot it."); wield it first. Moving the plate into the carrier releases
+the hand. Anyone without a free hand cannot work plates at all: limb loss
+is meant to be felt here.
+
 ```  
 > slot medium ballistic plate in plate carrier
 You install the medium ballistic plate into the chest slot of the plate carrier.
@@ -640,9 +648,22 @@ You install the side plate into the left_side slot of the vest.
 ```
 
 #### `unslot <plate> [from <carrier>]` - Remove Armor Plate
+
+Two doors, by owner ruling (#3463): `unslot <plate>` alone looks only in
+the carriers you are **wearing**; `unslot <plate> from <carrier>` (or
+`unslot <slot> from <carrier>`) reaches a carrier anywhere in your
+inventory. A bare `unslot` that finds the plate in a carrier you merely
+carry names the `from` form instead of acting. Either way the plate comes
+out **into a free hand** and is refused when both hands are full ("Your
+hands are full. Free one to take the standard plate out."). Every unslot
+path goes through one door, `pull_plate_into_hand`, in
+`commands/CmdArmor.py`. The resolvers are kept generic (carriers you wear;
+an item in your inventory) because slot/unslot are expected to gain
+non-plate uses.
+
 ```
 > unslot medium ballistic plate
-You carefully remove the medium ballistic plate from the plate carrier.
+You pull the medium ballistic plate out of the front slot of your plate carrier and hold it.
 ```
 
 #### `slot list [carrier]` - List Installed Plates
