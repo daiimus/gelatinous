@@ -124,6 +124,8 @@ installed tail:
 the species set, and severance already subtracts locations
 per-character — the substrate is half-built; this spec finishes it.
 
+> **Corrected 2026-09-19 (#3400):** the overlay was the last zombie-organ door. `from_dict` seeded the species template and copied the snapshot's organs over it, so any organ the template has and the snapshot lacks came back at full HP on every load (proved on a live reload: a body saved with 27 organs read back with 28). It was also the only path by which a species-table addition reached a saved body (53 live snapshots predate `cervical_spine` and `nose`), so a strict snapshot would have stranded them without a neck. The body now records meaningful absence: `MedicalState.removed_organs`, written by `remove_organ` (the single deletion door, used by augment install and reattach), persisted by `to_dict` as the names still absent, and honoured by `from_dict`, which builds the body from the snapshot and adds a template organ back only when it is neither present nor recorded removed. Harvest and severance tombstones (0 HP) were never affected. A new sleeve (`reset_body_preserving_augments`) starts with an empty list, as it should.
+
 > **Note 2026-09-11 (re-verification):** the table above is the
 > **pre-implementation census** (2026-06-11), kept for its reasoning.
 > Six of its seven "Per-character today?" answers are now **yes**:
@@ -276,7 +278,10 @@ anatomy; nothing auto-creates.  `get_organ` returns existing-or-
 `None` — never lazily creates from the species table (the old
 behavior was a zombie-organ factory: capacity math iterating
 species lists by name resurrected install-deleted flesh organs at
-full HP).  Absence is meaningful.
+full HP).  Absence is meaningful, and since #3400 it is **recorded**:
+`removed_organs` holds the names taken out of this body on purpose, so
+the loader can tell a deliberate absence from a species-table organ the
+body predates (the latter is added back on load; the former never is).
 
 Severed organs persist as **0-HP `"severed"` tombstones** — they
 ARE the stump, and they are load-bearing: wound rendering, the
