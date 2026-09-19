@@ -751,7 +751,12 @@ def remove_combatant(handler, char):
             for potential_target_entry in combatants:
                 potential_target_char = potential_target_entry.get(DB_CHAR)
                 potential_target_dbref = potential_target_entry.get(DB_TARGET_DBREF)
-                
+
+                # A row whose character is gone (deleted mid-fight, read back
+                # as None) is nobody's candidate; the two loops above already
+                # skip it, this one dereferenced it (#3555).
+                if not potential_target_char:
+                    continue
                 # Skip self and the character being removed
                 if potential_target_char == other_char or potential_target_char == char:
                     continue
