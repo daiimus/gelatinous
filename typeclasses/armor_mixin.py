@@ -6,6 +6,7 @@ calculations, and armor degradation logic for Character objects.
 
 Extracted from typeclasses/characters.py in Phase 4 refactoring.
 """
+from random import choice
 
 
 class ArmorMixin:
@@ -498,74 +499,34 @@ class ArmorMixin:
                 'armor_type': getattr(carrier, 'armor_type', 'generic'),
             })
 
-        # Layer 2+: Installed plates that protect this location
+        # Layer 2: the plate a hit at this location meets, from the
+        # carrier's declared coverage. When more than one slot covers the
+        # location (the two side slots share the abdomen) the hit lands on
+        # ONE of them, even odds, and meets that plate in full, or only the
+        # carrier if that slot is empty (#3366, owner ruling 2026-09-20).
+        # Before this, both side plates were stacked at half rating as two
+        # sequential layers, which handed the wearer a whole plate against
+        # every abdomen hit while the halving comment claimed the opposite.
         if hasattr(carrier, 'installed_plates'):
             installed_plates = carrier.db.installed_plates or {}
             slot_coverage = carrier.db.plate_slot_coverage or {}
-
-            from world.combat.utils import debug_broadcast
-            debug_broadcast(
-                f"PLATE_LOOP: Processing {len(installed_plates)} slots "
-                f"for {location}",
-                "ARMOR_CALC", "DEBUG",
-            )
-            debug_broadcast(
-                f"PLATE_LOOP: installed_plates type={type(installed_plates)}, "
-                f"value={installed_plates}",
-                "ARMOR_CALC", "DEBUG",
-            )
-            debug_broadcast(
-                f"PLATE_LOOP: slot_coverage={slot_coverage}",
-                "ARMOR_CALC", "DEBUG",
-            )
-
-            for slot_name, plate in installed_plates.items():
-                from world.combat.utils import debug_broadcast
-                plate_type = type(plate).__name__ if plate else "None"
-                plate_key = plate.key if plate and hasattr(plate, 'key') else "N/A"
-                plate_layer = (
-                    getattr(plate, 'layer', 'MISSING') if plate else "N/A"
-                )
-                debug_broadcast(
-                    f"PLATE_SLOT: slot={slot_name}, type={plate_type}, "
-                    f"key={plate_key}, layer={plate_layer}, "
-                    f"has_rating="
-                    f"{hasattr(plate, 'armor_rating') if plate else False}",
-                    "ARMOR_CALC", "DEBUG",
-                )
-
-                if not plate or not hasattr(plate, 'armor_rating'):
-                    continue
-
-                # Check if this plate protects the hit location
-                protected_locations = slot_coverage.get(slot_name, [])
+            covering = [slot for slot, locs in slot_coverage.items() if location in (locs or [])]
+            landed = choice(covering) if len(covering) > 1 else (covering[0] if covering else None)
+            if len(covering) > 1:
                 from world.combat.utils import debug_broadcast
                 debug_broadcast(
-                    f"PLATE_COVERAGE: slot={slot_name}, "
-                    f"protects={protected_locations}, location={location}, "
-                    f"match={location in protected_locations}",
+                    f"PLATE_SIDE: {location} hit landed on {landed} of {covering}",
                     "ARMOR_CALC", "DEBUG",
                 )
-                if location not in protected_locations:
-                    continue
-
-                # Get plate's armor properties
-                plate_rating = getattr(plate, 'armor_rating', 0)
-                plate_type = getattr(plate, 'armor_type', 'generic')
-
-                # For abdomen with 2 side plates, each contributes half its rating
-                # This is because side plates are angled and only partially cover abdomen
-                if location == "abdomen" and slot_name in ["left_side", "right_side"]:
-                    plate_rating = plate_rating // 2
-
-                if plate_rating > 0:
-                    layers.append({
-                        'item': plate,  # Reference the plate itself for degradation
-                        'layer': plate_layer_number,  # Outer layer - processed before carrier
-                        'armor_rating': plate_rating,
-                        'armor_type': plate_type,  # Use plate's material, not carrier's
-                    })
-
+            plate = installed_plates.get(landed) if landed else None
+            plate_rating = getattr(plate, 'armor_rating', 0) if plate else 0
+            if plate_rating > 0:
+                layers.append({
+                    'item': plate,  # Reference the plate itself for degradation
+                    'layer': plate_layer_number,  # Outer layer - processed before carrier
+                    'armor_rating': plate_rating,
+                    'armor_type': getattr(plate, 'armor_type', 'generic'),  # Use plate's material, not carrier's
+                })
         return layers
 
     def _get_total_armor_rating(self, item, location=None):

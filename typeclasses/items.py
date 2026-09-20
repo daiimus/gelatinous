@@ -608,7 +608,6 @@ class Item(ObjectParent, DefaultObject):
         info_lines.append(f"  Base Protection: {base_rating}")
         
         # Show slot configuration
-        total_plate_rating = 0
         total_plate_weight = 0
         
         info_lines.append(f"  Current Configuration:")
@@ -616,18 +615,16 @@ class Item(ObjectParent, DefaultObject):
             if plate:
                 plate_rating = getattr(plate, 'armor_rating', 0)
                 plate_weight = getattr(plate, 'weight', 0)
-                total_plate_rating += plate_rating
                 total_plate_weight += plate_weight
                 info_lines.append(f"    {slot_name.title()} Slot: {plate.key} (+{plate_rating} protection, {plate_weight}kg)")
             else:
                 info_lines.append(f"    {slot_name.title()} Slot: |y[Empty]|n")
         
-        # Totals
-        total_protection = base_rating + total_plate_rating
+        # Weight totals only: a sum of plate ratings across slots is a
+        # number no body location ever has (#3366); each slot line above
+        # already says what its plate is worth where a hit meets it.
         total_weight = getattr(self, 'weight', 0) + total_plate_weight
-        
         info_lines.append(f"")
-        info_lines.append(f"  Total Protection: {total_protection} (Base {base_rating} + Plates {total_plate_rating})")
         info_lines.append(f"  Total Weight: {total_weight} kg")
         
         return info_lines

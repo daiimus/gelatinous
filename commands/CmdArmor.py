@@ -30,69 +30,33 @@ def _get_center_headers(caller):
     return pref if pref is not None else True
 
 
-def _get_plate_carrier_location_rating(carrier, location):
+def plate_layers_at(carrier, location):
+    """The plate slots that cover *location* on this carrier, as
+    ``[(slot, plate_or_None), ...]`` in declared slot order, read from the
+    carrier's ``plate_slot_coverage`` -- the same declaration combat reads
+    (#3366). Two slots covering one location (the side slots share the
+    abdomen) means a hit there meets ONE of them, so the display lists
+    them as alternatives and never sums them.
     """
-    Get the effective armor rating of a plate carrier at a specific body location.
-
-    Front plate protects chest, back plate protects back, and side plates
-    contribute averaged protection to the abdomen.
-
-    Args:
-        carrier: The plate carrier Item.
-        location: The body location string (e.g., "chest", "back", "abdomen").
-
-    Returns:
-        tuple: (total_rating, affecting_plates) where total_rating is the
-            combined base + plate rating, and affecting_plates is a list
-            of plate objects contributing to that location.
-    """
-    base_rating = carrier.armor_rating
-    installed_plates = carrier.installed_plates
-
-    plate_bonus = 0
-    affecting_plates = []
-
-    if location == "chest":
-        front_plate = installed_plates.get("front")
-        if front_plate:
-            plate_bonus = front_plate.armor_rating
-            affecting_plates.append(front_plate)
-    elif location == "back":
-        back_plate = installed_plates.get("back")
-        if back_plate:
-            plate_bonus = back_plate.armor_rating
-            affecting_plates.append(back_plate)
-    elif location == "abdomen":
-        left_plate = installed_plates.get("left_side")
-        right_plate = installed_plates.get("right_side")
-        side_total = 0
-        if left_plate:
-            side_total += left_plate.armor_rating
-            affecting_plates.append(left_plate)
-        if right_plate:
-            side_total += right_plate.armor_rating
-            affecting_plates.append(right_plate)
-        if side_total > 0:
-            plate_bonus = side_total // 2
-
-    return base_rating + plate_bonus, affecting_plates
+    coverage = carrier.plate_slot_coverage or {}
+    installed = carrier.installed_plates or {}
+    slots = [s for s in (carrier.plate_slots or []) if location in (coverage.get(s) or [])]
+    return [(s, installed.get(s)) for s in slots]
 
 
-def _calculate_total_carrier_rating(carrier):
-    """
-    Calculate total armor rating for a plate carrier including all installed plates.
+def describe_plate_layers(layers):
+    """One bracket for the coverage rows: ``front: standard plate (7)``, or
+    ``one of left side: standard plate (7) | right side: empty``."""
+    parts = []
+    for slot, plate in layers:
+        label = slot.replace("_", " ")
+        parts.append(f"{label}: {plate.key} ({plate.armor_rating})" if plate else f"{label}: empty")
+    if len(parts) > 1:
+        return "one of " + " | ".join(parts)
+    return parts[0] if parts else ""
 
-    Args:
-        carrier: The plate carrier Item.
 
-    Returns:
-        int: Combined base + total plate rating.
-    """
-    base_rating = carrier.armor_rating
-    installed_plates = carrier.installed_plates
-    return base_rating + sum(
-        plate.armor_rating for plate in installed_plates.values() if plate
-    )
+
 
 
 class CmdArmor(Command):
@@ -172,19 +136,11 @@ class CmdArmor(Command):
 
             # Calculate rating (handle plate carriers specially)
             if armor.is_plate_carrier:
-                base_rating = armor.armor_rating
-                max_rating = base_rating
-                for loc in ("chest", "back", "abdomen"):
-                    loc_rating, _ = _get_plate_carrier_location_rating(
-                        armor, loc
-                    )
-                    max_rating = max(max_rating, loc_rating)
-
-                # Show as range if plates provide different protection levels
-                if max_rating > base_rating:
-                    rating_display = f"{base_rating}-{max_rating}/10"
-                else:
-                    rating_display = f"{base_rating}/10"
+                # The carrier's own rating; the plates a hit meets are per
+                # location and listed by `armor coverage` (#3366).
+                plates = sum(1 for p in (armor.installed_plates or {}).values() if p)
+                # no "+": BoxTable redraws a plus as a box junction
+                rating_display = f"{armor.armor_rating}/10" + (f" ({plates} plate{'s' if plates != 1 else ''})" if plates else "")
             else:
                 rating_display = f"{armor.armor_rating}/10"
 
@@ -296,27 +252,11 @@ class CmdArmor(Command):
                     if location not in coverage_map:
                         coverage_map[location] = []
 
-                    location_rating, affecting_plates = (
-                        _get_plate_carrier_location_rating(armor, location)
-                    )
-
-                    # Build plate detail descriptions
-                    plate_details = []
-                    for plate in affecting_plates:
-                        if location == "abdomen":
-                            # Show actual effective contribution (halved)
-                            plate_details.append(
-                                f"{plate.key} ({plate.armor_rating // 2})"
-                            )
-                        else:
-                            plate_details.append(
-                                f"{plate.key} ({plate.armor_rating})"
-                            )
-
-                    # Build armor description
-                    armor_desc = armor.key
-                    if plate_details:
-                        armor_desc += " [" + ", ".join(plate_details) + "]"
+                    # The layers a hit here meets: the carrier, then the
+                    # plate of the slot the hit lands on, in full (#3366).
+                    location_rating = armor.armor_rating
+                    detail = describe_plate_layers(plate_layers_at(armor, location))
+                    armor_desc = armor.key + (f" [{detail}]" if detail else "")
 
                     coverage_map[location].append(
                         {
@@ -579,19 +519,19 @@ class CmdArmor(Command):
                     )
 
                     # Calculate location-specific rating and get affecting plates
-                    loc_rating, affecting_plates = (
-                        _get_plate_carrier_location_rating(item, location)
-                    )
-                    item_entries[-1]["rating"] = loc_rating
-
-                    # Add affecting plates as sub-items
-                    for plate in affecting_plates:
-                        plate_type = plate.armor_type or "generic"
+                    # The carrier's own rating, then each slot that covers
+                    # this location as a sub-row; two slots on one location
+                    # are alternatives a hit lands on, not a sum (#3366).
+                    item_entries[-1]["rating"] = item.armor_rating
+                    layers = plate_layers_at(item, location)
+                    one_of = " (one of)" if len(layers) > 1 else ""
+                    for slot, plate in layers:
+                        label = slot.replace("_", " ")
                         item_entries.append(
                             {
-                                "name": f"  └─ {plate.key}",
-                                "rating": plate.armor_rating,
-                                "type": plate_type,
+                                "name": f"  └─ {label}: {plate.key if plate else 'empty'}{one_of}",
+                                "rating": plate.armor_rating if plate else 0,
+                                "type": (plate.armor_type or "generic") if plate else "-",
                                 "is_plate": True,
                             }
                         )
@@ -1493,8 +1433,6 @@ class CmdSlot(Command):
             installed_plates = carrier.installed_plates
             plate_slots = carrier.plate_slots
 
-            # Calculate total protection
-            total_rating = _calculate_total_carrier_rating(carrier)
 
             # Calculate total weight
             carrier_weight = carrier.weight
@@ -1506,7 +1444,7 @@ class CmdSlot(Command):
             total_weight = carrier_weight + plate_weight
 
             caller.msg(
-                f"\n|c{carrier_name}|n (Total Protection: {total_rating},"
+                f"\n|c{carrier_name}|n (Base Protection: {carrier.armor_rating}/10,"
                 f" Weight: {total_weight:.1f} lbs)"
             )
 
@@ -1536,12 +1474,6 @@ class CmdSlot(Command):
         installed_plates = carrier.installed_plates
         plate_slots = carrier.plate_slots
 
-        plate_rating = sum(
-            plate.armor_rating
-            for plate in installed_plates.values()
-            if plate
-        )
-        total_rating = base_rating + plate_rating
 
         carrier_weight = carrier.weight
         plate_weight = sum(
@@ -1553,8 +1485,6 @@ class CmdSlot(Command):
 
         caller.msg(f"\n|xCarrier Statistics:|n")
         caller.msg(f"  Base Protection: {base_rating}/10")
-        caller.msg(f"  Plate Protection: {plate_rating}/10")
-        caller.msg(f"  Total Protection: {total_rating}/10")
         caller.msg(f"  Carrier Weight: {carrier_weight:.1f} lbs")
         caller.msg(f"  Plate Weight: {plate_weight:.1f} lbs")
         caller.msg(f"  Total Weight: {total_weight:.1f} lbs")
@@ -1564,7 +1494,7 @@ class CmdSlot(Command):
             if slot in installed_plates and installed_plates[slot]:
                 plate = installed_plates[slot]
                 condition = self._get_condition_color(plate)
-                caller.msg(f"  {slot.title()}: |g{plate.key}|n {condition}")
+                caller.msg(f"  {slot.title()}: |g{plate.key}|n ({plate.armor_rating}/10) {condition}")
             else:
                 caller.msg(f"  {slot.title()}: |r[Empty Slot]|n")
 
@@ -1652,9 +1582,6 @@ class CmdSlot(Command):
             f" of your {carrier.key}.|n"
         )
 
-        # Show new rating
-        total_rating = _calculate_total_carrier_rating(carrier)
-        caller.msg(f"New total protection: {total_rating}")
 
         # Location message
         if caller.location:
@@ -1668,102 +1595,7 @@ class CmdSlot(Command):
                 exclude=[caller],
             )
 
-    def _remove_plate(self, caller, plate_name, carrier_name):
-        """Remove a plate from a carrier."""
-        # Find the carrier
-        carrier = self._find_carrier_by_name(caller, carrier_name)
-        if not carrier:
-            return
 
-        # Find the installed plate
-        installed_plates = carrier.installed_plates
-        target_plate = None
-        target_slot = None
-
-        for slot, plate in installed_plates.items():
-            plate_aliases = plate.aliases.all() if plate else []
-            if plate and (
-                plate_name.lower() in plate.key.lower()
-                or plate_name.lower()
-                in [alias.lower() for alias in plate_aliases]
-            ):
-                target_plate = plate
-                target_slot = slot
-                break
-
-        if not target_plate:
-            caller.msg(
-                f"The {carrier.key} doesn't have a plate"
-                f" matching '{plate_name}'."
-            )
-            return
-
-        # Out of the carrier and into a free hand, or not at all (#3463)
-        if not pull_plate_into_hand(caller, target_plate, carrier, target_slot):
-            return
-        total_rating = _calculate_total_carrier_rating(carrier)
-        caller.msg(f"New total protection: {total_rating}")
-
-    def _swap_plates(self, caller, old_plate_name, new_plate_name):
-        """Quick swap between plates in carriers."""
-        # Find old plate (must be installed)
-        old_plate, old_carrier, old_slot = self._find_installed_plate(
-            caller, old_plate_name
-        )
-        if not old_plate:
-            caller.msg(
-                "You don't have an installed plate matching"
-                f" '{old_plate_name}'."
-            )
-            return
-
-        # Find new plate (must be in your hand, #3463)
-        new_plate = self._find_plate_by_name(caller, new_plate_name)
-        if not new_plate:
-            return
-        if not has_hands(caller):
-            caller.msg(f"You have no hands to slot the {new_plate.key} with.")
-            return
-        hand = hand_holding(caller, new_plate)
-        if hand is None:
-            caller.msg(f"You need to be holding the {new_plate.key} to slot it.")
-            return
-
-        if not new_plate.is_armor_plate:
-            caller.msg(f"The {new_plate.key} is not an armor plate.")
-            return
-
-        # Perform the swap
-        installed_plates = old_carrier.installed_plates
-        installed_plates[old_slot] = new_plate
-        old_carrier.installed_plates = installed_plates
-
-        # Move plates: the new one leaves the hand, the old one takes it
-        new_plate.move_to(old_carrier, quiet=True)
-        old_plate.move_to(caller, quiet=True)
-        caller.wield_item(old_plate, hand=hand)
-
-        # Success messages
-        caller.msg(
-            f"|gYou quickly swap the {old_plate.key} for the"
-            f" {new_plate.key} in your {old_carrier.key}.|n"
-        )
-
-        # Show rating change
-        total_rating = _calculate_total_carrier_rating(old_carrier)
-        caller.msg(f"New total protection: {total_rating}")
-
-        # Location message
-        if caller.location:
-            msg_room_identity(
-                location=caller.location,
-                template=(
-                    f"{{actor}} performs a tactical plate swap on"
-                    f" their {old_carrier.key}."
-                ),
-                char_refs={"actor": caller},
-                exclude=[caller],
-            )
 
     def _find_plate_carriers(self, caller):
         """Find all plate carriers (worn or carried)."""
@@ -1833,22 +1665,6 @@ class CmdSlot(Command):
 
         return candidates
 
-    def _find_installed_plate(self, caller, plate_name):
-        """Find an installed plate by name."""
-        carriers = self._find_plate_carriers(caller)
-        for carrier in carriers:
-            installed_plates = carrier.installed_plates
-            for slot, plate in installed_plates.items():
-                if not plate:
-                    continue
-                # Check if plate matches the search term
-                plate_aliases = plate.aliases.all()
-                if plate_name.lower() in plate.key.lower() or plate_name.lower() in [
-                    alias.lower() for alias in plate_aliases
-                ]:
-                    return plate, carrier, slot
-
-        return None, None, None
 
     def _get_condition_color(self, item):
         """Get color-coded condition indicator."""

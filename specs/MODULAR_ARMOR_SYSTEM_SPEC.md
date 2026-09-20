@@ -49,17 +49,30 @@ The Modular Armor System provides a comprehensive tactical combat experience wit
 
 **Layer Processing Order**: Outermost → Innermost (highest layer number first)
 
+> **Ruling 2026-09-20 (#3366): an abdomen hit meets ONE side plate, in full.** Two slots
+> share the abdomen. The hit lands on the left or the right at even odds
+> (`_expand_plate_carrier_layers`, `random.choice` over the slots whose declared
+> coverage includes the location) and meets that slot's plate at its full rating,
+> then the carrier; an empty landed slot means carrier only. There is no gap
+> outcome: the abdomen *is* the sides, the front and back plates own their own
+> locations. Before this, both side plates were stacked at half rating as two
+> sequential layers, which handed the wearer roughly a whole plate against every
+> abdomen hit while the halving comment claimed the opposite (owner: the halving
+> was a band-aid for two slots sharing one location). Recorded against the balance
+> pass: abdomen mitigation changed, nothing tuned.
+
 > **⚠ 2026-09-11 re-verify — the example below misstates the mechanic twice.**
 > (a) **Ratings are never summed for mitigation.**
-> `_expand_plate_carrier_layers` (`typeclasses/armor_mixin.py:470-569`) returns
-> the carrier at its own layer and each applicable plate at `layer + 1` as
-> *separate* entries, and `_calculate_armor_damage_reduction` (`:405-443`)
+> `_expand_plate_carrier_layers` (`typeclasses/armor_mixin.py`) returns
+> the carrier at its own layer and the plate a hit meets at `layer + 1` as
+> *separate* entries, and `_calculate_armor_damage_reduction`
 > applies each sequentially with its own effectiveness. A rating-2 carrier and a
 > rating-6 plate reduce damage twice, in series; they never form one rating-8
-> layer. The summed form (`_get_total_armor_rating`, `:571-611`) has exactly one
-> caller — `_get_location_armor_coverage` in `world/medical/utils.py:315-316`,
-> which feeds the armour-aware **targeting** weights, not display; the armour
-> display re-derives its own totals in `commands/CmdArmor.py:33-78`. (b) **The
+> layer. The summed form (`_get_total_armor_rating`) has exactly one
+> caller — `_get_location_armor_coverage` in `world/medical/utils.py`,
+> which feeds the armour-aware **targeting** weights (a heuristic with thresholds
+> at 0 and 4), not display; since #3366 the armour display sums nothing and reads
+> the carrier's declared coverage through `commands/CmdArmor.plate_layers_at`. (b) **The
 > live layer numbers are lower**: the plate carrier is layer 2
 > (`world/prototypes.py:1358`) and the tactical jumpsuit layer 1 (`:1270`), so
 > the plate lands on 3. The relative order the example teaches is still right.
@@ -199,15 +212,11 @@ def get_total_weight(character):
 > body location in this anatomy** (see `COVERAGE_INHERITANCE`,
 > `world/combat/constants.py:133-156`, which enumerates all 22 locations), so a
 > carrier authored to the mapping below would protect nothing at its sides. One
-> shipped rule is also missing here: at the abdomen each side plate contributes
-> only **half** its rating (`typeclasses/armor_mixin.py:556-559`,
-> `plate_rating // 2`), because an angled side plate only partly covers the
-> abdomen. Note that the halving is applied in three different places three
-> different ways — mitigation halves each plate then layers them
-> (`:556-559`), the coverage display sums both then halves the total
-> (`commands/CmdArmor.py:65-77`), and the targeting rating does not halve at all
-> (`armor_mixin.py:598-607`) — so quote the mitigation path when a number has to
-> be right. (`plate_slot_coverage` reached its `getattr` consumers only after
+> more rule, corrected 2026-09-20 (#3366): at the abdomen a hit meets ONE side
+> plate in full (see the ruling under Stacking Rules); the old half-rating
+> average, applied three different ways in three places, is gone, and every
+> display path reads `plate_slot_coverage` through `commands/CmdArmor.plate_layers_at`
+> rather than a hand-typed map. (`plate_slot_coverage` reached its `getattr` consumers only after
 > #2581 gave it an `AttributeProperty`; mitigation was always correct because it
 > reads through `.db.`.)
 ```python
@@ -472,7 +481,7 @@ BALLISTIC_PLATE_BACK = {
 ```
 
 Displays:
-- Item name, armor type, protection rating
+- Item name, armor type, protection rating (a carrier shows its own rating plus the count of installed plates, e.g. `2/10 (2 plates)`; the plates a hit meets are per location and listed by `armor coverage` -- #3366)
 - Durability bar with visual indicator
 - Body coverage areas
 - All tables centered on screen with boxed headers
@@ -493,7 +502,7 @@ Shows detailed protection for each body location:
 - Lists all armor pieces protecting each location
 - Shows armor type and rating per location
 - Highlights unprotected areas
-- For plate carriers, shows which plates protect which locations
+- For plate carriers, shows which plates protect which locations, read from `plate_slot_coverage`: `plate carrier [front: standard plate (7)]`, and for two slots on one location the alternatives a hit lands on, `plate carrier [one of left side: standard plate (7) | right side: trauma plate (10)]`. The Rating column is the carrier's own; nothing is summed (#3366).
 
 #### `armor effectiveness` - Damage Type Matrix
 ```
@@ -620,9 +629,10 @@ Armor Information:
     Left Side: [Empty] 
     Right Side: [Empty]
   
-Total Protection: 8 (Base 2 + Plates 6)
 Total Weight: 4.5 kg
 ```
+
+> *2026-09-20 (#3366): the `Total Protection: 8 (Base 2 + Plates 6)` line this example used to end with is gone; a sum of plate ratings across slots is a number no body location ever has. Each slot line still says what its plate is worth where a hit meets it.*
 
 ### Equipment Management Commands
 
@@ -677,13 +687,12 @@ You pull the medium ballistic plate out of the front slot of your plate carrier 
 > `slot <single-token-carrier>` — see the parser defect noted under
 > `slot <plate> [in] <carrier>` above; **the spec is right about the syntax, so
 > fix the parser rather than these examples.** When `_show_carrier_details` is
-> reached (`:1385-1430`) it prints `=== <Carrier Key> ===`, a Carrier Statistics
-> block (Base / Plate / Total Protection as `N/10`, then Carrier / Plate / Total
-> Weight in **lbs**) and a Plate Configuration list with a condition colour per
-> slot. There is no "Total Protection Bonus" line and no kg anywhere in that
-> output. Note also that the Total Protection it prints is a plain sum, which the
-> damage model never computes — mitigation applies each plate as its own capped
-> layer.
+> reached it prints `=== <Carrier Key> ===`, a Carrier Statistics block (Base
+> Protection as `N/10`, then Carrier / Plate / Total Weight in **lbs**) and a
+> Plate Configuration list giving each installed plate's rating as `N/10` and a
+> condition colour. There is no "Total Protection Bonus" line and no kg anywhere
+> in that output. The Plate Protection and Total Protection sums it used to print
+> were deleted 2026-09-20 (#3366): the damage model never computed them.
 ```
 > slot list plate carrier
 === PLATE CARRIER CONFIGURATION ===
@@ -881,8 +890,8 @@ layer_damage_reduction = round(remaining_damage * final_reduction_percent)
      `CERAMIC_PLATES`, key `"trauma plate"`, rating 10 with deliberately low
      durability so it shatters after absorbing damage
      (`world/prototypes.py:1484-1509`). Side protection: the carrier's
-     `left_side` / `right_side` slots, mapped to the abdomen at half rating
-     (`:1372-1379`, `typeclasses/armor_mixin.py:556-559`). Only **neck guards**
+     `left_side` / `right_side` slots, mapped to the abdomen; a hit meets one of
+     them in full (#3366, `:1372-1379`, `typeclasses/armor_mixin.py`). Only **neck guards**
      remain unbuilt — four prototypes cover `neck` (a rebreather, a collar, a
      necktie, a scarf) and none carries an armour rating.  
 4. **Advanced Materials**: Exotic armor types with unique properties
@@ -934,31 +943,35 @@ The integration with existing systems ensures compatibility while adding signifi
 > line is narrower than either — `except (ImportError, AttributeError):`
 > (`world/medical/utils.py:272`).
 >
-> Armour tests exist in **four** files, and none of them reaches the parts this
-> re-verify found wrong:
+> Armour tests exist in **five** files (the fifth added 2026-09-20 by #3366):
 >
 > - `world/tests/test_repair_reads_the_whole_name.py` — ~15 tests pinning
->   `parse_repair_args` against the shipped multi-word names (#2521). The
->   best-covered armour code in the repo.
+>   `parse_repair_args` against the shipped multi-word names (#2521).
 > - `world/tests/test_the_vestigial_sweep.py` — `TestArmourStillReduces`
->   (`:98-129`) calls `_calculate_armor_damage_reduction` directly: armour
+>   calls `_calculate_armor_damage_reduction` directly: armour
 >   reduces, never below zero, an uncovered location is untouched. Its vest uses
 >   `armor_type = "ballistic"`, which is not in the matrix, so it exercises the
 >   `generic` fallback and asserts no specific number.
 > - `world/tests/test_reads_reach_their_data.py` — the `plate_slot_coverage`
 >   AttributeProperty fix (#2581).
-> - `world/tests/test_armor_rendering.py` — five per-observer *broadcast* tests
->   (`TestArmorPerObserverRendering`, `:128-290`). Two of them
->   (`test_remove_plate_broadcast`, `test_swap_plates_broadcast`) drive
->   `CmdSlot._remove_plate` / `_swap_plates`, which **no command dispatch can
->   reach** — `CmdSlot.func` (`commands/CmdArmor.py:1300-1318`) routes only to
->   `_list_plate_carriers`, `_show_carrier_details` and
->   `_parse_install_command`, so those two tests cover dead player-facing code.
+> - `world/tests/test_armor_rendering.py` — three per-observer *broadcast* tests
+>   (`TestArmorPerObserverRendering`): install, unslot, and the actor's exclusion.
+>   It had five; the two that drove `CmdSlot._remove_plate` / `_swap_plates` went
+>   with those methods (**#3366, 2026-09-20**: both were born dead in d308a3ab,
+>   2025-10-06, unreachable from `CmdSlot.func`, and contradicted the "no combat
+>   swapping" note above; `_find_installed_plate`, `_calculate_total_carrier_rating`
+>   and every "New total protection" / "Total Protection" line went with them).
+> - `world/tests/test_an_abdomen_hit_meets_one_side_plate.py` — nine tests (#3366):
+>   a chest hit meets the front plate in full plus the carrier; an abdomen hit
+>   meets exactly one side plate in full; the side is rolled; an empty side means
+>   carrier only; the display reads the declared coverage (a re-mapped carrier
+>   follows); the coverage screen lists layers and never sums; the armour table
+>   shows the carrier rating and a plate count; `look` at a carrier and `slot`
+>   print no protection total.
 >
-> Untested: the effectiveness matrix values, multi-layer stacking and plate
-> expansion, the slot→location mapping and the abdomen halving, degradation, and
-> the `slot` / `unslot` parsers — which is why the multi-word parsing defect
-> recorded above survived.
+> Untested: the effectiveness matrix values and degradation of the landed plate.
+> (The `slot` / `unslot` parsers are pinned by
+> `world/tests/test_slot_and_unslot_take_whole_names.py` since #3365.)
 
 This system transforms combat from simple damage exchanges into tactical engagements where equipment choices, character builds, and intelligent play all contribute to success.
 
@@ -970,7 +983,7 @@ This system transforms combat from simple damage exchanges into tactical engagem
 - Implemented slot-specific plate protection system
 - Added `plate_slot_coverage` mapping to plate carriers
 - Updated armor rating calculation to be location-aware
-- Front plate → chest, back plate → back, side plates → torso
+- Front plate → chest, back plate → back, side plates → abdomen (the shipped mapping; there is no `torso` location)
 - Creates realistic protection profiles with vulnerable flanks
 
 **October 4, 2025 - v1.1**:
