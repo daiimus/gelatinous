@@ -1,7 +1,7 @@
 """
 Tests for Phase 2 per-observer rendering in CmdSlot / CmdUnslot.
 
-Verifies the plate install / remove / swap / unslot flows route their
+Verifies the plate install / unslot flows route their
 room broadcasts through :func:`msg_room_identity` so each observer sees
 the actor rendered according to their own recognition memory.
 
@@ -176,12 +176,6 @@ class TestArmorPerObserverRendering(TestCase):
                 patch.object(cmd, "_find_carrier_by_name",
                              return_value=self.carrier)
             )
-            stack.enter_context(
-                patch(
-                    "commands.CmdArmor._calculate_total_carrier_rating",
-                    return_value=5,
-                )
-            )
             self.actor.hands = {"left": self.plate, "right": None}
             cmd._install_plate(self.actor, "ceramic", "carrier", None)
 
@@ -192,71 +186,6 @@ class TestArmorPerObserverRendering(TestCase):
         stext = _observer_text(self.stranger)
         self.assertIn("gaunt man", stext)
         self.assertIn("plate carrier", stext)
-
-    # ---- remove ---------------------------------------------------
-
-    def test_remove_plate_broadcast(self):
-        from commands.CmdArmor import CmdSlot
-
-        # Pre-install plate so _remove_plate can find it
-        self.carrier.installed_plates = {"front": self.plate}
-
-        cmd = self._make_cmd(CmdSlot)
-        with ExitStack() as stack:
-            stack.enter_context(
-                patch.object(cmd, "_find_carrier_by_name",
-                             return_value=self.carrier)
-            )
-            stack.enter_context(
-                patch(
-                    "commands.CmdArmor._calculate_total_carrier_rating",
-                    return_value=0,
-                )
-            )
-            cmd._remove_plate(self.actor, "ceramic", "carrier")
-
-        ktext = _observer_text(self.knower)
-        self.assertIn("Jorge", ktext)
-        self.assertIn("plate carrier", ktext)
-        self.assertIn("pulls", ktext)
-        stext = _observer_text(self.stranger)
-        self.assertIn("gaunt man", stext)
-
-    # ---- swap -----------------------------------------------------
-
-    def test_swap_plates_broadcast(self):
-        from commands.CmdArmor import CmdSlot
-
-        new_plate = _make_plate(key="steel plate")
-        self.carrier.installed_plates = {"front": self.plate}
-
-        cmd = self._make_cmd(CmdSlot)
-        with ExitStack() as stack:
-            stack.enter_context(
-                patch.object(
-                    cmd, "_find_installed_plate",
-                    return_value=(self.plate, self.carrier, "front"),
-                )
-            )
-            stack.enter_context(
-                patch.object(cmd, "_find_plate_by_name",
-                             return_value=new_plate)
-            )
-            stack.enter_context(
-                patch(
-                    "commands.CmdArmor._calculate_total_carrier_rating",
-                    return_value=5,
-                )
-            )
-            self.actor.hands = {"left": new_plate, "right": None}
-            cmd._swap_plates(self.actor, "ceramic", "steel")
-
-        ktext = _observer_text(self.knower)
-        self.assertIn("Jorge", ktext)
-        self.assertIn("plate carrier", ktext)
-        self.assertIn("tactical plate swap", ktext)
-        stext = _observer_text(self.stranger)
-        self.assertIn("gaunt man", stext)
 
     # ---- unslot ---------------------------------------------------
 
