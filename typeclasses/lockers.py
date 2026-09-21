@@ -1,10 +1,13 @@
 """The locker bank — ONE integrated fixture that is the whole locker.
 
 Modelled on ``typeclasses.bar.BarCounter``: an ``@integrate`` Item carrying
-its own command set, so it needs no changes to core inventory (the game has
-no generic ``put``, and ``get from`` isn't access-gated). Everything routes
-through the bank's own verbs — ``rent``, ``locker`` (open/close/status),
-``stash``, ``retrieve`` — each gated to the caller's SLEEVE.
+its own command set, so it needs no changes to core inventory (``get from``
+isn't access-gated). Everything routes through the bank's own verbs —
+``rent``, ``locker`` (open/close/status), ``stash``, ``retrieve`` — each
+gated to the caller's SLEEVE. The game-wide ``put`` (#3619,
+``commands/CmdInventory.py``) hands a locker target to ``stash_item`` below;
+the bank no longer carries a ``put`` alias of its own, which the game verb
+would have collided with in this one room.
 
 Per-sleeve isolation: every lease gets its own hidden *compartment* object
 nested inside the bank; stashed items live one level down, inside that
@@ -81,16 +84,20 @@ class CmdLocker(_LockerCmd):
 
 class CmdLockerStash(_LockerCmd):
     """
-    Put something from your hands into your open locker.
+    Stow something you are holding in your open locker.
 
     Usage:
         stash <item>
-        put <item> in locker
+
+    'put <item> in locker' does the same.
     """
     key = "stash"
-    aliases = ["deposit", "put"]
+    aliases = ["deposit"]
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376, #3619)
+            return
         name = self.args.strip()
         for tail in (" in my locker", " in the locker", " in locker"):
             if name.lower().endswith(tail):
@@ -109,6 +116,9 @@ class CmdLockerRetrieve(_LockerCmd):
     aliases = ["withdraw", "unstash"]
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376, #3619)
+            return
         name = self.args.strip()
         for tail in (" from my locker", " from the locker", " from locker"):
             if name.lower().endswith(tail):
@@ -273,6 +283,21 @@ class LockerBank(Item):
                              nofound_string=f"You aren't carrying '{name}'.")
         if not item:
             return
+        self.stash_item(caller, item)
+
+    def stash_item(self, caller, item):
+        """The stash door: *item* out of *caller*'s hands or pack and into
+        their compartment. `stash <item>` and the game-wide `put <item>
+        in locker` (#3619) both come through here."""
+        if not self._can_use(caller):
+            return
+        # `me`/`here` short-circuit Character.search ahead of the
+        # candidates= reach, so `stash me` resolved to the caller and
+        # `move_to` filed the PLAYER into the compartment, hooks off, with
+        # no exits and no verbs (review, #3619).
+        if not isinstance(item, Item):
+            caller.msg("You can't stow that in a locker.")
+            return
 
         # The same two refusals `drop` carries (#2611). `stash` resolves
         # against `caller.contents`, which includes WORN garments and
@@ -316,6 +341,11 @@ class LockerBank(Item):
         item = caller.search(name, candidates=cands,
                              nofound_string=f"Your locker holds no '{name}'.")
         if not item:
+            return
+        # Same short-circuit as stash_item: `retrieve me` got the caller
+        # back and tried to move them into themselves (review, #3619).
+        if not isinstance(item, Item):
+            caller.msg(f"Your locker holds no '{name}'.")
             return
         item.db.locker_owner = None
         item.move_to(caller, quiet=True, move_hooks=False)

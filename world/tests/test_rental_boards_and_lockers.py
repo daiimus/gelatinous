@@ -149,6 +149,11 @@ class TestStashingPutsTheItemDown(EvenniaTest):
         self.tenant = self.char1
         self.tenant.location = self.room1
         self.knife = self.obj2
+        # The stash door takes Items only (#3619): `me`/`here` resolve to
+        # the caller or the room, and only an Item can be picked up (get).
+        # The harness object is a bare Object; make it what a knife is.
+        self.knife.swap_typeclass("typeclasses.items.Item",
+                                  clean_attributes=False)
         self.knife.key = "a bone-handled knife"
         self.knife.location = self.tenant
         self.tenant.held_items = {"right_hand": self.knife}

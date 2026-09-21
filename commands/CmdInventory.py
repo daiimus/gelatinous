@@ -20,6 +20,12 @@ from world.combat.constants import (
 from world.combat.utils import roll_stat, roll_with_disadvantage
 from world.identity_utils import msg_room_identity
 from commands._identity_targeting import resolve_character_target
+from commands.CmdArmor import (
+    install_plate_from_hand,
+    installed_slot_of,
+    peel_slot_name,
+    pull_plate_into_hand,
+)
 
 class CmdWield(Command):
     """
@@ -587,6 +593,17 @@ class CmdGet(Command):
         if not item:
             return False
 
+        # A plate slotted in a carrier comes out through the unslot door
+        # (#3619; owner ruling: get/put work as unslot/slot). This path
+        # used to lift the plate and leave `installed_plates` pointing at
+        # an object no longer in the carrier: the carrier kept counting
+        # it, `slot list` showed it and `unslot` "found" it. The door
+        # carries the hands rule (#3463) and the carrier's ledger.
+        slot_name = installed_slot_of(container, item)
+        if slot_name is not None:
+            pull_plate_into_hand(caller, item, container, slot_name)
+            return True
+
         # Move the item to the character
         self._give_item_to_character(caller, item, from_container=container)
         return True
@@ -806,6 +823,137 @@ class CmdGet(Command):
         
         caller.msg(f"You don't see a '{itemname}' here.")
         return None
+
+
+class CmdPut(Command):
+    """
+    Put something you are holding into something that takes it.
+
+    Usage:
+        put <item> in <target>
+        put <plate> in <carrier> [<slot>]
+
+    A plate goes into a plate carrier the way 'slot' does: it must be in
+    your hand, and the carrier may be worn, carried or lying here. Slots
+    are front, back, left side and right side; name none and the first
+    free one is taken. 'get <plate> from <carrier>' takes it back out.
+    At a bank of lockers, 'put <item> in locker' stows it in your open
+    locker; 'retrieve <item>' takes it back. Nothing else holds things.
+
+    Examples:
+        put standard plate in plate carrier
+        put trauma plate in plate carrier left side
+        put knife in locker
+    """
+
+    key = "put"
+    aliases = []
+    locks = "cmd:all()"
+
+    PREPOSITIONS = ("in", "into", "on")
+
+    def parse(self):
+        """``put <item> in <target>``, split on the LAST preposition so an
+        item whose name holds one survives (the #3365 shape)."""
+        self.item_name = ""
+        self.target_words = []
+        words = self.args.strip().split()
+        lowered = [w.lower() for w in words]
+        cuts = [i for i, w in enumerate(lowered) if w in self.PREPOSITIONS]
+        if not cuts or cuts[-1] == 0:
+            return
+        self.item_name = " ".join(words[:cuts[-1]]).strip()
+        self.target_words = words[cuts[-1] + 1:]
+
+    def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
+            return
+        caller = self.caller
+        target_words = [w for w in self.target_words
+                        if w.lower() not in ("my", "the")]   # 'put knife in my locker'
+        if not self.item_name or not target_words:
+            caller.msg("Usage: put <item> in <target>")
+            return
+
+        # The ITEM first, and it has to be an Item you are carrying. `me`
+        # and `here` short-circuit Character.search ahead of every reach
+        # argument, so a name-taking door hands back the caller or the
+        # room (review, #3619: `put me in locker` filed the player).
+        item = self._resolve_item(caller, self.item_name)
+        if item is None:
+            return
+        target, slot_name = self._resolve_target(caller, target_words)
+        if target is None:
+            return
+
+        # A PERSON is not a container (#2456): that is `give`.
+        from typeclasses.characters import Character
+        if isinstance(target, Character):
+            if target is caller:
+                caller.msg("You are already carrying it.")
+            else:
+                caller.msg(
+                    f"You would have to hand it to "
+                    f"{target.get_display_name(caller)} -- try |wgive|n.")
+            return
+        if target is caller.location:
+            caller.msg("Just |wdrop|n it.")
+            return
+
+        # The two things in the game that take an item (#3619). A plate
+        # carrier, through the same door as `slot`; a bank of lockers,
+        # through its own stash door (it used to carry a `put` alias of
+        # its own, which this verb would have collided with room by room).
+        if getattr(target, "is_plate_carrier", False):
+            if not getattr(item, "is_armor_plate", False):
+                caller.msg(f"The {item.key} is not an armor plate.")
+                return
+            install_plate_from_hand(caller, item, target, slot_name)
+            return
+        from typeclasses.lockers import LockerBank
+        if isinstance(target, LockerBank):
+            target.stash_item(caller, item)
+            return
+
+        caller.msg(f"The {target.get_display_name(caller)} can't hold that.")
+
+    @staticmethod
+    def _resolve_item(caller, name):
+        """An Item in *caller*'s possession by *name*, or None with a
+        message. Your own contents, so `location=caller` is the honest
+        reach; the isinstance keeps out `me`/`here`."""
+        from typeclasses.items import Item
+        found = caller.search(name, location=caller, quiet=True)
+        item = (found[0] if isinstance(found, list) else found) if found else None
+        if item is None or not isinstance(item, Item):
+            caller.msg(f"You aren't carrying '{name}'.")
+            return None
+        return item
+
+    def _resolve_target(self, caller, words):
+        """The thing named by *words* -- in your possession or in the room,
+        by the identity-aware default search -- and a trailing slot name
+        when the words carried one ('plate carrier front'). When the
+        peeled name finds nothing the whole phrase is tried, so an object
+        called 'back' is still reachable. A hidden object (#2476, `hide`)
+        is not on offer, the same as `get`: a refusal that named it would
+        confirm the stash."""
+        full_name = " ".join(words)
+        slot_name, rest = peel_slot_name(words)
+        attempts = [(" ".join(rest), slot_name)]
+        if slot_name is not None:
+            attempts.append((full_name, None))
+        for name, slot in attempts:
+            if not name:
+                continue
+            found = caller.search(name, quiet=True)
+            found = [o for o in (found or [])
+                     if getattr(o.db, "hidden", False) is not True]
+            if found:
+                return found[0], slot
+        caller.msg(f"You don't see a '{full_name}' here.")
+        return None, None
 
 
 class CmdGive(Command):

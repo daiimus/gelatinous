@@ -244,6 +244,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdInventory.CmdInventory())
         self.add(CmdInventory.CmdDrop())
         self.add(CmdInventory.CmdGet())
+        self.add(CmdInventory.CmdPut())
         self.add(CmdInventory.CmdGive())
         
         # Add wrest command (non-combat item snatching)
