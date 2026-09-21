@@ -1215,6 +1215,20 @@ class CmdArmorRepair(Command):
 PLATE_SLOT_NAMES = ("front", "back", "left_side", "right_side")
 
 
+def peel_slot_name(words):
+    """Peel a trailing slot name off *words*: ``["plate","carrier","front"]``
+    -> ``("front", ["plate","carrier"])``; ``left side`` is two words and
+    ``left-side`` is accepted. Returns ``(slot_or_None, remaining_words)``.
+    Shared by ``slot`` and ``put`` (#3619)."""
+    parts = list(words)
+    lowered = [w.lower().replace("-", "_") for w in parts]
+    if lowered and lowered[-1] in PLATE_SLOT_NAMES:
+        return lowered[-1], parts[:-1]
+    if len(lowered) >= 2 and lowered[-1] == "side" and lowered[-2] in ("left", "right"):
+        return f"{lowered[-2]}_side", parts[:-2]
+    return None, parts
+
+
 def parse_slot_args(words):
     """``["standard","plate","in","plate","carrier","front"]``
     -> ``("standard plate", "plate carrier", "front")``.
@@ -1234,13 +1248,8 @@ def parse_slot_args(words):
 
     Returns ``(plate_name, carrier_name_or_None, slot_or_None)``.
     """
-    parts = list(words)
-    lowered = [w.lower().replace("-", "_") for w in parts]
-    slot = None
-    if lowered and lowered[-1] in PLATE_SLOT_NAMES:
-        slot = lowered[-1]; parts = parts[:-1]; lowered = lowered[:-1]
-    elif len(lowered) >= 2 and lowered[-1] == "side" and lowered[-2] in ("left", "right"):
-        slot = f"{lowered[-2]}_side"; parts = parts[:-2]; lowered = lowered[:-2]
+    slot, parts = peel_slot_name(words)
+    lowered = [w.lower() for w in parts]
     if "in" in lowered:
         idx = len(lowered) - 1 - lowered[::-1].index("in")
         return " ".join(parts[:idx]).strip(), " ".join(parts[idx + 1:]).strip(), slot
@@ -1296,11 +1305,32 @@ def worn_by(character):
     return worn
 
 
+def whose(caller, carrier):
+    """``("your", "their")`` when *carrier* is in *caller*'s possession,
+    ``("the", "the")`` when it is lying in the room. ``get``/``put`` reach
+    a carrier on the floor; ``slot``/``unslot`` do not (#3619)."""
+    return ("your", "their") if carrier.location == caller else ("the", "the")
+
+
+def installed_slot_of(carrier, plate):
+    """The slot of *carrier* that *plate* is installed in, or None. None
+    too when *carrier* is not a plate carrier, so a caller can ask about
+    any container."""
+    if not getattr(carrier, "is_plate_carrier", False):
+        return None
+    for slot_name, installed in (carrier.installed_plates or {}).items():
+        if installed == plate:
+            return slot_name
+    return None
+
+
 def pull_plate_into_hand(caller, plate, carrier, slot_name):
     """Take *plate* out of *slot_name* of *carrier* and into a free hand,
     or leave it where it is (#3463, the Mr. Hands rule: a plate comes
     out into a hand, and no free hand means it stays put). Returns True
-    when the plate came out. Shared by every unslot door."""
+    when the plate came out. The one unslot door: ``unslot`` and
+    ``get <plate> from <carrier>`` (#3619) both come through here, so the
+    carrier's ledger can never point at a plate that has left it."""
     if not has_hands(caller):
         caller.msg(f"You have no hands to take the {plate.key} out with.")
         return False
@@ -1308,6 +1338,7 @@ def pull_plate_into_hand(caller, plate, carrier, slot_name):
     if hand is None:
         caller.msg(f"Your hands are full. Free one to take the {plate.key} out.")
         return False
+    yours, theirs = whose(caller, carrier)
     installed_plates = carrier.installed_plates
     installed_plates[slot_name] = None
     carrier.installed_plates = installed_plates
@@ -1315,16 +1346,113 @@ def pull_plate_into_hand(caller, plate, carrier, slot_name):
     caller.wield_item(plate, hand=hand)
     caller.msg(
         f"You pull the {plate.key} out of the {slot_name}"
-        f" slot of your {carrier.key} and hold it."
+        f" slot of {yours} {carrier.key} and hold it."
     )
     if caller.location:
         msg_room_identity(
             location=caller.location,
-            template=f"{{actor}} pulls a plate out of their {carrier.key}.",
+            template=f"{{actor}} pulls a plate out of {theirs} {carrier.key}.",
             char_refs={"actor": caller},
             exclude=[caller],
         )
     return True
+
+
+def install_plate_from_hand(caller, plate, carrier, slot_name=None):
+    """Put *plate*, held in a hand, into *slot_name* of *carrier*, or the
+    first free slot when no slot is named. Returns True when it went in.
+    The one install door: ``slot`` and ``put <plate> in <carrier>``
+    (#3619) both come through here. The plate must be in a HAND (#3463,
+    owner: use the Mr. Hands system so limb loss is meaningful); a plate
+    loose in the pack is not being handled, and the move into the
+    carrier releases the hand."""
+    if not has_hands(caller):
+        caller.msg(f"You have no hands to slot the {plate.key} with.")
+        return False
+    if hand_holding(caller, plate) is None:
+        caller.msg(f"You need to be holding the {plate.key} to slot it.")
+        return False
+    if not carrier.is_plate_carrier:
+        caller.msg(f"The {carrier.key} is not a plate carrier system.")
+        return False
+    plate_slots = carrier.plate_slots
+    if not plate_slots:
+        caller.msg(f"The {carrier.key} doesn't have any plate slots.")
+        return False
+    installed_plates = carrier.installed_plates
+    if slot_name:
+        if slot_name.lower() not in [slot.lower() for slot in plate_slots]:
+            caller.msg(f"The {carrier.key} doesn't have a '{slot_name}' slot.")
+            caller.msg(f"Available slots: {', '.join(plate_slots)}")
+            return False
+        target_slot = slot_name.lower()
+    else:
+        empty_slots = [
+            slot for slot in plate_slots
+            if slot not in installed_plates or not installed_plates[slot]
+        ]
+        if not empty_slots:
+            caller.msg(f"The {carrier.key} has no empty slots.")
+            return False
+        target_slot = empty_slots[0]
+    if target_slot in installed_plates and installed_plates[target_slot]:
+        existing_plate = installed_plates[target_slot]
+        caller.msg(f"The {target_slot} slot already contains {existing_plate.key}.")
+        caller.msg(f"Use 'unslot {existing_plate.key} from {carrier.key}' first.")
+        return False
+    if not plate.is_armor_plate:
+        caller.msg(f"The {plate.key} is not an armor plate.")
+        return False
+    yours, theirs = whose(caller, carrier)
+    carrier.installed_plates[target_slot] = plate
+    # Into the carrier: it is now "installed", not carried separately,
+    # and leaving the body releases the hand.
+    plate.move_to(carrier, quiet=True)
+    caller.msg(
+        f"|gYou install the {plate.key} into the {target_slot} slot"
+        f" of {yours} {carrier.key}.|n"
+    )
+    if caller.location:
+        msg_room_identity(
+            location=caller.location,
+            template=f"{{actor}} installs an armor plate into {theirs} {carrier.key}.",
+            char_refs={"actor": caller},
+            exclude=[caller],
+        )
+    return True
+
+
+def find_carrier_by_name(caller, carrier_name):
+    """A plate carrier in *caller*'s possession (worn or carried) by name,
+    or None with a message."""
+    candidates = caller.search(carrier_name, location=caller, quiet=True)
+    if not candidates:
+        caller.msg(f"You don't have a plate carrier matching '{carrier_name}'.")
+        return None
+    if isinstance(candidates, list):
+        candidates = candidates[0]
+    # getattr: `me`/`here` short-circuit Character.search ahead of the
+    # location= reach and hand back a Character or a Room, which have no
+    # armour properties at all (review, #3619).
+    if not getattr(candidates, "is_plate_carrier", False):
+        caller.msg(f"The {candidates.key} is not a plate carrier.")
+        return None
+    return candidates
+
+
+def find_plate_by_name(caller, plate_name):
+    """An armor plate in *caller*'s possession (a hand or the pack) by
+    name, or None with a message."""
+    candidates = caller.search(plate_name, location=caller, quiet=True)
+    if not candidates:
+        caller.msg(f"You don't have an armor plate matching '{plate_name}'.")
+        return None
+    if isinstance(candidates, list):
+        candidates = candidates[0]
+    if not getattr(candidates, "is_armor_plate", False):
+        caller.msg(f"The {candidates.key} is not an armor plate.")
+        return None
+    return candidates
 
 
 class CmdSlot(Command):
@@ -1461,7 +1589,7 @@ class CmdSlot(Command):
 
     def _show_carrier_details(self, caller, carrier_name):
         """Show detailed information about a specific carrier."""
-        carrier = self._find_carrier_by_name(caller, carrier_name)
+        carrier = find_carrier_by_name(caller, carrier_name)
         if not carrier:
             return
 
@@ -1499,103 +1627,17 @@ class CmdSlot(Command):
                 caller.msg(f"  {slot.title()}: |r[Empty Slot]|n")
 
     def _install_plate(self, caller, plate_name, carrier_name, slot_name):
-        """Install a plate in a carrier."""
-        # Find the plate
-        plate = self._find_plate_by_name(caller, plate_name)
+        """Resolve the names, then go through the one install door."""
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(caller):   # BLOCKED while channeling (#3376, #3635)
+            return
+        plate = find_plate_by_name(caller, plate_name)
         if not plate:
             return
-        # In your HAND (#3463, owner: use the Mr. Hands system so limb
-        # loss is meaningful). A plate loose in the pack is not being
-        # handled; the move into the carrier releases the hand.
-        if not has_hands(caller):
-            caller.msg(f"You have no hands to slot the {plate.key} with.")
-            return
-        if hand_holding(caller, plate) is None:
-            caller.msg(f"You need to be holding the {plate.key} to slot it.")
-            return
-
-        # Find the carrier
-        carrier = self._find_carrier_by_name(caller, carrier_name)
+        carrier = find_carrier_by_name(caller, carrier_name)
         if not carrier:
             return
-
-        # Validate carrier can accept plates
-        if not carrier.is_plate_carrier:
-            caller.msg(f"The {carrier.key} is not a plate carrier system.")
-            return
-
-        plate_slots = carrier.plate_slots
-        if not plate_slots:
-            caller.msg(f"The {carrier.key} doesn't have any plate slots.")
-            return
-
-        # Determine slot
-        if slot_name:
-            if slot_name.lower() not in [slot.lower() for slot in plate_slots]:
-                caller.msg(
-                    f"The {carrier.key} doesn't have a '{slot_name}' slot."
-                )
-                caller.msg(f"Available slots: {', '.join(plate_slots)}")
-                return
-            target_slot = slot_name.lower()
-        else:
-            # Auto-assign to first empty slot
-            installed_plates = carrier.installed_plates
-            empty_slots = [
-                slot
-                for slot in plate_slots
-                if slot not in installed_plates or not installed_plates[slot]
-            ]
-            if not empty_slots:
-                caller.msg(f"The {carrier.key} has no empty slots.")
-                return
-            target_slot = empty_slots[0]
-
-        # Check if slot is already occupied
-        installed_plates = carrier.installed_plates
-        if target_slot in installed_plates and installed_plates[target_slot]:
-            existing_plate = installed_plates[target_slot]
-            caller.msg(
-                f"The {target_slot} slot already contains"
-                f" {existing_plate.key}."
-            )
-            caller.msg(
-                f"Use 'unslot {existing_plate.key}"
-                f" from {carrier.key}' first."
-            )
-            return
-
-        # Validate plate compatibility
-        if not plate.is_armor_plate:
-            caller.msg(f"The {plate.key} is not an armor plate.")
-            return
-
-        # Install the plate
-        carrier.installed_plates[target_slot] = plate
-
-        # Move plate to carrier (it's now "installed", not carried separately)
-        plate.move_to(carrier, quiet=True)
-
-        # Success messages
-        caller.msg(
-            f"|gYou install the {plate.key} into the {target_slot} slot"
-            f" of your {carrier.key}.|n"
-        )
-
-
-        # Location message
-        if caller.location:
-            msg_room_identity(
-                location=caller.location,
-                template=(
-                    f"{{actor}} installs an armor plate into"
-                    f" their {carrier.key}."
-                ),
-                char_refs={"actor": caller},
-                exclude=[caller],
-            )
-
-
+        install_plate_from_hand(caller, plate, carrier, slot_name)
 
     def _find_plate_carriers(self, caller):
         """Find all plate carriers (worn or carried)."""
@@ -1614,57 +1656,6 @@ class CmdSlot(Command):
                 carriers.append(item)
 
         return carriers
-
-    def _find_carrier_by_name(self, caller, carrier_name):
-        """Find a specific carrier by name."""
-        # Use Evennia's search to handle numbered objects
-        candidates = caller.search(
-            carrier_name, location=caller, quiet=True
-        )
-
-        if not candidates:
-            caller.msg(
-                "You don't have a plate carrier matching"
-                f" '{carrier_name}'."
-            )
-            return None
-
-        # If multiple matches, return first one
-        if isinstance(candidates, list):
-            candidates = candidates[0]
-
-        # Check if it's actually a plate carrier
-        if not candidates.is_plate_carrier:
-            caller.msg(f"The {candidates.key} is not a plate carrier.")
-            return None
-
-        return candidates
-
-    def _find_plate_by_name(self, caller, plate_name):
-        """Find an armor plate by name in inventory."""
-        # Use Evennia's search to handle numbered objects
-        candidates = caller.search(
-            plate_name, location=caller, quiet=True
-        )
-
-        # If search failed, return None
-        if not candidates:
-            caller.msg(
-                f"You don't have an armor plate matching '{plate_name}'."
-            )
-            return None
-
-        # If multiple matches, return first one
-        if isinstance(candidates, list):
-            candidates = candidates[0]
-
-        # Check if the found item is actually an armor plate
-        if not candidates.is_armor_plate:
-            caller.msg(f"The {candidates.key} is not an armor plate.")
-            return None
-
-        return candidates
-
 
     def _get_condition_color(self, item):
         """Get color-coded condition indicator."""
@@ -1710,6 +1701,9 @@ class CmdUnslot(Command):
     help_category = "Combat"
 
     def func(self):
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376, #3635)
+            return
         caller = self.caller
         args = self.args.strip().split()
 

@@ -91,9 +91,23 @@ class BlockedVerbsGateTest(EvenniaCommandTest):
         self.assertIsNotNone(ch.channel_of(self.char1), "%s ended the channel" % type(cmd).__name__)
 
     def test_inventory_verbs(self):
-        from commands.CmdInventory import CmdUnwield, CmdGet, CmdDrop, CmdGive
-        for cmd, args in ((CmdUnwield(), "x"), (CmdGet(), "x"), (CmdDrop(), "x"), (CmdGive(), "x to y")):
+        from commands.CmdInventory import CmdUnwield, CmdGet, CmdDrop, CmdGive, CmdPut
+        for cmd, args in ((CmdUnwield(), "x"), (CmdGet(), "x"), (CmdDrop(), "x"), (CmdGive(), "x to y"),
+                          (CmdPut(), "x in y")):
             self._refused(cmd, args)
+
+    def test_plate_and_locker_verbs(self):
+        # #3619/#3635: slot/unslot are hands work by the #3463 ruling and
+        # share doors with put/get; the locker's own stash/retrieve share
+        # a door with put. Same act, same answer.
+        from commands.CmdArmor import CmdSlot, CmdUnslot
+        from typeclasses.lockers import CmdLockerStash, CmdLockerRetrieve
+        for cmd, args in ((CmdSlot(), "x in y"), (CmdUnslot(), "x from y")):
+            self._refused(cmd, args)
+        for cmd, args in ((CmdLockerStash(), "x"), (CmdLockerRetrieve(), "x")):
+            out = self.call(cmd, args, obj=self.obj1) or ""
+            self.assertIn("busy", out.lower(), "%s was not refused: %r" % (type(cmd).__name__, out))
+            self.assertIsNotNone(ch.channel_of(self.char1))
 
     def test_clothing_verbs(self):
         from commands.CmdClothing import CmdWear, CmdRemove, CmdRollUp, CmdZip, CmdDress, CmdUndress

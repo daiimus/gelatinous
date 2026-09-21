@@ -133,6 +133,11 @@ work because of a mistyped verb:
 > `_finish` re-validates as belt-and-braces. Graffiti, solvent and surgery
 > declare their tools; future consumers just pass theirs. This also closes
 > the §2.3 "tool leaving your hands" row for wrest/disarm (#3377, #3385).
+>
+> **2026-09-20 (#3619/#3635):** `slot`/`unslot` (plates move through the
+> hands by the #3463 ruling) and the new `put` also refuse while channeling;
+> `get`/`put` and `unslot`/`slot` are the same doors and now carry the same
+> guard.
 
 Voluntary exit: **`stop`** (the existing stop-verb family) aborts the
 channel deliberately → `on_interrupt` with the current fraction. You keep

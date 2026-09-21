@@ -676,6 +676,46 @@ non-plate uses.
 You pull the medium ballistic plate out of the front slot of your plate carrier and hold it.
 ```
 
+#### `get <plate> from <carrier>` / `put <plate> in <carrier> [<slot>]` - The General Verbs
+
+Owner ruling (#3619, 2026-09-20): "get/put should work as unslot/slot but
+require further clarification with the from command." `get <plate> from
+<carrier>` goes through the unslot door (`pull_plate_into_hand`) and
+`put <plate> in <carrier> [<slot>]` through the install door
+(`install_plate_from_hand`, extracted from `CmdSlot` for this), so the
+hands rule, the messages and the carrier's `installed_plates` ledger are
+the same whichever verb is used. Before this, `get` lifted the plate
+through the plain container path and left the ledger pointing at a plate
+in your hand: the carrier kept counting it, `slot list` showed it, and
+`unslot` "found" it. A bare `get <plate>` cannot see into a carrier (it
+searches the room), which is the "further clarification": you must say
+`from`.
+
+The general verbs reach a carrier lying in the room as well as one you
+wear or carry; the messages then say "the plate carrier", not "your"
+(`whose()`). `slot`/`unslot` keep their inventory reach. `put` is a new
+game-wide verb (`commands/CmdInventory.py`): it takes a plate into a
+carrier, an item into your open locker at a bank of lockers
+(`LockerBank.stash_item`, the door `stash` itself uses), and refuses everything else ("The X can't hold
+that.") — there are no carried containers. The Kettle's locker bank used
+to carry a `put` alias of its own, which a game-wide verb would have
+hidden in that one room; it was dropped so one command answers `put`
+everywhere. `put` resolves the ITEM first and only an Item you carry will
+do (`me`/`here` short-circuit `Character.search` ahead of every reach
+argument, so a name-taking door handed back the player), and it does not
+see a hidden object, the same as `get`. `slot` and `unslot` refuse while
+channeling like every other hands verb (#3376, #3635), so the four verbs
+answer alike.
+
+```
+> put standard plate in plate carrier front
+You install the standard plate into the front slot of your plate carrier.
+> get standard plate from plate carrier
+You pull the standard plate out of the front slot of your plate carrier and hold it.
+> get standard plate
+You don't see a 'standard plate' here.
+```
+
 #### `slot list [carrier]` - List Installed Plates
 
 > **⚠ 2026-09-11 re-verify: this invocation does not parse, and the output is
@@ -943,7 +983,8 @@ The integration with existing systems ensures compatibility while adding signifi
 > line is narrower than either — `except (ImportError, AttributeError):`
 > (`world/medical/utils.py:272`).
 >
-> Armour tests exist in **five** files (the fifth added 2026-09-20 by #3366):
+> Armour tests exist in **six** files (the fifth and sixth added 2026-09-20 by
+> #3366 and #3619):
 >
 > - `world/tests/test_repair_reads_the_whole_name.py` — ~15 tests pinning
 >   `parse_repair_args` against the shipped multi-word names (#2521).
@@ -968,6 +1009,18 @@ The integration with existing systems ensures compatibility while adding signifi
 >   follows); the coverage screen lists layers and never sums; the armour table
 >   shows the carrier rating and a plate count; `look` at a carrier and `slot`
 >   print no protection total.
+> - `world/tests/test_get_and_put_use_the_plate_doors.py` — 32 tests (#3619,
+>   #3635): `get <plate> from <carrier>` clears the ledger and lands the plate
+>   in a hand (carried, worn, and on the floor), is refused with full hands,
+>   and a bare `get` cannot see in; `put` installs (by slot, by two-word slot,
+>   from a hand only, into a floor carrier), refuses a non-plate, a plain item,
+>   a person, the room, `me`/`here` as the item, a hidden carrier, and an
+>   article alone; `put <item> in locker` reaches `LockerBank.stash_item`,
+>   `me` cannot be stowed or retrieved, the bank carries no `put` alias and
+>   exactly one command answers `put` in the merged locker-room cmdset;
+>   `slot`/`unslot` are refused mid-channel (state); `peel_slot_name`. The
+>   refusal LINE for `put`, `slot`, `unslot`, `stash` and `retrieve` is pinned
+>   in the BLOCKED-verb register, `test_a_tool_leaving_your_hands_breaks_the_channel.py`.
 >
 > Untested: the effectiveness matrix values and degradation of the landed plate.
 > (The `slot` / `unslot` parsers are pinned by

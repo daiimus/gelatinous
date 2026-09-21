@@ -17,9 +17,8 @@ Aligns with ``specs/IDENTITY_RECOGNITION_SPEC.md`` §"Phase 2 —
 Consistency" Conversion Status.
 """
 
-from contextlib import ExitStack
 from unittest import TestCase
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock
 
 from world.tests._identity_helpers import (
     apparent_uid_for,
@@ -88,13 +87,14 @@ def _make_room(contents):
     return room
 
 
-def _make_carrier(key="plate carrier", slots=("front", "back")):
+def _make_carrier(key="plate carrier", slots=("front", "back"), location=None):
     carrier = MagicMock(spec=["key", "is_plate_carrier", "plate_slots",
-                              "installed_plates"])
+                              "installed_plates", "location"])
     carrier.key = key
     carrier.is_plate_carrier = True
     carrier.plate_slots = list(slots)
     carrier.installed_plates = {}
+    carrier.location = location   # the doors read it for "your" vs "the" (#3619)
     return carrier
 
 
@@ -153,31 +153,16 @@ class TestArmorPerObserverRendering(TestCase):
         self.room = _make_room([self.actor, self.knower, self.stranger])
         self.actor.location = self.room
 
-        self.carrier = _make_carrier(key="plate carrier")
+        self.carrier = _make_carrier(key="plate carrier", location=self.actor)
         self.plate = _make_plate(key="ceramic plate")
-
-    def _make_cmd(self, cls):
-        cmd = cls()
-        cmd.caller = self.actor
-        return cmd
 
     # ---- install --------------------------------------------------
 
     def test_install_plate_broadcast(self):
-        from commands.CmdArmor import CmdSlot
+        from commands.CmdArmor import install_plate_from_hand
 
-        cmd = self._make_cmd(CmdSlot)
-        with ExitStack() as stack:
-            stack.enter_context(
-                patch.object(cmd, "_find_plate_by_name",
-                             return_value=self.plate)
-            )
-            stack.enter_context(
-                patch.object(cmd, "_find_carrier_by_name",
-                             return_value=self.carrier)
-            )
-            self.actor.hands = {"left": self.plate, "right": None}
-            cmd._install_plate(self.actor, "ceramic", "carrier", None)
+        self.actor.hands = {"left": self.plate, "right": None}
+        install_plate_from_hand(self.actor, self.plate, self.carrier, None)
 
         ktext = _observer_text(self.knower)
         self.assertIn("Jorge", ktext)
