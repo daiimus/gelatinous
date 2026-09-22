@@ -126,6 +126,40 @@ def clear_exit_rigging(grenade):
             f"{', '.join(str(x) for x in cleared)}")
     return cleared
 
+
+def unrig_grenade(grenade):
+    """Take *grenade* off its trap entirely: both exits' records
+    (`clear_exit_rigging`), its own `rigged_to_exit` / `rigged_by`, and
+    the room-render state `rig` put on it -- `integrate`,
+    `integration_desc`, `integration_priority` -- restored from the
+    `original_*` save slots. The one restore door: `defuse` adds its
+    lines around it, and a door being destroyed calls it from
+    `Exit.at_object_delete` (#3560), so a trap never outlives the door it
+    was strung across. Returns True when there was a trap to take down.
+    Restores even when `rigged_to_exit` has already gone stale (a deleted
+    exit reads back as None), so an orphan can still be put right."""
+    was_rigged = (grenade.db.rigged_to_exit is not None
+                  or grenade.attributes.has("rigged_to_exit")
+                  or grenade.attributes.has("original_integrate"))
+    if not was_rigged:
+        return False
+    clear_exit_rigging(grenade)
+    # The rows go, not just the values: a None-valued row is what an
+    # orphan looks like, and it is the gate above.
+    for key in ("rigged_to_exit", "rigged_by"):
+        if grenade.attributes.has(key):
+            grenade.attributes.remove(key)
+    for key in ("integrate", "integration_desc", "integration_priority"):
+        saved = f"original_{key}"
+        if grenade.attributes.has(saved) and grenade.attributes.get(saved) is not None:
+            setattr(grenade.db, key, grenade.attributes.get(saved))
+        else:
+            setattr(grenade.db, key, False if key == "integrate" else None)
+        if grenade.attributes.has(saved):
+            grenade.attributes.remove(saved)
+    get_splattercast().msg(f"{DEBUG_PREFIX_THROW}_UNRIGGED: {grenade.key} taken off its trap")
+    return True
+
 def check_rigged_grenade(character, exit_obj):
     """Check if character triggers a rigged grenade. Character should already be at destination."""
     # Initialize Splattercast for debug logging
