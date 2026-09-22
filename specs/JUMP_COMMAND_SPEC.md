@@ -325,6 +325,31 @@ def jump_on_explosive(caller, explosive):
 > last runtime reader of `exit.db.fall_room`. Strategies 2 and 3 remain
 > unbuilt and are now unbuildable without reopening that ruling.)_
 >
+> _(2026-09-21, #3560 -- **the crane keeps its doors.** Owner ruling: "the
+> exit should always exist as an edge working for jump off and only
+> sometimes work for jump across." `CraneContainer` no longer deletes and
+> rebuilds its exits per ride; it keeps four permanent doors and
+> `move_to_level` points each at what lies beyond it. The car's `west` is
+> the walk-off at the dock and SHUT aloft (no room west of the column);
+> its `north` is the leap toward the Queen's roof aloft and shut at the
+> dock (the rack's wall). A shut door carries `view:false();search:false();
+> traverse:false()` and an authored `err_traverse`, so it leaves the exit
+> prose, `jump` finds no exit that way, and the walk is refused in words.
+> The Urgent Care roof's `east` is the walk onto the docked car, otherwise
+> an edge into the shaft's dock-level cell with a jump across onto the car
+> at the distance difficulty (only the leap scales; every crane edge's
+> landing roll is the fixed `DESCENT_DIFFICULTY` 8, and a shut door points
+> at the shaft air behind it so advance/charge refuse it too). The Queen's
+> roof `south` is the hop onto the
+> level car, otherwise an edge into the shaft cell at the roof's height, a
+> jump across onto the car when aloft, and refused ("doesn't lead anywhere
+> safe to land", #3559) while the car is docked. Build 166 wired the shaft
+> (`down` z16..z1 -> the Foundation), which had no exits at all -- a body
+> in it hung at the parked impasse instead of going "down the cable into
+> the dig". The transit cell over the Queen's roof (-1,-16,13) still has no
+> `down`: a failed leap from the car parks there. Left as found; where a
+> failed leap falls is its own question.)_
+>
 > _(**Retired (#3580, 2026-09-16).** `exit.db.fall_room` outlived #3579 by
 > one issue, as map-export data; #3580 finishes the job on the ruling
 > quoted above. The four strategies below are struck. A fall always

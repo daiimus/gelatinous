@@ -1341,20 +1341,33 @@ class CraneContainer(Room):
     edge. It rides the mast column at ``COL`` between the 2nd and 17th
     floors (``MIN_Z``..``MAX_Z``); the operator sets its level and it
     carries whoever is standing in it, because it *is* the room they're
-    standing in. Its exits rewire with height:
+    standing in. Its doors are PERMANENT and what lies beyond them
+    changes with height (#3560, owner ruling: "the exit should always
+    exist as an edge working for jump off and only sometimes work for
+    jump across"). Four exit objects, found by key and never deleted, so
+    a trap rigged to a door rides the car the way it would in life:
 
-    * At the **2nd floor** (``MIN_Z``) it docks level with the Kaspar
-      Urgent Care roof — a plain walk-off ``west`` (the boarding point).
-    * **Anywhere else** it offers a jump edge ``north`` toward the Queen
-      of Cups rack roof. That roof sits at ``QOC_Z``; the leap is easy
-      when the car is level with it and gets harder — and the fall
-      longer — the further off level the car is parked. Miss and you go
-      down the cable into the dig.
-    * When it's exactly level (``QOC_Z``) the Queen's roof gets a
-      matching ``south`` edge back onto the car.
+    * ``west`` on the car: at the **2nd floor** (``MIN_Z``) a plain
+      walk-off onto the Kaspar Urgent Care roof (the boarding point).
+      Aloft there is no room west of the column, so the door is SHUT
+      and hidden.
+    * ``north`` on the car: aloft, a jump edge toward the Queen of Cups
+      rack roof at ``QOC_Z`` -- easy when level, harder the further off
+      level the car is parked. Docked, the rack's ground unit is north,
+      a wall, so the door is shut and hidden.
+    * ``east`` on the Urgent Care roof: the walk onto the docked car;
+      otherwise an edge over the shaft's foot with a jump across onto
+      the car wherever it hangs, at the distance difficulty.
+    * ``south`` on the Queen's roof: level, the hop back onto the car;
+      otherwise an edge over the shaft at the roof's height, a jump
+      across onto the car when it is aloft, and refused ("doesn't lead
+      anywhere safe to land") while the car sits at the dock.
 
-    All movement runs through :meth:`move_to_level`, which is the single
-    seam the operator NPC (and, later, a cab lever) drives.
+    Before #3560 the car deleted and rebuilt its exits on every ride,
+    which orphaned anything tied to them (a rigged grenade kept
+    rendering a trip wire on a door that no longer existed). All
+    movement runs through :meth:`move_to_level`, the single seam the
+    operator NPC drives.
     """
 
     COL = (-1, -17)          # (x, y) column the car rides
@@ -1362,6 +1375,7 @@ class CraneContainer(Room):
     MAX_Z = 16               # 17th floor — top of travel
     QOC_Z = 12               # Queen of Cups rack-roof level (safe crossing)
     UC_ROOF = (-2, -17, 1)   # Urgent Care roof (North) — the 2nd-floor dock
+    QOC_ROOF = (-1, -16, 12)  # Queen of Cups Rack Roof Southeast — the far perch
     SKY = (-1, -16, 13)      # transit air: north over Kaspar Street, at the
                              # Queen's roofline — the apex of the actual leap
 
@@ -1397,76 +1411,141 @@ class CraneContainer(Room):
         self.tags.add("crane_car", category="machines")
         self.db.level = self.MIN_Z
 
-    # -- helpers ---------------------------------------------------------
-    def _mk(self, loc, dest, key, aliases=None, **attrs):
-        """Create an exit and record it so the next move can tear it down."""
-        from evennia import create_object
-        if loc is None or dest is None:
-            return None
-        e = create_object("typeclasses.exits.Exit", key=key,
-                          aliases=aliases or [], location=loc, destination=dest)
-        for k, v in attrs.items():
-            setattr(e.db, k, v)
-        self.db.crane_exits = (self.db.crane_exits or []) + [e.id]
-        return e
+    # -- the doors ------------------------------------------------------
+    #: Lock strings for a door that is or is not there right now. Vanilla
+    #: Evennia locks: a shut door stays out of the room's exit prose
+    #: (`view`, the game's standard secret-door gate), out of `search`
+    #: (so `jump off west edge` answers "no exit"), and refuses the walk
+    #: (`traverse`, answered with the door's `err_traverse` line).
+    OPEN_LOCKS = "view:all();search:all();traverse:all()"
+    SHUT_LOCKS = "view:false();search:false();traverse:false()"
+    #: The LEAP's difficulty: 8 when level, +2 per storey off level. The
+    #: DESCENT (jump off, the landing roll) never scales: the drop behind
+    #: a door is what it is wherever the car is parked. "The leap is the
+    #: risk, the descent is the skill" (PARKOUR_TEMPLATE_LIBRARY).
+    LEAP_BASE = 8
+    LEAP_PER_STOREY = 2
+    DESCENT_DIFFICULTY = 8
 
-    def _teardown(self):
-        """Delete every exit this car last wired (its own + the reverse
-        ones leading into it)."""
+    def _shaft_cell(self, z):
+        """The shaft's air cell at *z*, NOT the car: the two coexist at the
+        car's own level and the coordinate index keeps only one row per
+        cell, so this reads the SkyRooms the way `_skin_column` does."""
         from evennia.objects.models import ObjectDB
-        for eid in (self.db.crane_exits or []):
-            ex = ObjectDB.objects.filter(id=eid).first()
-            if ex is not None:
-                ex.delete()
-        self.db.crane_exits = []
+        from world.spatial import get_xyz
+        want = (self.COL[0], self.COL[1], int(z))
+        for r in ObjectDB.objects.filter(db_typeclass_path="typeclasses.rooms.SkyRoom"):
+            if get_xyz(r) == want:
+                return r
+        return None
+
+    @staticmethod
+    def _door(room, key, aliases, dest):
+        """The persistent exit keyed *key* in *room*: found by KEY (the
+        #2626 lesson), created once with *dest*, never deleted."""
+        if room is None or dest is None:
+            return None
+        for ex in (room.exits or []):
+            if ex.key == key:
+                return ex
+        from evennia import create_object
+        return create_object("typeclasses.exits.Exit", key=key,
+                             aliases=list(aliases), location=room, destination=dest)
+
+    def _set_door(self, ex, dest, *, shut=False, edge=False, gap=False,
+                  leap=None, perch=None, err=None):
+        """Point a door at what is beyond it right now. Flags are written
+        as literal True/False: every reader is strict (#3583). *leap* is
+        the jump-across difficulty; the jump-off landing roll is the fixed
+        DESCENT_DIFFICULTY. *perch* is the far room a made leap lands on
+        (its dbref), None when a gap has nothing to land on and the leap
+        is refused (#3559). A SHUT door points at the air behind it (the
+        shaft cell at the car's level): locks stop the walk and hide the
+        door, and an air destination is what every mover that relocates
+        without asking the lock -- combat advance and charge, `can_leave_by`
+        -- already refuses (review, #3560)."""
+        if ex is None:
+            return
+        if shut:
+            dest = self._shaft_cell(self.db.level or self.MIN_Z) or dest
+        if dest is not None and ex.destination != dest:
+            ex.destination = dest
+        ex.db.is_edge = bool(edge)
+        ex.db.is_gap = bool(gap)
+        ex.db.edge_difficulty = self.DESCENT_DIFFICULTY if edge else None
+        ex.db.gap_difficulty = leap if gap else None
+        ex.db.gap_width = "medium" if gap else None
+        ex.db.gap_destination = perch if gap else None
+        ex.locks.add(self.SHUT_LOCKS if shut else self.OPEN_LOCKS)
+        if err:
+            ex.db.err_traverse = err
+        elif ex.attributes.has("err_traverse"):
+            ex.attributes.remove("err_traverse")
+
+    def _leap_difficulty(self, z, other_z):
+        return self.LEAP_BASE + self.LEAP_PER_STOREY * abs(int(z) - int(other_z))
 
     # -- the one seam ----------------------------------------------------
     def move_to_level(self, z, announce=True):
         """Send the car to floor ``z`` (a z-coordinate, ``MIN_Z``..
-        ``MAX_Z``), carrying its occupants, and rewire its exits for the
-        new height. Returns the clamped level."""
+        ``MAX_Z``), carrying its occupants, and point its doors at what
+        lies beyond them at the new height. Returns the clamped level."""
         from world.grammar import ordinal
         from world.spatial import set_xyz
 
         z = max(self.MIN_Z, min(self.MAX_Z, int(z)))
         old = self.db.level or self.MIN_Z
-        self._teardown()
         set_xyz(self, self.COL[0], self.COL[1], z)
         self.db.level = z
 
         from world.spatial import coordinate_index
         index = coordinate_index()
         sky = index.get(tuple(self.SKY))
+        uc = index.get(tuple(self.UC_ROOF))
+        qoc = index.get(tuple(self.QOC_ROOF))
+        docked = z == self.MIN_Z
+        to_qoc = self._leap_difficulty(z, self.QOC_Z)
+        to_uc = self._leap_difficulty(z, self.MIN_Z)
 
-        if z == self.MIN_Z:
-            # dock: a plain walk-off west onto the Urgent Care roof
-            uc = index.get(tuple(self.UC_ROOF))
-            self._mk(self, uc, "west", ["w"])
-            self._mk(uc, self, "east", ["e"])
+        # The car's two doors. One open end: west at the dock, north aloft.
+        west = self._door(self, "west", ["w"], uc)
+        north = self._door(self, "north", ["n"], sky)
+        if docked:
+            self._set_door(west, uc)
+            self._set_door(north, sky, shut=True,
+                           err="North of the box is the rack's wall. The way off is west.")
+        else:
+            self._set_door(west, uc, shut=True,
+                           err="The west doors are chained across open air. Nothing that way but the drop.")
+            self._set_door(north, sky, edge=True, gap=True, leap=to_qoc,
+                           perch=(qoc.id if qoc else None))
+
+        # The roofs' doors onto the car: always an edge over the shaft,
+        # a jump across whenever there is a car to land on.
+        if uc is not None:
+            east = self._door(uc, "east", ["e"], self)
+            if docked:
+                self._set_door(east, self)
+            else:
+                self._set_door(east, self._shaft_cell(self.MIN_Z) or self,
+                               edge=True, gap=True, leap=to_uc, perch=self.id)
+        if qoc is not None:
+            shaft_at_roof = self._shaft_cell(self.QOC_Z)
+            south = self._door(qoc, "south", ["s"], shaft_at_roof or self)
+            if z == self.QOC_Z:
+                self._set_door(south, self, edge=True, gap=True,
+                               leap=to_qoc, perch=self.id)
+            else:
+                self._set_door(south, shaft_at_roof or self, edge=True, gap=True,
+                               leap=to_qoc, perch=(None if docked else self.id))
+
+        if docked:
             self.db.desc = (
                 "A battered Longhaul shipping container slung level on the "
                 "crane's cable, doors chained open. Right now it's docked "
                 "at the 2nd floor, its open end level with the Kaspar "
                 "Urgent Care roof to the west — step across.")
         else:
-            qoc = index.get((-1, -16, 12))       # QoC Rack Roof Southeast
-            off = abs(z - self.QOC_Z)
-            diff = 8 + 2 * off                       # level=8, +2 / storey off
-            # The exit's destination IS the air cell and the column is the
-            # distance, and the fall ends where the column does (#3579,
-            # #3580): no sky_room / fall_distance / fall_damage / fall_room.
-            self._mk(self, sky, "north", ["n"],
-                     is_edge=True, is_gap=True,
-                     edge_difficulty=diff, gap_difficulty=diff,
-                     gap_width="medium",
-                     gap_destination=(qoc.id if qoc else None))
-            if z == self.QOC_Z and qoc is not None:
-                # level: the Queen's roof gets a way back onto the car
-                self._mk(qoc, self, "south", ["s"],
-                         is_edge=True, is_gap=True,
-                         edge_difficulty=8, gap_difficulty=8,
-                         gap_width="medium",
-                         gap_destination=self.id)
             floor = z + 1
             if z == self.QOC_Z:
                 aim = ("its open end level with the Queen of Cups' rack roof "

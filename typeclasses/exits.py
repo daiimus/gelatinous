@@ -55,6 +55,43 @@ class Exit(DefaultExit):
         if alias and alias not in self.aliases.all():
             self.aliases.add(alias)
 
+    def at_object_delete(self):
+        """A trap rigged to this door comes down with the door (#3560).
+
+        `rig` strings a grenade across an exit: the exit records the
+        grenade, the grenade records the exit it was strung across
+        (`rigged_to_exit`), and the room renders a trip-wire line. Exit
+        had no delete hook at all, so a destroyed door left the grenade
+        rendering a trap on a doorway that no longer existed, with
+        `defuse` refusing it as "not armed". Riding the delete hook is
+        the #3552 / #3555 pattern: whatever destroys the door -- a
+        builder's @destroy, a room deletion cascading through
+        `clear_exits` -- the ledger is put right here, once.
+
+        The door the wire was strung across takes the whole trap down
+        through `unrig_grenade`. The far side of the same doorway (the
+        return exit, which carries only a record) drops its record and
+        the trap stays on its own door. Never vetoes the delete: a
+        ledger repair is logged, not what stops a destroy, and the
+        super()'s value is returned because a False return would veto.
+        """
+        grenade = self.db.rigged_grenade
+        if grenade is not None:
+            try:
+                if grenade.db.rigged_to_exit == self:
+                    from commands.explosion_utils import unrig_grenade
+                    unrig_grenade(grenade)
+                    room = grenade.location
+                    if room is not None:
+                        room.msg_contents(
+                            f"The trip wire on the {grenade.key} goes slack.")
+                else:
+                    self.db.rigged_grenade = None
+            except Exception:  # noqa: BLE001 -- never what stops a delete
+                from evennia.utils import logger
+                logger.log_trace(f"unrig failed for {self!r} at delete")
+        return super().at_object_delete()
+
     def return_appearance(self, looker, **kwargs):
         """
         This is called when someone does 'look w' - show the sophisticated exit examination.

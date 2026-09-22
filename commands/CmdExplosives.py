@@ -688,50 +688,19 @@ class CmdDefuse(Command):
             splattercast.msg(f"DEFUSE_PROXIMITY_CLEAR: Cleared all proximity for defused {grenade.key}")
 
     def cleanup_rigging(self, grenade):
-        """Clean up rigging references when grenade is defused."""
-        rigged_to_exit = grenade.db.rigged_to_exit
-        if rigged_to_exit:
-            # Both exits' records, through the one eraser (#3388)
-            from commands.explosion_utils import clear_exit_rigging
-            clear_exit_rigging(grenade)
-
-            # Clean up grenade's rigging reference
-            grenade.db.rigged_to_exit = None
-            if grenade.db.rigged_by is not None:
-                grenade.db.rigged_by = None
-
-            # Restore original integration state
-            if grenade.db.original_integrate is not None:
-                grenade.db.integrate = grenade.db.original_integrate
-                grenade.db.original_integrate = None
-            else:
-                # Default: disable integration for regular grenades
-                grenade.db.integrate = False
-
-            if grenade.db.original_integration_desc is not None:
-                grenade.db.integration_desc = grenade.db.original_integration_desc
-                grenade.db.original_integration_desc = None
-            else:
-                # Remove integration_desc if it wasn't set originally
-                grenade.db.integration_desc = None
-
-            if grenade.db.original_integration_priority is not None:
-                grenade.db.integration_priority = grenade.db.original_integration_priority
-                grenade.db.original_integration_priority = None
-            else:
-                # Remove integration_priority if it wasn't set originally
-                grenade.db.integration_priority = None
-
-            # Announce trap disarmament
-            self.caller.msg("You also disarm the trap rigging mechanism.")
-            msg_room_identity(
-                location=self.caller.location,
-                template=f"{{actor}} disarms the trap rigging on the {grenade.key}.",
-                char_refs={"actor": self.caller},
-                exclude=[self.caller],
-            )
-
-            get_splattercast().msg(f"DEFUSE_CLEANUP: Fully cleaned up rigging for {grenade.key}")
+        """A defused trap comes off its door through the one restore
+        door, `unrig_grenade` (#3560); defuse adds only its lines."""
+        from commands.explosion_utils import unrig_grenade
+        if not unrig_grenade(grenade):
+            return
+        self.caller.msg("You also disarm the trap rigging mechanism.")
+        msg_room_identity(
+            location=self.caller.location,
+            template=f"{{actor}} disarms the trap rigging on the {grenade.key}.",
+            char_refs={"actor": self.caller},
+            exclude=[self.caller],
+        )
+        get_splattercast().msg(f"DEFUSE_CLEANUP: Fully cleaned up rigging for {grenade.key}")
 
     def handle_defuse_failure(self, grenade):
         """Handle failed defuse attempt with potential early detonation."""

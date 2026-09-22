@@ -167,6 +167,22 @@ never canon. NPC-run factions remain the only factions.
 - **Spine links are plain exits; every other applicable direction,
   including diagonals, is a wired edge.** Air cells are deliberate
   negative space: fall lanes now, flight later.
+- **A moving room keeps its doors** (owner ruling 2026-09-21, #3560).
+  A lift, a crane car, anything whose doors open onto different places
+  at different times has PERMANENT exit objects that are re-pointed per
+  position, never deleted and rebuilt: a door that is not lined up is
+  shut and hidden (`view`/`search`/`traverse` false, an authored
+  `err_traverse`), or an edge over the air where a jump off works and a
+  jump across is refused for want of a perch. Things tied to a door -- a
+  rigged grenade -- then ride with it. "The exit should always exist as
+  an edge working for jump off and only sometimes work for jump across."
+  A shut door points at the air behind it as well as locking, because
+  combat advance and charge relocate without asking the lock and refuse
+  only an air destination. Only the LEAP scales with distance; the
+  descent's landing roll is fixed (`DESCENT_DIFFICULTY`). `CraneContainer`
+  is the shipped example of the whole rule; `ElevatorCar` shares the
+  first half (its `out` exit is re-pointed per floor, and its landing
+  doors refuse in `at_traverse` while the car is away, staying visible).
 - **Every air build closes with the edge audit** — "edges accountable."
   No unexplained adjacency between a plate and the air beside it.
   _(2026-09-16, #3582: the audit is a command now, not a sentence —

@@ -719,10 +719,10 @@ All explosive and throwing weapon properties should be validated:
 4. **Chain explosions**: ~~Should grenades be able to trigger other grenades?~~ **DECIDED**: Based on `object.db.chain_trigger` property.
 
 #### Advanced Grenade Questions
-5. **Exit rigging mechanics**: How should rigged grenades be detected/disarmed?
+5. **Exit rigging mechanics**: ~~How should rigged grenades be detected/disarmed?~~ **DECIDED** (shipped; recorded 2026-09-21, #3560): detected by the room's own prose (see 8) and by `scan` for the rigger only (#3351); disarmed by `defuse`, which takes the trap off its door through `commands/explosion_utils.unrig_grenade` -- the one restore door. A trap belongs to the DOOR OBJECT: `exit.db.rigged_grenade` on the rigged exit and its return exit, `grenade.db.rigged_to_exit` back. A door that is destroyed (a builder's @destroy, a room deletion cascading through `clear_exits`) takes its trap down in `Exit.at_object_delete` through the same door: the grenade goes loose and unarmed where it lay, its prose restored, and the room hears "The trip wire on the X goes slack." The far side of the same doorway (the return exit) only drops its record. Doors that legitimately change what lies beyond them -- the crane car's, the elevator's -- are permanent objects that are re-pointed, never rebuilt, so a trap rides the car (`CraneContainer`, #3560; the elevator already worked this way).
 6. **Rig command syntax**: Should it be `rig grenade to north` or `rig grenade against north exit`?
 7. **Multiple rigs per exit**: Can multiple grenades be rigged to the same exit?
-8. **Rig visibility**: Are rigged grenades visible in room descriptions?
+8. **Rig visibility**: ~~Are rigged grenades visible in room descriptions?~~ **DECIDED** (shipped in `rig_grenade`; recorded 2026-09-21): yes. `rig` leaves the grenade lying in the room, sets `db.integrate = True`, `db.integration_priority = 3` and an `integration_desc` of "A <grenade> is rigged to the <exit> exit with a barely visible trip wire.", and saves the previous three in `original_*` for `unrig_grenade` to restore.
 9. **Timer inheritance**: Do rigged grenades keep their original timer or reset when triggered?
 
 #### Explosive Type Variations

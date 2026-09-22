@@ -144,8 +144,9 @@ class TestTheDetonatorStopsLyingAboutCapacity(EvenniaTest):
 
     def test_the_delete_hook_has_the_real_evennia_name(self):
         """#2590. `at_delete` is not a hook; `at_object_delete` is."""
+        from typeclasses.exits import Exit
         from typeclasses.items import Item, RemoteDetonator
-        for cls in (Item, RemoteDetonator):
+        for cls in (Item, RemoteDetonator, Exit):   # Exit joined in #3560
             self.assertTrue(hasattr(cls, "at_object_delete"))
             self.assertFalse(hasattr(cls, "at_delete"))
 
