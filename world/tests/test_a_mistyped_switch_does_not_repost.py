@@ -35,12 +35,26 @@ class TestAMistypedSwitchDoesNotRepost(EvenniaCommandTest):
     def setUp(self):
         super().setUp()
         self.char1.permissions.add("Developers")
-        self.char2.key = "bob"
-        self.char2.db.post = self.room2
         self.char1.location = self.room1
+        # NOT `self.char2`: EvenniaTest links it to an account, so
+        # `is_player_owned` is true and `CmdPatrol._find_npc` refuses it
+        # ("a beat is for NPCs", the #2567 guard) BEFORE any switch logic
+        # runs. Every test here then passed for the wrong reason -- the
+        # post never moved because the body was refused, not because the
+        # switch was. The control below is what exposed it (#3641).
+        from evennia import create_object
+        self.npc = create_object("typeclasses.characters.Character",
+                                 key="bob", location=self.room1)
+        self.npc.db.post = self.room2
 
     def post(self):
-        return self.char2.db.post
+        return self.npc.db.post
+
+    def test_the_npc_is_postable_at_all(self):
+        """The control's own premise: this body is not player-owned, so
+        nothing refuses it before the switch handling is reached."""
+        from world.ownership import is_player_owned
+        self.assertFalse(is_player_owned(self.npc))
 
     def test_the_bare_form_still_posts(self):
         """Control: the destructive default is REACHABLE, so a test

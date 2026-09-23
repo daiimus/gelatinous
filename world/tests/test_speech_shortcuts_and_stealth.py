@@ -170,70 +170,46 @@ class TestTheSourceKeepsTheOrder(EvenniaCommandTest):
         self.assertEqual(body.count("arg_regex = None"), 2)
 
 
-class TestThroughThePlayerPath(EvenniaTest):
-    """`Command.match` is the mechanism, but players type into
-    `execute_cmd`. A helper-level test has shipped broken behaviour
-    here before, so the shortcut is exercised end to end.
+class TestTheShortcutsProduceTheOutput(EvenniaCommandTest):
+    """`TestTheShortcutsMatch` proves `"x` REACHES the command. This proves
+    the command then says the right thing, which is the half a match test
+    cannot see.
 
-    Built on `EvenniaTest`, not `EvenniaCommandTest`: the latter
-    installs its own message interception, so a hand-rolled `msg`
-    capture sees nothing and every case here fails — including the
-    spaced forms that have always worked, which is the tell.
+    It used to be written on `execute_cmd`, to exercise the whole player
+    path. That cannot work here: under `evennia test` there is no reactor,
+    so `execute_cmd` returns an unresolved Deferred and emits **zero**
+    messages -- every case failed on an empty string no matter what the
+    code did, including `say plain`, which has always worked (#3641). The
+    class docstring blamed cmdset warm-up and ran each line twice to beat
+    it; that was the wrong diagnosis of the same empty output.
 
+    `call(cmd, args, cmdstring=...)` is the supported way to drive a
+    command AS a given typed key, so the shortcut's own cmdstring reaches
+    `func` and the real reply comes back. The end-to-end path through a
+    live reactor is covered by playing it in-game, not here.
     """
 
-    def setUp(self):
-        super().setUp()
-        self.char1.location = self.room1
-        self.char2.location = self.room1
-        self.char1.execute_cmd("look")      # merge the cmdset
-        self.char1.execute_cmd("look")
-
-    def spoken(self, line):
-        """Runs the line TWICE and reads the second.
-
-        In this harness the first command a fresh character issues is
-        parsed against a partially merged cmdset — measured at 2
-        commands against 214 once merged — so it matches nothing no
-        matter what the code does. `say plain`, which has always
-        worked, fails on a first call too; that is the tell that this
-        is the harness and not the game. Reading the second call is
-        what makes the assertion about the shortcut rather than about
-        cmdset merging.
-        """
-        self.char1.execute_cmd(line)
-        got = []
-
-        def cap(*a, **k):
-            got.append(str(a[0]) if a else str(k.get("text", "")))
-        self.char1.msg = cap
-        self.char1.execute_cmd(line)
-        return " ".join(got)
-
-    def assertSpoken(self, line, expected):
-        """`assertIn` alone is not enough here: Evennia's no-match reply
-        ECHOES the input ("Command ':waves slowly' is not available"),
-        so a substring check on the emote text passes even when nothing
-        ran. Reject the no-match reply explicitly."""
-        out = self.spoken(line)
-        self.assertNotIn("is not available", out,
-                         f"{line!r} matched no command: {out!r}")
-        self.assertIn(expected, out)
+    def spoken(self, cmd, args, cmdstring):
+        return self.call(cmd, args, cmdstring=cmdstring)
 
     def test_a_quote_with_no_space_speaks(self):
-        self.assertSpoken('"hello there', 'You say, "hello there"')
+        self.assertIn('You say, "hello there"',
+                      self.spoken(CmdSay(), "hello there", '"'))
 
     def test_a_single_word_after_the_quote(self):
-        self.assertSpoken('"hi', 'You say, "hi"')
+        self.assertIn('You say, "hi"', self.spoken(CmdSay(), "hi", '"'))
+
+    def test_the_spaced_form_still_speaks(self):
+        self.assertIn('You say, "spaced"', self.spoken(CmdSay(), " spaced", '"'))
+
+    def test_the_word_key_still_speaks(self):
+        self.assertIn('You say, "plain"', self.spoken(CmdSay(), "plain", "say"))
 
     def test_a_colon_with_no_space_emotes(self):
-        self.assertSpoken(":waves slowly", "waves slowly")
+        self.assertIn("waves slowly", self.spoken(CmdEmote(), "waves slowly", ":"))
 
-    def test_the_spaced_forms_still_work(self):
-        self.assertSpoken('" spaced', 'You say, "spaced"')
-
-    def test_the_word_key_still_works(self):
-        self.assertSpoken("say plain", 'You say, "plain"')
-
-    def test_dot_pose_still_works(self):
-        self.assertSpoken(".lean back.", "lean back")
+    def test_dot_pose_still_poses(self):
+        # Sentence-cased on the way out ("Lean back."), which the old
+        # execute_cmd version could never have shown: it asserted against
+        # an empty string and failed for that reason instead (#3641).
+        self.assertIn("Lean back", self.spoken(CmdDotPose(), "lean back.", "."))

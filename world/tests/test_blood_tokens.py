@@ -19,6 +19,10 @@ _ALLOWED_RED = re.compile(
 _SUPPLIED = {
     "attacker_name", "target_name", "attacker", "target", "item_name",
     "item", "phase", "hit_location", "damage", "blood", "Blood",
+    # A third party the actor breaks off toward, supplied per audience as
+    # `extra_chars={"charge_target": obj}` (world/combat/messages/__init__,
+    # written by movement_resolution's charge path) -- #3427/#3615.
+    "charge_target",
 }
 
 

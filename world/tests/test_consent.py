@@ -396,15 +396,33 @@ class TestFriskManifest(TestCase):
         item.worn = None
         return item
 
+    @staticmethod
+    def _body(contents, worn, hands, tokens):
+        """A target that answers only what the manifest asks, and answers
+        it the way a real body does.
+
+        NOT a bare MagicMock: `_show_frisk_results` reads worn clothing
+        through `worn_garments()` (#3576), and on a MagicMock that
+        attribute is auto-created, callable, and iterates EMPTY -- so
+        nothing was ever labelled `(worn)` and the test failed while
+        production was correct (#3641). `spec=` would not have saved it
+        either; the fix is to stop faking the body's own API.
+        """
+        class _Body:
+            def __init__(self):
+                self.contents = list(contents)
+                self.hands = dict(hands)
+                self.tokens = tokens
+            def worn_garments(self):
+                return list(worn)
+        return _Body()
+
     def test_worn_hand_carried_and_tokens_sections(self):
         jacket, shiv, pack = (self._item("a cropped jacket"),
                               self._item("a shiv"),
                               self._item("a pack of cigarettes"))
-        target = MagicMock()
-        target.contents = [jacket, shiv, pack]
-        target.get_worn_items = lambda: [jacket]
-        target.hands = {"left": shiv, "right": None}
-        target.tokens = 240
+        target = self._body(contents=[jacket, shiv, pack], worn=[jacket],
+                            hands={"left": shiv, "right": None}, tokens=240)
         out = self._run(target)
         self.assertIn("a cropped jacket", out)
         self.assertIn("(worn)", out)

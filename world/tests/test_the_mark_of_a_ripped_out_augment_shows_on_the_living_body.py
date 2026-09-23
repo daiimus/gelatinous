@@ -40,7 +40,13 @@ class TheMarkOfARippedOutAugmentShowsOnTheLivingBodyTest(EvenniaTest):
         pat = self._patient_with_a_ripped_out_tail()
         rendered = self._rendered(pat)
         self.assertIn("tail", rendered, "the tail location was never visited: %r" % sorted(rendered))
-        self.assertIn("lifted free", rendered["tail"])
+        # `WOUND_DESCRIPTIONS["fresh"]` is FOUR variants chosen at random and
+        # only two say "lifted free", so pinning that phrase passed about
+        # half the time. What every variant states -- and what the socket
+        # exists to show -- is which organ left, and from where.
+        text = rendered["tail"]
+        self.assertIn("tailbone", text, "the missing organ is not named: %r" % text)
+        self.assertIn("tail", text, "the location is not named: %r" % text)
 
     def test_the_prose_is_gone(self):
         pat = self._patient_with_a_ripped_out_tail()

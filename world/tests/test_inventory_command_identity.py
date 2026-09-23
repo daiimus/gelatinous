@@ -182,10 +182,18 @@ class TestCmdThrowIdentityTargeting(TestCase):
 
     @patch("commands.CmdThrow.get_splattercast")
     @patch("commands.CmdThrow.resolve_character_target")
-    def test_cross_room_lookup_passes_destination_contents(
+    def test_cross_room_lookup_searches_the_room_the_aim_reaches(
         self, mock_resolve, _mock_channel
     ):
-        """Aimed cross-room lookup uses destination.contents as candidates."""
+        """An aimed throw looks in the room the aim REACHES.
+
+        This used to assert `get_destination_room(...).contents`, i.e. the
+        exit's own destination. #3589 changed it: the reach is
+        `world.gravity.room_through(exit)` -- the ground below an edge, the
+        far perch across a gap -- because an exit into open air has no one
+        standing in it to hit. `get_destination_room` is still used by the
+        unaimed path, so this is a changed contract, not dead code (#3641).
+        """
         from world.combat.constants import NDB_AIMING_DIRECTION
 
         # Same-room: no match. Cross-room: hit.
@@ -196,20 +204,22 @@ class TestCmdThrowIdentityTargeting(TestCase):
         cmd = self._make_cmd(target_name="man")
         setattr(cmd.caller.ndb, NDB_AIMING_DIRECTION, "north")
 
-        destination = MagicMock()
-        destination.id = 2
-        destination.contents = ["thing-a", "thing-b"]
-        cmd.get_destination_room = MagicMock(return_value=destination)
+        exit_obj = MagicMock()
+        reach = MagicMock()
+        reach.id = 2
+        reach.contents = ["thing-a", "thing-b"]
+        cmd.find_throw_exit = MagicMock(return_value=exit_obj)
 
-        result = cmd.find_target()
+        with patch("world.gravity.room_through", return_value=reach) as through:
+            result = cmd.find_target()
+
         self.assertIs(result, target)
+        through.assert_called_once_with(exit_obj)
 
-        # Second call should be cross-room with candidates kwarg.
+        # Second call is the cross-room one, against the reached room.
         cross_call = mock_resolve.call_args_list[1]
         self.assertEqual(cross_call.args, (cmd.caller, "man"))
-        self.assertEqual(
-            cross_call.kwargs.get("candidates"), destination.contents
-        )
+        self.assertEqual(cross_call.kwargs.get("candidates"), reach.contents)
 
     @patch("commands.CmdThrow.get_splattercast")
     @patch("commands.CmdThrow.resolve_character_target")
