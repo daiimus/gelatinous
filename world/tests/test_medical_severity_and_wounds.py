@@ -43,9 +43,21 @@ class TestToDictHasNeverHadAWoundsKey(EvenniaTest):
         state = MedicalState(self.char1)
         self.assertEqual(
             set(state.to_dict()),
-            {"organs", "conditions", "blood_level", "pain_level",
-             "consciousness"},
+            {"organs", "removed_organs", "conditions", "blood_level",
+             "pain_level", "consciousness"},
         )
+
+    def test_removed_organs_round_trips(self):
+        """`removed_organs` joined the emitted keys in #3400 so an organ
+        taken out stays out across a reload; it is not decoration, and
+        `from_dict` has to read back what `to_dict` writes."""
+        state = MedicalState(self.char1)
+        name = next(iter(state.organs))
+        state.remove_organ(name)
+        assert name not in state.organs, "fixture: the organ was not removed"
+        restored = MedicalState.from_dict(state.to_dict(), self.char1)
+        self.assertIn(name, restored.removed_organs)
+        self.assertNotIn(name, restored.organs)
 
     def test_there_is_no_wounds_key(self):
         self.assertNotIn("wounds", MedicalState(self.char1).to_dict())
