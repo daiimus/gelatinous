@@ -195,10 +195,12 @@ overturned by ruling 5; the chair stays dark for another reason (§7 Q2).
   just above SOFT (0.60, the provisional-clothing analogue), so it is
   elected in the soul's own time (band 3), never over a shift.
   `_goal_band["insurance"] = 3`.
-* **Who gets the need** is §7 Q1. Until ruled, pressure is 0.0 unless the
-  soul has a `blueprint_key` **and** holds a slot whose `post_blueprints
-  [shift]` names it: the only souls a payout can restore today. `essential`
-  is not the test (Ossie and Nonna are essential with no blueprint).
+* **Who gets the need: every human and synth soul** (owner ruling
+  2026-09-25, Q1: "2"). For souls with no rebuild path today (hired
+  successors, generated residents, essential cast with no blueprint such as
+  Ossie and Nonna) the record is bought but cannot yet pay out; §6 owes them
+  a person-keyed rebuild. `essential` is not the test of who can return; a
+  `blueprint_key` naming the shift they hold is.
 * Plan: `[travel → lobby, press <button> on <terminal>]`, the clinic-visit
   shape. The terminal is a souls advertiser (`advertises={"insurance":
   1.0}`) found **without** the default radius cap of 30: the lobby may fall
@@ -286,13 +288,17 @@ played live as Iver, then the spec promoted or amended.
   prerequisite.
 * Un-shelving a living sleeve (see §7 Q3).
 * Records as decking files.
+* **Synths and the fiction of return.** Vesper, the Rook and Bellows are
+  `synthetic_humanoid`. Today they return through the same code and the
+  same "sleeve envelope" decant scene as humans; nothing synth-specific
+  exists (owner asked 2026-09-25 whether synths even clone out: they do,
+  identically). Whether a synth is grown at Thawn-Harrison at all, or comes
+  back some other way, is unasked.
 
 ## 7 · Open questions for the owner (one at a time)
 
-1. **Who gets the urge to buy?** Only souls a payout can restore today
-   (named keepers with a blueprint holding their own shift), or every human
-   and synth soul, buying records that cannot yet pay out. Recommended: the
-   former, until §6's rebuild exists.
+1. ~~Who gets the urge to buy?~~ **Ruled 2026-09-25: every human and synth
+   soul** (option 2), even where a policy cannot yet pay out.
 2. **The Rook.** He has the recluse profile and cannot leave the sealed
    studio, so under ruling 5 he stays uninsured. After his death the chair
    goes dark because no successor can reach the seal (`_offer` refuses an
