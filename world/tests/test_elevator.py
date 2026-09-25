@@ -195,6 +195,19 @@ class TestButtons(TestCase):
         panel.db.elevator.floor_index.return_value = None
         self.assertFalse(panel.at_press(MagicMock(), "13"))
 
+    def test_a_panel_whose_car_is_gone_is_dead(self):
+        """#3557: deleting a car evicts its panel to Limbo, and the panel
+        used to take that room for a car. A plain room has no
+        `floor_index`, so pressing a floor raised. MagicMock cannot show
+        that (it answers any attribute), so the room here is plain."""
+        panel = self._button(emod.ElevatorPanel)
+        panel.db.elevator = None
+        panel.location = SimpleNamespace(db=SimpleNamespace(floors=None))
+        for arg in ("3", None):
+            presser = MagicMock()
+            self.assertTrue(panel.at_press(presser, arg))
+            self.assertIn("dead", presser.msg.call_args.args[0], arg)
+
     def test_panel_selects_a_floor(self):
         panel = self._button(emod.ElevatorPanel)
         car = panel.db.elevator

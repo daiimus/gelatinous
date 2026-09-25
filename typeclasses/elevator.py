@@ -508,7 +508,16 @@ class ElevatorPanel(Item):
         self.db.get_err_msg = "The panel is bolted to the car."
 
     def at_press(self, presser, arg=None):
-        car = self.db.elevator or self.location
+        # The car, and only the car (#3557). This used to fall back to
+        # `self.location`, so a panel whose car had been deleted -- evicted
+        # to Limbo by the car's clear_contents -- took the room it stood in
+        # for a car: `press panel` read "none" and pressing a floor raised,
+        # because only an ElevatorCar has `floor_index`. Same guard as the
+        # landing call button above.
+        car = self.db.elevator
+        if not car:
+            presser.msg("You press the panel. Nothing lights. It's dead.")
+            return True
         floors = getattr(car.db, "floors", None) or []
         if not arg:
             labels = ", ".join(str(entry[1]) for entry in floors)
