@@ -1,7 +1,10 @@
 # Sleeve Insurance Spec — a personal policy, bought in advance
 
 > **Status: PROPOSAL (2026-09-25, revised the same day after a 48-agent
-> read-only critique), not built.** Tracks #3667. Supersedes the payment
+> read-only critique), not built.** Owner's framing: "We're going to have
+> to revamp this whole thing at some point but for now we just want the
+> intro framework to expand on." This is that framework, not the final
+> shape. Tracks #3667. Supersedes the payment
 > model in `NPC_POSTS_AND_REINCARNATION_SPEC.md` §2 (as-built premium notes)
 > and §3, and the 2026-08-22 ruling that players resleeve free
 > (`BACKUPS_AND_MEMORY_FORGERY_SPEC.md` §8.2). Small steps: §5 is sliced so
@@ -87,10 +90,12 @@ on what happens to it (§7 Q4).
   archived NPC, which is the person's only copy, move the body back to Limbo
   and restore the archived attribute and tag directly, never delete it and
   never re-archive through `archive_character` (that bumps `death_count`).
-* **Never redeemed while the source body can still be revived.** Refuse while
-  the dead body carries a `death_progression` script or is `death_processed`
-  but not yet archived with `reason="death"`. Do not rely on timing: the web
-  archive view can archive a dying body today.
+* **Redeemed for a death only** (Q3). The source body must be archived with
+  `reason="death"`; a shelved living body (`reason="manual"`) never
+  redeems, and the shelve page says so. Never redeemed while the source
+  body can still be revived: refuse while it carries a `death_progression`
+  script or is `death_processed` but not yet archived. Do not rely on
+  timing: the web archive view can archive a dying body today.
 * **Payout is keyed to the person who died, not to the post.** Today
   `_try_resleave` picks its body by the shift's blueprint (`_archived_keeper`
   takes the newest archived body carrying it) and restores the shift's last
@@ -305,13 +310,11 @@ played live as Iver, then the spec promoted or amended.
    leave the seal, stays uninsured, and after his death the chair goes dark
    (no policy; no successor can reach the seal). The recluse's cost, for
    now; a way to the terminal is a later build if ever wanted.
-3. **Shelving a living character** (the web "archive" of a live body), both
-   halves. *Uninsured:* with the gate, a shelved character cannot be
-   flash-cloned back, and no un-shelve path exists: accept, or warn/refuse
-   at the shelve step. *Insured:* nobody died, so does a shelve spend the
-   policy (a wounded, grappled or jailed player could shelve, clone fresh,
-   and re-up for free at price 0), or must redemption require the source
-   archived with `reason="death"`? Recommended: death only.
+3. ~~Shelving a living character.~~ **Ruled 2026-09-25: "1 for now is
+   fine."** A policy pays for a death only: redemption requires the source
+   body archived with `reason="death"`. Shelving (the web archive of a
+   living body) never spends a policy, and a shelved living body cannot be
+   flash-cloned back; the shelve page warns. Un-shelving stays in §6.
 4. **Maxwell's "a Thawn-Harrison billing terminal."** It is the clinic's
    till, its `treatment` advertiser and its `medic` post (build 074). Keep
    it and re-brand it as Maxwell's (keeping "billing terminal" in the key,
