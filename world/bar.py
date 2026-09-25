@@ -806,8 +806,9 @@ def tender_at(fixture):
     a counter that runs on slots answers to the CLOCK and to nobody
     else, so a bartender who happens to be standing in the room after
     hours cannot be pressed into serving (the same rule that stops a
-    proprietor selling at midnight). An unposted counter — a bar with
-    no shift structure — falls back to whatever bartender is here.
+    proprietor selling at midnight). An UNBOUND counter (`is_bound`: no
+    shift structure and nobody ever assigned) falls back to whatever NPC is
+    here; a bound one with nobody on duty answers None -- closed (#3573).
     """
     if fixture is None:
         return None
@@ -828,7 +829,7 @@ def tender_at(fixture):
     room = getattr(fixture, "location", None)
     if room is None:
         return None
-    # An UNPOSTED counter is the vending tier: whoever is here serves.
+    # An UNBOUND counter is the vending tier: whoever is here serves.
     # This used to sniff for `is_bartender_npc`, a flag only the deleted
     # Bartender class ever set — a role flag on a body, which is the
     # thing the platform work exists to remove (#2378).

@@ -473,11 +473,14 @@ class BarCounter(Seating, Item):
 
         * game staff (Builder+) — they keep the place running;
         * whoever is standing this counter's shift, per `keeper_on_duty`;
-        * an explicit `owner` or `staff` entry, if one is ever set;
-        * an UNBOUND counter — no shift slots and no keeper — is the
-          vending tier, where whoever is standing there serves. That is
-          the same answer `post_for` and `_counter_open` give, so a prop
-          with no job structure behind it still works for players.
+        * an explicit `owner` or `staff` entry, if one is ever set -- a
+          deleted one matches nobody;
+        * an UNBOUND counter (`world.souls.posts.is_bound`: no shift slots,
+          and no keeper, owner or staff ever assigned, living or dead) is
+          the vending tier, where whoever is standing there serves. Every
+          counter gate asks `is_bound`, so a prop with no job structure
+          behind it still works for players and a counter whose person is
+          gone reads closed rather than open (#3573).
         """
         if self._is_staff(char):
             return True

@@ -67,6 +67,9 @@ class ADeadOwnerKeepsItClosed(_Counter):
 
 
 class ADeadStaffEntry(_Counter):
+    """Behaviour pins, not regression tests: on master a dead staff entry
+    already read `[None]` and closed the counter, for the wrong reason
+    (#3573 review). They hold the right reason in place."""
 
     def test_does_not_open_the_counter(self):
         hand = self._npc("barback")
@@ -107,10 +110,15 @@ class ADeadLegacyKeeper(_Counter):
         bystander.db.is_npc = True
         self.assertIsNone(tender_at(self.bar))
 
-    def test_a_shop_counter_asks_the_same_question(self):
+    def test_a_shop_counter_takes_no_coin(self):
+        """The gate that guards real money. On master a deleted keeper fell
+        through to the vending tier and any buyer was served."""
         shop = create_object("typeclasses.shopkeeper.ShopContainer", key="test shop",
                              location=self.room1)
         keeper = self._npc("Otto")
         shop.db.post_keeper = keeper
         keeper.delete()
         self.assertTrue(is_bound(shop))
+        ok, message = shop.purchase_item(self.stranger, "ANY_ITEM")
+        self.assertFalse(ok, message)
+        self.assertIn("minding the counter", message)

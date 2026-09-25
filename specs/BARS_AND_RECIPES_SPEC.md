@@ -456,8 +456,8 @@ bare attribute).
   > bartend but not manage" has nothing to express it with. What it answers, in
   > code order: Builder+ staff → an explicit `owner`/`staff` entry → **whoever is
   > standing this counter's shift**, via `world/souls/posts.keeper_on_duty` →
-  > and, only for an unbound counter with no post slots and no keeper, whoever is
-  > present. Its docstring records why: no bar in the colony has ever had `owner`
+  > and, only for an unbound counter (see *Bound means ever assigned* below),
+  > whoever is present. Its docstring records why: no bar in the colony has ever had `owner`
   > set, so the v1 owner-attribute design was never the operative rule anywhere,
   > and the post became the answer instead. The §8 seam did snap on — it just
   > snapped onto posts rather than factions.

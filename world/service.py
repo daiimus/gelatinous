@@ -182,10 +182,10 @@ def post_for(worker):
         if not getattr(obj.db, "post_role", None):
             continue
         try:
-            # UNBOUND counter — no shifts, no keeper — is the vending tier:
-            # whoever is standing here serves. The same answer `_counter_open`
-            # gives, so the planner and the counter cannot disagree about
-            # whether a place with no shift structure is open.
+            # UNBOUND counter (`is_bound`: no shifts, nobody ever assigned)
+            # is the vending tier: whoever is standing here serves. Every
+            # counter gate asks the same function, so the planner and the
+            # counter cannot disagree about whether a place is open (#3573).
             if not is_bound(obj):
                 return obj
             if keeper_on_duty(obj) is worker:
