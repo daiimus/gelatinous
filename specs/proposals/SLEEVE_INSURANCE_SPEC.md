@@ -223,7 +223,15 @@ overturned by ruling 5; the chair stays dark for another reason (§7 Q2).
 
 ## 5 · Phase 1, in slices that ship one at a time
 
-**Slice A — the terminal and the record.** `InsuranceTerminal`
+**Slice A — the terminal and the record. SHIPPED 2026-09-25 (PR #3671):**
+`world/insurance.py`, `InsuranceTerminal`, build 167 (terminal #26167 in
+the lobby), `create_flash_clone` spends the dead body's own record. As
+built, two details the review sharpened: the INSERT happens in one place
+(`_insert`, the row built with the pickled value and saved inside the
+try, because `ServerConfig.value`'s setter saves on assignment), and the
+clone hook is `spend_policy(uid, body_id)`, never a void by uid alone.
+Null-uid census: 8 of 75 characters, all accountless husks; backfill or
+exclusion is Slice C's. `InsuranceTerminal`
 (`typeclasses/terminals.py`; `press insure`, `press status`), branded
 Thawn-Harrison, built in room #1986 by a build script; `POLICY_PRICE = 0`
 in one place; the `ServerConfig` registry with take/put-back; the census of
