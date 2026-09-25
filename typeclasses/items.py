@@ -669,8 +669,9 @@ class Item(ObjectParent, DefaultObject):
         """
         Called just before this item is deleted.
         Owns the bidirectional cleanups that must run on EVERY delete
-        path: the sticky-grenade <-> armor bond (#3552) and remote
-        detonator explosive tracking (#2590).
+        path: the sticky-grenade <-> armor bond (#3552, #3561), a live
+        grenade's pending fuse (#3561), and remote detonator explosive
+        tracking (#2590).
 
         `at_object_delete`, not `at_delete` (#2590). Evennia's
         `DefaultObject.delete` calls `at_object_delete()`; `at_delete` is
@@ -686,6 +687,25 @@ class Item(ObjectParent, DefaultObject):
         if self.db.stuck_to_armor is not None:
             from world.combat.explosives import break_stick
             break_stick(self)
+
+        # The ARMOR side of the same bond (#3561). Deleting a garment with a
+        # grenade clamped to it used to leave the grenade inside it, so
+        # Evennia's `clear_contents` sent the still-armed grenade to its
+        # home -- Limbo, since grenades set none -- where its countdown
+        # went silent and it detonated a few seconds later, gone from the
+        # fight. Owner ruling: the grenade goes with the armor. The
+        # situation should never arise in play, so it ends quietly.
+        grenade = self.db.stuck_grenade
+        if grenade is not None:
+            from world.combat.explosives import break_stick
+            break_stick(grenade)
+            grenade.delete()
+
+        # A live grenade's fuse is a scheduled timer, not a flag: deleting
+        # the object does not cancel it, and the tick would go on holding
+        # the Python object and explode it (#3561).
+        from commands.explosion_utils import stop_grenade_fuse
+        stop_grenade_fuse(self)
 
         # If this item is an explosive scanned by a detonator, remove it from the detonator's list
         if self.db.scanned_by_detonator:

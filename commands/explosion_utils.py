@@ -18,6 +18,7 @@ Part of the G.R.I.M. Combat System.
 
 import random
 from evennia import utils
+from twisted.internet.error import AlreadyCalled, AlreadyCancelled
 from world.combat.debug import get_splattercast
 from world.identity_utils import msg_room_identity
 from world.combat.constants import (
@@ -369,8 +370,8 @@ def start_standalone_grenade_ticker(grenade, explosion_callback=None):
     def tick():
         try:
             # Check if grenade still exists and has countdown
-            if not grenade or not hasattr(grenade, 'ndb'):
-                return  # Grenade was deleted or lost state
+            if _is_gone(grenade) or not hasattr(grenade, 'ndb'):
+                return  # Grenade was deleted or lost state (#3561)
 
             remaining = getattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
 
@@ -457,8 +458,8 @@ def start_grenade_ticker(grenade):
     def tick():
         try:
             # Check if grenade still exists and has countdown
-            if not grenade or not hasattr(grenade, 'ndb'):
-                return  # Grenade was deleted or lost state
+            if _is_gone(grenade) or not hasattr(grenade, 'ndb'):
+                return  # Grenade was deleted or lost state (#3561)
 
             remaining = getattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
 
@@ -622,8 +623,51 @@ def get_unified_explosion_proximity(grenade):
         return getattr(grenade.ndb, NDB_PROXIMITY_UNIVERSAL, [])
 
 
+def stop_grenade_fuse(grenade):
+    """Stop *grenade*'s pending fuse, so nothing goes off on its schedule.
+
+    A pulled pin is not a flag: it is a scheduled timer in the server
+    (``ndb.grenade_timer``, a ``utils.delay`` task). Anything that ends a
+    countdown -- a defuse, a botched defuse that re-arms a short fuse, a
+    rig, a jump sacrifice, the grenade being deleted -- has to cancel that
+    timer, or it fires anyway. The one door for it (#3561): six call sites
+    each carried their own copy, and they had drifted -- most called a
+    bare ``cancel()`` that can raise if the timer fired a moment earlier,
+    and ``rig`` only forgot the reference without cancelling at all.
+
+    Tolerates a timer that has already fired or been cancelled, and always
+    clears the reference. Returns True if there was a timer to stop.
+    """
+    timer = getattr(grenade.ndb, NDB_GRENADE_TIMER, None)
+    if not timer:
+        return False
+    try:
+        timer.cancel()
+    except (AlreadyCalled, AlreadyCancelled):
+        pass
+    try:
+        delattr(grenade.ndb, NDB_GRENADE_TIMER)
+    except AttributeError:
+        pass
+    return True
+
+
+def _is_gone(grenade):
+    """A grenade whose database row is gone. The scheduled tick and the
+    explosion hold the Python object after a delete, and it is still
+    truthy with an ``ndb``; only a null ``pk`` says it no longer exists
+    (Evennia's own ``delete`` asks the same question)."""
+    return grenade is None or getattr(grenade, "pk", None) is None
+
+
 def explode_standalone_grenade(grenade):
     """Handle explosion for grenades outside of CmdPull context (like chain reactions)."""
+    if _is_gone(grenade):
+        # A deleted grenade does not explode (#3561): a timer that escaped
+        # cancellation would otherwise blow up the room it was deleted from,
+        # with no grenade left in the world to explain it.
+        get_splattercast().msg(f"{DEBUG_PREFIX_THROW}_GONE: explosion skipped, grenade no longer exists")
+        return
     try:
         # Note: Using character.take_damage() for medical system integration
 
@@ -994,10 +1038,7 @@ def handle_auto_defuse_success(character, grenade):
     """Handle successful auto-defuse attempt."""
     try:
         # Cancel countdown timer
-        timer = getattr(grenade.ndb, NDB_GRENADE_TIMER, None)
-        if timer:
-            timer.cancel()
-            delattr(grenade.ndb, NDB_GRENADE_TIMER)
+        stop_grenade_fuse(grenade)
 
         # Clear countdown state
         setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
@@ -1039,9 +1080,7 @@ def handle_auto_defuse_failure(character, grenade):
             )
 
             # Trigger immediate explosion (same as manual defuse)
-            timer = getattr(grenade.ndb, NDB_GRENADE_TIMER, None)
-            if timer:
-                timer.cancel()
+            stop_grenade_fuse(grenade)
 
             # Set very short timer for dramatic effect
             setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 1)
