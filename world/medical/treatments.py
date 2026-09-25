@@ -174,11 +174,9 @@ def damaged_organs_at_location(target, location: str) -> list:
     if state is None or not hasattr(state, "organs"):
         return []
     out = []
-    for name, organ in state.organs.items():
+    for organ in state.organs.values():
         if organ.current_hp >= organ.max_hp:
             continue  # Healthy — no wound to stabilize.
-        if state.organ_is_gone(name):
-            continue  # Harvested out: nothing there to dress or repair (#3651).
         container = getattr(organ, "container", None)
         display = getattr(organ, "display_location", None)
         if location in (container, display):
@@ -421,12 +419,18 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
     # number (not an item reference) so item depletion doesn't
     # affect ongoing recovery.
     wound_healing_rating = int(effectiveness.get("wound_healing", 0) or 0)
+    state = getattr(target, "medical_state", None)
     for organ in wounded_organs:
         organ.stabilized = True
         # Proper care supersedes the field tourniquet (#509): the
         # dressing holds the wound, so the band comes off with it.
         organ.tourniqueted = False
-        organ.dressing_rate = wound_healing_rating
+        # A harvested organ's extraction site is a real wound -- it is
+        # dressed like any other, and its pain, bleeding and infection
+        # are treated above -- but the organ itself is gone and does
+        # not heal back (#3400, #3651). No healing rate for it.
+        gone = state is not None and state.organ_is_gone(organ.name)
+        organ.dressing_rate = 0 if gone else wound_healing_rating
     result["stabilized"] = True
     result["messages"].append(
         f"The wound at {location.replace('_', ' ')} is stabilized."
@@ -575,6 +579,8 @@ def _apply_organ_repair_outcome(
         if not surface_accessible:
             if not has_incision(target, container):
                 continue
+        if medical_state.organ_is_gone(organ.name):
+            continue  # harvested out: nothing to repair (#3651)
         organ.heal(hp_gain)
         healed.append(organ)
 

@@ -1280,15 +1280,14 @@ def _resolve_install(actor, target, *, organ_item, location: str,
         organ = Organ(organ_name, organ_data=dict(item_spec))
         organ.medical_state = state
         state.add_organ(organ_name, organ)
-        _clear_removed_record(target, organ_name)
 
     if organ is not None:
         # A surgeon has put an organ in this slot, whichever branch seated
-        # it. `_clear_removed_record` ran only on the chrome branch above,
-        # so an ORGANIC donor organ kept the slot's "harvested" marker and
-        # its removed record: the new organ read as still gone, `full_heal`
-        # skipped it, and the harvest gate refused it (#3651, applying
-        # #3047's rule to the branch it missed).
+        # it, so it is no longer a removed slot (#3047). This clear used to
+        # sit inside the chrome branch alone, so an ORGANIC donor organ kept
+        # the slot's "harvested" marker and its removed record and read as
+        # still gone: `full_heal` skipped it and the harvest gate refused
+        # it (#3651). One clear, for both branches.
         _clear_removed_record(target, organ_name)
         if getattr(organ, "injury_type", None) == "harvested":
             organ.injury_type = None

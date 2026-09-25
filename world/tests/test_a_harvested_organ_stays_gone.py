@@ -4,14 +4,16 @@ Organ loss is permanent (#3400); only a transplant fills the slot again.
 `MedicalState.full_heal` knew a harvested organ was absent, but the two
 healing paths a player actually reaches did not ask:
 
-* wound care (`treatments.damaged_organs_at_location`) listed every organ
-  below full HP, so dressing the open abdomen a harvest leaves behind
-  stabilised the harvested kidney and set its healing rate, and an
-  organ-repair item through that same incision restored its HP outright;
+* dressing the open abdomen a harvest leaves behind set a healing rate on
+  the harvested kidney, and an organ-repair item through that same
+  incision restored its HP outright;
 * the medical script's per-tick healing (`script._healing_organs`) then
   healed any stabilised organ back.
 
-All three now ask `MedicalState.organ_is_gone`. And the organic transplant
+Those three now ask `MedicalState.organ_is_gone`. The extraction SITE is
+still a wound: it is dressed, and its pain, bleeding and infection are
+treated, like any other (review of #3651: gating the wound list itself
+left a harvest-only abdomen untreatable). And the organic transplant
 branch now clears the harvest markers the way the chrome branch always did
 (#3047), or the new organ would have read as still gone and never healed.
 Real bodies throughout; controls first.
@@ -42,10 +44,10 @@ class _Harvested(EvenniaTest):
 
 class WoundCareDoesNotReachAHarvestedOrgan(_Harvested):
 
-    def test_the_wound_list_holds_the_injury_and_not_the_absence(self):
+    def test_the_extraction_site_is_still_a_wound(self):
         found = damaged_organs_at_location(self.char1, "abdomen")
-        self.assertIn(self.hurt, found, "control: an ordinary wound must be treatable")
-        self.assertNotIn(self.gone, found, "a harvested organ was offered to wound care")
+        self.assertIn(self.hurt, found)
+        self.assertIn(self.gone, found, "the harvest wound itself must stay treatable")
 
     def test_the_healing_tick_skips_it_even_if_dressed(self):
         for organ in (self.gone, self.hurt):
@@ -99,3 +101,51 @@ class AnOrganicTransplantIsPresent(_Harvested):
         self.assertIn(kidney, damaged_organs_at_location(self.char1, "abdomen"))
         self.ms.full_heal()
         self.assertEqual(kidney.current_hp, kidney.max_hp)
+
+
+class AHarvestAloneIsStillTreatable(EvenniaTest):
+    """The review's catch: with the harvest as the ONLY injury, the first
+    version of this fix answered "There's no wound at abdomen to treat."
+    and the harvest's pain -- and, on a failed harvest, its infection --
+    could not be dressed at all."""
+
+    def setUp(self):
+        super().setUp()
+        from world.medical.procedures import seed_pain
+        self.ms = self.char1.medical_state
+        _mark_organ_removed(self.char1, "left_kidney")
+        seed_pain(self.char1, "abdomen", 5)
+        others = [o for n, o in self.ms.organs.items()
+                  if n != "left_kidney" and o.current_hp < o.max_hp]
+        assert not others, "fixture: the harvest must be the only injury"
+        from evennia.prototypes.spawner import spawn
+        from world.prototypes import GAUZE_BANDAGES
+        self.gauze = spawn(GAUZE_BANDAGES)[0]
+        self.gauze.move_to(self.char2, quiet=True)
+
+    def test_the_dressing_runs_and_the_kidney_stays_gone(self):
+        from world.medical import treatments
+        with patch.object(treatments, "roll_treatment",
+                          return_value={"outcome": "success", "item_rating": 5}):
+            result = treatments.apply_wound_care(self.char2, self.char1, self.gauze, "abdomen")
+        self.assertIsNone(result["no_op_reason"], result["messages"])
+        self.assertTrue(result["stabilized"])
+        self.assertTrue(result["rolls"], "the pain/bleeding/infection rolls never ran")
+        kidney = self.ms.organs["left_kidney"]
+        self.assertEqual(kidney.dressing_rate, 0, "a harvested organ was given a healing rate")
+        self.assertEqual(kidney.current_hp, 0)
+
+
+class AChromeTransplantIsPresent(_Harvested):
+
+    def test_a_cyber_kidney_through_the_real_install_clears_the_record(self):
+        from evennia.prototypes.spawner import spawn
+        from world.prototypes import CYBER_LEFT_KIDNEY
+        chrome = spawn(CYBER_LEFT_KIDNEY)[0]
+        chrome.move_to(self.char2, quiet=True)
+        with patch.object(procedures, "roll_procedure", return_value={"outcome": "success"}), \
+                patch.object(procedures, "has_incision", return_value=True):
+            procedures._resolve_install(self.char2, self.char1, organ_item=chrome,
+                                        location="abdomen")
+        self.assertGreater(self.ms.organs["left_kidney"].current_hp, 0, "fixture: install did not seat")
+        self.assertFalse(self.ms.organ_is_gone("left_kidney"))
