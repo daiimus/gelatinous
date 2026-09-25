@@ -157,7 +157,9 @@ may be hired: `successor` or `None`. The eleven blueprint `'policy':
 'resleave'` entries, build 098's writes, `posts.py:464` and the NPC_POSTS §4
 column change in the same PR, **with an in-process data build** that
 censuses live `post_policy` values and rewrites `resleave` to `successor`
-(the Rook's chair and Vesper's chaise wait on §7 Q2), plus a test that no
+(the Rook's chair too: Q2 accepted that it goes dark after his death, so
+it becomes `successor` like the rest and stays dark only because nobody can
+reach it), plus a test that no
 registered post carries `resleave`. Build 098 already wrote `resleave` into
 the live rows; editing the reader alone would send every one of those posts
 down the fallthrough and then `continue` forever, the #3565 shape. Build
@@ -299,11 +301,10 @@ played live as Iver, then the spec promoted or amended.
 
 1. ~~Who gets the urge to buy?~~ **Ruled 2026-09-25: every human and synth
    soul** (option 2), even where a policy cannot yet pay out.
-2. **The Rook.** He has the recluse profile and cannot leave the sealed
-   studio, so under ruling 5 he stays uninsured. After his death the chair
-   goes dark because no successor can reach the seal (`_offer` refuses an
-   unreachable post), which is the recluse story's cost. Accept that, or do
-   you want a way out of the seal?
+2. ~~The Rook.~~ **Ruled 2026-09-25: "1. We accept for now."** He cannot
+   leave the seal, stays uninsured, and after his death the chair goes dark
+   (no policy; no successor can reach the seal). The recluse's cost, for
+   now; a way to the terminal is a later build if ever wanted.
 3. **Shelving a living character** (the web "archive" of a live body), both
    halves. *Uninsured:* with the gate, a shelved character cannot be
    flash-cloned back, and no un-shelve path exists: accept, or warn/refuse
