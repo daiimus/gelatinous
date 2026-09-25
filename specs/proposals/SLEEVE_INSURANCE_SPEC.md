@@ -271,7 +271,8 @@ take-before-build and restore-on-failure; one refusal constant used by both
 doors; the web POST catches it; `last_character` resolved at death;
 `CharacterArchiveView` refuses a sleeve that is already archived and its
 "Stack ID preserved for future respawn." message tells the truth for an
-uninsured sleeve; and,
+uninsured sleeve; both template finalizers void the dead lineage's record
+(Q5); and,
 **before the gate can bite, a way for players to know:** a help entry and a
 line in the decant scene or on the issue dispenser pointing at the lobby
 terminal, since every existing player character starts uninsured and an
@@ -321,10 +322,10 @@ played live as Iver, then the spec promoted or amended.
    in the key (build 074's finder matches on that substring; a re-run would
    otherwise create a second terminal and a second medic post). Slice B
    carries the rename as a data build.
-5. **Template after an insured death.** Does picking a fresh character void
-   the dead lineage's policy? Recommended yes: a policy pays for one death,
-   and an orphaned record could otherwise revive an abandoned self through
-   the archive view.
+5. ~~Template after an insured death.~~ **Ruled 2026-09-25: "1".** Picking
+   a fresh character after an insured death spends the policy: both
+   template finalizers (telnet and web) void the dead lineage's record, so
+   no orphaned row can revive an abandoned self later.
 6. **Delay on fallthrough.** Per the census of 2026-09-09 (`posts.py:421`):
    72 h on ten posts, 6 h on five (the Rook's chair and Vesper's chaise
    among them), 24 h on two, 600 s on two. The default is to keep each
