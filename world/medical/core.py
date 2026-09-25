@@ -1012,12 +1012,11 @@ class MedicalState:
           death).  Eventual revival blocking lives in
           :meth:`death_progression.DeathProgressionScript._check_medical_revival_conditions`
           per the audit's Phase 2.
-        * Kidney loss is **declared fatal** in the schema
-          (``blood_filtration.total_loss_fatal``) but not enforced
-          here — the runtime treats it as a survivable injury until
-          the audit's Phase 6 chronic-conditions substrate ships a
-          ``RenalFailure`` condition that produces death via the
-          condition tick path.
+        * Kidney loss is **not fatal**, by owner ruling (#3402): total
+          loss spawns ``RenalFailureCondition``, a lasting obtundation
+          that leaves the patient fragile. The schema's unread
+          ``blood_filtration.total_loss_fatal`` flag, which said
+          otherwise, was removed with that ruling.
         """
         # Death from vital organ failure
         if self.calculate_body_capacity("blood_pumping") <= 0.0:

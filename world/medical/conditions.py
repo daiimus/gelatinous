@@ -43,15 +43,14 @@ def hazard_fires(p_per_minute: float, elapsed_minutes: float) -> bool:
 BLOOD_FILTRATION_HEAL_FLOOR = 0.25     # clearance never stalls below 25% speed
 BLOOD_FILTRATION_WORSEN_SLOPE = 1.0    # worsen ×(1 + slope·(1−filtration)): 0.5→1.5x, 0→2.0x
 
-# RenalFailure (§7.2): total kidney loss → chronic uremia. Numbers are
+# RenalFailure (§7.2): total kidney loss → chronic uremia. NOT LETHAL by
+# owner ruling (#3402): the lasting obtundation is the cost. Numbers are
 # proof-of-concept; a balance pass is owed. Tunable.
 RENAL_FAILURE_ONSET_FILTRATION = 0.05            # ≤ this (both kidneys gone) → onset
 RENAL_FAILURE_RECOVERY_FILTRATION = 0.4          # ≥ this (a kidney restored) → clears
 RENAL_FAILURE_PROGRESSION_PER_MINUTE = 0.15      # toxin buildup: severity climbs
 RENAL_FAILURE_CONSCIOUSNESS_PER_SEVERITY = 0.06  # progressive obtundation
 RENAL_FAILURE_MAX_CONSCIOUSNESS_PENALTY = 0.6    # can't alone instantly zero consciousness
-RENAL_FAILURE_LETHAL_SEVERITY = 7                # uremic systemic decline begins
-RENAL_FAILURE_DECLINE_PER_TICK = 0.3             # %/update blood-equiv drain when terminal
 
 
 def read_blood_filtration(character):
@@ -654,14 +653,22 @@ class RenalFailureCondition(MedicalCondition):
 
     Spawned and cleared by :meth:`MedicalState.update_vital_signs` from the
     ``blood_filtration`` capacity (both kidneys gone → onset; a kidney restored
-    — cyber or donor — → it clears). Toxins accumulate (severity climbs), which:
+    — cyber or donor — → it clears). Toxins accumulate (severity climbs) and
+    **obtund** the patient: :meth:`get_consciousness_penalty` ramps with
+    severity to a cap of 0.6, leaving consciousness at 0.4 on an otherwise
+    healthy body -- ten points above the knockout line, so a little blood
+    loss, one drink or a knock to the head puts them down.
 
-    * **obtunds** the patient — :meth:`get_consciousness_penalty` ramps with
-      severity (reuses the existing consciousness-suppression summation), and
-    * **slowly kills** — at terminal severity a uremic systemic decline drains
-      blood-equivalent volume (:meth:`get_blood_loss_rate`) until the existing
-      blood-loss death floor trips. No new death-verdict path; it rides the
-      substrates bleeding already uses.
+    **It does not kill** (owner ruling, #3402: "Considering how much weaker it
+    makes someone -- I think that's tough enough"). It once did: the original
+    build (#607) drained blood-equivalent volume at terminal severity through
+    `get_blood_loss_rate`, billed by a flat subtraction in
+    `update_vital_signs`. #2936 removed that subtraction as bleeding's double
+    billing and the renal drain was left with no consumer. The ruling makes
+    the survivable state the design rather than an accident; the drain and
+    its two constants are gone. If lethality is ever wanted, the shape is
+    the medical roadmap's `fatal_at_severity` on chronic conditions, which
+    does not consume the untuned bleeding numbers.
 
     Its signature is a visible uremic pallor via the §7.3 appearance hook.
     """
@@ -680,12 +687,6 @@ class RenalFailureCondition(MedicalCondition):
             RENAL_FAILURE_MAX_CONSCIOUSNESS_PENALTY,
             self.severity * RENAL_FAILURE_CONSCIOUSNESS_PER_SEVERITY,
         )
-
-    def get_blood_loss_rate(self):
-        """Uremic systemic decline — a slow drain once terminal, else none."""
-        if self.severity < RENAL_FAILURE_LETHAL_SEVERITY:
-            return 0.0
-        return RENAL_FAILURE_DECLINE_PER_TICK
 
     def appearance_symptom(self):
         """The §7.3 visible signature — sallow / uremic / ashen skin."""

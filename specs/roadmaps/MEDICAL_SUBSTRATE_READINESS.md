@@ -28,7 +28,7 @@ The audit itself is the planning artifact and lifecycle: this is the at-a-glance
 | `vital` (Organ init from species spec) | 0 | None — superseded by data-driven `_get_vital_locations` reading `LETHAL_CAPACITY_NAMES` | Phase 4 — Vestigial-Flag Deletion | **Vestigial** — delete when Phase 4 lands |
 | `fatal_threshold` (BODY_CAPACITIES) | 0 | A data-driven `is_dead` that compares each lethal capacity against this threshold instead of the literal `<= 0.0` floor | Phase 5 — `LETHAL_CAPACITY_NAMES` Split | Keep until Phase 5 |
 | `directly_fatal` (BODY_CAPACITIES) | 0 (1 test) | Same as `fatal_threshold` — declares which capacities terminate life vs incapacitate | Phase 5 — `LETHAL_CAPACITY_NAMES` Split | Keep until Phase 5 |
-| `total_loss_fatal: True` on `blood_filtration` | 0 (flag still unread; behaviour is imperative) | **Chronic Conditions framework** — total kidney loss should spawn a fatal `RenalFailure` condition that kills via the tick path, not instant `is_dead` death | Phase 6 — Chronic Medical Conditions Framework + Phase 12 wiring | **✅ BEHAVIOUR SHIPPED** (true-up 2026-09-11) — `RenalFailureCondition` built and wired via `MedicalState._update_renal_failure()`; kills by draining toward the blood-loss floor, clears when a kidney is restored. The FLAG remains unconsumed (threshold is hardcoded), so its Phase 4/5 disposition is unchanged. |
+| ~~`total_loss_fatal: True` on `blood_filtration`~~ | **Deleted (#3402, 2026-09-24)** | Kidney loss is **not fatal** by owner ruling; renal failure's lasting obtundation is the cost | — | **SUPERSEDED.** The 2026-09-11 "behaviour shipped" true-up was already wrong: the drain had been unbilled since #2936 (2026-09-05). |
 | `incapacitation_threshold: 0.15` on `moving` | 0 | **Movement Policing system** — when capacity is below this, character cannot move (movement commands refuse / sleep into low-stamina locomotion) | Phase 7 — Movement Policing Substrate + Phase 10 wiring | **Substrate gap** — movement policing |
 | `unconscious_threshold` (in `consciousness` capacity dict) | 0 | None — duplicated as top-level `CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD` (the one `is_unconscious` actually reads) | Phase 4 — Vestigial-Flag Deletion | **Vestigial** — delete when Phase 4 lands |
 | `modifiers: [...]` on `consciousness` | 0 | None — the cascade (pain → consciousness, blood → consciousness, suppression → consciousness) is implemented imperatively in `update_vital_signs`; this list is design documentation only | Phase 4 — Vestigial-Flag Deletion (or convert to spec comment) | **Vestigial** — delete or document-only |
@@ -88,7 +88,7 @@ Substrate work blocks the wiring phases that depend on it. Sequence per the audi
 
 | Substrate | Build in | Wires up |
 |---|---|---|
-| Chronic Medical Conditions framework | Phase 6 | Phase 12 (kidney death via `RenalFailure`) |
+| Chronic Medical Conditions framework | Phase 6 | ~~Phase 12 (kidney death via `RenalFailure`)~~ — declined (#3402) |
 | Movement Policing | Phase 7 | Phase 10 (functional-capacity incapacitation), Phase 11 (paralysis) |
 | Senses System | Phase 8 | Blindness / deafness conditions and downstream perception gating |
 | Equipment-Handling (manipulation consequences) | Phase 9 | Weapon-drop / can't-wield on low `manipulation` capacity |

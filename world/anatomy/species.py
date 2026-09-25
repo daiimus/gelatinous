@@ -569,7 +569,6 @@ SPECIES_DEFINITIONS = {
                 "organs": ["left_kidney", "right_kidney"],
                 "organ_contribution": 0.5,
                 "affects": ["disease_resistance", "consciousness"],
-                "total_loss_fatal": True,
             },
         },
 
@@ -1142,7 +1141,6 @@ SPECIES_DEFINITIONS = {
             "blood_filtration": {
                 "organs": ["left_kidney", "right_kidney"],
                 "organ_contribution": 0.5,
-                "total_loss_fatal": True,
             },
         },
     },

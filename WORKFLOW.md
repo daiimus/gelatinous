@@ -101,6 +101,14 @@ September 2026, when `MEDICAL_SUBSTRATE_ROADMAP` simultaneously:
 Stale in both directions at once, in a document that was actively being
 worked in. Nothing linked the phases to anything that would have noticed.
 
+*Correction (#3402, 2026-09-24): the first bullet was itself backwards. The
+`DRIFT` record was **right** — the renal drain had stopped billing on
+2026-09-05 (#2936), so kidney loss had genuinely stopped killing, and it was
+the 2026-09-11 true-up marking it "✅ RESOLVED" that was stale. Checking the
+roadmap against the issue tracker would not have caught it either; only
+checking it against the running code would. The owner has since ruled kidney
+loss non-lethal.*
+
 Corollary: **when a ruling supersedes something a doc records as intentional,
 annotate rather than delete.** The superseded note usually still contains the
 reasoning that made it right at the time, and deleting it invites the next
