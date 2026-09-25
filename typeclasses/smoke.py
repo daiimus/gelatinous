@@ -161,10 +161,16 @@ class CigarettePack(Item):
         is drawn, so a home pointing at the pack would dangle for every
         cigarette anyone actually smokes -- trading a leak for a broken
         reference on the common path.
+
+        Returns the super()'s value (#3572): a bare ``True`` opted the pack
+        out of ``Item.at_object_delete`` and ``ObjectParent.at_object_delete``
+        -- above all the hand-slot release, on exactly the route that needs
+        it: the pack crushing itself while held as its last cigarette is
+        drawn, which left the holder's ``held_items`` naming a dead row.
         """
         for cig in list(self.contents):
             cig.delete()
-        return True
+        return super().at_object_delete()
 
     def at_object_leave(self, moved_obj, target_location, **kwargs):
         """Crush the empty pack once its last cigarette is drawn.
