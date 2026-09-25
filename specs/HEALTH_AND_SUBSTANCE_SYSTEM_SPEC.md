@@ -971,6 +971,7 @@ TENTACLE_MONSTER_LOCATIONS = {
 - **Destruction at 0 HP**: When organ HP reaches 0, organ is destroyed/non-functional
 - **Death conditions**: Destruction of vital organs (heart, both lungs, liver, or the `cervical_spine` → decapitation) = death
 - **Paired organ logic**: Both kidneys/lungs destroyed = death, single destruction = reduced function
+  *(Kidneys superseded, #3402: total kidney loss is **not** fatal by owner ruling — it spawns renal failure, a lasting obtundation that leaves the patient fragile. See CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §7.2. Lungs are unchanged.)*
 
 ### Hit Distribution Formula  
 *NOTE: Formula will be based on attack roll/success from combat handler*

@@ -437,17 +437,30 @@ catch one." Slots straight into the existing multiplier.
 *(Built: `RenalFailureCondition` (`world/medical/conditions.py`) spawned/cleared
 by `MedicalState._update_renal_failure` in `update_vital_signs` (onset at
 filtration ≤0.05, clears ≥0.4 — hysteresis). Obtunds via `get_consciousness_penalty`
-(reuses the existing suppression sum); slow-kills via `get_blood_loss_rate` once
-terminal (rides the existing blood-loss death floor — no new death-verdict path);
-shows `uremic` via the §7.3 hook. Restoring filtration (cyber/donor kidney) clears
-it. Tests: `test_renal_failure.py`.)*
+(reuses the existing suppression sum, capped at 0.6); shows `uremic` via the
+§7.3 hook. Restoring filtration (cyber/donor kidney) clears it. Tests:
+`test_renal_failure.py`.)*
+
+> **Not lethal — owner ruling 2026-09-24 (#3402): "Considering how much weaker it makes someone — I think that's tough enough."**
+> At maximum severity an otherwise healthy patient sits at consciousness 0.4,
+> ten points above the knockout line: fully able to act, but a little blood
+> loss, one drink or a knock to the head puts them down, for as long as they
+> have no kidney. That fragility is the cost. The original build (#607)
+> slow-killed by draining blood through `get_blood_loss_rate` at terminal
+> severity; #2936 removed the subtraction that billed it (bleeding's double
+> billing) and the drain was orphaned by accident. The ruling makes survival
+> the design: the drain, its two constants and the schema's unread
+> `total_loss_fatal` flag are gone. If lethality is ever wanted, the shape is
+> the medical roadmap's `fatal_at_severity` on chronic conditions, which does
+> not consume the untuned bleeding numbers.
 
 Total kidney loss (filtration `0`) → a **RenalFailure** chronic condition,
-realizing the table's declared-but-unenforced `total_loss_fatal` *and* the
-`blood_filtration → consciousness` modifier that `update_vital_signs` doesn't
-apply today. Effects: consciousness suppression + slow death, **and its
-signature — a visible skin-pigment shift** (sallow / uremic / ashen). Rides the
-chronic-conditions substrate (parallel to the parked ischemia clock).
+realizing the `blood_filtration → consciousness` modifier that
+`update_vital_signs` doesn't apply directly. Effects: consciousness
+suppression, **and its signature — a visible skin-pigment shift** (sallow /
+uremic / ashen). Rides the chronic-conditions substrate (parallel to the
+parked ischemia clock). *(Originally specified as "suppression + slow death";
+superseded by the ruling above.)*
 
 ### 7.3 Condition-driven appearance symptoms (cross-cutting hook) — ✅ SHIPPED
 *(Built: `world/medical/appearance.py` `get_appearance_tint` / `get_active_symptom`
