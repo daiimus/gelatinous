@@ -238,7 +238,7 @@ capture` gains `blueprint_key`/`dbref`; `_try_resleave` keyed to the person
 with take-before-build; the three sweep outcomes with ownership cleared on
 fallthrough; `post_policy` loses `resleave`; the `insurance` need,
 advertiser and named press step; `ensure_dispatch_operator` retired; the
-`post_policy` data build. **Old model deleted in the same PR** (grep runtime
+`post_policy` data build; the Maxwell terminal re-key (Q4). **Old model deleted in the same PR** (grep runtime
 code and tests to zero; historical build scripts and bannered specs are left
 as they are): `RESLEAVE_PREMIUM`; `post_insurer` (code, build 098:65, a
 data build to strip the attribute rows); the `resleeve_premium` audit line;
@@ -315,11 +315,12 @@ played live as Iver, then the spec promoted or amended.
    body archived with `reason="death"`. Shelving (the web archive of a
    living body) never spends a policy, and a shelved living body cannot be
    flash-cloned back; the shelve page warns. Un-shelving stays in §6.
-4. **Maxwell's "a Thawn-Harrison billing terminal."** It is the clinic's
-   till, its `treatment` advertiser and its `medic` post (build 074). Keep
-   it and re-brand it as Maxwell's (keeping "billing terminal" in the key,
-   which build 074's finder matches on), or remove it and re-home those three
-   roles.
+4. ~~Maxwell's "a Thawn-Harrison billing terminal."~~ **Ruled 2026-09-25:
+   "1."** Keep it and re-brand it as Maxwell's; the till, the `treatment`
+   advertiser and the `medic` post stay. The re-key keeps "billing terminal"
+   in the key (build 074's finder matches on that substring; a re-run would
+   otherwise create a second terminal and a second medic post). Slice B
+   carries the rename as a data build.
 5. **Template after an insured death.** Does picking a fresh character void
    the dead lineage's policy? Recommended yes: a policy pays for one death,
    and an orphaned record could otherwise revive an abandoned self through
