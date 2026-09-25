@@ -1578,6 +1578,35 @@ never player-visible (Evennia unpacks a deleted dbobj as `None`, so the
 skipped correctly), but severance was an accident of the serializer
 rather than something the explosion performed.
 
+**The armor side, and a deleted grenade's fuse (#3561, 2026-09-24).**
+The hook above covered only a dying *grenade*. A dying *armor* left the
+grenade inside it, and Evennia's `delete()` then runs `clear_contents`,
+which evicts contents to their home — for a grenade, which sets none,
+Limbo. The still-armed grenade landed there, its per-second warnings
+stopped (the stuck check requires its location to be an Item), and it
+detonated a few seconds later, gone from the fight. Reachable by a
+builder's `@destroy` and by `_perish()` deleting a single-use garment off
+a body. **Owner ruling: the grenade goes with the armor** — the situation
+should never arise in play, so it ends quietly. `Item.at_object_delete`
+now severs the bond from the armor side and deletes the grenade before
+`clear_contents` can move it.
+
+Deleting a live grenade is only safe if its fuse stops. A pulled pin is a
+scheduled timer (`ndb.grenade_timer`), not a flag, and the scheduled tick
+holds the Python object after a delete — still truthy, still with an
+`ndb` — so the countdown ran on and exploded it (reproduced before the
+fix). Every deleted item now stops its fuse through
+`commands.explosion_utils.stop_grenade_fuse`, and
+both explosion resolvers (`explode_standalone_grenade`,
+`trigger_auto_defuse_explosion`) and both ticks refuse a grenade whose
+database row is gone (`pk is None`) — the botched-defuse and chain
+timers are scheduled outside `ndb.grenade_timer`, so the guard, not the
+cancel, is what covers them. `stop_grenade_fuse` is the one door
+for stopping a fuse: defuse, auto-defuse, both botched-defuse early
+triggers, `rig` and the jump sacrifice each carried their own copy, most
+calling a bare `cancel()` that could raise on a timer that had just
+fired, and `rig` forgot the reference without cancelling at all.
+
 ---
 
 ## 11. Edge Cases & Special Situations

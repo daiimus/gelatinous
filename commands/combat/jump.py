@@ -17,7 +17,6 @@ CmdJump handles three distinct sub-systems:
 """
 
 from evennia import Command
-from twisted.internet.error import AlreadyCalled, AlreadyCancelled
 from evennia.utils.utils import delay
 
 from world.combat.constants import (
@@ -30,7 +29,6 @@ from world.combat.constants import (
     NDB_AIRBORNE_TOKEN,
     NDB_COMBAT_HANDLER,
     NDB_COUNTDOWN_REMAINING,
-    NDB_GRENADE_TIMER,
     NDB_PROXIMITY_UNIVERSAL,
     NDB_SKIP_ROUND,
 )
@@ -218,15 +216,9 @@ class CmdJump(Command):
         # Stop the grenade timer immediately to prevent race conditions
         if is_armed and has_active_countdown:
             # Cancel delay timers stored in NDB (prevent original timer from firing)
-            if hasattr(explosive.ndb, NDB_GRENADE_TIMER):
-                timer = getattr(explosive.ndb, NDB_GRENADE_TIMER, None)
-                if timer:
-                    try:
-                        timer.cancel()  # Cancel the utils.delay timer
-                        splattercast.msg(f"JUMP_SACRIFICE: Cancelled original grenade timer on {explosive.key}")
-                    except (AlreadyCalled, AlreadyCancelled):
-                        splattercast.msg(f"JUMP_SACRIFICE: Original grenade timer on {explosive.key} already fired/cancelled")
-                delattr(explosive.ndb, NDB_GRENADE_TIMER)
+            from commands.explosion_utils import stop_grenade_fuse
+            if stop_grenade_fuse(explosive):
+                splattercast.msg(f"JUMP_SACRIFICE: Cancelled original grenade timer on {explosive.key}")
             
             # Stop any timer scripts
             for script in explosive.scripts.all():

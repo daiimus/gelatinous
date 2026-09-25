@@ -148,7 +148,6 @@ from world.combat.constants import (
     PERM_BUILDER,
     NDB_PROXIMITY_UNIVERSAL,
     NDB_COUNTDOWN_REMAINING,
-    NDB_GRENADE_TIMER,
     MSG_RIG_WHAT,
     MSG_RIG_INVALID_SYNTAX,
     MSG_RIG_NO_HANDS,
@@ -169,6 +168,7 @@ from world.combat.constants import (
 from commands.explosion_utils import (
     notify_adjacent_rooms_of_explosion,
     get_unified_explosion_proximity,
+    stop_grenade_fuse,
 )
 from world.identity_utils import msg_room_identity
 from world.combat.utils import get_display_name_safe
@@ -327,10 +327,10 @@ class CmdRig(Command):
             splattercast = get_splattercast()
             splattercast.msg(f"{DEBUG_PREFIX_THROW}_SUCCESS: Also rigged return exit {return_exit} in {return_exit.location}")
 
-        # Cancel normal countdown and set up trigger
-        if hasattr(grenade.ndb, NDB_GRENADE_TIMER):
-            # Cancel existing timer
-            delattr(grenade.ndb, NDB_GRENADE_TIMER)
+        # Cancel normal countdown and set up trigger. This forgot the
+        # timer without cancelling it until #3561; harmless only because
+        # rig refuses a pulled pin above.
+        stop_grenade_fuse(grenade)
 
         # Announce
         self.caller.msg(MSG_RIG_SUCCESS.format(object=grenade.key, exit_name=exit_obj.key))
@@ -631,10 +631,7 @@ class CmdDefuse(Command):
     def handle_defuse_success(self, grenade):
         """Handle successful defuse attempt."""
         # Cancel countdown timer if active
-        timer = getattr(grenade.ndb, NDB_GRENADE_TIMER, None)
-        if timer:
-            timer.cancel()
-            delattr(grenade.ndb, NDB_GRENADE_TIMER)
+        stop_grenade_fuse(grenade)
 
         # Clear countdown state
         setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
@@ -718,9 +715,7 @@ class CmdDefuse(Command):
             )
 
             # Trigger immediate explosion (reuse existing explosion logic)
-            timer = getattr(grenade.ndb, NDB_GRENADE_TIMER, None)
-            if timer:
-                timer.cancel()
+            stop_grenade_fuse(grenade)
 
             # Set very short timer for dramatic effect
             setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 1)
