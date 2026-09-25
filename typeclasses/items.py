@@ -919,14 +919,12 @@ class AnsweringFixture(Radio):
         its sentence on somebody's behalf.
         """
         try:
-            from world.radio import is_powered, transmit
+            from world.radio import is_powered, mast_down, transmit
 
             line = " ".join(str(line).split())[:200]
             if not line or not is_powered(self):
                 return
-            antenna = self.db.antenna
-            if antenna is not None and getattr(
-                    getattr(antenna, "db", None), "intact", None) is not True:
+            if mast_down(self):
                 return
             who = speaker if speaker is not None else self._operator()
             if who is not None:

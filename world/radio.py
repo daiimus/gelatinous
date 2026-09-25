@@ -520,6 +520,37 @@ def _grid_room(obj):
     return None
 
 
+def mast_down(device) -> bool:
+    """Is this radio's mast DOWN? The one reading of the mast seam.
+
+    Down means the linked antenna is wrecked (`db.intact` not True, the
+    `sabotage` seam) OR it was linked and no longer exists: the
+    `antenna` attribute is still set but resolves to nothing, because a
+    deleted object deserializes as None. A deleted mast used to read as
+    no mast at all, which is the PERMISSIVE case, so deleting a mast gave
+    its station colony-wide reach while wrecking it cut the station to
+    handheld (#3558). A station never linked to a mast (no `antenna`
+    attribute, like the crane console) is not down: it keeps the default
+    reach it was built with. Five readers asked this by hand; they all
+    ask here now. It does not ask whether the radio is a base station:
+    four of the readers have already checked that, and `_answer` never
+    did (any answering radio with a wrecked antenna goes silent).
+    """
+    try:
+        db = getattr(device, "db", None)
+        antenna = getattr(db, "antenna", None)
+        if antenna is not None:
+            return getattr(getattr(antenna, "db", None), "intact",
+                           None) is not True
+        # No mast in hand: never linked, or linked and since deleted. Only
+        # the attribute row can tell them apart. Strict, because
+        # AttributeHandler.has answers a real bool and a mock's truthy
+        # stand-in must not read as "linked" (#3583's idiom).
+        return device.attributes.has("antenna") is True
+    except AttributeError:
+        return False
+
+
 def _antenna_site(device):
     """The grid cell of a base station's linked INTACT antenna — the
     steel is the station's radio presence (position AND elevation); the
@@ -530,8 +561,7 @@ def _antenna_site(device):
         if getattr(db, "is_base_station", None) is not True:
             return None
         antenna = getattr(db, "antenna", None)
-        if antenna is None or getattr(
-                getattr(antenna, "db", None), "intact", None) is not True:
+        if antenna is None or mast_down(device):
             return None
         room = _grid_room(antenna)
         from world.spatial import get_xyz
@@ -542,8 +572,9 @@ def _antenna_site(device):
 
 def _effective_tx_range(device, origin_xyz):
     """Transmit reach in cells. A base station rides its mast: intact
-    (or none linked) = MAST_TX_RANGE, wrecked = handheld reach (the
-    desk radio still keys, but only locally). Handhelds/organs use
+    (or none ever linked) = MAST_TX_RANGE, down (wrecked, or deleted,
+    `mast_down`) = handheld reach (the desk radio still keys, but only
+    locally). Handhelds/organs use
     ``db.tx_range`` or the default. The transmit room's elevation adds
     reach."""
     base = None
@@ -552,10 +583,7 @@ def _effective_tx_range(device, origin_xyz):
             db = getattr(device, "db", None)
             explicit = getattr(db, "tx_range", None)
             if getattr(db, "is_base_station", None) is True:
-                antenna = getattr(db, "antenna", None)
-                if antenna is not None and getattr(
-                        getattr(antenna, "db", None), "intact",
-                        None) is not True:
+                if mast_down(device):
                     base = RADIO_TX_RANGE
                 else:
                     base = explicit or MAST_TX_RANGE
@@ -574,7 +602,7 @@ def _effective_tx_range(device, origin_xyz):
 
 def _relay_points(frequency, exclude_device, origin_xyz, origin_range):
     """(xyz, reach) per qualifying repeater: a powered base station on
-    the band with an intact (or absent) mast, on-grid, and within the
+    the band whose mast is not down (`mast_down`), on-grid, and within the
     ORIGIN's reach — a repeater must hear you to repeat you. One hop;
     repeaters regenerate the signal clean."""
     from world.spatial import get_xyz
@@ -589,9 +617,7 @@ def _relay_points(frequency, exclude_device, origin_xyz, origin_range):
                 continue
             if not same_band(frequency_of(radio), frequency):
                 continue
-            antenna = getattr(radio.db, "antenna", None)
-            if antenna is not None and getattr(
-                    getattr(antenna, "db", None), "intact", None) is not True:
+            if mast_down(radio):
                 continue
             xyz = _antenna_site(radio)
             if xyz is None:
