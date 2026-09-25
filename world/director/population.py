@@ -445,16 +445,14 @@ def get_base_station(require_mast: bool = True) -> Any | None:
     Callers asking "does dispatch have a voice at all" keep the default.
     Callers computing REACH pass False and let range decide.
     """
-    from world.radio import is_powered, is_radio
+    from world.radio import is_powered, is_radio, mast_down
     base = get_dispatch_room()
     if base is None:
         return None
     for obj in base.contents:
         if (getattr(getattr(obj, "db", None), "is_base_station", None) is True
                 and is_radio(obj) and is_powered(obj)):
-            antenna = getattr(obj.db, "antenna", None)
-            if (require_mast and antenna is not None and getattr(
-                    getattr(antenna, "db", None), "intact", None) is not True):
+            if require_mast and mast_down(obj):
                 return None   # mast down = dispatch has no voice
             return obj
     return None
