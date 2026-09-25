@@ -18,11 +18,13 @@ shut steel doors.
 
 Economy: 100 tokens per week (``RENT``/``WEEK``); pay again to extend. Miss
 it and the lease lapses, but you get a one-month grab window (``GRACE``)
-before the house empties your locker into the lost-property bin.
+before the house empties your locker into the lost-property bin, or onto
+the floor of the room if the bank has no bin (#3567).
 """
 import time
 
 from evennia import Command, CmdSet, create_object
+from evennia.utils import logger
 
 from typeclasses.items import Item
 from world.access import sleeve_uid_of
@@ -175,14 +177,37 @@ class LockerBank(Item):
                 self._repossess(uid)
 
     def _repossess(self, uid):
+        """Empty a lapsed locker: into the lost-property bin, or, when the
+        bank has none, onto the floor of its room (owner ruling, #3567).
+
+        With no bin the contents used to stay in the compartment, and
+        deleting the compartment sent them to their home: spawned items
+        have none, so they landed in Limbo, silently. A bank with no bin
+        is now logged each time it repossesses, so a missing bin gets
+        noticed. A bank with no room to drop into (unreachable in play:
+        nobody can use a bank that is nowhere) keeps the compartment, so
+        nothing is lost.
+        """
         store = self._store(uid)
         binx = self.db.forfeit_bin
         if store is not None:
-            for it in list(store.contents):
-                it.db.locker_owner = None
-                if binx is not None:
-                    it.move_to(binx, quiet=True, move_hooks=False)
-            store.delete()
+            if binx is None:
+                room = self.location
+                logger.log_warn(
+                    f"lockers: {self.key} #{self.id} has no lost-property "
+                    f"bin; a lapsed locker was emptied onto the floor of "
+                    f"{getattr(room, 'key', None)} (#3567)")
+                if room is None:
+                    store = None            # nowhere to drop: keep it all
+            if store is not None:
+                for it in list(store.contents):
+                    it.db.locker_owner = None
+                    if binx is not None:
+                        it.move_to(binx, quiet=True, move_hooks=False)
+                    else:
+                        from commands.combat.jump import drop_to_room
+                        drop_to_room(it, self.location)
+                store.delete()
         leases = dict(self.db.leases or {}); leases.pop(uid, None)
         opened = dict(self.db.opened or {}); opened.pop(uid, None)
         self.db.leases, self.db.opened = leases, opened
@@ -365,8 +390,10 @@ class LockerBank(Item):
             return (f"Your locker ({state}) is paid through about {days} more "
                     f"day(s). " + self._contents_line(caller))
         left = max(0, int((paid + GRACE - now) // 86400))
+        where = ("into lost property" if self.db.forfeit_bin is not None
+                 else "onto the floor")
         return (f"|rYour locker's lease has LAPSED.|n About {left} day(s) to "
-                f"clear it before the house empties it into lost property. "
+                f"clear it before the house empties it {where}. "
                 + self._contents_line(caller))
 
     def get_display_things(self, looker, **kwargs):
