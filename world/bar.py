@@ -818,7 +818,12 @@ def tender_at(fixture):
         keeper = None
     if keeper is not None:
         return keeper
-    if getattr(fixture.db, "post_slots", None):
+    # Bound (a shift, a posted keeper, an owner -- dead or alive) and
+    # nobody standing it: closed, the same answer every other gate gives.
+    # This used to test `post_slots` alone, so a counter with only a
+    # legacy keeper read as unposted here and closed to the planner (#3573).
+    from world.souls.posts import is_bound
+    if is_bound(fixture):
         return None
     room = getattr(fixture, "location", None)
     if room is None:

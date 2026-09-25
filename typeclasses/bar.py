@@ -482,9 +482,13 @@ class BarCounter(Seating, Item):
         if self._is_staff(char):
             return True
 
+        # A deleted owner or staff member reads back as None: it is nobody,
+        # and never a match (#3573). `[None]` must not count as "has staff".
         owner = self.db.owner
-        staff = self.db.staff or []
-        if char is owner or char in staff:
+        staff = [s for s in (self.db.staff or []) if s is not None]
+        if owner is not None and char is owner:
+            return True
+        if char in staff:
             return True
 
         try:
@@ -494,11 +498,11 @@ class BarCounter(Seating, Item):
         except Exception:  # noqa: BLE001 — a bad post never opens the till
             pass
 
-        # Unbound: no shifts, no keeper, nobody's job. Whoever is here.
-        if not (self.db.post_slots or self.db.post_keeper is not None):
-            return owner is None and not staff
-
-        return False
+        # Unbound: no shifts, nobody posted, nobody owns it. Whoever is
+        # here. A counter whose person was DELETED is still bound, and so
+        # closed -- never the vending tier (#3573).
+        from world.souls.posts import is_bound
+        return not is_bound(self)
 
     def get_display_things(self, looker, **kwargs):
         # The bar's contents (drinks, loaded ingredients) are shown by

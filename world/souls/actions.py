@@ -174,7 +174,8 @@ def _counter_open(counter):
     way the shop itself asks it (souls.posts.any_keeper_present), so
     the planner and the till can never disagree about whether a place
     is open."""
-    if not (counter.db.post_slots or counter.db.post_keeper is not None):
+    from world.souls.posts import is_bound
+    if not is_bound(counter):
         return True                    # no binding: the vending tier
     if counter.db.self_serve:
         return True

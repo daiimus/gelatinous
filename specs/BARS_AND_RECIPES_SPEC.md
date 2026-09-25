@@ -461,6 +461,24 @@ bare attribute).
   > set, so the v1 owner-attribute design was never the operative rule anywhere,
   > and the post became the answer instead. The §8 seam did snap on — it just
   > snapped onto posts rather than factions.
+  >
+  > **Bound means ever assigned (#3573, 2026-09-24).** "Unbound" -- the vending
+  > tier -- is now one function, `world/souls/posts.is_bound`, asked by
+  > `is_bartender`, `ShopContainer.purchase_item`, the souls planner's
+  > `_counter_open`, `world/service.post_for` and `world/bar.tender_at`
+  > (five inline copies before, which had drifted). A counter is bound if it
+  > has shift slots, or if a keeper, owner or staff entry was **ever** set,
+  > **even if that character has since been deleted**: Evennia reads a deleted
+  > reference back as `None`, and every copy took that for "never assigned", so
+  > a counter whose person was gone fell to the vending tier and anyone present
+  > could empty its till. A bound counter with nobody valid present reads
+  > closed, the state a vacant shift already produces. Dead owner and staff
+  > entries never match anyone.
+  >
+  > **`owner`/`staff` are legacy, hardened but not extended.** Future player
+  > owners and staff are designed separately in #3648: ownership keyed by
+  > sleeve uid (as lockers are), shared across bars, shops and carts, with
+  > player staff as post slots. Retire these two fields in that change.
 - **Faction/favor is a stubbed seam (decision #8):** v1 ownership is a plain
   owner attribute + allowlist. The later pass lets factions own bars, ties staff
   permissions to the favor system, and may lean on the parked **TRUST_AND_CONSENT**

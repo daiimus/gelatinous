@@ -173,7 +173,7 @@ def post_for(worker):
     room = getattr(worker, "location", None)
     if room is None:
         return None
-    from world.souls.posts import keeper_on_duty
+    from world.souls.posts import is_bound, keeper_on_duty
     try:
         candidates = list(room.contents) + [room]
     except Exception:  # noqa: BLE001 — an odd location must not break speech
@@ -186,7 +186,7 @@ def post_for(worker):
             # whoever is standing here serves. The same answer `_counter_open`
             # gives, so the planner and the counter cannot disagree about
             # whether a place with no shift structure is open.
-            if not (obj.db.post_slots or obj.db.post_keeper is not None):
+            if not is_bound(obj):
                 return obj
             if keeper_on_duty(obj) is worker:
                 return obj

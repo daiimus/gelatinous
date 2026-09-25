@@ -231,8 +231,8 @@ class ShopContainer(DefaultObject):
         # An unstaffed slot reads as a tired counter, not a closed shop —
         # unless every slot is dark. Counters with no binding vend
         # freely: that IS the vending-machine tier.
-        if self.db.post_slots or self.db.post_keeper is not None:
-            from world.souls.posts import any_keeper_present
+        from world.souls.posts import any_keeper_present, is_bound
+        if is_bound(self):
             if not any_keeper_present(self):
                 # If one of this counter's OWN keepers is standing here on
                 # somebody else's shift, they answer for it themselves and
