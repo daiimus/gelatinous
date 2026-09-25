@@ -379,19 +379,22 @@ class TestForcedMovementBreaksTheChannel(TestCase):
     """
 
     def test_the_drag_path_interrupts_before_it_moves(self):
-        """Structural, because driving a real grapple-drag needs a full
-        combat fixture -- but the ORDER matters (interrupt, then move),
-        so it is asserted rather than assumed."""
+        """Structural: the ORDER matters (interrupt, then move), so it is
+        asserted rather than assumed. Since #3663 the victim's move lives
+        in `drag_victim_to`, which BOTH drag doors call."""
         import inspect
 
         import typeclasses.exits as exits_mod
-        src = inspect.getsource(exits_mod)
+        import world.combat.movement_resolution as advance_mod
+        from world.combat import grappling
+        src = inspect.getsource(grappling.drag_victim_to)
         self.assertIn("from world.channeled import interrupt_channel", src)
-        interrupt_at = src.index("interrupt_channel(grappled_victim_obj)")
-        move_at = src.index(
-            "grappled_victim_obj.move_to(target_location, quiet=True")
+        interrupt_at = src.index("interrupt_channel(victim)")
+        move_at = src.index("victim.move_to(room, quiet=True, move_hooks=False)")
         self.assertLess(interrupt_at, move_at,
                         "the victim is moved before the channel breaks")
+        for door in (exits_mod, advance_mod):
+            self.assertIn("drag_victim_to(", inspect.getsource(door), door.__name__)
 
     def test_interrupt_channel_clears_the_tell(self):
         """What the drag path relies on."""

@@ -686,11 +686,12 @@ def _do_advance_move(
         # they stay adjacent to the person dragging them, and the pair
         # is re-established two lines down.
         from world.combat.proximity import clear_proximity_on_room_change
+        from world.combat.grappling import drag_victim_to
         clear_proximity_on_room_change(char)
         char.move_to(target_room)
-        grappled_victim.move_to(
-            target_room, quiet=True, move_hooks=False
-        )
+        # Shared with the walk door (`Exit.at_traverse`): the victim's
+        # hookless move, the channel break and the stand-up (#3663).
+        drag_victim_to(grappled_victim, target_room)
 
         # Re-establish proximity between grappler and victim after drag
         establish_proximity(char, grappled_victim)
