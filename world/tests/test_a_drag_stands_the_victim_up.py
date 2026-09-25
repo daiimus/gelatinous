@@ -20,7 +20,7 @@ from evennia.utils.test_resources import EvenniaCommandTest
 
 from commands.CmdFurniture import CmdLie
 from world.combat.constants import DB_IS_YIELDING, NDB_COMBAT_HANDLER
-from world.consent import can_contest, is_restrained
+from world.consent import is_restrained
 from world.medical.utils import treatment_station
 
 
@@ -37,11 +37,13 @@ class _PodPatient(EvenniaCommandTest):
         self.assertTrue(is_restrained(self.patient))            # fixture
 
     def assertOnTheirFeet(self):
+        # What the drag owns: the furniture half. Restraint by the GRAPPLE
+        # itself is the grapple's business and ends with release; these
+        # fixtures stand in for the handler, so `is_restrained` is not
+        # asserted here (it would pass for the wrong reason).
         self.assertIsNone(self.patient.db.furniture)
         self.assertEqual(self.patient.db.posture, "standing")
         self.assertFalse(self.patient.temp_place)
-        self.assertFalse(is_restrained(self.patient))
-        self.assertTrue(can_contest(self.patient))
         self.assertIsNone(treatment_station(self.patient))
         self.assertEqual(self.pod.occupants(), [], "the pod still shows them")
 
@@ -93,6 +95,23 @@ class TheAdvanceDoor(_PodPatient):
                              self.exit, self.patient, True, mock.MagicMock())
         self.assertEqual(self.patient.location, self.room2)
         self.assertOnTheirFeet()
+
+
+class TheAdvanceDoorWhenTheGrapplerIsRefused(_PodPatient):
+    """The walk door's #2594 guard, on the advance door: if the grappler's
+    own hooked move is refused, the victim is not hauled off alone."""
+
+    def test_the_victim_stays_put(self):
+        from world.combat.movement_resolution import _do_advance_move
+        quarry = create_object("typeclasses.characters.Character", key="quarry",
+                               location=self.room2)
+        with mock.patch("world.combat.movement_resolution.msg_room_identity"), \
+             mock.patch.object(type(self.grappler), "at_pre_move", return_value=False):
+            _do_advance_move(mock.MagicMock(), self.grappler, quarry, self.room2,
+                             self.exit, self.patient, True, mock.MagicMock())
+        self.assertEqual(self.grappler.location, self.room1)
+        self.assertEqual(self.patient.location, self.room1)
+        self.assertEqual(self.patient.db.furniture, self.pod)
 
 
 class TheHelper(_PodPatient):

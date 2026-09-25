@@ -26,7 +26,11 @@ from world.identity_utils import msg_room_identity
 
 
 def drag_victim_to(victim, room):
-    """Haul a grappled victim into *room*, the one way both drag doors do it.
+    """Haul a grappled victim into *room*, the one way both door drags do it.
+
+    The walk door (`Exit.at_traverse`) and the advance door
+    (`_do_advance_move`). The jump drag keeps hooks ON so gravity and
+    posture run there on their own.
 
     The victim's move runs with hooks OFF, deliberately: `at_pre_move`
     would refuse a channeling victim, and refusing the move would make
@@ -43,9 +47,10 @@ def drag_victim_to(victim, room):
       restraint device, could be robbed uncontested anywhere until they
       typed `stand` (#3663).
 
-    Nothing runs unless the move landed: a refused move is not a move
-    (#2594). Silent, as `at_post_move` is; the drag messages narrate it.
-    Returns whether the victim moved.
+    The channel breaks BEFORE the move, as the walk door always did; the
+    stand-up runs only once the move has landed, since a refused move is
+    not a move (#2594). Silent, as `at_post_move` is; the drag messages
+    narrate it. Returns whether the victim moved.
     """
     try:
         from world.channeled import interrupt_channel
