@@ -202,3 +202,60 @@ class SleeveDispenser(Item):
         )
         return True
 
+
+
+class InsuranceTerminal(Item):
+    """The sleeve-policy terminal (Thawn-Harrison Cryogenics, the lobby).
+
+    ``press insure on terminal`` takes the presser's sample and puts a
+    policy on file in their name; a bare ``press terminal`` or ``press
+    status`` reads it back. The record lives off the machine
+    (`world.insurance`), so this box can be moved or rebuilt without
+    losing anyone's cover. Same contract as every machine: it answers
+    only to its own buttons and returns False for anything else.
+    """
+
+    #: The buttons this machine answers to, in one place. `BUY_BUTTON` is
+    #: the word the sign and, in Slice B, the souls planner use.
+    BUY_BUTTON = "insure"
+    BUY_BUTTONS = (BUY_BUTTON, "renew", "sample", "policy", "buy", "cover")
+    STATUS_BUTTONS = ("status", "info")
+    BUTTONS = BUY_BUTTONS + STATUS_BUTTONS
+
+    def at_object_creation(self):
+        super().at_object_creation()
+        self.db.pressable = True
+        # Found by INDEXED TAG (the crane's idiom, #2323): Slice B's
+        # planner asks "where is a policy terminal?" without a scan.
+        self.tags.add("insurance_terminal", category="machines")
+        self.locks.add("get:false()")
+        self.db.get_err_msg = "It is bolted to the desk and knows it."
+        for alias in ("terminal", "insurance", "policy terminal"):
+            if alias not in self.aliases.all():
+                self.aliases.add(alias)
+
+    def at_press(self, presser, arg=None):
+        from world.identity_utils import msg_room_identity
+        from world.insurance import buy_policy, status_line
+
+        low = (arg or "").strip().lower()
+        if low and low not in self.BUTTONS:
+            names = [self.key.lower()] + [a.lower() for a in self.aliases.all()]
+            if low not in names:
+                return False            # not one of this machine's buttons
+
+        if low in self.BUY_BUTTONS:
+            ok, message = buy_policy(presser, self)
+            presser.msg(message)
+            if ok:
+                msg_room_identity(
+                    location=presser.location,
+                    template="The policy terminal takes a sample from "
+                             "{actor} and chimes once.",
+                    char_refs={"actor": presser},
+                    exclude=[presser],
+                )
+            return True
+
+        presser.msg(status_line(presser))
+        return True
