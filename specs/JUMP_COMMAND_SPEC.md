@@ -346,9 +346,12 @@ def jump_on_explosive(caller, explosive):
 > safe to land", #3559) while the car is docked. Build 166 wired the shaft
 > (`down` z16..z1 -> the Foundation), which had no exits at all -- a body
 > in it hung at the parked impasse instead of going "down the cable into
-> the dig". The transit cell over the Queen's roof (-1,-16,13) still has no
-> `down`: a failed leap from the car parks there. Left as found; where a
-> failed leap falls is its own question.)_
+> the dig". The car's `north` door opens onto that same shaft air at the
+> car's level (#3643), so a made leap carries on to the Queen's roof and a
+> miss or a jump off falls down the cable into the dig. It used to open onto
+> a transit cell over the Queen's roof (-1,-16,13), whose column has no
+> `down`, so a failed leap was left hanging there. That cell is no longer
+> referenced.)_
 >
 > _(**Retired (#3580, 2026-09-16).** `exit.db.fall_room` outlived #3579 by
 > one issue, as map-export data; #3580 finishes the job on the ruling

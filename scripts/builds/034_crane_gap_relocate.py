@@ -11,6 +11,10 @@ over Kaspar Street. Relocate it to (-1,-16,13): north of the car, at the
 Queen's roofline, the apex of the hop. Matches CraneContainer.SKY. The
 container re-reads SKY by coordinate on every move, so once it lives
 here the next lift wires the honest arc. Re-run-safe.
+
+Superseded by #3643: the car's north door now opens onto the shaft cell
+at its own level (a failed leap falls into the dig), and SKY is gone.
+This cell stays in the world, unreferenced.
 """
 from evennia.objects.models import ObjectDB
 from world.spatial import get_xyz, set_xyz
@@ -43,4 +47,4 @@ if car is not None:
     car.move_to_level(car.db.level or 1, announce=False)
 
 print(f"BUILD 034: sky #{sky.id} -> {get_xyz(sky)} {sky.key!r}; "
-      f"car level={car.db.level if car else '?'} SKY={type(car).SKY if car else '?'}")
+      f"car level={car.db.level if car else '?'} sky={NEW}")

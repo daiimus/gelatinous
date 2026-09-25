@@ -42,7 +42,8 @@ a number reopens the templates.
   `FALL_MAX_CELLS` (30) now **stops the fall cleanly in that cell**, with
   a message and no damage — never the silent 0-damage strand inside an
   exitless air cell the correction measured at Kaspar Gap #7307
-  (-5,-15,12) and the crane's air #7390 (-1,-16,13). That clean stop is
+  (-5,-15,12) and the crane's air #7390 (-1,-16,13) (the crane no longer
+  leads there: its north door opens onto the shaft, #3643). That clean stop is
   the **parked impasse, #3581**: it is the right behaviour for a column
   that does not exist, not a fix for the column not existing. The WORLD
   half is unchanged and still open — **#2945**, the colony's highest

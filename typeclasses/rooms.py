@@ -1353,8 +1353,10 @@ class CraneContainer(Room):
       and hidden.
     * ``north`` on the car: aloft, a jump edge toward the Queen of Cups
       rack roof at ``QOC_Z`` -- easy when level, harder the further off
-      level the car is parked. Docked, the rack's ground unit is north,
-      a wall, so the door is shut and hidden.
+      level the car is parked. The door opens onto the shaft's air at
+      the car's level, so a miss or a jump off falls into the dig.
+      Docked, the rack's ground unit is north, a wall, so the door is
+      shut and hidden.
     * ``east`` on the Urgent Care roof: the walk onto the docked car;
       otherwise an edge over the shaft's foot with a jump across onto
       the car wherever it hangs, at the distance difficulty.
@@ -1376,8 +1378,6 @@ class CraneContainer(Room):
     QOC_Z = 12               # Queen of Cups rack-roof level (safe crossing)
     UC_ROOF = (-2, -17, 1)   # Urgent Care roof (North) — the 2nd-floor dock
     QOC_ROOF = (-1, -16, 12)  # Queen of Cups Rack Roof Southeast — the far perch
-    SKY = (-1, -16, 13)      # transit air: north over Kaspar Street, at the
-                             # Queen's roofline — the apex of the actual leap
 
     #: The shaft is described in two units by two different speakers.
     #:
@@ -1500,7 +1500,6 @@ class CraneContainer(Room):
 
         from world.spatial import coordinate_index
         index = coordinate_index()
-        sky = index.get(tuple(self.SKY))
         uc = index.get(tuple(self.UC_ROOF))
         qoc = index.get(tuple(self.QOC_ROOF))
         docked = z == self.MIN_Z
@@ -1508,16 +1507,22 @@ class CraneContainer(Room):
         to_uc = self._leap_difficulty(z, self.MIN_Z)
 
         # The car's two doors. One open end: west at the dock, north aloft.
+        # North opens onto the shaft's air beside the car: a made leap
+        # carries on to the Queen's roof (the perch), a miss or a jump off
+        # goes down the cable into the dig. Never an air cell over the
+        # Queen's roof: that column has no down, and wiring one would land
+        # a failed jumper on the roof they failed to reach (#3643).
+        air = self._shaft_cell(z)
         west = self._door(self, "west", ["w"], uc)
-        north = self._door(self, "north", ["n"], sky)
+        north = self._door(self, "north", ["n"], air)
         if docked:
             self._set_door(west, uc)
-            self._set_door(north, sky, shut=True,
+            self._set_door(north, air, shut=True,
                            err="North of the box is the rack's wall. The way off is west.")
         else:
             self._set_door(west, uc, shut=True,
                            err="The west doors are chained across open air. Nothing that way but the drop.")
-            self._set_door(north, sky, edge=True, gap=True, leap=to_qoc,
+            self._set_door(north, air, edge=True, gap=True, leap=to_qoc,
                            perch=(qoc.id if qoc else None))
 
         # The roofs' doors onto the car: always an edge over the shaft,
