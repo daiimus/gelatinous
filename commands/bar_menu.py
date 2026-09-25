@@ -264,8 +264,8 @@ def node_top(caller, raw_string, **kwargs):
             lines.append(f"  {MUTED}Reads as: {with_article(proj['name'])}|n")
     else:
         lines.append(
-            f"  {MUTED}Nothing loaded. Put ingredients on the bar first "
-            f"(put <thing> on {bar.key}).|n"
+            f"  {MUTED}Nothing loaded. Add ingredients from the bar "
+            "stock with [a].|n"
         )
     lines.append("")
     if _bar_stock(bar):

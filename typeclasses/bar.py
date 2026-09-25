@@ -161,8 +161,9 @@ class CmdBarUse(Command):
     Usage:
         use <bar>
 
-    Load ingredients first (``put <ingredient> on <bar>``), then ``use`` the bar
-    to mix them into a drink. The drink lands on the bar.
+    Opens the bar menu: load ingredients from the bar's stock ([a]), then
+    pour them into a drink ([1]), or make a known recipe ([3]). The drink
+    lands on the bar.
     """
 
     key = "use"
