@@ -19,7 +19,18 @@
 > move announcements, whisper bystanders, and speech attribution
 > (stealth-aware `resolve_speaker_attribution` — hidden speakers attribute
 > by VOICE). Leak-completeness tests drive each real path. Deliberate
-> bypasses hold: AoE, area sound, `search`. **`search` GREW HIDDEN-EXIT DISCOVERY (#1114, 2026-07-10): view-locked (secret) exits roll the stash idiom (d20 + Resonance + search bonus vs `db.search_difficulty`, default 14 > stashes' 10) — a find is PER SEARCHER (`db.found_exits`; the exit joins THEIR exit prose forever, everyone else keeps seeing nothing; custom `db.search_found_msg`). First consumer: the Constabulary roof hatch.** **PHASE 4 (THE HUNT) SHIPPED
+> bypasses hold: AoE, area sound, `search`. **THE SEARCH POOL IS GATED
+(#3637, 2026-09-24):** `Character.get_search_candidates` runs
+`can_perceive` over every local search's pool BEFORE Evennia matches, for
+people and things alike: the default reach, `location=`, and a command's
+own `candidates=`. It closed `look <stashed item>`, `get <x> from <stashed
+container>`, and `get <hidden person>` ("You can't pick up ..."), and keeps
+ordinals and exact-before-partial matching counting only what the searcher
+perceives. Global and #dbref searches have no pool and stay ungated (staff
+tooling). Two resolvers that matched names over room contents by hand take
+the same gate: `defuse` and `remember <papers>` (`held_by_others`). The
+awareness level decides, not the flag alone: an ALERT looker still finds
+the hidden. **`search` GREW HIDDEN-EXIT DISCOVERY (#1114, 2026-07-10): view-locked (secret) exits roll the stash idiom (d20 + Resonance + search bonus vs `db.search_difficulty`, default 14 > stashes' 10) — a find is PER SEARCHER (`db.found_exits`; the exit joins THEIR exit prose forever, everyone else keeps seeing nothing; custom `db.search_found_msg`). First consumer: the Constabulary roof hatch.** **PHASE 4 (THE HUNT) SHIPPED
 > (2026-07-03):** `world/director/hunt.py` — the deterministic state
 > machine off the awareness meter, ticked by the director heartbeat
 > before the patrol beat **[mechanism stale — noted 2026-09-12: the state

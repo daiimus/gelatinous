@@ -382,13 +382,18 @@ def held_by_others(looker, query: str) -> list:
     HANDS ONLY, deliberately. `character.hands` is what is on display; the
     rest of their contents is pockets, and a search that reached those would
     quietly turn `look` into a frisk.
+
+    Only hands you can perceive: a hidden person's are not on display, and
+    reaching them would confirm who is hiding (the presence gate every
+    search pool gets, #3637).
     """
+    from world.perception import filter_present
     out = []
     location = getattr(looker, "location", None)
     if location is None or not query:
         return out
     q = strip_leading_article(str(query).strip().lower())
-    for other in (location.contents or []):
+    for other in filter_present(looker, location.contents or []):
         if other is looker or not hasattr(other, "hands"):
             continue
         for held in (getattr(other, "hands", None) or {}).values():

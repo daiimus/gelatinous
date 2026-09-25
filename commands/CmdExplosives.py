@@ -418,8 +418,13 @@ class CmdDefuse(Command):
         # First check existing proximity relationships
         proximity_candidates = []
 
-        # Check both room contents AND character inventory for proximity candidates
-        all_candidates = list(self.caller.location.contents) + list(self.caller.contents)
+        # Check both room contents AND character inventory for proximity
+        # candidates. The room half goes through the presence gate every
+        # search pool gets (#3637): a stashed charge is found by `search`
+        # first, as it is for `jump on`; your own inventory is yours.
+        from world.perception import filter_present
+        all_candidates = (filter_present(self.caller, list(self.caller.location.contents))
+                          + list(self.caller.contents))
 
         for obj in all_candidates:
             if (grenade_name.lower() in obj.key.lower() and
