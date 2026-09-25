@@ -55,12 +55,6 @@ class TheArmorTakesItsGrenade(_Stuck):
         self.armor.delete()
         self.assertFalse(_exists(gid), "the grenade outlived its armor")
 
-    def test_it_does_not_land_in_limbo(self):
-        # The defect: clear_contents evicted it to its home.
-        gid = self.grenade.id
-        self.armor.delete()
-        self.assertFalse(ObjectDB.objects.filter(id=gid, db_location__isnull=False).exists())
-
     def test_the_armor_is_still_deleted(self):
         aid = self.armor.id
         self.armor.delete()
@@ -143,7 +137,7 @@ class TheOneFuseDoor(EvenniaTest):
         self.assertIsNone(getattr(self.g.ndb, NDB_GRENADE_TIMER, None))
 
     def test_a_timer_that_already_fired_is_tolerated(self):
-        # Five of six old copies called a bare cancel() and would raise here.
+        # Four of the six old copies called a bare cancel(), which can raise here.
         timer = MagicMock()
         timer.cancel.side_effect = AlreadyCalled()
         setattr(self.g.ndb, NDB_GRENADE_TIMER, timer)
@@ -151,14 +145,39 @@ class TheOneFuseDoor(EvenniaTest):
         self.assertIsNone(getattr(self.g.ndb, NDB_GRENADE_TIMER, None))
 
     def test_there_is_one_door(self):
-        # Nothing outside the door cancels a grenade timer by hand.
+        """Nothing outside the door touches a grenade's fuse timer by hand.
+
+        Everywhere in the runtime tree (commands/, world/, typeclasses/),
+        the fuse timer is named only by the constant's definition and by
+        explosion_utils, which schedules it. Inside explosion_utils, only
+        stop_grenade_fuse cancels or forgets it -- the old rig bug was a
+        forget without a cancel, so both are checked."""
         import pathlib
         root = pathlib.Path(__file__).resolve().parents[2]
-        for rel in ("commands/CmdExplosives.py", "commands/combat/jump.py",
-                    "typeclasses/items.py"):
-            src = (root / rel).read_text()
-            self.assertNotIn("NDB_GRENADE_TIMER", src, rel)
+        allowed = {root / "world/combat/constants.py", root / "commands/explosion_utils.py"}
+        for top in ("commands", "world", "typeclasses"):
+            for path in (root / top).rglob("*.py"):
+                if "tests" in path.parts or path in allowed:
+                    continue
+                src = path.read_text(errors="ignore")
+                for name in ("NDB_GRENADE_TIMER", "grenade_timer"):
+                    self.assertNotIn(name, src, f"{path.relative_to(root)} touches the fuse timer")
         util = (root / "commands/explosion_utils.py").read_text()
         body_start = util.index("def stop_grenade_fuse")
         rest = util[:body_start] + util[util.index("\ndef ", body_start + 1):]
         self.assertNotIn(".cancel()", rest, "a hand-rolled cancel survives outside stop_grenade_fuse")
+        self.assertNotIn("delattr(grenade.ndb, NDB_GRENADE_TIMER)", rest,
+                         "a forget-without-cancel survives outside stop_grenade_fuse")
+
+    def test_the_auto_defuse_resolver_refuses_a_deleted_grenade(self):
+        # Its timers live outside ndb.grenade_timer, so only the guard
+        # covers them. Control: a live grenade reaches the blast.
+        self.g.db.dud_chance = 0.0   # a dud returns before the blast
+        with patch.object(xu, "get_unified_explosion_proximity", return_value=[]) as blast:
+            xu.trigger_auto_defuse_explosion(self.g)
+            self.assertTrue(blast.called, "control: a live grenade never reached the blast")
+        g2 = create_object("typeclasses.items.Item", key="frag2", location=self.room1)
+        g2.delete()
+        with patch.object(xu, "get_unified_explosion_proximity", return_value=[]) as blast:
+            xu.trigger_auto_defuse_explosion(g2)
+            blast.assert_not_called()

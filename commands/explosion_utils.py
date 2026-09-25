@@ -1111,6 +1111,12 @@ def handle_auto_defuse_failure(character, grenade):
 
 def trigger_auto_defuse_explosion(grenade):
     """Trigger early explosion from failed auto-defuse attempt (reuses manual defuse logic)."""
+    if _is_gone(grenade):
+        # The botch timer (and the chain timer below) is scheduled outside
+        # ndb.grenade_timer, so stop_grenade_fuse cannot cancel it; a
+        # grenade deleted inside that window must not go off (#3561).
+        get_splattercast().msg(f"{DEBUG_PREFIX_THROW}_GONE: auto-defuse explosion skipped, grenade no longer exists")
+        return
     # Reuse the explosion logic from manual defuse
     # Note: Using character.take_damage() for medical system integration
 

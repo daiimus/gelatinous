@@ -1597,8 +1597,11 @@ holds the Python object after a delete — still truthy, still with an
 `ndb` — so the countdown ran on and exploded it (reproduced before the
 fix). Every deleted item now stops its fuse through
 `commands.explosion_utils.stop_grenade_fuse`, and
-`explode_standalone_grenade` and both ticks refuse a grenade whose
-database row is gone (`pk is None`). `stop_grenade_fuse` is the one door
+both explosion resolvers (`explode_standalone_grenade`,
+`trigger_auto_defuse_explosion`) and both ticks refuse a grenade whose
+database row is gone (`pk is None`) — the botched-defuse and chain
+timers are scheduled outside `ndb.grenade_timer`, so the guard, not the
+cancel, is what covers them. `stop_grenade_fuse` is the one door
 for stopping a fuse: defuse, auto-defuse, both botched-defuse early
 triggers, `rig` and the jump sacrifice each carried their own copy, most
 calling a bare `cancel()` that could raise on a timer that had just
