@@ -39,6 +39,24 @@ class Seating:
     def primary_posture(self):
         return (self.db.postures or ("sitting",))[0]
 
+    def at_object_delete(self):
+        """Stand everyone up before the seat goes (#3570).
+
+        Occupancy is derived, so `db.furniture` degrades on its own; the
+        sibling writes do not. `sit` / `lie` also set `db.posture` and the
+        `temp_place` placement line, plain strings that outlived the seat,
+        so the room went on describing someone "sitting on a stool" that
+        no longer existed. `_clear_posture` is the same repair `stand` and
+        a move run. On the mixin, so a stool, the AutoDoc, a bar counter
+        and a food cart all get it. Returns super()'s value: a falsy
+        return vetoes the deletion.
+        """
+        for occupant in self.occupants():
+            clear = getattr(occupant, "_clear_posture", None)
+            if callable(clear):
+                clear()
+        return super().at_object_delete()
+
 
 class Furniture(Seating, Object):
     """A loose object you can sit on or lie on — a stool, a couch, a stretcher."""
