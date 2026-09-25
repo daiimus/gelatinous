@@ -46,6 +46,30 @@ class TestAPackTakesItsCigarettesWithIt(EvenniaTest):
             for cig in cigs:
                 self.assertNotIn(cig, limbo.contents)
 
+    def _raw_hand(self, char, hand):
+        """The STORED value of a hand slot. `char.hands` unpacks a dead
+        reference to None and would hide the residue (#3572)."""
+        attr = char.attributes.get("held_items", category="equipment", return_obj=True)
+        return (attr.db_value or {}).get(hand) if attr else None
+
+    def test_a_held_pack_that_is_deleted_releases_the_hand(self):
+        """#3572: the pack returned a bare True and skipped the shared
+        cleanup, so the hand holding it kept a packed reference to the
+        deleted pack -- the route every last-cigarette draw takes."""
+        pack = self._pack()
+        pack.move_to(self.char1, quiet=True)
+        self.char1.wield_item(pack, hand="right")
+        assert self._raw_hand(self.char1, "right_hand") is not None, "fixture: not held"
+        pack.delete()
+        self.assertIsNone(self._raw_hand(self.char1, "right_hand"),
+                          "the hand still names the deleted pack")
+
+    def test_the_pack_still_deletes(self):
+        pack = self._pack()
+        pid = pack.id
+        self.assertTrue(pack.delete())
+        self.assertFalse(ObjectDB.objects.filter(id=pid).exists())
+
     def test_drawing_the_last_one_still_leaves_it_in_your_hand(self):
         """The route that already worked must keep working: the pack
         crushes itself as the last cigarette leaves, and the cigarette
