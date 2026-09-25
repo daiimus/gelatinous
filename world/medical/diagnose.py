@@ -279,6 +279,9 @@ def clinical_phrase(organ) -> str:
 _CONDITION_PHRASE = {
     "bleeding": "active haemorrhage from the {region}",
     "infection":      "septic focus at the {region}",
+    # Systemic, no site (the condition's location is None), so no
+    # {region}: "at the unspecified site" would be noise (#3653).
+    "renal_failure":  "uraemia — the kidneys have failed",
 }
 
 

@@ -477,7 +477,8 @@ the room; players see the sick one without a `diagnose`. The same hook yields
 **cyanosis** (low `breathing` → blue lips), **jaundice** (liver), **pallor**
 (blood loss). And conditions are **first-class signals other systems extrapolate
 from**: a toxin substance can trigger/worsen renal failure, diagnosis surfaces
-it, another condition compounds it.
+it, another condition compounds it. *(Diagnose reads renal failure as
+"uraemia — the kidneys have failed" at DC 4, #3653; it had no phrase before.)*
 
 ### 7.4 Remediation = chrome OR transplant (RipperDoc) — ✅ SHIPPED
 *(Built: `CYBER_LEFT_KIDNEY` / `CYBER_RIGHT_KIDNEY` prototypes — single-organ
