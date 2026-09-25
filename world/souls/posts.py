@@ -210,6 +210,50 @@ def any_keeper_present(fixture) -> bool:
     return keeper_on_duty(fixture) is not None
 
 
+def _was_assigned(fixture, key) -> bool:
+    """Was someone ever written into *key* on *fixture* -- even if they
+    have since been deleted?
+
+    Evennia reads a stored reference to a deleted object back as None,
+    so `fixture.db.owner is None` cannot tell "never assigned" from
+    "assigned, and that person is gone". The stored row can: a dead
+    reference is still a packed tuple in `db_value`. Falls back to the
+    plain `db` value for anything that is not a real Attribute row
+    (test doubles), where there is no dead-reference case to see."""
+    from evennia.typeclasses.attributes import Attribute
+    try:
+        row = fixture.attributes.get(key, return_obj=True)
+    except Exception:  # noqa: BLE001 -- no handler: read the db value
+        row = None
+    value = row.db_value if isinstance(row, Attribute) \
+        else getattr(getattr(fixture, "db", None), key, None)
+    return value is not None and value != [] and value != ()
+
+
+def is_bound(fixture) -> bool:
+    """Is this counter somebody's job -- or was it ever?
+
+    UNBOUND is the vending tier: no shifts, nobody posted, nobody owns
+    it, and whoever is standing there serves. BOUND means the job system
+    (or a hand-set owner/staff allowlist) decides, and a bound counter
+    with nobody valid present reads CLOSED -- the state a vacant shift
+    already produces ("commerce pauses, property remains").
+
+    The one question, asked by the till, the shop, the planner, the job
+    lookup and the order path (#3573). Five inline copies had drifted,
+    and every one read a DELETED keeper, owner or staff member as "never
+    assigned" -- so a counter whose person was gone fell to the vending
+    tier and anyone present could work it and empty the register (the
+    #2921 regression). A reference that was ever set keeps the counter
+    bound, dead or not.
+
+    `owner`/`staff` are the legacy bar allowlist; see #3648 for why
+    future player ownership is not grown from them."""
+    if getattr(getattr(fixture, "db", None), "post_slots", None):
+        return True
+    return any(_was_assigned(fixture, key) for key in ("post_keeper", "owner", "staff"))
+
+
 def _is_dead(obj) -> bool:
     """Death is DERIVED state — `is_dead()` is a method over
     `medical_state`, and every other consumer in the codebase calls it

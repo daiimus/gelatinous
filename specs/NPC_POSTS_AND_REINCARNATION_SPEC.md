@@ -173,9 +173,12 @@ makes them *administrative*:
   > `register_post`, `_install_keeper` and `do_claim` every time a keeper is
   > installed. `db.post_vacant_since` is only ever cleared by `do_claim`, so
   > on a slots post it is stale rather than wrong — nothing reads it once
-  > `post_slots` exists. Neither key is dead: the shop/bar gate
-  > (`world/service.py`, `typeclasses/shopkeeper.py`, `typeclasses/bar.py`,
-  > `world/souls/actions.py`), `keeper_on_duty`'s last-resort fallback,
+  > `post_slots` exists. Neither key is dead: `world/souls/posts.is_bound`
+  > (the one "is this counter bound?" question, asked by `world/service.py`,
+  > `typeclasses/shopkeeper.py`, `typeclasses/bar.py`,
+  > `world/souls/actions.py` and `world/bar.tender_at`; it reads the STORED
+  > row, so a deleted keeper still counts as assigned, #3573),
+  > `keeper_on_duty`'s last-resort fallback,
   > `world/npcs/posts.snapshot_keeper_memory`, and `sweep`'s one-time
   > adoption of a pre-slots post all still read `post_keeper`. Ask the slots
   > first.
