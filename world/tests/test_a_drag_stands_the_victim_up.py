@@ -43,6 +43,7 @@ class _PodPatient(EvenniaCommandTest):
         self.assertFalse(is_restrained(self.patient))
         self.assertTrue(can_contest(self.patient))
         self.assertIsNone(treatment_station(self.patient))
+        self.assertEqual(self.pod.occupants(), [], "the pod still shows them")
 
 
 class TheWalkDoor(_PodPatient):
