@@ -823,9 +823,10 @@ class CmdScan(Command):
         # In your hands or pockets, or here in the room (#3351). Rigging moves
         # the grenade onto the exit, so a caller-only search reached a trap
         # only BEFORE it was set. The DEFAULT search has exactly that reach
-        # (inventory + room) and keeps the identity/presence gate; an explicit
-        # candidates= list bypasses it and would let `scan <name>` confirm a
-        # hidden or unrecognised person by their real key.
+        # (inventory + room) and keeps the identity pipeline; an explicit
+        # candidates= list skips it and would let `scan <name>` confirm an
+        # unrecognised person by their real key. (Every local pool, explicit
+        # or not, carries the presence gate since #3637.)
         explosive = caller.search(explosive_name)
         if not explosive:
             return

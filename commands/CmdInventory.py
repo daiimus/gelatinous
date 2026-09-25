@@ -796,8 +796,8 @@ class CmdGet(Command):
     def _find_item_in_room(self, caller, itemname):
         """Search for an item in the room using Evennia's search system.
 
-        Stashed items are not offered (#2476). `stash` drops the item in
-        the room, flags `db.hidden` and freezes the hider's craft into
+        Stashed items are not offered (#2476). `hide <object>` drops the
+        item in the room, flags `db.hidden` and freezes the hider's craft into
         `db.stash_roll` — the difficulty a searcher has to beat. The room
         already refuses to RENDER a hidden object (`rooms.py`), but `get`
         searched raw contents, so anyone who could name the item lifted

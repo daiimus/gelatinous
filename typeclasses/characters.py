@@ -697,8 +697,9 @@ class Character(
         The pool a search matches against: aimed-at room contents when
         aiming, and never anything this character cannot perceive.
 
-        When aiming at a direction, the pool is both the current room and
-        the aimed-at room's contents.
+        When aiming at a direction, the DEFAULT pool is both the current
+        room and the aimed-at room's contents. A pool the command passed
+        (`candidates=` / `location=`) is kept as given.
 
         THE PRESENCE GATE, applied to the pool BEFORE matching (#3637).
         Evennia calls this for every local search: the default reach, a
@@ -730,10 +731,16 @@ class Character(
         candidates = super().get_search_candidates(searchdata, **kwargs)
         
         # Don't interfere with self-lookup or basic character functionality
-        # Only enhance when specifically aiming at a direction
+        # Only enhance when specifically aiming at a direction, and only the
+        # DEFAULT reach: a pool the command chose (`candidates=`, e.g. the
+        # container `get x from y` searches, or `location=`) is kept as
+        # given. Aiming used to swap those for room + aimed room too (#3637
+        # review).
         aiming_direction = getattr(self.ndb, 'aiming_direction', None) if hasattr(self, 'ndb') else None
         
         if (candidates is not None and 
+            kwargs.get("candidates") is None and
+            kwargs.get("location") is None and
             aiming_direction and 
             self.location and
             hasattr(self.location, 'search_for_target')):  # Make sure the room supports this
@@ -1798,10 +1805,14 @@ class Character(
         **Bypass conditions** (skip the identity pipeline; the presence
         gate still applies to every one except global and dbref):
           - ``global_search`` is ``True``
-          - Searcher has Builder+ permission
           - ``searchdata`` is a dbref (``#123``)
           - ``candidates`` or ``location`` is explicitly provided
           - ``attribute_name`` is set
+
+        Builder+ is NOT a bypass: the identity pipeline still runs first,
+        and the privilege is only that the fallback keeps matches by
+        ``.key``. The presence gate applies to Builders too; a hidden
+        target is reached by #dbref.
 
         **Magic keywords** (always short-circuit, all permissions):
           - ``me`` / ``self`` → the caller

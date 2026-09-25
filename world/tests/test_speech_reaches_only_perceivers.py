@@ -85,8 +85,7 @@ class TestWhisperBystandersAreOnlyPerceivers(_RoomWithThings):
         cmd.args = ' "psst" to Char2'
         cmd.cmdstring = "whisper"
         cmd.parse()
-        with patch("commands.CmdCommunication.search_present",
-                   return_value=self.char2):
+        with patch.object(self.char1, "search", return_value=self.char2):
             cmd.func()
 
     def test_a_crate_is_not_a_bystander(self):

@@ -148,13 +148,22 @@ class TestHidingSurvivesLook(_MaskCase):
     def test_an_explicit_candidate_list_is_gated_too(self):
         """`candidates=` skips the identity pipeline but not the presence
         gate (#3637). It was exempt so internal code could name a hidden
-        target; a census found none that did, and `get <name>` / `put`
-        are PLAYER paths through this door that confirmed a hidden
-        person ("You can't pick up ...")."""
+        target; a census found none that did, and `get <name>` passes
+        candidates= on a PLAYER path, kept safe only by a hand filter
+        that the shared gate replaces."""
         self.char2.db.hidden = True
         found = self.char1.search(self.char2.key, candidates=[self.char2],
                                   quiet=True)
         self.assertFalse(found)
+
+    def test_control_an_alert_looker_finds_them_through_candidates(self):
+        """The positive side of the gate above, through the same door."""
+        from world.stealth import ALERT, set_awareness
+        self.char2.db.hidden = True
+        set_awareness(self.char1, self.char2, ALERT)
+        found = self.char1.search(self.char2.key, candidates=[self.char2],
+                                  quiet=True)
+        self.assertEqual(list(found), [self.char2])
 
     def test_staff_tooling_by_dbref_still_resolves_them(self):
         """A #dbref search has no pool, so it is not gated."""
