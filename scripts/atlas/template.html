@@ -259,12 +259,15 @@ const C = DATA.cells.map(c=>({x:c.xyz[0],y:c.xyz[1],z:c.xyz[2],
   t:cls(c), name:c.key, dbref:c.dbref, crowd:c.crowd||0}));
 const byRef = {}; for (const c of C) byRef[c.dbref]=c;
 const EDGES = DATA.links.filter(l=>l.kind==='edge'||l.kind==='gap').map(l=>{
-  const a=byRef[l.from], b=byRef[l.to]; if(!a||!b) return null;
+  // A gap is drawn as the crossing: it ends on the far perch, not in the
+  // air the leap passes through (the crane's north door opens onto the
+  // shaft cell the car itself sits in, #3643). An edge ends in its air.
+  const g=l.edge&&l.edge.gap_destination;
+  const perch=g!=null? byRef['#'+String(g).replace(/^#/,'')] : null;
+  const a=byRef[l.from], b=perch||byRef[l.to]; if(!a||!b) return null;
   const p=[[a.x,a.y,a.z+0.6]];
   p.push([(a.x+b.x)/2,(a.y+b.y)/2,Math.max(a.z,b.z)+1.1]);
   p.push([b.x,b.y,b.z+0.6]);
-  const fr=l.edge&&l.edge.fall_room? byRef['#'+l.edge.fall_room] : null;
-  if (fr && fr.dbref!==b.dbref) p.push([fr.x,fr.y,fr.z+0.6]);
   return {n:`${a.name} — ${l.key}`, p};
 }).filter(Boolean);
 const MASTS = (DATA.masts||[]);
