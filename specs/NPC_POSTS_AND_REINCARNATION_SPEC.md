@@ -298,7 +298,10 @@ the NPC object and die with it. The policy decides what should survive:
   > player's flash clone and the NPC keeper alike, through one code path.
   > (`world/imprint.GAP` is the only home for this number; the duplicate `RESLEAVE_GAP` in `world/souls/posts.py` was deleted in #3389 and its one importer, `scripts/builds/085_restore_the_cast.py`, now calls `imprint.cutoff_of()`.) The premium is real: debited from the post's own till — or
   > `db.post_insurer` where the post has none — and credited to the clinic's
-  > Thawn-Harrison billing terminal, with the balance re-read at the write
+  > Thawn-Harrison billing terminal (**SUPERSEDED 2026-09-25, #3667:** the
+  > premium, the till and the clinic credit go; a personal policy bought at a
+  > Thawn-Harrison terminal pays, see `proposals/SLEEVE_INSURANCE_SPEC.md`),
+  > with the balance re-read at the write
   > so the credit only happens if the debit did. A till that cannot afford
   > it simply keeps earning: the cart sells noodles toward its own keeper's
   > resurrection. `_try_resleave` restores the snapshot and does NOT clear
@@ -310,6 +313,14 @@ the NPC object and die with it. The policy decides what should survive:
 - **`none`** — the snapshot is the NPC's estate; nothing consumes it.
 
 ## 3 · The sleeve fiction (why this is coherent, not gamey)
+
+> **SUPERSEDED 2026-09-25 (owner rulings, #3667).** Employer-paid insurance
+> from a post's till, the premium paid to the clinic, and the "like a PC"
+> claim below are wrong: PCs resleeve free today, and the owner called this
+> section "likely hallucinated". Sleeve insurance is a **personal** policy
+> bought in advance at a Thawn-Harrison terminal, keyed to the buyer's sample,
+> and consumed at payout. See `specs/proposals/SLEEVE_INSURANCE_SPEC.md`.
+> §4's "policy" column becomes: who has bought one.
 
 PCs die and flash-clone back (`DEATH_AND_SLEEVE_LIFECYCLE_SPEC`); the world
 already accepts that death is a financial event. NPC policy is just the
