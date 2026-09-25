@@ -694,27 +694,53 @@ class Character(
 
     def get_search_candidates(self, searchdata, **kwargs):
         """
-        Override to include aimed-at room contents when aiming.
-        
-        This is called by the search method to determine what objects
-        are available to search through. When aiming at a direction,
-        this includes both current room and aimed-room contents.
-        
+        The pool a search matches against: aimed-at room contents when
+        aiming, and never anything this character cannot perceive.
+
+        When aiming at a direction, the DEFAULT pool is both the current
+        room and the aimed-at room's contents. A pool the command passed
+        (`candidates=` / `location=`) is kept as given.
+
+        THE PRESENCE GATE, applied to the pool BEFORE matching (#3637).
+        Evennia calls this for every local search: the default reach, a
+        ``location=``, and ``candidates=`` a command passed in (returned
+        here as given, then filtered). A hidden person or a stashed item
+        the searcher cannot perceive (`world.perception.can_perceive`)
+        is not in the pool, so it cannot match, cannot take an ordinal
+        ("2nd knife" counts only what you can see), and cannot shadow a
+        visible partial match with its exact name (Evennia tries exact
+        before partial). Filtering the results after matching got all
+        three wrong. The answer is the ordinary "not found": a refusal
+        would confirm the stash.
+
+        One gate for people and things alike, as the stealth spec's
+        awareness table applies to "each hidden thing". A global or #dbref
+        search has no pool (Evennia returns None) and stays ungated: that
+        is staff tooling. Deliberate bypasses (area effects, area sound,
+        the active `search`) walk room contents themselves and never come
+        through here: hidden is concealment, never invulnerability.
+
         Args:
             searchdata (str): The search criterion
             **kwargs: Same as passed to search method
-            
+
         Returns:
-            list: Objects that can be searched through
+            list or None: Objects that can be searched through
         """
         # Get the default candidates first
         candidates = super().get_search_candidates(searchdata, **kwargs)
         
         # Don't interfere with self-lookup or basic character functionality
-        # Only enhance when specifically aiming at a direction
+        # Only enhance when specifically aiming at a direction, and only the
+        # DEFAULT reach: a pool the command chose (`candidates=`, e.g. the
+        # container `get x from y` searches, or `location=`) is kept as
+        # given. Aiming used to swap those for room + aimed room too (#3637
+        # review).
         aiming_direction = getattr(self.ndb, 'aiming_direction', None) if hasattr(self, 'ndb') else None
         
         if (candidates is not None and 
+            kwargs.get("candidates") is None and
+            kwargs.get("location") is None and
             aiming_direction and 
             self.location and
             hasattr(self.location, 'search_for_target')):  # Make sure the room supports this
@@ -732,8 +758,12 @@ class Character(
                 # If anything goes wrong, fall back to default candidates
                 # This ensures we never break normal searching
                 pass
-        
-        return candidates
+
+        if candidates is None:
+            return None
+        from world.perception import can_perceive
+        return [obj for obj in candidates
+                if obj is self or can_perceive(self, obj)]
 
     def at_death(self):
         """
@@ -1768,15 +1798,21 @@ class Character(
 
         Intercepts character targeting so players resolve targets via
         assigned names and short descriptions rather than real character
-        keys.  Items, exits, and non-identity objects pass through to
-        the standard Evennia search unmodified.
+        keys.  Items, exits, and non-identity objects go to the standard
+        Evennia search, whose pool is presence-gated for people and
+        things alike (`get_search_candidates`, #3637).
 
-        **Bypass conditions** (uses default search only):
+        **Bypass conditions** (skip the identity pipeline; the presence
+        gate still applies to every one except global and dbref):
           - ``global_search`` is ``True``
-          - Searcher has Builder+ permission
           - ``searchdata`` is a dbref (``#123``)
           - ``candidates`` or ``location`` is explicitly provided
           - ``attribute_name`` is set
+
+        Builder+ is NOT a bypass: the identity pipeline still runs first,
+        and the privilege is only that the fallback keeps matches by
+        ``.key``. The presence gate applies to Builders too; a hidden
+        target is reached by #dbref.
 
         **Magic keywords** (always short-circuit, all permissions):
           - ``me`` / ``self`` → the caller
@@ -1891,12 +1927,15 @@ class Character(
         # `remember gaunt man as X`. The multimatch disambiguation
         # listing below would enumerate them by display name too.
         #
-        # Scoped to the identity pipeline deliberately. `bypass` is set
-        # for `candidates=` / `location=` / `global_search=` / dbref
-        # queries — the doors internal and administrative code uses —
-        # so this gates the player-types-a-name path and leaves
-        # machinery that legitimately needs a specific object alone.
-        # Hidden is concealment, never invulnerability.
+        # The identity matcher reads the room itself, not the search
+        # pool, so it applies the gate itself. Everything else, the
+        # default search below and every `candidates=` / `location=`
+        # search, is gated in `get_search_candidates` (#3637): a census
+        # found no internal caller that needed to reach a hidden target
+        # by name, and `get` / `put` were player paths through that door.
+        # Global and #dbref searches stay ungated (staff tooling). Hidden
+        # is concealment, never invulnerability: area effects and the
+        # active `search` walk room contents and never come through here.
         from world.perception import filter_present
         room_contents = filter_present(self, room_contents)
 

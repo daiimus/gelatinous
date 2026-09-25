@@ -418,8 +418,13 @@ class CmdDefuse(Command):
         # First check existing proximity relationships
         proximity_candidates = []
 
-        # Check both room contents AND character inventory for proximity candidates
-        all_candidates = list(self.caller.location.contents) + list(self.caller.contents)
+        # Check both room contents AND character inventory for proximity
+        # candidates. The room half goes through the presence gate every
+        # search pool gets (#3637): a stashed charge is found by `search`
+        # first, as it is for `jump on`; your own inventory is yours.
+        from world.perception import filter_present
+        all_candidates = (filter_present(self.caller, list(self.caller.location.contents))
+                          + list(self.caller.contents))
 
         for obj in all_candidates:
             if (grenade_name.lower() in obj.key.lower() and
@@ -818,9 +823,10 @@ class CmdScan(Command):
         # In your hands or pockets, or here in the room (#3351). Rigging moves
         # the grenade onto the exit, so a caller-only search reached a trap
         # only BEFORE it was set. The DEFAULT search has exactly that reach
-        # (inventory + room) and keeps the identity/presence gate; an explicit
-        # candidates= list bypasses it and would let `scan <name>` confirm a
-        # hidden or unrecognised person by their real key.
+        # (inventory + room) and keeps the identity pipeline; an explicit
+        # candidates= list skips it and would let `scan <name>` confirm an
+        # unrecognised person by their real key. (Every local pool, explicit
+        # or not, carries the presence gate since #3637.)
         explosive = caller.search(explosive_name)
         if not explosive:
             return

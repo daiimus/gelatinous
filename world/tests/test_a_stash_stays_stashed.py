@@ -1,8 +1,8 @@
 """A stashed item needs finding before it can be taken (#2476).
 
-`stash` drops the item into the room, flags `db.hidden`, and freezes the
-hider's craft into `db.stash_roll` — the difficulty a searcher has to
-beat:
+`hide <object>` stashes the item: it drops it into the room, flags
+`db.hidden`, and freezes the hider's craft into `db.stash_roll` — the
+difficulty a searcher has to beat:
 
 ```python
 item.db.hidden = True
@@ -20,8 +20,10 @@ The room already refuses to *render* a hidden object (`rooms.py:528`,
 `:696`), so the two halves of the game disagreed: the room said nothing
 was there and `get` handed it over.
 
-Filtered in the candidate pool rather than refused at the gate, so the
+Filtered out of the search pool rather than refused at the gate, so the
 answer is the same *"You don't see a 'X' here."* the room already gives.
+Since #3637 that pool is filtered for every search, in
+`Character.get_search_candidates`, not by `get` alone.
 A refusal that named the item would confirm it was there, which is the
 thing being hidden.
 

@@ -81,39 +81,6 @@ class CmdSay(Command):
         broadcast_speech(caller, speech, location)
 
 
-def search_present(caller, phrase):
-    """`caller.search`, then the presence gate (#2452).
-
-    `whisper` and `to` resolved targets through the RAW search — the
-    ungated door. `Character.search` runs the identity pipeline into
-    `world/search.py:identity_match_characters`, which filters on
-    `_has_identity` and self-exclusion and has no `can_perceive` clause
-    anywhere. So a hidden character the caller is Unaware of was a live
-    match, and `whisper "x" to man` answered *'You whisper to a lanky
-    man, "x"'* while `look` still omitted them entirely.
-
-    That is a **zero-cost, unlimited hidden-presence detector**: no
-    search roll is made or spent, nothing is contested, and whisper does
-    not break the whisperer's own stealth. It also handed over the exact
-    sdesc. The gated sibling `resolve_character_target` has carried
-    `filter_present` all along; these two commands simply never used it,
-    and they cannot switch to it wholesale because they must also target
-    objects (`to <radio>`, `to <crate>`).
-
-    The refusal is Evennia's own no-match wording, verbatim. A DIFFERENT
-    message would still be an oracle — "that name resolves but I won't
-    tell you about it" is exactly the fact being protected.
-    """
-    target = caller.search(phrase)
-    if not target:
-        return None                    # search() already reported it
-    from world.perception import can_perceive
-    if not can_perceive(caller, target):
-        caller.msg(f"Could not find '{phrase}'.")
-        return None
-    return target
-
-
 def addressable(caller, target):
     """Can *caller* direct speech at *target*? (#3029)
 
@@ -206,9 +173,10 @@ class CmdTo(Command):
         # actually there.
         #
         # The probe is QUIET so a miss says nothing; the winning phrase
-        # is then resolved loudly through `search_present` below, which
-        # keeps the presence gate and the error wording in one place.
-        # At least one word is always left for the message.
+        # is then resolved loudly through `caller.search` below, whose
+        # pool carries the presence gate (#3637) and whose miss is
+        # Evennia's own wording. At least one word is always left for
+        # the message.
         target_str, speech = parts[0], " ".join(parts[1:])
         for take in range(len(parts) - 1, 0, -1):
             candidate = " ".join(parts[:take])
@@ -227,7 +195,9 @@ class CmdTo(Command):
             caller.msg("You have no location to speak in.")
             return
 
-        target = search_present(caller, target_str)
+        # A hidden target is not in the search pool (#2452, #3637), so it
+        # reads as a plain miss: `to` must not be a free presence detector.
+        target = caller.search(target_str)
         if not target:
             return  # already reported — a miss and a hidden target read
                     # identically to the caller, deliberately
@@ -350,8 +320,11 @@ class CmdWhisper(Command):
             caller.msg("You have no location to whisper in.")
             return
 
-        # Resolve target via identity-aware search
-        target = search_present(caller, target_str)
+        # Resolve target via identity-aware search. A hidden target is not
+        # in the pool (#2452, #3637): whisper was once a zero-cost,
+        # unlimited hidden-presence detector that also handed over the
+        # exact sdesc.
+        target = caller.search(target_str)
         if not target:
             return  # search() already sent error message
 

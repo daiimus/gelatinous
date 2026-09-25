@@ -9,11 +9,12 @@ observer who guessed an sdesc fragment could type `look gaunt man`,
 confirming presence AND rendering the full appearance. The multimatch
 disambiguation listing would enumerate them by display name too.
 
-The gate is scoped to the identity pipeline. `bypass` is set for
-`candidates=` / `location=` / `global_search=` / dbref queries — the
-doors internal and administrative code uses — so this closes the
-player-types-a-name path and leaves machinery that legitimately needs a
-specific object alone. Hidden is concealment, never invulnerability.
+The gate was first scoped to the identity pipeline, leaving
+`candidates=` / `location=` searches ungated for internal code. #3637
+moved it into the search pool itself (`get_search_candidates`): no
+internal caller needed a hidden target by name, and `get` / `put` were
+player paths through that door. Global and #dbref searches stay ungated
+(staff tooling). Hidden is concealment, never invulnerability.
 
 **2 and 3 are one defect through two doors.** `world/search.py`'s
 keyword fallback and `world/emote.py`'s char-ref candidates both built
@@ -144,10 +145,28 @@ class TestHidingSurvivesLook(_MaskCase):
         set_awareness(self.char1, self.char2, ALERT)
         self.assertIs(self.char1.search("droog"), self.char2)
 
-    def test_an_explicit_candidate_list_still_resolves_them(self):
-        """`candidates=` sets bypass — internal and administrative code
-        must not lose the ability to name a specific object."""
+    def test_an_explicit_candidate_list_is_gated_too(self):
+        """`candidates=` skips the identity pipeline but not the presence
+        gate (#3637). It was exempt so internal code could name a hidden
+        target; a census found none that did, and `get <name>` passes
+        candidates= on a PLAYER path, kept safe only by a hand filter
+        that the shared gate replaces."""
         self.char2.db.hidden = True
         found = self.char1.search(self.char2.key, candidates=[self.char2],
                                   quiet=True)
+        self.assertFalse(found)
+
+    def test_control_an_alert_looker_finds_them_through_candidates(self):
+        """The positive side of the gate above, through the same door."""
+        from world.stealth import ALERT, set_awareness
+        self.char2.db.hidden = True
+        set_awareness(self.char1, self.char2, ALERT)
+        found = self.char1.search(self.char2.key, candidates=[self.char2],
+                                  quiet=True)
+        self.assertEqual(list(found), [self.char2])
+
+    def test_staff_tooling_by_dbref_still_resolves_them(self):
+        """A #dbref search has no pool, so it is not gated."""
+        self.char2.db.hidden = True
+        found = self.char1.search(f"#{self.char2.id}", quiet=True)
         self.assertIn(self.char2, found if isinstance(found, list) else [found])

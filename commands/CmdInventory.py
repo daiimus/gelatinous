@@ -796,23 +796,22 @@ class CmdGet(Command):
     def _find_item_in_room(self, caller, itemname):
         """Search for an item in the room using Evennia's search system.
 
-        Stashed items are not offered (#2476). `stash` drops the item in
-        the room, flags `db.hidden` and freezes the hider's craft into
+        Stashed items are not offered (#2476). `hide <object>` drops the
+        item in the room, flags `db.hidden` and freezes the hider's craft into
         `db.stash_roll` — the difficulty a searcher has to beat. The room
         already refuses to RENDER a hidden object (`rooms.py`), but `get`
         searched raw contents, so anyone who could name the item lifted
         the contraband with no roll at all and the stash_roll was
         bypassed entirely.
 
-        Filtered here rather than refused in `_can_be_taken`, so the
-        answer is the same "You don't see a 'X' here." the room already
-        gives: a refusal that named the item would confirm it was there,
-        which is the thing being hidden.
+        Filtered by `Character.get_search_candidates` (#3637) rather than
+        refused in `_can_be_taken`, so the answer is the same "You don't
+        see a 'X' here." the room already gives: a refusal that named the
+        item would confirm it was there, which is the thing being hidden.
         """
         # Get room contents excluding the caller
         room_candidates = [obj for obj in caller.location.contents
-                           if obj != caller
-                           and getattr(obj.db, "hidden", False) is not True]
+                           if obj != caller]
         if not room_candidates:
             caller.msg(f"You don't see a '{itemname}' here.")
             return None
@@ -936,9 +935,9 @@ class CmdPut(Command):
         by the identity-aware default search -- and a trailing slot name
         when the words carried one ('plate carrier front'). When the
         peeled name finds nothing the whole phrase is tried, so an object
-        called 'back' is still reachable. A hidden object (#2476, `hide`)
-        is not on offer, the same as `get`: a refusal that named it would
-        confirm the stash."""
+        called 'back' is still reachable. A stashed object is not on offer
+        (`Character.get_search_candidates`, #3637): a refusal that named it
+        would confirm the stash."""
         full_name = " ".join(words)
         slot_name, rest = peel_slot_name(words)
         attempts = [(" ".join(rest), slot_name)]
@@ -948,8 +947,6 @@ class CmdPut(Command):
             if not name:
                 continue
             found = caller.search(name, quiet=True)
-            found = [o for o in (found or [])
-                     if getattr(o.db, "hidden", False) is not True]
             if found:
                 return found[0], slot
         caller.msg(f"You don't see a '{full_name}' here.")

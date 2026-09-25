@@ -147,9 +147,10 @@ Phasing routes each path through `filter_present` / `co_present`:
 >
 > 1. **Enumeration is now partly centralized.** `filter_present` landed in
 >    2026-07 and these paths route through it: identity targeting
->    (`commands/_identity_targeting.py`), whisper/`to`
->    (`commands/CmdCommunication.py`), adjacent-room sightings and the LLM
->    PRESENT roster (`typeclasses/characters.py`). The three rows above are still
+>    (`commands/_identity_targeting.py`), adjacent-room sightings and the LLM
+>    PRESENT roster (`typeclasses/characters.py`), and since #3637 the pool of
+>    every local name search (`Character.get_search_candidates`, which also
+>    covers whisper/`to`). The three rows above are still
 >    un-routed, so their insertion points stand — the helper simply already
 >    exists to insert into.
 > 2. **The Broadcasts row names the wrong seam.** Overriding `Room.msg_contents`
