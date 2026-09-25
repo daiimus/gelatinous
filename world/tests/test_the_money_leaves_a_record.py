@@ -40,7 +40,6 @@ SITES = {
     "world/butchery.py": "carcass_sale",
     "world/souls/jobs.py": "treatment",
     "world/souls/economy.py": "tithe",
-    "world/souls/posts.py": "resleeve_premium",
     "commands/CmdTheft.py": "theft",
     "world/director/courier.py": "delivery",
 }
@@ -98,8 +97,8 @@ class TestTheRecordIsActuallyWritten(EvenniaTest):
         self.assertIn("amount=12", said)
 
     def test_it_records_a_party_with_no_soul(self):
-        """The tithe and the resleeve premium move money with no person
-        on either end, and `record` must not require one."""
+        """The tithe moves money with no person on either end, and
+        `record` must not require one."""
         from unittest.mock import patch
         from world.souls import audit
         with patch.object(audit, "_under_test", return_value=False), \
@@ -112,7 +111,7 @@ class TestTheRecordIsActuallyWritten(EvenniaTest):
     def test_a_broken_logger_does_not_break_the_sale(self):
         """`record` promises it never raises — the emitters are wrapped
         as well, but the promise is what makes the wrapping safe to
-        trust at ten call sites."""
+        trust at every call site."""
         from unittest.mock import patch
         from world.souls import audit
         with patch.object(audit, "_under_test", return_value=False), \

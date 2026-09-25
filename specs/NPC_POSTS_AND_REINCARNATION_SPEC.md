@@ -31,6 +31,11 @@
 > **Owner-decided values (unchanged):** successor 24h / re-sleeve 8h; the
 > till/stock are the POST's (successors inherit); Del + Sully are
 > INSTITUTIONS (re-sleeve).
+> **SUPERSEDED 2026-09-25 (#3667):** whether a keeper returns is no longer
+> the post's or the institution's call. It is the person's own sleeve
+> policy, bought alive at the Thawn-Harrison terminal; a post decides only
+> whether strangers may be hired (`successor` | `None`). Each post keeps
+> its own `post_delay` (72 h on most named counters, census 2026-09-09).
 
 ## Succession: the drift since this spec was written (#2437)
 
@@ -47,7 +52,7 @@ replacement tiers now exist, and they match the owner's stated ideal —
 cover losses… some might be resleeves and be consistent"*:
 
 1. **Re-sleeve** — the same person returns, memories intact
-   (`_try_resleave`). Healthy.
+   (`_try_resleave`), **when their own sleeve policy pays** (#3667). Healthy.
 2. **Succession** — an idle soul takes the post (`_eligible_candidates`
    → `do_claim`). Works mechanically.
 3. **Generation** — `world/souls/population.sweep` seeds new residents.
@@ -163,11 +168,13 @@ makes them *administrative*:
   > 24/7 in eight-hour shifts, so the keeper and the vacancy stamp are now
   > PER SHIFT: `db.post_slots` holds `{shift: {"keeper": …,
   > "vacant_since": …}}`, and `db.post_blueprints[shift]` names the person
-  > who owns that shift (`db.post_blueprint` survives as the post-wide
-  > fallback). `register_post` also writes `db.post_role` and
-  > `db.post_wage_rate`, and `_try_resleave` reads `db.post_insurer` where
-  > the post's own till is not the payer. `db.post_policy` and
-  > `db.post_delay` stay post-wide.
+  > who owns that shift. `register_post` also writes `db.post_role` and
+  > `db.post_wage_rate`. `db.post_policy` and `db.post_delay` stay
+  > post-wide. **As built since #3667 (2026-09-25):** the post-wide
+  > `db.post_blueprint` fallback and `db.post_insurer` are gone (build 168
+  > removed the rows); `db.post_policy` is `successor` | `None`; a slot
+  > that goes dark also stamps `dead_uid` / `dead_id`, the body whose
+  > policy may bring them back.
   >
   > `db.post_keeper` survives as a single-value LEGACY MIRROR, rewritten by
   > `register_post`, `_install_keeper` and `do_claim` every time a keeper is
@@ -257,14 +264,21 @@ and the security complement) gains a **posts sweep**:
    > keeper holds nothing; that is a build error now, not a case. The stamp
    > lands on that slot's `vacant_since` and emits `post_vacant`. No desc
    > swap.
-2. When `now - post_vacant_since > post_delay`, run the policy:
-   - **`resleave`** → rebuild from the blueprint's FIXED identity; restore
-     the memory snapshot (§2); arrival renders as a return ("the butcher is
+2. When `now - post_vacant_since > post_delay`, ask the dead keeper's own
+   sleeve policy (`_try_resleave`, #3667), which answers one of three:
+   - **RESLEEVED** → the archived body is revived on a record that names
+     that exact body, and restored from its own imprint; a keeper who was
+     never archived is rebuilt from the blueprint only from a snapshot that
+     is this namesake's own. Arrival renders as a return ("the butcher is
      back at her cart, moving like the week never happened").
-   - **`successor`** → rebuild with the GENERATOR identity; dossiers start
-     **empty**; arrival renders as a claim ("someone new has the cart —
-     younger, warier, the same cleaver").
-   - **`none`** → do nothing, forever. The vacancy *is* the content.
+   - **HOLD** → the keeper is alive elsewhere, or still on the table; the
+     next sweep asks again.
+   - **SUCCESSOR** → no policy (or a blueprint that cannot build): the
+     shift stops carrying the dead keeper's name, and a `successor` post
+     offers it to the nearest idle soul, dossiers **empty**; arrival renders
+     as a claim ("someone new has the cart — younger, warier, the same
+     cleaver"). A `None` post does nothing, forever. The vacancy *is* the
+     content.
 3. Same de-confliction rules as the security loop: one replacement per sweep,
    never while combat is live at the post.
 
@@ -282,14 +296,17 @@ the NPC object and die with it. The policy decides what should survive:
   > promises — thoughts, opinions, and the people known by face and by
   > voice, as well as dossiers and episodic memory — because it shares
   > `world/imprint.py` with the player's flash clone and so cannot drift
-  > from it. The singular `db.post_memory_snapshot` remains the fallback
-  > for a post with no slots: `snapshot_imprint` itself writes it when the
-  > deceased matches only the legacy mirror, and the older
-  > `world/npcs/posts.snapshot_keeper_memory` still writes it from the
-  > NPC-deletion branch of the same death path. Two writers, one key, on
-  > purpose — don't delete either half.
-- **`resleave` restores it** — continuity of self is the product the
-  insurance pays for. Optional flavor: a configurable "gap" (the last N hours
+  > from it. The singular `db.post_memory_snapshot` is still written for
+  > a post with no slots (`snapshot_imprint`, when the deceased matches
+  > only the legacy mirror) and by `world/npcs/posts.snapshot_keeper_memory`
+  > from the NPC-deletion branch, as GM-readable archaeology; **since
+  > #3667 nothing restores from it** (it carries no `sleeve_uid`,
+  > `blueprint_key` or `dbref`, so it can never be matched to a policy).
+- **A return restores it** — continuity of self is what the person's own
+  sleeve policy pays for (#3667; the post-level `resleave` label is gone).
+  An archived body is restored from its OWN `db.imprint`; the per-shift
+  snapshot rebuilds only its own namesake (it carries `blueprint_key` and
+  `dbref`). Optional flavor: a configurable "gap" (the last N hours
   missing) if the death/sleeve fiction wants re-sleeve trauma to show.
   > **The gap shipped**, and so did a price. The gap is not optional and not
   > local to this system: `world/imprint.GAP` (5400s, ~90 minutes) sets the
@@ -304,9 +321,9 @@ the NPC object and die with it. The policy decides what should survive:
   > with the balance re-read at the write
   > so the credit only happens if the debit did. A till that cannot afford
   > it simply keeps earning: the cart sells noodles toward its own keeper's
-  > resurrection. `_try_resleave` restores the snapshot and does NOT clear
-  > it; per the bullet below, that is the intended disposal, not an
-  > omission.
+  > resurrection. (All of that is the void model; as built since #3667 the
+  > policy record is consumed by the return, taken before the body is
+  > built and put back if the build fails. The snapshot is not cleared.)
 - **`successor` discards it** — the empty book is the point. The snapshot is
   retained on the post (GM-readable archaeology: what the old butcher knew)
   but never loaded into the new keeper.
@@ -332,6 +349,11 @@ Nobody needs a new metaphysics — only a premium they can or can't pay.
 
 ## 4 · Initial roster & policy assignments (owner's call per row)
 
+> **SUPERSEDED 2026-09-25 (#3667):** "Lean" below was who the post
+> insured. Nobody is seeded; every human and synth soul buys their own
+> policy at the lobby terminal, and the Rook, who cannot leave his seal,
+> stays uninsured by ruling. The column is history.
+
 | NPC | Post | Lean | Rationale |
 |---|---|---|---|
 | Ottilie Krug #5222 | food cart, the Toe | **successor** | street vendor; the empty-book consequence is the gig's teeth |
@@ -350,8 +372,9 @@ Nobody needs a new metaphysics — only a premium they can or can't pay.
 2. **§P2 — Posts + watcher + `successor`.** The cart is the pilot post
    (delay: a few real days). Vacant desc, stock/till persistence, generator
    identity, empty book. This alone makes NPC murder *playable content*.
-3. **§P3 — `resleave` + the memory snapshot/restore.** Clinic + Helix roster.
-   Optional re-sleeve gap flavor.
+3. **§P3 — the return + the memory snapshot/restore.** Clinic + Helix roster.
+   Optional re-sleeve gap flavor. (Paid by the person's own policy since
+   #3667.)
 4. **Later:** succession as WSIS fodder — rumor lines in the crowd pools
    ("heard the old butcher got ground into her own stock"), successor pricing
    grudges (starts with a `feel` against the killer's *description* if a

@@ -29,13 +29,10 @@ def _post(room, shift="day", keeper=None, vacant_since=None,
         post_policy=policy,
         post_delay=delay,
         post_blueprints=({shift: blueprint} if blueprint else {}),
-        post_blueprint=None,
         post_role="worker",
         post_wage_rate=0.02,
         register=None,
-        post_insurer=None,
         post_memory_snapshots={},
-        post_memory_snapshot=None,
     )
     return SimpleNamespace(db=db, location=room, key="a counter", id=999,
                            contents=[])
@@ -55,7 +52,7 @@ class TestSweepSlots(BaseEvenniaTest):
                           return_value=list(candidates)), \
              patch.object(postsmod, "_offer") as offer, \
              patch.object(postsmod, "_try_resleave",
-                          return_value=True) as resleave, \
+                          return_value=postsmod.RESLEEVED) as resleave, \
              patch("world.director.security._in_combat",
                    return_value=combat):
             postsmod.sweep(now=now)
@@ -148,53 +145,98 @@ class TestSlotTenure(BaseEvenniaTest):
 
 
 class TestEstateAcrossDeath(BaseEvenniaTest):
-    """The imprint: a resleeve restores what the post kept, minus the
-    hours nobody remembers. Ported from the retired sweep's coverage."""
+    """The imprint: a return restores the person's OWN record, minus the
+    hours nobody remembers, and only when their sleeve policy pays
+    (#3667). Ported from the retired sweep's coverage."""
 
-    def _post_with_imprint(self, snap):
+    def setUp(self):
+        super().setUp()
+        # The base harness's char2 is a vanilla DefaultCharacter with no
+        # sleeve uid; the body here is the game's own Character.
+        from evennia import create_object
+        from world.insurance import void_policy
+        self.body = create_object("typeclasses.characters.Character",
+                                  key="Ottilie Krug", location=self.room1)
+        self.addCleanup(void_policy, self.body.sleeve_uid)
+
+    def _post_with_keeper(self, keeper):
         return SimpleNamespace(
             db=SimpleNamespace(
                 post_blueprints={"day": "butcher_ottilie"},
-                post_blueprint=None,
-                post_memory_snapshots={"day": snap},
-                post_memory_snapshot=None,
-                register=1000, post_insurer=None,
+                post_memory_snapshots={},
+                register=None,
                 post_role="butcher", post_wage_rate=0.02,
-                post_slots={"day": {"keeper": None, "vacant_since": 1.0}},
+                post_slots={"day": {"keeper": keeper, "vacant_since": 1.0}},
                 post_keeper=None,
             ),
             location=self.room1, key="the block", id=998, contents=[])
 
-    def test_resleeve_restores_the_imprint_minus_the_gap(self):
+    def _archived(self, died, snap):
+        """Ottilie's archived body: dead, her own imprint on it."""
+        body = self.body
+        ms = body.medical_state
+        ms.blood_level = 0                   # a real medical death
+        ms._cached_is_dead = None
+        body.db.blueprint_key = "butcher_ottilie"
+        body.db.essential = True
+        body.db.is_npc = True
+        body.db.archived = True
+        body.db.imprint = snap
+        return body
+
+    def _install_stub(self, post):
+        def install(npc, post_, room, shift):
+            slots = dict(post.db.post_slots)
+            slots[shift] = {"keeper": npc, "vacant_since": None}
+            post.db.post_slots = slots
+        return install
+
+    def test_a_return_restores_her_own_imprint_minus_the_gap(self):
+        from world.insurance import policy_for, restore_policy
         died = 100000.0
-        snap = {
-            "name": "Ottilie Krug",
+        body = self._archived(died, {
+            "name": "Ottilie Krug", "sleeve_uid": self.body.sleeve_uid,
             "died_at": died,
             "memories": [{"created": died - 99999}, {"created": died - 60}],
             "dossiers": {"a regular": "buys offal"},
             "thoughts": [[died - 99999, "old"], [died - 60, "the killing"]],
-        }
-        post = self._post_with_imprint(snap)
-        built = self.char2
-        with patch.object(postsmod, "_archived_keeper", return_value=built), \
-             patch.object(postsmod, "_install_keeper"), \
+        })
+        post = self._post_with_keeper(body)
+        restore_policy({"uid": body.sleeve_uid, "buyer_dbref": body.id,
+                        "bought_at": 0, "buyer_key": body.key,
+                        "blueprint_key": "butcher_ottilie", "account_id": None})
+        with patch.object(postsmod, "_install_keeper",
+                          side_effect=self._install_stub(post)), \
              patch("world.souls.thoughts.add_thought"):
-            ok = postsmod._try_resleave(
+            outcome = postsmod._try_resleave(
                 post, self.room1, "day", post.db.post_slots["day"], died)
-        self.assertTrue(ok)
+        self.assertEqual(outcome, postsmod.RESLEEVED)
         # the last ~90 minutes never made the backup
-        self.assertEqual(len(built.db.llm_memories), 1)
-        self.assertEqual(built.db.llm_dossiers, {"a regular": "buys offal"})
-        self.assertEqual(len(built.db.soul_thoughts), 1)
+        self.assertEqual(len(body.db.llm_memories), 1)
+        self.assertEqual(body.db.llm_dossiers, {"a regular": "buys offal"})
+        self.assertEqual(len(body.db.soul_thoughts), 1)
+        self.assertIsNone(policy_for(body.sleeve_uid), "the policy was not spent")
+        self.assertFalse(body.is_archived)
 
-    def test_a_broke_till_cannot_pay_the_premium(self):
-        post = self._post_with_imprint({"died_at": 1.0})
-        post.db.register = 0
-        with patch.object(postsmod, "_archived_keeper",
-                          return_value=self.char2):
-            ok = postsmod._try_resleave(
-                post, self.room1, "day", post.db.post_slots["day"], 2.0)
-        self.assertFalse(ok)      # it keeps earning toward her
+    def test_no_policy_means_nobody_comes_back(self):
+        body = self._archived(2.0, {"died_at": 1.0})
+        post = self._post_with_keeper(body)
+        outcome = postsmod._try_resleave(
+            post, self.room1, "day", post.db.post_slots["day"], 2.0)
+        self.assertEqual(outcome, postsmod.SUCCESSOR)
+        self.assertTrue(body.is_archived, "the body was touched without a policy")
+
+    def test_another_bodys_policy_does_not_pay_for_her(self):
+        from world.insurance import policy_for, restore_policy
+        body = self._archived(2.0, {"died_at": 1.0})
+        post = self._post_with_keeper(body)
+        restore_policy({"uid": body.sleeve_uid, "buyer_dbref": self.char1.id,
+                        "bought_at": 0, "buyer_key": "someone else",
+                        "blueprint_key": None, "account_id": None})
+        outcome = postsmod._try_resleave(
+            post, self.room1, "day", post.db.post_slots["day"], 2.0)
+        self.assertEqual(outcome, postsmod.SUCCESSOR)
+        self.assertIsNotNone(policy_for(body.sleeve_uid), "another body's record was spent")
 
 
 class TestSweepDoesNotRevertAResleave(BaseEvenniaTest):
@@ -214,14 +256,14 @@ class TestSweepDoesNotRevertAResleave(BaseEvenniaTest):
 
     def test_the_installed_keeper_survives_the_sweep(self):
         post = _post(self.room, shift="day", keeper=None,
-                     vacant_since=1.0, policy="resleave", blueprint="bp-1")
+                     vacant_since=1.0, policy="successor", blueprint="bp-1")
 
         def _install_like_the_real_thing(*_a, **_kw):
             # what _install_keeper does: re-read, record, persist
             slots = dict(post.db.post_slots or {})
             slots["day"] = {"keeper": self.char2, "vacant_since": None}
             post.db.post_slots = slots
-            return True
+            return postsmod.RESLEEVED
 
         with patch.object(postsmod, "get_posts", return_value=[post]), \
              patch.object(postsmod, "_slot_held", return_value=False), \

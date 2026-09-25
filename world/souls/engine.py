@@ -427,7 +427,7 @@ def _goal_band(goal):
             "wardrobe": 2, "run": 2, "recover": 2, "patrol": 4,
             "hunt": 4,
         "respond": 0,
-            "craving": 3, "social": 3,
+            "craving": 3, "social": 3, "insurance": 3,
             "off_duty": 4}.get(goal, 4)
 
 

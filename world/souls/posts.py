@@ -9,12 +9,15 @@ The counter never closes; the faces change.
 
 The vacancy watcher rides the souls heartbeat; a dead, deleted, or
 desouled slot-keeper stamps that slot vacant, and once the grace
-elapses the policy fills it: `resleave` rebuilds the slot's named
-keeper from their blueprint (imprint restored minus the death gap —
-`world/imprint.GAP` owns that number — and a real premium debited),
-`successor` offers the slot to the nearest unemployed soul. No
-candidate: the slot stays dark and the venue limps on its other
-shifts — a visibly tired counter, not a closed one.
+elapses, the dead keeper's own sleeve policy decides: with one on file
+they are brought back (the archived body revived, or rebuilt from their
+blueprint, the imprint restored minus the death gap — `world/imprint.GAP`
+owns that number), and without one the shift is nobody's and a
+`successor` post offers it to the nearest unemployed soul. No candidate:
+the slot stays dark and the venue limps on its other shifts — a visibly
+tired counter, not a closed one. The policy is personal, bought alive at
+the Thawn-Harrison terminal (`world/insurance`, #3667); a post never pays
+for anyone.
 """
 
 import time
@@ -24,7 +27,11 @@ from evennia.utils.search import search_tag
 POST_TAG = ("post", "souls")
 SWEEP_EVERY_BEATS = 10
 DEFAULT_DELAY = 6 * 3600          # vacancy grace before succession
-RESLEAVE_PREMIUM = 40             # what the insurer's till pays Maxwell
+
+#: What `_try_resleave` answers, and what the sweep does with it.
+RESLEEVED = "resleeved"           # the person is back; the sweep is spent
+HOLD = "hold"                     # transient: wait for the next sweep
+SUCCESSOR = "successor"           # not coming back: the shift is nobody's
 
 
 def register_post(fixture, role, schedule="day", wage_rate=0.02,
@@ -316,8 +323,8 @@ def _slot_held(post, shift, slot) -> bool:
             # A souled keeper with no assignment recorded still holds
             # the slot by standing in it (#2178). Without this, the
             # slot is vacant forever — the Rook sat in his own booth
-            # while the sweep read the chair as dark — and `resleave`
-            # mints a fresh copy every time the till can afford one.
+            # while the sweep read the chair as dark — and the return
+            # would mint a fresh copy of a person who is standing there.
             # This is the same argument #2132 made for unsouled cast,
             # applied to the branch it missed.
             return keeper.location == room
@@ -397,6 +404,8 @@ def sweep(now=None):
             if _slot_held(post, shift, slot):
                 if slot.get("vacant_since") is not None:
                     slot["vacant_since"] = None      # re-manned
+                    slot.pop("dead_uid", None)
+                    slot.pop("dead_id", None)
                     dirty = True
                 continue
             if slot.get("vacant_since") is None:
@@ -407,6 +416,13 @@ def sweep(now=None):
                               note=f"{post.key} [{shift}]")
                 except Exception:  # noqa: BLE001
                     pass
+                # Who died here. Stamped now, before the reference can
+                # read back as None: the sleeve policy that may bring
+                # them back names this body (#3667).
+                keeper = slot.get("keeper")
+                if keeper is not None and keeper.pk:
+                    slot["dead_uid"] = getattr(keeper, "sleeve_uid", None)
+                    slot["dead_id"] = keeper.id
                 if slot.get("keeper") is not None \
                         and not (slot["keeper"] and slot["keeper"].pk):
                     slot["keeper"] = None
@@ -435,7 +451,7 @@ def sweep(now=None):
             # Does THIS shift have a name on it? A blueprint names a
             # person, and a person works one shift. So a shift is owned
             # only if its blueprint's namesake is not already alive and
-            # standing somewhere else — otherwise the resleave branch
+            # standing somewhere else — otherwise the return branch
             # spins forever on a person who cannot be rebuilt (#2192).
             #
             # This is what left 14 slots permanently dark: a `resleave`
@@ -443,11 +459,11 @@ def sweep(now=None):
             # bailed for want of a blueprint, and `continue` meant the
             # successor path below was never reached. Both clinics and
             # dispatch ran day-only because of it.
-            bp_key = (post.db.post_blueprints or {}).get(shift) \
-                or post.db.post_blueprint
+            bp_key = (post.db.post_blueprints or {}).get(shift)
             owned = bool(bp_key) and _living_body(bp_key) is None
             if owned:
-                if _try_resleave(post, room, shift, slot, now):
+                outcome = _try_resleave(post, room, shift, slot, now)
+                if outcome == RESLEEVED:
                     # NOTHING to write back. `_install_keeper` has already
                     # re-read `post_slots`, recorded the new keeper and
                     # persisted it. Writing `slots` — this loop's snapshot,
@@ -456,12 +472,19 @@ def sweep(now=None):
                     # emoted "back at the post" left the slot reading
                     # empty (#2802).
                     return                           # one per sweep
-                continue        # can't afford yet: the till keeps earning
-            # Nobody's name on this shift — a stranger may claim it,
-            # whatever the post's policy is for the shifts it DOES own.
+                if outcome == HOLD:
+                    continue        # transient: the next sweep asks again
+                # SUCCESSOR: the dead keeper is not coming back (no
+                # sleeve policy in their name, #3667). The shift is
+                # nobody's now, so it is offered below like any other.
+                # Before this it hit `continue`, and a shift whose
+                # return could never succeed stayed dark forever
+                # (#3565).
+                _disown_shift(post, shift)
+            # Nobody's name on this shift — a stranger may claim it.
             # A post with no policy at all stays dark: that is the
             # owner's undecided case, not an invitation to hire.
-            if policy not in ("successor", "resleave"):
+            if policy != "successor":
                 continue
             candidates = _eligible_candidates(room)
             if not candidates:
@@ -490,10 +513,19 @@ def sweep(now=None):
             post.db.post_slots = slots
 
 
-def _archived_keeper(bp_key):
+def _disown_shift(post, shift):
+    """The shift's name comes off: nobody's blueprint owns it now."""
+    bps = dict(post.db.post_blueprints or {})
+    if bps.pop(shift, None) is not None or not bps:
+        post.db.post_blueprints = bps
+
+
+def _archived_body(bp_key):
     """The most recently archived Essential body for this blueprint,
-    waiting in Limbo. Returns None when nobody is filed — a first
-    death under the old rules, or a character who predates archiving."""
+    waiting in Limbo, or None. Identity is NOT settled here: a blueprint
+    names a role's namesake, and the sleeve policy that brings a person
+    back names the exact body that bought it (#3667), so the record is
+    the identity check, made by `_try_resleave`."""
     from evennia.objects.models import ObjectDB
 
     candidates = [
@@ -527,148 +559,182 @@ def _living_body(bp_key):
     return None
 
 
-def _try_resleave(post, room, shift, slot, now) -> bool:
-    """The insurance pays out (spec §P3): rebuild this SLOT's named
-    keeper from their blueprint, restore the imprint MINUS the death gap
-    (the last ~90 minutes never made the backup — murder stays a
-    mystery), and debit the insurer's till a REAL premium paid to
-    Maxwell. A till that can't afford it keeps earning — a cart can
-    sell noodles toward its own keeper's resurrection."""
-    from evennia.utils.search import search_object
-
-    bp_key = (post.db.post_blueprints or {}).get(shift) \
-        or post.db.post_blueprint
-    if not bp_key:
+def _dying(body) -> bool:
+    """Still inside the death window, or dead but not yet archived: the
+    body can yet be revived on the table, so its policy must not be
+    spent (#3667)."""
+    try:
+        if body.scripts.get("death_progression"):
+            return True
+        return bool(body.db.death_processed) and not body.is_archived
+    except AttributeError:
         return False
 
-    # Insurance pays out on a DEATH. If this slot's keeper is still
+
+def _dead_keeper(post, shift, slot, bp_key):
+    """The archived body of the person who died on this shift, or None.
+
+    In order: the slot's own keeper reference (an archived Essential body
+    keeps its pk); the id stamped when the slot went dark; and, for a
+    slot that went dark before the stamp existed, the newest archived
+    body built as this blueprint. Whichever is found must BE this
+    blueprint's namesake, and the sleeve policy then has to name it.
+    """
+    from evennia.utils.search import search_object
+
+    keeper = slot.get("keeper")
+    found = keeper if keeper is not None and keeper.pk else None
+    if found is None and slot.get("dead_id"):
+        hit = search_object(f"#{slot['dead_id']}")
+        found = hit[0] if hit else None
+    if found is None:
+        found = _archived_body(bp_key)
+    if found is None or not found.pk:
+        return None
+    if found.db.blueprint_key != bp_key or not found.is_archived:
+        return None
+    return found
+
+
+def _try_resleave(post, room, shift, slot, now) -> str:
+    """Bring this SLOT's dead keeper back, if their sleeve policy pays.
+
+    The policy is personal (`world/insurance`, #3667): bought alive at
+    the Thawn-Harrison terminal, keyed to the body that bought it, spent
+    by the return. So the payout is keyed to the PERSON who died, never
+    to the post: the archived body is revived (every memory, dossier,
+    thought and habit they had, from their own imprint), or, for a
+    keeper who was never archived, a body is rebuilt from the blueprint
+    and the shift's snapshot restored, but only when that snapshot is
+    this namesake's own.
+
+    Answers RESLEEVED (the person is back), HOLD (transient: a keeper
+    who is alive, or still dying), or SUCCESSOR (nobody is coming back:
+    no policy, or a blueprint that cannot build). The take happens
+    BEFORE the body is built, and is put back if the build fails.
+    """
+    bp_key = (post.db.post_blueprints or {}).get(shift)
+    if not bp_key:
+        return SUCCESSOR
+
+    # A return happens on a DEATH. If this slot's keeper is still
     # walking around, whatever made the slot read vacant is a bug in
     # the reading, and building a second body would make it permanent
     # — the original is alive, so it is never archived, so the next
     # sweep cannot restore it either and mints another copy (#2178).
     keeper = slot.get("keeper")
     if keeper is not None and keeper.pk and not _is_dead(keeper):
-        return False
+        return HOLD
 
     # And never a second body of somebody who already exists. The slot
     # may name nobody at all — Petra's post carried her blueprint on
     # all three shifts, so day held her while swing and night each
     # built their own Petra. The slot stays dark instead, which is
     # visible (post_vacant) rather than silent.
-    existing = _living_body(bp_key)
-    if existing is not None:
-        return False
-    till = post if post.db.register is not None else post.db.post_insurer
-    if till is None or int(till.db.register or 0) < RESLEAVE_PREMIUM:
-        return False
+    if _living_body(bp_key) is not None:
+        return HOLD
+
+    from world import imprint as imprint_mod
+    from world.insurance import restore_policy, take_policy
+
     # you do not reappear behind your own counter: a new sleeve is
     # decanted at Thawn-Harrison like anyone else's, and the walk back
     # to work is the planner's problem (owner ruling 2026-08-20)
     decant = _decant_room() or room
 
     # ARCHIVED FIRST (#2128): Essential Personnel wait in Limbo rather
-    # than being deleted, so the insurance restores the PERSON — every
+    # than being deleted, so the return restores the PERSON — every
     # memory, dossier, thought and habit they had — instead of building
     # a copy from their blueprint and pasting a snapshot onto it.
-    # Blueprint rebuild remains the fallback for anyone who predates
-    # the archive or whose record is gone.
-    npc = _archived_keeper(bp_key)
+    npc = _dead_keeper(post, shift, slot, bp_key)
     if npc is not None:
-        npc.move_to(decant, quiet=True, move_hooks=False)
-        # REVIVE, don't clear a phantom. This used to set
-        # `db.is_dead = None` — an attribute row no object in the
-        # database has ever carried, so it cleared nothing and the body
-        # arrived at its post still medically dead. With the aliveness
-        # test above, that would turn a permanently-held slot into a
-        # permanently-churning one: revived, read dead, vacated,
-        # resleeved, forever. Flesh back to factory, chrome carried
-        # across — which is what a fresh sleeve IS (#2706, #526).
-        from world.medical.procedures import reset_body_preserving_augments
-        reset_body_preserving_augments(npc)
-
-        # ...and out of the DEATH STATE, not just the medical one
-        # (#2450). `reset_body_preserving_augments` heals the flesh;
-        # it does not touch the three things `at_death` installed:
-        #
-        #   * `db.death_processed` — PERSISTENT, and `at_death` returns
-        #     early on it forever, so the restored keeper could be shot
-        #     to pieces and nothing would happen: no curtain, no corpse,
-        #     no second archive. They could never die again.
-        #   * DeathCmdSet as the DEFAULT cmdset (`add_default`, so it
-        #     survives a reload) — help/who/quit only, `no_exits=True`.
-        #     Souls act exclusively through `execute_cmd`, so the very
-        #     first thing this function does after installing them —
-        #     `emote is back at the post` — would be refused, and every
-        #     goal after it.
-        #   * `override_place = "lying motionless and deceased."`, which
-        #     would render under a keeper standing at their own counter.
-        #
-        # `remove_death_state` is the one door that undoes all three,
-        # and its only other callers are medical revival and a staff
-        # `@heal` — a human with staff perms, which is not something an
-        # automated resleeve can walk through.
+        if _dying(npc):
+            return HOLD
+        record = take_policy(npc.sleeve_uid, npc.id)
+        if record is None:
+            return SUCCESSOR
+        snap = npc.db.imprint                 # their own, taken at death
         try:
+            npc.move_to(decant, quiet=True, move_hooks=False)
+            # REVIVE, don't clear a phantom. Flesh back to factory,
+            # chrome carried across — which is what a fresh sleeve IS
+            # (#2706, #526).
+            from world.medical.procedures import reset_body_preserving_augments
+            reset_body_preserving_augments(npc)
+            # ...and out of the DEATH STATE, not just the medical one
+            # (#2450): `db.death_processed` (persistent; `at_death`
+            # returns early on it forever), the DeathCmdSet as the
+            # DEFAULT cmdset (help/who/quit only), and the
+            # `override_place` of a corpse. `remove_death_state` is the
+            # one door that undoes all three.
             npc.remove_death_state()
-        except Exception:  # noqa: BLE001 — a stuck cmdset must not eat the resleeve
-            pass
-        # The archive flag and its tag are a separate store from the
-        # death state; `_archived_keeper` found this body BY being in
-        # Limbo, so it is archived by construction.
-        try:
+            # The archive flag and its tag are a separate store from the
+            # death state; this body was found BY being archived.
             npc.unarchive_character()
-        except Exception:  # noqa: BLE001
-            pass
+            npc.db.is_npc = True
+            imprint_mod.restore(npc, snap, now)
+            _install_keeper(npc, post, room, shift)
+            revived = (not _is_dead(npc) and not npc.is_archived
+                       and npc.location == decant
+                       and (post.db.post_slots or {}).get(shift, {})
+                       .get("keeper") == npc)
+        except Exception:  # noqa: BLE001 — a failed return must not eat the policy
+            revived = False
+        if not revived:
+            # Back to the archive as it was: never delete (the body is
+            # the person's only copy) and never `archive_character`
+            # (that bumps death_count). The record goes back too.
+            try:
+                npc.move_to(_limbo() or npc.location, quiet=True,
+                            move_hooks=False)
+                npc.db.archived = True
+                npc.tags.add("archived", category="sleeve")
+            except Exception:  # noqa: BLE001
+                pass
+            restore_policy(record)
+            return HOLD
     else:
+        # Rebuild from the blueprint: only for THIS namesake's own
+        # snapshot. The shift's snapshot belongs to whoever last died on
+        # the shift, a hired successor included, so it must name this
+        # blueprint and the body it was taken from (#3667).
+        snap = (post.db.post_memory_snapshots or {}).get(shift)
+        if (not snap or snap.get("blueprint_key") != bp_key
+                or not snap.get("dbref") or not snap.get("sleeve_uid")):
+            return SUCCESSOR
+        record = take_policy(snap.get("sleeve_uid"), snap.get("dbref"))
+        if record is None:
+            return SUCCESSOR
         from world.npcs.blueprints import build_npc
         try:
             npc = build_npc(bp_key, decant)
         except Exception:  # noqa: BLE001 — a broken blueprint must not loop-spawn
-            return False
-    npc.db.is_npc = True
-    # the premium moves for real: insurer till -> Maxwell's terminal
-    #
-    # RE-READ the till here. Affordability is checked far above, before
-    # the decant, and `build_npc` / `spawn` / `move_to` all run in
-    # between — so the balance that was checked is not necessarily the
-    # balance being debited. Re-checking at the point of the write costs
-    # one attribute read and closes the window (#2703).
-    #
-    # And the credit only happens if the debit did. They were separate
-    # statements, so a debit that could not be afforded would still have
-    # credited Maxwell — creating tokens in a system whose header
-    # describes a closed loop where money circulates rather than
-    # appearing.
-    balance = int(till.db.register or 0)
-    if balance >= RESLEAVE_PREMIUM:
-        till.db.register = balance - RESLEAVE_PREMIUM
-        try:
-            from world.souls import audit
-            audit.coin(None, RESLEAVE_PREMIUM, "resleeve_premium",
-                       other=till)
-        except Exception:  # noqa: BLE001 — a log never blocks a resleeve
-            pass
-        provider = next((o for o in search_object("a Thawn-Harrison billing "
-                                                  "terminal") if o.pk), None)
-        if provider is not None:
-            provider.db.register = int(provider.db.register or 0) \
-                + RESLEAVE_PREMIUM
+            restore_policy(record)
+            return SUCCESSOR               # a build that raises never will
+        npc.db.is_npc = True
+        # the imprint returns, as of the last backup — same code path a
+        # player's flash clone uses, so the two can never drift
+        imprint_mod.restore(npc, snap, now)
+        _install_keeper(npc, post, room, shift)
 
-    # the imprint returns, as of the last backup — same code path a
-    # player's flash clone uses, so the two can never drift
-    from world import imprint as imprint_mod
-    snap = (post.db.post_memory_snapshots or {}).get(shift) \
-        or post.db.post_memory_snapshot
-    imprint_mod.restore(npc, snap, now)
-
-    _install_keeper(npc, post, room, shift)
-    from world.souls import thoughts as thoughts_mod
+    from world.souls import audit, thoughts as thoughts_mod
+    try:
+        audit.life(npc, "resleeved", bp_key)
+    except Exception:  # noqa: BLE001 — a log never blocks a return
+        pass
     thoughts_mod.add_thought(
         npc, "resleeved", -0.50,
         "woke in a new sleeve; the last hours before the dark are "
         "simply gone")
     npc.execute_cmd("emote is back at the post, moving like the week "
                     "never happened.")
-    return True
+    return RESLEEVED
+
+
+def _limbo():
+    from evennia.utils.search import search_object
+    hit = search_object("#2")
+    return hit[0] if hit else None
 
 
 def _install_keeper(npc, post, room, shift):
@@ -720,7 +786,8 @@ def _imprint_of(character, now):
 
 def snapshot_imprint(character) -> bool:
     """At death, a slot-keeper's memories become the post's property
-    (reincarnation spec §2), keyed by their shift: episodic memories,
+    (reincarnation spec §2), keyed by their shift; the record names the
+    keeper's blueprint and body, so a payout restores only its own: episodic memories,
     dossiers, thoughts, and the people they knew by face and by voice,
     copied onto the fixture BEFORE the corpse machinery deletes the
     body — kept whether or not anyone ever pays to restore them."""

@@ -916,6 +916,25 @@ def plan_for(soul, goal_need):
             ], "at": 0}
         return None
 
+    if goal_need == "insurance":
+        # Walk to the sleeve-policy terminal and buy one, in person: the
+        # machine samples the presser (#3667). Found by its index tag,
+        # not by advertiser radius: the lobby is a long walk from the
+        # Brackett, and the need is worth the walk.
+        from evennia.utils.search import search_tag
+        from typeclasses.terminals import InsuranceTerminal
+        terminals = [t for t in search_tag("insurance_terminal", category="machines")
+                     if t and t.pk and t.location is not None]
+        if not terminals:
+            return None
+        term = terminals[0]
+        return {"goal": "insurance", "steps": [
+            {"do": "travel", "room": term.location.id},
+            {"do": "press", "fixture": term.id,
+             "button": InsuranceTerminal.BUY_BUTTON},
+            {"do": "insured"},
+        ], "at": 0}
+
     shape = None
     if goal_need not in ("duty", "safety"):
         from world.souls import needs as needs_mod

@@ -34,6 +34,7 @@ PROFILES = {
         "wardrobe": (0.0, 0.0, "dress"),                # derived (below)
         "social": (1.0 / 720.0, 0.25, "dwell_venue"),   # 12h
         "health": (0.0, 0.0, "clinic"),                 # derived (below)
+        "insurance": (0.0, 0.0, "insure"),              # derived (below)
         "safety": (0.0, 0.25, "flee"),                  # event-driven
     },
     "synth": {                       # human shape, durable dials
@@ -43,6 +44,7 @@ PROFILES = {
         "wardrobe": (0.0, 0.0, "dress"),
         "social": (1.0 / 720.0, 0.25, "dwell_venue"),
         "health": (0.0, 0.0, "clinic"),
+        "insurance": (0.0, 0.0, "insure"),
         "safety": (0.0, 0.25, "flee"),
     },
     "robot": {                       # the battery is the appetite
@@ -267,6 +269,25 @@ def wardrobe_pressure(soul):
     return 0.0
 
 
+#: Uninsured is a worry, not an emergency. Just above SOFT, like the
+#: provisional wardrobe: a soul walks to Thawn-Harrison in their own
+#: time, never instead of a shift, and never ahead of a meal (#3667).
+INSURANCE_PRESSURE = 0.60
+
+
+def insurance_pressure(soul):
+    """INSURANCE_PRESSURE while no sleeve policy in this body's name is
+    on file; 0.0 once there is one, or for a body with no sleeve
+    signature to sample (it could never buy, and a need it can never
+    satisfy would fault every 15 minutes forever). Derived, zero-write
+    (owner ruling 2026-09-25: every human and synth soul buys)."""
+    from world import insurance
+    from world.access import sleeve_uid_of
+    if sleeve_uid_of(soul) is None:
+        return 0.0
+    return 0.0 if insurance.covers(soul) else INSURANCE_PRESSURE
+
+
 def soft_for(soul, need):
     """This soul's soft threshold for a need (traits may move it)."""
     from world.souls import traits as traits_mod
@@ -294,6 +315,8 @@ def pressures(soul, now=None):
         out["craving"] = craving_pressure(soul)
     if "wardrobe" in out:
         out["wardrobe"] = wardrobe_pressure(soul)
+    if "insurance" in out:
+        out["insurance"] = insurance_pressure(soul)
     return out
 
 
@@ -304,6 +327,8 @@ def pressure(soul, need, now=None):
         return craving_pressure(soul)
     if need == "wardrobe":
         return wardrobe_pressure(soul)
+    if need == "insurance":
+        return insurance_pressure(soul)
     now = now if now is not None else time.time()
     stored, minutes = _snapshot(soul, now)
     rate, default, _shape = profile_of(soul).get(need, (0.0, 0.0, None))

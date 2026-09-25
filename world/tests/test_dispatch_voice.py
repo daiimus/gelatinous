@@ -198,15 +198,17 @@ class TestHerRegister(EvenniaCommandTest):
         self.assertIn("dispatcher", ARCHETYPES)
 
     def test_her_persona_uses_it(self):
-        from world.llm.personas import DISPATCH_OPERATOR_PERSONA
-        self.assertEqual(DISPATCH_OPERATOR_PERSONA["archetype"], "dispatcher")
+        # The blueprint is the only thing that builds her now (#3667).
+        from world.npcs.blueprints import BLUEPRINTS
+        self.assertEqual(BLUEPRINTS["dispatch_petra"]["persona"]["archetype"],
+                         "dispatcher")
 
     def test_she_is_granted_the_radio_tool(self):
         """Without it she has no way to reach the air at all."""
         from world.llm.prompt import tool_names
-        from world.llm.personas import DISPATCH_OPERATOR_PERSONA
+        from world.npcs.blueprints import BLUEPRINTS
         self.assertIn("radio", tool_names(
-            {"persona_seed": DISPATCH_OPERATOR_PERSONA}))
+            {"persona_seed": BLUEPRINTS["dispatch_petra"]["persona"]}))
 
     def test_she_is_told_not_to_announce_units(self):
         """The single guard that mattered most in the old register: units

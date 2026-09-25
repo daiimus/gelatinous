@@ -65,7 +65,7 @@ class TestASlotIsNotHeldByACorpse(EvenniaCommandTest):
 
     def _post(self):
         post = mock.MagicMock()
-        post.db = SimpleNamespace(post_slots={}, post_policy="resleave")
+        post.db = SimpleNamespace(post_slots={}, post_policy="successor")
         return post
 
     def _souled_keeper(self):

@@ -1017,8 +1017,8 @@ class DeathProgressionScript(DefaultScript):
             elif character.db.is_npc is True:
                 # §P3 (NPC_POSTS_AND_REINCARNATION): if this NPC kept a
                 # registered post, snapshot their dossiers/memories onto it
-                # BEFORE the object (and everything on it) is deleted — the
-                # re-sleeve policy restores it; successors never read it.
+                # BEFORE the object (and everything on it) is deleted — GM
+                # archaeology; a return restores the imprint, not this.
                 try:
                     from world.npcs.posts import snapshot_keeper_memory
                     snapshot_keeper_memory(character)

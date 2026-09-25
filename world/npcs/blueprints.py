@@ -11,9 +11,10 @@ episodic memory (`db.llm_memories`), `voice_memory`, tokens, shop stock.
 Memory continuity across death is the POST's job (spec §2), not the
 blueprint's.
 
-Post policies: ``resleave`` (institutions return as themselves) |
-``successor`` (a stranger claims the post) | ``None`` (owner's call, not
-yet decided — Del, Sully). ``fixture`` is the post object where known
+Post policies: ``successor`` (a stranger may claim a shift nobody's
+blueprint owns) | ``None`` (the owner's undecided case: the slot stays
+dark). Whether the NAMED keeper returns is not the post's to say: it is
+the person's own sleeve policy (`world/insurance`, #3667). ``fixture`` is the post object where known
 (the food cart); the rest are TODO at §P2 registration.
 """
 
@@ -346,7 +347,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                      'carried_prototypes': [],
                      'home_room': '#1968',
                      'post': {'fixture': '#3069',
-                              'policy': 'resleave',
+                              'policy': 'successor',
                               'delay_hours': 8}},
  'companion_vesper': {'name': 'Vesper',
                       'typeclass': 'typeclasses.llm_npc.LLMNpc',
@@ -525,7 +526,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                       'carried_prototypes': [],
                       'home_room': '#1974',
                       'post': {'fixture': '#5278',
-                               'policy': 'resleave',
+                               'policy': 'successor',
                                'delay_hours': 8}},
  'bartender_sully': {'name': 'Sully',
                      'typeclass': 'typeclasses.llm_npc.LLMNpc',
@@ -829,7 +830,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                      'carried_prototypes': ['painkiller'],
                      'home_room': '#1867',
                      'post': {'fixture': '#2705',
-                              'policy': 'resleave',
+                              'policy': 'successor',
                               'delay_hours': 8}},
  'doctor_nikolai': {'name': 'Nikolai Kasparov',
                     'typeclass': 'typeclasses.llm_npc.LLMNpc',
@@ -1021,7 +1022,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                     'carried_prototypes': ['blood_bag'],
                     'home_room': '#3137',
                     'post': {'fixture': '#3137',
-                             'policy': 'resleave',
+                             'policy': 'successor',
                              'delay_hours': 8}},
  'doctor_marta': {'name': 'Marta Okoye',
                   'typeclass': 'typeclasses.llm_npc.LLMNpc',
@@ -1227,7 +1228,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                   'carried_prototypes': [],
                   'home_room': '#5130',
                   'post': {'fixture': '#5130',
-                           'policy': 'resleave',
+                           'policy': 'successor',
                            'delay_hours': 8}},
  'bartender_del': {'name': 'Delphine Marchetti',
                    'typeclass': 'typeclasses.llm_npc.LLMNpc',
@@ -1454,7 +1455,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                    'carried_prototypes': ['break_shotgun'],
                    'home_room': '#5147',
                    'post': {'fixture': '#5150',
-                            'policy': 'resleave',
+                            'policy': 'successor',
                             'delay_hours': 8}},
  'merchant_ezra': {'name': 'Ezra Vantomme',
                    'typeclass': 'typeclasses.llm_npc.LLMNpc',
@@ -1927,7 +1928,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
              'db_attrs': {'ambient_broadcaster': True,
                           'broadcast_interval': 1800},
              'post': {'fixture': '#6035',
-                      'policy': 'resleave',
+                      'policy': 'successor',
                       'delay_hours': 8}},
  'tobacconist_bellows': {'name': 'Bellows',
                          'typeclass': 'typeclasses.llm_npc.LLMNpc',
@@ -2122,7 +2123,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                          'carried_prototypes': [],
                          'home_room': None,
                          'post': {'fixture': '#5484',
-                                  'policy': 'resleave',
+                                  'policy': 'successor',
                                   'delay_hours': 8,
                                   'arrival_resleave':
                                       '{mob} steps back behind the counter '
@@ -2184,7 +2185,7 @@ BLUEPRINTS = {'bartender_sable': {'name': 'Sable Vane',
                     'carried_prototypes': [],
                     'home_room': '#4963',
                     'post': {'fixture': '#4963',
-                             'policy': 'resleave',
+                             'policy': 'successor',
                              'delay_hours': 8}}}
 
 
@@ -2649,7 +2650,7 @@ BLUEPRINTS["dispatch_kiro"] = {
     "wardrobe": [],
     "carried_prototypes": [],
     "home_room": "#4963",
-    "post": {"fixture": "#4963", "policy": "resleave", "delay_hours": 8},
+    "post": {"fixture": "#4963", "policy": "successor", "delay_hours": 8},
 }
 
 BLUEPRINTS["dispatch_ines"] = {
@@ -2703,7 +2704,7 @@ BLUEPRINTS["dispatch_ines"] = {
     "wardrobe": [],
     "carried_prototypes": [],
     "home_room": "#4963",
-    "post": {"fixture": "#4963", "policy": "resleave", "delay_hours": 8},
+    "post": {"fixture": "#4963", "policy": "successor", "delay_hours": 8},
 }
 
 # The uniform is the post's, not the person's — all three keepers draw

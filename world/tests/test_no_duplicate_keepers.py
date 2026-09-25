@@ -10,8 +10,8 @@ standing right there:
 
 2. Nothing checked that the keeper was actually dead before paying
    out. That made the failure self-sustaining: the original stays
-   alive, so it is never archived to Limbo, so `_archived_keeper`
-   finds nobody next sweep and builds *another* copy.
+   alive, so it is never archived to Limbo, so the archived-body
+   lookup finds nobody next sweep and builds *another* copy.
 
 Live evidence when this was found: three Petras, two Marta Okoyes, two
 Nikolai Kasparovs, and zero NPCs in Limbo.
@@ -85,10 +85,10 @@ class TestTheInsuranceRefusesTheLiving(EvenniaCommandTest):
         post = self.obj1
         post.location = self.room1
         post.db.post_blueprints = {"night": "dispatch_petra"}
-        post.db.register = 10 ** 9
         slot = {"keeper": None, "vacant_since": 1.0}   # nobody named
-        self.assertFalse(
-            posts._try_resleave(post, self.room1, "night", slot, 10 ** 6))
+        self.assertEqual(
+            posts._try_resleave(post, self.room1, "night", slot, 10 ** 6),
+            posts.HOLD)
         self.assertIsNotNone(posts._living_body("dispatch_petra"))
 
     def test_an_archived_body_does_not_block_the_payout(self):
@@ -130,9 +130,9 @@ class TestTheInsuranceRefusesTheLiving(EvenniaCommandTest):
         post = self.obj1
         post.location = self.room1
         post.db.post_blueprints = {"day": "doctor_marta"}
-        post.db.register = 10 ** 9          # affordability is not the gate
         keeper = self.char2
         keeper.db.is_dead = None
         slot = {"keeper": keeper, "vacant_since": 1.0}
-        self.assertFalse(
-            posts._try_resleave(post, self.room1, "day", slot, 10 ** 6))
+        self.assertEqual(
+            posts._try_resleave(post, self.room1, "day", slot, 10 ** 6),
+            posts.HOLD)

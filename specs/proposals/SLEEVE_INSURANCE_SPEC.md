@@ -208,15 +208,16 @@ overturned by ruling 5; the chair stays dark for another reason (§7 Q2).
   Ossie and Nonna) the record is bought but cannot yet pay out; §6 owes them
   a person-keyed rebuild. `essential` is not the test of who can return; a
   `blueprint_key` naming the shift they hold is.
-* Plan: `[travel → lobby, press <button> on <terminal>]`, the clinic-visit
-  shape. The terminal is a souls advertiser (`advertises={"insurance":
-  1.0}`) found **without** the default radius cap of 30: the lobby may fall
-  outside it depending on where the soul is standing and on z.
-* The press step must name the button (`press insure on terminal`, which
-  `_press_named_pressable` handles) and must check the result: an unchanged
-  registry after the press is a fault, or the need re-fires every think.
-  The button name is one constant on the terminal (`InsuranceTerminal.
-  BUTTONS`, as `SleeveDispenser.BUTTONS`), read by the planner.
+* Plan: `[travel → lobby, press <BUY_BUTTON> on <terminal>, insured]`.
+  The terminal is found by its **index tag** (`insurance_terminal` /
+  `machines`, the crane's idiom), not through `_advertisers`, whose
+  radius cap of 30 can hide the lobby from a soul standing in the
+  Brackett; no advertiser data is needed.
+* The press step names the button (`press insure on <terminal key>`,
+  which `_press_named_pressable` handles), and the `insured` step that
+  follows faults unless `insurance.covers(soul)` is now true, or the need
+  would re-fire every think. The button is one constant on the terminal
+  (`InsuranceTerminal.BUY_BUTTON`), read by the planner.
 * Robots never elect a band-3 need (always on duty) and are replaced by
   chassis. Pinned souls never think and stay uninsured until unpinned. The
   Rook has the `recluse` profile and cannot leave the seal (§7 Q2).

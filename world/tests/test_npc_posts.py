@@ -57,8 +57,8 @@ class TestSuccessorBuild(BaseEvenniaTest):
 
 
 class TestMemoryAcrossDeath(TestCase):
-    """§P3: the death-side snapshot and the policy split — re-sleeve restores
-    the book, a successor never opens it."""
+    """§P3: the death-side snapshot. GM archaeology now: a return restores
+    the person's own imprint, and only when their policy pays (#3667)."""
 
     def _dying_keeper(self, is_keeper=True):
         npc = MagicMock()
