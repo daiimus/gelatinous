@@ -471,6 +471,30 @@ class TestConditionRendering(TestCase):
         self.assertIn("thoracic", joined)
 
 
+class TestRenalFailureIsDiagnosable(TestCase):
+    """#3653: renal failure was invisible to diagnose -- the one lasting
+    condition whose whole cost (ruling #3402) is the fragility it leaves.
+    It is systemic, so it names no site."""
+
+    def _lines(self, roll):
+        patient = _FakePatient(state=_FakeState(
+            conditions=[_FakeCondition(condition_type="renal_failure", location=None)],
+        ))
+        physician = _FakePhysician()
+        with patch.object(dx, "roll_stat", return_value=roll):
+            dx.perform_diagnose(physician, patient)
+        return "\n".join(dx.render_diagnose_lines(physician, patient))
+
+    def test_a_trained_eye_reads_it(self):
+        joined = self._lines(100)
+        self.assertIn("uraemia", joined)
+        self.assertNotIn("unspecified site", joined)
+
+    def test_a_poor_roll_misses_it(self):
+        # Control: the finding is gated by the roll like every other.
+        self.assertNotIn("uraemia", self._lines(1))
+
+
 class TestSeveredPartsAreNotStable(EvenniaCommandTest):
     """A severed limb on the table reported `condition: stable` (#2811).
 

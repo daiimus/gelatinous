@@ -1105,4 +1105,5 @@ DIAGNOSE_CACHE_TTL_SECONDS = 300
 DIAGNOSE_CONDITION_DCS = {
     "bleeding": 1,          # active bleeding is obvious
     "infection":      6,    # early infection requires palpation
+    "renal_failure":  4,    # the sallow tint shows; reading it as renal takes training (#3653)
 }
