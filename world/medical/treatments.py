@@ -174,9 +174,11 @@ def damaged_organs_at_location(target, location: str) -> list:
     if state is None or not hasattr(state, "organs"):
         return []
     out = []
-    for organ in state.organs.values():
+    for name, organ in state.organs.items():
         if organ.current_hp >= organ.max_hp:
             continue  # Healthy — no wound to stabilize.
+        if state.organ_is_gone(name):
+            continue  # Harvested out: nothing there to dress or repair (#3651).
         container = getattr(organ, "container", None)
         display = getattr(organ, "display_location", None)
         if location in (container, display):

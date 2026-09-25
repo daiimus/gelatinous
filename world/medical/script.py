@@ -39,9 +39,11 @@ def _healing_organs(medical_state) -> list:
     """
     out = []
     organs = getattr(medical_state, "organs", None) or {}
-    for organ in organs.values():
+    for name, organ in organs.items():
         if not getattr(organ, "stabilized", False):
             continue
+        if medical_state.organ_is_gone(name):
+            continue  # a harvested organ does not heal back (#3651)
         rate = getattr(organ, "dressing_rate", 0) or 0
         if rate <= 0:
             continue
