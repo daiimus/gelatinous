@@ -181,33 +181,38 @@ class LockerBank(Item):
         bank has none, onto the floor of its room (owner ruling, #3567).
 
         With no bin the contents used to stay in the compartment, and
-        deleting the compartment sent them to their home: spawned items
-        have none, so they landed in Limbo, silently. A bank with no bin
-        is now logged each time it repossesses, so a missing bin gets
-        noticed. A bank with no room to drop into (unreachable in play:
-        nobody can use a bank that is nowhere) keeps the compartment, so
-        nothing is lost.
+        deleting the compartment sent them to their home, which for a
+        created or spawned item is DEFAULT_HOME: Limbo, silently. A bank
+        with no bin is now logged each time it repossesses, so a missing
+        bin gets noticed.
+
+        A bank with no room to drop into (unreachable in play: nobody can
+        use a bank that is nowhere) leaves everything, lease included, as
+        it was, so the next `_prune` after the bank is placed tries again.
         """
         store = self._store(uid)
         binx = self.db.forfeit_bin
-        if store is not None:
-            if binx is None:
-                room = self.location
+        if store is not None and binx is None:
+            room = self.location
+            if room is None:
                 logger.log_warn(
                     f"lockers: {self.key} #{self.id} has no lost-property "
-                    f"bin; a lapsed locker was emptied onto the floor of "
-                    f"{getattr(room, 'key', None)} (#3567)")
-                if room is None:
-                    store = None            # nowhere to drop: keep it all
-            if store is not None:
-                for it in list(store.contents):
-                    it.db.locker_owner = None
-                    if binx is not None:
-                        it.move_to(binx, quiet=True, move_hooks=False)
-                    else:
-                        from commands.combat.jump import drop_to_room
-                        drop_to_room(it, self.location)
-                store.delete()
+                    f"bin and no room; a lapsed locker was left as it was "
+                    f"(#3567)")
+                return
+            logger.log_warn(
+                f"lockers: {self.key} #{self.id} has no lost-property bin; "
+                f"a lapsed locker was emptied onto the floor of {room.key} "
+                f"(#3567)")
+        if store is not None:
+            for it in list(store.contents):
+                it.db.locker_owner = None
+                if binx is not None:
+                    it.move_to(binx, quiet=True, move_hooks=False)
+                else:
+                    from commands.combat.jump import drop_to_room
+                    drop_to_room(it, self.location)
+            store.delete()
         leases = dict(self.db.leases or {}); leases.pop(uid, None)
         opened = dict(self.db.opened or {}); opened.pop(uid, None)
         self.db.leases, self.db.opened = leases, opened

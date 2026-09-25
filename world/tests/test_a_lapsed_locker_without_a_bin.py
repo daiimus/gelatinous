@@ -3,8 +3,8 @@
 Owner ruling (2026-09-25): when the bank has no bin, a lapsed tenant's
 things go on the floor of the room the lockers stand in. Before, the
 items stayed in the compartment, the compartment was deleted, and Evennia
-sent them to their home; spawned items have none, so they went to Limbo
-silently. Repossession now logs a warning when a bank has no bin, and the
+sent them to their home, which for a created or spawned item is
+DEFAULT_HOME: Limbo, silently. Repossession now logs a warning when a bank has no bin, and the
 lapse notice says where the things will go.
 
 Repossession is lazy: it runs whenever anyone uses the bank, so these
@@ -100,3 +100,17 @@ class TheLapseNotice(_Lapsed):
         self.bank.db.forfeit_bin = create_object(
             "typeclasses.items.Item", key="lost-property bin", location=self.room1)
         self.assertIn("into lost property", self.notice())
+
+
+class ABankThatIsNowhere(_Lapsed):
+    """Unreachable in play, but it must not lose the lease: with no room to
+    drop into, everything stays as it was so a later prune retries."""
+
+    def test_nothing_moves_and_the_lease_survives(self):
+        self.bank.location = None
+        with mock.patch("evennia.utils.logger.log_warn") as warn:
+            self.bank._prune()
+        self.assertEqual(len(self.compartments()), 1)
+        self.assertIn(LAPSED_UID, self.bank.db.leases)
+        self.assertNotIn("emptied", warn.call_args[0][0])
+        self.assertIn("left as it was", warn.call_args[0][0])
