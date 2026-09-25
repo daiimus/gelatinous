@@ -37,7 +37,6 @@ class _CraneWorld(EvenniaTest):
         super().setUp()
         self.uc = _room("typeclasses.rooms.Room", "Kaspar Urgent Care - Rooftop (North)", C.UC_ROOF)
         self.qoc = _room("typeclasses.rooms.Room", "Queen of Cups - Rack Roof Southeast", C.QOC_ROOF)
-        self.sky = _room("typeclasses.rooms.SkyRoom", "In the Air", C.SKY, sky=True)
         self.shaft = {z: _room("typeclasses.rooms.SkyRoom", "In the Air", (C.COL[0], C.COL[1], z), sky=True)
                       for z in range(C.MIN_Z, C.MAX_Z + 1)}
         self.dig = _room("typeclasses.rooms.Room", "The Marlowe Lot - Foundation", (C.COL[0], C.COL[1], 0))
@@ -117,7 +116,9 @@ class LevelWithTheQueensRoof(_CraneWorld):
 
     def test_north_is_the_easy_leap(self):
         north = door(self.car, "north")
-        self.assertIs(north.destination, self.sky)
+        # The air behind it is the shaft's, whose column falls to the dig:
+        # a miss drops down the cable, a make carries on to the perch (#3643).
+        self.assertIs(north.destination, self.shaft[C.QOC_Z])
         self.assertIs(north.db.is_edge, True)
         self.assertIs(north.db.is_gap, True)
         self.assertEqual(north.db.gap_difficulty, 8)
@@ -157,6 +158,7 @@ class AloftOffLevel(_CraneWorld):
         east = door(self.uc, "east")
         self.assertEqual(north.db.gap_difficulty, 8 + 2 * off)
         self.assertIs(gap_destination(north), self.qoc)
+        self.assertIs(north.destination, self.shaft[5], "the air rides with the car")
         self.assertIs(south.destination, self.shaft[C.QOC_Z])
         self.assertEqual(south.db.gap_difficulty, 8 + 2 * off)
         self.assertIs(gap_destination(south), self.car)
