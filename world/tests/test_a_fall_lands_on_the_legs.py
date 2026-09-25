@@ -267,10 +267,12 @@ class TestTheDirectDropOffAnEdge(EvenniaTest):
         self.descend()
         self.assertEqual(self.hurt(), FALL_DAMAGE_PER_STORY)
 
-    def test_the_column_by_contrast_IS_roll_dependent(self):
-        """Control: the same two Motorics values DO move the number when
-        the fall goes through a column, so the instrument can tell the
-        two regimes apart and the pair above is measuring something."""
+    def _fall_through_a_column(self, motorics):
+        """Two air cells above room2, fallen with a landing roll. The roll
+        is pinned to the body's own Motorics (its best possible roll), so
+        Motorics alone decides: 150 clears the 2-cell landing difficulty
+        of 12, 1 cannot. Unpinned, `randint(1, 150)` missed 11 times in
+        150 and this control failed at random (#3657)."""
         air = create_object("typeclasses.rooms.SkyRoom", key="In the Air")
         below = create_object("typeclasses.rooms.SkyRoom", key="In the Air")
         create_object("typeclasses.exits.Exit", key="down", location=air,
@@ -278,13 +280,28 @@ class TestTheDirectDropOffAnEdge(EvenniaTest):
         create_object("typeclasses.exits.Exit", key="down", location=below,
                       destination=self.room2, aliases=["d"])
         self.char1.location = air
-        self.char1.motorics = 150
+        self.char1.motorics = motorics
         with mock.patch.object(gravity, "delay") as delayed, \
-             mock.patch.object(gravity, "msg_room_identity"):
+             mock.patch.object(gravity, "msg_room_identity"), \
+             mock.patch("world.combat.utils.standard_roll",
+                        side_effect=lambda stat: (stat, stat, stat)):
             delayed.side_effect = (
                 lambda _s, callback, *a, **kw: callback(*a, **kw))
             gravity.start_fall(self.char1, roll=True)
-        self.assertEqual(self.hurt(), 0)
+        return self.hurt()
+
+    def test_the_column_by_contrast_IS_roll_dependent(self):
+        """Control: the same two Motorics values DO move the number when
+        the fall goes through a column, so the instrument can tell the
+        two regimes apart and the pair above is measuring something.
+        This half: Motorics 150 makes the landing, which absorbs both
+        cells."""
+        self.assertEqual(self._fall_through_a_column(150), 0)
+
+    def test_the_column_by_contrast_charges_a_clumsy_body(self):
+        """The other half: Motorics 1 misses, and pays both cells."""
+        self.assertEqual(self._fall_through_a_column(1),
+                         2 * FALL_DAMAGE_PER_STORY)
 
     def test_no_fall_record_is_written(self):
         """A direct drop is over the moment it happens."""
