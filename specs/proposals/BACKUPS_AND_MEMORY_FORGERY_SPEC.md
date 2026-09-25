@@ -2,6 +2,11 @@
 
 > **Status:** 📋 **DESIGN DRAFT — spec-first, build-later (2026-08-22).**
 > **§4 and §8.1/§8.2 carry owner rulings (2026-08-22).**
+> **§8.2's "players resleeve free" is SUPERSEDED (owner ruling 2026-09-25,
+> #3667):** players are in the insurance loop; a policy bought in advance at
+> the Thawn-Harrison terminal is required for a flash clone, and an
+> uninsured death does not bring that person back (a fresh character is
+> still allowed). See `specs/proposals/SLEEVE_INSURANCE_SPEC.md`.
 > §1 documents **shipped** behaviour (traced from
 > `world/souls/posts.py`, `typeclasses/death_progression.py`); §2
 > onward is proposal.

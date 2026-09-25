@@ -22,6 +22,11 @@
 > (web view, sleeve tag/index) and 4–5 (cleanup gig, morgue IC records) remain
 > unbuilt. **Recent change folded in:** dead NPCs are **deleted**, not archived
 > (#1022) — see §4.
+> **Amendment 2026-09-25 (owner ruling, #3667):** the flash clone is gated
+> on a **sleeve insurance policy** bought in advance at the Thawn-Harrison
+> lobby terminal and consumed at decant. Die uninsured and that person does
+> not return; the account may start a fresh character. See
+> `specs/proposals/SLEEVE_INSURANCE_SPEC.md`.
 
 ---
 
