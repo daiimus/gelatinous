@@ -303,7 +303,7 @@ played live as Iver, then the spec promoted or amended.
   identically). Whether a synth is grown at Thawn-Harrison at all, or comes
   back some other way, is unasked.
 
-## 7 · Open questions for the owner (one at a time)
+## 7 · The six design questions (all ruled 2026-09-25)
 
 1. ~~Who gets the urge to buy?~~ **Ruled 2026-09-25: every human and synth
    soul** (option 2), even where a policy cannot yet pay out.
@@ -326,13 +326,10 @@ played live as Iver, then the spec promoted or amended.
    a fresh character after an insured death spends the policy: both
    template finalizers (telnet and web) void the dead lineage's record, so
    no orphaned row can revive an abandoned self later.
-6. **Delay on fallthrough.** Per the census of 2026-09-09 (`posts.py:421`):
-   72 h on ten posts, 6 h on five (the Rook's chair and Vesper's chaise
-   among them), 24 h on two, 600 s on two. The default is to keep each
-   post's `post_delay`, which means a named keeper's uninsured death leaves
-   most counters dark for three days before a stranger is offered them.
-   That is today's behaviour and a balance-pass number; say only if you want
-   a different one now.
+6. ~~Delay on fallthrough.~~ **Ruled 2026-09-25: "Default behavior makes
+   sense."** Each post keeps its own `post_delay` (census 2026-09-09,
+   `posts.py:421`: 72 h on ten posts, 6 h on five, 24 h on two, 600 s on
+   two) before a successor is offered; a balance-pass number, untouched.
 
 ## 8 · Holes the design closes (from the 2026-09-25 checks)
 
