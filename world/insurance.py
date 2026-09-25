@@ -89,7 +89,7 @@ def buy_policy(char: Any, terminal: Any = None) -> tuple[bool, str]:
     record held by another LIVE body of the lineage is refused.
     """
     uid = sleeve_uid_of(char)
-    if uid is None:
+    if not uid:
         return False, ("The reader passes over you and finds no sleeve "
                        "signature to sample.")
     why_not = _is_presentable(char)
@@ -120,12 +120,7 @@ def buy_policy(char: Any, terminal: Any = None) -> tuple[bool, str]:
         "blueprint_key": char.attributes.get("blueprint_key"),
         "account_id": getattr(getattr(char, "account", None), "id", None),
     }
-    from evennia.server.models import ServerConfig
-    row = ServerConfig(db_key=key_for(uid))
-    row.value = record
-    try:
-        row.save()
-    except IntegrityError:
+    if not _insert(record):
         return False, "Your policy is already on file."
 
     if POLICY_PRICE > 0:
@@ -153,15 +148,33 @@ def take_policy(uid: Optional[str], body_id: Optional[int]) -> Optional[dict]:
     return rec if deleted == 1 else None
 
 
-def restore_policy(record: dict) -> None:
-    """Put a taken record back (a return that failed after the take)."""
+def restore_policy(record: dict) -> bool:
+    """Put a taken record back (a return that failed after the take).
+    False when somebody already re-bought under that uid."""
+    return _insert(dict(record))
+
+
+def _insert(record: dict) -> bool:
+    """The one INSERT. `ServerConfig.value`'s setter saves on assignment,
+    so the row is built with the pickled value and saved inside the try:
+    a duplicate key raises here, and nowhere else. False = already on
+    file."""
     from evennia.server.models import ServerConfig
-    row = ServerConfig(db_key=key_for(record["uid"]))
-    row.value = dict(record)
+    from evennia.utils.dbserialize import to_pickle
+    row = ServerConfig(db_key=key_for(record["uid"]), db_value=to_pickle(record))
     try:
         row.save()
     except IntegrityError:
-        pass                                # somebody already re-bought
+        return False
+    return True
+
+
+def spend_policy(uid: Optional[str], body_id: Optional[int]) -> bool:
+    """A return has happened for *body_id*: its own record is spent. A
+    record held by another body of the lineage is left alone (the living
+    body's cover must survive an older husk being cloned; a dead
+    holder's leftover is replaced at the terminal by `buy_policy`)."""
+    return take_policy(uid, body_id) is not None
 
 
 def void_policy(uid: Optional[str]) -> bool:

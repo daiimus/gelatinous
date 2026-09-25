@@ -215,15 +215,19 @@ class InsuranceTerminal(Item):
     only to its own buttons and returns False for anything else.
     """
 
-    #: The buttons this machine answers to. The souls planner reads
-    #: `BUY_BUTTON` rather than typing the word (one home, #3667).
+    #: The buttons this machine answers to, in one place. `BUY_BUTTON` is
+    #: the word the sign and, in Slice B, the souls planner use.
     BUY_BUTTON = "insure"
-    BUTTONS = (BUY_BUTTON, "policy", "buy", "cover", "status", "info")
+    BUY_BUTTONS = (BUY_BUTTON, "renew", "sample", "policy", "buy", "cover")
+    STATUS_BUTTONS = ("status", "info")
+    BUTTONS = BUY_BUTTONS + STATUS_BUTTONS
 
     def at_object_creation(self):
         super().at_object_creation()
         self.db.pressable = True
-        self.db.insurance_terminal = True
+        # Found by INDEXED TAG (the crane's idiom, #2323): Slice B's
+        # planner asks "where is a policy terminal?" without a scan.
+        self.tags.add("insurance_terminal", category="machines")
         self.locks.add("get:false()")
         self.db.get_err_msg = "It is bolted to the desk and knows it."
         for alias in ("terminal", "insurance", "policy terminal"):
@@ -240,7 +244,7 @@ class InsuranceTerminal(Item):
             if low not in names:
                 return False            # not one of this machine's buttons
 
-        if low in (self.BUY_BUTTON, "policy", "buy", "cover"):
+        if low in self.BUY_BUTTONS:
             ok, message = buy_policy(presser, self)
             presser.msg(message)
             if ok:

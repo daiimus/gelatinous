@@ -599,13 +599,13 @@ def create_flash_clone(account, old_character):
     char.unarchive_character()   # attribute + sleeve-tag index in sync
     char.db.current_sleeve_birth = time.time()
 
-    # The lineage's sleeve policy is spent by this return (#3667, Slice A:
-    # consumption only; the gate that REQUIRES one is Slice C). Voided
+    # The dead body's sleeve policy is spent by this return (#3667, Slice
+    # A: consumption only; the gate that REQUIRES one is Slice C). Spent
     # after the clone is fully built, so a failure above never burns it,
-    # and voided whoever bought it: the clone carries the same uid and
-    # must be able to buy afresh, which "already on file" would refuse.
-    from world.insurance import void_policy
-    void_policy(old_character.sleeve_uid)
+    # and spent only if THIS body bought it: an older husk being cloned
+    # must not void the cover a living body of the same lineage holds.
+    from world.insurance import spend_policy
+    spend_policy(old_character.sleeve_uid, old_character.id)
 
     return char
 
