@@ -3,7 +3,8 @@
 > **Status:** ✅ **SHIPPED (2026-07-06)** — `world/channeled.py` (the
 > primitive), taxonomy wired (BLOCKED: movement/wield/attack/xmit-tune-
 > toggle + bare `stop` to abort; BREAKING: take_damage, combat enrollment,
-> grapple establish, unconscious/death, forced movement via at_post_move),
+> grapple establish, unconscious/death, forced movement via at_post_move and,
+> for the hookless door drags, by hand in `drag_victim_to` (#2774, #3663)),
 > graffiti as first consumer (3s + 1s/char, partial-with-ellipsis on
 > interrupt, pro-rata paint, vandalism reports). **Solvent cleaning SHIPPED
 > as second consumer (2026-07-10)**: 3s + 1s/solvent-unit; graffiti scrubs

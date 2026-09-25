@@ -25,6 +25,49 @@ from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 
 
+def drag_victim_to(victim, room):
+    """Haul a grappled victim into *room*, the one way both door drags do it.
+
+    The walk door (`Exit.at_traverse`) and the advance door
+    (`_do_advance_move`). The jump drag keeps hooks ON so gravity and
+    posture run there on their own.
+
+    The victim's move runs with hooks OFF, deliberately: `at_pre_move`
+    would refuse a channeling victim, and refusing the move would make
+    channeling a grapple immunity (#2774). So the two hook effects that
+    matter are re-applied by hand, in `at_post_move`'s own order:
+
+    * the channel BREAKS (a channel does not survive being hauled through
+      a door; it kept ticking and resolved in a room the actor never
+      chose, #2774);
+    * moving puts you on your feet (the furniture substrate's rule: you
+      can't carry a seat between rooms). A patient dragged out of the
+      AutoDoc kept `db.furniture` pointing at the pod, so they read as
+      "lying in an autodoc" in the street and, since the pod is a
+      restraint device, could be robbed uncontested anywhere until they
+      typed `stand` (#3663).
+
+    The channel breaks BEFORE the move, as the walk door always did; the
+    stand-up runs only once the move has landed, since a refused move is
+    not a move (#2594). Silent, as `at_post_move` is; the drag messages
+    narrate it. Returns whether the victim moved.
+    """
+    try:
+        from world.channeled import interrupt_channel
+        interrupt_channel(victim)
+    except Exception:  # noqa: BLE001 -- never block a drag on this
+        pass
+    moved = victim.move_to(room, quiet=True, move_hooks=False)
+    if not moved or victim.location != room:
+        return False
+    clear = getattr(victim, "_clear_posture", None)
+    if callable(clear) and (
+            victim.db.furniture
+            or (victim.db.posture and victim.db.posture != "standing")):
+        clear()
+    return True
+
+
 def get_grappling_target(combat_handler, combatant_entry):
     """
     Get the character that this combatant is grappling.

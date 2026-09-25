@@ -686,11 +686,22 @@ def _do_advance_move(
         # they stay adjacent to the person dragging them, and the pair
         # is re-established two lines down.
         from world.combat.proximity import clear_proximity_on_room_change
+        from world.combat.grappling import drag_victim_to
         clear_proximity_on_room_change(char)
-        char.move_to(target_room)
-        grappled_victim.move_to(
-            target_room, quiet=True, move_hooks=False
-        )
+        # The grappler's move runs with hooks on and can be refused (a
+        # channel, a bounced escortee, an elevator car that has left the
+        # landing). Nothing below may run then, or the victim is hauled
+        # into a room the grappler never reached: the walk door's #2594
+        # guard, applied here too (#3663 review).
+        if not char.move_to(target_room):
+            splattercast.msg(
+                f"{DEBUG_PREFIX_HANDLER}_ADVANCE_DRAG: {char.key}'s move was "
+                f"refused; {grappled_victim.key} stays put."
+            )
+            return
+        # Shared with the walk door (`Exit.at_traverse`): the victim's
+        # hookless move, the channel break and the stand-up (#3663).
+        drag_victim_to(grappled_victim, target_room)
 
         # Re-establish proximity between grappler and victim after drag
         establish_proximity(char, grappled_victim)
