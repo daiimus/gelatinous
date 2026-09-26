@@ -342,11 +342,13 @@ CONTRIBUTION_VALUES = {
 # is derived from the human entry so existing callers keep working;
 # species-aware callers use
 # :func:`world.anatomy.get_species_body_capacities(species)` directly.
-# The legacy ``unconscious_threshold`` / ``fatal_threshold`` dict
-# values were declarative — the actual thresholds enforced by
-# ``is_dead()`` / ``is_unconscious()`` read the module constants
+# The ``unconscious_threshold`` / ``fatal_threshold`` / ``directly_fatal``
+# dict values are DECLARATIVE — they ride along through this derivation
+# (``dict(v)`` keeps them) but the thresholds ``is_dead()`` /
+# ``is_unconscious()`` enforce are the module constants
 # (``CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD`` / ``BLOOD_LOSS_DEATH_THRESHOLD``)
-# directly, so they are not preserved through the species derivation.
+# and the ``<= 0.0`` floor over ``LETHAL_CAPACITY_NAMES``; a test pins that
+# ``directly_fatal`` agrees with that tuple (#3677).
 from world.anatomy.species import SPECIES_DEFINITIONS as _SPECIES_DEFINITIONS_BC
 BODY_CAPACITIES = {
     k: dict(v) for k, v in (
@@ -362,7 +364,9 @@ del _SPECIES_DEFINITIONS_BC
 # bias.
 #
 # This is exactly the set is_dead() enforces (plus the blood-loss floor,
-# which is not a capacity). Every entry is STRUCTURAL: an organ floor that
+# which is not a capacity): `_compute_is_dead` LOOPS over this tuple, and
+# the species schema flags the same capacities `directly_fatal` (a test pins
+# the three agree; #3677). Every entry is STRUCTURAL: an organ floor that
 # only organ HP (and a location-matching condition's functionality modifier,
 # e.g. a severity-10 infection) can move.
 #

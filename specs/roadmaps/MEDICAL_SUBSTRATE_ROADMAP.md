@@ -262,7 +262,7 @@ are waiting on a consumer system that hasn't been built.
 |---|---|---|---|
 | `vital` (on `Organ`) | 0 | None — superseded by data-driven `_get_vital_locations` | **Vestigial**: delete. |
 | `fatal_threshold` (on capacity) | 0 | Could replace the `<= 0.0` literal in `is_dead` if `is_dead` were refactored to be data-driven | Keep until Phase 7 audit (delete or wire). |
-| `directly_fatal` (on capacity) | 0 (1 test assertion) | Same as `fatal_threshold` — data-driven `is_dead` | Keep until Phase 7 audit. |
+| `directly_fatal` (on capacity) | 0 at runtime; **pinned by test (#3677, 2026-09-26)** to equal `LETHAL_CAPACITY_NAMES` for every species, which `is_dead` now loops over | A declaration the test keeps honest; `is_dead` reads the tuple, not the flag | Keep (declarative, tested). |
 | ~~`total_loss_fatal: True` on `blood_filtration`~~ | **Deleted (#3402)** — kidney loss is not fatal by owner ruling; the unread flag stated the opposite | — | Superseded. Former entry: **✅ BEHAVIOUR SHIPPED (true-up 2026-09-11)** — `RenalFailureCondition` exists and is wired via `_update_renal_failure()`. The FLAG itself is still unconsumed; the capacity threshold is hardcoded in constants. Flag disposition unchanged (Phase 4/5). |
 | `incapacitation_threshold: 0.15` on `moving` | 0 | **Movement Policing system** — when capacity is below this, character cannot move | **Substrate gap**: movement policing. |
 | `unconscious_threshold` (in `consciousness` capacity dict) | 0 | None — duplicated as top-level `CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD` (the one that's actually read) | **Vestigial**: delete. |
@@ -718,8 +718,12 @@ Tasks:
 1. Re-audit `modifiers` / `affects` lists: if Phase 10's wiring uses
    them as data, keep; otherwise delete and document the cascade
    imperatively.
-2. `fatal_threshold` / `directly_fatal`: either refactor `is_dead` to
-   be data-driven over these (single source of truth) or delete.
+2. `fatal_threshold` / `directly_fatal`: ~~either refactor `is_dead` to
+   be data-driven over these (single source of truth) or delete.~~ Settled
+   halfway on 2026-09-26 (#3677): `is_dead` loops over
+   `LETHAL_CAPACITY_NAMES`, and a test pins `directly_fatal` to that tuple
+   for every species; `fatal_threshold` stays declarative (the floor is
+   `<= 0.0`).
 3. `total_loss_effects` on `talking`: if Phase 10 wires a `MuteCondition`
    that consumes them, keep; else delete the strings (they're
    declarative-only documentation).

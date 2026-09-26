@@ -493,6 +493,7 @@ SPECIES_DEFINITIONS = {
             "breathing": {
                 "organs": ["left_lung", "right_lung"],
                 "fatal_threshold": 0.0,
+                "directly_fatal": True,
                 "organ_contribution": 0.5,
                 "affects": ["consciousness", "moving"],
             },
@@ -501,6 +502,7 @@ SPECIES_DEFINITIONS = {
                 "liver_contribution": 1.0,
                 "stomach_contribution": 0.5,
                 "fatal_threshold": 0.0,
+                "directly_fatal": True,
             },
             "neck_integrity": {
                 "organs": ["cervical_spine"],
@@ -1090,6 +1092,7 @@ SPECIES_DEFINITIONS = {
             "breathing": {
                 "organs": ["left_lung", "right_lung"],
                 "fatal_threshold": 0.0,
+                "directly_fatal": True,
                 "organ_contribution": 0.5,
                 "affects": ["consciousness", "moving"],
             },
@@ -1098,6 +1101,7 @@ SPECIES_DEFINITIONS = {
                 "liver_contribution": 1.0,
                 "stomach_contribution": 0.5,
                 "fatal_threshold": 0.0,
+                "directly_fatal": True,
             },
             "neck_integrity": {
                 "organs": ["cervical_spine"],

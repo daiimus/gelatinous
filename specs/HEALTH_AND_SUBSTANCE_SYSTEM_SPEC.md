@@ -761,7 +761,8 @@ organ key on existing characters.)
 
 `MedicalState.is_dead()` (see the corrected listing below) treats
 `neck_integrity <= 0.0` as a death condition, alongside `blood_pumping`,
-`breathing`, and `digestion`. A destroyed cervical spine drives
+`breathing`, `digestion` and `brain_integrity` (#3248) — one loop over
+`LETHAL_CAPACITY_NAMES` since #3677. A destroyed cervical spine drives
 `neck_integrity` to 0.0 and reads as a clean decapitation death without
 perturbing the lungs' contribution math.
 
@@ -873,19 +874,14 @@ class MedicalState:
     
     def is_dead(self):
         """Multi-factor death determination"""
-        # Death from vital capacity failure. These ARE LETHAL_CAPACITY_NAMES
-        # (consciousness is the awake axis, never a death gate — #3248). See
-        # "Spinal Anatomy, Decapitation & Combat Severance" above.
-        if self.calculate_body_capacity("blood_pumping") <= 0.0:  # Heart
-            return True
-        if self.calculate_body_capacity("breathing") <= 0.0:      # Lungs
-            return True
-        if self.calculate_body_capacity("digestion") <= 0.0:      # Liver AND stomach
-            return True
-        if self.calculate_body_capacity("neck_integrity") <= 0.0:  # Decapitation (#243)
-            return True
-        if self.calculate_body_capacity("brain_integrity") <= 0.0:  # Brain death, a death with a window (#3248)
-            return True
+        # Death from vital capacity failure: one loop over
+        # LETHAL_CAPACITY_NAMES (heart; both lungs; liver AND stomach;
+        # cervical spine, #243; brain, #3248 — #3677 made it one loop).
+        # consciousness is the awake axis, never a death gate. See "Spinal
+        # Anatomy, Decapitation & Combat Severance" above.
+        for capacity in LETHAL_CAPACITY_NAMES:
+            if self.calculate_body_capacity(capacity) <= 0.0:
+                return True
         # Death from catastrophic blood loss (85%+ loss)
         if self.blood_level <= 15.0:
             return True
