@@ -332,7 +332,14 @@ class MedicalScript(DefaultScript):
             # This ensures consciousness includes all penalties (pain, blood loss, suppression)
             medical_state.update_vital_signs()
             
-            # Check for death/unconsciousness after processing conditions
+            # Check for death/unconsciousness after processing conditions.
+            # A condition's tick mutates its own severity in place (no setter
+            # sees it), and a severity-10 infection zeroes an organ's
+            # FUNCTION, which is a death-verdict input (#3248 review): the
+            # verdict is recomputed here rather than trusted from last tick.
+            invalidate = getattr(medical_state, "_invalidate_derived_state", None)
+            if callable(invalidate):
+                invalidate()
             if medical_state.is_dead():
                 splattercast.msg(f"MEDICAL_SCRIPT_DEATH: {self.obj.key} has died from medical conditions")
                 

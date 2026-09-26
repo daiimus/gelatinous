@@ -26,7 +26,7 @@ strictly worse, because stale capacities would then be served too.
 
 Stated twice in `core.py`: *"invalidated by the `blood_level` /
 `Organ.current_hp` setters and by condition add/remove — every input
-that can flip the verdict."* `_compute_is_dead` reads four **capacities**,
+that can flip the verdict."* `_compute_is_dead` reads five **capacities**,
 and a capacity is computed from the organs *present in the dict*. Nine
 sites mutated that dict directly, and `procedures.py` contains no
 invalidation call of any kind.

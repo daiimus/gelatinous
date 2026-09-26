@@ -36,8 +36,9 @@ from world.anatomy import SPECIES_DEFINITIONS
 from world.medical.medical_messages import (_GENERIC_DEATH_BY_SPECIES,
                                             get_death_cause_template)
 
-CAPACITY_CAUSES = ("blood loss", "heart failure", "respiratory failure",
-                   "organ failure", "critical injuries")
+CAPACITY_CAUSES = ("blood loss", "heart failure", "brain death", "a broken neck",
+                   "decapitation", "respiratory failure", "organ failure",
+                   "critical injuries")
 
 
 def _generic(species):
@@ -105,9 +106,9 @@ class TestTheKillingBlowIsRecorded(EvenniaTest):
         self.assertIn("chest", cause)
 
     def test_a_cut_reads_as_a_slash(self):
-        """Chest, not head: head damage lands as unconsciousness, not
-        death (`_compute_is_dead`'s own docstring), so a head cut alone
-        does not kill and `get_death_cause` returns None for the living."""
+        """Chest, not head: a head cut that destroyed the brain would be a
+        brain death since #3248, and the cause would then read "brain
+        death from ..." rather than the slash line this test is after."""
         b = self._body()
         b.take_damage(500, "chest", "cut")
         cause = b.get_death_cause()

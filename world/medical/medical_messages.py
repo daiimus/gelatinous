@@ -59,8 +59,10 @@ BLEEDING_ROOM_BY_SPECIES: dict[str, dict[str, str]] = {
 _DEATH_KEYWORD_ORDER = (
     "blood loss",
     "heart failure",
+    "decapitat",
     "head",
     "brain",
+    "neck",
     "poison",
     "fire",
     "burn",
@@ -81,6 +83,8 @@ DEATH_CAUSE_TEMPLATES_BY_SPECIES: dict[str, dict[str, str]] = {
         "heart failure": "|R{actor} clutches their chest one last time before going still.|n",
         "head":          "|R{actor}'s eyes lose focus as they collapse, unmoving.|n",
         "brain":         "|R{actor}'s eyes lose focus as they collapse, unmoving.|n",
+        "neck":          "|R{actor}'s head lolls at an angle no living neck allows, and they are still.|n",
+        "decapitat":     "|R{actor}'s head comes away and the body folds where it stands.|n",
         "poison":        "|R{actor} convulses violently before falling silent.|n",
         "fire":          "|R{actor}'s charred form crumples to the ground.|n",
         "burn":          "|R{actor}'s charred form crumples to the ground.|n",
@@ -96,6 +100,7 @@ DEATH_CAUSE_TEMPLATES_BY_SPECIES: dict[str, dict[str, str]] = {
         # ("eyes lose focus", "charred form", "convulses violently")
         # works for any small mammal.
         "heart failure": "|R{actor} stiffens, twitches once, then goes still.|n",
+        "decapitat":     "|R{actor}'s head parts from the body; the small shape kicks once and is still.|n",
         "stab":          "|R{actor} squeaks once, body shuddering, then goes limp.|n",
         "slash":         "|R{actor} squeaks once, body shuddering, then goes limp.|n",
         "respiratory failure": "|R{actor}'s flanks flutter, then stop.|n",
@@ -106,6 +111,10 @@ DEATH_CAUSE_TEMPLATES_BY_SPECIES: dict[str, dict[str, str]] = {
         # Cobalt fluid; mechanical stillness rather than a final breath.
         "blood loss":    "|B{actor}'s cobalt fluid spreads beneath their stilled frame.|n",
         "heart failure": "|B{actor}'s frame shudders once and powers down, still.|n",
+        "head":          "|B{actor}'s optics dim to nothing and the frame folds, cobalt still.|n",
+        "brain":         "|B{actor}'s optics dim to nothing and the frame folds, cobalt still.|n",
+        "neck":          "|B{actor}'s neck actuators tear loose; the head sags and the frame goes still.|n",
+        "decapitat":     "|B{actor}'s head-mount shears clean and the frame drops, cobalt venting from the stump.|n",
         "stab":          "|B{actor} jerks, cobalt fluid venting, then goes inert.|n",
         "slash":         "|B{actor} jerks, cobalt fluid venting, then goes inert.|n",
         "respiratory failure": "|B{actor}'s intake cycles stutter, then cease, the frame settling still.|n",
@@ -118,6 +127,8 @@ DEATH_CAUSE_TEMPLATES_BY_SPECIES: dict[str, dict[str, str]] = {
         "heart failure": "|y{actor}'s frame shudders once and powers down, servos locking.|n",
         "head":          "|y{actor}'s optics flicker out and the chassis drops, inert.|n",
         "brain":         "|y{actor}'s optics flicker out and the chassis drops, inert.|n",
+        "neck":          "|y{actor}'s head-mount shears with a scream of servos and the chassis drops, inert.|n",
+        "decapitat":     "|y{actor}'s head-mount shears clean away and the chassis drops, inert.|n",
         "stab":          "|y{actor} jerks, amber fluid venting, then goes inert.|n",
         "slash":         "|y{actor} jerks, amber fluid venting, then goes inert.|n",
         "respiratory failure": "|y{actor}'s cooling cycle stalls and the chassis powers down, still.|n",
