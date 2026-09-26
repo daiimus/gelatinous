@@ -562,13 +562,16 @@ class Character(
         self.db.archived = False
         self.tags.remove("archived", category="sleeve")
 
-    def archive_character(self, reason="manual", disconnect_msg=None):
+    def archive_character(self, reason="manual", disconnect_msg=None, owner=None):
         """
         Archive this character and disconnect any active sessions.
         
         Args:
             reason (str): Why the character is being archived (e.g., "death", "manual")
             disconnect_msg (str): Optional custom disconnect message. If None, uses default.
+            owner (Account): The account this sleeve belongs to, when the
+                caller has already verified it (the web shelve). Otherwise
+                resolved from the ownership record.
         """
         import time
         
@@ -580,9 +583,11 @@ class Character(
         # Set account's last_character for respawn flow. `self.account` is
         # the live puppet and is None by the time the death path archives
         # (unpuppet runs first) and always None from the web, so the owner
-        # is resolved from the playable-characters record instead (#3667).
+        # is resolved from the ownership record (the playable-characters
+        # list first, then the live puppet, then a puppet lock) unless the
+        # caller already verified it (#3667).
         from world.ownership import owning_account
-        owner = self.account or owning_account(self)
+        owner = owner or owning_account(self)
         if owner:
             owner.db.last_character = self
         

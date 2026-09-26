@@ -574,9 +574,10 @@ class CharacterArchiveView(LoginRequiredMixin, CharacterMixin, View):
             return HttpResponseRedirect(self.success_url)
         
         # Archive the character (handles archiving + disconnecting active
-        # sessions). It resolves the owning account itself, so
-        # last_character is set here too although the body is not puppeted.
-        character.archive_character(reason="manual")
+        # sessions). The owner is the requesting account, verified above to
+        # claim this body; the archive sets last_character on it although
+        # the body is not puppeted.
+        character.archive_character(reason="manual", owner=request.user)
         
         # Shelving is not a death: no policy pays to bring a shelved sleeve
         # back (owner ruling 2026-09-25, Q3). The message says so.

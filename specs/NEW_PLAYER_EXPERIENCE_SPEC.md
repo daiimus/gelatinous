@@ -173,10 +173,11 @@ capitalization only at genuine sentence starts, #1588).
 > never receives it — both web doors end in a Django `messages.success(...)`
 > and a redirect (`web/website/views/characters.py:160`, `:184`, `:367`),
 > and nothing replays it at that character's first puppet
-> (`typeclasses/characters.py:1405-1443` sends `at_look` and the room
-> scene, nothing else). So a web player's first puppet is the room alone,
-> and a web-respawned player never sees their own `PRIOR TERMINATION` or
-> `DEATH COUNT` — the §4 morgue tag, unread.
+> (`at_post_puppet` sends `at_look`, the room scene and, since #3667, the
+> pod-lid `SLEEVE POLICY` card — nothing else). So a web player's first
+> puppet is the room plus that one card, and a web-respawned player never
+> sees their own `PRIOR TERMINATION` or `DEATH COUNT` — the §4 morgue tag,
+> unread.
 >
 > **This row is left as intent, not narrowed to telnet.** The last time
 > this table and the web door disagreed, the code was the defect and the

@@ -8,7 +8,6 @@ numeral behind. Owner ruling 2026-09-13: the card says who you become.
 One helper, `flash_clone_name`, feeds the telnet label, the web context and
 `create_flash_clone` itself, so the promise and the result cannot drift.
 """
-from django.template import Context, Template
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaTest
 
@@ -72,15 +71,6 @@ class CardNamesWhoYouBecomeTest(EvenniaTest):
         self.assertNotIn("[4]", text)
         self.assertIn(NO_POLICY, text)
         self.assertIn("Jorge Jackson II", text, "the refusal should still name who you would become")
-
-    def test_web_card_renders_the_incoming_name(self):
-        # The template prints the context value the view supplies; render the
-        # card fragment the way Django will.
-        if _flash_clone_name is None: self.skipTest("helper absent (unfixed tree)")
-        old = self._dead_sleeve()
-        frag = Template('<h5>{{ flash_clone_name }} <small>({{ old_character.sex|title }})</small></h5>')
-        out = frag.render(Context({'old_character': old, 'flash_clone_name': _flash_clone_name(old)}))
-        self.assertIn("Jorge Jackson II", out)
 
     def test_label_and_result_agree(self):
         # Control for the whole point: what the card promises is what

@@ -127,9 +127,16 @@ like any other record, so two returns racing for it still get one body
 and one refusal, and once the return is verified the payer re-issues it in
 the new body's name (`renew_perpetual`; a flash clone is a new object with
 a new id, and a record left pointing at the dead body would pay for
-exactly one death). A forfeit (Q5) or `@insure/revoke` removes it; nothing
-else does. It may be granted to a dead, archived body: that is how a
-playtester who died uninsured is brought back (grant, then respawn).
+exactly one death). A forfeit (Q5) or `@insure/revoke` removes it; the
+terminal also replaces a dead holder's leftover when a living body of the
+lineage buys, as for any record. Every take and forfeit is a
+compare-and-delete on the row that was read (by pk), so a door holding a
+stale read cannot consume a record re-issued under the same key. It may be
+granted to a dead, archived body: that is how a playtester who died
+uninsured is brought back (grant, then respawn). The grant refuses a
+shelved body (it could never pay) and an older husk whose lineage has a
+living body on file (it would strip that body's cover); the revoke acts
+only through the body that holds the record.
 
 **Storage: one `ServerConfig` row per uid** (`db_key` is unique and 50 chars
 fits), the store the house already moved durable data to. Not a
@@ -331,9 +338,11 @@ generic handler and redirects to the sleeve choice with the same text. The
 web POST reads the source through `respawn_candidate()` like the GET.
 `archive_character` resolves the owner with `world.ownership.owning_account`
 (playable-characters record first, then the live puppet, then a puppet
-lock; unresolved claims skipped), so `last_character` AND the tombstone are
-written at a death the player was offline for; the web archive view's
-manual `last_character` write is gone. `CharacterArchiveView` refuses an
+lock; unresolved claims skipped) unless the caller passes a verified
+`owner=` (the web shelve passes `request.user`), so `last_character` AND
+the tombstone are written at a death the player was offline for, and the
+corpse stamp resolves the same way; the web archive view's manual
+`last_character` write is gone. `CharacterArchiveView` refuses an
 already-archived body and a dying one, and its message says a shelve is
 not a death. Both template finalizers call `forfeit_policy(dead_body)`,
 buyer-scoped (Q5; a standing record is forfeited too). Players learn

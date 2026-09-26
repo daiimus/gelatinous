@@ -33,8 +33,9 @@ from evennia.utils.test_resources import EvenniaCommandTest
 from commands import charcreate
 from commands.CmdInsure import CmdInsure
 from world.insurance import (NO_POLICY, NOT_A_DEATH, STILL_ON_THE_TABLE,
-                             PolicyRefused, covers, forfeit_policy,
-                             grant_perpetual, policy_for, restore_policy,
+                             PolicyRefused, _row_for, covers, flash_clone_refusal,
+                             forfeit_policy, grant_perpetual, policy_for,
+                             renew_perpetual, restore_policy, revoke_perpetual,
                              take_policy, void_policy)
 
 
@@ -134,6 +135,44 @@ class TheGate(_Gate):
                          "a half-built body was left behind")
         self.assertEqual(len(self.account.characters.all()), before)
 
+    def test_the_record_is_taken_before_the_body_is_built(self):
+        # The one-record-one-body guarantee under two doors rests on the
+        # ORDER: take, then build. Spy on the build and look at the store.
+        self.insure(); self.die()
+        seen = {}
+        real = type(self.account).create_character
+        def spy(*a, **k):
+            seen["record_during_build"] = policy_for(self.old.sleeve_uid)
+            return real(self.account, *a, **k)
+        with mock.patch.object(type(self.account), "create_character", side_effect=spy):
+            self.clone()
+        self.assertIn("record_during_build", seen, "the build never ran")
+        self.assertIsNone(seen["record_during_build"], "the body was built before the take")
+
+    def test_a_door_that_passed_the_check_but_lost_the_race_is_refused(self):
+        # Blind the pre-check: the record is gone, the check says fine.
+        self.die()
+        # (charcreate imports the name inside the function, so the module
+        # attribute is the one place to blind it.)
+        with mock.patch("world.insurance.flash_clone_refusal", return_value=None):
+            with self.assertRaises(PolicyRefused) as cm:
+                self.clone()
+        self.assertEqual(str(cm.exception), NO_POLICY)
+        self.assertEqual(self.bodies_named("Jorge Jackson II"), 0)
+
+    def test_a_stale_read_cannot_take_a_reissued_record(self):
+        # Door X read the row; door Y took it, built, and re-issued the
+        # standing record under the SAME key for the clone. X's delete must
+        # miss: it is a compare-and-delete on the row X read, not the key.
+        grant_perpetual(self.old); self.die()
+        stale_row, stale_rec = _row_for(self.old.sleeve_uid)
+        clone = self.clone()                       # Y: take + build + renew
+        self.assertTrue(covers(clone))
+        with mock.patch("world.insurance._row_for", return_value=(stale_row, stale_rec)):
+            self.assertIsNone(take_policy(self.old.sleeve_uid, self.old.id))
+            self.assertFalse(forfeit_policy(self.old))
+        self.assertTrue(covers(clone), "a stale door consumed the clone's standing record")
+
     def test_a_standing_record_follows_the_person_into_the_clone(self):
         grant_perpetual(self.old); self.die()
         clone = self.clone()
@@ -163,6 +202,19 @@ class TheTelnetDoor(_Gate):
         c = self._caller()
         self.assertEqual(charcreate._respawn_process_choice(c, "4"),
                          "respawn_flash_clone")
+
+    def test_the_doors_ignore_the_script_at_a_live_death(self):
+        # At a live death the menu's first render happens while the
+        # death_progression script is still attached; the card must show
+        # and [4] must route. Only the gate inside create_flash_clone waits.
+        self.insure(); self.die()
+        create_script("evennia.scripts.scripts.DefaultScript",
+                      key="death_progression", obj=self.old, autostart=False)
+        self.assertIsNone(flash_clone_refusal(self.old))
+        c = self._caller()
+        text, _ = charcreate.respawn_welcome(c, "")
+        self.assertIn("[4]", text)
+        self.assertEqual(charcreate._respawn_process_choice(c, "4"), "respawn_flash_clone")
 
     def test_the_nodes_own_refusal_keeps_the_menu_open(self):
         # The web door and the telnet menu can both reach the function; if
@@ -247,6 +299,9 @@ class TheWebDoor(_Gate):
         html = self.client.get(reverse('character-create')).content.decode()
         self.assertIn('id="flash_clone"', html)
         self.assertNotIn(NO_POLICY, html)
+        # The REAL template names who you become, not who you lost (#3364).
+        self.assertIn("Jorge Jackson II", html)
+        self.assertNotIn("Jorge Jackson I<", html)
 
     def test_the_post_is_told_why(self):
         self.die()
@@ -318,6 +373,27 @@ class TheStaffVerb(_Gate):
         out = self.call(CmdInsure(), "/revoke Jorge Jackson I", caller=self.char1) or ""
         self.assertIn("revoked", out)
         self.assertFalse(covers(self.old))
+
+    def test_a_shelved_body_cannot_be_granted(self):
+        self.old.archive_character(reason="manual")
+        out = self.call(CmdInsure(), "Jorge Jackson I", caller=self.char1) or ""
+        self.assertIn("shelved", out)
+        self.assertFalse(covers(self.old))
+
+    def test_an_old_husk_cannot_take_the_living_clones_cover(self):
+        grant_perpetual(self.old); self.die()
+        clone = self.clone()                       # the record is the clone's now
+        ok, msg = grant_perpetual(self.old, granted_by=self.char1)
+        self.assertFalse(ok, msg)
+        self.assertIn(clone.key, msg)
+        self.assertTrue(covers(clone), "the grant stripped the living body's cover")
+        ok, msg = revoke_perpetual(self.old)
+        self.assertFalse(ok, msg)
+        self.assertIn(clone.key, msg)
+        self.assertTrue(covers(clone), "the revoke through the husk took the living body's cover")
+        ok, _ = revoke_perpetual(clone)
+        self.assertTrue(ok)
+        self.assertFalse(covers(clone))
 
     def test_a_granted_dead_body_can_be_cloned_back(self):
         # The playtest use: died uninsured, staff grants, the player respawns.

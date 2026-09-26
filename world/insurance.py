@@ -22,7 +22,12 @@ get one body and one refusal, and once the return is verified the caller
 re-issues it in the NEW body's name (`renew_perpetual`): a flash clone is
 a new object with a new id, and a record left pointing at the dead body
 would pay for exactly one death. A forfeit (Q5) or a staff revoke removes
-it; nothing else does.
+it; the terminal also replaces a dead holder's leftover when a living body
+of the lineage buys (`buy_policy`), as for any record.
+
+Every take and forfeit is a compare-and-delete on the ROW that was read
+(by pk), never a delete by key: a re-issued standing record lives under the
+same key, and a door holding a stale read must not consume it.
 
 The doors ask one question, `flash_clone_refusal`, and the gate inside
 `create_flash_clone` asks the same one plus "is the body still on the
@@ -60,14 +65,31 @@ def key_for(uid: str) -> str:
 
 def policy_for(uid: Optional[str]) -> Optional[dict]:
     """The record on file for *uid*, or None."""
+    return _row_for(uid)[1]
+
+
+def _row_for(uid: Optional[str]) -> tuple[Any, Optional[dict]]:
+    """The store row and its record for *uid*, or ``(None, None)``. The
+    row's pk is what a take deletes by."""
     if not uid:
-        return None
+        return None, None
     from collections.abc import Mapping
     from evennia.server.models import ServerConfig
+    row = ServerConfig.objects.filter(db_key=key_for(uid)).first()
+    if row is None:
+        return None, None
     # A pickled dict comes back as Evennia's _SaverDict, a Mapping that is
     # NOT a dict subclass; an isinstance(dict) test read every row as empty.
-    stored = ServerConfig.objects.conf(key_for(uid), default=None)
-    return dict(stored) if isinstance(stored, Mapping) else None
+    stored = row.value
+    return row, (dict(stored) if isinstance(stored, Mapping) else None)
+
+
+def _delete_row(row: Any) -> bool:
+    """Compare-and-delete: the one row that was read, by pk. False when it
+    was already taken (or replaced) by another door."""
+    from evennia.server.models import ServerConfig
+    deleted, _ = ServerConfig.objects.filter(pk=row.pk).delete()
+    return deleted == 1
 
 
 def covers(char: Any) -> bool:
@@ -154,17 +176,17 @@ def buy_policy(char: Any, terminal: Any = None) -> tuple[bool, str]:
 
 def take_policy(uid: Optional[str], body_id: Optional[int]) -> Optional[dict]:
     """Spend the policy for *uid*, but only if *body_id* bought it. Atomic:
-    the DELETE returns 1 exactly once, so two returns racing for one
-    record get one body and one clean refusal. Returns the record taken,
-    or None. The caller restores it with :func:`restore_policy` if the
-    build that follows fails, and re-issues a perpetual one with
-    :func:`renew_perpetual` once the return is verified."""
-    rec = policy_for(uid)
+    the DELETE of the row that was read returns 1 exactly once, so two
+    returns racing for one record get one body and one clean refusal, and
+    a stale read can never consume a record re-issued under the same key.
+    Returns the record taken, or None. The caller restores it with
+    :func:`restore_policy` if the build that follows fails, and re-issues
+    a perpetual one with :func:`renew_perpetual` once the return is
+    verified."""
+    row, rec = _row_for(uid)
     if not rec or rec.get("buyer_dbref") != body_id:
         return None
-    from evennia.server.models import ServerConfig
-    deleted, _ = ServerConfig.objects.filter(db_key=key_for(uid)).delete()
-    return rec if deleted == 1 else None
+    return rec if _delete_row(row) else None
 
 
 def restore_policy(record: dict) -> bool:
@@ -220,11 +242,10 @@ def forfeit_policy(dead_body: Any) -> bool:
     body's OWN record goes, standing or not, so no orphaned row can revive
     an abandoned self later. A record another body of the lineage holds
     is left alone. Returns whether a record was removed."""
-    uid = sleeve_uid_of(dead_body)
-    rec = policy_for(uid)
+    row, rec = _row_for(sleeve_uid_of(dead_body))
     if not rec or rec.get("buyer_dbref") != getattr(dead_body, "id", None):
         return False
-    return void_policy(uid)
+    return _delete_row(row)
 
 
 def flash_clone_refusal(old_body: Any) -> Optional[str]:
@@ -246,13 +267,30 @@ def flash_clone_refusal(old_body: Any) -> Optional[str]:
 def grant_perpetual(char: Any, granted_by: Any = None) -> tuple[bool, str]:
     """Staff: a standing policy for *char*, in this body's name, that a
     return re-issues instead of spending (owner ruling 2026-09-25: play
-    testing, staff). Replaces whatever record the lineage held. A dead,
-    archived body may be granted one: that is how staff bring back a
-    playtester who died uninsured. Refuses a body with no sleeve
-    signature, since nothing could ever match it."""
+    testing, staff). Replaces the lineage's record when its holder is dead
+    or out of service. A dead, archived body may be granted one: that is
+    how staff bring back a playtester who died uninsured. Refused: a body
+    with no sleeve signature (nothing could ever match it); a SHELVED body
+    (a policy pays for a death only, so the grant could never pay); and an
+    older husk whose lineage has a living body on file (the grant would
+    strip that body's cover for a record no door can ever redeem)."""
     uid = sleeve_uid_of(char)
     if not uid:
         return False, "That body has no sleeve signature to insure."
+    try:
+        shelved = char.is_archived and char.db.archived_reason != "death"
+    except AttributeError:
+        shelved = False
+    if shelved:
+        return False, (f"{char.key} was shelved, not killed; no policy can bring a "
+                       f"shelved sleeve back. Grant it on the body in service.")
+    existing = policy_for(uid)
+    if existing and existing.get("buyer_dbref") != char.id:
+        holder = _body(existing.get("buyer_dbref"))
+        if holder is not None and _alive_and_in_service(holder):
+            return False, (f"That signature's policy is held by {holder.key} "
+                           f"(#{holder.id}), who is alive and in service; "
+                           f"grant it there.")
     void_policy(uid)
     record = {
         "uid": uid,
@@ -270,16 +308,22 @@ def grant_perpetual(char: Any, granted_by: Any = None) -> tuple[bool, str]:
 
 
 def revoke_perpetual(char: Any) -> tuple[bool, str]:
-    """Staff: take a standing policy away. Leaves an ordinary policy alone
-    (that is the player's own purchase, not staff's to remove here)."""
+    """Staff: take a standing policy away, from the body that holds it.
+    Leaves an ordinary policy alone (that is the player's own purchase,
+    not staff's to remove here), and refuses to act through an older husk
+    of the lineage, so the message always names the body that lost it."""
     uid = sleeve_uid_of(char)
-    rec = policy_for(uid)
+    row, rec = _row_for(uid)
     if not rec:
         return False, f"{char.key} holds no sleeve policy."
+    if rec.get("buyer_dbref") != char.id:
+        holder = _body(rec.get("buyer_dbref"))
+        who = f"{holder.key} (#{holder.id})" if holder is not None else f"body #{rec.get('buyer_dbref')}"
+        return False, f"That signature's policy is held by {who}; revoke it there."
     if not rec.get("perpetual"):
         return False, (f"{char.key}'s policy is an ordinary purchase, not a "
                        f"standing one; it is spent by a return, not revoked.")
-    void_policy(uid)
+    _delete_row(row)
     return True, f"{char.key}'s standing sleeve policy is revoked."
 
 
