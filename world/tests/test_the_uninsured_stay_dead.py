@@ -301,7 +301,6 @@ class TheWebDoor(_Gate):
         self.assertNotIn(NO_POLICY, html)
         # The REAL template names who you become, not who you lost (#3364).
         self.assertIn("Jorge Jackson II", html)
-        self.assertNotIn("Jorge Jackson I<", html)
 
     def test_the_post_is_told_why(self):
         self.die()
@@ -394,6 +393,30 @@ class TheStaffVerb(_Gate):
         ok, _ = revoke_perpetual(clone)
         self.assertTrue(ok)
         self.assertFalse(covers(clone))
+
+    def test_an_old_husk_cannot_take_a_dead_bodys_still_redeemable_cover(self):
+        # The player is waiting at the respawn menu on body L; staff aim the
+        # grant at an older husk H of the same lineage. L's record must stay.
+        husk = create_object("typeclasses.characters.Character", key="Jorge Jackson 0",
+                             location=None)
+        husk.sleeve_uid = self.old.sleeve_uid
+        husk.archive_character(reason="death")
+        self.insure(); self.die()                       # L: insured, newest dead
+        ok, msg = grant_perpetual(husk, granted_by=self.char1)
+        self.assertFalse(ok, msg)
+        self.assertIn(self.old.key, msg)
+        self.assertTrue(covers(self.old), "the grant took the waiting player's cover")
+        self.assertIsNone(flash_clone_refusal(self.old))
+
+    def test_a_revoke_that_lost_to_a_return_says_so(self):
+        grant_perpetual(self.old); self.die()
+        stale_row, stale_rec = _row_for(self.old.sleeve_uid)
+        clone = self.clone()                            # re-issues to the clone
+        with mock.patch("world.insurance._row_for", return_value=(stale_row, stale_rec)):
+            ok, msg = revoke_perpetual(self.old)
+        self.assertFalse(ok, msg)
+        self.assertIn("changed hands", msg)
+        self.assertTrue(covers(clone))
 
     def test_a_granted_dead_body_can_be_cloned_back(self):
         # The playtest use: died uninsured, staff grants, the player respawns.

@@ -97,6 +97,9 @@ class TheArchivedKeeper(_Shift):
         self.assertIsNotNone(rec, "the standing record was spent")
         self.assertTrue(rec["perpetual"])
         self.assertEqual(rec["buyer_dbref"], self.marta.id)
+        # She keeps her id on this path, so the re-issue is what proves the
+        # take happened: a fresh row, not the one that was on file.
+        self.assertIn("renewed_at", rec, "the record was never taken and re-issued")
 
     def test_without_a_policy_the_shift_is_a_successors(self):
         slot = self.dies_archived()

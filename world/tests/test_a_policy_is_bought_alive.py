@@ -225,9 +225,12 @@ class TakeAndRestore(_Lobby):
         self.assertFalse(covers(self.buyer))
 
     def test_a_row_that_vanished_between_the_read_and_the_delete_is_not_taken(self):
-        # The race guard: the read saw a record, the DELETE found nothing.
-        rec = self.record_for(self.buyer)
-        with mock.patch("world.insurance.policy_for", return_value=rec):
+        # The race guard: the read saw a row, the DELETE of that row found
+        # nothing (another door took it first).
+        buy_policy(self.buyer, self.terminal)
+        row, rec = insurance._row_for(self.buyer.sleeve_uid)
+        void_policy(self.buyer.sleeve_uid)                  # the other door
+        with mock.patch("world.insurance._row_for", return_value=(row, rec)):
             self.assertIsNone(take_policy(self.buyer.sleeve_uid, self.buyer.id))
 
     def test_a_failed_return_puts_it_back(self):

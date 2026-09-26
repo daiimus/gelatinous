@@ -134,9 +134,11 @@ compare-and-delete on the row that was read (by pk), so a door holding a
 stale read cannot consume a record re-issued under the same key. It may be
 granted to a dead, archived body: that is how a playtester who died
 uninsured is brought back (grant, then respawn). The grant refuses a
-shelved body (it could never pay) and an older husk whose lineage has a
-living body on file (it would strip that body's cover); the revoke acts
-only through the body that holds the record.
+shelved body (it could never pay) and an older husk whose lineage's record
+is held by a body that is alive, dying, or dead and still redeemable (it
+would strip that body's cover for a record the doors can never reach); the
+revoke acts only through the body that holds the record and reports a
+record that changed hands in between.
 
 **Storage: one `ServerConfig` row per uid** (`db_key` is unique and 50 chars
 fits), the store the house already moved durable data to. Not a
@@ -341,8 +343,8 @@ web POST reads the source through `respawn_candidate()` like the GET.
 lock; unresolved claims skipped) unless the caller passes a verified
 `owner=` (the web shelve passes `request.user`), so `last_character` AND
 the tombstone are written at a death the player was offline for, and the
-corpse stamp resolves the same way; the web archive view's manual
-`last_character` write is gone. `CharacterArchiveView` refuses an
+corpse stamp falls back the same way when no puppet was captured; the web
+archive view's manual `last_character` write is gone. `CharacterArchiveView` refuses an
 already-archived body and a dying one, and its message says a shelve is
 not a death. Both template finalizers call `forfeit_policy(dead_body)`,
 buyer-scoped (Q5; a standing record is forfeited too). Players learn

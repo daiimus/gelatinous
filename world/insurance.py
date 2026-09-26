@@ -134,7 +134,7 @@ def buy_policy(char: Any, terminal: Any = None) -> tuple[bool, str]:
     if why_not:
         return False, why_not
 
-    existing = policy_for(uid)
+    row, existing = _row_for(uid)
     if existing:
         if existing.get("buyer_dbref") == char.id:
             if existing.get("perpetual"):
@@ -144,7 +144,7 @@ def buy_policy(char: Any, terminal: Any = None) -> tuple[bool, str]:
         if holder is not None and _alive_and_in_service(holder):
             return False, ("The reader flags your signature: a policy is "
                            "on file for another sleeve.")
-        void_policy(uid)                    # an older body's leftover
+        _delete_row(row)                    # an older body's leftover, the row read
 
     if POLICY_PRICE > 0:
         have = int(getattr(char, "tokens", 0) or 0)
@@ -267,13 +267,15 @@ def flash_clone_refusal(old_body: Any) -> Optional[str]:
 def grant_perpetual(char: Any, granted_by: Any = None) -> tuple[bool, str]:
     """Staff: a standing policy for *char*, in this body's name, that a
     return re-issues instead of spending (owner ruling 2026-09-25: play
-    testing, staff). Replaces the lineage's record when its holder is dead
-    or out of service. A dead, archived body may be granted one: that is
-    how staff bring back a playtester who died uninsured. Refused: a body
-    with no sleeve signature (nothing could ever match it); a SHELVED body
-    (a policy pays for a death only, so the grant could never pay); and an
-    older husk whose lineage has a living body on file (the grant would
-    strip that body's cover for a record no door can ever redeem)."""
+    testing, staff). Replaces the lineage's record when its holder can no
+    longer use it. A dead, archived body may be granted one: that is how
+    staff bring back a playtester who died uninsured. Refused: a body with
+    no sleeve signature (nothing could ever match it); a SHELVED body (a
+    policy pays for a death only, so the grant could never pay); and an
+    older husk whose lineage's record is held by a body that is alive, dying,
+    or dead and still able to redeem it (the grant would strip that body's
+    cover for a record no door can ever reach, since the doors only ever
+    offer the newest dead body)."""
     uid = sleeve_uid_of(char)
     if not uid:
         return False, "That body has no sleeve signature to insure."
@@ -284,14 +286,15 @@ def grant_perpetual(char: Any, granted_by: Any = None) -> tuple[bool, str]:
     if shelved:
         return False, (f"{char.key} was shelved, not killed; no policy can bring a "
                        f"shelved sleeve back. Grant it on the body in service.")
-    existing = policy_for(uid)
+    row, existing = _row_for(uid)
     if existing and existing.get("buyer_dbref") != char.id:
         holder = _body(existing.get("buyer_dbref"))
-        if holder is not None and _alive_and_in_service(holder):
+        if holder is not None and _holder_still_counts(holder):
             return False, (f"That signature's policy is held by {holder.key} "
-                           f"(#{holder.id}), who is alive and in service; "
+                           f"(#{holder.id}), whose return it still pays for; "
                            f"grant it there.")
-    void_policy(uid)
+    if row is not None:
+        _delete_row(row)
     record = {
         "uid": uid,
         "bought_at": time.time(),
@@ -323,7 +326,9 @@ def revoke_perpetual(char: Any) -> tuple[bool, str]:
     if not rec.get("perpetual"):
         return False, (f"{char.key}'s policy is an ordinary purchase, not a "
                        f"standing one; it is spent by a return, not revoked.")
-    _delete_row(row)
+    if not _delete_row(row):
+        return False, (f"{char.key}'s policy changed hands as you spoke (a return "
+                       f"re-issued it); read @insure/status and try again.")
     return True, f"{char.key}'s standing sleeve policy is revoked."
 
 
@@ -369,3 +374,21 @@ def _alive_and_in_service(body: Any) -> bool:
         return not body.is_dead() and not body.is_archived
     except AttributeError:
         return False
+
+
+def _holder_still_counts(holder: Any) -> bool:
+    """Can the body holding a record still use it: alive and in service,
+    dying (the death path will archive it as a death), or dead-archived
+    and able to redeem at the doors. Only a shelved body or a superseded
+    husk fails this, and only their record may be replaced through another
+    body of the lineage."""
+    if _alive_and_in_service(holder):
+        return True
+    try:
+        if holder.scripts.get("death_progression"):
+            return True
+        if holder.db.death_processed and not holder.is_archived:
+            return True
+    except AttributeError:
+        return False
+    return flash_clone_refusal(holder) is None
