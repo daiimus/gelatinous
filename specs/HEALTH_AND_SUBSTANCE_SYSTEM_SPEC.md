@@ -761,7 +761,8 @@ organ key on existing characters.)
 
 `MedicalState.is_dead()` (see the corrected listing below) treats
 `neck_integrity <= 0.0` as a death condition, alongside `blood_pumping`,
-`breathing`, and `digestion`. A destroyed cervical spine drives
+`breathing`, `digestion` and `brain_integrity` (#3248) — one loop over
+`LETHAL_CAPACITY_NAMES` since #3677. A destroyed cervical spine drives
 `neck_integrity` to 0.0 and reads as a clean decapitation death without
 perturbing the lungs' contribution math.
 

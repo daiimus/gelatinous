@@ -10,6 +10,7 @@ Behaviour pins: each lethal capacity at zero is a death on its own, a
 full body is alive, and `consciousness` at its floor is not a death.
 """
 import inspect
+import re
 
 from django.test import TestCase
 
@@ -34,11 +35,13 @@ class TheThreeListsAgree(TestCase):
             self.assertEqual(_flagged_fatal(species), set(LETHAL_CAPACITY_NAMES), species)
 
     def test_the_death_check_reads_the_tuple_not_a_hand_list(self):
+        # No quoted capacity name at all, not just none of today's five:
+        # the drift #3677 describes is a NEW name hand-coded here and left
+        # out of the tuple, and that name is by definition not in the tuple.
         src = inspect.getsource(MedicalState._compute_is_dead)
         self.assertIn("for capacity in LETHAL_CAPACITY_NAMES", src)
-        for name in LETHAL_CAPACITY_NAMES:
-            self.assertNotIn(f'calculate_body_capacity("{name}")', src,
-                             f"{name} is still spelled out by hand in the death check")
+        spelled = re.findall(r"""calculate_body_capacity\(\s*['"]([a-z_]+)['"]""", src)
+        self.assertEqual(spelled, [], f"capacities spelled out by hand in the death check: {spelled}")
 
     def test_consciousness_is_not_in_the_set(self):
         self.assertNotIn("consciousness", LETHAL_CAPACITY_NAMES)

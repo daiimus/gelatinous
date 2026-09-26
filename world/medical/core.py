@@ -614,7 +614,7 @@ class MedicalState:
         The contract stated twice in this file — "invalidated by the
         `blood_level` / `Organ.current_hp` setters and by condition
         add/remove, every input that can flip the verdict" — was wrong
-        about "every". `_compute_is_dead` reads five CAPACITIES, and a
+        about "every". `_compute_is_dead` reads every LETHAL capacity, and a
         capacity is computed from the organs present, so seating one
         changes the verdict without touching any tracked input.
 
@@ -986,7 +986,7 @@ class MedicalState:
     def is_dead(self):
         """Return the (cached) death verdict.
 
-        The full computation walks five body capacities (organ +
+        The full computation walks the lethal body capacities (organ +
         condition sweeps), and ``Character.msg`` consults this on
         every message — so the verdict is cached and recomputed only
         after a mutation invalidates it (issue #462).  Invalidation
@@ -1009,8 +1009,11 @@ class MedicalState:
            / ``digestion`` / ``neck_integrity`` / ``brain_integrity``)
            hits zero.  One tuple drives the vital-location targeting
            bias AND this check, and the species schema flags the same
-           capacities ``directly_fatal`` (pinned by test; #3677), so a
-           new lethal capacity is one table entry and one tuple entry.
+           capacities ``directly_fatal`` (pinned by test; #3677).  A new
+           lethal capacity is a table entry and a tuple entry here, plus
+           its NAME in :meth:`Character.get_death_cause` and
+           :meth:`Character.debug_death_analysis`, which name deaths by
+           organ and are hand-written on purpose.
            ``consciousness`` is NOT a death gate and never will be
            (owner, 2026-09-26) — it is the awake axis, see
            :meth:`is_unconscious`.
