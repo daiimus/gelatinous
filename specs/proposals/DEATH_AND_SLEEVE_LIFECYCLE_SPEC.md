@@ -85,8 +85,9 @@ reason about it.
 > [#3248](https://github.com/daiimus/gelatinous/issues/3248).
 >
 > **Closed 2026-09-26 (#3248, "Death with a window"):** a destroyed brain
-> is now a death via `brain_integrity`; only a brain installed inside the
-> window revives it. What remains of "handed back whole" is #3253.
+> is now a death via `brain_integrity`; getting the brain back inside the
+> window revives it — a brain install, or today an in-place organ repair
+> (surgical sealant), which is what #3253 is about.
 
 Animation: [`DEATH_CURTAIN_SPEC`](../DEATH_CURTAIN_SPEC.md)
 (`curtain_of_death.py`). On completion it calls `start_death_progression()`,
@@ -432,7 +433,7 @@ Destroying each organ flagged `vital`, alone, after a vital-signs tick:
 |---|---|---|
 | `heart` | dead | yes |
 | `cervical_spine` | dead | yes |
-| `brain` | **indefinite limbo — see §10.4** | **no, inverts it** |
+| `brain` | **dead — a death with a window (#3248, 2026-09-26)** | yes, revivable only by getting the brain back |
 | `liver` | survives, fully conscious | no |
 | `pelvis` | survives, fully conscious | no |
 
@@ -449,9 +450,10 @@ uniformity across whatever carries the flag.
 
 > **#3248 built `brain_integrity` on 2026-09-26** (owner ruling "Death with
 > a window"): a destroyed brain is a death that starts the progression, and
-> only a brain replacement inside the window revives it. The "revivable but
-> unlikely" state below now exists for the brain. The rows and the
-> reasoning are kept as the record of why.
+> only getting the brain back inside the window revives it (an install, or
+> today an in-place organ repair — #3253). The "revivable but unlikely"
+> state below now exists for the brain. The rows and the reasoning are kept
+> as the record of why.
 
 The "revivable but unlikely" state the design describes **does not currently
 exist for any organ**. Every lethal organ is instant death; every non-lethal

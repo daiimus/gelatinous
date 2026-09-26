@@ -24,6 +24,16 @@ from .clock import elapsed_game_minutes
 from .clock import now as clock_now
 
 
+def _invalidate_verdict(character) -> None:
+    """A severity change is a death-verdict input (#2504; #3248 review): a
+    severity-10 infection zeroes its location's organ function, and the
+    cached death verdict must not outlive the tick that got there."""
+    state = getattr(character, "medical_state", None)
+    invalidate = getattr(state, "_invalidate_derived_state", None)
+    if callable(invalidate):
+        invalidate()
+
+
 def hazard_fires(p_per_minute: float, elapsed_minutes: float) -> bool:
     """Sample a per-minute hazard over an elapsed window (spec §4.4).
 
@@ -471,12 +481,14 @@ class InfectionCondition(MedicalCondition):
                 heal_hazard *= max(BLOOD_FILTRATION_HEAL_FLOOR, filtration)
             if hazard_fires(heal_hazard, elapsed_minutes):
                 self.severity = max(0, self.severity - 1)
+                _invalidate_verdict(character)
         else:
             worsen_hazard = INFECTION_WORSEN_HAZARD_PER_MINUTE * self.environmental_modifier
             if filtration is not None:
                 worsen_hazard *= 1.0 + BLOOD_FILTRATION_WORSEN_SLOPE * (1.0 - filtration)
             if hazard_fires(worsen_hazard, elapsed_minutes):
                 self.severity = min(10, self.severity + 1)  # Cap at 10
+                _invalidate_verdict(character)
                 splattercast.msg(f"INFECTION_WORSEN: {character.key} infection severity increased to {self.severity} (env modifier: {self.environmental_modifier}x, filtration: {filtration})")
     
     def set_environmental_modifier(self, modifier):

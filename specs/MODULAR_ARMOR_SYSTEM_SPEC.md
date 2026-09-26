@@ -298,8 +298,9 @@ The system separates **ability to hit** from **target selection wisdom**:
 
 > **Vital area derivation (#251)**: the set of vital body locations is computed
 > dynamically by `_get_vital_locations` from the lethal body capacities
-> (`LETHAL_CAPACITY_NAMES` in `world/medical/constants.py` — the capacities
-> `is_dead()` enforces plus `consciousness`). Each lethal capacity's organs are
+> (`LETHAL_CAPACITY_NAMES` in `world/medical/constants.py` — exactly the
+> capacities `is_dead()` enforces; since #3248 the head is vital through
+> `brain_integrity`, not `consciousness`). Each lethal capacity's organs are
 > mapped to their `container`, yielding `{head, chest, neck, abdomen}` for the
 > stock anatomy. It is data-driven, not a hardcoded literal, so anatomy changes
 > propagate automatically. See `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` §

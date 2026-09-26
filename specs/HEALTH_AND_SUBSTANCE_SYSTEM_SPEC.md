@@ -429,7 +429,7 @@ class DeathProgressionScript(DefaultScript):
 
 **Integration Features:**
 - **Medical system compatibility** - Automatic revival if fatal conditions resolved
-- **✅ Brain death mechanics** - *Built 2026-09-26 (#3248, owner ruling "Death with a window"):* a destroyed brain zeroes the structural `brain_integrity` capacity and the body is dead on the blow, starting the progression; a brain installed inside the window restores the capacity and `_check_medical_revival_conditions` (exactly `not is_dead()`) revives it. So "cannot be revived" is superseded by "revived only by a brain replacement". `consciousness` stays the awake axis and never gates death ("Conscious capacity 0 should not be death", same day). A body dead of something else with a destroyed brain is still revivable by treating that something else — whether it should be is the Phase 2 question, unruled.
+- **✅ Brain death mechanics** - *Built 2026-09-26 (#3248, owner ruling "Death with a window"):* a destroyed brain zeroes the structural `brain_integrity` capacity and the body is dead on the blow, starting the progression; restoring the brain inside the window — a brain install, or today an in-place organ repair (surgical sealant's `organ_repair` heals a 0-HP organ; #3253 tracks whether destroyed organs should be repairable at all) — restores the capacity and `_check_medical_revival_conditions` (exactly `not is_dead()`) revives it. So "cannot be revived" is superseded by "revived only by getting the brain back". `consciousness` stays the awake axis and never gates death ("Conscious capacity 0 should not be death", same day). Because `brain_integrity` is checked on its own line, a body dead of anything with a destroyed brain stays dead until the brain is restored — Phase 2's stated goal, met.
 - **🎯 Consciousness threshold** - Revival eligibility tied to brain organ health and consciousness capacity — *intended shape, NOT live; nothing on the revival path reads brain HP or the `consciousness` capacity.*
 - **🎯 Progressive brain damage** - Brain deterioration during death progression affects revival chances over time — *intended shape, NOT live; `typeclasses/death_progression.py` mutates no organ HP during the window — it sends progression messages and re-checks `is_dead()`. The post-death deterioration idea is the 🎯 "Progressive organ failure system" bullet under Phase 3.1 below.*
 - **Observer messaging** - Room occupants see progression indicators
@@ -442,7 +442,7 @@ class DeathProgressionScript(DefaultScript):
 - **✅ Medical system integration** - Automatic revival when fatal conditions resolved
 - **✅ Death progression messaging** - Complete narrative experience with observer integration
 - **Future enhancement potential** - Brain death mechanics could be added but current system is sufficient
-  - *Settled 2026-09-26 (#3248).* Brain death is built as `brain_integrity`, the brain's structural capacity (twin of `neck_integrity`), NOT as a consciousness threshold: the owner ruled "Conscious capacity 0 should not be death" and then "Death with a window". The §10.4 hole in `DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md` (a brain-destroyed patient who never dies and is handed back whole) is closed; what remains there is #3253 (a dressing regrows a destroyed organ), which cannot beat the 90 s window.
+  - *Settled 2026-09-26 (#3248).* Brain death is built as `brain_integrity`, the brain's structural capacity (twin of `neck_integrity`), NOT as a consciousness threshold: the owner ruled "Conscious capacity 0 should not be death" and then "Death with a window". The §10.4 hole in `DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md` (a brain-destroyed patient who never dies and is handed back whole) is closed; what remains is #3253 — in-place repair of a destroyed organ (the dressing tick over ~10 min, and surgical sealant's instant `organ_repair`, which today revives a brain death inside the window without a transplant).
 
 **Progression Message Themes:**
 - **Early stages (30-120s)** - Medical shock, surreal sensory experiences, dark humor
@@ -799,8 +799,8 @@ derived dynamically (issue #251), not hardcoded:
 ```python
 # world/medical/constants.py
 LETHAL_CAPACITY_NAMES = (
-    "blood_pumping", "breathing", "digestion", "neck_integrity", "consciousness",
-)
+    "blood_pumping", "breathing", "digestion", "neck_integrity", "brain_integrity",
+)   # exactly what is_dead() enforces; consciousness is the awake axis, never here (#3248)
 ```
 
 `_get_vital_locations` maps each lethal capacity's `organs` to their
@@ -873,17 +873,18 @@ class MedicalState:
     
     def is_dead(self):
         """Multi-factor death determination"""
-        # Death from vital capacity failure. These mirror the lethal members
-        # of LETHAL_CAPACITY_NAMES (consciousness is unconsciousness, not death,
-        # so it is excluded here). See "Spinal Anatomy, Decapitation & Combat
-        # Severance" above.
+        # Death from vital capacity failure. These ARE LETHAL_CAPACITY_NAMES
+        # (consciousness is the awake axis, never a death gate — #3248). See
+        # "Spinal Anatomy, Decapitation & Combat Severance" above.
         if self.calculate_body_capacity("blood_pumping") <= 0.0:  # Heart
             return True
         if self.calculate_body_capacity("breathing") <= 0.0:      # Lungs
             return True
-        if self.calculate_body_capacity("digestion") <= 0.0:      # Liver
+        if self.calculate_body_capacity("digestion") <= 0.0:      # Liver AND stomach
             return True
         if self.calculate_body_capacity("neck_integrity") <= 0.0:  # Decapitation (#243)
+            return True
+        if self.calculate_body_capacity("brain_integrity") <= 0.0:  # Brain death, a death with a window (#3248)
             return True
         # Death from catastrophic blood loss (85%+ loss)
         if self.blood_level <= 15.0:
@@ -1152,10 +1153,11 @@ PAIN_SYSTEM = {
         "unconscious_threshold": "30% consciousness",
         # NOT LIVE -- and note WHICH consciousness value this would read.
         # `is_dead()` deliberately excludes `consciousness` from the
-        # capacities it enforces (world/medical/core.py:_compute_is_dead),
-        # so brain destruction lands as unconsciousness. This section
-        # already says so correctly under "Death vs Unconsciousness vs
-        # Functionality" above: "Consciousness: Flag system, not death".
+        # capacities it enforces (world/medical/core.py:_compute_is_dead);
+        # brain DEATH is the separate structural capacity `brain_integrity`
+        # (#3248). This section already says so correctly under "Death vs
+        # Unconsciousness vs Functionality" above: "Consciousness: Flag
+        # system, not death".
         # Owner, 2026-09-26 (#3248): "Conscious capacity 0 should not be
         # death." The line below is the model's original shape and is
         # NOT live: brain death is the separate structural capacity

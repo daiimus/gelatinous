@@ -512,6 +512,8 @@ class Character(
             breathing = medical_state.calculate_body_capacity("breathing") 
             digestion = medical_state.calculate_body_capacity("digestion")
             consciousness = medical_state.calculate_body_capacity("consciousness")
+            brain = medical_state.calculate_body_capacity("brain_integrity")
+            neck = medical_state.calculate_body_capacity("neck_integrity")
             
             # Check blood level
             blood_level = medical_state.blood_level
@@ -523,6 +525,8 @@ class Character(
                 f"Blood Pumping Capacity: {blood_pumping:.1%} {'FATAL' if blood_pumping <= 0 else 'OK'}",
                 f"Breathing Capacity: {breathing:.1%} {'FATAL' if breathing <= 0 else 'OK'}",
                 f"Digestion Capacity: {digestion:.1%} {'FATAL' if digestion <= 0 else 'OK'}",
+                f"Brain Integrity: {brain:.1%} {'FATAL' if brain <= 0 else 'OK'}",
+                f"Neck Integrity: {neck:.1%} {'FATAL' if neck <= 0 else 'OK'}",
                 f"Consciousness: {consciousness:.1%} {'UNCONSCIOUS' if consciousness < 0.3 else 'CONSCIOUS'}",
                 f"Blood Level: {blood_level:.1f}% {'FATAL BLOOD LOSS' if blood_loss_fatal else 'OK'}",
                 f"Pain Level: {medical_state.pain_level:.1f}",
@@ -538,6 +542,10 @@ class Character(
                     causes.append("RESPIRATORY FAILURE") 
                 if digestion <= 0:
                     causes.append("LIVER FAILURE")
+                if brain <= 0:
+                    causes.append("BRAIN DEATH")
+                if neck <= 0:
+                    causes.append("BROKEN NECK")
                 if blood_loss_fatal:
                     causes.append("BLOOD LOSS")
                 
@@ -660,18 +668,29 @@ class Character(
             neck = medical_state.calculate_body_capacity("neck_integrity")
             blood_level = medical_state.blood_level
             blood_loss_fatal = blood_level <= (100.0 - BLOOD_LOSS_DEATH_THRESHOLD)
+            spine = medical_state.get_organ("cervical_spine")
+            severed = spine is not None and (
+                getattr(spine, "wound_stage", None) == "severed"
+                or bool(self.db.decapitation_pending))
+            spine_broken = spine is not None and spine.current_hp <= 0
             
             # Return first fatal condition found (in priority order). Every
-            # structural death has its own name: "brain" and "neck" are
-            # keywords the death-curtain prose already knows how to render.
+            # structural death has its own name, and the name follows the
+            # ORGAN, not just the capacity: a decapitation zeroes the brain
+            # too (the head cluster goes with the head), and a severity-10
+            # infection zeroes a spine's function without breaking it.
             if blood_loss_fatal:
                 cause = "blood loss"
             elif blood_pumping <= 0:
                 cause = "heart failure"
+            elif neck <= 0 and severed:
+                cause = "decapitation"
+            elif neck <= 0 and spine_broken:
+                cause = "a broken neck"
             elif brain <= 0:
                 cause = "brain death"
             elif neck <= 0:
-                cause = "a broken neck"
+                cause = "organ failure"          # a septic spine, not a fracture
             elif breathing <= 0:
                 cause = "respiratory failure"
             elif digestion <= 0:

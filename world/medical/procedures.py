@@ -556,8 +556,13 @@ def interrupt_procedure(target, reason: str = "interrupted") -> Optional[dict]:
 
     # Mark a running chart step as failed-with-interrupted outcome
     # so the surgeon sees the abort reason on re-entry to ``operate``.
+    # Only when something WAS in flight: a resolver that itself kills the
+    # patient (a living brain harvest) has already cleared the record and
+    # its step is about to be advanced by the popped hook, and marking it
+    # failed here recorded a successful harvest as "interrupted: the
+    # patient died" (#3248 review).
     target_db = getattr(target, "db", None)
-    if target_db is not None:
+    if record is not None and target_db is not None:
         chart = getattr(target_db, "medical_chart", None)
         if chart:
             chart = dict(chart)
@@ -575,6 +580,22 @@ def interrupt_procedure(target, reason: str = "interrupted") -> Optional[dict]:
                 target_db.medical_chart = chart
 
     return record
+
+
+def _patient_is_gone(target) -> bool:
+    """Deleted, archived, or dead with the progression over: no procedure
+    may resolve onto this body any more. A dying body (death_processed
+    with its progression still running) is NOT gone — that is the window."""
+    if not getattr(target, "pk", None):
+        return True
+    if getattr(target, "is_archived", False):
+        return True
+    try:
+        if target.db.death_processed and not target.scripts.get("death_progression"):
+            return True
+    except AttributeError:
+        pass
+    return False
 
 
 def _resolve_procedure_callback(target, token=None) -> None:
@@ -630,6 +651,15 @@ def _resolve_procedure_callback(target, token=None) -> None:
     if actor is None:
         # Actor has gone away (logged out, deleted).  Per design (E):
         # leave the patient as-is; the incision stays open and bleeds.
+        return
+
+    # The death window can close while a procedure is in flight (a brain
+    # install started late): the body is then archived (a PC) or gone (an
+    # NPC), and resolving onto it would seat the donor organ in a Limbo
+    # husk and delete it (#3248 review). The progression interrupts the
+    # record at completion; this is the belt for anything that slipped.
+    if _patient_is_gone(target):
+        actor.msg("Your patient is beyond reach; the procedure does not resolve.")
         return
 
     verb = record["verb"]
@@ -1544,13 +1574,12 @@ def _resolve_amputate(actor, target, *, location: str, **_) -> None:
             # Decapitation has its own pipeline.  The limb-severance
             # chain map has no "head" entry, so routing head through
             # ``apply_sever_to_character`` only zeros head-container
-            # organs (brain, eyes) — the cervical_spine sits in
-            # container "neck" and ``is_dead()`` keys off
-            # ``neck_integrity``, so the patient ends up unconscious
-            # but alive.  ``spawn_severed_head_for_living`` uses the
-            # species head-cluster (which includes "neck") so the
-            # spine collapses and ``apply_vital_consequences`` below
-            # triggers death.  Also yields a proper ``SeveredHead``.
+            # organs (brain, eyes) — a brain death since #3248, but with
+            # the head still on and no ``SeveredHead``.
+            # ``spawn_severed_head_for_living`` uses the species
+            # head-cluster (which includes "neck") so the spine collapses
+            # too, ``apply_vital_consequences`` below triggers the death,
+            # and the cause reads as a decapitation.
             from typeclasses.items import spawn_severed_head_for_living
             try:
                 appendage = spawn_severed_head_for_living(

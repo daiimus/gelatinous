@@ -104,7 +104,7 @@ work:
 | Phase | Status | Notes |
 |---|---|---|
 | Phase 1 — Documentation & Architectural Clarification | **✅ Complete** | All four tasks shipped. Task 1: `LETHAL_CAPACITY_NAMES` comment in `world/medical/constants.py` now explicitly documents the union role. Task 2: `MedicalState.is_dead` / `is_unconscious` / `calculate_body_capacity` docstrings spell out the substrate-vs-runtime split and cross-reference the audit's phase numbers. Task 3: HEALTH spec's brain-death `# NEXT:` pseudo-code now explicitly points at audit Phase 2 instead of reading as an open design note. Task 4: `specs/roadmaps/MEDICAL_SUBSTRATE_READINESS.md` index lists every unconsumed flag with its intended consumer system and audit phase. |
-| Phase 2 — Brain Death Blocks Revival | Largely moot since 2026-09-26 (#3248 built `brain_integrity`) | `_check_medical_revival_conditions` still gates only on `is_dead()`, and now a brain-destroyed body stays `is_dead()` until a brain is installed, so revival without a transplant is refused without Phase 2. The residual case — a body dead of something ELSE with a destroyed brain, revived by treating that something else — is unruled. |
+| Phase 2 — Brain Death Blocks Revival | **Met by #3248 (2026-09-26)** without new revival code | `_check_medical_revival_conditions` still gates only on `is_dead()`, and `brain_integrity` is checked on its own line, so a body dead of ANYTHING with a destroyed brain stays `is_dead()` until the brain is restored — the goal stated below ("cannot revive even if other lethal capacities are repaired") holds. What restores it today: a brain install, or in-place organ repair (surgical sealant) — see #3253. |
 | Phase 3 — Failure-Mode Surfacing | Not started | Empty-distribution / unbacked-container warnings not wired. |
 | Phase 4 — Vestigial-Flag Deletion | Not started | All flags listed under "Vestigial (delete)" still present. |
 | Phase 5 — `LETHAL_CAPACITY_NAMES` Split | Not started | Split into `IS_DEAD_LETHAL_CAPACITIES` + `TARGETING_VITAL_CAPACITIES` not done. |
@@ -228,7 +228,7 @@ the form of declarative metadata**.
 
 | Item | Current Code | Spec Intent | Verdict |
 |---|---|---|---|
-| `is_dead()` checks `blood_pumping`, `breathing`, `digestion`, `neck_integrity`, blood loss | Yes | Yes (`HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` L731–746) | **Correct** |
+| `is_dead()` checks `blood_pumping`, `breathing`, `digestion`, `neck_integrity`, `brain_integrity`, blood loss | Yes (brain since #3248, 2026-09-26) | Yes (`HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` L731–746) | **Correct** |
 | Brain destruction → unconsciousness, not death | Yes | Yes (L732 "consciousness is unconsciousness, not death") | **Re-ruled 2026-09-26 (#3248): _"Conscious capacity 0 should not be death"_ — consciousness stays the awake axis (this row's claim holds for it). Brain destruction IS a death since the same day, through the separate structural capacity `brain_integrity` ("Death with a window"). The 2026-09-11 consciousness-capacity ruling is withdrawn.** |
 | Brain destruction eventually kills via secondary bleeding | Yes (head wound → `BleedingCondition` → blood loss → `is_dead`) | Implicit | **Superseded 2026-09-26** — brain destruction is now dead on the blow via `brain_integrity` (#3248); the bleed still runs for a body brought back |
 | Kidney loss is fatal | **No — by owner ruling (#3402, 2026-09-24).** It had silently stopped killing on 2026-09-05 (#2936 removed the subtraction that billed the drain), so the true-up below was already wrong when written | Schema flag `total_loss_fatal` deleted | **SUPERSEDED — the entry that follows is the stale 2026-09-11 true-up:** ✅ RESOLVED (true-up 2026-09-11) — `MedicalState._update_renal_failure()` spawns/clears it from the `blood_filtration` capacity inside `update_vital_signs`; the condition kills by draining toward the existing blood-loss floor ("No new death-verdict path"), and clears when a kidney is restored — cyber or donor. `is_dead` still never reads `blood_filtration`, and correctly so. |
@@ -369,7 +369,7 @@ as future work or "could be added".
 
 ## Drift Quick Reference (Headline Items)
 
-* ~~`LETHAL_CAPACITY_NAMES` comment overstates synchrony with `is_dead`.~~ ✅ Resolved — comment now documents the union role.
+* ~~`LETHAL_CAPACITY_NAMES` comment overstates synchrony with `is_dead`.~~ ✅ Resolved twice: Phase 1 documented the union role; #3248 (2026-09-26) then removed the union — `consciousness` left the set and `brain_integrity` joined it, so the set IS what `is_dead()` enforces.
 * ~~`blood_filtration.total_loss_fatal` is data-true but code-false (kidney loss is "fatal" in spec, ignored in runtime).~~ Resolved the other way (#3402): kidney loss is not fatal by ruling, and the flag is deleted.
 * `incapacitation_threshold` on `moving` is documented but never enforced.
 * `total_loss_penalty` on `sight`/`hearing` describes blindness/deafness; neither is produced as a condition.
@@ -495,6 +495,10 @@ LETHAL_CAPACITY_NAMES = (
 )                                              # what kills you
 VITAL_TARGETING_CAPACITIES = LETHAL_CAPACITY_NAMES + ("consciousness",)
 ```
+
+> **Done another way, 2026-09-26 (#3248):** the ambiguity is gone because
+> `consciousness` left the set entirely and the head stays a vital target
+> through `brain_integrity`, which IS lethal. No second tuple is needed.
 
 Update `_get_vital_locations` to read `VITAL_TARGETING_CAPACITIES`; leave
 `is_dead` reading `LETHAL_CAPACITY_NAMES` (or its inline literals). The

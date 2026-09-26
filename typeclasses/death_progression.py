@@ -503,6 +503,15 @@ class DeathProgressionScript(DefaultScript):
         # Note: Medical script cleanup now happens in _complete_death_progression
         # before teleport to prevent hook spam
             
+        # A procedure still in flight on the body (a brain install started
+        # late in the window) must not resolve onto the archived husk and
+        # eat the donor organ (#3248 review): clear it now; its chart step
+        # records why.
+        try:
+            from world.medical.procedures import interrupt_procedure
+            interrupt_procedure(character, reason="the window closed")
+        except Exception:  # noqa: BLE001 — never block the transition
+            pass
         # Complete death progression - corpse creation and character transition
         self._handle_corpse_creation_and_transition(character)
             

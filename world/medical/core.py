@@ -613,7 +613,7 @@ class MedicalState:
         The contract stated twice in this file — "invalidated by the
         `blood_level` / `Organ.current_hp` setters and by condition
         add/remove, every input that can flip the verdict" — was wrong
-        about "every". `_compute_is_dead` reads four CAPACITIES, and a
+        about "every". `_compute_is_dead` reads five CAPACITIES, and a
         capacity is computed from the organs present, so seating one
         changes the verdict without touching any tracked input.
 
