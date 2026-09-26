@@ -561,41 +561,44 @@ def interrupt_procedure(target, reason: str = "interrupted") -> Optional[dict]:
     # its step is about to be advanced by the popped hook, and marking it
     # failed here recorded a successful harvest as "interrupted: the
     # patient died" (#3248 review).
-    target_db = getattr(target, "db", None)
-    if record is not None and target_db is not None:
-        chart = getattr(target_db, "medical_chart", None)
-        if chart:
-            chart = dict(chart)
-            steps = list(chart.get("steps") or ())
-            mutated = False
-            for step in steps:
-                if step.get("status") == "running":
-                    step["status"] = "failed"
-                    step["outcome"] = f"interrupted: {reason}"
-                    mutated = True
-                    break
-            if mutated:
-                chart["steps"] = steps
-                chart["status"] = "aborted"
-                target_db.medical_chart = chart
+    if record is not None:
+        _fail_running_step(target, reason)
 
     return record
 
 
+def _fail_running_step(target, reason: str) -> None:
+    """Mark the chart's running step failed with *reason* and abort the
+    chart, so the surgeon sees why the chain stopped on re-entry."""
+    target_db = getattr(target, "db", None)
+    if target_db is None:
+        return
+    chart = getattr(target_db, "medical_chart", None)
+    if not chart:
+        return
+    chart = dict(chart)
+    steps = list(chart.get("steps") or ())
+    for step in steps:
+        if step.get("status") == "running":
+            step["status"] = "failed"
+            step["outcome"] = f"interrupted: {reason}"
+            chart["steps"] = steps
+            chart["status"] = "aborted"
+            target_db.medical_chart = chart
+            return
+
+
 def _patient_is_gone(target) -> bool:
-    """Deleted, archived, or dead with the progression over: no procedure
-    may resolve onto this body any more. A dying body (death_processed
-    with its progression still running) is NOT gone — that is the window."""
+    """Deleted or archived: no procedure may resolve onto this body any
+    more. Every finished death lands in one of those two (a PC or an
+    essential NPC is archived, any other NPC is deleted), so nothing
+    else is asked. In particular NOT "death_processed with no progression
+    script": `at_death` sets the flag at once and the progression only
+    starts when the death curtain finishes (~3-10 s), and a fast incise
+    resolving during the curtain is inside the window, not past it."""
     if not getattr(target, "pk", None):
         return True
-    if getattr(target, "is_archived", False):
-        return True
-    try:
-        if target.db.death_processed and not target.scripts.get("death_progression"):
-            return True
-    except AttributeError:
-        pass
-    return False
+    return bool(getattr(target, "is_archived", False))
 
 
 def _resolve_procedure_callback(target, token=None) -> None:
@@ -616,6 +619,8 @@ def _resolve_procedure_callback(target, token=None) -> None:
     refused at the funnel now; this is the second lock, because the
     handle is still unreachable and a stale timer will still fire.
     """
+    if not getattr(target, "pk", None):
+        return  # the body was deleted (an NPC past its window); nothing to read
     state = _state(target)
     record = state.get("active_procedure")
     if record is None:
@@ -660,6 +665,7 @@ def _resolve_procedure_callback(target, token=None) -> None:
     # record at completion; this is the belt for anything that slipped.
     if _patient_is_gone(target):
         actor.msg("Your patient is beyond reach; the procedure does not resolve.")
+        _fail_running_step(target, "the patient is beyond reach")
         return
 
     verb = record["verb"]

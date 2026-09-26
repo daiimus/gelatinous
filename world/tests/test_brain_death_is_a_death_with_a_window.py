@@ -258,13 +258,45 @@ class TheReviewsFindings(EvenniaTest):
         self.assertIsNone(self.char2.db.surgical_state["active_procedure"])
 
     def test_control_a_dying_body_is_still_a_patient(self):
-        # death_processed with the progression still running is the window,
-        # not "gone".
+        # death_processed is set at the blow; the progression script only
+        # starts when the death curtain finishes. Both states are the
+        # window, and a fast incise landing in either must resolve.
         from world.medical import procedures as P
         self.char2.db.death_processed = True
+        self.assertFalse(P._patient_is_gone(self.char2), "the curtain phase was read as gone")
         create_script("evennia.scripts.scripts.DefaultScript",
                       key="death_progression", obj=self.char2, autostart=False)
         self.assertFalse(P._patient_is_gone(self.char2))
-        self.char2.scripts.get("death_progression")[0].delete()
+        self.char2.archive_character(reason="death")
         self.assertTrue(P._patient_is_gone(self.char2))
+
+    def test_a_refused_resolution_marks_the_chart_step(self):
+        from world.medical import procedures as P
+        self.char2.db.surgical_state = {
+            "incisions": {"head": True},
+            "active_procedure": {"verb": "install", "token": "t2",
+                                 "actor_dbref": self.char1.dbref, "kwargs": {}}}
+        self.char2.db.medical_chart = {"status": "running",
+                                       "steps": [{"id": 1, "verb": "install", "status": "running"}]}
+        self.char2.db.archived = True
+        self.char2.tags.add("archived", category="sleeve")
+        self.char1.msg = lambda text=None, **kw: None
+        P._resolve_procedure_callback(self.char2, token="t2")
+        step = self.char2.db.medical_chart["steps"][0]
+        self.assertEqual(step["status"], "failed")
+        self.assertIn("beyond reach", step["outcome"])
+
+    def test_treating_a_septic_spine_lets_the_patient_revive(self):
+        # Wound care lowers severity in place; the cached verdict must see
+        # it, or the revival gate keeps reading the stale death.
+        from world.medical import treatments as T
+        from typeclasses.death_progression import DeathProgressionScript
+        state = self.char2.medical_state
+        self._infection(10, location="neck")
+        self.assertTrue(state.is_dead())
+        self.assertFalse(DeathProgressionScript._check_medical_revival_conditions(None, self.char2))
+        T._apply_category_outcome(self.char2, "neck", "infection", "success", {"messages": []})
+        self.assertLess(state.conditions[0].severity, 10)
+        self.assertFalse(state.is_dead(), "the treatment did not reach the verdict")
+        self.assertTrue(DeathProgressionScript._check_medical_revival_conditions(None, self.char2))
 

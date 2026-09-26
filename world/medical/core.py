@@ -985,7 +985,7 @@ class MedicalState:
     def is_dead(self):
         """Return the (cached) death verdict.
 
-        The full computation walks four body capacities (organ +
+        The full computation walks five body capacities (organ +
         condition sweeps), and ``Character.msg`` consults this on
         every message — so the verdict is cached and recomputed only
         after a mutation invalidates it (issue #462).  Invalidation

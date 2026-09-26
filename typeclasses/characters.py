@@ -545,7 +545,7 @@ class Character(
                 if brain <= 0:
                     causes.append("BRAIN DEATH")
                 if neck <= 0:
-                    causes.append("BROKEN NECK")
+                    causes.append("NECK INTEGRITY LOST")
                 if blood_loss_fatal:
                     causes.append("BLOOD LOSS")
                 
@@ -1057,6 +1057,10 @@ class Character(
         # Restore normal character cmdset
         from commands.default_cmdsets import CharacterCmdSet
         self.cmdset.add_default(CharacterCmdSet)
+        # A decapitation that was reversed inside the window (the spine
+        # repaired) must not name the NEXT broken neck a decapitation.
+        if self.db.decapitation_pending:
+            self.db.decapitation_pending = False
         
         # Clear placement description
         if hasattr(self, 'override_place'):

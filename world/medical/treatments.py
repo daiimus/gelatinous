@@ -465,6 +465,15 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
     return result
 
 
+def _touch_verdict(medical_state) -> None:
+    """A severity edit is a death-verdict input (#2504; #3248 review): a
+    septic organ treated back below severity 10 regains its function, and
+    the cached verdict must see it or the patient never revives."""
+    invalidate = getattr(medical_state, "_invalidate_derived_state", None)
+    if callable(invalidate):
+        invalidate()
+
+
 def _apply_category_outcome(
     target, location: str, category: str, outcome: str, result: dict
 ) -> None:
@@ -489,6 +498,7 @@ def _apply_category_outcome(
         reduction = _category_reduction("bleeding", outcome)
         for cond in conditions:
             cond.severity = max(0, cond.severity - reduction)
+        _touch_verdict(medical_state)
         if conditions and reduction > 0:
             result["messages"].append(
                 f"Bleeding at {location.replace('_', ' ')} "
@@ -502,6 +512,7 @@ def _apply_category_outcome(
         reduction = _category_reduction("infection", outcome)
         for cond in conditions:
             cond.severity = max(0, cond.severity - reduction)
+        _touch_verdict(medical_state)
         if conditions and reduction > 0:
             result["messages"].append(
                 f"Infection at {location.replace('_', ' ')} "
@@ -515,6 +526,7 @@ def _apply_category_outcome(
         reduction = _category_reduction("pain", outcome)
         for cond in conditions:
             cond.severity = max(0, cond.severity - reduction)
+        _touch_verdict(medical_state)
         if conditions and reduction > 0:
             result["messages"].append(
                 f"Pain at {location.replace('_', ' ')} "
