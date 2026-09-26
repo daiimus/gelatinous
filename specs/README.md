@@ -90,6 +90,7 @@ Every spec in those folders carries a `> **Status:**` banner at the top.
 | `SHOP_SYSTEM_SPEC.md` | Container-based shops, pricing, inventory (Phase 2 deferred — #302) |
 | `GRAFFITI_SYSTEM_SPEC.md` | Spray-paint / solvent environmental writing |
 | `NPC_POSTS_AND_REINCARNATION_SPEC.md` | Named NPCs as reconstructible blueprints: posts, watcher, successor, resleeving |
+| `SLEEVE_INSURANCE_SPEC.md` | A personal sleeve policy bought alive at the Thawn-Harrison lobby terminal; a flash clone or NPC return is paid by the dead body's own record or does not happen; `@insure` standing policies for staff/play testing (#3667) |
 | `GIG_PROTOTYPE_BUTCHER_SPEC.md` | The first gig: corpse → condition-gated cuts → cooked dishes, with a closed till loop |
 
 ## Commands

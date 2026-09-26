@@ -1,7 +1,10 @@
 # Sleeve Insurance Spec — a personal policy, bought in advance
 
-> **Status: PROPOSAL (2026-09-25, revised the same day after a 48-agent
-> read-only critique), not built.** Owner's framing: "We're going to have
+> **Status: SHIPPED 2026-09-25 — Slice A (#3671, the terminal and the
+> record), Slice B (#3672, the NPC return), Slice C (#3673, the player gate
+> and the `@insure` standing policy), each played live.** Designed
+> 2026-09-25 (revised the same day after a 48-agent read-only critique).
+> §5 carries the as-built notes per slice; §6 stays deferred. Owner's framing: "We're going to have
 > to revamp this whole thing at some point but for now we just want the
 > intro framework to expand on." This is that framework, not the final
 > shape. Tracks #3667. Supersedes the payment

@@ -6,7 +6,7 @@
 > #3667):** players are in the insurance loop; a policy bought in advance at
 > the Thawn-Harrison terminal is required for a flash clone, and an
 > uninsured death does not bring that person back (a fresh character is
-> still allowed). See `specs/proposals/SLEEVE_INSURANCE_SPEC.md`.
+> still allowed). See `specs/SLEEVE_INSURANCE_SPEC.md`.
 > §1 documents **shipped** behaviour (traced from
 > `world/souls/posts.py`, `typeclasses/death_progression.py`); §2
 > onward is proposal.

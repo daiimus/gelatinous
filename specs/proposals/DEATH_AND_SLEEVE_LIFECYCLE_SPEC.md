@@ -26,7 +26,7 @@
 > on a **sleeve insurance policy** bought in advance at the Thawn-Harrison
 > lobby terminal and consumed at decant. Die uninsured and that person does
 > not return; the account may start a fresh character. See
-> `specs/proposals/SLEEVE_INSURANCE_SPEC.md`.
+> `specs/SLEEVE_INSURANCE_SPEC.md`.
 
 ---
 

@@ -13,7 +13,7 @@ Implement the respawn character creation flow (templates + flash clone) on the D
 > gets `PolicyRefused`, which the view shows as a message. A shelved body
 > (web archive, reason `manual`) is never cloned back. Passages below that
 > say "if archived character exists" are the pre-gate description. See
-> `specs/proposals/SLEEVE_INSURANCE_SPEC.md`.
+> `specs/SLEEVE_INSURANCE_SPEC.md`.
 
 ## Current State
 
