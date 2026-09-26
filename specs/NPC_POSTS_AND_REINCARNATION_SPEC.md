@@ -317,7 +317,7 @@ the NPC object and die with it. The policy decides what should survive:
   > `db.post_insurer` where the post has none — and credited to the clinic's
   > Thawn-Harrison billing terminal (**SUPERSEDED 2026-09-25, #3667:** the
   > premium, the till and the clinic credit go; a personal policy bought at a
-  > Thawn-Harrison terminal pays, see `proposals/SLEEVE_INSURANCE_SPEC.md`),
+  > Thawn-Harrison terminal pays, see `SLEEVE_INSURANCE_SPEC.md`),
   > with the balance re-read at the write
   > so the credit only happens if the debit did. A till that cannot afford
   > it simply keeps earning: the cart sells noodles toward its own keeper's
@@ -336,7 +336,7 @@ the NPC object and die with it. The policy decides what should survive:
 > claim below are wrong: PCs resleeve free today, and the owner called this
 > section "likely hallucinated". Sleeve insurance is a **personal** policy
 > bought in advance at a Thawn-Harrison terminal, keyed to the buyer's sample,
-> and consumed at payout. See `specs/proposals/SLEEVE_INSURANCE_SPEC.md`.
+> and consumed at payout. See `specs/SLEEVE_INSURANCE_SPEC.md`.
 > §4's "policy" column becomes: who has bought one.
 
 PCs die and flash-clone back (`DEATH_AND_SLEEVE_LIFECYCLE_SPEC`); the world
