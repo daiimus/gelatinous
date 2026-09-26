@@ -8,6 +8,7 @@ persistence. These form the foundation of the medical system.
 from .constants import (
     CONTRIBUTION_VALUES,
     CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD, BLOOD_LOSS_DEATH_THRESHOLD,
+    LETHAL_CAPACITY_NAMES,
     PAIN_CONSCIOUSNESS_MODIFIER, PAIN_UNCONSCIOUS_THRESHOLD
 )
 
@@ -1003,13 +1004,16 @@ class MedicalState:
         Enforces exactly two death conditions, both organ-only and
         capacity-derived:
 
-        1. **Lethal capacity floor** — any of ``blood_pumping`` /
-           ``breathing`` / ``digestion`` / ``neck_integrity`` /
-           ``brain_integrity`` hits zero.  These are the five entries
-           in ``LETHAL_CAPACITY_NAMES``, which drive vital-location
-           targeting bias *and* enforce death.  ``consciousness`` is
-           NOT a death gate and never will be (owner, 2026-09-26) —
-           it is the awake axis, see :meth:`is_unconscious`.
+        1. **Lethal capacity floor** — any capacity in
+           ``LETHAL_CAPACITY_NAMES`` (``blood_pumping`` / ``breathing``
+           / ``digestion`` / ``neck_integrity`` / ``brain_integrity``)
+           hits zero.  One tuple drives the vital-location targeting
+           bias AND this check, and the species schema flags the same
+           capacities ``directly_fatal`` (pinned by test; #3677), so a
+           new lethal capacity is one table entry and one tuple entry.
+           ``consciousness`` is NOT a death gate and never will be
+           (owner, 2026-09-26) — it is the awake axis, see
+           :meth:`is_unconscious`.
         2. **Blood-loss floor** — total blood level falls below
            ``BLOOD_LOSS_DEATH_THRESHOLD``.
 
@@ -1027,17 +1031,12 @@ class MedicalState:
           ``blood_filtration.total_loss_fatal`` flag, which said
           otherwise, was removed with that ruling.
         """
-        # Death from vital organ failure
-        if self.calculate_body_capacity("blood_pumping") <= 0.0:
-            return True
-        if self.calculate_body_capacity("breathing") <= 0.0:
-            return True
-        if self.calculate_body_capacity("digestion") <= 0.0:
-            return True  # Liver failure
-        if self.calculate_body_capacity("neck_integrity") <= 0.0:
-            return True  # Decapitation - cervical spine severed (#243)
-        if self.calculate_body_capacity("brain_integrity") <= 0.0:
-            return True  # Brain death - a death with a window (#3248)
+        # Death from vital organ failure: heart; both lungs; liver AND
+        # stomach; cervical spine (decapitation, #243); brain (a death
+        # with a window, #3248).
+        for capacity in LETHAL_CAPACITY_NAMES:
+            if self.calculate_body_capacity(capacity) <= 0.0:
+                return True
 
         # Death from blood loss
         if self.blood_level <= (100.0 - BLOOD_LOSS_DEATH_THRESHOLD):

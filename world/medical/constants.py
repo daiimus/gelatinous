@@ -362,7 +362,9 @@ del _SPECIES_DEFINITIONS_BC
 # bias.
 #
 # This is exactly the set is_dead() enforces (plus the blood-loss floor,
-# which is not a capacity). Every entry is STRUCTURAL: an organ floor that
+# which is not a capacity): `_compute_is_dead` LOOPS over this tuple, and
+# the species schema flags the same capacities `directly_fatal` (a test pins
+# the three agree; #3677). Every entry is STRUCTURAL: an organ floor that
 # only organ HP (and a location-matching condition's functionality modifier,
 # e.g. a severity-10 infection) can move.
 #
