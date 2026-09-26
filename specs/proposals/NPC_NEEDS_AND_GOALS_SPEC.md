@@ -436,8 +436,8 @@ generator identity was invented to fake.
 **Post records** live on the fixture that IS the post — the counter
 for venues, the room for roomed posts: `db.post_role`,
 `db.post_schedule`, `db.post_wage_rate`, `db.post_policy`
-(`successor` | `none`; `resleave` stays with the reincarnation spec's
-§P3), `db.post_delay` (vacancy grace before succession),
+(`successor` | `none`; whether the named keeper returns is their own
+sleeve policy's business since #3667), `db.post_delay` (vacancy grace before succession),
 `db.post_vacant_since`. Registered posts are tagged
 (`post`/souls — the indexed path).
 

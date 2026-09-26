@@ -147,13 +147,14 @@ reads back as `None`. `imprint.capture` gains `blueprint_key` and `dbref`
 `dbref`) is never a payout source; the fallback at `posts.py:660` goes.
 
 **The sweep's owned branch** (`posts.py:446-459`) gets three outcomes:
-*resleeve* (a policy the dead keeper can redeem), *successor* (no policy, or
-a permanent failure such as a blueprint that raises), and *hold* only for
-transient states (the keeper is dying or not yet archived). Today every
+*resleeve* (a policy the dead keeper can redeem), *successor* (no policy, a
+blueprint that raises, or `RETURN_ATTEMPTS` failed returns on one vacancy),
+and *hold* for transient states (the keeper is alive elsewhere, dying or not
+yet archived, or a return failed and may be retried). Today every
 `False` hits `continue`, the #3565 "dark forever" shape. An uninsured
-fallthrough clears the shift's ownership: `post_blueprints[shift]` **and**
-the legacy `post.db.post_blueprint` fallback (`posts.py:446-447, 539-540`),
-which builds 076/077 still set. The archived body is left in Limbo as
+fallthrough clears the shift's ownership, `post_blueprints[shift]`; the
+legacy `post.db.post_blueprint` fallback is gone from the code, and build
+168 removed its four live rows. The archived body is left in Limbo as
 others are.
 
 **`post_policy` loses its `resleave` value.** The post no longer decides who
@@ -164,8 +165,9 @@ column change in the same PR, **with an in-process data build** that
 censuses live `post_policy` values and rewrites `resleave` to `successor`
 (the Rook's chair too: Q2 accepted that it goes dark after his death, so
 it becomes `successor` like the rest and stays dark only because nobody can
-reach it), plus a test that no
-registered post carries `resleave`. Build 098 already wrote `resleave` into
+reach it); the build's own census output is the check that no live post
+still carries `resleave` (a unit test cannot see the live rows; the source
+pin `TheOldModelIsGone` covers the code). Build 098 already wrote `resleave` into
 the live rows; editing the reader alone would send every one of those posts
 down the fallthrough and then `continue` forever, the #3565 shape. Build
 098's "resleeve-only: no stranger is ever seated" for the Rook's chair is
@@ -242,11 +244,29 @@ Because players can buy from this slice on but the clone gate is Slice C,
 gate yet, only consumption), so no clone ever leaves a row its living body
 cannot replace. Play: Iver buys, is refused twice, reads his status.
 
-**Slice B — NPC return.** The dead-keeper stamp in the slot; `imprint.
+**Slice B — NPC return. BUILT 2026-09-25 (PR #3672), as below with these
+as-built notes:** the return answers RESLEEVED / HOLD / SUCCESSOR; the
+dead keeper is the slot's own body (reference, else the `dead_id`
+stamp; a slot stamped with a body that is gone never falls back to a
+namesake), and only a slot that went dark before the stamp existed uses
+the newest archived body of the blueprint, with the policy record as the
+identity check; a dead body not yet archived (progression running, or a
+wedged death) is HOLD, never rebuilt; a failed revive puts the body back
+exactly as it was (dead, archived, `death_processed`), a failed rebuild
+deletes the fresh body, both restore the record, and after
+`RETURN_ATTEMPTS` (3) failures on one vacancy the outcome is SUCCESSOR
+with the record unspent; the rebuild snapshot must match the stamped
+`dead_id` where one exists; an archived body never holds a slot
+(`_slot_held`); the terminal is found by index tag, not advertiser;
+`INSURANCE_PRESSURE` is exactly SOFT so a risen meal always wins; the
+legacy `post_blueprint` fallback is gone from code and its four live rows
+removed by build 168, which also relabelled 12 posts, stripped 2
+`post_insurer` rows and re-keyed Maxwell's register. The dead-keeper
+stamp in the slot; `imprint.
 capture` gains `blueprint_key`/`dbref`; `_try_resleave` keyed to the person
 with take-before-build; the three sweep outcomes with ownership cleared on
 fallthrough; `post_policy` loses `resleave`; the `insurance` need,
-advertiser and named press step; `ensure_dispatch_operator` retired; the
+tag lookup and named press step; `ensure_dispatch_operator` retired; the
 `post_policy` data build; the Maxwell terminal re-key (Q4). **Old model deleted in the same PR** (grep runtime
 code and tests to zero; historical build scripts and bannered specs are left
 as they are): `RESLEAVE_PREMIUM`; `post_insurer` (code, build 098:65, a

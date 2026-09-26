@@ -527,9 +527,9 @@ class DeathProgressionScript(DefaultScript):
         """
         try:
             # 0. The imprint: a post-holder's memories become the post's
-            # property before the body is deleted (souls resleave §P3 —
-            # snapshot always; whether anyone pays to restore it is the
-            # policy's business, later).
+            # property before the body is deleted (the per-shift snapshot
+            # is taken always; a return restores the person's own imprint
+            # when their sleeve policy pays, #3667).
             try:
                 from world.souls.posts import snapshot_imprint
                 snapshot_imprint(character)

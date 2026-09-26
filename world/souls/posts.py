@@ -22,6 +22,7 @@ for anyone.
 
 import time
 
+from evennia.utils import logger
 from evennia.utils.search import search_tag
 
 POST_TAG = ("post", "souls")
@@ -314,7 +315,7 @@ def _slot_held(post, shift, slot) -> bool:
     # post_vacant signal, no succession, no resleeve, and the counter
     # reporting closed with nothing to say why. Every blueprinted keeper
     # is one death away from it (#2706).
-    if _is_dead(keeper):
+    if _is_dead(keeper) or getattr(keeper, "is_archived", False):
         return False
     room = _post_room(post)
     from world.souls import engine
@@ -406,6 +407,7 @@ def sweep(now=None):
                     slot["vacant_since"] = None      # re-manned
                     slot.pop("dead_uid", None)
                     slot.pop("dead_id", None)
+                    slot.pop("return_failures", None)
                     dirty = True
                 continue
             if slot.get("vacant_since") is None:
@@ -560,9 +562,10 @@ def _living_body(bp_key):
 
 
 def _dying(body) -> bool:
-    """Still inside the death window, or dead but not yet archived: the
-    body can yet be revived on the table, so its policy must not be
-    spent (#3667)."""
+    """Dead, but still revivable on the table: the death progression is
+    running, or death completed and the body is not yet archived (a
+    wedged or stalled progression). Its policy must not be spent, and
+    the shift must not be given away (#3667)."""
     try:
         if body.scripts.get("death_progression"):
             return True
@@ -571,29 +574,57 @@ def _dying(body) -> bool:
         return False
 
 
-def _dead_keeper(post, shift, slot, bp_key):
-    """The archived body of the person who died on this shift, or None.
-
-    In order: the slot's own keeper reference (an archived Essential body
-    keeps its pk); the id stamped when the slot went dark; and, for a
-    slot that went dark before the stamp existed, the newest archived
-    body built as this blueprint. Whichever is found must BE this
-    blueprint's namesake, and the sleeve policy then has to name it.
-    """
+def _slot_body(slot):
+    """The body this slot's death is about: the keeper reference while
+    it still resolves, else the id stamped when the slot went dark.
+    None when the body is gone (deleted) or was never stamped."""
     from evennia.utils.search import search_object
 
     keeper = slot.get("keeper")
-    found = keeper if keeper is not None and keeper.pk else None
-    if found is None and slot.get("dead_id"):
+    if keeper is not None and keeper.pk:
+        return keeper
+    if slot.get("dead_id"):
         hit = search_object(f"#{slot['dead_id']}")
-        found = hit[0] if hit else None
-    if found is None:
-        found = _archived_body(bp_key)
+        return hit[0] if hit and hit[0].pk else None
+    return None
+
+
+def _dead_keeper(post, shift, slot, bp_key):
+    """The ARCHIVED body of the person who died on this shift, or None.
+
+    The slot's own body first (an archived Essential body keeps its pk,
+    and the stamp names it once the reference is gone). Only a slot that
+    went dark before the stamp existed falls back to the newest archived
+    body built as this blueprint. Whichever is found must be this
+    blueprint's namesake, archived; the sleeve policy then has to name
+    that exact body.
+    """
+    found = _slot_body(slot)
+    if found is None and not slot.get("dead_id"):
+        found = _archived_body(bp_key)          # pre-stamp vacancy only
     if found is None or not found.pk:
         return None
     if found.db.blueprint_key != bp_key or not found.is_archived:
         return None
     return found
+
+
+#: A return that keeps failing is not transient. After this many failed
+#: attempts on one vacancy the shift falls to a successor and the record
+#: stays unspent (the spec's rule for a permanent failure).
+RETURN_ATTEMPTS = 3
+
+
+def _return_failed(slot, post, shift, record, restore_policy):
+    """Book a failed attempt: the record goes back; HOLD until the
+    attempts run out, then SUCCESSOR."""
+    restore_policy(record)
+    slots = dict(post.db.post_slots or {})
+    live = dict(slots.get(shift) or slot)
+    live["return_failures"] = int(live.get("return_failures") or 0) + 1
+    slots[shift] = live
+    post.db.post_slots = slots
+    return HOLD if live["return_failures"] < RETURN_ATTEMPTS else SUCCESSOR
 
 
 def _try_resleave(post, room, shift, slot, now) -> str:
@@ -609,9 +640,11 @@ def _try_resleave(post, room, shift, slot, now) -> str:
     this namesake's own.
 
     Answers RESLEEVED (the person is back), HOLD (transient: a keeper
-    who is alive, or still dying), or SUCCESSOR (nobody is coming back:
-    no policy, or a blueprint that cannot build). The take happens
-    BEFORE the body is built, and is put back if the build fails.
+    who is alive, still dying, or whose return failed and may be
+    retried), or SUCCESSOR (nobody is coming back: no policy, a blueprint
+    that cannot build, or RETURN_ATTEMPTS failures). The take happens
+    BEFORE the body is built, and is put back on any failure; a failed
+    revive puts the body back exactly as it was, dead and archived.
     """
     bp_key = (post.db.post_blueprints or {}).get(shift)
     if not bp_key:
@@ -622,8 +655,12 @@ def _try_resleave(post, room, shift, slot, now) -> str:
     # the reading, and building a second body would make it permanent
     # — the original is alive, so it is never archived, so the next
     # sweep cannot restore it either and mints another copy (#2178).
-    keeper = slot.get("keeper")
-    if keeper is not None and keeper.pk and not _is_dead(keeper):
+    body = _slot_body(slot)
+    if body is not None and not _is_dead(body) and not body.is_archived:
+        return HOLD
+    # Dead but not yet archived: still on the table, or a wedged death
+    # the boot sweep will finish. Never rely on the 90 s timing.
+    if body is not None and not body.is_archived and _dying(body):
         return HOLD
 
     # And never a second body of somebody who already exists. The slot
@@ -654,6 +691,12 @@ def _try_resleave(post, room, shift, slot, now) -> str:
         if record is None:
             return SUCCESSOR
         snap = npc.db.imprint                 # their own, taken at death
+        was_at = npc.location
+        try:
+            npc.save_medical_state()          # the dead body, as it lies
+        except AttributeError:
+            pass
+        old_medical = npc.db.medical_state    # ...serialised, for the undo
         try:
             npc.move_to(decant, quiet=True, move_hooks=False)
             # REVIVE, don't clear a phantom. Flesh back to factory,
@@ -672,35 +715,48 @@ def _try_resleave(post, room, shift, slot, now) -> str:
             # death state; this body was found BY being archived.
             npc.unarchive_character()
             npc.db.is_npc = True
-            imprint_mod.restore(npc, snap, now)
+            try:
+                imprint_mod.restore(npc, snap, now)
+            except Exception:  # noqa: BLE001 — a torn memory is not a failed return
+                logger.log_trace(f"resleeve: imprint restore failed for {npc.key}")
             _install_keeper(npc, post, room, shift)
             revived = (not _is_dead(npc) and not npc.is_archived
                        and npc.location == decant
                        and (post.db.post_slots or {}).get(shift, {})
                        .get("keeper") == npc)
         except Exception:  # noqa: BLE001 — a failed return must not eat the policy
+            logger.log_trace(f"resleeve: return of {npc.key} failed")
             revived = False
         if not revived:
-            # Back to the archive as it was: never delete (the body is
-            # the person's only copy) and never `archive_character`
-            # (that bumps death_count). The record goes back too.
+            # Back EXACTLY as it was: dead, and archived. Never delete
+            # (the body is the person's only copy) and never
+            # `archive_character` (that bumps death_count). The medical
+            # reset and `remove_death_state` are undone by hand, or the
+            # body would sit alive in Limbo reading as a held slot.
             try:
-                npc.move_to(_limbo() or npc.location, quiet=True,
+                npc.move_to(was_at or _limbo() or npc.location, quiet=True,
                             move_hooks=False)
+                if old_medical is not None:
+                    npc.db.medical_state = old_medical
+                    if hasattr(npc, "_medical_state"):
+                        delattr(npc, "_medical_state")
+                npc.db.death_processed = True
                 npc.db.archived = True
                 npc.tags.add("archived", category="sleeve")
             except Exception:  # noqa: BLE001
-                pass
-            restore_policy(record)
-            return HOLD
+                logger.log_trace(f"resleeve: undo for {npc.key} failed")
+            return _return_failed(slot, post, shift, record, restore_policy)
     else:
         # Rebuild from the blueprint: only for THIS namesake's own
         # snapshot. The shift's snapshot belongs to whoever last died on
         # the shift, a hired successor included, so it must name this
-        # blueprint and the body it was taken from (#3667).
+        # blueprint and, where the slot was stamped, the body that was
+        # stamped (#3667).
         snap = (post.db.post_memory_snapshots or {}).get(shift)
         if (not snap or snap.get("blueprint_key") != bp_key
                 or not snap.get("dbref") or not snap.get("sleeve_uid")):
+            return SUCCESSOR
+        if slot.get("dead_id") and snap.get("dbref") != slot.get("dead_id"):
             return SUCCESSOR
         record = take_policy(snap.get("sleeve_uid"), snap.get("dbref"))
         if record is None:
@@ -711,11 +767,27 @@ def _try_resleave(post, room, shift, slot, now) -> str:
         except Exception:  # noqa: BLE001 — a broken blueprint must not loop-spawn
             restore_policy(record)
             return SUCCESSOR               # a build that raises never will
-        npc.db.is_npc = True
-        # the imprint returns, as of the last backup — same code path a
-        # player's flash clone uses, so the two can never drift
-        imprint_mod.restore(npc, snap, now)
-        _install_keeper(npc, post, room, shift)
+        try:
+            npc.db.is_npc = True
+            # the imprint returns, as of the last backup — same code path
+            # a player's flash clone uses, so the two can never drift
+            try:
+                imprint_mod.restore(npc, snap, now)
+            except Exception:  # noqa: BLE001 — a torn memory is not a failed return
+                logger.log_trace(f"resleeve: imprint restore failed for {npc.key}")
+            _install_keeper(npc, post, room, shift)
+            built = (not _is_dead(npc) and npc.location == decant
+                     and (post.db.post_slots or {}).get(shift, {})
+                     .get("keeper") == npc)
+        except Exception:  # noqa: BLE001
+            logger.log_trace(f"resleeve: install of rebuilt {bp_key} failed")
+            built = False
+        if not built:
+            try:
+                npc.delete()                # a fresh body, nobody's only copy
+            except Exception:  # noqa: BLE001
+                pass
+            return _return_failed(slot, post, shift, record, restore_policy)
 
     from world.souls import audit, thoughts as thoughts_mod
     try:
@@ -786,8 +858,8 @@ def _imprint_of(character, now):
 
 def snapshot_imprint(character) -> bool:
     """At death, a slot-keeper's memories become the post's property
-    (reincarnation spec §2), keyed by their shift; the record names the
-    keeper's blueprint and body, so a payout restores only its own: episodic memories,
+    (reincarnation spec §2), keyed by their shift (the record names the
+    keeper's blueprint and body, so a rebuild restores only its own): episodic memories,
     dossiers, thoughts, and the people they knew by face and by voice,
     copied onto the fixture BEFORE the corpse machinery deletes the
     body — kept whether or not anyone ever pays to restore them."""

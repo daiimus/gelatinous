@@ -288,13 +288,6 @@ def ensure_base_station() -> Any | None:
         return None
 
 
-# `spawn_dispatch_operator` / `ensure_dispatch_operator` are gone
-# (#3667): they respawned "Petra" by name on every server start, a free
-# return outside the sleeve policy. A dead operator is a vacancy on the
-# dispatch post like any other; the post sweep brings her back if her
-# policy pays, or hires a successor.
-
-
 def get_dispatch_operator() -> Any | None:
     """The LIVE operator at the desk, or None (dead, unconscious, absent,
     kidnapped = the automation answers — a difference players can hear)."""

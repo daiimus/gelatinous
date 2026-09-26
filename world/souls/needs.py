@@ -269,10 +269,11 @@ def wardrobe_pressure(soul):
     return 0.0
 
 
-#: Uninsured is a worry, not an emergency. Just above SOFT, like the
-#: provisional wardrobe: a soul walks to Thawn-Harrison in their own
-#: time, never instead of a shift, and never ahead of a meal (#3667).
-INSURANCE_PRESSURE = 0.60
+#: Uninsured is a worry, not an emergency. Exactly SOFT: elected in the
+#: soul's own time, never instead of a shift, and never ahead of a meal.
+#: Band 3 takes the highest pressure and breaks ties by profile order, so
+#: at SOFT insurance yields to any need that has actually risen (#3667).
+INSURANCE_PRESSURE = SOFT
 
 
 def insurance_pressure(soul):

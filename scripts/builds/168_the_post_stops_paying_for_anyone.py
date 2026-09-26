@@ -73,10 +73,27 @@ else:
     else:
         terminal.key = "a Maxwell Medical billing terminal"
         desc = terminal.db.desc or ""
-        terminal.db.desc = desc.replace(
+        new_desc = desc.replace(
             "The Thawn-Harrison crest sits above a smaller line of type: "
             "YOUR RECOVERY IS OUR BUSINESS.",
             "The Maxwell Medical mark sits above a smaller line of type: "
             "YOUR RECOVERY IS OUR BUSINESS.")
+        terminal.db.desc = new_desc
         print(f"BUILD 168: terminal #{terminal.id} re-keyed {terminal.key!r}; "
+              f"desc {'rebranded' if new_desc != desc else 'UNCHANGED (crest line not found; look at it)'}; "
               f"register {terminal.db.register}, post and advertiser untouched")
+    if terminal is not None and "Thawn-Harrison" in (terminal.db.desc or ""):
+        print(f"BUILD 168: terminal #{terminal.id} desc still names Thawn-Harrison; look at it")
+
+# any Petra the retired spawner made: the flag, no blueprint, no memories
+from evennia.objects.models import ObjectDB
+strays = [o for o in ObjectDB.objects.filter(db_key="Petra")
+          if o.attributes.get("dispatch_operator") is True
+          and not o.attributes.get("blueprint_key")]
+for o in strays:
+    if o.attributes.get("llm_memories"):
+        print(f"BUILD 168: spawner Petra #{o.id} has memories; left in place, look at it")
+        continue
+    o.delete()
+    print(f"BUILD 168: spawner-made Petra #{o.id} (no blueprint, no memories) removed")
+print(f"BUILD 168: {len(strays)} blueprint-less Petra body/bodies found")

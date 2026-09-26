@@ -28,6 +28,7 @@ def _kill(body):
     ms = body.medical_state
     ms.blood_level = 0
     ms._cached_is_dead = None
+    body.save_medical_state()              # as real damage does
     assert body.is_dead()
 
 
@@ -100,14 +101,29 @@ class TheArchivedKeeper(_Shift):
         self.assertIsNotNone(policy_for(self.marta.sleeve_uid), "spent someone else's")
 
     def test_while_she_is_still_on_the_table_the_sweep_waits(self):
-        slot = self.dies_archived()
-        restore_policy(_record(self.marta, "doctor_marta"))
+        # Dead, progression running, NOT yet archived: the game's real
+        # dying state. Neither a return nor a successor may touch it.
+        _kill(self.marta)
+        self.marta.db.death_processed = True
         create_script("typeclasses.scripts.Script", key="death_progression",
                       obj=self.marta, autostart=False)
+        slot = {"keeper": self.marta, "vacant_since": 1.0}
+        restore_policy(_record(self.marta, "doctor_marta"))
         self.assertEqual(self.attempt(slot), posts.HOLD)
         self.assertIsNotNone(policy_for(self.marta.sleeve_uid))
+        self.assertEqual(self.post.db.post_blueprints, {"day": "doctor_marta"})
 
-    def test_a_failed_return_puts_the_policy_back_and_re_archives_her(self):
+    def test_dead_and_not_yet_archived_with_no_progression_is_still_waiting(self):
+        # A wedged death: death completed, the boot sweep will archive it.
+        _kill(self.marta)
+        self.marta.db.death_processed = True
+        slot = {"keeper": self.marta, "vacant_since": 1.0}
+        self.assertEqual(self.attempt(slot), posts.HOLD)
+
+    def test_a_failed_return_puts_everything_back_as_it_was(self):
+        """The body was healed before the failure; it must read DEAD and
+        archived again, or the sweep reads a live body in Limbo as a held
+        slot forever (review of #3667 Slice B)."""
         slot = self.dies_archived()
         restore_policy(_record(self.marta, "doctor_marta"))
 
@@ -116,6 +132,32 @@ class TheArchivedKeeper(_Shift):
         self.assertEqual(self.attempt(slot, install=broken), posts.HOLD)
         self.assertIsNotNone(policy_for(self.marta.sleeve_uid), "the record was burnt")
         self.assertTrue(self.marta.is_archived)
+        self.assertTrue(self.marta.is_dead(), "revived body left alive in Limbo")
+        self.assertTrue(self.marta.db.death_processed)
+        self.assertFalse(posts._slot_held(self.post, "day",
+                                          self.post.db.post_slots["day"]))
+        self.assertEqual(self.post.db.post_slots["day"]["return_failures"], 1)
+
+    def test_three_failed_returns_give_the_shift_up(self):
+        slot = self.dies_archived()
+        restore_policy(_record(self.marta, "doctor_marta"))
+
+        def broken(npc, post, room, shift):
+            raise RuntimeError("the post refused her")
+        outcomes = [self.attempt(self.post.db.post_slots["day"], install=broken)
+                    for _ in range(posts.RETURN_ATTEMPTS)]
+        self.assertEqual(outcomes, [posts.HOLD] * (posts.RETURN_ATTEMPTS - 1)
+                         + [posts.SUCCESSOR])
+        self.assertIsNotNone(policy_for(self.marta.sleeve_uid), "spent on a failure")
+
+    def test_an_archived_body_never_holds_a_slot(self):
+        self.dies_archived()
+        self.marta.db.soul_post = self.room1
+        self.marta.db.soul_schedule = "day"
+        from world.souls import engine
+        self.marta.tags.add(engine.SOUL_TAG[0], category=engine.SOUL_TAG[1])
+        self.assertFalse(posts._slot_held(self.post, "day",
+                                          {"keeper": self.marta, "vacant_since": 1.0}))
 
     def test_the_slot_keeper_lost_but_the_stamp_kept_still_finds_her(self):
         # The sweep stamps dead_id when the slot goes dark; the keeper
@@ -125,6 +167,18 @@ class TheArchivedKeeper(_Shift):
                 "dead_uid": self.marta.sleeve_uid, "dead_id": self.marta.id}
         restore_policy(_record(self.marta, "doctor_marta"))
         self.assertEqual(self.attempt(slot), posts.RESLEEVED)
+
+    def test_a_stamp_naming_a_body_that_is_gone_does_not_fall_back_to_a_namesake(self):
+        # A stamped dead_id that no longer resolves (a deleted body) must
+        # not let some OTHER archived body of the blueprint pay out here.
+        self.dies_archived()
+        if self.room2.id == 2:
+            self.marta.location = self.room2
+        slot = {"keeper": None, "vacant_since": 1.0,
+                "dead_uid": "someone", "dead_id": 10 ** 8}
+        restore_policy(_record(self.marta, "doctor_marta"))
+        self.assertEqual(self.attempt(slot), posts.SUCCESSOR)
+        self.assertIsNotNone(policy_for(self.marta.sleeve_uid))
 
     def test_a_shift_vacated_before_the_stamp_existed_finds_the_archived_body(self):
         self.dies_archived()
@@ -199,6 +253,33 @@ class TheRebuiltKeeper(_Shift):
         self.assertEqual(self.attempt_rebuild(), posts.SUCCESSOR)
         self.assertIsNotNone(policy_for(self.marta.sleeve_uid))
 
+    def test_a_rebuild_whose_install_fails_deletes_the_body_and_restores_the_record(self):
+        self.snapshot()
+        restore_policy(_record(self.marta, "doctor_marta"))
+        built = []
+
+        def build(bp_key, room):
+            npc = create_object("typeclasses.characters.Character",
+                                key="Marta (rebuilt)", location=room)
+            npc.db.blueprint_key = bp_key
+            built.append(npc)
+            return npc
+
+        def broken(npc, post, room, shift):
+            raise RuntimeError("no cube, no soul")
+        with mock.patch("world.npcs.blueprints.build_npc", side_effect=build):
+            outcome = self.attempt(self.slot, install=broken)
+        self.assertEqual(outcome, posts.HOLD)
+        self.assertIsNotNone(policy_for(self.marta.sleeve_uid), "spent on a failure")
+        self.assertFalse(built[0].pk, "the half-built body was left standing")
+
+    def test_a_stamped_slot_rebuilds_only_the_stamped_body(self):
+        snap = self.snapshot()
+        restore_policy(_record(self.marta, "doctor_marta"))
+        self.slot["dead_id"] = snap["dbref"] + 1        # somebody else died here
+        self.assertEqual(self.attempt_rebuild(), posts.SUCCESSOR)
+        self.assertIsNotNone(policy_for(self.marta.sleeve_uid))
+
     def test_a_blueprint_that_raises_leaves_the_policy_unspent(self):
         self.snapshot()
         restore_policy(_record(self.marta, "doctor_marta"))
@@ -245,10 +326,30 @@ class TheSoulGoesToBuy(EvenniaTest):
     def test_uninsured_is_a_soft_want_insured_is_none(self):
         from world.souls import needs
         self.assertEqual(needs.insurance_pressure(self.soul), needs.INSURANCE_PRESSURE)
-        self.assertGreater(needs.INSURANCE_PRESSURE, needs.SOFT)
+        # Exactly SOFT: elected, but yielding to any need that has risen.
+        self.assertEqual(needs.INSURANCE_PRESSURE, needs.SOFT)
         self.assertLess(needs.INSURANCE_PRESSURE, needs.CRITICAL)
         restore_policy(_record(self.soul))
         self.assertEqual(needs.insurance_pressure(self.soul), 0.0)
+
+    def test_the_arbitration_reads_the_derived_value(self):
+        # pressures()/pressure() must route 'insurance' to insurance_pressure,
+        # or the need reads its stored 0.0 forever and nobody ever buys.
+        from world.souls import needs
+        self.soul.db.soul_species = "human"
+        self.assertEqual(needs.pressures(self.soul)["insurance"],
+                         needs.INSURANCE_PRESSURE)
+        self.assertEqual(needs.pressure(self.soul, "insurance"),
+                         needs.INSURANCE_PRESSURE)
+
+    def test_a_meal_that_has_risen_beats_the_errand(self):
+        from world.souls import engine, needs
+        self.soul.db.soul_species = "human"
+        with mock.patch.object(needs, "pressures", return_value={
+                "hunger": needs.SOFT + 0.01, "rest": 0.0, "craving": 0.0,
+                "wardrobe": 0.0, "social": 0.0, "health": 0.0,
+                "insurance": needs.INSURANCE_PRESSURE, "safety": 0.0}):
+            self.assertEqual(engine._desired_goal(self.soul, 12), (3, "hunger"))
 
     def test_a_body_with_no_sleeve_signature_never_wants_one(self):
         from world.souls import needs
@@ -298,6 +399,7 @@ class TheSoulGoesToBuy(EvenniaTest):
         with mock.patch.object(jobs, "fault") as faulted:
             jobs.step_job(self.soul)
         self.assertTrue(faulted.called)
+        self.assertIn("no policy is on file", faulted.call_args.args[1])
 
     def test_the_insured_step_advances_once_covered(self):
         from world.souls import jobs
