@@ -68,7 +68,7 @@ class TestTheSweepRipensAZeroDelaySlotImmediately(EvenniaTest):
         post.db = SimpleNamespace(
             post_slots={"day": {"keeper": None, "vacant_since": 1.0}},
             post_policy="successor", post_delay=delay, post_blueprints=None,
-            post_blueprint=None, post_keeper=None, post_vacant_since=1.0,
+            post_keeper=None, post_vacant_since=1.0,
             post_role="worker", post_wage_rate=None, register=None)
         return post
 

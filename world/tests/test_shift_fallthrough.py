@@ -1,9 +1,12 @@
-"""A shift nobody owns can still be staffed (#2192).
+"""A shift nobody owns can still be staffed (#2192, #3565, #3667).
 
-`sweep()` took the resleave branch for every shift of a `resleave`
-post. `_try_resleave` bailed when that shift had no blueprint, hit
+`sweep()` took the return branch for every shift of a blueprinted post.
+`_try_resleave` bailed when that shift had no blueprint, hit
 `continue`, and the successor path below was never reached — so those
-slots could not be filled by ANY mechanism.
+slots could not be filled by ANY mechanism. Since #3667 the return
+answers RESLEEVED, HOLD or SUCCESSOR, and only HOLD keeps a stranger
+out: a dead keeper with no sleeve policy is not coming back, and the
+shift stops carrying their name.
 
 Live cost when found: 14 of 19 dark slots permanently dark, including
 every non-day shift at both clinics and dispatch. That is the
@@ -26,16 +29,19 @@ class TestOwnershipIsPerShift(EvenniaCommandTest):
         super().setUp()
         self.post = self.obj1
         self.post.location = self.room1
-        self.post.db.post_policy = "resleave"
+        self.post.db.post_policy = "successor"
         self.post.db.post_delay = 0
         # sweep() finds posts BY TAG — an untagged fixture is invisible
         self.post.tags.add(posts.POST_TAG[0], category=posts.POST_TAG[1])
 
-    def _sweep_with_candidate(self, candidate):
+    def _sweep_with_candidate(self, candidate, outcome=None):
         with mock.patch.object(posts, "_eligible_candidates",
                                return_value=[candidate]), \
-             mock.patch.object(posts, "_offer") as offer:
+             mock.patch.object(posts, "_offer") as offer, \
+             mock.patch.object(posts, "_try_resleave",
+                               return_value=outcome) as returned:
             posts.sweep(now=10 ** 7)
+        offer.returned = returned
         return offer
 
     def test_an_unowned_shift_gets_a_successor(self):
@@ -54,22 +60,41 @@ class TestOwnershipIsPerShift(EvenniaCommandTest):
         self.char1.db.is_npc = True
         self.char1.db.is_dead = None
         self.char1.location = self.room1
-        self.post.db.post_blueprint = "merchant_ezra"
+        self.post.db.post_blueprints = {"night": "merchant_ezra"}
         self.post.db.post_slots = {
             "night": {"keeper": None, "vacant_since": 1.0}}
         offer = self._sweep_with_candidate(self.char2)
         self.assertTrue(offer.called)
+        offer.returned.assert_not_called()      # not owned: no return tried
 
-    def test_an_owned_shift_still_waits_for_its_own_person(self):
-        """Institutions return as themselves — a dead owner is not
-        replaced by a stranger just because the till is short."""
+    def test_an_owned_shift_is_offered_once_its_person_is_not_coming_back(self):
+        """No sleeve policy in the dead keeper's name (#3667): the shift
+        is nobody's now. Before, a return that could never succeed hit
+        `continue` and the slot stayed dark forever (#3565)."""
         self.post.db.post_blueprints = {"night": "dj_rook"}
         self.post.db.post_slots = {
             "night": {"keeper": None, "vacant_since": 1.0}}
-        self.post.db.register = 0          # cannot afford the premium
-        offer = self._sweep_with_candidate(self.char2)
-        self.assertFalse(offer.called,
-                         "hired a stranger into somebody's own shift")
+        offer = self._sweep_with_candidate(self.char2, outcome=posts.SUCCESSOR)
+        self.assertTrue(offer.called, "an unreturnable shift stayed dark")
+        self.assertNotIn("night", self.post.db.post_blueprints or {},
+                         "the shift still carries the dead keeper's name")
+
+    def test_an_owned_shift_waits_while_its_person_may_yet_return(self):
+        """HOLD: the keeper is alive elsewhere, or still on the table."""
+        self.post.db.post_blueprints = {"night": "dj_rook"}
+        self.post.db.post_slots = {
+            "night": {"keeper": None, "vacant_since": 1.0}}
+        offer = self._sweep_with_candidate(self.char2, outcome=posts.HOLD)
+        self.assertFalse(offer.called, "hired a stranger into somebody's own shift")
+        self.assertEqual(self.post.db.post_blueprints, {"night": "dj_rook"})
+
+    def test_a_returned_keeper_ends_the_sweep(self):
+        self.post.db.post_blueprints = {"night": "dj_rook"}
+        self.post.db.post_slots = {
+            "night": {"keeper": None, "vacant_since": 1.0}}
+        offer = self._sweep_with_candidate(self.char2, outcome=posts.RESLEEVED)
+        self.assertFalse(offer.called)
+        self.assertEqual(self.post.db.post_blueprints, {"night": "dj_rook"})
 
     def test_no_policy_means_the_slot_stays_dark(self):
         """`None` is the owner's undecided case, not an invitation."""

@@ -236,8 +236,9 @@ class TestBaseStation(TestCase):
 
 
 class TestDispatchOperator(TestCase):
-    """The human at the desk: live lookup (dead/absent -> automation) and
-    idempotent upkeep."""
+    """The human at the desk: live lookup (dead/absent -> silence). The
+    heartbeat no longer respawns her: a dead operator is a vacancy on
+    the dispatch post, filled by the sweep like any other (#3667)."""
 
     def _op(self, dead=False, unconscious=False):
         op = MagicMock()
@@ -264,15 +265,15 @@ class TestDispatchOperator(TestCase):
         base.contents = [self._op(unconscious=True)]
         self.assertIsNone(get_dispatch_operator())
 
-    @patch("world.director.population.get_dispatch_room")
-    def test_upkeep_is_idempotent(self, mock_base):
-        from world.director.population import ensure_dispatch_operator
-        vess = self._op()
-        base = MagicMock(); base.contents = [vess]
-        mock_base.return_value = base
-        with patch("world.director.population.spawn_dispatch_operator") as sp:
-            self.assertIs(ensure_dispatch_operator(), vess)
-        sp.assert_not_called()
+    def test_the_heartbeat_does_not_mint_an_operator(self):
+        """The free 'Petra' respawn is gone (#3667): no spawner, no
+        upkeep, and the routine's at_start does not call one."""
+        import inspect
+        from world.director import population, routines
+        self.assertFalse(hasattr(population, "ensure_dispatch_operator"))
+        self.assertFalse(hasattr(population, "spawn_dispatch_operator"))
+        self.assertNotIn("dispatch_operator",
+                         inspect.getsource(routines.DirectorRoutineScript.at_start))
 
 class TestDispatchRoomDesignation(TestCase):
     """The ear/garage split: dispatch prefers its own tagged room and

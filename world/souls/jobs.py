@@ -640,12 +640,29 @@ def step_job(soul):
         return True
 
     if do == "press":
-        # push the button, like anyone would (#2104)
+        # push the button, like anyone would (#2104). A step that names
+        # a button presses THAT button on the machine (`press insure on
+        # terminal`, #3667); a bare press is the machine's default.
         fixture = _obj(step["fixture"])
         if fixture is None or fixture.location != soul.location:
             fault(soul, "the machine isn't here")
             return False
-        soul.execute_cmd(f"press {fixture.key.split()[-1]}")
+        button = step.get("button")
+        if button:
+            soul.execute_cmd(f"press {button} on {fixture.key}")
+        else:
+            soul.execute_cmd(f"press {fixture.key.split()[-1]}")
+        job["at"] = at + 1
+        soul.db.soul_job = job
+        return True
+
+    if do == "insured":
+        # Did the press take? A policy in this body's name is the only
+        # proof; without it the need would re-fire every think (#3667).
+        from world import insurance
+        if not insurance.covers(soul):
+            fault(soul, "pressed insure and no policy is on file")
+            return False
         job["at"] = at + 1
         soul.db.soul_job = job
         return True

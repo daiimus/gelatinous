@@ -28,11 +28,11 @@ def _resolve(dbref):
 def snapshot_keeper_memory(npc):
     """§P3, the death-side half: called from the death machinery JUST BEFORE
     a dead NPC object is deleted. If the deceased kept a registered post,
-    their dossiers + episodic memory are copied onto the POST — the imprint
-    the policy disposes of: ``resleave`` restores it (insurance covers the
-    self), ``successor`` never reads it (the empty book is the point; the
-    snapshot stays as GM-readable archaeology). Never raises — death must
-    not be blockable by bookkeeping."""
+    their dossiers + episodic memory are copied onto the POST. Nothing
+    restores THIS record any more: a return restores the person's own
+    imprint (`world/imprint`), and only when their sleeve policy pays
+    (#3667); the copy stays as GM-readable archaeology. Never raises —
+    death must not be blockable by bookkeeping."""
     try:
         from evennia.utils.dbserialize import deserialize
         from world.npcs.blueprints import BLUEPRINTS

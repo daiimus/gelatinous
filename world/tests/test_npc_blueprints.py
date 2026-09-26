@@ -46,7 +46,7 @@ class TestRegistryIntegrity(TestCase):
     def test_post_policies_valid(self):
         for key, bp in _cast().items():
             self.assertIn((bp.get("post") or {}).get("policy"),
-                          (None, "resleave", "successor"), key)
+                          (None, "successor"), key)
 
     def test_roster_complete(self):
         # the cast, excluding machinery fixtures like the drill dummy
@@ -128,14 +128,13 @@ class TestPostReferencesAreReal(BaseEvenniaTest):
     """Every blueprint post must name an object that CAN be a post
     (#2259).
 
-    A `resleave` policy stashes the keeper's memories on
-    `post["fixture"]` when they die, matched by
-    `fixture.db.post_keeper == npc`. Name the wrong object and that can
-    never match — so the NPC is declared insured, dies, and comes back
-    with an empty brain. Nothing errors; the snapshot simply never
-    happens.
+    Death stashes the keeper's memories on `post["fixture"]`, matched
+    by the slot's keeper. Name the wrong object and that can never
+    match — so the NPC dies and, if their sleeve policy brings them
+    back by rebuild, comes back with an empty brain. Nothing errors;
+    the snapshot simply never happens.
 
-    Six of eleven insured blueprints were pointing at equipment
+    Six of eleven blueprints were pointing at equipment
     STANDING IN the post rather than the post: both Autodocs, the
     broadcast cabinet, and the dispatch console. The console was the
     original #2259 trap — build 117 wrote a rival slot record onto it

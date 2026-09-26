@@ -19,6 +19,11 @@ The record:
     name         who this is
     sleeve_uid   the BODY — recognition resolves through it, and a
                  clone inherits it (IDENTITY_RECOGNITION_SPEC §Sleeve)
+    blueprint_key  the cast member this body was built as, or None; a
+                 post's payout rebuilds only a snapshot whose blueprint
+                 is the shift's own (#3667)
+    dbref        the body's id at capture: the sleeve policy names the
+                 body that bought it, and a payout must match (#3667)
     died_at      when the body stopped
     taken_at     what the backup HELD — THE field restore keys on
     memories     episodic (LLM cast only)
@@ -68,6 +73,8 @@ def capture(character, now=None):
         "version": 1,
         "name": character.key,
         "sleeve_uid": getattr(character, "sleeve_uid", None),
+        "blueprint_key": _db("blueprint_key", None),
+        "dbref": getattr(character, "id", None),
         "died_at": now,
         "taken_at": now - GAP,
         "memories": _db("llm_memories", []),

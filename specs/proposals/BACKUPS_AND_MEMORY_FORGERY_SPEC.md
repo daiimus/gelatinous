@@ -83,11 +83,12 @@ reason this spec is short.
   the restore policy**, not the existence of a backup.
 * **Storage:** on the post fixture, `db.post_memory_snapshots[shift]`.
   One record per shift, **overwritten**.
-* **Restore:** `_try_resleave()` rebuilds the named keeper, debits
-  `RESLEAVE_PREMIUM` from the insurer's till to a Thawn-Harrison
-  terminal, and restores everything with a timestamp earlier than
-  `taken_at`. The body inherits the recorded `sleeve_uid`, so the face
-  is the same face.
+* **Restore:** `_try_resleave()` brings the dead keeper back when their
+  own sleeve policy pays (#3667; the till premium is gone): the archived
+  body is revived and restored from its own `db.imprint`, or a
+  never-archived keeper is rebuilt from a snapshot that names their
+  blueprint and body, with everything earlier than `taken_at`. The body
+  inherits the recorded `sleeve_uid`, so the face is the same face.
 * **The gap:** `taken_at = died_at - world/imprint.py::GAP` (5400s).
   The last ~90 minutes never made the backup. `GAP` is the only place
   that number lives; every reader goes through `imprint.cutoff_of()`,

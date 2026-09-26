@@ -61,7 +61,7 @@ def _post(key, room, shift="day"):
         # ripeness, and rewriting it would only re-prove #3093.
         post_slots={shift: {"keeper": None, "vacant_since": 1.0}},
         post_policy="successor", post_delay=1, post_blueprints=None,
-        post_blueprint=None, post_keeper=None, post_vacant_since=1.0,
+        post_keeper=None, post_vacant_since=1.0,
         post_role="worker", post_wage_rate=None, register=None)
     return post
 

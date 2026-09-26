@@ -98,11 +98,14 @@ emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
 > pressure; duty is the §5 band-3 SCHEDULE goal, read off the shift
 > clock (`engine.py` returns `(2, "duty")` for a soul with a post on
 > shift), and `needs.py::_snapshot` treats a stored `duty` key as a
-> legacy artefact to tolerate. **Three derived needs have since joined
-> the human profile**, all zero-write and computed on read: `craving`
-> (shape `vice`, #2076), `wardrobe` (shape `dress`, #2104) and `health`
-> (shape `clinic`, §14). `cash`-as-a-resource and the broke-skip-paid
-> rule both still hold.
+> legacy artefact to tolerate. **Four derived needs have since joined
+> the human (and synth) profile**, all zero-write and computed on read:
+> `craving` (shape `vice`, #2076), `wardrobe` (shape `dress`, #2104),
+> `health` (shape `clinic`, §14) and `insurance` (shape `insure`, #3667:
+> 0.60 while no sleeve policy in this body's name is on file, a band-3
+> want that walks the soul to the Thawn-Harrison lobby terminal in their
+> own time; 0.0 once covered, or for a body with no sleeve signature).
+> `cash`-as-a-resource and the broke-skip-paid rule both still hold.
 
 ## 3.5 · Souls advertise too — NPC↔NPC interaction
 
@@ -433,8 +436,8 @@ generator identity was invented to fake.
 **Post records** live on the fixture that IS the post — the counter
 for venues, the room for roomed posts: `db.post_role`,
 `db.post_schedule`, `db.post_wage_rate`, `db.post_policy`
-(`successor` | `none`; `resleave` stays with the reincarnation spec's
-§P3), `db.post_delay` (vacancy grace before succession),
+(`successor` | `none`; whether the named keeper returns is their own
+sleeve policy's business since #3667), `db.post_delay` (vacancy grace before succession),
 `db.post_vacant_since`. Registered posts are tagged
 (`post`/souls — the indexed path).
 
