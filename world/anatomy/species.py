@@ -510,6 +510,19 @@ SPECIES_DEFINITIONS = {
                 "description": "Integrity of the neck — zero equals "
                                "decapitation/death",
             },
+            # The brain's STRUCTURAL twin (#3248, owner ruling 2026-09-26
+            # "Death with a window"): a destroyed brain is a death that
+            # starts the progression window, and a brain installed inside
+            # it restores this capacity and revives through the existing
+            # `not is_dead()` gate. `consciousness` above stays the awake
+            # axis and never gates death.
+            "brain_integrity": {
+                "organs": ["brain"],
+                "fatal_threshold": 0.0,
+                "directly_fatal": True,
+                "description": "Integrity of the brain — zero equals "
+                               "brain death",
+            },
             "blood_loss": {
                 "source": "bleeding_injuries",
                 "directly_fatal": True,
@@ -1091,6 +1104,13 @@ SPECIES_DEFINITIONS = {
                 "fatal_threshold": 0.0,
                 "directly_fatal": True,
                 "affects": ["consciousness", "breathing", "moving"],
+            },
+            "brain_integrity": {
+                "organs": ["brain"],
+                "fatal_threshold": 0.0,
+                "directly_fatal": True,
+                "description": "Integrity of the brain — zero equals "
+                               "brain death",
             },
             "blood_loss": {
                 "source": "bleeding_injuries",

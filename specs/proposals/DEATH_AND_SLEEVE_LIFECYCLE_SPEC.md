@@ -83,6 +83,10 @@ reason about it.
 > dies, and the revival gate (which only asks `not is_dead()`) returns them
 > whole. Any bloodless organ destruction hits it directly. See §10.4 and
 > [#3248](https://github.com/daiimus/gelatinous/issues/3248).
+>
+> **Closed 2026-09-26 (#3248, "Death with a window"):** a destroyed brain
+> is now a death via `brain_integrity`; only a brain installed inside the
+> window revives it. What remains of "handed back whole" is #3253.
 
 Animation: [`DEATH_CURTAIN_SPEC`](../DEATH_CURTAIN_SPEC.md)
 (`curtain_of_death.py`). On completion it calls `start_death_progression()`,
@@ -376,9 +380,9 @@ steps 4–5 wait on the gig economy and the file/records layer respectively.
 > **Status: DESIGNED, NOT BUILT (2026-09-11).** Owner direction, deferred to
 > whenever the death loop is revisited. Tracked as
 > [#3247](https://github.com/daiimus/gelatinous/issues/3247).
-> **Blocked on [#3248](https://github.com/daiimus/gelatinous/issues/3248)** —
-> see §10.4; the state this feature exists to produce does not currently
-> exist in the model.
+> ~~Blocked on [#3248](https://github.com/daiimus/gelatinous/issues/3248)~~ —
+> **unblocked 2026-09-26**: `brain_integrity` makes a brain-destroyed body a
+> death with a window, the state this feature exists to produce (§10.4).
 
 ### 10.1 · What happens today
 
@@ -441,7 +445,13 @@ the victim ends up awake and talking, which reads as the finishing move
 failing. The pick wants weighting toward organs that mean something, not
 uniformity across whatever carries the flag.
 
-### 10.4 · Why this is blocked
+### 10.4 · Why this was blocked (unblocked 2026-09-26)
+
+> **#3248 built `brain_integrity` on 2026-09-26** (owner ruling "Death with
+> a window"): a destroyed brain is a death that starts the progression, and
+> only a brain replacement inside the window revives it. The "revivable but
+> unlikely" state below now exists for the brain. The rows and the
+> reasoning are kept as the record of why.
 
 The "revivable but unlikely" state the design describes **does not currently
 exist for any organ**. Every lethal organ is instant death; every non-lethal
@@ -468,8 +478,9 @@ asks `not is_dead()`) would hand back **whole**.
 The victim ends up *more* recoverable than if you had done nothing.
 
 Full detail and the `brain_integrity` fix in
-[#3248](https://github.com/daiimus/gelatinous/issues/3248). Fixing brain death
-is what **creates** the outcome this feature wants to produce.
+[#3248](https://github.com/daiimus/gelatinous/issues/3248), **built
+2026-09-26**. Fixing brain death is what **created** the outcome this feature
+wants to produce.
 
 ### 10.5 · Undesigned — decide before building
 

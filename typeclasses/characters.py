@@ -656,14 +656,22 @@ class Character(
             blood_pumping = medical_state.calculate_body_capacity("blood_pumping")
             breathing = medical_state.calculate_body_capacity("breathing") 
             digestion = medical_state.calculate_body_capacity("digestion")
+            brain = medical_state.calculate_body_capacity("brain_integrity")
+            neck = medical_state.calculate_body_capacity("neck_integrity")
             blood_level = medical_state.blood_level
             blood_loss_fatal = blood_level <= (100.0 - BLOOD_LOSS_DEATH_THRESHOLD)
             
-            # Return first fatal condition found (in priority order)
+            # Return first fatal condition found (in priority order). Every
+            # structural death has its own name: "brain" and "neck" are
+            # keywords the death-curtain prose already knows how to render.
             if blood_loss_fatal:
                 cause = "blood loss"
             elif blood_pumping <= 0:
                 cause = "heart failure"
+            elif brain <= 0:
+                cause = "brain death"
+            elif neck <= 0:
+                cause = "a broken neck"
             elif breathing <= 0:
                 cause = "respiratory failure"
             elif digestion <= 0:

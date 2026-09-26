@@ -36,8 +36,8 @@ from world.anatomy import SPECIES_DEFINITIONS
 from world.medical.medical_messages import (_GENERIC_DEATH_BY_SPECIES,
                                             get_death_cause_template)
 
-CAPACITY_CAUSES = ("blood loss", "heart failure", "respiratory failure",
-                   "organ failure", "critical injuries")
+CAPACITY_CAUSES = ("blood loss", "heart failure", "brain death", "a broken neck",
+                   "respiratory failure", "organ failure", "critical injuries")
 
 
 def _generic(species):

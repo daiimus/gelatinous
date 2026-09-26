@@ -361,37 +361,25 @@ del _SPECIES_DEFINITIONS_BC
 # containers to build the vital-location set used by the combat hit-location
 # bias.
 #
-# Today this is a SUPERSET of what is_dead() enforces. is_dead() checks
-# blood_pumping, breathing, digestion and neck_integrity; `consciousness` is
-# listed here only to make the head a vital TARGET, and currently produces
-# unconsciousness rather than death.
+# This is exactly the set is_dead() enforces (plus the blood-loss floor,
+# which is not a capacity). Every entry is STRUCTURAL: an organ floor that
+# only organ HP (and a location-matching condition's functionality modifier,
+# e.g. a severity-10 infection) can move.
 #
-# OWNER RULING 2026-09-11 (#3248), NOT YET IMPLEMENTED: consciousness is to
-# become a death condition too -- "if consciousness capacity hits 0 they die".
-# When that lands, this stops being a superset and the note above should go.
-#
-# THE DISTINCTION THAT MAKES THAT SAFE, and the reason this comment exists:
-# there are two different consciousness values, and only one of them may ever
-# gate death.
-#
-#   calculate_body_capacity("consciousness")  ORGAN FLOOR. Moves only with
-#                                             brain HP. This is the one the
-#                                             ruling names.
-#   MedicalState.consciousness                RUNTIME. The organ floor MINUS
-#                                             pain, blood-loss and suppression
-#                                             penalties (see update_vital_signs).
-#                                             is_unconscious() reads this one.
-#
-# The runtime value hits zero on EVERY KNOCKOUT in the game -- a heavy
-# blood-loss KO reads 0.45 runtime against an organ floor of 1.00. Gating death
-# on it would turn every knockout into a kill. Wire the capacity, never the
-# attribute.
+# `consciousness` is NOT here and must never be (#3248, owner 2026-09-26:
+# "Conscious capacity 0 should not be death"). It is the awake axis: its
+# runtime value, MedicalState.consciousness, hits zero on every knockout in
+# the game (a heavy blood-loss KO reads 0.45 runtime against an organ floor
+# of 1.00). The brain's DEATH is the separate structural capacity
+# `brain_integrity` (owner ruling 2026-09-26: "Death with a window"): a
+# destroyed brain is dead on the blow, starts the death progression, and a
+# brain installed inside the window revives through `not is_dead()`.
 LETHAL_CAPACITY_NAMES = (
     "blood_pumping",
     "breathing",
     "digestion",
     "neck_integrity",
-    "consciousness",
+    "brain_integrity",
 )
 
 # ===================================================================

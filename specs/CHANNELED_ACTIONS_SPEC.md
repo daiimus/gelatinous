@@ -156,7 +156,7 @@ immediately:
 | **Being enrolled in combat** (even before the first hit lands) | combat handler `add_combatant` |
 | **Falling unconscious / dying** (bleed-out mid-act) | medical unconscious/death hooks |
 
-> **Clarified by owner ruling 2026-09-13 (#3368):** this row is the **actor** falling unconscious or dying. A **patient** dying under the surgeon's hands does NOT break the surgeon's channel. A procedure is a commitment with expected flatlines (heart/brain transplants pass through death into the 90-second revival window); the surgeon keeps working, the room sees the death, and `stop` is the exit if things turn. `at_death` still clears the procedure record on the body (#2926) so nothing resolves on a corpse; the surgeon's own channel runs out on its own.
+> **Clarified by owner ruling 2026-09-13 (#3368):** this row is the **actor** falling unconscious or dying. A **patient** dying under the surgeon's hands does NOT break the surgeon's channel. A procedure is a commitment with expected flatlines (heart/brain transplants pass through death into the 90-second revival window — true of the brain since #3248 built `brain_integrity`, 2026-09-26); the surgeon keeps working, the room sees the death, and `stop` is the exit if things turn. `at_death` still clears the procedure record on the body (#2926) so nothing resolves on a corpse; the surgeon's own channel runs out on its own.
 | **The tool leaving your hands** (disarm, `wrest` the spray can away) | disarm/wrest resolution |
 | **Forced movement** (dragged, thrown, gravity/fall) | movement-resolution seams |
 

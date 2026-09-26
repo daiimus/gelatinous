@@ -975,9 +975,10 @@ class MedicalState:
         Brain damage feeds in indirectly: a destroyed brain drops
         the ``consciousness`` capacity floor to zero, which
         ``update_vital_signs`` writes into ``self.consciousness``
-        on each tick, which trips the threshold here.  This is the
-        canonical "brain destruction is unconsciousness, not death"
-        path documented in the HEALTH spec.
+        on each tick, which trips the threshold here.  Whether the
+        body is also DEAD is a different question answered by the
+        structural ``brain_integrity`` capacity in :meth:`is_dead`
+        (#3248); this method is only the awake axis.
         """
         return self.consciousness < (CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD / 100.0)
 
@@ -1003,21 +1004,23 @@ class MedicalState:
         capacity-derived:
 
         1. **Lethal capacity floor** — any of ``blood_pumping`` /
-           ``breathing`` / ``digestion`` / ``neck_integrity`` hits
-           zero.  These are the four entries in
-           ``LETHAL_CAPACITY_NAMES`` that drive vital-location
-           targeting bias *and* enforce death (the fifth entry,
-           ``consciousness``, is intentionally NOT a death gate —
-           see :meth:`is_unconscious`).
+           ``breathing`` / ``digestion`` / ``neck_integrity`` /
+           ``brain_integrity`` hits zero.  These are the five entries
+           in ``LETHAL_CAPACITY_NAMES``, which drive vital-location
+           targeting bias *and* enforce death.  ``consciousness`` is
+           NOT a death gate and never will be (owner, 2026-09-26) —
+           it is the awake axis, see :meth:`is_unconscious`.
         2. **Blood-loss floor** — total blood level falls below
            ``BLOOD_LOSS_DEATH_THRESHOLD``.
 
         Notes for the audit's substrate work:
 
-        * Brain destruction lands as unconsciousness here (not
-          death).  Eventual revival blocking lives in
+        * Brain destruction is a DEATH WITH A WINDOW (#3248, owner
+          ruling 2026-09-26): ``brain_integrity`` hits zero, the body
+          is dead on the blow and the death progression starts; a
+          brain installed inside the window restores the capacity and
           :meth:`death_progression.DeathProgressionScript._check_medical_revival_conditions`
-          per the audit's Phase 2.
+          (which asks exactly ``not is_dead()``) revives it.
         * Kidney loss is **not fatal**, by owner ruling (#3402): total
           loss spawns ``RenalFailureCondition``, a lasting obtundation
           that leaves the patient fragile. The schema's unread
@@ -1033,6 +1036,8 @@ class MedicalState:
             return True  # Liver failure
         if self.calculate_body_capacity("neck_integrity") <= 0.0:
             return True  # Decapitation - cervical spine severed (#243)
+        if self.calculate_body_capacity("brain_integrity") <= 0.0:
+            return True  # Brain death - a death with a window (#3248)
 
         # Death from blood loss
         if self.blood_level <= (100.0 - BLOOD_LOSS_DEATH_THRESHOLD):
