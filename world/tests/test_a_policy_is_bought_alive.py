@@ -19,8 +19,9 @@ from evennia.utils.test_resources import EvenniaCommandTest
 from commands.CmdGraffiti import CmdPress
 from typeclasses.terminals import InsuranceTerminal
 from world import insurance
-from world.insurance import (NO_POLICY, buy_policy, covers, policy_for,
-                             restore_policy, spend_policy, status_line,
+from world.insurance import (NO_POLICY, PERPETUAL_NOTE, buy_policy, covers,
+                             grant_perpetual, policy_for, renew_perpetual,
+                             restore_policy, revoke_perpetual, status_line,
                              take_policy, void_policy)
 
 BUY = f"{InsuranceTerminal.BUY_BUTTON} on terminal"
@@ -261,5 +262,67 @@ class AFlashCloneSpendsIt(_Lobby):
                              location=None)
         husk.sleeve_uid = self.buyer.sleeve_uid
         husk.db.archived = True
-        self.assertFalse(spend_policy(husk.sleeve_uid, husk.id))
+        self.assertIsNone(take_policy(husk.sleeve_uid, husk.id))
         self.assertTrue(covers(self.buyer), "the living body lost its cover")
+
+
+class APerpetualPolicy(_Lobby):
+    """Staff and play-testing cover (owner ruling 2026-09-25). Taken like
+    any record, then re-issued in the returned body's name; a forfeit or a
+    staff revoke removes it, nothing else."""
+
+    def test_granted_it_covers_and_says_so(self):
+        ok, msg = grant_perpetual(self.buyer, granted_by=self.char1)
+        self.assertTrue(ok, msg)
+        self.assertTrue(covers(self.buyer))
+        self.assertIn(PERPETUAL_NOTE, status_line(self.buyer))
+        self.assertEqual(policy_for(self.buyer.sleeve_uid)["granted_by"], self.char1.key)
+
+    def test_a_take_removes_it_and_a_renew_reissues_it_to_the_new_body(self):
+        grant_perpetual(self.buyer)
+        rec = take_policy(self.buyer.sleeve_uid, self.buyer.id)
+        self.assertIsNotNone(rec)
+        self.assertFalse(covers(self.buyer), "a take left the record in place")
+        new_body = create_object("typeclasses.characters.Character", key="next",
+                                 location=None)
+        new_body.sleeve_uid = self.buyer.sleeve_uid
+        self.assertTrue(renew_perpetual(rec, new_body))
+        self.assertTrue(covers(new_body))
+        self.assertFalse(covers(self.buyer), "the dead body still redeems")
+        self.assertTrue(policy_for(new_body.sleeve_uid)["perpetual"])
+
+    def test_renew_is_a_no_op_for_an_ordinary_record(self):
+        buy_policy(self.buyer, self.terminal)
+        rec = take_policy(self.buyer.sleeve_uid, self.buyer.id)
+        self.assertFalse(renew_perpetual(rec, self.buyer))
+        self.assertIsNone(policy_for(self.buyer.sleeve_uid))
+
+    def test_a_revoke_removes_it(self):
+        grant_perpetual(self.buyer)
+        ok, _ = revoke_perpetual(self.buyer)
+        self.assertTrue(ok)
+        self.assertFalse(covers(self.buyer))
+
+    def test_buying_over_it_is_already_on_file(self):
+        grant_perpetual(self.buyer)
+        ok, msg = buy_policy(self.buyer, self.terminal)
+        self.assertFalse(ok)
+        self.assertIn(PERPETUAL_NOTE, msg)
+
+    def test_it_replaces_an_ordinary_purchase(self):
+        buy_policy(self.buyer, self.terminal)
+        ok, _ = grant_perpetual(self.buyer)
+        self.assertTrue(ok)
+        self.assertTrue(policy_for(self.buyer.sleeve_uid)["perpetual"])
+
+    def test_revoke_does_not_touch_an_ordinary_purchase(self):
+        buy_policy(self.buyer, self.terminal)
+        ok, msg = revoke_perpetual(self.buyer)
+        self.assertFalse(ok)
+        self.assertIn("ordinary purchase", msg)
+        self.assertTrue(covers(self.buyer))
+
+    def test_no_signature_no_grant(self):
+        self.buyer.sleeve_uid = None
+        ok, _ = grant_perpetual(self.buyer)
+        self.assertFalse(ok)

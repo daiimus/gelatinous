@@ -54,7 +54,19 @@ Respawn Sleeve
             </div>
             {% endfor %}
             
-            {% if old_character %}
+            {% if old_character and flash_clone_refusal %}
+            <div class="mt-4 mb-3 flash-clone-warning">
+              <div class="text-center py-3">
+                <h5 class="mb-1" style="color: #999; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Flash Clone Unavailable</h5>
+                <small style="color: #999;">{{ flash_clone_name }} &mdash; {{ flash_clone_refusal }}</small>
+                <div class="mt-2">
+                  <small style="color: #999;">
+                    A sleeve policy is bought alive at the Thawn-Harrison lobby terminal and pays for one return from a death.
+                  </small>
+                </div>
+              </div>
+            </div>
+            {% elif old_character %}
             <div class="mt-4 mb-3 flash-clone-warning">
               <div class="text-center py-3">
                 <h5 class="mb-1" style="color: #e6c547; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">⚠ Flash Clone Option</h5>

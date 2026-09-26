@@ -113,8 +113,23 @@ sleeve_policy:<uid> = {
     "buyer_dbref": <int>,         # the only body that can redeem it
     "blueprint_key": <str|None>,  # NPC cast
     "account_id": <int|None>,     # PC
+    "perpetual": True,            # staff grant only (Slice C): see below
+    "granted_by": <str>,          #   who granted it
+    "renewed_at": <epoch>,        #   last re-issue after a return
 }
 ```
+
+**A standing (perpetual) record** (owner ruling 2026-09-25, Slice C: "a
+way to make a character perpetually insured. Usable for play testing,
+staff, etc.") is the same row flagged `perpetual`, written only by the
+staff verb `@insure` (Admin lock, `commands/CmdInsure.py`). It is TAKEN
+like any other record, so two returns racing for it still get one body
+and one refusal, and once the return is verified the payer re-issues it in
+the new body's name (`renew_perpetual`; a flash clone is a new object with
+a new id, and a record left pointing at the dead body would pay for
+exactly one death). A forfeit (Q5) or `@insure/revoke` removes it; nothing
+else does. It may be granted to a dead, archived body: that is how a
+playtester who died uninsured is brought back (grant, then respawn).
 
 **Storage: one `ServerConfig` row per uid** (`db_key` is unique and 50 chars
 fits), the store the house already moved durable data to. Not a
@@ -232,9 +247,12 @@ the lobby), `create_flash_clone` spends the dead body's own record. As
 built, two details the review sharpened: the INSERT happens in one place
 (`_insert`, the row built with the pickled value and saved inside the
 try, because `ServerConfig.value`'s setter saves on assignment), and the
-clone hook is `spend_policy(uid, body_id)`, never a void by uid alone.
+clone hook is `spend_policy(uid, body_id)`, never a void by uid alone
+(replaced in Slice C by the gate's take/renew; `spend_policy` no longer exists).
 Null-uid census: 8 of 75 characters, all accountless husks; backfill or
-exclusion is Slice C's. `InsuranceTerminal`
+exclusion is Slice C's (**corrected in Slice C:** that census read the
+attribute without its category and was wrong; every archived sleeve has a
+uid). `InsuranceTerminal`
 (`typeclasses/terminals.py`; `press insure`, `press status`), branded
 Thawn-Harrison, built in room #1986 by a build script; `POLICY_PRICE = 0`
 in one place; the `ServerConfig` registry with take/put-back; the census of
@@ -295,7 +313,45 @@ snapshot, the `_sweep` helpers that patch `_try_resleave`,
 keepers`, `test_dispatch_operator_upkeep`, `test_director_population.py:
 269`. `test_no_policy_means_the_slot_stays_dark` passes unchanged.
 
-**Slice C — the player gate, last.** `create_flash_clone` gate with
+**Slice C — the player gate. BUILT 2026-09-25, as below with these
+as-built notes:** the doors ask ONE question, `insurance.flash_clone_refusal
+(old_body)` (archived with reason `death`, else `NOT_A_DEATH`; the record
+must be this body's own, else `NO_POLICY`), and `create_flash_clone` asks
+it again plus `STILL_ON_THE_TABLE` (a `death_progression` script still
+attached; build-time only, because at a live death the menu's first render
+happens while the script is still attached). Then the take, then the whole
+build inside one undo (a fresh body that never verified is removed from the
+account and deleted, the record restored), then the verify (unarchived, not
+dead, wearing the record's uid), then `renew_perpetual`. The refusal is
+`PolicyRefused`; the telnet menu refuses `[4]` at the goto-callable
+(re-display), the node's own catch returns `respawn_welcome(...)` as a
+node (a bare string would close the menu, the nine-place defect
+EVMENU_PATTERNS_SPEC records), and the web POST catches it before its
+generic handler and redirects to the sleeve choice with the same text. The
+web POST reads the source through `respawn_candidate()` like the GET.
+`archive_character` resolves the owner with `world.ownership.owning_account`
+(playable-characters record first, then the live puppet, then a puppet
+lock; unresolved claims skipped), so `last_character` AND the tombstone are
+written at a death the player was offline for; the web archive view's
+manual `last_character` write is gone. `CharacterArchiveView` refuses an
+already-archived body and a dying one, and its message says a shelve is
+not a death. Both template finalizers call `forfeit_policy(dead_body)`,
+buyer-scoped (Q5; a standing record is forfeited too). Players learn
+before it matters: `help insurance`, a `SLEEVE POLICY:` line on every
+telnet envelope (`insurance.envelope_line`), and a pod-lid card in
+`at_post_puppet`'s decant branch, the one line every creation door reaches,
+web included. Slice A's `spend_policy` is gone (the gate replaced it).
+Null-uid husks: the Slice A census was wrong (it read `sleeve_uid` without
+its `identity` category); re-measured in-process 2026-09-25, all 45
+archived sleeves carry a uid (28 `death`, 17 `manual`, none with a policy),
+so nothing is backfilled and nothing is excluded by hand; a uid-less body
+would drop out anyway (no record can exist for uid None). Tests:
+`test_the_uninsured_stay_dead.py` (the web door through Django's test
+client, the first in the repo), `test_the_card_names_who_you_become.py`
+(fixture now a death-archived, insured body, plus an uninsured control),
+the perpetual section of `test_a_policy_is_bought_alive.py`.
+
+Original plan: `create_flash_clone` gate with
 take-before-build and restore-on-failure; one refusal constant used by both
 doors; the web POST catches it; `last_character` resolved at death;
 `CharacterArchiveView` refuses a sleeve that is already archived and its
@@ -354,7 +410,10 @@ played live as Iver, then the spec promoted or amended.
 5. ~~Template after an insured death.~~ **Ruled 2026-09-25: "1".** Picking
    a fresh character after an insured death spends the policy: both
    template finalizers (telnet and web) void the dead lineage's record, so
-   no orphaned row can revive an abandoned self later.
+   no orphaned row can revive an abandoned self later. As built (Slice C):
+   `forfeit_policy(dead_body)`, buyer-scoped, so an older husk's fresh start
+   never drops a living lineage-mate's cover; a standing record is
+   forfeited too (staff re-grants if wanted).
 6. ~~Delay on fallthrough.~~ **Ruled 2026-09-25: "Default behavior makes
    sense."** Each post keeps its own `post_delay` (census 2026-09-09,
    `posts.py:421`: 72 h on ten posts, 6 h on five, 24 h on two, 600 s on

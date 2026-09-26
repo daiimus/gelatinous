@@ -114,6 +114,23 @@ def owning_accounts(obj):
     return claims
 
 
+def owning_account(obj):
+    """The one Account a body belongs to, or None. The playable-characters
+    record first, because it is the only signal that survives logout (a
+    body archived after its player disconnected, or shelved from the web,
+    has no `account` at all); then the live puppet; then a puppet lock.
+    Unresolved claims (a lock naming the body's own dbref) are skipped:
+    they prove somebody owns the body, not who."""
+    rank = {"playable_characters": 0, "puppeted": 1, "puppet-lock": 2}
+    claims = sorted((rank[how], key) for key, how in owning_accounts(obj)
+                    if key and how in rank)
+    for _, key in claims:
+        acct = _account_named(key)
+        if acct is not None:
+            return acct
+    return None
+
+
 def is_player_owned(obj) -> bool:
     """Does any account have a claim on this body?
 

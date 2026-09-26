@@ -137,6 +137,45 @@ HELP_ENTRY_DICTS = [
         """,
     },
     {
+        "key": "insurance",
+        "aliases": ["sleeve policy", "policy", "insure", "flash clone", "resleeve"],
+        "category": "Character",
+        "text": """
+            |wSleeve Insurance|n
+
+            When a body dies, Thawn-Harrison can decant a flash clone of it:
+            same face, same stats, same memories as of your last backup. It
+            does this only if the dead body held a |wsleeve policy|n. No
+            policy, no clone: your next character starts fresh, and every
+            character starts uninsured.
+
+            A policy is bought |walive|n, at the policy terminal in the
+            Thawn-Harrison lobby. The terminal takes a DNA sample, so the
+            policy is in your body's name and nobody else's.
+
+                |wpress insure on terminal|n   - file a policy
+                |wpress status on terminal|n   - read what is on file
+
+            Thawn-Harrison is not charging for policies at present.
+
+            # subtopics
+
+            ## what it pays for
+
+            One return from a |wdeath|n. The clone spends the policy; buy
+            another once you are back on your feet. Shelving a living
+            character from the website is not a death, and a shelved
+            sleeve is never cloned back. Picking a fresh character after an
+            insured death forfeits the dead body's policy.
+
+            ## the envelope
+
+            Every sleeve envelope prints a SLEEVE POLICY line as it
+            unseals, and a card inside the pod lid says the same: NONE ON
+            FILE means the body you are wearing is not covered yet.
+        """,
+    },
+    {
         "key": "evennia",
         "aliases": ["ev"],
         "category": "General",
