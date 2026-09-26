@@ -366,26 +366,26 @@ del _SPECIES_DEFINITIONS_BC
 # listed here only to make the head a vital TARGET, and currently produces
 # unconsciousness rather than death.
 #
-# OWNER RULING 2026-09-11 (#3248), NOT YET IMPLEMENTED: consciousness is to
-# become a death condition too -- "if consciousness capacity hits 0 they die".
-# When that lands, this stops being a superset and the note above should go.
+# OWNER RULING 2026-09-26 (#3248): "Conscious capacity 0 should not be
+# death." The superset above is the SETTLED state: brain destruction is a
+# coma, not a death, by design, so brain surgery / a brain replacement is not
+# a race against the death window. The 2026-09-11 ruling that consciousness
+# was to become a death condition is WITHDRAWN. Do not "fix" this.
 #
-# THE DISTINCTION THAT MAKES THAT SAFE, and the reason this comment exists:
-# there are two different consciousness values, and only one of them may ever
-# gate death.
+# For anyone wiring anything else to consciousness, there are two values:
 #
-#   calculate_body_capacity("consciousness")  ORGAN FLOOR. Moves only with
-#                                             brain HP. This is the one the
-#                                             ruling names.
+#   calculate_body_capacity("consciousness")  ORGAN FLOOR. Organ FUNCTION, not
+#                                             HP: brain HP times any
+#                                             location-matching condition
+#                                             modifier, so a severity-10 head
+#                                             infection also drives it to 0.
 #   MedicalState.consciousness                RUNTIME. The organ floor MINUS
 #                                             pain, blood-loss and suppression
 #                                             penalties (see update_vital_signs).
 #                                             is_unconscious() reads this one.
 #
 # The runtime value hits zero on EVERY KNOCKOUT in the game -- a heavy
-# blood-loss KO reads 0.45 runtime against an organ floor of 1.00. Gating death
-# on it would turn every knockout into a kill. Wire the capacity, never the
-# attribute.
+# blood-loss KO reads 0.45 runtime against an organ floor of 1.00.
 LETHAL_CAPACITY_NAMES = (
     "blood_pumping",
     "breathing",

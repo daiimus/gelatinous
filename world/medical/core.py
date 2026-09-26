@@ -1015,7 +1015,8 @@ class MedicalState:
         Notes for the audit's substrate work:
 
         * Brain destruction lands as unconsciousness here (not
-          death).  Eventual revival blocking lives in
+          death) -- owner ruling 2026-09-26 (#3248): "Conscious
+          capacity 0 should not be death."  Eventual revival blocking lives in
           :meth:`death_progression.DeathProgressionScript._check_medical_revival_conditions`
           per the audit's Phase 2.
         * Kidney loss is **not fatal**, by owner ruling (#3402): total

@@ -83,6 +83,12 @@ reason about it.
 > dies, and the revival gate (which only asks `not is_dead()`) returns them
 > whole. Any bloodless organ destruction hits it directly. See §10.4 and
 > [#3248](https://github.com/daiimus/gelatinous/issues/3248).
+>
+> **2026-09-26:** #3248 ruled — "Conscious capacity 0 should not be
+> death." The brain-destroyed patient is a coma by design (brain surgery);
+> the "handed back whole" half is #3253 (a dressing regrows a destroyed
+> organ). Infection reaching internal organs being fatal was accepted as
+> design the same day ("does make sense but could likely be expanded").
 
 Animation: [`DEATH_CURTAIN_SPEC`](../DEATH_CURTAIN_SPEC.md)
 (`curtain_of_death.py`). On completion it calls `start_death_progression()`,
@@ -376,9 +382,10 @@ steps 4–5 wait on the gig economy and the file/records layer respectively.
 > **Status: DESIGNED, NOT BUILT (2026-09-11).** Owner direction, deferred to
 > whenever the death loop is revisited. Tracked as
 > [#3247](https://github.com/daiimus/gelatinous/issues/3247).
-> **Blocked on [#3248](https://github.com/daiimus/gelatinous/issues/3248)** —
-> see §10.4; the state this feature exists to produce does not currently
-> exist in the model.
+> ~~Blocked on [#3248](https://github.com/daiimus/gelatinous/issues/3248)~~ —
+> **#3248 ruled 2026-09-26: brain destruction is NOT death**, so the coup de
+> grâce cannot ride on brain destruction; when built it needs its own
+> mechanism (unruled). See §10.4.
 
 ### 10.1 · What happens today
 
@@ -467,9 +474,9 @@ asks `not is_dead()`) would hand back **whole**.
 
 The victim ends up *more* recoverable than if you had done nothing.
 
-Full detail and the `brain_integrity` fix in
-[#3248](https://github.com/daiimus/gelatinous/issues/3248). Fixing brain death
-is what **creates** the outcome this feature wants to produce.
+Full detail in [#3248](https://github.com/daiimus/gelatinous/issues/3248),
+**closed 2026-09-26 by ruling**: brain destruction is a coma, not a death, so
+the outcome this feature wants to produce needs its own mechanism (unruled).
 
 ### 10.5 · Undesigned — decide before building
 

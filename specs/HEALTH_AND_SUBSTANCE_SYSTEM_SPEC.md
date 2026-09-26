@@ -442,7 +442,7 @@ class DeathProgressionScript(DefaultScript):
 - **✅ Medical system integration** - Automatic revival when fatal conditions resolved
 - **✅ Death progression messaging** - Complete narrative experience with observer integration
 - **Future enhancement potential** - Brain death mechanics could be added but current system is sufficient
-  - *⚠️ Superseded 2026-09-11 — owner ruling #3248: consciousness **capacity** (the organ floor, which moves only with brain HP — never `MedicalState.consciousness`, the runtime value every knockout drives to zero) is to become a death condition. Recorded but NOT YET IMPLEMENTED — see the `LETHAL_CAPACITY_NAMES` comment in `world/medical/constants.py`. `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` reads Phase 2 (a separate revival-side guard) as "likely made moot … re-scope rather than build" if the ruling lands, but that re-scope is **not yet settled** — owner call pending. Either way the "sufficient" judgement above predates `specs/proposals/DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md` §10.4, which shows the gap yields a stabilised brain-destroyed patient who never dies, never corpses, and is handed back whole — a coup de grâce leaving the victim* more *recoverable than doing nothing.*
+  - *⚠️ Ruled 2026-09-26 (#3248): "Conscious capacity 0 should not be death."* Brain destruction stays a coma, not a death, by design (brain surgery / a brain replacement is untimed). The 2026-09-11 ruling that consciousness capacity was to become a death condition is **withdrawn**; the `LETHAL_CAPACITY_NAMES` comment in `world/medical/constants.py` records the settled state. The "handed back whole" half of `DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md` §10.4 is #3253 (a dressing regrows a destroyed organ), not a death question. Phase 2 (brain death blocks revival) is a separate revival-side guard and stays unruled.
 
 **Progression Message Themes:**
 - **Early stages (30-120s)** - Medical shock, surreal sensory experiences, dark humor
@@ -1156,13 +1156,10 @@ PAIN_SYSTEM = {
         # so brain destruction lands as unconsciousness. This section
         # already says so correctly under "Death vs Unconsciousness vs
         # Functionality" above: "Consciousness: Flag system, not death".
-        # Owner ruling #3248 (2026-09-11) makes consciousness *capacity*
-        # -- the organ floor, which moves only with brain HP -- a death
-        # condition. It must never be MedicalState.consciousness, the
-        # runtime value that pain and blood loss drive to zero on every
-        # knockout; gating death on that would turn each KO into a kill.
-        # NOT YET IMPLEMENTED -- see LETHAL_CAPACITY_NAMES in
-        # world/medical/constants.py.
+        # Owner ruling #3248 (2026-09-26): "Conscious capacity 0 should
+        # not be death." The line below is the model's original shape and
+        # is NOT live; brain destruction is a coma by design. The
+        # 2026-09-11 ruling to the contrary is withdrawn.
         "death_threshold": "0% consciousness"
     }
 }
