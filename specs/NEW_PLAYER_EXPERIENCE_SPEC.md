@@ -48,7 +48,9 @@ rendering), and
 
 Respawn (template sleeves / flash clone) and web-created characters
 share the same conventions; the flash-clone envelope doubles as a
-morgue tag (§4).
+morgue tag (§4). Since 2026-09-25 (#3667) the flash clone is offered only
+when the dead body held its own sleeve policy; the respawn menu shows the
+refusal in its place otherwise.
 
 ## 2 · Finalize ordering — move BEFORE puppet
 
@@ -106,8 +108,15 @@ The yellow print does the informing:
     DECANTED: <DD MON YYYY, TST>
     PRIOR TERMINATION: <CAUSE>      (flash clone only)
     DEATH COUNT: <N>                (flash clone only)
+    SLEEVE POLICY: <NONE ON FILE · POLICY TERMINAL IN LOBBY | ON FILE | STANDING>
     BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL
 ```
+
+The `SLEEVE POLICY` line (2026-09-25, #3667; `world.insurance.envelope_line`)
+tells the player where they stand before it matters: every body starts
+uninsured and an uninsured death is permanent. The web door sends no
+envelope, so the same line is also read off a card in the pod lid at the
+first puppet (§5), which every creation door reaches.
 
 `CONTENTS` is the diegetic name reveal — the sleeve numbering fiction
 doing its own worldbuilding.
@@ -153,7 +162,7 @@ capitalization only at genuine sentence starts, #1588).
 
 | Event | Player sees | Room sees |
 |-------|-------------|-----------|
-| First puppet ever | framed decant block, then the room (telnet doors only today — see note) | the tech scene: pod cracked, envelope unzipped, body peeled from the nutrigel (one-shot `db.decant_announce_pending`, set at every creation point incl. web) |
+| First puppet ever | framed decant block, then the room (telnet doors only today — see note), then "A card is taped inside the pod lid: SLEEVE POLICY: …" (every door, #3667) | the tech scene: pod cracked, envelope unzipped, body peeled from the nutrigel (one-shot `db.decant_announce_pending`, set at every creation point incl. web) |
 | Later logins | the room | "{Actor} stirs as consciousness returns." |
 | Logout | — | "{Actor} goes still, eyes emptying to static; the vacant sleeve is quietly gone." (stow-away behavior preserved: `prelogout_location`, body off-grid) |
 
@@ -164,10 +173,11 @@ capitalization only at genuine sentence starts, #1588).
 > never receives it — both web doors end in a Django `messages.success(...)`
 > and a redirect (`web/website/views/characters.py:160`, `:184`, `:367`),
 > and nothing replays it at that character's first puppet
-> (`typeclasses/characters.py:1405-1443` sends `at_look` and the room
-> scene, nothing else). So a web player's first puppet is the room alone,
-> and a web-respawned player never sees their own `PRIOR TERMINATION` or
-> `DEATH COUNT` — the §4 morgue tag, unread.
+> (`at_post_puppet` sends `at_look`, the room scene and, since #3667, the
+> pod-lid `SLEEVE POLICY` card — nothing else). So a web player's first
+> puppet is the room plus that one card, and a web-respawned player never
+> sees their own `PRIOR TERMINATION` or `DEATH COUNT` — the §4 morgue tag,
+> unread.
 >
 > **This row is left as intent, not narrowed to telnet.** The last time
 > this table and the web door disagreed, the code was the defect and the

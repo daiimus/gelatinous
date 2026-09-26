@@ -37,6 +37,7 @@ from commands.bar_menu import CmdSpawnIngredient
 from commands.CmdBug import CmdBug
 from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious
 from commands.CmdFixCharacterOwnership import CmdFixCharacterOwnership
+from commands.CmdInsure import CmdInsure
 from commands.CmdSoul import CmdSoul
 from commands.CmdPin import CmdPin, CmdUnpin
 from commands.CmdTrust import CmdDistrust, CmdTrust
@@ -185,6 +186,9 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         
         # Add character ownership fix command
         self.add(CmdFixCharacterOwnership())
+
+        # Standing sleeve policy for staff and play testing (#3667)
+        self.add(CmdInsure())
         
         # Add bug reporting command
         self.add(CmdBug())

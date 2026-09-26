@@ -8,7 +8,6 @@ numeral behind. Owner ruling 2026-09-13: the card says who you become.
 One helper, `flash_clone_name`, feeds the telnet label, the web context and
 `create_flash_clone` itself, so the promise and the result cannot drift.
 """
-from django.template import Context, Template
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaTest
 
@@ -33,10 +32,19 @@ class _Caller:
 
 class CardNamesWhoYouBecomeTest(EvenniaTest):
 
-    def _dead_sleeve(self):
+    def _dead_sleeve(self, insured=True):
         # Jorge died once already (key "I"); archiving bumps death_count to 2.
+        # Archived as a DEATH and, unless the test says otherwise, holding
+        # his own policy: since #3667 the card is offered on no other body.
         old = create_object("typeclasses.characters.Character", key="Jorge Jackson I")
-        old.death_count = 2
+        old.death_count = 1
+        old.archive_character(reason="death")           # death_count -> 2
+        if insured:
+            from world.insurance import restore_policy, void_policy
+            restore_policy({"uid": old.sleeve_uid, "buyer_dbref": old.id,
+                            "bought_at": 0, "buyer_key": old.key,
+                            "blueprint_key": None, "account_id": None})
+            self.addCleanup(void_policy, old.sleeve_uid)
         return old
 
     def test_helper_gives_the_incoming_name(self):
@@ -48,18 +56,21 @@ class CardNamesWhoYouBecomeTest(EvenniaTest):
         c = _Caller(); c.ndb.charcreate_old_character = old
         c.ndb.charcreate_data['templates'] = [charcreate.generate_random_template() for _ in range(3)]
         text, _ = charcreate.respawn_welcome(c, "")
+        self.assertIn("[4]", text)
         self.assertIn("FLASH CLONE", text)
         self.assertIn("Jorge Jackson II", text, "card does not name who you become")
         self.assertNotIn("Jorge Jackson I|n", text, "card still names the outgoing sleeve")
 
-    def test_web_card_renders_the_incoming_name(self):
-        # The template prints the context value the view supplies; render the
-        # card fragment the way Django will.
-        if _flash_clone_name is None: self.skipTest("helper absent (unfixed tree)")
-        old = self._dead_sleeve()
-        frag = Template('<h5>{{ flash_clone_name }} <small>({{ old_character.sex|title }})</small></h5>')
-        out = frag.render(Context({'old_character': old, 'flash_clone_name': _flash_clone_name(old)}))
-        self.assertIn("Jorge Jackson II", out)
+    def test_an_uninsured_sleeve_gets_the_refusal_not_the_card(self):
+        # Control for the gate (#3667): same body, no policy, no [4].
+        from world.insurance import NO_POLICY
+        old = self._dead_sleeve(insured=False)
+        c = _Caller(); c.ndb.charcreate_old_character = old
+        c.ndb.charcreate_data['templates'] = [charcreate.generate_random_template() for _ in range(3)]
+        text, _ = charcreate.respawn_welcome(c, "")
+        self.assertNotIn("[4]", text)
+        self.assertIn(NO_POLICY, text)
+        self.assertIn("Jorge Jackson II", text, "the refusal should still name who you would become")
 
     def test_label_and_result_agree(self):
         # Control for the whole point: what the card promises is what

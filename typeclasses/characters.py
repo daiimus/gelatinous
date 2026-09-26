@@ -562,13 +562,16 @@ class Character(
         self.db.archived = False
         self.tags.remove("archived", category="sleeve")
 
-    def archive_character(self, reason="manual", disconnect_msg=None):
+    def archive_character(self, reason="manual", disconnect_msg=None, owner=None):
         """
         Archive this character and disconnect any active sessions.
         
         Args:
             reason (str): Why the character is being archived (e.g., "death", "manual")
             disconnect_msg (str): Optional custom disconnect message. If None, uses default.
+            owner (Account): The account this sleeve belongs to, when the
+                caller has already verified it (the web shelve). Otherwise
+                resolved from the ownership record.
         """
         import time
         
@@ -577,9 +580,16 @@ class Character(
             splattercast = get_splattercast()
             splattercast.msg(f"WARNING: Archiving staff character {self.key} (Account: {self.account.key}, Reason: {reason})")
         
-        # Set account's last_character for respawn flow
-        if self.account:
-            self.account.db.last_character = self
+        # Set account's last_character for respawn flow. `self.account` is
+        # the live puppet and is None by the time the death path archives
+        # (unpuppet runs first) and always None from the web, so the owner
+        # is resolved from the ownership record (the playable-characters
+        # list first, then the live puppet, then a puppet lock) unless the
+        # caller already verified it (#3667).
+        from world.ownership import owning_account
+        owner = owner or owning_account(self)
+        if owner:
+            owner.db.last_character = self
         
         # Increment death_count for proper Roman numeral naming on respawn
         # (This ensures "Jorge Jackson" -> "Jorge Jackson II" etc.)
@@ -600,7 +610,7 @@ class Character(
         # Guarded: a memorial bug must never block the archive itself.
         try:
             from world.death_records import add_record
-            add_record(self, died=self.db.archived_date)
+            add_record(self, account=owner, died=self.db.archived_date)
         except Exception as e:
             splattercast = get_splattercast()
             splattercast.msg(f"ARCHIVE_RECORD_ERROR: {self.key} - {e}")
@@ -1449,7 +1459,8 @@ class Character(
         if self.location:
             from world.identity_utils import msg_room_identity
 
-            if self.attributes.get("decant_announce_pending"):
+            decanting = bool(self.attributes.get("decant_announce_pending"))
+            if decanting:
                 # One-shot, set at character creation: the first puppet is
                 # the decant itself, so bystanders get the whole scene.
                 self.attributes.remove("decant_announce_pending")
@@ -1475,6 +1486,14 @@ class Character(
                 {"actor": self},
                 exclude=[self] + self._unaware_of_me(),
             )
+            if decanting:
+                # Where they stand, before it matters: every character
+                # starts uninsured and an uninsured death is permanent
+                # (#3667). The one line every creation door reaches, web
+                # included; the telnet envelopes print the same line.
+                from world.insurance import envelope_line
+                self.msg(f"|yA card is taped inside the pod lid: "
+                         f"{envelope_line(self)}|n")
 
     def at_post_unpuppet(self, account=None, session=None, **kwargs):
         """Stow the sleeve off-grid, announcing it in-fiction.

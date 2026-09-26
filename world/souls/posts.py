@@ -789,6 +789,12 @@ def _try_resleave(post, room, shift, slot, now) -> str:
                 pass
             return _return_failed(slot, post, shift, record, restore_policy)
 
+    # An ordinary record is spent by this return; a standing one (staff
+    # grant) is re-issued in the returned body's name, so a rebuilt body
+    # with a new id stays covered.
+    from world.insurance import renew_perpetual
+    renew_perpetual(record, npc)
+
     from world.souls import audit, thoughts as thoughts_mod
     try:
         audit.life(npc, "resleeved", bp_key)

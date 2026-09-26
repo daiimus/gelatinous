@@ -24,7 +24,9 @@ This document defines how the web-based character creation should align with the
    - Motorics (1-150)
 
 **Respawn (after death):**
-- Option 1: Flash clone (copy all stats from previous character)
+- Option 1: Flash clone (copy all stats from previous character) — **since
+  2026-09-25 (#3667) only when the dead body holds its own sleeve policy;**
+  otherwise both doors show the refusal instead of the card
 - Option 2: Choose from 3 random templates (300-point GRIM distributions)
 
 ### Character Attributes Set
@@ -399,7 +401,7 @@ urlpatterns = urlpatterns + evennia_website_urlpatterns
 > through, and reading the code is not the same evidence as walking the
 > flow in the live game; whoever does that should tick them then.
 
-- [ ] Flash clone option appears for accounts with dead characters
+- [ ] Flash clone option appears for accounts with dead characters (insured deaths only since #3667)
 - [ ] Templates display correctly
 - [ ] Flash clone preserves all attributes
 - [ ] Roman numeral increments correctly

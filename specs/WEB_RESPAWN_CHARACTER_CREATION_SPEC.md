@@ -4,6 +4,17 @@
 
 Implement the respawn character creation flow (templates + flash clone) on the Django website to match the telnet EvMenu experience. This allows users to respawn characters via the web interface with the same options available in-game.
 
+> **2026-09-25 (#3667, sleeve insurance Slice C):** the flash clone is no
+> longer unconditional. Both doors offer the card only when
+> `world.insurance.flash_clone_refusal(old_body)` is None: the body is
+> archived with reason `death` and holds its own sleeve policy (bought
+> alive at the Thawn-Harrison lobby terminal). Otherwise the card gives way
+> to the refusal text, and a POST that reaches `create_flash_clone` anyway
+> gets `PolicyRefused`, which the view shows as a message. A shelved body
+> (web archive, reason `manual`) is never cloned back. Passages below that
+> say "if archived character exists" are the pre-gate description. See
+> `specs/proposals/SLEEVE_INSURANCE_SPEC.md`.
+
 ## Current State
 
 ### Telnet Character Creation (commands/charcreate.py)
@@ -26,7 +37,7 @@ When a user visits the "Decant Sleeve" page:
 1. **If `account.db.last_character` exists** (respawn scenario):
    - Display respawn interface with:
      - 3 randomly generated character templates (name, stats)
-     - Flash clone option (if archived character exists)
+     - Flash clone option (if the dead body holds its own sleeve policy; else the refusal, #3667)
      - Sex selection for chosen option
      - ~~Sex selection~~ **Corrected 2026-09-13 (#3358, owner ruling A):** there is NO sex selection on either door. The sleeve is decanted with the sex `generate_random_template` rolled (its first name is drawn from the bank keyed to that roll). Telnet's confirm node shows the rolled sex and offers only decant / back.
    - Submit creates character using selected template/clone
@@ -209,9 +220,10 @@ def post(self, request, *args, **kwargs):
 
 ### Respawn Flow
 ```
-User Archives Character (web or death)
+User Archives Character (web or death; only a DEATH can be flash-cloned, #3667)
   ↓
-archive_character() sets:
+archive_character() sets (owner resolved via world.ownership.owning_account,
+so this holds with no live puppet):
   - account.db.last_character = character
   - character.death_count += 1
   ↓
@@ -292,7 +304,7 @@ Redirect to Character Management
 
 - [ ] Users with archived characters see respawn interface on web
 - [ ] Templates generate correctly with random stats (300 point total)
-- [ ] Flash clone inherits all data from archived character
+- [ ] Flash clone inherits all data from archived character (offered only to an insured death since #3667)
 - [ ] Roman numeral naming works correctly
 - [ ] Sex selection applies to created character
 - [ ] First-time users still see manual stat allocation form

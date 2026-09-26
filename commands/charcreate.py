@@ -17,6 +17,7 @@ import time
 import re
 
 from world import gametime
+from world.insurance import envelope_line
 
 from world.identity import (
     HEIGHTS,
@@ -483,129 +484,162 @@ def create_flash_clone(account, old_character):
     # so the slot check passes with the archived char still in the list.
     # Keeping it ensures archived characters appear on the manage sleeves page.
     
-    # Use Evennia's proper character creation method
-    char, errors = account.create_character(
-        key=new_name,
-        location=start_location,
-        home=start_location,
-        typeclass="typeclasses.characters.Character"
-    )
-    
-    if errors:
-        # Handle creation errors
-        raise Exception(f"Flash clone creation failed: {errors}")
-    
-    # INHERIT: GRIM stats (with fallback defaults)
-    char.grit = old_character.grit if old_character.grit is not None else 1
-    char.resonance = old_character.resonance if old_character.resonance is not None else 1
-    char.intellect = old_character.intellect if old_character.intellect is not None else 1
-    char.motorics = old_character.motorics if old_character.motorics is not None else 1
-    
-    # INHERIT: Appearance
-    char.db.desc = old_character.db.desc
-    if old_character.longdesc:
-        char.longdesc = dict(old_character.longdesc)  # Copy dictionary
-    
-    # INHERIT: Biology
-    char.sex = old_character.sex
-    if old_character.db.skintone is not None:
-        char.db.skintone = old_character.db.skintone
+    # THE GATE (#3667, Slice C). A return is paid by the dead body's own
+    # policy or it does not happen. The doors asked `flash_clone_refusal`
+    # before offering the card; it is asked again here because the web
+    # POST and the telnet menu can both reach this function, and only the
+    # atomic take below decides who gets the body. "Still on the table" is
+    # a build-time check only: at a live death the menu's first render
+    # happens while the progression script is still attached.
+    from world.insurance import (NO_POLICY, STILL_ON_THE_TABLE, PolicyRefused,
+                                 flash_clone_refusal, renew_perpetual,
+                                 restore_policy, take_policy)
+    refusal = flash_clone_refusal(old_character)
+    if refusal:
+        raise PolicyRefused(refusal)
+    if old_character.scripts.get("death_progression"):
+        raise PolicyRefused(STILL_ON_THE_TABLE)
+    record = take_policy(old_character.sleeve_uid, old_character.id)
+    if record is None:
+        raise PolicyRefused(NO_POLICY)          # lost the race to another door
 
-    # INHERIT: SPECIES. The body you get back is the body you had.
-    #
-    # Without this a bioroid came back mechanically HUMAN while keeping
-    # every bioroid longdesc: the description, the sdesc keyword and the
-    # synthetic skintone all survived death and the species did not.
-    # Cobalt blood turned crimson, the wetcore became a brain, ×1.25
-    # durability and infection immunity quietly vanished, and the corpse
-    # would rot instead of going inert. Nothing surfaced the
-    # contradiction until somebody opened them up and found a liver
-    # where the filter gland should be.
-    #
-    # The medical state is REBUILT rather than copied, because the clone
-    # was created — and its organs seeded — before we knew its species.
-    # Longdescs are inherited above and deliberately NOT re-seeded from
-    # species defaults here: that is authored text, not anatomy.
-    old_species = old_character.db.species
-    if old_species and old_species != char.db.species:
-        from world.medical.core import MedicalState
-        char.db.species = old_species
-        char._medical_state = MedicalState(char)
-        char.db.medical_state = char._medical_state.to_dict()
-    
-    # INHERIT: Physical identity — same body means same sleeve_uid
-    if old_character.sleeve_uid is not None:
-        char.sleeve_uid = old_character.sleeve_uid
-    # Inherit identity attributes (same physical body)
-    if old_character.height is not None:
-        char.height = old_character.height
-    if old_character.build is not None:
-        char.build = old_character.build
-    if old_character.hair_color is not None:
-        char.hair_color = old_character.hair_color
-    if old_character.hair_style is not None:
-        char.hair_style = old_character.hair_style
-    if old_character.sdesc_keyword is not None:
-        char.sdesc_keyword = old_character.sdesc_keyword
-    # INHERIT: who they knew, as of their last backup (#2188).
-    # Restored through `world.imprint`, the same function an NPC
-    # resleeve uses, so players and the cast can never drift into
-    # different rules about what survives a death. The gap still
-    # applies: the stranger met in the alley an hour before you died
-    # never made the backup — and may be why you died.
-    #
-    # The imprint is stamped onto the body at death. Falling back to a
-    # live capture covers anyone who predates it, so no incarnation
-    # wakes emptier than it should.
+    # Everything below is a sequence of steps with one undo: a fresh body
+    # that never finished is removed and the record goes back on file.
+    char = None
     try:
-        from world import imprint as imprint_mod
-        snap = old_character.db.imprint or imprint_mod.capture(old_character)
-        imprint_mod.restore(char, snap)
-    except Exception:  # noqa: BLE001 — a blank brain beats a failed decant
-        pass
+        # Use Evennia's proper character creation method
+        char, errors = account.create_character(
+            key=new_name,
+            location=start_location,
+            home=start_location,
+            typeclass="typeclasses.characters.Character"
+        )
     
-    # Debug: Verify sex was inherited correctly
-    from world.combat.debug import get_splattercast
-    splattercast = get_splattercast()
-    splattercast.msg(f"FLASH_CLONE_SEX_INHERIT: {char.key} inherited sex '{old_character.sex}' from {old_character.key}, current value: '{char.sex}', gender property: '{char.gender}'")
+        if errors:
+            # Handle creation errors
+            raise Exception(f"Flash clone creation failed: {errors}")
     
-    # INHERIT: death_count from old character
-    # The old character's death_count was already incremented at death (at_death())
-    # The new clone inherits this value to continue the progression
-    # Use AttributeProperty directly, not db.death_count
-    char.death_count = flash_clone_death_count(old_character)
+        # INHERIT: GRIM stats (with fallback defaults)
+        char.grit = old_character.grit if old_character.grit is not None else 1
+        char.resonance = old_character.resonance if old_character.resonance is not None else 1
+        char.intellect = old_character.intellect if old_character.intellect is not None else 1
+        char.motorics = old_character.motorics if old_character.motorics is not None else 1
     
-    # Link to previous incarnation
-    char.db.previous_clone_dbref = old_character.dbref
+        # INHERIT: Appearance
+        char.db.desc = old_character.db.desc
+        if old_character.longdesc:
+            char.longdesc = dict(old_character.longdesc)  # Copy dictionary
     
-    # Stack ID (consciousness identifier)
-    # A designation is a SERVICE RECORD -- resleeving does not issue you
-    # a new one, so the clone carries the dead body's (#3033). Without
-    # `inherit_from` one player's thirty-three sleeves would read as
-    # thirty-three different careers.
-    from world.manifest import ensure_manifest
-    ensure_manifest(char, inherit_from=old_character)
+        # INHERIT: Biology
+        char.sex = old_character.sex
+        if old_character.db.skintone is not None:
+            char.db.skintone = old_character.db.skintone
 
-    old_stack_id = old_character.db.stack_id
-    if old_stack_id is not None:
-        char.db.stack_id = old_stack_id
-    else:
-        # Create new stack ID if old char didn't have one
-        import uuid
-        char.db.stack_id = str(uuid.uuid4())
-    char.db.decant_announce_pending = True
+        # INHERIT: SPECIES. The body you get back is the body you had.
+        #
+        # Without this a bioroid came back mechanically HUMAN while keeping
+        # every bioroid longdesc: the description, the sdesc keyword and the
+        # synthetic skintone all survived death and the species did not.
+        # Cobalt blood turned crimson, the wetcore became a brain, ×1.25
+        # durability and infection immunity quietly vanished, and the corpse
+        # would rot instead of going inert. Nothing surfaced the
+        # contradiction until somebody opened them up and found a liver
+        # where the filter gland should be.
+        #
+        # The medical state is REBUILT rather than copied, because the clone
+        # was created — and its organs seeded — before we knew its species.
+        # Longdescs are inherited above and deliberately NOT re-seeded from
+        # species defaults here: that is authored text, not anatomy.
+        old_species = old_character.db.species
+        if old_species and old_species != char.db.species:
+            from world.medical.core import MedicalState
+            char.db.species = old_species
+            char._medical_state = MedicalState(char)
+            char.db.medical_state = char._medical_state.to_dict()
     
-    # Reset state
-    char.unarchive_character()   # attribute + sleeve-tag index in sync
-    char.db.current_sleeve_birth = time.time()
+        # INHERIT: Physical identity — same body means same sleeve_uid
+        if old_character.sleeve_uid is not None:
+            char.sleeve_uid = old_character.sleeve_uid
+        # Inherit identity attributes (same physical body)
+        if old_character.height is not None:
+            char.height = old_character.height
+        if old_character.build is not None:
+            char.build = old_character.build
+        if old_character.hair_color is not None:
+            char.hair_color = old_character.hair_color
+        if old_character.hair_style is not None:
+            char.hair_style = old_character.hair_style
+        if old_character.sdesc_keyword is not None:
+            char.sdesc_keyword = old_character.sdesc_keyword
+        # INHERIT: who they knew, as of their last backup (#2188).
+        # Restored through `world.imprint`, the same function an NPC
+        # resleeve uses, so players and the cast can never drift into
+        # different rules about what survives a death. The gap still
+        # applies: the stranger met in the alley an hour before you died
+        # never made the backup — and may be why you died.
+        #
+        # The imprint is stamped onto the body at death. Falling back to a
+        # live capture covers anyone who predates it, so no incarnation
+        # wakes emptier than it should.
+        try:
+            from world import imprint as imprint_mod
+            snap = old_character.db.imprint or imprint_mod.capture(old_character)
+            imprint_mod.restore(char, snap)
+        except Exception:  # noqa: BLE001 — a blank brain beats a failed decant
+            pass
+    
+        # Debug: Verify sex was inherited correctly
+        from world.combat.debug import get_splattercast
+        splattercast = get_splattercast()
+        splattercast.msg(f"FLASH_CLONE_SEX_INHERIT: {char.key} inherited sex '{old_character.sex}' from {old_character.key}, current value: '{char.sex}', gender property: '{char.gender}'")
+    
+        # INHERIT: death_count from old character
+        # The old character's death_count was already incremented at death (at_death())
+        # The new clone inherits this value to continue the progression
+        # Use AttributeProperty directly, not db.death_count
+        char.death_count = flash_clone_death_count(old_character)
+    
+        # Link to previous incarnation
+        char.db.previous_clone_dbref = old_character.dbref
+    
+        # Stack ID (consciousness identifier)
+        # A designation is a SERVICE RECORD -- resleeving does not issue you
+        # a new one, so the clone carries the dead body's (#3033). Without
+        # `inherit_from` one player's thirty-three sleeves would read as
+        # thirty-three different careers.
+        from world.manifest import ensure_manifest
+        ensure_manifest(char, inherit_from=old_character)
 
-    # The dead body's sleeve policy is spent by this return (#3667, Slice
-    # A: consumption only; the gate that REQUIRES one is Slice C). Spent
-    # after the clone is fully built, so a failure above never burns it,
-    # and spent only if THIS body bought it: an older husk being cloned
-    # must not void the cover a living body of the same lineage holds.
-    from world.insurance import spend_policy
-    spend_policy(old_character.sleeve_uid, old_character.id)
+        old_stack_id = old_character.db.stack_id
+        if old_stack_id is not None:
+            char.db.stack_id = old_stack_id
+        else:
+            # Create new stack ID if old char didn't have one
+            import uuid
+            char.db.stack_id = str(uuid.uuid4())
+        char.db.decant_announce_pending = True
+    
+        # Reset state
+        char.unarchive_character()   # attribute + sleeve-tag index in sync
+        char.db.current_sleeve_birth = time.time()
+
+        # The return is verified before the record is settled: a body that
+        # is archived, dead or wearing another uid is not the one paid for.
+        if char.is_archived or char.is_dead() or char.sleeve_uid != record["uid"]:
+            raise RuntimeError("flash clone did not verify")
+    except Exception:
+        if char is not None:
+            try:
+                account.characters.remove(char)
+            except Exception:  # noqa: BLE001 — the delete below is what matters
+                pass
+            char.delete()
+        restore_policy(record)
+        raise
+
+    # An ordinary record is spent by this return; a standing one is
+    # re-issued in the new body's name, so the next death is covered too.
+    renew_perpetual(record, char)
 
     return char
 
@@ -736,6 +770,14 @@ def _respawn_process_choice(caller, raw_string, **kwargs):
     elif choice == "3":
         return "respawn_confirm_template", {"template_idx": 2}
     elif choice == "4" and old_char:
+        # The gate's own question (#3667): refuse here and re-display,
+        # never inside the node (a node returning a bare string closes
+        # the menu and drops the session).
+        from world.insurance import flash_clone_refusal
+        refusal = flash_clone_refusal(old_char)
+        if refusal:
+            caller.msg(f"|y{refusal}|n")
+            return None
         return "respawn_flash_clone"
     else:
         caller.msg("|rInvalid choice. Please enter a number from the available options.|n")
@@ -794,19 +836,28 @@ Select a consciousness vessel:
         text += f"|bIntellect:|n {template['intellect']:3d}  "
         text += f"|mMotorics:|n {template['motorics']:3d}\n"
     
-    # Flash clone option
+    # Flash clone option: offered only when the dead body's own policy
+    # pays for it (#3667); otherwise the card says why not, in the words
+    # the gate itself would use.
     old_char = caller.ndb.charcreate_old_character
+    refusal = None
     if old_char:
-        # Who you'll WAKE UP AS, not who you just lost (#3364).
-        text += f"\n|w[4]|n |rFLASH CLONE|n - |c{flash_clone_name(old_char)}|n (preserve current identity)\n"
-        text += f"    |gGrit:|n {old_char.grit:3d}  "
-        text += f"|yResonance:|n {old_char.resonance:3d}  "
-        text += f"|bIntellect:|n {old_char.intellect:3d}  "
-        text += f"|mMotorics:|n {old_char.motorics:3d}\n"
-        text += f"    |wInherits appearance, stats, and memories from previous incarnation|n\n"
+        from world.insurance import flash_clone_refusal
+        refusal = flash_clone_refusal(old_char)
+        if refusal:
+            text += (f"\n|xFLASH CLONE|n - |c{flash_clone_name(old_char)}|n: "
+                     f"|y{refusal}|n\n")
+        else:
+            # Who you'll WAKE UP AS, not who you just lost (#3364).
+            text += f"\n|w[4]|n |rFLASH CLONE|n - |c{flash_clone_name(old_char)}|n (preserve current identity)\n"
+            text += f"    |gGrit:|n {old_char.grit:3d}  "
+            text += f"|yResonance:|n {old_char.resonance:3d}  "
+            text += f"|bIntellect:|n {old_char.intellect:3d}  "
+            text += f"|mMotorics:|n {old_char.motorics:3d}\n"
+            text += f"    |wInherits appearance, stats, and memories from previous incarnation|n\n"
     
     # Build prompt based on available options
-    if old_char:
+    if old_char and not refusal:
         text += "\n|wEnter choice [1-4]:|n"
     else:
         text += "\n|wEnter choice [1-3]:|n"
@@ -881,6 +932,14 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
     # Create character
     try:
         char = create_character_from_template(caller, template, sex)
+
+        # A fresh start after an insured death spends the policy (#3667,
+        # Q5): the dead body's own record goes, so no orphaned row can
+        # revive an abandoned self later.
+        old_char = getattr(caller.ndb, "charcreate_old_character", None)
+        if old_char is not None:
+            from world.insurance import forfeit_policy
+            forfeit_policy(old_char)
         
         # Puppet the new character
         sessions = caller.sessions.all()
@@ -917,6 +976,7 @@ def respawn_finalize_template(caller, raw_string, **kwargs):
 |y    THAWN-HARRISON SINGLE-USE SLEEVE ENVELOPE
     CONTENTS: {char.key.upper()}
     DECANTED: {gametime.colony_now().strftime('%d %b %Y').upper()}
+    {envelope_line(char)}
     BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL|n
 
 |wThe memories feel... borrowed. But they're yours now.|n
@@ -953,6 +1013,7 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
         return "respawn_welcome"
     
     # Create flash clone
+    from world.insurance import PolicyRefused
     try:
         char = create_flash_clone(caller, old_char)
         
@@ -1006,6 +1067,7 @@ def respawn_flash_clone(caller, raw_string, **kwargs):
     DECANTED: {gametime.colony_now().strftime('%d %b %Y').upper()}
     PRIOR TERMINATION: {(old_char.db.death_cause or 'UNKNOWN').upper()}
     DEATH COUNT: {death_count}
+    {envelope_line(char)}
     BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL|n
 
 {flavor}
@@ -1024,6 +1086,11 @@ __________________________________________________________________
         # Exit menu
         return None
         
+    except PolicyRefused as e:
+        # The record does not pay (#3667): say so and show the menu
+        # again, as a node (the bare-string return below closes it).
+        caller.msg(f"|y{e}|n")
+        return respawn_welcome(caller, "")
     except Exception as e:
         # Error - show message and return to selection
         caller.msg(f"|rError creating flash clone: {e}|n")
@@ -1686,6 +1753,7 @@ def first_char_finalize(caller, raw_string, **kwargs):
     CONTENTS: {char.key.upper()}
     MANIFEST: {_manifest_stamp(char)}
     DECANTED: {gametime.colony_now().strftime('%d %b %Y').upper()}
+    {envelope_line(char)}
     BIOSTATIC · FRAGILE · DO NOT CONSUME NUTRIGEL|n
 
 |wGloved hands peel the breather from your face. Your first breath in this body tastes of refrigerant and copper. Overhead, a console ticks through your vitals and finds nothing to flag.

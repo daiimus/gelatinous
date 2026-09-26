@@ -89,6 +89,18 @@ class TheArchivedKeeper(_Shift):
         self.assertFalse(self.marta.is_archived)
         self.assertEqual(self.post.db.post_slots["day"]["keeper"], self.marta)
 
+    def test_a_standing_record_is_reissued_to_her(self):
+        slot = self.dies_archived()
+        restore_policy({**_record(self.marta, "doctor_marta"), "perpetual": True})
+        self.assertEqual(self.attempt(slot), posts.RESLEEVED)
+        rec = policy_for(self.marta.sleeve_uid)
+        self.assertIsNotNone(rec, "the standing record was spent")
+        self.assertTrue(rec["perpetual"])
+        self.assertEqual(rec["buyer_dbref"], self.marta.id)
+        # She keeps her id on this path, so the re-issue is what proves the
+        # take happened: a fresh row, not the one that was on file.
+        self.assertIn("renewed_at", rec, "the record was never taken and re-issued")
+
     def test_without_a_policy_the_shift_is_a_successors(self):
         slot = self.dies_archived()
         self.assertEqual(self.attempt(slot), posts.SUCCESSOR)
@@ -238,6 +250,16 @@ class TheRebuiltKeeper(_Shift):
         restore_policy(_record(self.marta, "doctor_marta"))
         self.assertEqual(self.attempt_rebuild(), posts.RESLEEVED)
         self.assertIsNone(policy_for(self.marta.sleeve_uid))
+
+    def test_a_standing_record_is_reissued_to_the_rebuilt_body(self):
+        self.snapshot()
+        restore_policy({**_record(self.marta, "doctor_marta"), "perpetual": True})
+        self.assertEqual(self.attempt_rebuild(), posts.RESLEEVED)
+        keeper = self.post.db.post_slots["day"]["keeper"]
+        self.assertNotEqual(keeper.id, self.marta.id, "fixture: the rebuild must be a new body")
+        rec = policy_for(self.marta.sleeve_uid)
+        self.assertIsNotNone(rec, "the standing record was spent")
+        self.assertEqual(rec["buyer_dbref"], keeper.id, "the record still names the dead body")
 
     def test_a_successors_snapshot_cannot_rebuild_the_namesake(self):
         # A hired successor died on the shift last; the snapshot is theirs.

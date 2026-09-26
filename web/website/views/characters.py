@@ -118,11 +118,15 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                 old_character = None
         
         from commands.charcreate import flash_clone_name
+        from world.insurance import flash_clone_refusal
         context = {
             'templates': templates,
             'old_character': old_character,
             # The name the flash clone will be decanted under (#3364).
             'flash_clone_name': flash_clone_name(old_character) if old_character else None,
+            # Why the card is not offered (#3667): the gate's own words, or
+            # None when the dead body's policy pays.
+            'flash_clone_refusal': flash_clone_refusal(old_character) if old_character else None,
         }
         
         # Persist templates in Django session so POST receives the same ones
@@ -145,13 +149,15 @@ class CharacterCreateView(EvenniaCharacterCreateView):
     def handle_respawn_submission(self, request, account):
         """Process respawn template/flash clone selection."""
         from commands.charcreate import create_flash_clone, create_character_from_template
+        from world.insurance import PolicyRefused, forfeit_policy
         
         choice = request.POST.get('sleeve_choice')
         
         try:
             if choice == 'flash_clone':
-                # Create flash clone
-                old_character = account.db.last_character
+                # Create flash clone. The same validated door the GET used
+                # (#2615), so a stale pointer is repaired here too.
+                old_character = account.respawn_candidate()
                 if not old_character:
                     messages.error(request, "Flash clone source not found.")
                     return HttpResponseRedirect(self.success_url)
@@ -183,6 +189,13 @@ class CharacterCreateView(EvenniaCharacterCreateView):
                 # Use the template's pre-assigned sex (not user selection)
                 template_sex = template.get('sex', 'ambiguous')
                 character = create_character_from_template(account, template, template_sex)
+
+                # A fresh start after an insured death spends the policy
+                # (#3667, Q5): the dead body's own record goes. Read before
+                # last_character is cleared below.
+                old_character = account.db.last_character
+                if old_character:
+                    forfeit_policy(old_character)
                 
                 messages.success(
                     request,
@@ -221,6 +234,12 @@ class CharacterCreateView(EvenniaCharacterCreateView):
             request.session.pop('respawn_templates', None)
             
             return HttpResponseRedirect(self.success_url)
+
+        except PolicyRefused as refusal:
+            # The record does not pay (#3667): the gate's own words, back
+            # to the sleeve choice. Not an error; nothing to log.
+            messages.error(request, str(refusal))
+            return HttpResponseRedirect(reverse_lazy('character-create'))
             
         except Exception:
             # Deliberate request-handler guard: log the full traceback,
@@ -536,20 +555,37 @@ class CharacterArchiveView(LoginRequiredMixin, CharacterMixin, View):
                 
         except self.typeclass.DoesNotExist:
             raise Http404("Character not found")
+
+        # A sleeve is shelved once (#3667). A second archive of a dead
+        # body would flip its reason from "death" to "manual" (no policy
+        # would ever pay for it again), bump its death count and make the
+        # husk the account's most recent sleeve.
+        if character.is_archived:
+            messages.error(request, f"Sleeve '{character.name}' is already shelved.")
+            return HttpResponseRedirect(self.success_url)
+        # A dying body is not shelved either: the death path archives it
+        # as a death, and a manual archive now would race that.
+        if character.scripts.get("death_progression") or character.db.death_processed:
+            messages.error(
+                request,
+                f"Sleeve '{character.name}' is on the table. The record follows "
+                f"on its own once the death is processed."
+            )
+            return HttpResponseRedirect(self.success_url)
         
-        # Archive the character (handles archiving + disconnecting active sessions)
-        character.archive_character(reason="manual")
+        # Archive the character (handles archiving + disconnecting active
+        # sessions). The owner is the requesting account, verified above to
+        # claim this body; the archive sets last_character on it although
+        # the body is not puppeted.
+        character.archive_character(reason="manual", owner=request.user)
         
-        # FIX: character.account is None when accessed via web
-        # Manually set last_character using request.user (which is the Evennia Account)
-        account = request.user
-        account.db.last_character = character
-        
-        # Success message using character terminology
+        # Shelving is not a death: no policy pays to bring a shelved sleeve
+        # back (owner ruling 2026-09-25, Q3). The message says so.
         messages.success(
             request,
-            f"Sleeve '{character.name}' has been archived. "
-            f"Stack ID preserved for future respawn."
+            f"Sleeve '{character.name}' has been shelved. It is off your roster "
+            f"and its record stays on file; a shelved sleeve is not a death, so "
+            f"no policy brings it back. Your next sleeve starts fresh."
         )
         
         # Redirect to character management page

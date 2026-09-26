@@ -588,11 +588,15 @@ class DeathProgressionScript(DefaultScript):
 
             # 3b. Link the tombstone to the body (spec §9): the archive above
             # engraved the record; the corpse ref is an internal key that goes
-            # stale once the world removes the body — by design. Account is
-            # the pre-unpuppet capture; NPCs (account None) no-op inside.
+            # stale once the world removes the body — by design. The account
+            # is the pre-unpuppet capture, or the ownership record for a
+            # player who was offline (the archive resolved its owner the same
+            # way, #3667); NPCs (no owner) no-op inside.
             try:
                 from world.death_records import stamp_corpse
-                stamp_corpse(character, corpse, account=account)
+                from world.ownership import owning_account
+                stamp_corpse(character, corpse,
+                             account=account or owning_account(character))
             except Exception:  # noqa: BLE001 — the memorial never blocks death
                 pass
 
