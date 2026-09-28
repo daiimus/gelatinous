@@ -13,6 +13,14 @@ from .constants import (
 )
 
 
+def organ_is_bone(organ) -> bool:
+    """Is this organ a bone (the species table's `bone_type` /
+    `fracture_vulnerable`)? The splint and the tool roll key off the same
+    fact; kept in one place so the healing rule cannot drift from them."""
+    data = getattr(organ, "data", None) or {}
+    return bool(data.get("bone_type") or data.get("fracture_vulnerable"))
+
+
 class Organ:
     """
     Represents a single organ within a character's anatomy.
@@ -330,6 +338,14 @@ class Organ:
             int: Actual amount healed
         """
         if amount <= 0:
+            return 0
+        # The one door every in-play healer uses (sealant, the dressing
+        # tick, whatever comes next): a destroyed soft organ, a severed
+        # part or a harvested slot does not come back in place -- only a
+        # replacement does (owner ruling 2026-09-28, #3253). Staff
+        # `full_heal` writes HP directly and keeps its override.
+        state = getattr(self, "medical_state", None)
+        if state is not None and state.organ_beyond_repair(self.name):
             return 0
             
         old_hp = self.current_hp
@@ -705,6 +721,36 @@ class MedicalState:
         removed = getattr(getattr(character, "db", None), "removed_organs", None) or ()
         return name in removed
 
+    def organ_beyond_repair(self, name) -> bool:
+        """Can nothing but a replacement bring the organ in slot *name*
+        back? The one question every in-play healer asks (#3253; owner
+        ruling 2026-09-28):
+
+        * "a destroyed organ stays destroyed" -- SOFT TISSUE at 0 HP is
+          destroyed and stays so until a donor or cybernetic install;
+        * "bone broke" -- a BONE at 0 HP is broken and heals (the
+          cervical spine is a bone: a broken neck can be set inside the
+          death window; a SEVERED one is a decapitation);
+        * anything SEVERED stays severed;
+        * a HARVESTED organ is gone (:meth:`organ_is_gone`, #3651).
+
+        :meth:`Organ.heal` refuses on this, so sealant, the dressing tick
+        and anything written later cannot regrow such an organ; the
+        callers ask it first so their messages are honest. Staff
+        `full_heal` writes HP directly (its override); an install replaces
+        the organ object. `organ_is_gone` stays the narrower fact about
+        ABSENCE for the places that care (install clearing the marker,
+        display): a destroyed organ still occupies its slot.
+        """
+        if self.organ_is_gone(name):
+            return True
+        organ = self.organs.get(name)
+        if organ is None:
+            return False
+        if getattr(organ, "wound_stage", None) == "severed":
+            return True
+        return organ.current_hp <= 0 and not organ_is_bone(organ)
+
     def full_heal(self):
         """Complete medical restoration of PRESENT anatomy (#526
         review — the @heal/@revive backend).
@@ -713,7 +759,8 @@ class MedicalState:
         absence records, not injuries — healing does not regrow
         limbs or resurrect harvested-out modules (which would
         duplicate their abilities).  Destroyed-in-place organs ARE
-        still attached and restore fully, wound bookkeeping cleared.
+        still attached and restore fully, wound bookkeeping cleared --
+        the STAFF override: in play `Organ.heal` refuses them (#3253).
         Cyberware toggle state survives: a deployed gun is not an
         injury.
 

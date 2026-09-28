@@ -80,10 +80,19 @@ class TestSplintDressing(TestCase):
         self._apply(target, _splint_item(fracture_rating=8))
         self.assertEqual(bone.dressing_rate, 15)
 
-    def test_destroyed_bones_not_splintable(self):
-        """Shattered (0 HP) bones need surgery, not a splint —
-        existing behavior preserved."""
+    def test_shattered_bones_are_splintable(self):
+        """A bone at 0 HP is BROKEN, not destroyed, and heals (owner ruling
+        2026-09-28, #3253: "bone broke"). Only a severed bone is past a
+        splint. This test used to pin the opposite."""
         target, bone = _patient_with_broken_arm()
         bone.current_hp = 0
         self._apply(target, _splint_item())
-        self.assertFalse(bone.stabilized)
+        self.assertTrue(bone.stabilized)
+        self.assertGreater(bone.current_hp, 0)
+
+    def test_severed_bones_are_not_splintable(self):
+        target, bone = _patient_with_broken_arm()
+        bone.current_hp = 0
+        bone.wound_stage = "severed"
+        self._apply(target, _splint_item())
+        self.assertEqual(bone.current_hp, 0)

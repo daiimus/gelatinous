@@ -425,12 +425,13 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
         # Proper care supersedes the field tourniquet (#509): the
         # dressing holds the wound, so the band comes off with it.
         organ.tourniqueted = False
-        # A harvested organ's extraction site is a real wound -- it is
-        # dressed like any other, and its pain, bleeding and infection
-        # are treated above -- but the organ itself is gone and does
-        # not heal back (#3400, #3651). No healing rate for it.
-        gone = state is not None and state.organ_is_gone(organ.name)
-        organ.dressing_rate = 0 if gone else wound_healing_rating
+        # A harvested slot, a destroyed soft organ or a severed part is
+        # a real wound -- it is dressed like any other, and its pain,
+        # bleeding and infection are treated above -- but the organ
+        # itself does not come back in place (#3400, #3651, #3253). No
+        # healing rate for it; a broken BONE gets one and knits.
+        beyond = state is not None and state.organ_beyond_repair(organ.name)
+        organ.dressing_rate = 0 if beyond else wound_healing_rating
     result["stabilized"] = True
     result["messages"].append(
         f"The wound at {location.replace('_', ' ')} is stabilized."
@@ -584,6 +585,7 @@ def _apply_organ_repair_outcome(
     # without an incision; mirrors the harvest/install access rule
     # settled in PR-A.
     healed = []
+    beyond_repair = []
     for organ in wounded:
         container = getattr(organ, "container", None)
         display = getattr(organ, "display_location", None) or container
@@ -591,8 +593,11 @@ def _apply_organ_repair_outcome(
         if not surface_accessible:
             if not has_incision(target, container):
                 continue
-        if medical_state.organ_is_gone(organ.name):
-            continue  # harvested out: nothing to repair (#3651)
+        if medical_state.organ_beyond_repair(organ.name):
+            # harvested out, destroyed soft tissue, or severed: only a
+            # replacement brings it back (#3651, #3253)
+            beyond_repair.append(organ)
+            continue
         organ.heal(hp_gain)
         healed.append(organ)
 
@@ -601,6 +606,13 @@ def _apply_organ_repair_outcome(
             f"Surgical repair at {location.replace('_', ' ')} "
             f"restored {hp_gain} HP to "
             f"{len(healed)} organ(s)."
+        )
+    if beyond_repair:
+        names = ", ".join(sorted(o.name.replace("_", " ") for o in beyond_repair))
+        result["messages"].append(
+            f"The {names} at {location.replace('_', ' ')} "
+            f"{'is' if len(beyond_repair) == 1 else 'are'} beyond repair; "
+            f"only a replacement will serve."
         )
 
 

@@ -397,18 +397,20 @@ class ConsumptionCommand(Command):
         except AttributeError:
             return False
             
+        from world.medical.core import organ_is_bone
         if medical_type == "surgical_treatment":
             # Check for damaged soft tissue organs (excludes bones and destroyed organs)
             damaged_organs = [organ for name, organ in medical_state.organs.items() 
                             if (organ.current_hp < organ.max_hp and organ.current_hp > 0 and 
-                                not (organ.data.get("fracture_vulnerable", False) or organ.data.get("bone_type")))]
+                                not organ_is_bone(organ))]
             return len(damaged_organs) > 0
             
         elif medical_type == "fracture_treatment":
-            # Check for damaged bones (excludes destroyed bones)
+            # Check for damaged or BROKEN bones (a bone at 0 HP heals, #3253);
+            # only a severed bone is past a splint
             damaged_bones = [organ for name, organ in medical_state.organs.items() 
-                           if (organ.current_hp < organ.max_hp and organ.current_hp > 0 and 
-                               (organ.data.get("fracture_vulnerable", False) or organ.data.get("bone_type")))]
+                           if (organ.current_hp < organ.max_hp and organ_is_bone(organ)
+                               and not medical_state.organ_beyond_repair(name))]
             return len(damaged_bones) > 0
             
         elif medical_type == "blood_restoration":

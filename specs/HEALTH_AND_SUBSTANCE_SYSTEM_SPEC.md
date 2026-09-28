@@ -707,7 +707,7 @@ def determine_valid_hit_locations(character):
 - **Species Flexibility**: Spider characters automatically get different hit locations based on their longdesc anatomy
 - **Injury Progression**: Lost limbs automatically become invalid targets (no functional organs)
 - **Prosthetic Integration**: New artificial limbs add new hit locations with their own organ mappings
-- **Medical History**: Destroyed organs remain tracked (HP=0) for healing/replacement possibilities
+- **Medical History**: Destroyed organs remain tracked (HP=0) for replacement — and, for BONES only, healing. Owner ruling 2026-09-28 (#3253): a soft organ at 0 HP stays destroyed until a donor or cybernetic install; a bone at 0 HP is broken and heals (the cervical spine is a bone; a *severed* one is a decapitation and one-way); anything severed stays severed. `MedicalState.organ_beyond_repair` is the one question, `Organ.heal` refuses on it; staff `@heal` keeps its override.
 - **Mr. Hands Compatibility**: Custom anatomy modifications work seamlessly with existing hit targeting
 
 #### **Organ Lifecycle States**
@@ -718,7 +718,7 @@ ORGAN_DESTROYED = "current_hp = 0"      # Cannot be damaged further, doesn't con
 ORGAN_MISSING = "not in medical_state"  # Removed/never existed (rare, for extreme modifications)
 
 # Hit targeting only considers locations with FUNCTIONAL organs
-# Destroyed organs remain in medical state for potential healing/replacement
+# Destroyed organs remain in medical state for replacement (bones: healing) — #3253
 ```
 
 ### Spinal Anatomy, Decapitation & Combat Severance

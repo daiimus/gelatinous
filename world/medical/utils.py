@@ -1188,10 +1188,13 @@ def apply_medical_effects(item, user, target, **kwargs):
                 _drop_condition(medical_state, condition)
         
     elif medical_type == "fracture_treatment":
-        # Splint treatment - heal damaged bones only (excludes destroyed bones)
+        # Splint treatment - damaged AND broken bones: "bone broke", it heals
+        # (owner ruling 2026-09-28, #3253). Only a severed bone is refused,
+        # which `Organ.heal` enforces.
+        from .core import organ_is_bone
         damaged_bones = [(name, organ) for name, organ in medical_state.organs.items() 
-                        if (organ.current_hp < organ.max_hp and organ.current_hp > 0 and 
-                            (organ.data.get("fracture_vulnerable", False) or organ.data.get("bone_type")))]
+                        if (organ.current_hp < organ.max_hp and organ_is_bone(organ)
+                            and not medical_state.organ_beyond_repair(name))]
         
         if damaged_bones:
             # Heal the most damaged bone (lowest HP percentage)
@@ -1231,21 +1234,24 @@ def apply_medical_effects(item, user, target, **kwargs):
             else:
                 result_msg = "Splint applied — the bone is set and will knit over time."
         else:
-            # Check if there are destroyed bones (0 HP)
-            destroyed_bones = [name for name, organ in medical_state.organs.items() 
-                             if (organ.current_hp <= 0 and (organ.data.get("fracture_vulnerable", False) or organ.data.get("bone_type")))]
+            # Only a severed bone is past a splint (#3253); a broken one was
+            # eligible above.
+            severed_bones = [name for name, organ in medical_state.organs.items()
+                             if organ_is_bone(organ) and medical_state.organ_beyond_repair(name)]
             
-            if destroyed_bones:
-                bone_list = ', '.join([name.replace('_', ' ').title() for name in destroyed_bones])
-                result_msg = f"Orthopedic examination complete. Destroyed bones detected ({bone_list}) - beyond splint repair. No repairable fractures found."
+            if severed_bones:
+                bone_list = ', '.join([name.replace('_', ' ').title() for name in severed_bones])
+                result_msg = f"Orthopedic examination complete. {bone_list}: severed, beyond a splint. No repairable fractures found."
             else:
                 result_msg = "Orthopedic examination complete. No damaged bones requiring splint treatment found."
         
     elif medical_type == "surgical_treatment":
-        # Surgical intervention - heal damaged soft tissue organs only (excludes bones and destroyed organs)
+        # Surgical intervention - heal damaged soft tissue organs only
+        # (excludes bones, and destroyed organs: those stay destroyed, #3253)
+        from .core import organ_is_bone
         damaged_organs = [(name, organ) for name, organ in medical_state.organs.items() 
                          if (organ.current_hp < organ.max_hp and organ.current_hp > 0 and 
-                             not (organ.data.get("fracture_vulnerable", False) or organ.data.get("bone_type")))]
+                             not organ_is_bone(organ))]
         
         if damaged_organs:
             # Heal the most damaged organ (lowest HP percentage)
@@ -1266,7 +1272,7 @@ def apply_medical_effects(item, user, target, **kwargs):
         else:
             # Check if there are destroyed soft tissue organs (0 HP, non-bones)
             destroyed_organs = [name for name, organ in medical_state.organs.items() 
-                              if (organ.current_hp <= 0 and not (organ.data.get("fracture_vulnerable", False) or organ.data.get("bone_type")))]
+                              if (organ.current_hp <= 0 and not organ_is_bone(organ))]
             
             if destroyed_organs:
                 organ_list = ', '.join([name.replace('_', ' ').title() for name in destroyed_organs])

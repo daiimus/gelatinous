@@ -150,7 +150,7 @@ SPECIES_DEFINITIONS = {
             "brain": {
                 "container": "head", "max_hp": 10, "hit_weight": "very_rare",
                 "vital": True, "capacity": "consciousness", "contribution": "total",
-                "special": "damage_always_scars", "can_scar": True, "can_heal": False,
+                "special": "damage_always_scars", "can_scar": True,
                 "can_be_harvested": True
             },
             "left_eye": {
@@ -208,7 +208,11 @@ SPECIES_DEFINITIONS = {
             "cervical_spine": {
                 "container": "neck", "max_hp": 12, "hit_weight": "rare",
                 "vital": True, "capacity": "neck_integrity", "contribution": "total",
-                "causes_pain_when_damaged": True, "can_be_destroyed": True
+                "causes_pain_when_damaged": True, "can_be_destroyed": True,
+                # A bone (#3253): at 0 HP it is BROKEN and heals -- a broken
+                # neck can be set inside the death window. Severed, it is a
+                # decapitation and one-way.
+                "bone_type": "vertebra"
             },
 
             # CHEST CONTAINER → VITAL ORGANS INSIDE
@@ -254,7 +258,8 @@ SPECIES_DEFINITIONS = {
             "thoracolumbar_spine": {
                 "container": "back", "max_hp": 25, "hit_weight": "uncommon",
                 "capacity": "moving", "contribution": "total", "cannot_be_destroyed": True,
-                "causes_pain_when_damaged": True, "paralysis_if_destroyed": True
+                "causes_pain_when_damaged": True, "paralysis_if_destroyed": True,
+                "bone_type": "vertebra"
             },
 
             # ARM BONES
@@ -869,7 +874,8 @@ SPECIES_DEFINITIONS = {
                                "hit_weight": "rare", "vital": True,
                                "capacity": "neck_integrity",
                                "contribution": "total",
-                               "can_be_destroyed": True},
+                               "can_be_destroyed": True,
+                               "bone_type": "vertebra"},
 
             # Chest / abdomen / back / groin — mammalian universals
             "heart":         {"container": "chest", "max_hp": 6,
@@ -906,7 +912,8 @@ SPECIES_DEFINITIONS = {
                                     "hit_weight": "uncommon",
                                     "capacity": "moving", "contribution": "total",
                                     "cannot_be_destroyed": True,
-                                    "paralysis_if_destroyed": True},
+                                    "paralysis_if_destroyed": True,
+                                    "bone_type": "vertebra"},
             "pelvis":        {"container": "groin", "max_hp": 10,
                               "hit_weight": "uncommon",
                               "capacity": "moving", "contribution": "total",
