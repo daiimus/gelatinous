@@ -1192,9 +1192,13 @@ def apply_medical_effects(item, user, target, **kwargs):
         # (owner ruling 2026-09-28, #3253). Only a severed bone is refused,
         # which `Organ.heal` enforces.
         from .core import organ_is_bone
+        # The named location wins when the player gave one ("apply splint
+        # on bob's left arm"); otherwise the worst bone anywhere (#3679
+        # review: a 0-HP bone elsewhere always sorted first).
         damaged_bones = [(name, organ) for name, organ in medical_state.organs.items() 
                         if (organ.current_hp < organ.max_hp and organ_is_bone(organ)
-                            and not medical_state.organ_beyond_repair(name))]
+                            and not medical_state.organ_beyond_repair(name)
+                            and (not body_location or organ.container == body_location))]
         
         if damaged_bones:
             # Heal the most damaged bone (lowest HP percentage)
@@ -1251,7 +1255,8 @@ def apply_medical_effects(item, user, target, **kwargs):
         from .core import organ_is_bone
         damaged_organs = [(name, organ) for name, organ in medical_state.organs.items() 
                          if (organ.current_hp < organ.max_hp and organ.current_hp > 0 and 
-                             not organ_is_bone(organ))]
+                             not organ_is_bone(organ)
+                             and not medical_state.organ_beyond_repair(name))]
         
         if damaged_organs:
             # Heal the most damaged organ (lowest HP percentage)

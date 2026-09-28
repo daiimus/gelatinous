@@ -429,7 +429,7 @@ class DeathProgressionScript(DefaultScript):
 
 **Integration Features:**
 - **Medical system compatibility** - Automatic revival if fatal conditions resolved
-- **✅ Brain death mechanics** - *Built 2026-09-26 (#3248, owner ruling "Death with a window"):* a destroyed brain zeroes the structural `brain_integrity` capacity and the body is dead on the blow, starting the progression; restoring the brain inside the window — a brain install, or today an in-place organ repair (surgical sealant's `organ_repair` heals a 0-HP organ; #3253 tracks whether destroyed organs should be repairable at all) — restores the capacity and `_check_medical_revival_conditions` (exactly `not is_dead()`) revives it. So "cannot be revived" is superseded by "revived only by getting the brain back". `consciousness` stays the awake axis and never gates death ("Conscious capacity 0 should not be death", same day). Because `brain_integrity` is checked on its own line, a body dead of anything with a destroyed brain stays dead until the brain is restored — Phase 2's stated goal, met.
+- **✅ Brain death mechanics** - *Built 2026-09-26 (#3248, owner ruling "Death with a window"):* a destroyed brain zeroes the structural `brain_integrity` capacity and the body is dead on the blow, starting the progression; restoring the brain inside the window — a brain install (since #3253, 2026-09-28, the ONLY route: sealant and dressings refuse a destroyed soft organ) — restores the capacity and `_check_medical_revival_conditions` (exactly `not is_dead()`) revives it. So "cannot be revived" is superseded by "revived only by getting the brain back". `consciousness` stays the awake axis and never gates death ("Conscious capacity 0 should not be death", same day). Because `brain_integrity` is checked on its own line, a body dead of anything with a destroyed brain stays dead until the brain is restored — Phase 2's stated goal, met.
 - **🎯 Consciousness threshold** - Revival eligibility tied to brain organ health and consciousness capacity — *intended shape, NOT live; nothing on the revival path reads brain HP or the `consciousness` capacity.*
 - **🎯 Progressive brain damage** - Brain deterioration during death progression affects revival chances over time — *intended shape, NOT live; `typeclasses/death_progression.py` mutates no organ HP during the window — it sends progression messages and re-checks `is_dead()`. The post-death deterioration idea is the 🎯 "Progressive organ failure system" bullet under Phase 3.1 below.*
 - **Observer messaging** - Room occupants see progression indicators
@@ -442,7 +442,7 @@ class DeathProgressionScript(DefaultScript):
 - **✅ Medical system integration** - Automatic revival when fatal conditions resolved
 - **✅ Death progression messaging** - Complete narrative experience with observer integration
 - **Future enhancement potential** - Brain death mechanics could be added but current system is sufficient
-  - *Settled 2026-09-26 (#3248).* Brain death is built as `brain_integrity`, the brain's structural capacity (twin of `neck_integrity`), NOT as a consciousness threshold: the owner ruled "Conscious capacity 0 should not be death" and then "Death with a window". The §10.4 hole in `DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md` (a brain-destroyed patient who never dies and is handed back whole) is closed; what remains is #3253 — in-place repair of a destroyed organ (the dressing tick over ~10 min, and surgical sealant's instant `organ_repair`, which today revives a brain death inside the window without a transplant).
+  - *Settled 2026-09-26 (#3248).* Brain death is built as `brain_integrity`, the brain's structural capacity (twin of `neck_integrity`), NOT as a consciousness threshold: the owner ruled "Conscious capacity 0 should not be death" and then "Death with a window". The §10.4 hole in `DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md` (a brain-destroyed patient who never dies and is handed back whole) is closed; #3253 (2026-09-28) then closed the in-place route too: a destroyed soft organ is refused by sealant and the dressing tick alike, so only a replacement brings a brain back.
 
 **Progression Message Themes:**
 - **Early stages (30-120s)** - Medical shock, surreal sensory experiences, dark humor
@@ -736,12 +736,13 @@ The anatomy models the spine as **two distinct organs**, not one:
 
 | Organ | Container | Destroyable? | Capacity | Loss effect |
 |-------|-----------|--------------|----------|-------------|
-| `cervical_spine` | `neck` | **Yes** (`can_be_destroyed`) | `neck_integrity` | Decapitation → death |
+| `cervical_spine` | `neck` | **Yes** (`can_be_destroyed`) | `neck_integrity` | A broken neck → death with a window (a bone: it can be set); **severed** → decapitation, one-way (#3253) |
 | `thoracolumbar_spine` | `back` | **No** (`cannot_be_destroyed`) | `moving` | Paralysis (`paralysis_if_destroyed`) |
 
-`cervical_spine` is the **decapitation locus**: it bundles the airway, the
-great vessels, and the cord at the neck, so bringing it to 0 HP is immediately
-fatal. `thoracolumbar_spine` is the thoracic/lumbar column in the back — it
+`cervical_spine` is the **decapitation locus** when SEVERED (an edged neck
+hit takes the whole head cluster with it); brought to 0 HP in place it is a
+**broken neck** — immediately fatal, but a bone, so it can be set inside the
+death window and the body revived (#3253, 2026-09-28). `thoracolumbar_spine` is the thoracic/lumbar column in the back — it
 contributes `1.0` (total) to the `moving` capacity and gates paralysis, but it
 cannot be destroyed. (It was renamed from a plain `spine` in #254 to remove the
 ambiguity with `cervical_spine`; a one-shot DB migration renamed the persisted
@@ -762,9 +763,9 @@ organ key on existing characters.)
 `MedicalState.is_dead()` (see the corrected listing below) treats
 `neck_integrity <= 0.0` as a death condition, alongside `blood_pumping`,
 `breathing`, `digestion` and `brain_integrity` (#3248) — one loop over
-`LETHAL_CAPACITY_NAMES` since #3677. A destroyed cervical spine drives
-`neck_integrity` to 0.0 and reads as a clean decapitation death without
-perturbing the lungs' contribution math.
+`LETHAL_CAPACITY_NAMES` since #3677. A cervical spine at 0 HP drives
+`neck_integrity` to 0.0 — a broken-neck death, or a decapitation when the
+spine is severed — without perturbing the lungs' contribution math.
 
 #### Hit routing to the neck
 
@@ -985,7 +986,7 @@ HIT_WEIGHTS = {
 ### Death vs Unconsciousness vs Functionality
 - **Blood loss kills**: Tracked separately, reaches fatal threshold = death
 - **Blood pumping = 0**: Death (heart destroyed/stopped)
-- **Neck integrity = 0**: Death (cervical spine destroyed → decapitation, #243)
+- **Neck integrity = 0**: Death (cervical spine broken → a death with a window; severed → decapitation, #243/#3253)
 - **Consciousness**: Flag system (is_unconscious = True/False), not death
 - **Functionality**: Reduced stats/capabilities, but character remains conscious
 

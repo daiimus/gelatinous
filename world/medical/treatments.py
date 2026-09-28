@@ -421,17 +421,22 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
     wound_healing_rating = int(effectiveness.get("wound_healing", 0) or 0)
     state = getattr(target, "medical_state", None)
     for organ in wounded_organs:
+        # A harvested slot, a destroyed soft organ or a severed part is
+        # a real wound -- it is dressed like any other, and its pain,
+        # bleeding and infection are treated above -- but the organ
+        # itself does not come back in place (#3400, #3651, #3253). It
+        # gets no healing rate AND no `stabilized` flag: the flag is
+        # cleared only when an organ heals to full, so on one that never
+        # can it would latch for good -- holding every later bleed at that
+        # location and refusing every later dressing there (#3679 review).
+        if state is not None and state.organ_beyond_repair(organ.name):
+            organ.dressing_rate = 0
+            continue
         organ.stabilized = True
         # Proper care supersedes the field tourniquet (#509): the
         # dressing holds the wound, so the band comes off with it.
         organ.tourniqueted = False
-        # A harvested slot, a destroyed soft organ or a severed part is
-        # a real wound -- it is dressed like any other, and its pain,
-        # bleeding and infection are treated above -- but the organ
-        # itself does not come back in place (#3400, #3651, #3253). No
-        # healing rate for it; a broken BONE gets one and knits.
-        beyond = state is not None and state.organ_beyond_repair(organ.name)
-        organ.dressing_rate = 0 if beyond else wound_healing_rating
+        organ.dressing_rate = wound_healing_rating
     result["stabilized"] = True
     result["messages"].append(
         f"The wound at {location.replace('_', ' ')} is stabilized."

@@ -191,7 +191,7 @@ SPECIES_DEFINITIONS = {
                 "max_hp": 10, "hit_weight": "rare",
                 "capacities": ["talking", "eating"], "talking_contribution": "major",
                 "eating_contribution": "moderate", "disfiguring_if_lost": True, "can_scar": False,
-                "can_be_harvested": True
+                "can_be_harvested": True, "bone_type": "mandible"
             },
             # Nose — issue #355.  Surfaces at the ``face`` longdesc
             # the same way jaw and tongue do.  Carries the ``smell``
@@ -323,7 +323,8 @@ SPECIES_DEFINITIONS = {
             # STRUCTURAL ORGAN FOR MOVEMENT (groin container — issue #325)
             "pelvis": {
                 "container": "groin", "max_hp": 25, "hit_weight": "uncommon",
-                "capacity": "moving", "contribution": "total", "vital": True
+                "capacity": "moving", "contribution": "total", "vital": True,
+                "bone_type": "pelvic_girdle"
             },
         },
 
@@ -514,8 +515,9 @@ SPECIES_DEFINITIONS = {
                 "fatal_threshold": 0.0,
                 "directly_fatal": True,
                 "affects": ["consciousness", "breathing", "moving"],
-                "description": "Integrity of the neck — zero equals "
-                               "decapitation/death",
+                "description": "Integrity of the neck — zero equals a broken "
+                               "neck (death with a window); severed equals "
+                               "decapitation",
             },
             # The brain's STRUCTURAL twin (#3248, owner ruling 2026-09-26
             # "Death with a window"): a destroyed brain is a death that
@@ -867,7 +869,7 @@ SPECIES_DEFINITIONS = {
             "jaw":       {"container": "head", "max_hp": 5, "hit_weight": "rare",
                           "capacities": ["eating"],
                           "eating_contribution": "major",
-                          "can_be_harvested": True},
+                          "can_be_harvested": True, "bone_type": "mandible"},
 
             # Neck
             "cervical_spine": {"container": "neck", "max_hp": 5,
@@ -917,7 +919,7 @@ SPECIES_DEFINITIONS = {
             "pelvis":        {"container": "groin", "max_hp": 10,
                               "hit_weight": "uncommon",
                               "capacity": "moving", "contribution": "total",
-                              "vital": True},
+                              "vital": True, "bone_type": "pelvic_girdle"},
 
             # Foreleg skeletal organs (analogous to humerus / metacarpals)
             "left_foreleg_bone":   {"container": "left_foreleg", "max_hp": 10,

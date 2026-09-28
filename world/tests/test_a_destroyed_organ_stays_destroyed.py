@@ -59,12 +59,47 @@ class TheQuestion(TestCase):
         spine.wound_stage = "severed"
         self.assertTrue(state.organ_beyond_repair("cervical_spine"))
 
-    def test_a_harvested_organ_is_beyond_repair(self):
+    def test_a_harvested_organ_is_beyond_repair_even_when_it_is_a_bone(self):
+        # The harvest check is what stops a harvested chrome strut (a bone
+        # by its flags) from being splinted back into existence.
         state = MedicalState()
-        organ = state.organs["left_kidney"]
-        organ.current_hp = 0
+        organ = state.organs["left_femur"]
+        organ.current_hp = 5
         organ.injury_type = "harvested"
-        self.assertTrue(state.organ_beyond_repair("left_kidney"))
+        self.assertTrue(organ_is_bone(organ))
+        self.assertTrue(state.organ_beyond_repair("left_femur"))
+
+    def test_the_pelvis_and_jaw_are_bones(self):
+        state = MedicalState()
+        for name in ("pelvis", "jaw"):
+            state.organs[name].current_hp = 0
+            self.assertTrue(organ_is_bone(state.organs[name]), name)
+            self.assertFalse(state.organ_beyond_repair(name), name)
+
+    def test_a_body_saved_before_the_flag_still_knows_its_spine_is_a_bone(self):
+        # Every saved body carries its own organ spec (#513); a flag added to
+        # the species table must reach them through the organ's NAME.
+        import copy
+        state = MedicalState()
+        snap = copy.deepcopy(state.to_dict())     # never mutate the live table through a shared dict
+        for name in ("cervical_spine", "thoracolumbar_spine", "pelvis", "jaw"):
+            snap["organs"][name]["data"].pop("bone_type", None)
+            snap["organs"][name]["data"].pop("fracture_vulnerable", None)
+            snap["organs"][name]["current_hp"] = 0
+        old = MedicalState.from_dict(snap)
+        for name in ("cervical_spine", "thoracolumbar_spine", "pelvis", "jaw"):
+            self.assertTrue(organ_is_bone(old.organs[name]), name)
+            self.assertFalse(old.organ_beyond_repair(name), f"{name} read as destroyed soft tissue on a legacy body")
+
+    def test_a_failed_head_spawn_is_still_a_decapitation(self):
+        # The blow sets decapitation_pending before the head is spawned;
+        # if the spawn fails the spine sits at 0 unmarked.
+        state = MedicalState()
+        state.organs["cervical_spine"].current_hp = 0
+        class _Char:
+            class db: decapitation_pending = True
+        state.character = _Char()
+        self.assertTrue(state.organ_beyond_repair("cervical_spine"))
 
     def test_every_species_spine_is_a_bone_and_no_brain_carries_can_heal(self):
         for species in SPECIES_DEFINITIONS:
@@ -92,12 +127,14 @@ class TheDoor(TestCase):
         liver.current_hp = 2
         self.assertGreater(liver.heal(5), 0)
 
-    def test_heal_mends_a_broken_bone(self):
+    def test_heal_mends_a_broken_bone_and_moves_it_off_destroyed(self):
         state = MedicalState()
         femur = state.organs["left_femur"]
         femur.current_hp = 0
+        femur.wound_stage = "destroyed"
         self.assertGreater(femur.heal(5), 0)
         self.assertGreater(femur.current_hp, 0)
+        self.assertEqual(femur.wound_stage, "treated", "a knitting bone still rendered as destroyed")
 
     def test_heal_refuses_a_severed_part(self):
         state = MedicalState()
@@ -157,17 +194,24 @@ class TheHealers(EvenniaTest):
         self.assertEqual(self.state.organs["brain"].current_hp, 0)
         self.assertTrue(self.state.is_dead(), "sealant revived a brain death")
 
-    def test_a_dressing_stabilises_a_destroyed_organ_but_sets_no_regrowth(self):
+    def test_a_dressing_neither_regrows_nor_latches_a_destroyed_organ(self):
+        # `stabilized` clears only when an organ heals to full; on one that
+        # never can it would latch for good and hold every later bleed at
+        # the location and refuse every later dressing there.
         liver = self.state.organs["liver"]
         liver.current_hp = 0
         liver.stabilized = False
         item = create_object("typeclasses.items.Item", key="gauze", location=self.char1)
         item.db.medical_type = "wound_care"
         item.db.effectiveness = {"wound_healing": 8, "bleeding": 7}
-        T.apply_wound_care(self.char1, self.char2, item, "abdomen")
-        self.assertTrue(liver.stabilized)
+        result = T.apply_wound_care(self.char1, self.char2, item, "abdomen")
+        self.assertIsNone(result.get("no_op_reason"))
+        self.assertFalse(liver.stabilized, "a destroyed organ was latched stabilized")
         self.assertEqual(getattr(liver, "dressing_rate", 0), 0)
         self.assertNotIn(liver, _healing_organs(self.state))
+        # and a second dressing at the same place is not refused as "already stabilized"
+        again = T.apply_wound_care(self.char1, self.char2, item, "abdomen")
+        self.assertIsNone(again.get("no_op_reason"), again["messages"])
 
     def test_control_a_dressing_regrows_a_broken_bone(self):
         femur = self.state.organs["left_femur"]
@@ -203,5 +247,47 @@ class TheSplint(EvenniaTest):
         femur = self.char2.medical_state.organs["left_femur"]
         femur.current_hp = 0
         femur.wound_stage = "severed"
-        self.splint()
+        femur.stabilized = False
+        msg = self.splint()
         self.assertEqual(femur.current_hp, 0)
+        self.assertFalse(femur.stabilized, "the splint dressed a severed stump")
+        self.assertEqual(getattr(femur, "dressing_rate", 0), 0)
+        self.assertIn("severed", str(msg))
+
+    def test_the_splint_goes_where_the_player_said(self):
+        from world.medical.utils import apply_medical_effects
+        state = self.char2.medical_state
+        state.organs["left_femur"].current_hp = 0            # the worst bone anywhere
+        state.organs["left_humerus"].current_hp = state.organs["left_humerus"].max_hp - 5
+        item = create_object("typeclasses.items.Item", key="a splint", location=self.char1)
+        item.tags.add("medical_item", category="item_type")
+        item.attributes.add("medical_type", "fracture_treatment")
+        item.attributes.add("uses_left", 5)
+        item.attributes.add("effectiveness", {"fracture": 8})
+        apply_medical_effects(item, self.char1, self.char2, body_location="left_arm")
+        self.assertEqual(state.organs["left_femur"].current_hp, 0, "the splint wandered to the leg")
+        self.assertEqual(state.organs["left_humerus"].current_hp, state.organs["left_humerus"].max_hp)
+
+
+class TheInstall(EvenniaTest):
+
+    def test_a_replacement_starts_without_the_slots_old_care_flags(self):
+        from world.medical import procedures as P
+        state = self.char2.medical_state
+        liver = state.organs["liver"]
+        liver.current_hp = 0
+        liver.stabilized = True
+        liver.dressing_rate = 8
+        self.char2.db.surgical_state = {"incisions": {"abdomen": True}, "active_procedure": None}
+        self.char1.msg = lambda text=None, **kw: None
+        item = create_object("typeclasses.items.Organ", key="a liver", location=self.char1)
+        item.db.organ_name = "liver"
+        item.db.condition = "pristine"
+        item.db.organ_spec = dict(liver.data)
+        with mock.patch("world.medical.procedures.roll_procedure",
+                        return_value={"outcome": "success", "margin": 9}):
+            P._resolve_install(self.char1, self.char2, organ_item=item, location="abdomen")
+        new = state.organs["liver"]
+        self.assertGreater(new.current_hp, 0)
+        self.assertFalse(new.stabilized)
+        self.assertEqual(getattr(new, "dressing_rate", 0), 0)

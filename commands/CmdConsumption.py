@@ -402,7 +402,8 @@ class ConsumptionCommand(Command):
             # Check for damaged soft tissue organs (excludes bones and destroyed organs)
             damaged_organs = [organ for name, organ in medical_state.organs.items() 
                             if (organ.current_hp < organ.max_hp and organ.current_hp > 0 and 
-                                not organ_is_bone(organ))]
+                                not organ_is_bone(organ)
+                                and not medical_state.organ_beyond_repair(name))]
             return len(damaged_organs) > 0
             
         elif medical_type == "fracture_treatment":
@@ -763,8 +764,13 @@ class CmdApply(ConsumptionCommand):
                 exclude=[caller, target],
             )
 
-        # Apply treatment effects
-        result_msg = self.execute_treatment(item, caller, target)
+        # Apply treatment effects. A splint goes where the player said
+        # ("apply splint on bob's left arm"), not to the worst bone
+        # anywhere (#3679 review).
+        if medical_type == "fracture_treatment" and location:
+            result_msg = self.execute_treatment(item, caller, target, body_location=location)
+        else:
+            result_msg = self.execute_treatment(item, caller, target)
         caller.msg(f"Application result: {result_msg}")
 
         if not is_self:

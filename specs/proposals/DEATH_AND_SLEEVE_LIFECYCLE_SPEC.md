@@ -86,8 +86,8 @@ reason about it.
 >
 > **Closed 2026-09-26 (#3248, "Death with a window"):** a destroyed brain
 > is now a death via `brain_integrity`; getting the brain back inside the
-> window revives it — a brain install, or today an in-place organ repair
-> (surgical sealant), which is what #3253 is about.
+> window revives it — a brain install only, since #3253 (2026-09-28) made
+> a destroyed soft organ stay destroyed.
 
 Animation: [`DEATH_CURTAIN_SPEC`](../DEATH_CURTAIN_SPEC.md)
 (`curtain_of_death.py`). On completion it calls `start_death_progression()`,
@@ -450,8 +450,8 @@ uniformity across whatever carries the flag.
 
 > **#3248 built `brain_integrity` on 2026-09-26** (owner ruling "Death with
 > a window"): a destroyed brain is a death that starts the progression, and
-> only getting the brain back inside the window revives it (an install, or
-> today an in-place organ repair — #3253). The "revivable but unlikely"
+> only a brain install inside the window revives it (#3253, 2026-09-28,
+> closed the in-place repair route). The "revivable but unlikely"
 > state below now exists for the brain. The rows and the reasoning are kept
 > as the record of why.
 

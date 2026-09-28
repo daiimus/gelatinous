@@ -13,12 +13,32 @@ from .constants import (
 )
 
 
+def _has_bone_flags(spec) -> bool:
+    spec = spec or {}
+    return bool(spec.get("bone_type") or spec.get("fracture_vulnerable"))
+
+
 def organ_is_bone(organ) -> bool:
-    """Is this organ a bone (the species table's `bone_type` /
-    `fracture_vulnerable`)? The splint and the tool roll key off the same
-    fact; kept in one place so the healing rule cannot drift from them."""
-    data = getattr(organ, "data", None) or {}
-    return bool(data.get("bone_type") or data.get("fracture_vulnerable"))
+    """Is this organ a bone (`bone_type` / `fracture_vulnerable`)? The
+    splint, the tool roll and the healing rule key off the same fact; kept
+    in one place so they cannot drift.
+
+    Read from the organ's OWN saved spec first (a grafted chrome strut
+    carries its bone flags there), then from the species table for the
+    organ's NAME: every body saved before a table change keeps the spec it
+    was saved with (#513), so a flag added to the table -- the spines,
+    the pelvis and the jaw in #3253 -- would otherwise never reach a
+    single existing character (review of #3679)."""
+    if _has_bone_flags(getattr(organ, "data", None)):
+        return True
+    name = getattr(organ, "name", None)
+    if not name:
+        return False
+    from world.anatomy import get_organ_spec, species_of
+    state = getattr(organ, "medical_state", None)
+    character = getattr(state, "character", None)
+    species = species_of(character) if character is not None else None
+    return _has_bone_flags(get_organ_spec(name, species))
 
 
 class Organ:
@@ -47,14 +67,19 @@ class Organ:
                 callers that don't yet pass a species.
         """
         self.name = organ_name
+        # The organ owns a COPY of its spec. `get_organ_spec` hands back the
+        # species table's own dict, and `to_dict` persists `self.data`, so a
+        # shared reference let any write to one organ's data (or to a saved
+        # snapshot) rewrite the species table for the whole process
+        # (#3679 review, tripped by a test).
         if organ_data is not None:
-            self.data = organ_data
+            self.data = dict(organ_data)
         else:
             # Lazy import — world.anatomy imports world.medical at
             # module load via the species table import; avoid the
             # circle by deferring this lookup until __init__ time.
             from world.anatomy import get_organ_spec
-            self.data = get_organ_spec(organ_name, species) or {}
+            self.data = dict(get_organ_spec(organ_name, species) or {})
         
         # Core properties
         self.max_hp = self.data.get("max_hp", 10)
@@ -350,6 +375,12 @@ class Organ:
             
         old_hp = self.current_hp
         self.current_hp = min(self.max_hp, self.current_hp + amount)
+
+        # A bone set from 0 HP is under care, not "destroyed": move the
+        # stage on so the wound renders and diagnoses as treated while it
+        # knits (#3253). Only a bone can rise from 0 here.
+        if old_hp <= 0 and self.current_hp > 0 and getattr(self, "wound_stage", None) == "destroyed":
+            self.wound_stage = "treated"
         
         # Update wound stage if fully healed
         if self.current_hp == self.max_hp and hasattr(self, 'wound_stage'):
@@ -749,6 +780,13 @@ class MedicalState:
             return False
         if getattr(organ, "wound_stage", None) == "severed":
             return True
+        if name == "cervical_spine":
+            # A decapitation whose head spawn failed leaves the spine at 0
+            # unmarked; the flag the blow set is the truth (same test the
+            # death cause uses).
+            character = getattr(self, "character", None)
+            if getattr(getattr(character, "db", None), "decapitation_pending", False):
+                return True
         return organ.current_hp <= 0 and not organ_is_bone(organ)
 
     def full_heal(self):
@@ -1082,7 +1120,7 @@ class MedicalState:
           otherwise, was removed with that ruling.
         """
         # Death from vital organ failure: heart; both lungs; liver AND
-        # stomach; cervical spine (decapitation, #243); brain (a death
+        # stomach; cervical spine (a broken neck, #243; severed = decapitation); brain (a death
         # with a window, #3248).
         for capacity in LETHAL_CAPACITY_NAMES:
             if self.calculate_body_capacity(capacity) <= 0.0:
