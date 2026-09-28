@@ -349,7 +349,8 @@ class ConsumptionCommand(Command):
         if success_result["success_level"] == "success":
             # Check if actual treatment is possible before applying effects
             medical_type = get_medical_type(item)
-            treatment_possible = self._check_treatment_possible(target, medical_type)
+            treatment_possible = self._check_treatment_possible(
+                target, medical_type, body_location=kwargs.get("body_location"))
             
             result_msg = apply_medical_effects(item, user, target, **kwargs)
             
@@ -381,13 +382,16 @@ class ConsumptionCommand(Command):
             
         return result_msg
         
-    def _check_treatment_possible(self, target, medical_type):
+    def _check_treatment_possible(self, target, medical_type, body_location=None):
         """
         Check if actual treatment is possible based on target's medical state.
         
         Args:
             target: Character to be treated
             medical_type: Type of medical treatment
+            body_location: the location the player named, when the
+                treatment honours one (a splint); nothing there means
+                nothing is consumed
             
         Returns:
             bool: True if treatment can actually occur, False if only examination possible
@@ -411,7 +415,9 @@ class ConsumptionCommand(Command):
             # only a severed bone is past a splint
             damaged_bones = [organ for name, organ in medical_state.organs.items() 
                            if (organ.current_hp < organ.max_hp and organ_is_bone(organ)
-                               and not medical_state.organ_beyond_repair(name))]
+                               and not medical_state.organ_beyond_repair(name)
+                               and (not body_location
+                                    or body_location in (organ.container, organ.display_location, name)))]
             return len(damaged_bones) > 0
             
         elif medical_type == "blood_restoration":

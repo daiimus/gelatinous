@@ -367,8 +367,15 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
 
     # If any wounded organ at this location is already stabilized,
     # the location as a whole is being held — re-applying does
-    # nothing useful.  Triage hint to the caller.
-    if any(getattr(o, "stabilized", False) for o in wounded_organs):
+    # nothing useful.  Triage hint to the caller.  An organ that can
+    # never heal (destroyed soft tissue, a stump, a harvested slot) keeps
+    # its flag for good, so it must not be what refuses the NEXT dressing
+    # here (#3679 review): only a healable organ under care counts.
+    state = getattr(target, "medical_state", None)
+    held = [o for o in wounded_organs
+            if getattr(o, "stabilized", False)
+            and not (state is not None and state.organ_beyond_repair(o.name))]
+    if held:
         result["no_op_reason"] = "already_stabilized"
         result["messages"].append(
             f"The wound at {location.replace('_', ' ')} is already "
@@ -419,28 +426,39 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
     # number (not an item reference) so item depletion doesn't
     # affect ongoing recovery.
     wound_healing_rating = int(effectiveness.get("wound_healing", 0) or 0)
-    state = getattr(target, "medical_state", None)
+    beyond_repair = []
     for organ in wounded_organs:
-        # A harvested slot, a destroyed soft organ or a severed part is
-        # a real wound -- it is dressed like any other, and its pain,
-        # bleeding and infection are treated above -- but the organ
-        # itself does not come back in place (#3400, #3651, #3253). It
-        # gets no healing rate AND no `stabilized` flag: the flag is
-        # cleared only when an organ heals to full, so on one that never
-        # can it would latch for good -- holding every later bleed at that
-        # location and refusing every later dressing there (#3679 review).
-        if state is not None and state.organ_beyond_repair(organ.name):
-            organ.dressing_rate = 0
-            continue
         organ.stabilized = True
         # Proper care supersedes the field tourniquet (#509): the
         # dressing holds the wound, so the band comes off with it.
         organ.tourniqueted = False
-        organ.dressing_rate = wound_healing_rating
+        # A harvested slot, a destroyed soft organ or a severed part is
+        # a real wound -- it is dressed like any other, held like any
+        # other, and its pain, bleeding and infection are treated above
+        # -- but the organ itself does not come back in place (#3400,
+        # #3651, #3253). No healing rate for it; a broken BONE gets one.
+        beyond = state is not None and state.organ_beyond_repair(organ.name)
+        organ.dressing_rate = 0 if beyond else wound_healing_rating
+        if beyond:
+            beyond_repair.append(organ)
     result["stabilized"] = True
     result["messages"].append(
         f"The wound at {location.replace('_', ' ')} is stabilized."
     )
+    # A site where nothing can heal further is CLOSED by the dressing: the
+    # held bleed would otherwise never resume (an organ that heals to full
+    # is what lifts a hold) and its condition would keep the medical
+    # script ticking forever (#3679 review). The location's other harm,
+    # a stale flag holding the NEXT wound there, is cleared where the next
+    # wound lands (`MedicalState.take_organ_damage`).
+    if state is not None and beyond_repair and len(beyond_repair) == len(wounded_organs):
+        from world.medical.conditions import BleedingCondition
+        for cond in _conditions_at_location(state, location, BleedingCondition):
+            state.remove_condition(cond)
+        result["messages"].append(
+            f"Nothing at {location.replace('_', ' ')} will heal further; "
+            f"the dressing closes the site and the bleeding stops."
+        )
 
     # PR-C: ensure the medical script is running so the healing
     # tick can fire.  Idempotent — returns the existing script if

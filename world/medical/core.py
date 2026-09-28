@@ -1274,6 +1274,16 @@ class MedicalState:
             # Add and start new conditions
             for condition in new_conditions:
                 self.add_condition(condition)
+
+            # A fresh wound reopens the site: an organ here that can never
+            # heal keeps its `stabilized` flag for good, and left standing
+            # that stale flag would hold THIS new bleed forever (#3679
+            # review). Clear it; the next dressing sets it again.
+            for other in self.organs.values():
+                if (other is not organ and other.container == organ.container
+                        and getattr(other, "stabilized", False)
+                        and self.organ_beyond_repair(other.name)):
+                    other.stabilized = False
         
         return was_destroyed
         

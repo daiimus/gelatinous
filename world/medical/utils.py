@@ -1198,7 +1198,8 @@ def apply_medical_effects(item, user, target, **kwargs):
         damaged_bones = [(name, organ) for name, organ in medical_state.organs.items() 
                         if (organ.current_hp < organ.max_hp and organ_is_bone(organ)
                             and not medical_state.organ_beyond_repair(name)
-                            and (not body_location or organ.container == body_location))]
+                            and (not body_location
+                                 or body_location in (organ.container, organ.display_location, name)))]
         
         if damaged_bones:
             # Heal the most damaged bone (lowest HP percentage)

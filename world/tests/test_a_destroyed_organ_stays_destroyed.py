@@ -194,24 +194,58 @@ class TheHealers(EvenniaTest):
         self.assertEqual(self.state.organs["brain"].current_hp, 0)
         self.assertTrue(self.state.is_dead(), "sealant revived a brain death")
 
-    def test_a_dressing_neither_regrows_nor_latches_a_destroyed_organ(self):
-        # `stabilized` clears only when an organ heals to full; on one that
-        # never can it would latch for good and hold every later bleed at
-        # the location and refuse every later dressing there.
-        liver = self.state.organs["liver"]
-        liver.current_hp = 0
-        liver.stabilized = False
+    def _gauze(self):
         item = create_object("typeclasses.items.Item", key="gauze", location=self.char1)
         item.db.medical_type = "wound_care"
         item.db.effectiveness = {"wound_healing": 8, "bleeding": 7}
-        result = T.apply_wound_care(self.char1, self.char2, item, "abdomen")
+        return item
+
+    def test_a_dressing_holds_and_closes_a_site_that_cannot_heal(self):
+        # The dressing still does its job -- the bleed stops -- but nothing
+        # there will heal, so the site is closed: no regrowth rate, the
+        # bleed condition removed (a held bleed on an organ that never
+        # heals to full would otherwise tick the script forever), and a
+        # second dressing here is not refused as "already stabilized".
+        from world.medical.conditions import BleedingCondition
+        liver = self.state.organs["liver"]
+        liver.current_hp = 0
+        liver.stabilized = False
+        self.state.add_condition(BleedingCondition(8, location="abdomen"))
+        result = T.apply_wound_care(self.char1, self.char2, self._gauze(), "abdomen")
         self.assertIsNone(result.get("no_op_reason"))
-        self.assertFalse(liver.stabilized, "a destroyed organ was latched stabilized")
+        self.assertTrue(liver.stabilized)
         self.assertEqual(getattr(liver, "dressing_rate", 0), 0)
         self.assertNotIn(liver, _healing_organs(self.state))
-        # and a second dressing at the same place is not refused as "already stabilized"
-        again = T.apply_wound_care(self.char1, self.char2, item, "abdomen")
+        self.assertEqual([c for c in self.state.conditions if isinstance(c, BleedingCondition)], [],
+                         "the bleed at a closed site was left to tick forever")
+        again = T.apply_wound_care(self.char1, self.char2, self._gauze(), "abdomen")
         self.assertIsNone(again.get("no_op_reason"), again["messages"])
+
+    def test_control_a_mixed_site_keeps_its_hold_for_the_healable_organ(self):
+        from world.medical.conditions import BleedingCondition
+        self.state.organs["liver"].current_hp = 0
+        self.state.organs["stomach"].current_hp = 3
+        self.state.add_condition(BleedingCondition(8, location="abdomen"))
+        T.apply_wound_care(self.char1, self.char2, self._gauze(), "abdomen")
+        self.assertTrue(self.state.organs["stomach"].stabilized)
+        self.assertGreater(self.state.organs["stomach"].dressing_rate, 0)
+        self.assertTrue([c for c in self.state.conditions if isinstance(c, BleedingCondition)],
+                        "the stomach's held bleed was removed")
+        again = T.apply_wound_care(self.char1, self.char2, self._gauze(), "abdomen")
+        self.assertEqual(again.get("no_op_reason"), "already_stabilized")
+
+    def test_a_new_wound_reopens_a_site_a_destroyed_organ_kept_flagged(self):
+        from world.medical.conditions import BleedingCondition
+        liver = self.state.organs["liver"]
+        liver.current_hp = 0
+        T.apply_wound_care(self.char1, self.char2, self._gauze(), "abdomen")
+        self.assertTrue(liver.stabilized)
+        # later: a stab to the stomach, same container
+        self.state.take_organ_damage("stomach", 12, "stab")
+        self.assertFalse(liver.stabilized, "the stale flag would have held the new bleed")
+        bleeds = [c for c in self.state.conditions if isinstance(c, BleedingCondition)]
+        self.assertTrue(bleeds)
+        self.assertFalse(bleeds[0]._location_stabilized(self.state))
 
     def test_control_a_dressing_regrows_a_broken_bone(self):
         femur = self.state.organs["left_femur"]
@@ -254,19 +288,43 @@ class TheSplint(EvenniaTest):
         self.assertEqual(getattr(femur, "dressing_rate", 0), 0)
         self.assertIn("severed", str(msg))
 
-    def test_the_splint_goes_where_the_player_said(self):
-        from world.medical.utils import apply_medical_effects
-        state = self.char2.medical_state
-        state.organs["left_femur"].current_hp = 0            # the worst bone anywhere
-        state.organs["left_humerus"].current_hp = state.organs["left_humerus"].max_hp - 5
+    def _splint_item(self):
         item = create_object("typeclasses.items.Item", key="a splint", location=self.char1)
         item.tags.add("medical_item", category="item_type")
         item.attributes.add("medical_type", "fracture_treatment")
         item.attributes.add("uses_left", 5)
         item.attributes.add("effectiveness", {"fracture": 8})
-        apply_medical_effects(item, self.char1, self.char2, body_location="left_arm")
+        return item
+
+    def test_the_splint_goes_where_the_player_said(self):
+        from world.medical.utils import apply_medical_effects
+        state = self.char2.medical_state
+        state.organs["left_femur"].current_hp = 0            # the worst bone anywhere
+        state.organs["left_humerus"].current_hp = state.organs["left_humerus"].max_hp - 5
+        apply_medical_effects(self._splint_item(), self.char1, self.char2, body_location="left_arm")
         self.assertEqual(state.organs["left_femur"].current_hp, 0, "the splint wandered to the leg")
         self.assertEqual(state.organs["left_humerus"].current_hp, state.organs["left_humerus"].max_hp)
+
+    def test_the_splint_takes_a_bone_name_or_a_face(self):
+        from world.medical.utils import apply_medical_effects
+        state = self.char2.medical_state
+        state.organs["left_femur"].current_hp = 0
+        state.organs["left_humerus"].current_hp = state.organs["left_humerus"].max_hp - 5
+        apply_medical_effects(self._splint_item(), self.char1, self.char2, body_location="left_humerus")
+        self.assertEqual(state.organs["left_humerus"].current_hp, state.organs["left_humerus"].max_hp)
+        state.organs["jaw"].current_hp = 0
+        apply_medical_effects(self._splint_item(), self.char1, self.char2, body_location="face")
+        self.assertGreater(state.organs["jaw"].current_hp, 0, "the jaw shows at the face and was not found there")
+
+    def test_nothing_at_the_named_place_means_nothing_is_consumed(self):
+        from commands.CmdConsumption import CmdApply
+        state = self.char2.medical_state
+        state.organs["left_femur"].current_hp = 0
+        gate = CmdApply()._check_treatment_possible
+        self.assertTrue(gate(self.char2, "fracture_treatment"))
+        self.assertTrue(gate(self.char2, "fracture_treatment", body_location="left_thigh"))
+        self.assertFalse(gate(self.char2, "fracture_treatment", body_location="left_arm"),
+                         "a splint aimed at a whole arm would be spent on nothing")
 
 
 class TheInstall(EvenniaTest):
@@ -280,10 +338,12 @@ class TheInstall(EvenniaTest):
         liver.dressing_rate = 8
         self.char2.db.surgical_state = {"incisions": {"abdomen": True}, "active_procedure": None}
         self.char1.msg = lambda text=None, **kw: None
+        # No organ_spec on the donor: this is the branch that REUSES the
+        # slot's Organ object (a spec-carrying donor builds a fresh one,
+        # whose defaults are already clean).
         item = create_object("typeclasses.items.Organ", key="a liver", location=self.char1)
         item.db.organ_name = "liver"
         item.db.condition = "pristine"
-        item.db.organ_spec = dict(liver.data)
         with mock.patch("world.medical.procedures.roll_procedure",
                         return_value={"outcome": "success", "margin": 9}):
             P._resolve_install(self.char1, self.char2, organ_item=item, location="abdomen")
