@@ -638,8 +638,32 @@ def take_patient_away(target, reason: str) -> Optional[Any]:
             interrupt_channel(surgeon, reason=reason)
     except Exception:  # noqa: BLE001 -- the record is already cleared
         pass
+    verb = record.get("verb", "procedure")
     surgeon.msg(f"|yYour patient is hauled out from under your hands; "
-                f"the {record.get('verb', 'procedure')} is lost.|n")
+                f"the {verb} is lost.|n")
+    # The other two perspectives (#3681): the patient, who was never told
+    # the work began and is told it ends; and the room, which otherwise
+    # sees only a drag and a pose reverting. Sent BEFORE the move, so the
+    # room is the one the operation was happening in. Per-observer, as
+    # every broadcast naming a character must be.
+    try:
+        target.msg(f"|r{capitalize_first(_possessive(surgeon, target))} instruments "
+                   f"leave you as you are hauled away; the {verb} is undone.|n")
+    except Exception:  # noqa: BLE001 -- an item target has no ear for it
+        pass
+    room = getattr(target, "location", None)
+    if room is not None and room == getattr(surgeon, "location", None):
+        try:
+            from world.identity_utils import msg_room_identity
+            msg_room_identity(
+                location=room,
+                template=f"{{surgeon}}'s instruments come away as {{patient}} is "
+                         f"hauled out from under them; the {verb} is undone.",
+                char_refs={"surgeon": surgeon, "patient": target},
+                exclude=[surgeon, target],
+            )
+        except Exception:  # noqa: BLE001 -- a line, never a block on the drag
+            pass
     return surgeon
 
 

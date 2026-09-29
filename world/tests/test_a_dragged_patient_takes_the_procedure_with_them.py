@@ -62,6 +62,25 @@ class TheDrag(_OnTheTable):
         P._resolve_procedure_callback(self.patient, token=self.record["token"])
         spy.assert_not_called()
 
+    def test_the_patient_and_the_room_are_told_too(self):
+        # #3681: the patient hears the work end; the room gets a per-observer
+        # line in the surgery room (before the move), naming both, excluding
+        # both. Room broadcasts never reach a test observer (the session
+        # gate), so the broadcast is asserted on the patched sender.
+        heard = []
+        self.patient.msg = lambda text=None, **kw: heard.append(str(text))
+        with mock.patch("world.identity_utils.msg_room_identity") as sender:
+            drag_victim_to(self.patient, self.room2)
+        self.assertTrue(any("instruments leave you" in t for t in heard), heard)
+        self.assertTrue(sender.called, "the room was not told")
+        kwargs = sender.call_args.kwargs
+        self.assertEqual(kwargs["location"], self.room1, "the line must land in the surgery room")
+        self.assertIn("instruments come away", kwargs["template"])
+        self.assertEqual(kwargs["char_refs"]["surgeon"], self.surgeon)
+        self.assertEqual(kwargs["char_refs"]["patient"], self.patient)
+        self.assertIn(self.surgeon, kwargs["exclude"])
+        self.assertIn(self.patient, kwargs["exclude"])
+
     def test_control_an_undisturbed_procedure_resolves(self):
         spy = self.resolver_spy()
         P._resolve_procedure_callback(self.patient, token=self.record["token"])
