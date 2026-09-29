@@ -474,6 +474,34 @@ class CmdJump(Command):
             caller.msg("|yYou throw yourself at the edge regardless.|n")
         return True
 
+    def drop_victims_acts(self, victim):
+        """A dragged victim keeps nothing they were doing (#3668): the
+        same breaker the door drags use -- procedure first, then their
+        channel -- so a channel is not an immunity to being hauled off a
+        roof, the outcome #2774 rejected for doors."""
+        from world.combat.grappling import break_victim_acts
+        break_victim_acts(victim, "the patient was dragged off the edge")
+
+    def leaping_with(self, victim):
+        """The jumper's lead-in, spoken only once both have actually left
+        the roof: a refused move narrates nothing (#3353), and a hold that
+        opened at the edge is not a drag."""
+        self.caller.msg(f"|yYou leap from the {self.direction} edge while dragging {get_display_name_safe(victim, self.caller)} with you!|n")
+        get_splattercast().msg(f"JUMP_EDGE_WITH_VICTIM: {self.caller.key} edge jumping while grappling {victim.key}")
+
+    def hold_opens_at_the_edge(self, handler, victim):
+        """The victim's move was refused even with their acts broken (an
+        escort, say). The hold opens where both still stand, spoken from
+        the grapple bank (#3615); the pairing itself is undone with the
+        jumper's departure from combat below. Returns None: the jump goes
+        on alone."""
+        from world.combat.grappling import speak_grapple_beat
+        get_splattercast().msg(
+            f"JUMP_EDGE_VICTIM_REFUSED: {victim.key} could not be dragged off "
+            f"{self.direction} edge by {self.caller.key}; the hold opens")
+        speak_grapple_beat(self.caller, victim, "release_edge")   # #3668
+        return None
+
     def handle_edge_descent(self):
         """``jump off <dir> edge``. Stepping off always succeeds; what
         happens next is the ROOM's business (#3579): air below and the
@@ -528,9 +556,6 @@ class CmdJump(Command):
         # once the edge is real, so a typo never feeds an aimer a shot.
         if not self.pay_the_price_of_leaving():
             return
-        if grappled_victim:
-            self.caller.msg(f"|yYou leap from the {self.direction} edge while dragging {get_display_name_safe(grappled_victim, self.caller)} with you!|n")
-            splattercast.msg(f"JUMP_EDGE_WITH_VICTIM: {self.caller.key} edge jumping while grappling {grappled_victim.key}")
 
         # Captured BEFORE the move -- see #2424: the broadcast below used
         # `previous_location`, which nothing in the repo assigns, so the
@@ -545,12 +570,27 @@ class CmdJump(Command):
             # `move_to` answers False on a refused move (escort, channel).
             # The location is NOT re-checked: the cell's hook may already
             # have carried the body onward, and that is not a refusal.
+            #
+            # The victim goes FIRST, as in transit below, so a hold that
+            # opens at the edge is spoken of on the roof, where both still
+            # stand; if the jumper's own move is then refused, the victim
+            # is put back. Their acts are broken before the move (#3668):
+            # a channel is not a way to refuse being dragged (#2774), and
+            # a procedure on them ends with the surgeon told (#3669). A
+            # move still refused after that (an escort, say) opens the
+            # hold: the jump goes on alone and nobody is told they fell.
+            if grappled_victim:
+                self.drop_victims_acts(grappled_victim)
+                if not grappled_victim.move_to(destination, quiet=True):
+                    grappled_victim = self.hold_opens_at_the_edge(handler, grappled_victim)
             moved = self.caller.move_to(destination, quiet=True)
             if not moved:
+                if grappled_victim:
+                    grappled_victim.move_to(old_location, quiet=True)
                 splattercast.msg(f"JUMP_EDGE_REFUSED_MOVE: {self.caller.key} could not leave {old_location.key}")
                 return
             if grappled_victim:
-                grappled_victim.move_to(destination, quiet=True)
+                self.leaping_with(grappled_victim)
                 grappled_victim.msg(f"|r{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} drags you off the {self.direction} edge!|n")
                 victim_damage, _ = apply_fall_damage(
                     grappled_victim, int(FALL_DAMAGE_PER_STORY * FALL_BODYSHIELD_MADE_VICTIM))
@@ -596,10 +636,11 @@ class CmdJump(Command):
         # leader's record as its companion; if the leader's own move is
         # then refused, the victim is put back on the roof.
         if grappled_victim:
+            self.drop_victims_acts(grappled_victim)
             setattr(grappled_victim.db, DB_FALLING, {"led_by": self.caller})
             if not grappled_victim.move_to(destination, quiet=True):
                 grappled_victim.attributes.remove(DB_FALLING)
-                grappled_victim = None
+                grappled_victim = self.hold_opens_at_the_edge(handler, grappled_victim)
         setattr(self.caller.ndb, NDB_FALL_INTENT, {
             "edge_difficulty": edge_difficulty,
             "roll": True,
@@ -617,6 +658,7 @@ class CmdJump(Command):
             splattercast.msg(f"JUMP_EDGE_REFUSED_MOVE: {self.caller.key} could not leave {old_location.key}")
             return
         if grappled_victim:
+            self.leaping_with(grappled_victim)
             grappled_victim.msg(f"|r{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} drags you off the {self.direction} edge!|n")
             splattercast.msg(f"JUMP_EDGE_BODYSHIELD: {grappled_victim.key} rides {self.caller.key}'s fall")
 

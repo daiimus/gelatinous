@@ -202,7 +202,7 @@ def get_combat_message(weapon_type, phase, attacker=None, target=None, item=None
                 return f"|g{msg}|n"
             if phase in ("miss", "escape_miss", "release_charge",
                          "release_charge_away", "release_jump",
-                         "release_blast", "release_intent"):
+                         "release_blast", "release_edge", "release_intent"):
                 return f"|y{msg}|n"     # a grip lost, or about to be (#3615)
             return msg
         if phase in successful_hit_phases:

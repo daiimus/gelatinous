@@ -384,17 +384,24 @@ class TestForcedMovementBreaksTheChannel(TestCase):
         in `drag_victim_to`, which BOTH drag doors call."""
         import inspect
 
+        import commands.combat.jump as jump_mod
         import typeclasses.exits as exits_mod
         import world.combat.movement_resolution as advance_mod
         from world.combat import grappling
+        # The breaker itself: the channel goes (after the procedure, #3681).
+        breaker = inspect.getsource(grappling.break_victim_acts)
+        self.assertIn("from world.channeled import interrupt_channel", breaker)
+        self.assertIn("interrupt_channel(victim)", breaker)
+        # ...and it runs BEFORE the move in the shared door.
         src = inspect.getsource(grappling.drag_victim_to)
-        self.assertIn("from world.channeled import interrupt_channel", src)
-        interrupt_at = src.index("interrupt_channel(victim)")
+        break_at = src.index("break_victim_acts(victim")
         move_at = src.index("victim.move_to(room, quiet=True, move_hooks=False)")
-        self.assertLess(interrupt_at, move_at,
+        self.assertLess(break_at, move_at,
                         "the victim is moved before the channel breaks")
         for door in (exits_mod, advance_mod):
             self.assertIn("drag_victim_to(", inspect.getsource(door), door.__name__)
+        # The edge drag keeps its own hooked move but shares the breaker (#3668).
+        self.assertIn("break_victim_acts(victim", inspect.getsource(jump_mod))
 
     def test_interrupt_channel_clears_the_tell(self):
         """What the drag path relies on."""

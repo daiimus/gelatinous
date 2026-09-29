@@ -30,7 +30,8 @@ def drag_victim_to(victim, room):
 
     The walk door (`Exit.at_traverse`) and the advance door
     (`_do_advance_move`). The jump drag keeps hooks ON so gravity and
-    posture run there on their own.
+    posture run there on their own, but breaks the victim's acts through
+    the same `break_victim_acts` first (#3668).
 
     The victim's move runs with hooks OFF, deliberately: `at_pre_move`
     would refuse a channeling victim, and refusing the move would make
@@ -58,16 +59,7 @@ def drag_victim_to(victim, room):
     it with their own channel, and breaking that channel first would clear
     the record before anyone could be told about it (#3681).
     """
-    try:
-        from world.medical.procedures import take_patient_away
-        take_patient_away(victim, reason="the patient was dragged away")
-    except Exception:  # noqa: BLE001 -- never block a drag on this
-        pass
-    try:
-        from world.channeled import interrupt_channel
-        interrupt_channel(victim)
-    except Exception:  # noqa: BLE001 -- never block a drag on this
-        pass
+    break_victim_acts(victim, "the patient was dragged away")
     moved = victim.move_to(room, quiet=True, move_hooks=False)
     if not moved or victim.location != room:
         return False
@@ -77,6 +69,25 @@ def drag_victim_to(victim, room):
             or (victim.db.posture and victim.db.posture != "standing")):
         clear()
     return True
+
+
+def break_victim_acts(victim, reason: str) -> None:
+    """A body being hauled keeps nothing it was doing: the procedure on it
+    ends first (a self-surgeon's channel IS that procedure's timer, #3681),
+    then its own channel (BREAKING, not BLOCKED: a hold is not something a
+    channel can refuse, #2774). Shared by every drag door -- the walk, the
+    combat move and the edge (#3668) -- and never blocks the drag.
+    """
+    try:
+        from world.medical.procedures import take_patient_away
+        take_patient_away(victim, reason=reason)
+    except Exception:  # noqa: BLE001 -- never block a drag on this
+        pass
+    try:
+        from world.channeled import interrupt_channel
+        interrupt_channel(victim)
+    except Exception:  # noqa: BLE001 -- never block a drag on this
+        pass
 
 
 def get_grappling_target(combat_handler, combatant_entry):
