@@ -81,6 +81,37 @@ class TheDrag(_OnTheTable):
         self.assertIn(self.surgeon, kwargs["exclude"])
         self.assertIn(self.patient, kwargs["exclude"])
 
+    def test_the_work_is_named_in_the_patients_own_words(self):
+        # Never the raw verb key ("the incise is undone"); the patient's
+        # species vocabulary (#2262): a robot is cut into, not incised.
+        heard = []
+        self.patient.msg = lambda text=None, **kw: heard.append(str(text))
+        with mock.patch("world.identity_utils.msg_room_identity") as sender:
+            drag_victim_to(self.patient, self.room2)
+        for text in (self.told[-1], heard[-1], sender.call_args.kwargs["template"]):
+            self.assertIn("cutting into the chest", text, text)
+            self.assertNotIn("incise", text, text)
+
+    def test_a_robot_patient_hears_its_own_vocabulary(self):
+        rec = {"verb": "harvest", "kwargs": {"organ_name": "heart", "location": "chest"}}
+        self.patient.db.species = "robot"
+        self.assertEqual(P._work_in_prose(rec, self.patient), "pulling the power core")
+        self.patient.db.species = "human"
+        self.assertEqual(P._work_in_prose(rec, self.patient), "harvesting the heart")
+        self.assertEqual(P._work_in_prose({"verb": "install_augment",
+                                           "kwargs": {"location": "torso"}}, self.patient),
+                         "installing an implant in the torso")
+
+    def test_a_surgeon_in_another_room_leaves_the_patient_and_room_untold(self):
+        heard = []
+        self.patient.msg = lambda text=None, **kw: heard.append(str(text))
+        self.surgeon.location = self.room2
+        with mock.patch("world.identity_utils.msg_room_identity") as sender:
+            self.assertTrue(P.take_patient_away(self.patient, "the patient was dragged away"))
+        self.assertTrue(any("hauled out" in t for t in self.told), self.told)
+        self.assertEqual(heard, [], "described instruments a room away")
+        self.assertFalse(sender.called)
+
     def test_control_an_undisturbed_procedure_resolves(self):
         spy = self.resolver_spy()
         P._resolve_procedure_callback(self.patient, token=self.record["token"])
