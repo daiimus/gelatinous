@@ -819,12 +819,13 @@ class CmdJump(Command):
             grappled_victim.msg(f"{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} stops leading you.")
             splattercast.msg(f"JUMP_GAP_MARCH_ENDS: {self.caller.key} stops escorting {grappled_victim.key} for the leap")
         # The grip opens for the leap -- once the leap is real (#3684).
-        # A jumper's own move can be refused (a channel; an escort whose
-        # walk bounces), and what refuses it is the full walk of hooks and
-        # exits, which nothing predicts exactly: so the hold is let go
-        # only AFTER a move that happened, spoken to the roof they left,
-        # or on a slip in place, which is an attempt made. A refused move
-        # keeps the hold and says only what the gate says.
+        # A jumper's own move can still be refused past the threshold (an
+        # escort walked through a plain door beside the gap, a lock), and
+        # what refuses it is the full walk of hooks and exits, which
+        # nothing predicts exactly: so the hold is let go only AFTER a
+        # move that happened, spoken to the roof they left, or on a slip
+        # in place, which is an attempt made. A refused move keeps the
+        # hold and says only what the gate says.
 
         # Gap jumping requires Motorics check vs gap difficulty
         caller_motorics = get_numeric_stat(self.caller, "motorics")

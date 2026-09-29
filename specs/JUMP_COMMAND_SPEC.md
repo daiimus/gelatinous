@@ -800,9 +800,11 @@ if destination_is_sky and not (is_edge or is_gap):
 > leaves the roof. A walk through a plain door beside the drop can still
 > be refused inside the move for a reason nothing predicts (a lock); that
 > one is still paid for, as before. Two consequences: a channeling or
-> escort-barred gap jumper never rolls, so never slips in place; and the
-> gap jump's ending of a march of the held victim (#3684) now comes after
-> the price, so a jumper the price cuts down keeps the march.)_
+> escort-barred gap jumper never rolls, so never slips in place; and a
+> hidden jumper stopped at the threshold by a barred escort keeps their
+> concealment, as a channeling one always did, since no move was tried.
+> Unchanged: the gap jump's ending of a march of the held victim (#3684)
+> still comes after the price, so a jumper the price cuts down keeps it.)_
 >
 > _(2026-09-16, #3591: RULED and built. A jump in a fight pays BOTH halves
 > of flee's price: the aim contest (`break_aim_lock`) AND the melee
