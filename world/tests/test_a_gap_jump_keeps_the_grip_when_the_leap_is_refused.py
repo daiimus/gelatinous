@@ -144,6 +144,12 @@ class TheGripIsKept(_AGapWithAHold):
         # handler is invisible to `is_restrained`, so the victim here
         # reads as free; trust stands in for the restraint, or the usher
         # would release the march on its own and the pin would not bite.
+        # The gap takes the usual shape (its own destination IS the
+        # perch), so the usher has an exit to walk the victim at -- the
+        # gap exit, which refuses a walker. A clear that ran AFTER the
+        # move would leave that walk in place and the jumper refused.
+        self.gap.db.gap_destination = None
+        self.gap.destination = self.far
         grant_trust(self.victim, self.jumper, "escort")
         self.jumper.db.escorting = self.victim
 
