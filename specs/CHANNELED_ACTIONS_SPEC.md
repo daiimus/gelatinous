@@ -125,6 +125,11 @@ work because of a mistyped verb:
 > `give` the spray can mid-channel and the full tag still lands, because
 > `_land_tag` re-reads the captured can object rather than the tagger's
 > hands. ~~Owner call pending on whether to finish the list or narrow it~~
+> **Wired 2026-09-29 (#3685, #3687):** `flee` (`commands/combat/movement.py`)
+> and both jump verbs (`commands/combat/jump.py`) ask `refuse_if_channeling`
+> themselves, before paying the price of leaving a fight, rather than
+> letting `at_pre_move` refuse the move after the aim contest and the
+> disengage roll have been charged.
 > **Ruled and wired 2026-09-13 (#3376, option A -- finish the list):** all
 > eleven now call `refuse_if_channeling` first. And the tool problem is
 > solved in the PRIMITIVE, not per consumer: `begin_channel(..., tools=[...])`

@@ -178,6 +178,16 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 > first and #3591 the second, so `flee` and the jump verbs charge them by
 > exactly the same rules:
 >
+> **The gates come before the price (#3685, #3687; owner 2026-09-29:
+> "That makes sense.").** A leave that cannot happen costs nothing. Each
+> verb asks its own gates first, running the game's own refusals so they
+> speak for themselves: the channel gate (`refuse_if_channeling`), a hold
+> on the fleer, and an escortee the usher would walk at an exit that
+> refuses every walker (`escort_barred_at`, then the real
+> `usher_escortee`). Only then are the contests paid, and the move is
+> made before anything is undone: a refused move leaves the body where
+> and as it was and says nothing of a flight that did not happen.
+>
 > * `break_aim_lock(caller, *, bonus=0, label=None)` — the
 >   Motorics-vs-Motorics roll that breaks an aimer's lock, with the
 >   aimer's opportunity attack on a loss.

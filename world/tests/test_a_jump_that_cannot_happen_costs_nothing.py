@@ -41,6 +41,34 @@ class _AtTheThreshold(EvenniaTest):
         self.far = create_object("typeclasses.rooms.Room", key="Far Roof")
         self.way = self.exit
         self.way.key = "south"
+        self.other = None
+
+    def refresh(self):
+        """Ids are reused after each test's rollback, and a command can
+        resolve a row to a cached instance whose attribute cache predates
+        this test. Drop the cache and re-fetch every object the test
+        holds, so the command and the assertions see one instance per row."""
+        from evennia.objects.models import ObjectDB
+        from evennia.utils.idmapper.models import flush_cache
+        names = [n for n in ("jumper", "roof", "far", "way", "other", "victim") if getattr(self, n, None) is not None]
+        ids = {n: getattr(self, n).id for n in names}
+        channel = getattr(self.jumper.ndb, "channel", None)
+        handler = getattr(self.jumper.ndb, NDB_COMBAT_HANDLER, None)
+        flush_cache()
+        for n, pk in ids.items():
+            setattr(self, n, ObjectDB.objects.get(id=pk))
+        # Rebuild the exit's remembered command set against this instance
+        # (a walker would otherwise traverse the instance of its making).
+        self.way.at_cmdset_get(force_init=True)
+        self.jumper.msg = lambda text=None, **kw: self.said.append(str(text))
+        if getattr(self, "victim", None) is not None:
+            self.victim.msg = lambda text=None, **kw: self.heard.append(str(text))
+        if self.other is not None:
+            self.other.msg = lambda text=None, **kw: self.told_other.append(str(text))
+        if channel is not None:
+            self.jumper.ndb.channel = channel
+        if handler is not None:
+            setattr(self.jumper.ndb, NDB_COMBAT_HANDLER, handler)
 
     def channeling(self, who):
         ok = begin_channel(who, 30, "spraying a wall",
@@ -49,13 +77,13 @@ class _AtTheThreshold(EvenniaTest):
         self.assertTrue(ok, "fixture: the channel did not start")
 
     def escorted(self, *, live=True):
-        other = create_object("typeclasses.characters.Character", key="Other", location=self.roof)
+        self.other = create_object("typeclasses.characters.Character", key="Other", location=self.roof)
         self.told_other = []
-        other.msg = lambda text=None, **kw: self.told_other.append(str(text))
+        self.other.msg = lambda text=None, **kw: self.told_other.append(str(text))
         if live:
-            grant_trust(other, self.jumper, "escort")
-        self.jumper.db.escorting = other
-        return other
+            grant_trust(self.other, self.jumper, "escort")
+        self.jumper.db.escorting = self.other
+        return self.other
 
     def jump(self, kind, *, sky=False, rolled=999):
         """kind: 'edge' -> handle_edge_descent; 'gap' -> handle_gap_jump."""
@@ -71,6 +99,7 @@ class _AtTheThreshold(EvenniaTest):
             self.way.destination.key = "In the Air"
             create_object("typeclasses.exits.Exit", key="down", location=self.way.destination,
                           destination=self.far, aliases=["d"])
+        self.refresh()
         cmd = CmdJump()
         cmd.caller = self.jumper
         cmd.direction = "south"
@@ -91,10 +120,10 @@ class _AtTheThreshold(EvenniaTest):
             (cmd.handle_edge_descent if kind == "edge" else cmd.handle_gap_jump)()
 
     def stayed(self):
-        self.assertIs(self.jumper.location, self.roof)
+        self.assertEqual(self.jumper.location, self.roof)
 
     def went(self):
-        self.assertIsNot(self.jumper.location, self.roof)
+        self.assertNotEqual(self.jumper.location, self.roof)
 
 
 class TheChannelGate(_AtTheThreshold):
@@ -154,10 +183,10 @@ class TheEscortGate(_AtTheThreshold):
         self.jump(kind, sky=sky)
         self.price.assert_not_called()
         self.stayed()
-        self.assertIs(other.location, self.roof)
+        self.assertEqual(self.other.location, self.roof)
         self.assertTrue(any("cannot" in t for t in self.told_other), self.told_other)
         self.assertTrue(any("refuses them" in t for t in self.said), self.said)
-        self.assertIs(self.jumper.db.escorting, other, "the usher released a live escort")
+        self.assertEqual(self.jumper.db.escorting, self.other, "the usher released a live escort")
 
     def test_an_escortee_barred_at_the_edge_costs_nothing(self):
         self._barred_escortee_costs_nothing("edge", False)
@@ -179,7 +208,7 @@ class TheEscortGate(_AtTheThreshold):
         self.price.assert_not_called()
         self.roll.assert_not_called()
         self.stayed()
-        self.assertIs(other.location, self.roof)
+        self.assertEqual(self.other.location, self.roof)
         self.assertTrue(any("cannot" in t for t in self.told_other), self.told_other)
 
     def test_control_a_stale_escort_is_released_and_the_jumper_pays_and_goes(self):
@@ -206,8 +235,8 @@ class TheEscortGate(_AtTheThreshold):
         other = self.escorted()
         self.jump("gap")
         self.price.assert_called_once()
-        self.assertIs(self.jumper.location, self.far)
-        self.assertIs(self.jumper.db.escorting, other)
+        self.assertEqual(self.jumper.location, self.far)
+        self.assertEqual(self.jumper.db.escorting, self.other)
 
 
 class TheHoldAtTheThreshold(_AtTheThreshold):
@@ -238,7 +267,7 @@ class TheHoldAtTheThreshold(_AtTheThreshold):
         self.assertEqual(self.heard, [], self.heard)
         self.assertTrue(channel_of(self.victim))
         self.assertEqual(self.grip(), (get_character_dbref(self.victim), get_character_dbref(self.jumper)))
-        self.assertIs(self.victim.location, self.roof)
+        self.assertEqual(self.victim.location, self.roof)
 
     def test_a_refused_edge_jumper_touches_nobody(self):
         self._refused_jumper_touches_nobody("edge", False)
