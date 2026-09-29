@@ -53,15 +53,19 @@ def drag_victim_to(victim, room):
     stand-up runs only once the move has landed, since a refused move is
     not a move (#2594). Silent, as `at_post_move` is; the drag messages
     narrate it. Returns whether the victim moved.
+
+    The procedure goes first: a surgeon operating on THEMSELVES is timing
+    it with their own channel, and breaking that channel first would clear
+    the record before anyone could be told about it (#3681).
     """
-    try:
-        from world.channeled import interrupt_channel
-        interrupt_channel(victim)
-    except Exception:  # noqa: BLE001 -- never block a drag on this
-        pass
     try:
         from world.medical.procedures import take_patient_away
         take_patient_away(victim, reason="the patient was dragged away")
+    except Exception:  # noqa: BLE001 -- never block a drag on this
+        pass
+    try:
+        from world.channeled import interrupt_channel
+        interrupt_channel(victim)
     except Exception:  # noqa: BLE001 -- never block a drag on this
         pass
     moved = victim.move_to(room, quiet=True, move_hooks=False)

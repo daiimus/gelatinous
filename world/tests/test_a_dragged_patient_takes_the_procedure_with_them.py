@@ -98,9 +98,34 @@ class TheDrag(_OnTheTable):
         self.assertEqual(P._work_in_prose(rec, self.patient), "pulling the power core")
         self.patient.db.species = "human"
         self.assertEqual(P._work_in_prose(rec, self.patient), "harvesting the heart")
+        pump = create_object("typeclasses.items.Item", key="cybernetic heart",
+                             location=self.surgeon)
         self.assertEqual(P._work_in_prose({"verb": "install_augment",
-                                           "kwargs": {"location": "torso"}}, self.patient),
-                         "installing an implant in the torso")
+                                           "kwargs": {"organ_item": pump, "location": "chest"}},
+                                          self.patient),
+                         "installing the cybernetic heart in the chest")
+        self.assertEqual(P._work_in_prose({"verb": "install", "kwargs": {"location": "chest"}},
+                                          self.patient),
+                         "installing an implant in the chest")
+        self.assertEqual(P._work_in_prose({"verb": "suture", "kwargs": {"location": None}},
+                                          self.patient), "suturing")
+
+    def test_a_surgeon_dragged_off_their_own_body_is_told_as_themselves(self):
+        # Self-surgery: the surgeon's channel IS the procedure's timer, and
+        # the drag door used to break that channel first, clearing the
+        # record before anyone could be told. The procedure now goes first.
+        P.interrupt_procedure(self.patient, reason="cleared")
+        self.surgeon.db.surgical_state = {"incisions": {}, "active_procedure": None}
+        rec = P.start_procedure(self.surgeon, verb="incise", actor=self.surgeon, location="chest")
+        self.assertIsNotNone(rec, "fixture: no self-procedure started")
+        self.told.clear()
+        with mock.patch("world.identity_utils.msg_room_identity") as sender:
+            self.assertTrue(drag_victim_to(self.surgeon, self.room2))
+        self.assertTrue(any("your own work" in t for t in self.told), self.told)
+        self.assertFalse(any("Your patient" in t for t in self.told), self.told)
+        self.assertIn("own instruments come away", sender.call_args.kwargs["template"])
+        self.assertIsNone((self.surgeon.db.surgical_state or {}).get("active_procedure"))
+        self.assertFalse(channel_of(self.surgeon))
 
     def test_a_surgeon_in_another_room_leaves_the_patient_and_room_untold(self):
         heard = []
@@ -108,7 +133,8 @@ class TheDrag(_OnTheTable):
         self.surgeon.location = self.room2
         with mock.patch("world.identity_utils.msg_room_identity") as sender:
             self.assertTrue(P.take_patient_away(self.patient, "the patient was dragged away"))
-        self.assertTrue(any("hauled out" in t for t in self.told), self.told)
+        self.assertTrue(any("hauled off" in t for t in self.told), self.told)
+        self.assertFalse(any("your hands" in t for t in self.told), self.told)
         self.assertEqual(heard, [], "described instruments a room away")
         self.assertFalse(sender.called)
 

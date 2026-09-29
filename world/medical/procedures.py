@@ -619,30 +619,30 @@ def _work_in_prose(record, target) -> str:
     words (#2262): "harvesting the left kidney", "cutting into the chest",
     "seating a coolant pump in the torso". Never the raw verb key.
     """
-    verb = str(record.get("verb") or "")
-    base = "install" if verb.startswith("install") else verb
-    kw = record.get("kwargs") or {}
     try:
+        verb = str(record.get("verb") or "")
+        base = "install" if verb.startswith("install") else verb
+        kw = record.get("kwargs") or {}
+        from world.anatomy import get_organ_display_name, get_species_location_display
         from world.anatomy.species import species_of
+        from world.medical.charts import gerund_for
         species = species_of(target)
-    except Exception as exc:  # noqa: BLE001
-        _log_guarded_failure("work_in_prose_species", target, exc)
-        species = None
-    from world.anatomy import get_organ_display_name, get_species_location_display
-    from world.medical.charts import gerund_for
-    gerund = gerund_for(base, species) if base else "the work"
-    location = kw.get("location")
-    where = (f"the {get_species_location_display(species, location)}"
-             if isinstance(location, str) and location else "")
-    if base == "harvest" and isinstance(kw.get("organ_name"), str):
-        return f"{gerund} the {get_organ_display_name(kw['organ_name'], species)}"
-    if base == "install":
-        item = kw.get("organ_item")
-        item_name = getattr(item, "key", None) or "an implant"
-        return f"{gerund} {item_name}" + (f" in {where}" if where else "")
-    if base in ("incise", "amputate", "suture") and where:
-        return f"{gerund} {where}"
-    return gerund
+        gerund = gerund_for(base, species) if base else "the work"
+        location = kw.get("location")
+        where = (f"the {get_species_location_display(species, location)}"
+                 if isinstance(location, str) and location else "")
+        if base == "harvest" and isinstance(kw.get("organ_name"), str):
+            return f"{gerund} the {get_organ_display_name(kw['organ_name'], species)}"
+        if base == "install":
+            key = getattr(kw.get("organ_item"), "key", None)
+            item_name = f"the {key}" if key else "an implant"
+            return f"{gerund} {item_name}" + (f" in {where}" if where else "")
+        if base in ("incise", "amputate", "suture") and where:
+            return f"{gerund} {where}"
+        return gerund
+    except Exception as exc:  # noqa: BLE001 -- prose, never a block on the drag
+        _log_guarded_failure("work_in_prose", target, exc)
+        return "the work"
 
 
 def take_patient_away(target, reason: str) -> Optional[Any]:
@@ -677,10 +677,18 @@ def take_patient_away(target, reason: str) -> Optional[Any]:
     except Exception as exc:  # noqa: BLE001
         _log_guarded_failure("take_patient_away_channel", surgeon, exc)
     work = _work_in_prose(record, target)
-    surgeon.msg(f"|yYour patient is hauled out from under your hands mid-way "
-                f"through {work}; the work is lost.|n")
     room = getattr(target, "location", None)
-    if room is None or room != getattr(surgeon, "location", None):
+    together = room is not None and room == getattr(surgeon, "location", None)
+    if surgeon == target:
+        surgeon.msg(f"|yYou are hauled off your own work mid-way through {work}; "
+                    f"the work is lost.|n")
+    elif together:
+        surgeon.msg(f"|yYour patient is hauled out from under your hands mid-way "
+                    f"through {work}; the work is lost.|n")
+    else:
+        surgeon.msg(f"|yYour patient is hauled off mid-way through {work}; "
+                    f"the work is lost.|n")
+    if not together:
         return surgeon
     try:
         if surgeon != target:
