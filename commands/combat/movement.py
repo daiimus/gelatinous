@@ -35,6 +35,7 @@ from world.combat.utils import (
     get_highest_opponent_stat, get_numeric_stat, filter_valid_opponents,
     standard_roll, clear_aim_state, get_wielded_weapon,
 )
+from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 
 
@@ -300,10 +301,9 @@ class CmdFlee(Command):
             caller.ndb.flee_attempted_this_round = False
             splattercast.msg(f"{DEBUG_PREFIX_FLEE}_STALE_CLEARED: {caller.key} had a flee flag with no combat or aimer; cleared.")
 
-        if in_a_round:
-            # Set flee attempt flag to prevent spam within the same round
-            caller.ndb.flee_attempted_this_round = True
-            splattercast.msg(f"{DEBUG_PREFIX_FLEE}_ATTEMPT: {caller.key} marked as having attempted flee this round.")
+        # (The round's attempt flag is set further down, once every gate
+        # has passed: a refused flee is not an attempt, #3687 -- and for
+        # an aimed fleer with no fight, no round would ever clear it.)
 
         # --- PRE-FLEE SAFETY CHECK: PINNED BY RANGED TARGETERS IN ADJACENT ROOMS ---
         # An edge, a gap or a way into air is not a way to flee for anyone
@@ -428,6 +428,11 @@ class CmdFlee(Command):
             splattercast.msg(f"{DEBUG_PREFIX_FLEE}_REFUSED_AT_THRESHOLD: {caller.key}'s escortee is barred at {chosen_exit.key}; nothing paid")
             return
 
+        # Every gate has passed: this is the round's attempt.
+        if in_a_round:
+            caller.ndb.flee_attempted_this_round = True
+            splattercast.msg(f"{DEBUG_PREFIX_FLEE}_ATTEMPT: {caller.key} marked as having attempted flee this round.")
+
         # --- Part 1: Attempt to break an NDB-level aim lock ---
         # `current_aimer_for_break_attempt` is used locally for this part.
         # It starts as the NDB aimer and can be set to None if the aim is broken.
@@ -519,6 +524,21 @@ class CmdFlee(Command):
                     caller.msg("|rYour failed escape attempt leaves you vulnerable!|n")
                     return
 
+            # A march of the very person held: `escort` needs no consent
+            # from a restrained escortee, so a fleer can be escorting the
+            # victim they grapple. The flight gives up the hold (leaving
+            # combat breaks it), and the usher would otherwise walk the
+            # held victim at the door, where the fight refuses them, and
+            # refuse the fleer. It ends here, after the price, as it ended
+            # on its own when leaving combat came before the move (#3687).
+            from world.combat.grappling import get_grappling_target
+            held = get_grappling_target(original_handler_at_flee_start, caller_entry)
+            if held is not None and caller.db.escorting == held:
+                caller.db.escorting = None
+                caller.msg(f"You stop leading {held.get_display_name(caller)}; the flight needs your hands.")
+                held.msg(f"{capitalize_first(caller.get_display_name(held))} stops leading you.")
+                splattercast.msg(f"{DEBUG_PREFIX_FLEE}_MARCH_ENDS: {caller.key} stops escorting {held.key} to flee")
+
             # Successfully disengaged (or no opponents targeting): the move
             # FIRST, then out of combat -- a refused move (an escort a plain
             # door turns away) leaves the fleer where and as they were, and
@@ -528,8 +548,9 @@ class CmdFlee(Command):
                 splattercast.msg(f"{DEBUG_PREFIX_FLEE}_REFUSED_MOVE: {caller.key} could not leave {old_location.key} via {chosen_exit.key}")
                 return
 
-            # Out of combat (this also clears proximity)
-            original_handler_at_flee_start.remove_combatant(caller)
+            # Out of combat (this also clears proximity); the fight lets go
+            # of them in the room it was in, not the one they ran to.
+            original_handler_at_flee_start.remove_combatant(caller, room=old_location)
 
             # Clear aim states (consistent with traversal)
             if hasattr(caller, "clear_aim_state"):

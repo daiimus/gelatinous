@@ -619,13 +619,17 @@ def add_combatant(handler, char, target=None, initial_grappling=None, initial_gr
     validate_and_cleanup_grapple_state(handler)
 
 
-def remove_combatant(handler, char):
+def remove_combatant(handler, char, room=None):
     """
     Remove a character from combat and clean up their state.
-    
+
     Args:
         handler: The combat handler instance
         char: The character to remove from combat
+        room: The room the fight was in, when the character has already
+            left it (a flee moves first and leaves combat only after a
+            move that happened, #3687); the exit narration goes there.
+            Defaults to the character's location.
     """
     from world.combat.proximity import is_in_proximity
 
@@ -930,24 +934,26 @@ def remove_combatant(handler, char):
             from world.llm.observation import combat_exit_line, observe_event
             state = ("dead" if not alive
                      else "unconscious" if not conscious else "walked")
-            observe_event(getattr(char, "location", None),
+            where = room if room is not None else getattr(char, "location", None)
+            observe_event(where,
                           combat_exit_line(char, state),
                           sound=(None if state == "walked"
                                  else "a body hits the floor nearby"),
                           exclude=(char,))
             if state != "walked":
                 from world.llm.reflex import fire_combat_reflex
-                fire_combat_reflex(handler, getattr(char, "location", None),
+                fire_combat_reflex(handler, where,
                                    "someone_down", exclude=(char,))
         except Exception:  # noqa: BLE001
             pass
-        if alive and conscious and getattr(char, "location", None):
+        where = room if room is not None else getattr(char, "location", None)
+        if alive and conscious and where:
             # No local import here: one made `msg_room_identity` local to
             # the whole function and the retarget announcement above
             # raised before it was bound, so the room line never sent
             # (#3620). The module import covers it.
             msg_room_identity(
-                location=char.location,
+                location=where,
                 template="{actor} lowers their guard and steps back "
                          "from the fight.",
                 char_refs={"actor": char},

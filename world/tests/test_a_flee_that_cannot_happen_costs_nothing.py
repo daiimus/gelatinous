@@ -74,6 +74,8 @@ class _AFleer(EvenniaCommandTest):
             setattr(self.fleer.ndb, NDB_AIMED_AT_BY, self.other)
         if getattr(self, "_fight", None):
             self._arm_fight()
+            if getattr(self, "_held", False) and self.ward is not None:
+                setattr(self.ward.ndb, NDB_COMBAT_HANDLER, self.handler)
         if getattr(self, "_refuse_moves", False):
             self.fleer.move_to = lambda *a, **kw: False
 
@@ -85,14 +87,17 @@ class _AFleer(EvenniaCommandTest):
         return self._arm_fight()
 
     def _arm_fight(self):
+        """Build the mock handler once; on a refresh only re-attach it (its
+        entries, incl. any grapple refs a test added, must survive)."""
         grappled = self._fight["grappled"]
-        h = getattr(self, "handler", None) or mock.MagicMock()
-        entries = [{"char": self.fleer}, {"char": self.other}]
-        h.db.combatants = entries
-        h.db.combat_is_running = True
-        h.get_target_obj.side_effect = lambda e: self.fleer if e["char"] == self.other else None
-        h.get_grappled_by_obj.return_value = self.other if grappled else None
-        h.is_active = True
+        h = getattr(self, "handler", None)
+        if h is None:
+            h = mock.MagicMock()
+            h.db.combatants = [{"char": self.fleer}, {"char": self.other}]
+            h.db.combat_is_running = True
+            h.get_target_obj.side_effect = lambda e: self.fleer if e["char"] == self.other else None
+            h.get_grappled_by_obj.return_value = self.other if grappled else None
+            h.is_active = True
         setattr(self.fleer.ndb, NDB_COMBAT_HANDLER, h)
         self.handler = h
         return h
@@ -102,6 +107,14 @@ class _AFleer(EvenniaCommandTest):
                            on_complete=lambda: None, on_interrupt=lambda f: None,
                            key="spraying")
         self.assertTrue(ok, "fixture: the channel did not start")
+
+    def escorting(self, *, live=True):
+        self.ward = create_object("typeclasses.characters.Character", key="Ward", location=self.room1)
+        self._ear()
+        if live:
+            grant_trust(self.ward, self.fleer, "escort")
+        self.fleer.db.escorting = self.ward
+        return self.ward
 
     def flee(self, *, roll_won=True):
         self.refresh()
@@ -138,7 +151,7 @@ class TheChannelGate(_AFleer):
         h = self.in_a_fight()
         self.flee()
         self.roll.assert_called_once()
-        h.remove_combatant.assert_called_once_with(self.fleer)
+        h.remove_combatant.assert_called_once_with(self.fleer, room=self.room1)
         self.fled()
 
     def test_a_channeling_aimed_fleer_pays_nothing(self):
@@ -173,17 +186,40 @@ class TheHoldGate(_AFleer):
         self.roll.assert_not_called()
         self.stayed()
         self.assertTrue(any("cannot flee while" in t for t in self.said), self.said)
+        self.assertFalse(getattr(self.fleer.ndb, "flee_attempted_this_round", False),
+                         "a refused flee counted as the round's attempt")
+
+    def holding(self):
+        """The fleer grapples the ward, who is a combatant in the same
+        fight; the mock handler answers the grapple lookups both ways."""
+        from world.combat.constants import DB_GRAPPLED_BY_DBREF, DB_GRAPPLING_DBREF
+        from world.combat.utils import get_character_dbref
+        h = self.in_a_fight()
+        h.db.combatants.append({"char": self.ward, DB_GRAPPLED_BY_DBREF: get_character_dbref(self.fleer)})
+        h.db.combatants[0][DB_GRAPPLING_DBREF] = get_character_dbref(self.ward)
+        h.get_grappling_obj.side_effect = lambda e: self.ward if e["char"] == self.fleer else None
+        setattr(self.ward.ndb, NDB_COMBAT_HANDLER, h)
+        self._held = True
+        return h
+
+    def test_a_fleer_marching_their_own_held_victim_still_flees_and_the_march_ends(self):
+        # The fight refuses the held victim's walk at the door, so the
+        # usher would refuse the fleer; the march stands on the hold the
+        # flight gives up, and ends first -- as it ended on its own when
+        # leaving combat came before the move.
+        self.escorting()
+        h = self.holding()
+        self.flee()
+        self.roll.assert_called_once()
+        self.fled()
+        self.assertEqual(self.ward.location, self.room1)
+        self.assertFalse(self.fleer.db.escorting)
+        self.assertTrue(any("stop leading" in t for t in self.said), self.said)
+        self.assertTrue(any("stops leading you" in t for t in self.told_ward), self.told_ward)
+        h.remove_combatant.assert_called_once()
 
 
 class TheEscortGate(_AFleer):
-
-    def escorting(self, *, live=True):
-        self.ward = create_object("typeclasses.characters.Character", key="Ward", location=self.room1)
-        self._ear()
-        if live:
-            grant_trust(self.ward, self.fleer, "escort")
-        self.fleer.db.escorting = self.ward
-        return self.ward
 
     def test_an_escortee_barred_at_the_only_way_out_costs_nothing(self):
         # A fleer who can stay up keeps an edge in their pool; their
@@ -203,6 +239,8 @@ class TheEscortGate(_AFleer):
         self.assertEqual(self.ward.location, self.room1)
         self.assertTrue(any("cannot" in t for t in self.told_ward), self.told_ward)
         self.assertTrue(any("refuses them" in t for t in self.said), self.said)
+        self.assertFalse(getattr(self.fleer.ndb, "flee_attempted_this_round", False),
+                         "a refused flee counted as the round's attempt")
 
     def test_control_an_escortee_walked_through_a_plain_door_goes_along(self):
         self.aimed_at()
@@ -219,17 +257,18 @@ class TheMoveIsChecked(_AFleer):
     not a flight: the fleer stays in the fight, in the room, untold."""
 
     def test_a_refused_move_in_a_fight_leaves_the_fleer_in_it_saying_nothing(self):
+        # (`move_to` is stubbed to refuse, so the location itself proves
+        # nothing here; what is pinned is that combat is not left and no
+        # flight is narrated.)
         h = self.in_a_fight()
         self._refuse_moves = True
         self.flee()
         self.roll.assert_called_once()
         h.remove_combatant.assert_not_called()
-        self.assertEqual(self.fleer.location, self.room1)
         self.assertFalse(any("successfully flee" in t for t in self.said), self.said)
 
     def test_a_refused_move_after_a_broken_aim_is_not_narrated_as_a_flight(self):
         self.aimed_at()
         self._refuse_moves = True
         self.flee()
-        self.assertEqual(self.fleer.location, self.room1)
         self.assertFalse(any("successfully flee" in t for t in self.said), self.said)
