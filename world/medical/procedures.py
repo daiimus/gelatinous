@@ -519,6 +519,20 @@ def start_procedure(
     except Exception:  # noqa: BLE001 — the act still has to resolve
         started = False
 
+    if started:
+        # Tag the channel with THIS record, so a drag that takes this
+        # patient away breaks the channel timing this procedure and no
+        # other (#3669 review): a surgeon already channeling starts a
+        # second body's procedure on the plain timer below, and their live
+        # channel may belong to another patient -- or to a spray can.
+        try:
+            from world.channeled import channel_of
+            chan = channel_of(actor)
+            if chan is not None:
+                chan["procedure_token"] = token
+        except Exception:  # noqa: BLE001 -- the tag is a courtesy, not the timer
+            pass
+
     if not started:
         # Already channeling something else, or the primitive is
         # unavailable. Fall back to the pre-#2926 timer so the procedure
@@ -616,8 +630,12 @@ def take_patient_away(target, reason: str) -> Optional[Any]:
     if surgeon is None:
         return None
     try:
-        from world.channeled import interrupt_channel
-        interrupt_channel(surgeon, reason=reason)
+        from world.channeled import channel_of, interrupt_channel
+        chan = channel_of(surgeon)
+        # Only the channel that times THIS procedure: one the surgeon holds
+        # for another patient, or for something unrelated, is theirs to keep.
+        if chan is not None and chan.get("procedure_token") == record.get("token"):
+            interrupt_channel(surgeon, reason=reason)
     except Exception:  # noqa: BLE001 -- the record is already cleared
         pass
     surgeon.msg(f"|yYour patient is hauled out from under your hands; "

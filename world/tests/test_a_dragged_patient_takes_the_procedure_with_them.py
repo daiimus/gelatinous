@@ -80,6 +80,21 @@ class TheDrag(_OnTheTable):
         P.interrupt_procedure(self.patient, reason="the patient died")
         self.assertTrue(channel_of(self.surgeon))
 
+    def test_the_drag_leaves_the_surgeons_other_channel_alone(self):
+        # A surgeon already channeling on this patient starts a SECOND
+        # body's procedure on the plain timer; dragging that second body
+        # must not break the channel timing the first.
+        other = create_object("typeclasses.characters.Character", key="Other",
+                              location=self.room1)
+        other.db.surgical_state = {"incisions": {}, "active_procedure": None}
+        second = P.start_procedure(other, verb="incise", actor=self.surgeon, location="chest")
+        self.assertIsNotNone(second)
+        self.assertEqual(channel_of(self.surgeon).get("procedure_token"), self.record["token"])
+        self.assertTrue(drag_victim_to(other, self.room2))
+        self.assertIsNone((other.db.surgical_state or {}).get("active_procedure"))
+        self.assertTrue(channel_of(self.surgeon), "the drag of another body broke this patient's channel")
+        self.assertIsNotNone(self.active(), "this patient's procedure was lost")
+
     def test_a_drag_with_nothing_in_flight_is_quiet(self):
         P.interrupt_procedure(self.patient, reason="cleared")
         self.told.clear()
