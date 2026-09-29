@@ -115,7 +115,7 @@ Failure: Defender >= Grappler
 | Auto-escape won / lost (`resolve_auto_escape`, `world/combat/actions.py:316`, `:369`) | bank | `escape_hit` / `escape_miss` — 2 + 2 |
 | Let go to charge someone else in the room (`_release_grapple_for_charge`, `world/combat/movement_resolution.py:887`) | bank, since #3615 | `release_charge` — 3, names the charge target |
 | Let go to charge out of the room (same helper, `:885`) | bank, since #3615 | `release_charge_away` — 2 |
-| Let go for a gap jump (`commands/combat/jump.py:714`) | bank, since #3615 | `release_jump` — 3 |
+| Let go for a gap jump (`let_go_for_the_leap`, `commands/combat/jump.py`; after the jumper's move since #3684) | bank, since #3615 | `release_jump` — 3 |
 | Blast tears the pair apart on a sacrifice jump (`jump.py:411`) | bank, since #3615 | `release_blast` — 2 |
 | Queue-time charge preview, actor only (`commands/combat/movement.py:779`) | bank, since #3615 | `release_intent` — 1 |
 | Consensual uncontested hold (`grappling.py:371-390`) | bespoke prose in the resolver | — |
@@ -149,7 +149,7 @@ So five phases were written into `world/combat/messages/grapple.py` — 11 varia
 |---|---|---|
 | `_release_grapple_for_charge`, same room (`world/combat/movement_resolution.py:887`) | `release_charge` (3) | The old inline `\|y` pair is gone. The line names the third party through `charge_target=target`, rendered per audience |
 | the same helper, cross-room (`:885`) | `release_charge_away` (2) | Same; no third party is named, because the charge target is in another room |
-| Gap jump (`commands/combat/jump.py:714`) | `release_jump` (3) | The old `\|y` actor / `\|g` victim pair is gone; the beat is `\|y` for all three audiences now |
+| Gap jump (`let_go_for_the_leap`, `commands/combat/jump.py`) | `release_jump` (3) | The old `\|y` actor / `\|g` victim pair is gone; the beat is `\|y` for all three audiences now, and since #3684 it is spoken only after the jumper's move (room line to the roof they left) |
 | Blast on a sacrifice jump (`jump.py:411`) | `release_blast` (2) | The old pair named nobody ("The explosion breaks your hold!"). The new variants name the other party in every audience's line |
 | Queue-time charge preview (`commands/combat/movement.py:779`) | `release_intent` (1) | Still actor-only, and now deliberately so — see below |
 

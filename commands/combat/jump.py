@@ -796,14 +796,18 @@ class CmdJump(Command):
         # `escort` needs no consent from a restrained escortee, so a
         # jumper can be escorting their own victim; that march stands on
         # the hold the leap gives up, and the usher would otherwise walk
-        # the victim at the gap and refuse the jumper. It ends here, in
-        # the usher's own words, as it ended on its own when the hold
-        # used to open first.
+        # the victim at the gap and refuse the jumper. It ends here, as it
+        # ended on its own when the hold used to open first -- but not
+        # for a channeling jumper, whom `at_pre_move` refuses before it
+        # ever asks the usher: the march was not what stood in their way,
+        # and nothing may end for a leap that never happens.
         if grappled_victim and self.caller.db.escorting == grappled_victim:
-            self.caller.db.escorting = None
-            self.caller.msg(f"{capitalize_first(get_display_name_safe(grappled_victim, self.caller))} no longer follows your lead.")
-            grappled_victim.msg(f"You slip free of {get_display_name_safe(self.caller, grappled_victim)}'s lead.")
-            splattercast.msg(f"JUMP_GAP_MARCH_ENDS: {self.caller.key} stops escorting {grappled_victim.key} for the leap")
+            from world.channeled import is_channeling
+            if not is_channeling(self.caller):
+                self.caller.db.escorting = None
+                self.caller.msg(f"You stop leading {get_display_name_safe(grappled_victim, self.caller)}; the leap needs your hands.")
+                grappled_victim.msg(f"{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} stops leading you.")
+                splattercast.msg(f"JUMP_GAP_MARCH_ENDS: {self.caller.key} stops escorting {grappled_victim.key} for the leap")
 
         # Gap jumping requires Motorics check vs gap difficulty
         caller_motorics = get_numeric_stat(self.caller, "motorics")

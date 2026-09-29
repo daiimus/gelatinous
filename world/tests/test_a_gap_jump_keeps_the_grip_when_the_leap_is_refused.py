@@ -138,21 +138,41 @@ class TheGripIsKept(_AGapWithAHold):
         self.assertIsNone(getattr(self.jumper.ndb, NDB_FALL_INTENT, None))
         self.assertTrue(any("busy" in t for t in self.said), self.said)
 
-    def test_a_jumper_marching_their_own_victim_still_leaps_and_the_march_ends(self):
+    def marching_the_victim(self):
         # `escort` needs no consent from a restrained escortee, so the
-        # jumper can be escorting the very person they hold. The march
-        # stood on the hold; it ends before the move, in the usher's own
-        # words, or the usher would walk the victim at the gap and refuse
-        # the jumper -- which the hold-first order never did.
+        # jumper can be escorting the very person they hold. The mock
+        # handler is invisible to `is_restrained`, so the victim here
+        # reads as free; trust stands in for the restraint, or the usher
+        # would release the march on its own and the pin would not bite.
+        grant_trust(self.victim, self.jumper, "escort")
         self.jumper.db.escorting = self.victim
+
+    def test_a_jumper_marching_their_own_victim_still_leaps_and_the_march_ends(self):
+        # The march stood on the hold; it ends before the move, or the
+        # usher would walk the victim at the gap and refuse the jumper --
+        # which the hold-first order never did.
+        self.marching_the_victim()
         self.leap(rolled=999)
         self.assertIs(self.jumper.location, self.far)
         self.assertIs(self.victim.location, self.roof)
         self.assertFalse(self.jumper.db.escorting)
         self.assertEqual(self.grip(), (None, None))
-        self.assertTrue(any("no longer follows your lead" in t for t in self.said), self.said)
-        self.assertTrue(any("slip free" in t for t in self.heard), self.heard)
+        self.assertTrue(any("stop leading" in t for t in self.said), self.said)
+        self.assertTrue(any("stops leading you" in t for t in self.heard), self.heard)
         self.assertTrue(self.released_line(self.heard), self.heard)
+
+    def test_a_channeling_marcher_is_refused_with_the_march_and_the_hold_intact(self):
+        # The channel gate refuses before the usher is ever asked, so the
+        # march was not what stood in the way: nothing ends, nothing is
+        # said but what the gate says.
+        self.marching_the_victim()
+        self.channeling(self.jumper)
+        self.leap(rolled=999)
+        self.assertIs(self.jumper.location, self.roof)
+        self.assertIs(self.jumper.db.escorting, self.victim)
+        self.assertEqual(self.grip(), self.held())
+        self.assertEqual(self.heard, [], self.heard)
+        self.assertEqual(self.said, ["You're busy spraying — 'stop' first."], self.said)
 
     def test_the_roof_hears_the_grip_open_after_the_leap(self):
         # The beat is spoken once the jumper has gone: its room line lands
