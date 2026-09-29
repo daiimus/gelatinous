@@ -13,6 +13,34 @@ from .constants import (
 )
 
 
+def _has_bone_flags(spec) -> bool:
+    spec = spec or {}
+    return bool(spec.get("bone_type") or spec.get("fracture_vulnerable"))
+
+
+def organ_is_bone(organ) -> bool:
+    """Is this organ a bone (`bone_type` / `fracture_vulnerable`)? The
+    splint, the tool roll and the healing rule key off the same fact; kept
+    in one place so they cannot drift.
+
+    Read from the organ's OWN saved spec first (a grafted chrome strut
+    carries its bone flags there), then from the species table for the
+    organ's NAME: every body saved before a table change keeps the spec it
+    was saved with (#513), so a flag added to the table -- the spines,
+    the pelvis and the jaw in #3253 -- would otherwise never reach a
+    single existing character (review of #3679)."""
+    if _has_bone_flags(getattr(organ, "data", None)):
+        return True
+    name = getattr(organ, "name", None)
+    if not name:
+        return False
+    from world.anatomy import get_organ_spec, species_of
+    state = getattr(organ, "medical_state", None)
+    character = getattr(state, "character", None)
+    species = species_of(character) if character is not None else None
+    return _has_bone_flags(get_organ_spec(name, species))
+
+
 class Organ:
     """
     Represents a single organ within a character's anatomy.
@@ -39,14 +67,19 @@ class Organ:
                 callers that don't yet pass a species.
         """
         self.name = organ_name
+        # The organ owns a COPY of its spec. `get_organ_spec` hands back the
+        # species table's own dict, and `to_dict` persists `self.data`, so a
+        # shared reference let any write to one organ's data (or to a saved
+        # snapshot) rewrite the species table for the whole process
+        # (#3679 review, tripped by a test).
         if organ_data is not None:
-            self.data = organ_data
+            self.data = dict(organ_data)
         else:
             # Lazy import — world.anatomy imports world.medical at
             # module load via the species table import; avoid the
             # circle by deferring this lookup until __init__ time.
             from world.anatomy import get_organ_spec
-            self.data = get_organ_spec(organ_name, species) or {}
+            self.data = dict(get_organ_spec(organ_name, species) or {})
         
         # Core properties
         self.max_hp = self.data.get("max_hp", 10)
@@ -331,9 +364,23 @@ class Organ:
         """
         if amount <= 0:
             return 0
+        # The one door every in-play healer uses (sealant, the dressing
+        # tick, whatever comes next): a destroyed soft organ, a severed
+        # part or a harvested slot does not come back in place -- only a
+        # replacement does (owner ruling 2026-09-28, #3253). Staff
+        # `full_heal` writes HP directly and keeps its override.
+        state = getattr(self, "medical_state", None)
+        if state is not None and state.organ_beyond_repair(self.name):
+            return 0
             
         old_hp = self.current_hp
         self.current_hp = min(self.max_hp, self.current_hp + amount)
+
+        # A bone set from 0 HP is under care, not "destroyed": move the
+        # stage on so the wound renders and diagnoses as treated while it
+        # knits (#3253). Only a bone can rise from 0 here.
+        if old_hp <= 0 and self.current_hp > 0 and getattr(self, "wound_stage", None) == "destroyed":
+            self.wound_stage = "treated"
         
         # Update wound stage if fully healed
         if self.current_hp == self.max_hp and hasattr(self, 'wound_stage'):
@@ -347,6 +394,10 @@ class Organ:
             # dressing has served its purpose and a future re-injury
             # starts undressed.
             self.dressing_rate = 0
+            # The last healable organ at a mixed site is whole: if what is
+            # left there can never heal, the site closes (#3253).
+            if state is not None:
+                state.close_site_if_spent(self.container)
         
         return self.current_hp - old_hp
         
@@ -705,6 +756,70 @@ class MedicalState:
         removed = getattr(getattr(character, "db", None), "removed_organs", None) or ()
         return name in removed
 
+    def organ_beyond_repair(self, name) -> bool:
+        """Can nothing but a replacement bring the organ in slot *name*
+        back? The one question every in-play healer asks (#3253; owner
+        ruling 2026-09-28):
+
+        * "a destroyed organ stays destroyed" -- SOFT TISSUE at 0 HP is
+          destroyed and stays so until a donor or cybernetic install;
+        * "bone broke" -- a BONE at 0 HP is broken and heals (the
+          cervical spine is a bone: a broken neck can be set inside the
+          death window; a SEVERED one is a decapitation);
+        * anything SEVERED stays severed;
+        * a HARVESTED organ is gone (:meth:`organ_is_gone`, #3651).
+
+        :meth:`Organ.heal` refuses on this, so sealant, the dressing tick
+        and anything written later cannot regrow such an organ; the
+        callers ask it first so their messages are honest. Staff
+        `full_heal` writes HP directly (its override); an install replaces
+        the organ object. `organ_is_gone` stays the narrower fact about
+        ABSENCE for the places that care (install clearing the marker,
+        display): a destroyed organ still occupies its slot.
+        """
+        if self.organ_is_gone(name):
+            return True
+        organ = self.organs.get(name)
+        if organ is None:
+            return False
+        if getattr(organ, "wound_stage", None) == "severed":
+            return True
+        if name == "cervical_spine":
+            # A decapitation whose head spawn failed leaves the spine at 0
+            # unmarked; the flag the blow set is the truth (same test the
+            # death cause uses).
+            character = getattr(self, "character", None)
+            if getattr(getattr(character, "db", None), "decapitation_pending", False):
+                return True
+        return organ.current_hp <= 0 and not organ_is_bone(organ)
+
+    def close_site_if_spent(self, container) -> bool:
+        """A dressed site where NOTHING can heal further is closed: its
+        bleed conditions are removed rather than held for good.
+
+        A hold is lifted by an organ healing to full, and an organ that is
+        beyond repair never does, so a held bleed there would keep the
+        medical script ticking forever (#3679 review). Asked by the
+        dressing, per CONTAINER (bleeds are filed under the organ's
+        container, whatever surface the player named), and again whenever
+        an organ at the site heals to full, so a mixed site closes once its
+        last healable organ is whole. Returns whether the site was closed."""
+        wounded = [o for o in self.organs.values()
+                   if getattr(o, "container", None) == container
+                   and o.current_hp < o.max_hp]
+        if not wounded:
+            return False
+        if not all(self.organ_beyond_repair(o.name) for o in wounded):
+            return False
+        if not any(getattr(o, "stabilized", False) for o in wounded):
+            return False                     # not dressed yet: the bleed is the wound's own
+        from world.medical.conditions import BleedingCondition
+        bleeds = [c for c in list(self.conditions)
+                  if isinstance(c, BleedingCondition) and c.location == container]
+        for cond in bleeds:
+            self.remove_condition(cond)
+        return True
+
     def full_heal(self):
         """Complete medical restoration of PRESENT anatomy (#526
         review — the @heal/@revive backend).
@@ -713,7 +828,8 @@ class MedicalState:
         absence records, not injuries — healing does not regrow
         limbs or resurrect harvested-out modules (which would
         duplicate their abilities).  Destroyed-in-place organs ARE
-        still attached and restore fully, wound bookkeeping cleared.
+        still attached and restore fully, wound bookkeeping cleared --
+        the STAFF override: in play `Organ.heal` refuses them (#3253).
         Cyberware toggle state survives: a deployed gun is not an
         injury.
 
@@ -1035,7 +1151,7 @@ class MedicalState:
           otherwise, was removed with that ruling.
         """
         # Death from vital organ failure: heart; both lungs; liver AND
-        # stomach; cervical spine (decapitation, #243); brain (a death
+        # stomach; cervical spine (a broken neck, #243; severed = decapitation); brain (a death
         # with a window, #3248).
         for capacity in LETHAL_CAPACITY_NAMES:
             if self.calculate_body_capacity(capacity) <= 0.0:
@@ -1189,6 +1305,16 @@ class MedicalState:
             # Add and start new conditions
             for condition in new_conditions:
                 self.add_condition(condition)
+
+            # A fresh wound reopens the site: an organ here that can never
+            # heal keeps its `stabilized` flag for good, and left standing
+            # that stale flag would hold THIS new bleed forever (#3679
+            # review). Clear it; the next dressing sets it again.
+            for other in self.organs.values():
+                if (other is not organ and other.container == organ.container
+                        and getattr(other, "stabilized", False)
+                        and self.organ_beyond_repair(other.name)):
+                    other.stabilized = False
         
         return was_destroyed
         

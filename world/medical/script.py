@@ -42,8 +42,8 @@ def _healing_organs(medical_state) -> list:
     for name, organ in organs.items():
         if not getattr(organ, "stabilized", False):
             continue
-        if medical_state.organ_is_gone(name):
-            continue  # a harvested organ does not heal back (#3651)
+        if medical_state.organ_beyond_repair(name):
+            continue  # harvested, destroyed soft tissue or severed: only a replacement (#3651, #3253)
         rate = getattr(organ, "dressing_rate", 0) or 0
         if rate <= 0:
             continue

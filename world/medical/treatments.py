@@ -367,8 +367,15 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
 
     # If any wounded organ at this location is already stabilized,
     # the location as a whole is being held — re-applying does
-    # nothing useful.  Triage hint to the caller.
-    if any(getattr(o, "stabilized", False) for o in wounded_organs):
+    # nothing useful.  Triage hint to the caller.  An organ that can
+    # never heal (destroyed soft tissue, a stump, a harvested slot) keeps
+    # its flag for good, so it must not be what refuses the NEXT dressing
+    # here (#3679 review): only a healable organ under care counts.
+    state = getattr(target, "medical_state", None)
+    held = [o for o in wounded_organs
+            if getattr(o, "stabilized", False)
+            and not (state is not None and state.organ_beyond_repair(o.name))]
+    if held:
         result["no_op_reason"] = "already_stabilized"
         result["messages"].append(
             f"The wound at {location.replace('_', ' ')} is already "
@@ -419,22 +426,39 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
     # number (not an item reference) so item depletion doesn't
     # affect ongoing recovery.
     wound_healing_rating = int(effectiveness.get("wound_healing", 0) or 0)
-    state = getattr(target, "medical_state", None)
+    beyond_repair = []
     for organ in wounded_organs:
         organ.stabilized = True
         # Proper care supersedes the field tourniquet (#509): the
         # dressing holds the wound, so the band comes off with it.
         organ.tourniqueted = False
-        # A harvested organ's extraction site is a real wound -- it is
-        # dressed like any other, and its pain, bleeding and infection
-        # are treated above -- but the organ itself is gone and does
-        # not heal back (#3400, #3651). No healing rate for it.
-        gone = state is not None and state.organ_is_gone(organ.name)
-        organ.dressing_rate = 0 if gone else wound_healing_rating
+        # A harvested slot, a destroyed soft organ or a severed part is
+        # a real wound -- it is dressed like any other, held like any
+        # other, and its pain, bleeding and infection are treated above
+        # -- but the organ itself does not come back in place (#3400,
+        # #3651, #3253). No healing rate for it; a broken BONE gets one.
+        beyond = state is not None and state.organ_beyond_repair(organ.name)
+        organ.dressing_rate = 0 if beyond else wound_healing_rating
+        if beyond:
+            beyond_repair.append(organ)
     result["stabilized"] = True
     result["messages"].append(
         f"The wound at {location.replace('_', ' ')} is stabilized."
     )
+    # A site where nothing can heal further is CLOSED by the dressing (the
+    # decision is the state's, per CONTAINER -- bleeds are filed there,
+    # whatever surface the player named; "face" is the nose's display, its
+    # bleed sits under "head"). The location's other harm, a stale flag
+    # holding the NEXT wound there, is cleared where the next wound lands
+    # (`MedicalState.take_organ_damage`).
+    if state is not None and beyond_repair:
+        closed = sorted({o.container for o in wounded_organs
+                         if state.close_site_if_spent(o.container)})
+        for container in closed:
+            result["messages"].append(
+                f"Nothing at {container.replace('_', ' ')} will heal further; "
+                f"the dressing closes the site and the bleeding stops."
+            )
 
     # PR-C: ensure the medical script is running so the healing
     # tick can fire.  Idempotent — returns the existing script if
@@ -584,6 +608,7 @@ def _apply_organ_repair_outcome(
     # without an incision; mirrors the harvest/install access rule
     # settled in PR-A.
     healed = []
+    beyond_repair = []
     for organ in wounded:
         container = getattr(organ, "container", None)
         display = getattr(organ, "display_location", None) or container
@@ -591,8 +616,11 @@ def _apply_organ_repair_outcome(
         if not surface_accessible:
             if not has_incision(target, container):
                 continue
-        if medical_state.organ_is_gone(organ.name):
-            continue  # harvested out: nothing to repair (#3651)
+        if medical_state.organ_beyond_repair(organ.name):
+            # harvested out, destroyed soft tissue, or severed: only a
+            # replacement brings it back (#3651, #3253)
+            beyond_repair.append(organ)
+            continue
         organ.heal(hp_gain)
         healed.append(organ)
 
@@ -601,6 +629,13 @@ def _apply_organ_repair_outcome(
             f"Surgical repair at {location.replace('_', ' ')} "
             f"restored {hp_gain} HP to "
             f"{len(healed)} organ(s)."
+        )
+    if beyond_repair:
+        names = ", ".join(sorted(o.name.replace("_", " ") for o in beyond_repair))
+        result["messages"].append(
+            f"The {names} at {location.replace('_', ' ')} "
+            f"{'is' if len(beyond_repair) == 1 else 'are'} beyond repair; "
+            f"only a replacement will serve."
         )
 
 

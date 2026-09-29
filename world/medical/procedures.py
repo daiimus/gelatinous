@@ -1337,6 +1337,11 @@ def _resolve_install(actor, target, *, organ_item, location: str,
             organ_item.db.condition or "pristine", organ.max_hp,
         )
         organ.wound_stage = None if organ.current_hp == organ.max_hp else "fresh"
+        # The slot's old care bookkeeping does not belong to the new organ
+        # (#3679 review): a latched `stabilized` would refuse its first
+        # dressing and hold bleeds at the site.
+        organ.stabilized = False
+        organ.dressing_rate = 0
         # Attach organ-bound conditions from the harvested item.
         # Deliberate data-tolerance guard (#469): a corrupt or
         # legacy condition dict skips that condition, never the
