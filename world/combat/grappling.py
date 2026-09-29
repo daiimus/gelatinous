@@ -39,7 +39,9 @@ def drag_victim_to(victim, room):
 
     * the channel BREAKS (a channel does not survive being hauled through
       a door; it kept ticking and resolved in a room the actor never
-      chose, #2774);
+      chose, #2774) -- and so does a SURGEON'S channel on this body: the
+      drag broke only the victim's own, and the surgeon's procedure kept
+      its timer and resolved onto a patient a room away (#3669);
     * moving puts you on your feet (the furniture substrate's rule: you
       can't carry a seat between rooms). A patient dragged out of the
       AutoDoc kept `db.furniture` pointing at the pod, so they read as
@@ -55,6 +57,11 @@ def drag_victim_to(victim, room):
     try:
         from world.channeled import interrupt_channel
         interrupt_channel(victim)
+    except Exception:  # noqa: BLE001 -- never block a drag on this
+        pass
+    try:
+        from world.medical.procedures import take_patient_away
+        take_patient_away(victim, reason="the patient was dragged away")
     except Exception:  # noqa: BLE001 -- never block a drag on this
         pass
     moved = victim.move_to(room, quiet=True, move_hooks=False)
