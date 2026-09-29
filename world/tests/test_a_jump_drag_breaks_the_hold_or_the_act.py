@@ -269,6 +269,21 @@ class TheTransit(_EdgeDrag):
         self.assertTrue(any("drags you off" in t for t in self.heard), self.heard)
 
 
+class ThePredicateHasOneCaller(_EdgeDrag):
+    """`would_refuse_a_hooked_move` is exact only for a way into air; the
+    edge drag's transit is its one caller and the gap jump asks by
+    moving instead."""
+
+    def test_only_the_edge_drag_asks(self):
+        import inspect
+        import commands.combat.jump as jump_mod
+        src = inspect.getsource(jump_mod)
+        self.assertEqual(src.count("self.would_refuse_a_hooked_move("), 1, "a second caller has appeared")
+        gap = inspect.getsource(jump_mod.CmdJump.handle_gap_jump)
+        self.assertNotIn("would_refuse_a_hooked_move", gap)
+        self.assertIn("let_go_for_the_leap", gap)
+
+
 class TheGatesAgree(_EdgeDrag):
     """`live_escortee` must answer exactly where `usher_escortee` would
     walk the escortee ahead; the edge drag predicts the jumper's refusal
@@ -284,7 +299,7 @@ class TheGatesAgree(_EdgeDrag):
         self.jumper.msg = lambda text=None, **kw: None
 
     def test_a_live_escort_is_the_escortee_and_the_usher_walks_them(self):
-        self.assertIs(self.live(self.jumper), self.other)
+        self.assertIs(self.live(self.jumper, self.exit.destination), self.other)
         # walked ahead through a plain exit: the leader may proceed and the link holds
         self.assertTrue(self.usher(self.jumper, self.exit.destination))
         self.assertIs(self.other.location, self.exit.destination)
@@ -292,24 +307,31 @@ class TheGatesAgree(_EdgeDrag):
 
     def test_a_separated_escort_is_none_and_the_usher_releases(self):
         self.other.location = self.street
-        self.assertIsNone(self.live(self.jumper))
+        self.assertIsNone(self.live(self.jumper, self.exit.destination))
         self.assertTrue(self.usher(self.jumper, self.exit.destination))
         self.assertFalse(self.jumper.db.escorting)
 
     def test_an_unconscious_escort_is_none_and_the_usher_releases(self):
         with mock.patch("world.consent.is_conscious", return_value=False):
-            self.assertIsNone(self.live(self.jumper))
+            self.assertIsNone(self.live(self.jumper, self.exit.destination))
             self.assertTrue(self.usher(self.jumper, self.exit.destination))
         self.assertFalse(self.jumper.db.escorting)
 
     def test_a_withdrawn_consent_is_none_and_the_usher_releases(self):
         with mock.patch("world.consent.check_consent", return_value=False):
-            self.assertIsNone(self.live(self.jumper))
+            self.assertIsNone(self.live(self.jumper, self.exit.destination))
             self.assertTrue(self.usher(self.jumper, self.exit.destination))
         self.assertFalse(self.jumper.db.escorting)
 
+    def test_no_exit_to_the_destination_is_none_and_the_usher_steps_aside(self):
+        nowhere_near = create_object("typeclasses.rooms.Room", key="Far Perch")
+        self.assertIsNone(self.live(self.jumper, nowhere_near))
+        self.assertTrue(self.usher(self.jumper, nowhere_near))
+        self.assertIs(self.jumper.db.escorting, self.other, "the usher keeps the link when it steps aside")
+        self.assertIs(self.other.location, self.roof)
+
     def test_a_deleted_escort_is_none_and_the_usher_releases(self):
         self.other.delete()
-        self.assertIsNone(self.live(self.jumper))
+        self.assertIsNone(self.live(self.jumper, self.exit.destination))
         self.assertTrue(self.usher(self.jumper, self.exit.destination))
         self.assertFalse(self.jumper.db.escorting)

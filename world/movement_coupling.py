@@ -111,16 +111,18 @@ def bring_followers(leader, source_location):
             )
 
 
-def live_escortee(leader):
-    """The escortee ``usher_escortee`` would try to walk ahead, or None
-    when it would release the link and let the leader walk on alone
-    (gone, separated, out cold, or no longer consenting). Pure: the same
-    four early-outs as the usher, asked without moving anyone, for a
-    caller that must know whether a hooked move would be ushered before
-    it commits to anything else (the edge drag, #3668). It takes no
-    destination, so it says nothing about the usher's no-exit case; the
-    edge drag always has its exit. Keep the two in step; a test pins
-    their agreement.
+def live_escortee(leader, destination):
+    """The escortee ``usher_escortee`` would try to walk ahead of a move
+    to ``destination``, or None when it would let the leader move on
+    without walking anyone: the link released (gone, separated, out
+    cold, no longer consenting) or no exit from here leading there (the
+    usher keeps the link and steps aside). Pure: the usher's own
+    early-outs, asked without moving anyone, for a caller that must know
+    whether a hooked move would be ushered before it commits to anything
+    else. Whether that walk then BOUNCES is the whole exit stack's
+    business and nothing predicts it; the one caller (the edge drag's
+    transit, #3668) asks only about a way into air, which refuses every
+    walker. Keep the two in step; a test pins their agreement.
     """
     escortee = leader.db.escorting
     if not _valid(escortee):
@@ -129,6 +131,8 @@ def live_escortee(leader):
         return None
     from world.consent import check_consent, is_conscious
     if not is_conscious(escortee) or not check_consent(leader, escortee, "escort"):
+        return None
+    if _exit_to(leader.location, destination) is None:
         return None
     return escortee
 
@@ -139,8 +143,8 @@ def usher_escortee(leader, destination):
     Called from the leader's ``at_pre_move``. Returns True when the leader's
     own move may proceed. Consent is re-checked per move — a revoked or
     lapsed grant releases the escortee here, and the leader walks on alone.
-    The four early-outs below are mirrored, without their messages, by
-    ``live_escortee``.
+    The early-outs below (the four releases and the no-exit step-aside)
+    are mirrored, without their messages, by ``live_escortee``.
     """
     escortee = leader.db.escorting
     if not _valid(escortee):

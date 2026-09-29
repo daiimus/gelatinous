@@ -76,7 +76,7 @@ MESSAGES = {
 > | `escape_miss` | 2 | ✅ unchanged | `resolve_auto_escape` (`world/combat/actions.py:369`) |
 > | `release_charge` | 3 | ✅ new 2026-09-18 (#3615) | same-room branch of `_release_grapple_for_charge` — `speak_grapple_beat(char, grappled_victim, "release_charge", charge_target=target)` (`world/combat/movement_resolution.py:887`). Spends the third-party placeholder `{charge_target}` |
 > | `release_charge_away` | 2 | ✅ new 2026-09-18 (#3615) | the cross-room branch of the same helper (`:885`). Names no third party: the charge target is in another room, so the line says "charges away" instead |
-> | `release_jump` | 3 | ✅ new 2026-09-18 (#3615) | gap jump in `CmdJump` (`commands/combat/jump.py:714`), after `break_grapple` and before the caller moves |
+> | `release_jump` | 3 | ✅ new 2026-09-18 (#3615); moved after the move 2026-09-29 (#3684) | gap jump in `CmdJump` (`let_go_for_the_leap`, `commands/combat/jump.py`): spoken with `break_grapple` only once the jumper's move has happened (or on a slip in place), its room line sent to the roof they left; a refused move keeps the hold and speaks nothing |
 > | `release_blast` | 2 | ✅ new 2026-09-18 (#3615) | the blast on a human-shield sacrifice jump (`jump.py:411`). The only one of the five where the *actor* did not choose it, and the prose says so ("The blast tears {target_name} out of your arms!") |
 > | `release_intent` | 1 | ✅ new 2026-09-18 (#3615) — **actor only** | queue-time charge preview in `CmdCharge` (`commands/combat/movement.py:779`), called with `audiences=("actor",)` and `charge_target=target_search` |
 > | `grapple_damage_hit` | 30 | ❌ | nothing |
