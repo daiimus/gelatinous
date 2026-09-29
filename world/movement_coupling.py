@@ -117,12 +117,12 @@ def live_escortee(leader, destination):
     without walking anyone: the link released (gone, separated, out
     cold, no longer consenting) or no exit from here leading there (the
     usher keeps the link and steps aside). Pure: the usher's own
-    early-outs, asked without moving anyone, for a caller that must know
-    whether a hooked move would be ushered before it commits to anything
-    else. Whether that walk then BOUNCES is the whole exit stack's
-    business and nothing predicts it; the one caller (the edge drag's
-    transit, #3668) asks only about a way into air, which refuses every
-    walker. Keep the two in step; a test pins their agreement.
+    early-outs, asked without moving anyone. Whether that walk then
+    BOUNCES is the whole exit stack's business and nothing predicts it in
+    general; ``escort_barred_at`` names the one case that is certain (an
+    exit that refuses every walker), and the jump verbs ask that before
+    paying to leave (#3685). Keep the two in step; a test pins their
+    agreement.
     """
     escortee = leader.db.escorting
     if not _valid(escortee):
@@ -135,6 +135,30 @@ def live_escortee(leader, destination):
     if _exit_to(leader.location, destination) is None:
         return None
     return escortee
+
+
+def escort_barred_at(leader, destination):
+    """The exit ``usher_escortee`` would walk a live escortee at, when
+    that exit refuses every walker -- an edge, a gap, or a way into air
+    (``Exit.at_traverse`` exempts nobody from those) -- else None. Pure.
+    This is the one refusal of a leader's move that can be known before
+    the move: a caller that must not spend anything on a move that will
+    be refused (the jump verbs' price of leaving, #3685) asks this, then
+    lets the real usher refuse and speak. A plain door beside the drop
+    may still refuse for reasons nothing predicts (a lock, a closed
+    door); that walk runs inside the move, as it always did.
+    """
+    if live_escortee(leader, destination) is None:
+        return None
+    exit_obj = _exit_to(leader.location, destination)
+    if exit_obj is None:
+        return None
+    from world.gravity import is_sky
+    db = getattr(exit_obj, "db", None)
+    barred = (getattr(db, "is_edge", None) is True
+              or getattr(db, "is_gap", None) is True
+              or is_sky(getattr(exit_obj, "destination", None)))
+    return exit_obj if barred else None
 
 
 def usher_escortee(leader, destination):

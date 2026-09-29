@@ -13,10 +13,10 @@ Now the direct drop moves the JUMPER first, so a refused jump touches the
 victim not at all, and only then breaks the victim's acts (procedure,
 then channel, the door drags' own breaker, and their escort, gravity's
 rule) before moving them; transit, which needs the companion in the cell
-first, asks the jumper's own gates without moving and leaves the victim
-alone when the jumper would be refused, then breaks the acts the same
-way. A move still refused opens the hold: the pairing is broken and the
-beat is spoken to the roof.
+first, relies on the jumper's own gates having been asked at the
+threshold (#3685), so a jumper who would be refused never reaches the
+victim, then breaks the acts the same way. A move still refused opens
+the hold: the pairing is broken and the beat is spoken to the roof.
 
 Controls: an undisturbed drag lands both; a refused jumper leaves both
 on the roof with nothing said and the victim's act intact.
@@ -269,25 +269,11 @@ class TheTransit(_EdgeDrag):
         self.assertTrue(any("drags you off" in t for t in self.heard), self.heard)
 
 
-class ThePredicateHasOneCaller(_EdgeDrag):
-    """`would_refuse_a_hooked_move` is exact only for a way into air; the
-    edge drag's transit is its one caller and the gap jump asks by
-    moving instead."""
-
-    def test_only_the_edge_drag_asks(self):
-        import inspect
-        import commands.combat.jump as jump_mod
-        src = inspect.getsource(jump_mod)
-        self.assertEqual(src.count("self.would_refuse_a_hooked_move("), 1, "a second caller has appeared")
-        gap = inspect.getsource(jump_mod.CmdJump.handle_gap_jump)
-        self.assertNotIn("would_refuse_a_hooked_move", gap)
-        self.assertIn("let_go_for_the_leap", gap)
-
-
 class TheGatesAgree(_EdgeDrag):
     """`live_escortee` must answer exactly where `usher_escortee` would
-    walk the escortee ahead; the edge drag predicts the jumper's refusal
-    from it."""
+    walk the escortee ahead; `escort_barred_at` builds on it to name the
+    one walk that is certain to bounce, which the jump verbs ask before
+    paying to leave (#3685)."""
 
     def setUp(self):
         super().setUp()
@@ -329,6 +315,24 @@ class TheGatesAgree(_EdgeDrag):
         self.assertTrue(self.usher(self.jumper, nowhere_near))
         self.assertIs(self.jumper.db.escorting, self.other, "the usher keeps the link when it steps aside")
         self.assertIs(self.other.location, self.roof)
+
+    def test_barred_only_by_an_edge_a_gap_or_a_way_into_air(self):
+        from world.movement_coupling import escort_barred_at
+        way, dest = self.exit, self.exit.destination
+        self.assertIsNone(escort_barred_at(self.jumper, dest), "a plain door bars nobody")
+        way.db.is_edge = True
+        self.assertIs(escort_barred_at(self.jumper, dest), way)
+        way.db.is_edge = None
+        way.db.is_gap = True
+        self.assertIs(escort_barred_at(self.jumper, dest), way)
+        way.db.is_gap = None
+        dest.db.is_sky_room = True
+        self.assertIs(escort_barred_at(self.jumper, dest), way)
+        dest.db.is_sky_room = None
+        self.assertIsNone(escort_barred_at(self.jumper, self.street), "no exit, nobody walked")
+        self.other.location = self.street
+        way.db.is_edge = True
+        self.assertIsNone(escort_barred_at(self.jumper, dest), "a stale escort is not walked")
 
     def test_a_deleted_escort_is_none_and_the_usher_releases(self):
         self.other.delete()

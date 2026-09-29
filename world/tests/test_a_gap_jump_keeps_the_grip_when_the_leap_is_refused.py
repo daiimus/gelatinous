@@ -12,6 +12,9 @@ happened (the beat spoken to the roof they left) or on a slip in place,
 which is an attempt made. What refuses a jumper's move is the whole
 walk of hooks and exits, and nothing predicts it exactly, so nothing
 tries: a refused move keeps the hold and says only what the gate says.
+(Since #3685 the gates a move would be refused on are asked at the
+threshold, before the price of leaving, so a channeling jumper never
+rolls at all.)
 
 Controls: a free jumper still releases the hold for the leap and the
 victim still hears it; a slip in place still lets go.
@@ -114,9 +117,7 @@ class TheGripIsKept(_AGapWithAHold):
 
     def test_control_a_slip_in_place_still_lets_go(self):
         # A miss with no air beneath is a slip where you stand: an attempt
-        # made, so the grip opens for it as it always did. (That a
-        # channeling jumper gets to attempt at all is #3685's subject.)
-        self.channeling(self.jumper)
+        # made, so the grip opens for it as it always did.
         self.leap(rolled=-999)
         self.assertIs(self.jumper.location, self.roof)
         self.assertEqual(self.grip(), (None, None))

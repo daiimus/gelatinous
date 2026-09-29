@@ -474,20 +474,32 @@ class CmdJump(Command):
             caller.msg("|yYou throw yourself at the edge regardless.|n")
         return True
 
-    def would_refuse_a_hooked_move(self, who, destination) -> bool:
-        """The two gates `Character.at_pre_move` refuses a hooked move on,
-        asked without moving: a channel (the gate's own predicate), or a
-        LIVE escort -- the usher walks the escortee ahead through the exit
-        leading to `destination`, and the walk bounces. Exact ONLY where
-        every exit to `destination` refuses every walker, which is a way
-        into air (`Exit.at_traverse`'s sky block exempts nobody): the
-        edge drag's transit is the one caller, and the only one there
-        should be. Anywhere else the walk runs the whole exit stack
-        (locks, doors, combat) and nothing predicts it; ask by moving.
-        Pure -- the gates themselves speak when asked for real."""
-        from world.channeled import is_channeling
-        from world.movement_coupling import live_escortee
-        return bool(is_channeling(who)) or live_escortee(who, destination) is not None
+    def refused_at_the_threshold(self, destination, marching=None) -> bool:
+        """The jumper's own gates, asked BEFORE the price of leaving is
+        paid and before anything is let go (#3685, owner: a jump that
+        cannot happen costs nothing). The same two gates
+        `Character.at_pre_move` refuses a hooked move on, run for real so
+        they speak for themselves: a channel (`refuse_if_channeling`),
+        and an escortee the usher would walk at an exit that refuses
+        every walker -- an edge, a gap, a way into air -- in which case
+        the real usher walks them now, is refused, and says so. Not for
+        `marching`: a held victim the jumper is escorting, whose march
+        the leap itself ends (the gap jump, #3684). A walk through a
+        plain door beside the drop may still be refused for a reason
+        nothing predicts (a lock); that one still runs inside the move,
+        after the price, as it always did. True when refused."""
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(self.caller):
+            get_splattercast().msg(f"JUMP_REFUSED_AT_THRESHOLD: {self.caller.key} is channeling; nothing paid")
+            return True
+        from world.movement_coupling import escort_barred_at, usher_escortee
+        barred = escort_barred_at(self.caller, destination)
+        if barred is not None and self.caller.db.escorting != marching:
+            if not usher_escortee(self.caller, destination):
+                get_splattercast().msg(f"JUMP_REFUSED_AT_THRESHOLD: {self.caller.key}'s escortee is "
+                                       f"barred at {barred.key}; nothing paid")
+                return True
+        return False
 
     def drop_victims_acts(self, victim):
         """A dragged victim keeps nothing they were doing (#3668): the
@@ -577,8 +589,13 @@ class CmdJump(Command):
                            if exit_obj.db.edge_difficulty is not None
                            else FALL_EDGE_DIFFICULTY_DEFAULT)
 
-        # In a fight, leaving costs what flee costs (#3583). Paid only
-        # once the edge is real, so a typo never feeds an aimer a shot.
+        # The jumper's own gates first (#3685): a jump that cannot happen
+        # costs nothing, so nobody gets a shot at a body that never
+        # leaves the roof. Then, in a fight, leaving costs what flee
+        # costs (#3583). Paid only once the edge is real, so a typo never
+        # feeds an aimer a shot.
+        if self.refused_at_the_threshold(destination):
+            return
         if not self.pay_the_price_of_leaving():
             return
 
@@ -664,18 +681,14 @@ class CmdJump(Command):
         # leader's record as its companion; if the leader's own move is
         # then refused, the victim is put back on the roof.
         # The victim must be in the cell before the leader arrives, so
-        # they go first here -- which means the jumper's own gates are
-        # asked first, without a move (#3668): a jumper who would be
-        # refused touches the victim not at all and is refused by the
-        # real gate below, which speaks. Then the victim's acts are
-        # broken as at every drag door (procedure, channel) plus their
-        # escort, which only a hooked move consults, and the move is
-        # made once; still refused, the hold opens on the roof, where
-        # both still stand.
-        if grappled_victim and self.would_refuse_a_hooked_move(self.caller, destination):
-            splattercast.msg(f"JUMP_EDGE_JUMPER_GATED: {self.caller.key} would be refused; "
-                             f"{grappled_victim.key} is left alone")
-            grappled_victim = None
+        # they go first here. The jumper's own gates were asked at the
+        # threshold (#3668, #3685): a jumper who would be refused never
+        # reaches this line, so nothing the code knows of can refuse the
+        # leader's move below once the victim is in the cell. The victim's
+        # acts are broken as at every drag door (procedure, channel) plus
+        # their escort, which only a hooked move consults, and the move is
+        # made once; still refused, the hold opens on the roof, where both
+        # still stand.
         if grappled_victim:
             self.drop_victims_acts(grappled_victim)
             setattr(grappled_victim.db, DB_FALLING, {"led_by": self.caller})
@@ -781,33 +794,38 @@ class CmdJump(Command):
             splattercast.msg(f"JUMP_GAP_NO_PERCH: exit #{exit_obj.id} gap_destination={exit_obj.db.gap_destination!r} does not resolve")
             return
 
+        # The jumper's own gates first (#3685): a jump that cannot happen
+        # costs nothing. The move a made leap makes is into the air, or
+        # straight to the perch when there is no air between. A march of
+        # the very person held is not a gate: the leap ends it (below).
+        air = exit_obj.destination
+        if self.refused_at_the_threshold(air if is_sky(air) else destination,
+                                         marching=grappled_victim):
+            return
         # In a fight, leaving costs what flee costs (#3583).
         if not self.pay_the_price_of_leaving():
             return
-        # The grip opens for the leap -- once the leap is real (#3684).
-        # A jumper's own move can be refused (a channel; an escort whose
-        # walk bounces), and what refuses it is the full walk of hooks and
-        # exits, which nothing predicts exactly: so the hold is let go
-        # only AFTER a move that happened, spoken to the roof they left,
-        # or on a slip in place, which is an attempt made. A refused move
-        # keeps the hold and says only what the gate says.
-        #
-        # One thing goes before the move: a march of the very person held.
-        # `escort` needs no consent from a restrained escortee, so a
-        # jumper can be escorting their own victim; that march stands on
-        # the hold the leap gives up, and the usher would otherwise walk
-        # the victim at the gap and refuse the jumper. It ends here, as it
-        # ended on its own when the hold used to open first -- but not
-        # for a channeling jumper, whom `at_pre_move` refuses before it
-        # ever asks the usher: the march was not what stood in their way,
-        # and nothing may end for a leap that never happens.
+        # One thing goes before the move, now that the gates have passed
+        # and the price is paid: a march of the very person held. `escort`
+        # needs no consent from a restrained escortee, so a jumper can be
+        # escorting their own victim; that march stands on the hold the
+        # leap gives up, and the usher would otherwise walk the victim at
+        # the gap and refuse the jumper (#3684). It ends here, as it ended
+        # on its own when the hold used to open first -- and after the
+        # price, so a jumper the price cuts down keeps it.
         if grappled_victim and self.caller.db.escorting == grappled_victim:
-            from world.channeled import is_channeling
-            if not is_channeling(self.caller):
-                self.caller.db.escorting = None
-                self.caller.msg(f"You stop leading {get_display_name_safe(grappled_victim, self.caller)}; the leap needs your hands.")
-                grappled_victim.msg(f"{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} stops leading you.")
-                splattercast.msg(f"JUMP_GAP_MARCH_ENDS: {self.caller.key} stops escorting {grappled_victim.key} for the leap")
+            self.caller.db.escorting = None
+            self.caller.msg(f"You stop leading {get_display_name_safe(grappled_victim, self.caller)}; the leap needs your hands.")
+            grappled_victim.msg(f"{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} stops leading you.")
+            splattercast.msg(f"JUMP_GAP_MARCH_ENDS: {self.caller.key} stops escorting {grappled_victim.key} for the leap")
+        # The grip opens for the leap -- once the leap is real (#3684).
+        # A jumper's own move can still be refused past the threshold (an
+        # escort walked through a plain door beside the gap, a lock), and
+        # what refuses it is the full walk of hooks and exits, which
+        # nothing predicts exactly: so the hold is let go only AFTER a
+        # move that happened, spoken to the roof they left, or on a slip
+        # in place, which is an attempt made. A refused move keeps the
+        # hold and says only what the gate says.
 
         # Gap jumping requires Motorics check vs gap difficulty
         caller_motorics = get_numeric_stat(self.caller, "motorics")
@@ -821,7 +839,6 @@ class CmdJump(Command):
         splattercast.msg(f"JUMP_GAP: {self.caller.key} motorics:{motorics_roll} vs difficulty:{gap_difficulty}, success:{success}")
 
         old_location = self.caller.location      # before the move (#2424)
-        air = exit_obj.destination
 
         if not is_sky(air):
             # No air between the two surfaces (a direct step across):
