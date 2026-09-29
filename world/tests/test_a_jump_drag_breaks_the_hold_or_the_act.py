@@ -184,7 +184,8 @@ class TheTransit(_EdgeDrag):
         self.assertFalse(channel_of(self.victim))
         self.assertEqual(getattr(self.victim.db, DB_FALLING, {}).get("led_by"), self.jumper)
         self.assertTrue(any("drags you off" in t for t in self.heard), self.heard)
-        # asked, not tried: no "you're busy" before being hauled anyway
+        # broken before the move, never tried first: no "you're busy"
+        # before being hauled anyway
         self.assertFalse(any("busy" in t for t in self.heard), self.heard)
 
     def test_an_escorting_victim_rides_the_fall_and_nobody_is_sent_at_the_edge(self):

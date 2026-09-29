@@ -664,9 +664,10 @@ class CmdJump(Command):
         # asked first, without a move (#3668): a jumper who would be
         # refused touches the victim not at all and is refused by the
         # real gate below, which speaks. Then the victim's acts are
-        # broken like every other drag door's (procedure, channel,
-        # escort) and the move is made once; still refused, the hold
-        # opens on the roof, where both still stand.
+        # broken as at every drag door (procedure, channel) plus their
+        # escort, which only a hooked move consults, and the move is
+        # made once; still refused, the hold opens on the roof, where
+        # both still stand.
         if grappled_victim and self.would_refuse_a_hooked_move(self.caller):
             splattercast.msg(f"JUMP_EDGE_JUMPER_GATED: {self.caller.key} would be refused; "
                              f"{grappled_victim.key} is left alone")
