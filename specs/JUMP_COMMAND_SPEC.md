@@ -790,6 +790,17 @@ if destination_is_sky and not (is_edge or is_gap):
 > `break_aim_lock` and then `roll_to_disengage`, both helpers shared with
 > `CmdFlee`. The last bullet remains unbuilt (Phase 3).)_
 >
+> _(2026-09-29, #3685, owner "That makes sense.": the jumper's own gates
+> come BEFORE the price. `refused_at_the_threshold` runs the two gates
+> `Character.at_pre_move` would refuse the move on — a channel
+> (`refuse_if_channeling`, which speaks) and an escortee the usher would
+> walk at an edge, a gap or a way into air (the real `usher_escortee`,
+> which refuses and speaks) — so a jump that cannot happen costs nothing:
+> no aim contest, no disengage roll, no free shot at a body that never
+> leaves the roof. A walk through a plain door beside the drop can still
+> be refused inside the move for a reason nothing predicts (a lock); that
+> one is still paid for, as before.)_
+>
 > _(2026-09-16, #3591: RULED and built. A jump in a fight pays BOTH halves
 > of flee's price: the aim contest (`break_aim_lock`) AND the melee
 > disengage roll — flee's Part 2 extracted into `roll_to_disengage(caller,

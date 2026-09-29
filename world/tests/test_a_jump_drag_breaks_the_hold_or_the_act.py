@@ -269,21 +269,6 @@ class TheTransit(_EdgeDrag):
         self.assertTrue(any("drags you off" in t for t in self.heard), self.heard)
 
 
-class ThePredicateHasOneCaller(_EdgeDrag):
-    """`would_refuse_a_hooked_move` is exact only for a way into air; the
-    edge drag's transit is its one caller and the gap jump asks by
-    moving instead."""
-
-    def test_only_the_edge_drag_asks(self):
-        import inspect
-        import commands.combat.jump as jump_mod
-        src = inspect.getsource(jump_mod)
-        self.assertEqual(src.count("self.would_refuse_a_hooked_move("), 1, "a second caller has appeared")
-        gap = inspect.getsource(jump_mod.CmdJump.handle_gap_jump)
-        self.assertNotIn("would_refuse_a_hooked_move", gap)
-        self.assertIn("let_go_for_the_leap", gap)
-
-
 class TheGatesAgree(_EdgeDrag):
     """`live_escortee` must answer exactly where `usher_escortee` would
     walk the escortee ahead; the edge drag predicts the jumper's refusal

@@ -137,6 +137,30 @@ def live_escortee(leader, destination):
     return escortee
 
 
+def escort_barred_at(leader, destination):
+    """The exit ``usher_escortee`` would walk a live escortee at, when
+    that exit refuses every walker -- an edge, a gap, or a way into air
+    (``Exit.at_traverse`` exempts nobody from those) -- else None. Pure.
+    This is the one refusal of a leader's move that can be known before
+    the move: a caller that must not spend anything on a move that will
+    be refused (the jump verbs' price of leaving, #3685) asks this, then
+    lets the real usher refuse and speak. A plain door beside the drop
+    may still refuse for reasons nothing predicts (a lock, a closed
+    door); that walk runs inside the move, as it always did.
+    """
+    if live_escortee(leader, destination) is None:
+        return None
+    exit_obj = _exit_to(leader.location, destination)
+    if exit_obj is None:
+        return None
+    from world.gravity import is_sky
+    db = getattr(exit_obj, "db", None)
+    barred = (getattr(db, "is_edge", None) is True
+              or getattr(db, "is_gap", None) is True
+              or is_sky(getattr(exit_obj, "destination", None)))
+    return exit_obj if barred else None
+
+
 def usher_escortee(leader, destination):
     """Send the escortee through the exit FIRST (an escort moves ahead).
 

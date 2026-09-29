@@ -114,9 +114,7 @@ class TheGripIsKept(_AGapWithAHold):
 
     def test_control_a_slip_in_place_still_lets_go(self):
         # A miss with no air beneath is a slip where you stand: an attempt
-        # made, so the grip opens for it as it always did. (That a
-        # channeling jumper gets to attempt at all is #3685's subject.)
-        self.channeling(self.jumper)
+        # made, so the grip opens for it as it always did.
         self.leap(rolled=-999)
         self.assertIs(self.jumper.location, self.roof)
         self.assertEqual(self.grip(), (None, None))
