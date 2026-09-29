@@ -477,15 +477,23 @@ class CmdJump(Command):
     def would_refuse_a_hooked_move(self, who, destination) -> bool:
         """The two gates `Character.at_pre_move` refuses a hooked move to
         `destination` on, asked without moving: a channel (the gate's own
-        predicate), or a LIVE escort with an exit to walk -- the usher
-        walks the escortee ahead, and an edge or gap exit refuses a
-        walker, so the leader is refused; a stale escort is released and
-        a destination no exit leads to (a leap straight to the far perch)
-        is stepped aside from, and the leader moves on. Pure -- the gates
-        themselves speak when asked for real."""
+        predicate), or a LIVE escort whose walk would bounce -- the usher
+        walks the escortee ahead through the exit leading there, and an
+        edge, a gap or a way into air refuses a walker (`can_leave_by`,
+        the predicate flee and charge ask), so the leader is refused. A
+        stale escort is released, a destination no exit leads to is
+        stepped aside from, and a plain door beside the gap is simply
+        walked: the leader moves on. Pure -- the gates themselves speak
+        when asked for real."""
         from world.channeled import is_channeling
-        from world.movement_coupling import live_escortee
-        return bool(is_channeling(who)) or live_escortee(who, destination) is not None
+        from world.gravity import can_leave_by
+        from world.movement_coupling import exit_to, live_escortee
+        if is_channeling(who):
+            return True
+        escortee = live_escortee(who, destination)
+        if escortee is None:
+            return False
+        return not can_leave_by(escortee, exit_to(who.location, destination))
 
     def drop_victims_acts(self, victim):
         """A dragged victim keeps nothing they were doing (#3668): the
@@ -785,8 +793,11 @@ class CmdJump(Command):
         # The grip opens for the leap -- unless the jumper's own gates
         # would refuse the move (#3684): asked without moving, so a
         # channeling or escorting jumper keeps the hold and is refused
-        # by the real gate below, which speaks, instead of freeing and
-        # telling the victim for a leap that never happens.
+        # by the real gate when the move is attempted, which speaks,
+        # instead of freeing and telling the victim for a leap that
+        # never happens. (A direct-step MISS attempts no move: the gated
+        # jumper slips where they stand, unrefused -- the gates run after
+        # the roll and the price, #3685.)
         leap_target = exit_obj.destination if is_sky(exit_obj.destination) else destination
         if handler and grappled_victim and self.would_refuse_a_hooked_move(self.caller, leap_target):
             splattercast.msg(f"JUMP_GAP_JUMPER_GATED: {self.caller.key} would be refused; "

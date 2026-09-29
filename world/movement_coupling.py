@@ -21,7 +21,7 @@ organic chase scenes with no changes here.
 """
 
 
-def _exit_to(source, destination):
+def exit_to(source, destination):
     """The exit object in ``source`` leading to ``destination`` (or None)."""
     if not source or not destination:
         return None
@@ -95,7 +95,7 @@ def bring_followers(leader, source_location):
     followers = followers_of(leader, source_location)
     if not followers:
         return
-    exit_obj = _exit_to(source_location, destination)
+    exit_obj = exit_to(source_location, destination)
     for follower in followers:
         if exit_obj is None:
             sever_follow(follower, silent=True)
@@ -111,15 +111,17 @@ def bring_followers(leader, source_location):
             )
 
 
-def live_escortee(leader, destination=None):
-    """The escortee ``usher_escortee`` would try to walk ahead, or None
-    when it would let the leader move on without walking anyone: the
-    link released (gone, separated, out cold, no longer consenting) or,
-    given ``destination``, no exit from here leading there (the usher
-    keeps the link and steps aside). Pure: the usher's own early-outs,
-    asked without moving anyone, for a caller that must know whether a
-    hooked move would be ushered before it commits to anything else (the
-    edge and gap jumps, #3668, #3684). Keep the two in step; a test pins
+def live_escortee(leader, destination):
+    """The escortee ``usher_escortee`` would try to walk ahead of a move
+    to ``destination``, or None when it would let the leader move on
+    without walking anyone: the link released (gone, separated, out
+    cold, no longer consenting) or no exit from here leading there (the
+    usher keeps the link and steps aside). Pure: the usher's own
+    early-outs, asked without moving anyone, for a caller that must know
+    whether a hooked move would be ushered before it commits to anything
+    else (the edge and gap jumps, #3668, #3684). Whether that walk then
+    BOUNCES is the exit's business: ask ``world.gravity.can_leave_by``
+    of the exit ``exit_to`` finds. Keep the two in step; a test pins
     their agreement.
     """
     escortee = leader.db.escorting
@@ -130,7 +132,7 @@ def live_escortee(leader, destination=None):
     from world.consent import check_consent, is_conscious
     if not is_conscious(escortee) or not check_consent(leader, escortee, "escort"):
         return None
-    if destination is not None and _exit_to(leader.location, destination) is None:
+    if exit_to(leader.location, destination) is None:
         return None
     return escortee
 
@@ -171,7 +173,7 @@ def usher_escortee(leader, destination):
             pass
         return True
 
-    exit_obj = _exit_to(leader.location, destination)
+    exit_obj = exit_to(leader.location, destination)
     if exit_obj is None:
         return True
 

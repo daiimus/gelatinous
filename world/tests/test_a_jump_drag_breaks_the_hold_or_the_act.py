@@ -269,6 +269,34 @@ class TheTransit(_EdgeDrag):
         self.assertTrue(any("drags you off" in t for t in self.heard), self.heard)
 
 
+class TheWalkDecidesTheRefusal(_EdgeDrag):
+    """A live escort refuses the leader only when the escortee's walk
+    would bounce; a plain door beside the edge is simply walked."""
+
+    def setUp(self):
+        super().setUp()
+        self.other = create_object("typeclasses.characters.Character", key="Other", location=self.roof)
+        grant_trust(self.other, self.jumper, "escort")
+        self.jumper.db.escorting = self.other
+        from commands.combat.jump import CmdJump
+        self.cmd = CmdJump()
+        self.cmd.caller = self.jumper
+
+    def test_a_walk_through_a_plain_door_is_not_a_refusal(self):
+        self.assertFalse(self.cmd.would_refuse_a_hooked_move(self.jumper, self.exit.destination))
+
+    def test_a_walk_at_an_edge_is(self):
+        self.exit.db.is_edge = True
+        self.assertTrue(self.cmd.would_refuse_a_hooked_move(self.jumper, self.exit.destination))
+
+    def test_a_walk_into_air_is(self):
+        self.exit.destination.db.is_sky_room = True
+        self.assertTrue(self.cmd.would_refuse_a_hooked_move(self.jumper, self.exit.destination))
+
+    def test_no_exit_at_all_is_not(self):
+        self.assertFalse(self.cmd.would_refuse_a_hooked_move(self.jumper, self.street))
+
+
 class TheGatesAgree(_EdgeDrag):
     """`live_escortee` must answer exactly where `usher_escortee` would
     walk the escortee ahead; the edge drag predicts the jumper's refusal
@@ -284,7 +312,6 @@ class TheGatesAgree(_EdgeDrag):
         self.jumper.msg = lambda text=None, **kw: None
 
     def test_a_live_escort_is_the_escortee_and_the_usher_walks_them(self):
-        self.assertIs(self.live(self.jumper), self.other)
         self.assertIs(self.live(self.jumper, self.exit.destination), self.other)
         # walked ahead through a plain exit: the leader may proceed and the link holds
         self.assertTrue(self.usher(self.jumper, self.exit.destination))
@@ -293,19 +320,19 @@ class TheGatesAgree(_EdgeDrag):
 
     def test_a_separated_escort_is_none_and_the_usher_releases(self):
         self.other.location = self.street
-        self.assertIsNone(self.live(self.jumper))
+        self.assertIsNone(self.live(self.jumper, self.exit.destination))
         self.assertTrue(self.usher(self.jumper, self.exit.destination))
         self.assertFalse(self.jumper.db.escorting)
 
     def test_an_unconscious_escort_is_none_and_the_usher_releases(self):
         with mock.patch("world.consent.is_conscious", return_value=False):
-            self.assertIsNone(self.live(self.jumper))
+            self.assertIsNone(self.live(self.jumper, self.exit.destination))
             self.assertTrue(self.usher(self.jumper, self.exit.destination))
         self.assertFalse(self.jumper.db.escorting)
 
     def test_a_withdrawn_consent_is_none_and_the_usher_releases(self):
         with mock.patch("world.consent.check_consent", return_value=False):
-            self.assertIsNone(self.live(self.jumper))
+            self.assertIsNone(self.live(self.jumper, self.exit.destination))
             self.assertTrue(self.usher(self.jumper, self.exit.destination))
         self.assertFalse(self.jumper.db.escorting)
 
@@ -318,6 +345,6 @@ class TheGatesAgree(_EdgeDrag):
 
     def test_a_deleted_escort_is_none_and_the_usher_releases(self):
         self.other.delete()
-        self.assertIsNone(self.live(self.jumper))
+        self.assertIsNone(self.live(self.jumper, self.exit.destination))
         self.assertTrue(self.usher(self.jumper, self.exit.destination))
         self.assertFalse(self.jumper.db.escorting)

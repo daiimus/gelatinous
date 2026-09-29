@@ -84,6 +84,9 @@ class _AGapWithAHold(EvenniaTest):
         entries = self.handler.db.combatants
         return (entries[0].get(DB_GRAPPLING_DBREF), entries[1].get(DB_GRAPPLED_BY_DBREF))
 
+    def held(self):
+        return (get_character_dbref(self.victim), get_character_dbref(self.jumper))
+
     def released_line(self, lines):
         return any("turn" in t or "run at the gap" in t or "grip on" in t for t in lines)
 
@@ -101,7 +104,7 @@ class TheGripIsKept(_AGapWithAHold):
         self.channeling(self.jumper)
         self.leap(rolled=999)
         self.assertIs(self.jumper.location, self.roof)
-        self.assertNotEqual(self.grip(), (None, None), "the hold was released for a leap that never happened")
+        self.assertEqual(self.grip(), self.held(), "the hold was released for a leap that never happened")
         self.assertFalse(self.released_line(self.heard), self.heard)
         self.assertFalse(self.room_beat.called, "the roof heard a hold end that did not")
         self.assertTrue(any("busy" in t for t in self.said), self.said)
@@ -109,11 +112,12 @@ class TheGripIsKept(_AGapWithAHold):
 
     def test_a_channeling_jumper_who_slips_in_place_still_holds_on(self):
         # A miss with no air beneath is a slip where you stand: no move,
-        # so no gate speaks; the grip was never going to open for it.
+        # so no gate speaks and the slip is taken (the gates run after the
+        # roll and the price: #3685). The grip was never going to open.
         self.channeling(self.jumper)
         self.leap(rolled=-999)
         self.assertIs(self.jumper.location, self.roof)
-        self.assertNotEqual(self.grip(), (None, None))
+        self.assertEqual(self.grip(), self.held())
         self.assertFalse(self.released_line(self.heard), self.heard)
 
     def escorted_by_jumper(self):
@@ -133,18 +137,46 @@ class TheGripIsKept(_AGapWithAHold):
         self.leap(rolled=999)
         self.assertIs(self.jumper.location, self.roof)
         self.assertIs(other.location, self.roof)
-        self.assertNotEqual(self.grip(), (None, None))
+        self.assertEqual(self.grip(), self.held())
         self.assertFalse(self.released_line(self.heard), self.heard)
         self.assertTrue(any("cannot" in t for t in self.told_other), self.told_other)
 
-    def test_control_a_live_escort_on_a_direct_step_does_not_refuse(self):
-        # No exit leads straight to the far perch, so the usher steps
-        # aside and the leader moves on: the leap happens and the grip
-        # opens for it. Predicting a refusal here would keep a hold for
-        # a leap that DID happen.
+    def test_control_a_live_escort_with_no_exit_to_the_perch_does_not_refuse(self):
+        # This fixture's gap lands on a perch no exit leads to (the exit
+        # goes to the solid room below; `gap_destination` names the far
+        # roof), so the usher steps aside and the leader moves on: the
+        # leap happens and the grip opens for it. Predicting a refusal
+        # here would keep a hold for a leap that DID happen.
         other = self.escorted_by_jumper()
         self.leap(rolled=999)
         self.assertIs(self.jumper.location, self.far)
+        self.assertEqual(self.grip(), (None, None))
+        self.assertTrue(self.released_line(self.heard), self.heard)
+
+    def test_a_live_escort_on_the_usual_direct_step_is_refused_and_keeps_the_hold(self):
+        # The usual direct-step gap: the exit's own destination IS the
+        # perch, so the usher walks the escortee at the gap exit, which
+        # refuses a walker, and the jumper is refused by the real gate.
+        self.gap.db.gap_destination = None
+        self.gap.destination = self.far
+        other = self.escorted_by_jumper()
+        self.leap(rolled=999)
+        self.assertIs(self.jumper.location, self.roof)
+        self.assertIs(other.location, self.roof)
+        self.assertEqual(self.grip(), self.held())
+        self.assertFalse(self.released_line(self.heard), self.heard)
+        self.assertTrue(any("cannot" in t for t in self.told_other), self.told_other)
+
+    def test_control_a_plain_door_to_the_perch_is_walked_and_the_grip_opens(self):
+        # A plank beside the gap: the usher walks the escortee across it
+        # and the leader moves on, so the leap happens and the hold opens
+        # for it. Counting any exit as a refusal would keep the hold for
+        # a leap that DID happen and then break it without a word.
+        create_object("typeclasses.exits.Exit", key="plank", location=self.roof, destination=self.far)
+        other = self.escorted_by_jumper()
+        self.leap(rolled=999)
+        self.assertIs(self.jumper.location, self.far)
+        self.assertIs(other.location, self.far)
         self.assertEqual(self.grip(), (None, None))
         self.assertTrue(self.released_line(self.heard), self.heard)
 
@@ -154,6 +186,6 @@ class TheGripIsKept(_AGapWithAHold):
         self.channeling(self.jumper)
         self.leap(rolled=999)
         self.assertIs(self.jumper.location, self.roof)
-        self.assertNotEqual(self.grip(), (None, None))
+        self.assertEqual(self.grip(), self.held())
         self.assertFalse(self.released_line(self.heard), self.heard)
         self.assertIsNone(getattr(self.jumper.ndb, NDB_LEAP, None))
