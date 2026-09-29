@@ -474,16 +474,18 @@ class CmdJump(Command):
             caller.msg("|yYou throw yourself at the edge regardless.|n")
         return True
 
-    def would_refuse_a_hooked_move(self, who) -> bool:
-        """The two gates `Character.at_pre_move` refuses a hooked move on,
-        asked without moving: a channel (the gate's own predicate), or a
-        LIVE escort -- the usher walks the escortee ahead, and an edge
-        exit refuses a walker, so the leader is refused; a stale escort
-        is released by the usher and the leader walks on. Pure -- the
-        gates themselves speak when asked for real."""
+    def would_refuse_a_hooked_move(self, who, destination) -> bool:
+        """The two gates `Character.at_pre_move` refuses a hooked move to
+        `destination` on, asked without moving: a channel (the gate's own
+        predicate), or a LIVE escort with an exit to walk -- the usher
+        walks the escortee ahead, and an edge or gap exit refuses a
+        walker, so the leader is refused; a stale escort is released and
+        a destination no exit leads to (a leap straight to the far perch)
+        is stepped aside from, and the leader moves on. Pure -- the gates
+        themselves speak when asked for real."""
         from world.channeled import is_channeling
         from world.movement_coupling import live_escortee
-        return bool(is_channeling(who)) or live_escortee(who) is not None
+        return bool(is_channeling(who)) or live_escortee(who, destination) is not None
 
     def drop_victims_acts(self, victim):
         """A dragged victim keeps nothing they were doing (#3668): the
@@ -668,7 +670,7 @@ class CmdJump(Command):
         # escort, which only a hooked move consults, and the move is
         # made once; still refused, the hold opens on the roof, where
         # both still stand.
-        if grappled_victim and self.would_refuse_a_hooked_move(self.caller):
+        if grappled_victim and self.would_refuse_a_hooked_move(self.caller, destination):
             splattercast.msg(f"JUMP_EDGE_JUMPER_GATED: {self.caller.key} would be refused; "
                              f"{grappled_victim.key} is left alone")
             grappled_victim = None
@@ -780,6 +782,16 @@ class CmdJump(Command):
         # In a fight, leaving costs what flee costs (#3583).
         if not self.pay_the_price_of_leaving():
             return
+        # The grip opens for the leap -- unless the jumper's own gates
+        # would refuse the move (#3684): asked without moving, so a
+        # channeling or escorting jumper keeps the hold and is refused
+        # by the real gate below, which speaks, instead of freeing and
+        # telling the victim for a leap that never happens.
+        leap_target = exit_obj.destination if is_sky(exit_obj.destination) else destination
+        if handler and grappled_victim and self.would_refuse_a_hooked_move(self.caller, leap_target):
+            splattercast.msg(f"JUMP_GAP_JUMPER_GATED: {self.caller.key} would be refused; "
+                             f"the hold on {grappled_victim.key} is kept")
+            grappled_victim = None
         if handler and grappled_victim:
             from world.combat.grappling import break_grapple
             break_grapple(handler, grappler=self.caller, victim=grappled_victim)

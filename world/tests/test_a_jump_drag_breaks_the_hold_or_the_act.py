@@ -285,6 +285,7 @@ class TheGatesAgree(_EdgeDrag):
 
     def test_a_live_escort_is_the_escortee_and_the_usher_walks_them(self):
         self.assertIs(self.live(self.jumper), self.other)
+        self.assertIs(self.live(self.jumper, self.exit.destination), self.other)
         # walked ahead through a plain exit: the leader may proceed and the link holds
         self.assertTrue(self.usher(self.jumper, self.exit.destination))
         self.assertIs(self.other.location, self.exit.destination)
@@ -307,6 +308,13 @@ class TheGatesAgree(_EdgeDrag):
             self.assertIsNone(self.live(self.jumper))
             self.assertTrue(self.usher(self.jumper, self.exit.destination))
         self.assertFalse(self.jumper.db.escorting)
+
+    def test_no_exit_to_the_destination_is_none_and_the_usher_steps_aside(self):
+        nowhere_near = create_object("typeclasses.rooms.Room", key="Far Perch")
+        self.assertIsNone(self.live(self.jumper, nowhere_near))
+        self.assertTrue(self.usher(self.jumper, nowhere_near))
+        self.assertIs(self.jumper.db.escorting, self.other, "the usher keeps the link when it steps aside")
+        self.assertIs(self.other.location, self.roof)
 
     def test_a_deleted_escort_is_none_and_the_usher_releases(self):
         self.other.delete()
