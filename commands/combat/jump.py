@@ -475,25 +475,19 @@ class CmdJump(Command):
         return True
 
     def would_refuse_a_hooked_move(self, who, destination) -> bool:
-        """The two gates `Character.at_pre_move` refuses a hooked move to
-        `destination` on, asked without moving: a channel (the gate's own
-        predicate), or a LIVE escort whose walk would bounce -- the usher
-        walks the escortee ahead through the exit leading there, and an
-        edge, a gap or a way into air refuses a walker (`can_leave_by`,
-        the predicate flee and charge ask), so the leader is refused. A
-        stale escort is released, a destination no exit leads to is
-        stepped aside from, and a plain door beside the gap is simply
-        walked: the leader moves on. Pure -- the gates themselves speak
-        when asked for real."""
+        """The two gates `Character.at_pre_move` refuses a hooked move on,
+        asked without moving: a channel (the gate's own predicate), or a
+        LIVE escort -- the usher walks the escortee ahead through the exit
+        leading to `destination`, and the walk bounces. Exact ONLY where
+        every exit to `destination` refuses every walker, which is a way
+        into air (`Exit.at_traverse`'s sky block exempts nobody): the
+        edge drag's transit is the one caller, and the only one there
+        should be. Anywhere else the walk runs the whole exit stack
+        (locks, doors, combat) and nothing predicts it; ask by moving.
+        Pure -- the gates themselves speak when asked for real."""
         from world.channeled import is_channeling
-        from world.gravity import can_leave_by
-        from world.movement_coupling import exit_to, live_escortee
-        if is_channeling(who):
-            return True
-        escortee = live_escortee(who, destination)
-        if escortee is None:
-            return False
-        return not can_leave_by(escortee, exit_to(who.location, destination))
+        from world.movement_coupling import live_escortee
+        return bool(is_channeling(who)) or live_escortee(who, destination) is not None
 
     def drop_victims_acts(self, victim):
         """A dragged victim keeps nothing they were doing (#3668): the
@@ -790,25 +784,13 @@ class CmdJump(Command):
         # In a fight, leaving costs what flee costs (#3583).
         if not self.pay_the_price_of_leaving():
             return
-        # The grip opens for the leap -- unless the jumper's own gates
-        # would refuse the move (#3684): asked without moving, so a
-        # channeling or escorting jumper keeps the hold and is refused
-        # by the real gate when the move is attempted, which speaks,
-        # instead of freeing and telling the victim for a leap that
-        # never happens. (A direct-step MISS attempts no move: the gated
-        # jumper slips where they stand, unrefused -- the gates run after
-        # the roll and the price, #3685.)
-        leap_target = exit_obj.destination if is_sky(exit_obj.destination) else destination
-        if handler and grappled_victim and self.would_refuse_a_hooked_move(self.caller, leap_target):
-            splattercast.msg(f"JUMP_GAP_JUMPER_GATED: {self.caller.key} would be refused; "
-                             f"the hold on {grappled_victim.key} is kept")
-            grappled_victim = None
-        if handler and grappled_victim:
-            from world.combat.grappling import break_grapple
-            break_grapple(handler, grappler=self.caller, victim=grappled_victim)
-            from world.combat.grappling import speak_grapple_beat
-            speak_grapple_beat(self.caller, grappled_victim, "release_jump")   # #3615
-            splattercast.msg(f"JUMP_GAP_GRAPPLE_BREAK: {self.caller.key} broke grapple with {grappled_victim.key} for gap jump")
+        # The grip opens for the leap -- once the leap is real (#3684).
+        # A jumper's own move can be refused (a channel; an escort whose
+        # walk bounces), and what refuses it is the full walk of hooks and
+        # exits, which nothing predicts exactly: so the hold is let go
+        # only AFTER a move that happened, spoken to the roof they left,
+        # or on a slip in place, which is an attempt made. A refused move
+        # keeps the hold and says only what the gate says.
 
         # Gap jumping requires Motorics check vs gap difficulty
         caller_motorics = get_numeric_stat(self.caller, "motorics")
@@ -831,8 +813,10 @@ class CmdJump(Command):
                 moved = self.caller.move_to(destination, quiet=True)
                 if not moved:
                     return
+                self.let_go_for_the_leap(handler, grappled_victim, old_location)
                 self.finalize_successful_gap_jump(destination, old_location)
             else:
+                self.let_go_for_the_leap(handler, grappled_victim, old_location)
                 self.handle_fall_failure(exit_obj, destination, "gap jump")
             return
 
@@ -850,6 +834,7 @@ class CmdJump(Command):
                     except AttributeError:
                         pass
                 return
+            self.let_go_for_the_leap(handler, grappled_victim, old_location)
             if handler:
                 handler.remove_combatant(self.caller)
             clear_aim_state(self.caller)
@@ -871,6 +856,7 @@ class CmdJump(Command):
             except AttributeError:
                 pass
             return
+        self.let_go_for_the_leap(handler, grappled_victim, old_location)
         if handler:
             handler.remove_combatant(self.caller)
         clear_aim_state(self.caller)
@@ -882,6 +868,18 @@ class CmdJump(Command):
             )
         self.caller.msg(f"|rYou leap for the {self.direction} gap but don't make it far enough... you're falling!|n")
         splattercast.msg(f"JUMP_GAP_FAIL: {self.caller.key} fell short into {air.key}")
+
+    def let_go_for_the_leap(self, handler, victim, room):
+        """The hold opens for a leap that is real: the pairing is broken
+        and the `release_jump` beat (#3615) is spoken, its room line to
+        `room`, the roof the jumper has just left (or still stands on,
+        after a slip). Nothing when nobody was held."""
+        if not (handler and victim):
+            return
+        from world.combat.grappling import break_grapple, speak_grapple_beat
+        break_grapple(handler, grappler=self.caller, victim=victim)
+        speak_grapple_beat(self.caller, victim, "release_jump", room=room)
+        get_splattercast().msg(f"JUMP_GAP_GRAPPLE_BREAK: {self.caller.key} broke grapple with {victim.key} for gap jump")
 
     def find_edge_exit(self, direction):
         """Find and validate an exit in the specified direction."""

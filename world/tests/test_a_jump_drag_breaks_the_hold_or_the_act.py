@@ -269,32 +269,19 @@ class TheTransit(_EdgeDrag):
         self.assertTrue(any("drags you off" in t for t in self.heard), self.heard)
 
 
-class TheWalkDecidesTheRefusal(_EdgeDrag):
-    """A live escort refuses the leader only when the escortee's walk
-    would bounce; a plain door beside the edge is simply walked."""
+class ThePredicateHasOneCaller(_EdgeDrag):
+    """`would_refuse_a_hooked_move` is exact only for a way into air; the
+    edge drag's transit is its one caller and the gap jump asks by
+    moving instead."""
 
-    def setUp(self):
-        super().setUp()
-        self.other = create_object("typeclasses.characters.Character", key="Other", location=self.roof)
-        grant_trust(self.other, self.jumper, "escort")
-        self.jumper.db.escorting = self.other
-        from commands.combat.jump import CmdJump
-        self.cmd = CmdJump()
-        self.cmd.caller = self.jumper
-
-    def test_a_walk_through_a_plain_door_is_not_a_refusal(self):
-        self.assertFalse(self.cmd.would_refuse_a_hooked_move(self.jumper, self.exit.destination))
-
-    def test_a_walk_at_an_edge_is(self):
-        self.exit.db.is_edge = True
-        self.assertTrue(self.cmd.would_refuse_a_hooked_move(self.jumper, self.exit.destination))
-
-    def test_a_walk_into_air_is(self):
-        self.exit.destination.db.is_sky_room = True
-        self.assertTrue(self.cmd.would_refuse_a_hooked_move(self.jumper, self.exit.destination))
-
-    def test_no_exit_at_all_is_not(self):
-        self.assertFalse(self.cmd.would_refuse_a_hooked_move(self.jumper, self.street))
+    def test_only_the_edge_drag_asks(self):
+        import inspect
+        import commands.combat.jump as jump_mod
+        src = inspect.getsource(jump_mod)
+        self.assertEqual(src.count("self.would_refuse_a_hooked_move("), 1, "a second caller has appeared")
+        gap = inspect.getsource(jump_mod.CmdJump.handle_gap_jump)
+        self.assertNotIn("would_refuse_a_hooked_move", gap)
+        self.assertIn("let_go_for_the_leap", gap)
 
 
 class TheGatesAgree(_EdgeDrag):

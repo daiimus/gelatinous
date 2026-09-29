@@ -7,12 +7,14 @@ the roll and before the jumper's own move. A jumper whose hooked move
 the victim already freed and told, and the jumper still on the roof
 having announced a leap they never made.
 
-Now the jumper's own gates are asked without moving (the #3668
-predicate) before anything is released: a jumper who would be refused
-keeps the hold and is refused by the real gate, which speaks.
+Now the hold is let go only once the leap is real: after a move that
+happened (the beat spoken to the roof they left) or on a slip in place,
+which is an attempt made. What refuses a jumper's move is the whole
+walk of hooks and exits, and nothing predicts it exactly, so nothing
+tries: a refused move keeps the hold and says only what the gate says.
 
-Control: a free jumper still releases the hold for the leap and the
-victim still hears it.
+Controls: a free jumper still releases the hold for the leap and the
+victim still hears it; a slip in place still lets go.
 """
 from contextlib import ExitStack
 from unittest import mock
@@ -110,15 +112,23 @@ class TheGripIsKept(_AGapWithAHold):
         self.assertTrue(any("busy" in t for t in self.said), self.said)
         self.assertTrue(channel_of(self.jumper))
 
-    def test_a_channeling_jumper_who_slips_in_place_still_holds_on(self):
-        # A miss with no air beneath is a slip where you stand: no move,
-        # so no gate speaks and the slip is taken (the gates run after the
-        # roll and the price: #3685). The grip was never going to open.
+    def test_control_a_slip_in_place_still_lets_go(self):
+        # A miss with no air beneath is a slip where you stand: an attempt
+        # made, so the grip opens for it as it always did. (That a
+        # channeling jumper gets to attempt at all is #3685's subject.)
         self.channeling(self.jumper)
         self.leap(rolled=-999)
         self.assertIs(self.jumper.location, self.roof)
-        self.assertEqual(self.grip(), self.held())
-        self.assertFalse(self.released_line(self.heard), self.heard)
+        self.assertEqual(self.grip(), (None, None))
+        self.assertTrue(self.released_line(self.heard), self.heard)
+        self.assertEqual(self.room_beat.call_args.kwargs["location"], self.roof)
+
+    def test_the_roof_hears_the_grip_open_after_the_leap(self):
+        # The beat is spoken once the jumper has gone: its room line lands
+        # on the roof they left, not the perch they reached.
+        self.leap(rolled=999)
+        self.assertIs(self.jumper.location, self.far)
+        self.assertEqual(self.room_beat.call_args.kwargs["location"], self.roof)
 
     def escorted_by_jumper(self):
         other = create_object("typeclasses.characters.Character", key="Other", location=self.roof)
