@@ -519,6 +519,20 @@ def start_procedure(
     except Exception:  # noqa: BLE001 — the act still has to resolve
         started = False
 
+    if started:
+        # Tag the channel with THIS record, so a drag that takes this
+        # patient away breaks the channel timing this procedure and no
+        # other (#3669 review): a surgeon already channeling starts a
+        # second body's procedure on the plain timer below, and their live
+        # channel may belong to another patient -- or to a spray can.
+        try:
+            from world.channeled import channel_of
+            chan = channel_of(actor)
+            if chan is not None:
+                chan["procedure_token"] = token
+        except Exception:  # noqa: BLE001 -- the tag is a courtesy, not the timer
+            pass
+
     if not started:
         # Already channeling something else, or the primitive is
         # unavailable. Fall back to the pre-#2926 timer so the procedure
@@ -588,6 +602,54 @@ def _fail_running_step(target, reason: str) -> None:
             return
 
 
+def _actor_of_record(record) -> Optional[Any]:
+    """The surgeon a procedure record names, or None (logged out, deleted)."""
+    from evennia.objects.models import ObjectDB
+    actor_dbref = (record or {}).get("actor_dbref")
+    if not actor_dbref:
+        return None
+    try:
+        return ObjectDB.objects.get(id=int(str(actor_dbref).lstrip("#")))
+    except (ObjectDB.DoesNotExist, ValueError):
+        return None
+
+
+def take_patient_away(target, reason: str) -> Optional[Any]:
+    """The patient is physically removed from under the surgeon's hands (a
+    grapple-drag, #3669): the procedure on the body is interrupted with
+    *reason*, and the SURGEON'S channel is broken too -- it was the timer
+    for a body that is no longer there, and left running it would resolve
+    the procedure a room away (the drag broke only the victim's own
+    channel before). Different from a death on the table, where the
+    surgeon keeps working by ruling (#3368). Returns the surgeon told, or
+    None when nothing was in flight."""
+    record = interrupt_procedure(target, reason=reason)
+    if record is None:
+        return None
+    surgeon = _actor_of_record(record)
+    if surgeon is None:
+        return None
+    try:
+        from world.channeled import channel_of, interrupt_channel
+        chan = channel_of(surgeon)
+        # Only the channel that times THIS procedure: one the surgeon holds
+        # for another patient, or for something unrelated, is theirs to keep.
+        if chan is not None and chan.get("procedure_token") == record.get("token"):
+            interrupt_channel(surgeon, reason=reason)
+    except Exception:  # noqa: BLE001 -- the record is already cleared
+        pass
+    surgeon.msg(f"|yYour patient is hauled out from under your hands; "
+                f"the {record.get('verb', 'procedure')} is lost.|n")
+    return surgeon
+
+
+def _patient_is_here(actor, target) -> bool:
+    """A procedure resolves only where it began: the patient in the
+    surgeon's room, or in the surgeon's hands (a severed part)."""
+    where = getattr(target, "location", None)
+    return where is not None and (where == getattr(actor, "location", None) or where == actor)
+
+
 def _patient_is_gone(target) -> bool:
     """Deleted or archived: no procedure may resolve onto this body any
     more. Every finished death lands in one of those two (a PC or an
@@ -643,15 +705,7 @@ def _resolve_procedure_callback(target, token=None) -> None:
     dbref = getattr(target, "dbref", None)
     hook = _PROCEDURE_COMPLETE_HOOKS.pop(dbref, None) if dbref else None
 
-    from evennia.objects.models import ObjectDB
-    actor_dbref = record.get("actor_dbref")
-    if actor_dbref:
-        try:
-            actor = ObjectDB.objects.get(id=int(actor_dbref.lstrip("#")))
-        except (ObjectDB.DoesNotExist, ValueError):
-            actor = None
-    else:
-        actor = None
+    actor = _actor_of_record(record)
 
     if actor is None:
         # Actor has gone away (logged out, deleted).  Per design (E):
@@ -666,6 +720,13 @@ def _resolve_procedure_callback(target, token=None) -> None:
     if _patient_is_gone(target):
         actor.msg("Your patient is beyond reach; the procedure does not resolve.")
         _fail_running_step(target, "the patient is beyond reach")
+        return
+    # The same-room precondition that STARTED the procedure holds when it
+    # resolves (#3669): a patient separated from the surgeon by any path
+    # the drag door did not cover is not operated on from a room away.
+    if not _patient_is_here(actor, target):
+        actor.msg("Your patient is no longer here; the procedure does not resolve.")
+        _fail_running_step(target, "the patient was not here")
         return
 
     verb = record["verb"]
