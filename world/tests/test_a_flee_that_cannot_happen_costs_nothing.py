@@ -220,6 +220,8 @@ class TheHoldGate(_AFleer):
         self.roll.assert_called_once()
         self.fled()
         self.assertFalse(self.fleer.db.escorting)
+        self.assertEqual(self.ward.location, self.room1)
+        h.remove_combatant.assert_called_once_with(self.fleer, room=self.room1)
 
     def test_a_fleer_marching_their_own_held_victim_still_flees_and_the_march_ends(self):
         # The fight refuses the held victim's walk at the door, so the

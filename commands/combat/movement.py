@@ -420,8 +420,8 @@ class CmdFlee(Command):
         destination = chosen_exit.destination
 
         # An escortee the usher would walk at an exit that refuses every
-        # walker (an edge or a way into air, for a fleer who can stay up
-        # and so keeps such exits in their pool): the real usher walks
+        # walker (an edge, a gap or a way into air, for a fleer who can
+        # stay up and so keeps such exits in their pool): the real usher walks
         # them now, is refused, and says so -- before any price. Not for
         # a march of the very victim the fleer holds: the flight itself
         # ends that march (below, after the price), as the leap does.
@@ -537,8 +537,10 @@ class CmdFlee(Command):
             # victim they grapple. The flight gives up the hold (leaving
             # combat breaks it), and the usher would otherwise walk the
             # held victim at the door, where the fight refuses them, and
-            # refuse the fleer. It ends here, after the price, as it ended
-            # on its own when leaving combat came before the move (#3687).
+            # refuse the fleer. It ends here, after the price -- as a march
+            # held by restraint alone used to lapse on its own once leaving
+            # combat broke the hold before the move; one the victim had also
+            # trusted did not, and now ends the same way (#3687).
             if held is not None and caller.db.escorting == held:
                 caller.db.escorting = None
                 caller.msg(f"You stop leading {held.get_display_name(caller)}; the flight needs your hands.")
