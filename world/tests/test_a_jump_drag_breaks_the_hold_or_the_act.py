@@ -157,6 +157,7 @@ class TheDirectDrop(_EdgeDrag):
         self.assertEqual(self.said, ["You're busy spraying — 'stop' first."], self.said)
         self.assertEqual(self.heard, [], self.heard)
         self.assertTrue(channel_of(self.victim), "a refused jump cost the victim their act")
+        self.assertEqual(self.hurt(self.victim), 0)
 
     def test_an_escorting_victim_is_dragged_off_all_the_same(self):
         # With hooks on, an escort would refuse the move; a body hauled
@@ -166,8 +167,6 @@ class TheDirectDrop(_EdgeDrag):
         self.descend(dest_is_sky=False)
         self.assertIs(self.victim.location, self.below)
         self.assertFalse(self.victim.db.escorting)
-
-        self.assertEqual(self.hurt(self.victim), 0)
 
 
 class TheTransit(_EdgeDrag):
