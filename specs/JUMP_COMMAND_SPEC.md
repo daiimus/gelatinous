@@ -799,7 +799,10 @@ if destination_is_sky and not (is_edge or is_gap):
 > no aim contest, no disengage roll, no free shot at a body that never
 > leaves the roof. A walk through a plain door beside the drop can still
 > be refused inside the move for a reason nothing predicts (a lock); that
-> one is still paid for, as before.)_
+> one is still paid for, as before. Two consequences: a channeling or
+> escort-barred gap jumper never rolls, so never slips in place; and the
+> gap jump's ending of a march of the held victim (#3684) now comes after
+> the price, so a jumper the price cuts down keeps the march.)_
 >
 > _(2026-09-16, #3591: RULED and built. A jump in a fight pays BOTH halves
 > of flee's price: the aim contest (`break_aim_lock`) AND the melee

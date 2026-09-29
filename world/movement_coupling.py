@@ -117,12 +117,12 @@ def live_escortee(leader, destination):
     without walking anyone: the link released (gone, separated, out
     cold, no longer consenting) or no exit from here leading there (the
     usher keeps the link and steps aside). Pure: the usher's own
-    early-outs, asked without moving anyone, for a caller that must know
-    whether a hooked move would be ushered before it commits to anything
-    else. Whether that walk then BOUNCES is the whole exit stack's
-    business and nothing predicts it; the one caller (the edge drag's
-    transit, #3668) asks only about a way into air, which refuses every
-    walker. Keep the two in step; a test pins their agreement.
+    early-outs, asked without moving anyone. Whether that walk then
+    BOUNCES is the whole exit stack's business and nothing predicts it in
+    general; ``escort_barred_at`` names the one case that is certain (an
+    exit that refuses every walker), and the jump verbs ask that before
+    paying to leave (#3685). Keep the two in step; a test pins their
+    agreement.
     """
     escortee = leader.db.escorting
     if not _valid(escortee):

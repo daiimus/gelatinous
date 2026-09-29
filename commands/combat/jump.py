@@ -474,7 +474,7 @@ class CmdJump(Command):
             caller.msg("|yYou throw yourself at the edge regardless.|n")
         return True
 
-    def refused_at_the_threshold(self, destination) -> bool:
+    def refused_at_the_threshold(self, destination, marching=None) -> bool:
         """The jumper's own gates, asked BEFORE the price of leaving is
         paid and before anything is let go (#3685, owner: a jump that
         cannot happen costs nothing). The same two gates
@@ -482,16 +482,22 @@ class CmdJump(Command):
         they speak for themselves: a channel (`refuse_if_channeling`),
         and an escortee the usher would walk at an exit that refuses
         every walker -- an edge, a gap, a way into air -- in which case
-        the real usher walks them now, is refused, and says so. A walk
-        through a plain door beside the drop may still be refused for a
-        reason nothing predicts (a lock); that one still runs inside the
-        move, after the price, as it always did. True when refused."""
+        the real usher walks them now, is refused, and says so. Not for
+        `marching`: a held victim the jumper is escorting, whose march
+        the leap itself ends (the gap jump, #3684). A walk through a
+        plain door beside the drop may still be refused for a reason
+        nothing predicts (a lock); that one still runs inside the move,
+        after the price, as it always did. True when refused."""
         from world.channeled import refuse_if_channeling
         if refuse_if_channeling(self.caller):
+            get_splattercast().msg(f"JUMP_REFUSED_AT_THRESHOLD: {self.caller.key} is channeling; nothing paid")
             return True
         from world.movement_coupling import escort_barred_at, usher_escortee
-        if escort_barred_at(self.caller, destination) is not None:
+        barred = escort_barred_at(self.caller, destination)
+        if barred is not None and self.caller.db.escorting != marching:
             if not usher_escortee(self.caller, destination):
+                get_splattercast().msg(f"JUMP_REFUSED_AT_THRESHOLD: {self.caller.key}'s escortee is "
+                                       f"barred at {barred.key}; nothing paid")
                 return True
         return False
 
@@ -788,32 +794,30 @@ class CmdJump(Command):
             splattercast.msg(f"JUMP_GAP_NO_PERCH: exit #{exit_obj.id} gap_destination={exit_obj.db.gap_destination!r} does not resolve")
             return
 
-        # One thing goes before even the gates: a march of the very person
-        # held. `escort` needs no consent from a restrained escortee, so a
-        # jumper can be escorting their own victim; that march stands on
-        # the hold the leap gives up, and the usher would otherwise walk
-        # the victim at the gap and refuse the jumper (#3684). It ends
-        # here, as it ended on its own when the hold used to open first --
-        # but not for a channeling jumper, whom the channel gate refuses
-        # before the usher is ever asked: the march was not what stood in
-        # their way, and nothing may end for a leap that never happens.
-        if grappled_victim and self.caller.db.escorting == grappled_victim:
-            from world.channeled import is_channeling
-            if not is_channeling(self.caller):
-                self.caller.db.escorting = None
-                self.caller.msg(f"You stop leading {get_display_name_safe(grappled_victim, self.caller)}; the leap needs your hands.")
-                grappled_victim.msg(f"{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} stops leading you.")
-                splattercast.msg(f"JUMP_GAP_MARCH_ENDS: {self.caller.key} stops escorting {grappled_victim.key} for the leap")
-
         # The jumper's own gates first (#3685): a jump that cannot happen
         # costs nothing. The move a made leap makes is into the air, or
-        # straight to the perch when there is no air between.
+        # straight to the perch when there is no air between. A march of
+        # the very person held is not a gate: the leap ends it (below).
         air = exit_obj.destination
-        if self.refused_at_the_threshold(air if is_sky(air) else destination):
+        if self.refused_at_the_threshold(air if is_sky(air) else destination,
+                                         marching=grappled_victim):
             return
         # In a fight, leaving costs what flee costs (#3583).
         if not self.pay_the_price_of_leaving():
             return
+        # One thing goes before the move, now that the gates have passed
+        # and the price is paid: a march of the very person held. `escort`
+        # needs no consent from a restrained escortee, so a jumper can be
+        # escorting their own victim; that march stands on the hold the
+        # leap gives up, and the usher would otherwise walk the victim at
+        # the gap and refuse the jumper (#3684). It ends here, as it ended
+        # on its own when the hold used to open first -- and after the
+        # price, so a jumper the price cuts down keeps it.
+        if grappled_victim and self.caller.db.escorting == grappled_victim:
+            self.caller.db.escorting = None
+            self.caller.msg(f"You stop leading {get_display_name_safe(grappled_victim, self.caller)}; the leap needs your hands.")
+            grappled_victim.msg(f"{capitalize_first(get_display_name_safe(self.caller, grappled_victim))} stops leading you.")
+            splattercast.msg(f"JUMP_GAP_MARCH_ENDS: {self.caller.key} stops escorting {grappled_victim.key} for the leap")
         # The grip opens for the leap -- once the leap is real (#3684).
         # A jumper's own move can be refused (a channel; an escort whose
         # walk bounces), and what refuses it is the full walk of hooks and

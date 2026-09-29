@@ -64,7 +64,8 @@ class _AtTheThreshold(EvenniaTest):
             self.way.db.is_edge = True
         else:
             self.way.db.is_gap = True
-            self.way.db.gap_destination = self.far
+            if self.way.db.gap_destination is None and self.way.destination is not self.far:
+                self.way.db.gap_destination = self.far
         if sky:
             self.way.destination.db.is_sky_room = True
             self.way.destination.key = "In the Air"
@@ -79,8 +80,8 @@ class _AtTheThreshold(EvenniaTest):
                            "commands.explosion_utils.check_rigged_grenade",
                            "commands.explosion_utils.check_auto_defuse"):
                 stack.enter_context(mock.patch(target))
-            stack.enter_context(mock.patch("commands.combat.jump.standard_roll",
-                                           return_value=(rolled, rolled, rolled)))
+            self.roll = stack.enter_context(mock.patch("commands.combat.jump.standard_roll",
+                                                       return_value=(rolled, rolled, rolled)))
             stack.enter_context(mock.patch.object(type(cmd), "find_edge_exit", return_value=self.way))
             self.price = stack.enter_context(mock.patch.object(type(cmd), "pay_the_price_of_leaving",
                                                                return_value=True))
@@ -140,9 +141,8 @@ class TheChannelGate(_AtTheThreshold):
         # miss -- damage and a skipped round for a jump the gate would
         # have refused had a move been attempted.
         self.channeling(self.jumper)
-        with mock.patch("commands.combat.jump.standard_roll") as roll:
-            self.jump("gap", rolled=-999)
-        roll.assert_not_called()
+        self.jump("gap", rolled=-999)
+        self.roll.assert_not_called()
         self.stayed()
         self.assertEqual(sum(o.max_hp - o.current_hp for o in self.jumper.medical_state.organs.values()), 0)
 
@@ -167,6 +167,20 @@ class TheEscortGate(_AtTheThreshold):
 
     def test_an_escortee_barred_at_the_gap_over_air_costs_nothing(self):
         self._barred_escortee_costs_nothing("gap", True)
+
+    def test_an_escortee_barred_at_a_solid_gap_whose_exit_is_the_perch_costs_nothing(self):
+        # The usual direct-step gap: the exit's own destination IS the
+        # perch, so the gap flag alone bars the walk (no air anywhere).
+        other = self.escorted()
+        self.way.db.is_gap = True
+        self.way.db.gap_destination = None
+        self.way.destination = self.far
+        self.jump("gap")
+        self.price.assert_not_called()
+        self.roll.assert_not_called()
+        self.stayed()
+        self.assertIs(other.location, self.roof)
+        self.assertTrue(any("cannot" in t for t in self.told_other), self.told_other)
 
     def test_control_a_stale_escort_is_released_and_the_jumper_pays_and_goes(self):
         # An unconscious escortee: the usher releases the link and steps
