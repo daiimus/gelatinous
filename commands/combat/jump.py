@@ -754,9 +754,9 @@ class CmdJump(Command):
                     return
 
                 # Grappling someone: the grip is released for the leap --
-                # but only once the leap is real (after the gap is
-                # validated and the price of leaving is paid), or an
-                # aborted jump would free the victim for nothing.
+                # but only once the leap is real (after the jumper's own
+                # move has happened, #3684), or an aborted jump would free
+                # the victim for nothing.
                 grappled_victim = get_grappling_target(handler, caller_entry)
 
         if not self.direction:
@@ -791,6 +791,19 @@ class CmdJump(Command):
         # only AFTER a move that happened, spoken to the roof they left,
         # or on a slip in place, which is an attempt made. A refused move
         # keeps the hold and says only what the gate says.
+        #
+        # One thing goes before the move: a march of the very person held.
+        # `escort` needs no consent from a restrained escortee, so a
+        # jumper can be escorting their own victim; that march stands on
+        # the hold the leap gives up, and the usher would otherwise walk
+        # the victim at the gap and refuse the jumper. It ends here, in
+        # the usher's own words, as it ended on its own when the hold
+        # used to open first.
+        if grappled_victim and self.caller.db.escorting == grappled_victim:
+            self.caller.db.escorting = None
+            self.caller.msg(f"{capitalize_first(get_display_name_safe(grappled_victim, self.caller))} no longer follows your lead.")
+            grappled_victim.msg(f"You slip free of {get_display_name_safe(self.caller, grappled_victim)}'s lead.")
+            splattercast.msg(f"JUMP_GAP_MARCH_ENDS: {self.caller.key} stops escorting {grappled_victim.key} for the leap")
 
         # Gap jumping requires Motorics check vs gap difficulty
         caller_motorics = get_numeric_stat(self.caller, "motorics")

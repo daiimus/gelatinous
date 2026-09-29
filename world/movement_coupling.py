@@ -21,7 +21,7 @@ organic chase scenes with no changes here.
 """
 
 
-def exit_to(source, destination):
+def _exit_to(source, destination):
     """The exit object in ``source`` leading to ``destination`` (or None)."""
     if not source or not destination:
         return None
@@ -95,7 +95,7 @@ def bring_followers(leader, source_location):
     followers = followers_of(leader, source_location)
     if not followers:
         return
-    exit_obj = exit_to(source_location, destination)
+    exit_obj = _exit_to(source_location, destination)
     for follower in followers:
         if exit_obj is None:
             sever_follow(follower, silent=True)
@@ -119,10 +119,10 @@ def live_escortee(leader, destination):
     usher keeps the link and steps aside). Pure: the usher's own
     early-outs, asked without moving anyone, for a caller that must know
     whether a hooked move would be ushered before it commits to anything
-    else (the edge and gap jumps, #3668, #3684). Whether that walk then
-    BOUNCES is the exit's business: ask ``world.gravity.can_leave_by``
-    of the exit ``exit_to`` finds. Keep the two in step; a test pins
-    their agreement.
+    else. Whether that walk then BOUNCES is the whole exit stack's
+    business and nothing predicts it; the one caller (the edge drag's
+    transit, #3668) asks only about a way into air, which refuses every
+    walker. Keep the two in step; a test pins their agreement.
     """
     escortee = leader.db.escorting
     if not _valid(escortee):
@@ -132,7 +132,7 @@ def live_escortee(leader, destination):
     from world.consent import check_consent, is_conscious
     if not is_conscious(escortee) or not check_consent(leader, escortee, "escort"):
         return None
-    if exit_to(leader.location, destination) is None:
+    if _exit_to(leader.location, destination) is None:
         return None
     return escortee
 
@@ -173,7 +173,7 @@ def usher_escortee(leader, destination):
             pass
         return True
 
-    exit_obj = exit_to(leader.location, destination)
+    exit_obj = _exit_to(leader.location, destination)
     if exit_obj is None:
         return True
 

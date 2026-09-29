@@ -56,7 +56,7 @@ def _char(location=None, sdesc="a lean man"):
 
 
 def _exit(destination, key="north"):
-    """`exit_to` matches on `.destination`, and `usher_escortee` pushes
+    """`_exit_to` matches on `.destination`, and `usher_escortee` pushes
     the escortee through `.key`."""
     ex = MagicMock()
     ex.destination = destination

@@ -29,7 +29,7 @@ from world.combat.constants import (
 )
 from world.combat.utils import get_character_dbref
 from world.consent import grant_trust
-from world.gravity import NDB_LEAP
+from world.gravity import NDB_FALL_INTENT, NDB_LEAP
 
 
 class _AGapWithAHold(EvenniaTest):
@@ -122,6 +122,37 @@ class TheGripIsKept(_AGapWithAHold):
         self.assertEqual(self.grip(), (None, None))
         self.assertTrue(self.released_line(self.heard), self.heard)
         self.assertEqual(self.room_beat.call_args.kwargs["location"], self.roof)
+
+    def test_a_channeling_jumper_who_misses_over_air_is_refused_and_keeps_the_hold(self):
+        # The fourth let-go site: a missed leap over air is a move into
+        # the cell, which the gate refuses; nothing is let go, nothing
+        # left behind.
+        air = create_object("typeclasses.rooms.SkyRoom", key="In the Air")
+        self.gap.destination = air
+        self.channeling(self.jumper)
+        self.leap(rolled=-999)
+        self.assertIs(self.jumper.location, self.roof)
+        self.assertEqual(self.grip(), self.held())
+        self.assertFalse(self.released_line(self.heard), self.heard)
+        self.assertFalse(self.room_beat.called)
+        self.assertIsNone(getattr(self.jumper.ndb, NDB_FALL_INTENT, None))
+        self.assertTrue(any("busy" in t for t in self.said), self.said)
+
+    def test_a_jumper_marching_their_own_victim_still_leaps_and_the_march_ends(self):
+        # `escort` needs no consent from a restrained escortee, so the
+        # jumper can be escorting the very person they hold. The march
+        # stood on the hold; it ends before the move, in the usher's own
+        # words, or the usher would walk the victim at the gap and refuse
+        # the jumper -- which the hold-first order never did.
+        self.jumper.db.escorting = self.victim
+        self.leap(rolled=999)
+        self.assertIs(self.jumper.location, self.far)
+        self.assertIs(self.victim.location, self.roof)
+        self.assertFalse(self.jumper.db.escorting)
+        self.assertEqual(self.grip(), (None, None))
+        self.assertTrue(any("no longer follows your lead" in t for t in self.said), self.said)
+        self.assertTrue(any("slip free" in t for t in self.heard), self.heard)
+        self.assertTrue(self.released_line(self.heard), self.heard)
 
     def test_the_roof_hears_the_grip_open_after_the_leap(self):
         # The beat is spoken once the jumper has gone: its room line lands
