@@ -476,12 +476,14 @@ class CmdJump(Command):
 
     def would_refuse_a_hooked_move(self, who) -> bool:
         """The two gates `Character.at_pre_move` refuses a hooked move on,
-        asked without moving: a channel, or an escort (which would also
-        send the escortee against the edge). Pure -- the gates themselves
-        speak when asked for real. A gate added there and not here costs
-        nothing worse than the real refusal happening a step later."""
+        asked without moving: a channel (the gate's own predicate), or a
+        LIVE escort -- the usher walks the escortee ahead, and an edge
+        exit refuses a walker, so the leader is refused; a stale escort
+        is released by the usher and the leader walks on. Pure -- the
+        gates themselves speak when asked for real."""
         from world.channeled import is_channeling
-        return bool(is_channeling(who)) or bool(who.db.escorting)
+        from world.movement_coupling import live_escortee
+        return bool(is_channeling(who)) or live_escortee(who) is not None
 
     def drop_victims_acts(self, victim):
         """A dragged victim keeps nothing they were doing (#3668): the
@@ -587,8 +589,10 @@ class CmdJump(Command):
             # oversailing plate onto the street). One storey, no roll,
             # no traversal. A refused move narrates nothing (#3353).
             # `move_to` answers False on a refused move (escort, channel).
-            # The location is NOT re-checked: the cell's hook may already
-            # have carried the body onward, and that is not a refusal.
+            # The jumper's location is NOT re-checked: the cell's hook may
+            # already have carried the body onward, and that is not a
+            # refusal. The victim's is, once: a False from a post-hook that
+            # raised after a real move must not read as a refusal.
             #
             # The jumper goes first, so a refused jump touches the victim
             # not at all. Only then are the victim's acts broken (#3668):
@@ -660,7 +664,7 @@ class CmdJump(Command):
         # asked first, without a move (#3668): a jumper who would be
         # refused touches the victim not at all and is refused by the
         # real gate below, which speaks. Then the victim's acts are
-        # broken like every other drag door's (channel, procedure,
+        # broken like every other drag door's (procedure, channel,
         # escort) and the move is made once; still refused, the hold
         # opens on the roof, where both still stand.
         if grappled_victim and self.would_refuse_a_hooked_move(self.caller):

@@ -232,3 +232,83 @@ class TheTransit(_EdgeDrag):
         self.assertEqual(self.heard, [], self.heard)
         self.assertFalse(getattr(self.victim.db, DB_FALLING, None))
         self.assertEqual(self.delayed.call_count, 0, "a fall was scheduled for a refused jump")
+        self.assertEqual(self.said, ["You're busy spraying — 'stop' first."], self.said)
+
+    def escorted_by_jumper(self):
+        other = create_object("typeclasses.characters.Character", key="Other", location=self.roof)
+        other.msg = lambda text=None, **kw: self.told_other.append(str(text))
+        self.told_other = []
+        grant_trust(other, self.jumper, "escort")
+        self.jumper.db.escorting = other
+        return other
+
+    def test_control_a_jumper_with_a_live_escort_is_refused_and_the_victim_left_alone(self):
+        # The usher walks the escortee ahead; an edge refuses a walker, so
+        # the jumper is refused by the real gate. The victim keeps their act.
+        other = self.escorted_by_jumper()
+        self.channeling(self.victim)
+        self.descend(dest_is_sky=True)
+        self.assertIs(self.jumper.location, self.roof)
+        self.assertIs(self.victim.location, self.roof)
+        self.assertIs(other.location, self.roof)
+        self.assertTrue(channel_of(self.victim), "a refused jump cost the victim their act")
+        self.assertEqual(self.heard, [], self.heard)
+        self.assertTrue(any("cannot" in t for t in self.told_other), self.told_other)
+
+    def test_a_jumper_with_a_stale_escort_still_drags_the_victim(self):
+        # An unconscious escortee is released by the usher and the leader
+        # walks on: predicting a refusal here would excuse the victim and
+        # break the hold without a word.
+        self.escorted_by_jumper()
+        with mock.patch("world.consent.is_conscious", return_value=False):
+            self.descend(dest_is_sky=True)
+        self.assertIs(self.jumper.location, self.below)
+        self.assertIs(self.victim.location, self.below, "a stale escort excused the victim")
+        self.assertFalse(self.jumper.db.escorting)
+        self.assertTrue(any("drags you off" in t for t in self.heard), self.heard)
+
+
+class TheGatesAgree(_EdgeDrag):
+    """`live_escortee` must answer exactly where `usher_escortee` would
+    walk the escortee ahead; the edge drag predicts the jumper's refusal
+    from it."""
+
+    def setUp(self):
+        super().setUp()
+        from world.movement_coupling import live_escortee, usher_escortee
+        self.live, self.usher = live_escortee, usher_escortee
+        self.other = create_object("typeclasses.characters.Character", key="Other", location=self.roof)
+        grant_trust(self.other, self.jumper, "escort")
+        self.jumper.db.escorting = self.other
+        self.jumper.msg = lambda text=None, **kw: None
+
+    def test_a_live_escort_is_the_escortee_and_the_usher_walks_them(self):
+        self.assertIs(self.live(self.jumper), self.other)
+        # walked ahead through a plain exit: the leader may proceed and the link holds
+        self.assertTrue(self.usher(self.jumper, self.exit.destination))
+        self.assertIs(self.other.location, self.exit.destination)
+        self.assertIs(self.jumper.db.escorting, self.other)
+
+    def test_a_separated_escort_is_none_and_the_usher_releases(self):
+        self.other.location = self.street
+        self.assertIsNone(self.live(self.jumper))
+        self.assertTrue(self.usher(self.jumper, self.exit.destination))
+        self.assertFalse(self.jumper.db.escorting)
+
+    def test_an_unconscious_escort_is_none_and_the_usher_releases(self):
+        with mock.patch("world.consent.is_conscious", return_value=False):
+            self.assertIsNone(self.live(self.jumper))
+            self.assertTrue(self.usher(self.jumper, self.exit.destination))
+        self.assertFalse(self.jumper.db.escorting)
+
+    def test_a_withdrawn_consent_is_none_and_the_usher_releases(self):
+        with mock.patch("world.consent.check_consent", return_value=False):
+            self.assertIsNone(self.live(self.jumper))
+            self.assertTrue(self.usher(self.jumper, self.exit.destination))
+        self.assertFalse(self.jumper.db.escorting)
+
+    def test_a_deleted_escort_is_none_and_the_usher_releases(self):
+        self.other.delete()
+        self.assertIsNone(self.live(self.jumper))
+        self.assertTrue(self.usher(self.jumper, self.exit.destination))
+        self.assertFalse(self.jumper.db.escorting)
