@@ -15,7 +15,7 @@ from unittest import mock
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaCommandTest
 
-from world.channeled import channel_of
+from world.channeled import channel_of, interrupt_channel
 from world.combat.grappling import drag_victim_to
 from world.medical import procedures as P
 
@@ -114,10 +114,15 @@ class TheDrag(_OnTheTable):
         # Self-surgery: the surgeon's channel IS the procedure's timer, and
         # the drag door used to break that channel first, clearing the
         # record before anyone could be told. The procedure now goes first.
-        P.interrupt_procedure(self.patient, reason="cleared")
+        # Free the surgeon's channel first, or the self-procedure lands on
+        # the plain timer and the ordering is never exercised.
+        interrupt_channel(self.surgeon)
+        self.assertFalse(channel_of(self.surgeon))
         self.surgeon.db.surgical_state = {"incisions": {}, "active_procedure": None}
         rec = P.start_procedure(self.surgeon, verb="incise", actor=self.surgeon, location="chest")
         self.assertIsNotNone(rec, "fixture: no self-procedure started")
+        self.assertEqual(channel_of(self.surgeon).get("procedure_token"), rec["token"],
+                         "fixture: the self-procedure is not on the surgeon's own channel")
         self.told.clear()
         with mock.patch("world.identity_utils.msg_room_identity") as sender:
             self.assertTrue(drag_victim_to(self.surgeon, self.room2))
