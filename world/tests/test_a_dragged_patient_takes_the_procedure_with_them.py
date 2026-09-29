@@ -15,7 +15,7 @@ from unittest import mock
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaCommandTest
 
-from world.channeled import channel_of
+from world.channeled import channel_of, interrupt_channel
 from world.combat.grappling import drag_victim_to
 from world.medical import procedures as P
 
@@ -61,6 +61,87 @@ class TheDrag(_OnTheTable):
         # the surgeon's timer, had it survived, finds nothing to resolve
         P._resolve_procedure_callback(self.patient, token=self.record["token"])
         spy.assert_not_called()
+
+    def test_the_patient_and_the_room_are_told_too(self):
+        # #3681: the patient hears the work end; the room gets a per-observer
+        # line in the surgery room (before the move), naming both, excluding
+        # both. Room broadcasts never reach a test observer (the session
+        # gate), so the broadcast is asserted on the patched sender.
+        heard = []
+        self.patient.msg = lambda text=None, **kw: heard.append(str(text))
+        with mock.patch("world.identity_utils.msg_room_identity") as sender:
+            drag_victim_to(self.patient, self.room2)
+        self.assertTrue(any("instruments leave you" in t for t in heard), heard)
+        self.assertTrue(sender.called, "the room was not told")
+        kwargs = sender.call_args.kwargs
+        self.assertEqual(kwargs["location"], self.room1, "the line must land in the surgery room")
+        self.assertIn("instruments come away", kwargs["template"])
+        self.assertEqual(kwargs["char_refs"]["surgeon"], self.surgeon)
+        self.assertEqual(kwargs["char_refs"]["patient"], self.patient)
+        self.assertIn(self.surgeon, kwargs["exclude"])
+        self.assertIn(self.patient, kwargs["exclude"])
+
+    def test_the_work_is_named_in_the_patients_own_words(self):
+        # Never the raw verb key ("the incise is undone"); the patient's
+        # species vocabulary (#2262): a robot is cut into, not incised.
+        heard = []
+        self.patient.msg = lambda text=None, **kw: heard.append(str(text))
+        with mock.patch("world.identity_utils.msg_room_identity") as sender:
+            drag_victim_to(self.patient, self.room2)
+        for text in (self.told[-1], heard[-1], sender.call_args.kwargs["template"]):
+            self.assertIn("cutting into the chest", text, text)
+            self.assertNotIn("incise", text, text)
+
+    def test_a_robot_patient_hears_its_own_vocabulary(self):
+        rec = {"verb": "harvest", "kwargs": {"organ_name": "heart", "location": "chest"}}
+        self.patient.db.species = "robot"
+        self.assertEqual(P._work_in_prose(rec, self.patient), "pulling the power core")
+        self.patient.db.species = "human"
+        self.assertEqual(P._work_in_prose(rec, self.patient), "harvesting the heart")
+        pump = create_object("typeclasses.items.Item", key="cybernetic heart",
+                             location=self.surgeon)
+        self.assertEqual(P._work_in_prose({"verb": "install_augment",
+                                           "kwargs": {"organ_item": pump, "location": "chest"}},
+                                          self.patient),
+                         "installing the cybernetic heart in the chest")
+        self.assertEqual(P._work_in_prose({"verb": "install", "kwargs": {"location": "chest"}},
+                                          self.patient),
+                         "installing an implant in the chest")
+        self.assertEqual(P._work_in_prose({"verb": "suture", "kwargs": {"location": None}},
+                                          self.patient), "suturing")
+
+    def test_a_surgeon_dragged_off_their_own_body_is_told_as_themselves(self):
+        # Self-surgery: the surgeon's channel IS the procedure's timer, and
+        # the drag door used to break that channel first, clearing the
+        # record before anyone could be told. The procedure now goes first.
+        # Free the surgeon's channel first, or the self-procedure lands on
+        # the plain timer and the ordering is never exercised.
+        interrupt_channel(self.surgeon)
+        self.assertFalse(channel_of(self.surgeon))
+        self.surgeon.db.surgical_state = {"incisions": {}, "active_procedure": None}
+        rec = P.start_procedure(self.surgeon, verb="incise", actor=self.surgeon, location="chest")
+        self.assertIsNotNone(rec, "fixture: no self-procedure started")
+        self.assertEqual(channel_of(self.surgeon).get("procedure_token"), rec["token"],
+                         "fixture: the self-procedure is not on the surgeon's own channel")
+        self.told.clear()
+        with mock.patch("world.identity_utils.msg_room_identity") as sender:
+            self.assertTrue(drag_victim_to(self.surgeon, self.room2))
+        self.assertTrue(any("your own work" in t for t in self.told), self.told)
+        self.assertFalse(any("Your patient" in t for t in self.told), self.told)
+        self.assertIn("own instruments come away", sender.call_args.kwargs["template"])
+        self.assertIsNone((self.surgeon.db.surgical_state or {}).get("active_procedure"))
+        self.assertFalse(channel_of(self.surgeon))
+
+    def test_a_surgeon_in_another_room_leaves_the_patient_and_room_untold(self):
+        heard = []
+        self.patient.msg = lambda text=None, **kw: heard.append(str(text))
+        self.surgeon.location = self.room2
+        with mock.patch("world.identity_utils.msg_room_identity") as sender:
+            self.assertTrue(P.take_patient_away(self.patient, "the patient was dragged away"))
+        self.assertTrue(any("hauled off" in t for t in self.told), self.told)
+        self.assertFalse(any("your hands" in t for t in self.told), self.told)
+        self.assertEqual(heard, [], "described instruments a room away")
+        self.assertFalse(sender.called)
 
     def test_control_an_undisturbed_procedure_resolves(self):
         spy = self.resolver_spy()

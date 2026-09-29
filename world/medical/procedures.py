@@ -614,15 +614,55 @@ def _actor_of_record(record) -> Optional[Any]:
         return None
 
 
+def _work_in_prose(record, target) -> str:
+    """The interrupted step as running prose, in the PATIENT's species'
+    words (#2262): "harvesting the left kidney", "cutting into the chest",
+    "seating a coolant pump in the torso". Never the raw verb key.
+    """
+    try:
+        verb = str(record.get("verb") or "")
+        base = "install" if verb.startswith("install") else verb
+        kw = record.get("kwargs") or {}
+        from world.anatomy import get_organ_display_name, get_species_location_display
+        from world.anatomy.species import species_of
+        from world.medical.charts import gerund_for
+        species = species_of(target)
+        gerund = gerund_for(base, species) if base else "the work"
+        location = kw.get("location")
+        where = (f"the {get_species_location_display(species, location)}"
+                 if isinstance(location, str) and location else "")
+        if base == "harvest" and isinstance(kw.get("organ_name"), str):
+            return f"{gerund} the {get_organ_display_name(kw['organ_name'], species)}"
+        if base == "install":
+            key = getattr(kw.get("organ_item"), "key", None)
+            item_name = f"the {key}" if key else "an implant"
+            return f"{gerund} {item_name}" + (f" in {where}" if where else "")
+        if base in ("incise", "amputate", "suture") and where:
+            return f"{gerund} {where}"
+        return gerund
+    except Exception as exc:  # noqa: BLE001 -- prose, never a block on the drag
+        _log_guarded_failure("work_in_prose", target, exc)
+        return "the work"
+
+
 def take_patient_away(target, reason: str) -> Optional[Any]:
-    """The patient is physically removed from under the surgeon's hands (a
-    grapple-drag, #3669): the procedure on the body is interrupted with
-    *reason*, and the SURGEON'S channel is broken too -- it was the timer
-    for a body that is no longer there, and left running it would resolve
-    the procedure a room away (the drag broke only the victim's own
-    channel before). Different from a death on the table, where the
-    surgeon keeps working by ruling (#3368). Returns the surgeon told, or
-    None when nothing was in flight."""
+    """The patient is being carried off: interrupt the procedure on their
+    body AND break the surgeon's channel that is timing it (#3669).
+
+    A grapple-drag broke only the victim's channel (#2774, #3663); the
+    surgeon's kept running and resolved against a body a room away. The
+    channel is broken only when it is timing THIS record (its
+    ``procedure_token`` matches), so a surgeon already channeling
+    something unrelated keeps it.
+
+    Three audiences (#3681): the surgeon, the patient (who was never told
+    the work began and is told it ends), and the room, per observer. The
+    patient and room lines are sent BEFORE the move and only while the
+    surgeon and patient share a room, so they land where the operation
+    was happening and never describe instruments a room away.
+
+    Returns the surgeon told, or None when nothing was in flight.
+    """
     record = interrupt_procedure(target, reason=reason)
     if record is None:
         return None
@@ -632,14 +672,43 @@ def take_patient_away(target, reason: str) -> Optional[Any]:
     try:
         from world.channeled import channel_of, interrupt_channel
         chan = channel_of(surgeon)
-        # Only the channel that times THIS procedure: one the surgeon holds
-        # for another patient, or for something unrelated, is theirs to keep.
         if chan is not None and chan.get("procedure_token") == record.get("token"):
             interrupt_channel(surgeon, reason=reason)
-    except Exception:  # noqa: BLE001 -- the record is already cleared
-        pass
-    surgeon.msg(f"|yYour patient is hauled out from under your hands; "
-                f"the {record.get('verb', 'procedure')} is lost.|n")
+    except Exception as exc:  # noqa: BLE001
+        _log_guarded_failure("take_patient_away_channel", surgeon, exc)
+    work = _work_in_prose(record, target)
+    room = getattr(target, "location", None)
+    together = room is not None and room == getattr(surgeon, "location", None)
+    if surgeon == target:
+        surgeon.msg(f"|yYou are hauled off your own work mid-way through {work}; "
+                    f"the work is lost.|n")
+    elif together:
+        surgeon.msg(f"|yYour patient is hauled out from under your hands mid-way "
+                    f"through {work}; the work is lost.|n")
+    else:
+        surgeon.msg(f"|yYour patient is hauled off mid-way through {work}; "
+                    f"the work is lost.|n")
+    if not together:
+        return surgeon
+    try:
+        if surgeon != target:
+            target.msg(f"|r{capitalize_first(_possessive(surgeon, target))} instruments "
+                       f"leave you as you are hauled away mid-way through {work}.|n")
+        from world.identity_utils import msg_room_identity
+        if surgeon == target:
+            template = (f"{{patient}}'s own instruments come away as they are "
+                        f"hauled off mid-way through {work}.")
+        else:
+            template = (f"{{surgeon}}'s instruments come away as {{patient}} is "
+                        f"hauled out from under them mid-way through {work}.")
+        msg_room_identity(
+            location=room,
+            template=template,
+            char_refs={"surgeon": surgeon, "patient": target},
+            exclude=[surgeon, target],
+        )
+    except Exception as exc:  # noqa: BLE001 -- a line, never a block on the drag
+        _log_guarded_failure("take_patient_away_told", target, exc)
     return surgeon
 
 
