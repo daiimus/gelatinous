@@ -28,6 +28,7 @@ from evennia.utils.test_resources import EvenniaTest
 
 import world.gravity as gravity
 from world.channeled import begin_channel, channel_of
+from world.consent import grant_trust
 from world.combat.constants import (
     DB_FALLING, DB_GRAPPLED_BY_DBREF, DB_GRAPPLING_DBREF, FALL_DAMAGE_PER_STORY,
     NDB_COMBAT_HANDLER,
@@ -125,9 +126,10 @@ class TheDirectDrop(_EdgeDrag):
         self.assertIs(taken.call_args.args[0], self.victim)
 
     def test_a_hold_that_still_opens_is_spoken_and_nobody_is_told_they_fell(self):
-        # Refused even with the acts broken (an escort, say): the victim
-        # stays, unhurt, still in the fight; the jumper goes over alone at
-        # the full storey; both hear the hold open, the roof hears it too.
+        # Refused even with the acts broken (a refuser nothing here knows
+        # of): the victim stays, unhurt, still in the fight; the jumper
+        # goes over alone at the full storey; both hear the hold open, the
+        # roof hears it too, and the pairing is gone.
         self.victim.move_to = lambda *a, **kw: False
         self.descend(dest_is_sky=False)
         self.assertIs(self.victim.location, self.roof)
@@ -163,10 +165,13 @@ class TheDirectDrop(_EdgeDrag):
         # With hooks on, an escort would refuse the move; a body hauled
         # off a roof escorts nobody (gravity's rule for every companion).
         other = create_object("typeclasses.characters.Character", key="Other", location=self.roof)
+        grant_trust(other, self.victim, "escort")     # a real escort, not one consent ends
         self.victim.db.escorting = other
         self.descend(dest_is_sky=False)
         self.assertIs(self.victim.location, self.below)
         self.assertFalse(self.victim.db.escorting)
+        self.assertFalse(any("no longer follows" in t or "refuses them" in t for t in self.heard),
+                         self.heard)
 
 
 class TheTransit(_EdgeDrag):
@@ -178,6 +183,21 @@ class TheTransit(_EdgeDrag):
         self.assertFalse(channel_of(self.victim))
         self.assertEqual(getattr(self.victim.db, DB_FALLING, {}).get("led_by"), self.jumper)
         self.assertTrue(any("drags you off" in t for t in self.heard), self.heard)
+        # asked, not tried: no "you're busy" before being hauled anyway
+        self.assertFalse(any("busy" in t for t in self.heard), self.heard)
+
+    def test_an_escorting_victim_rides_the_fall_and_nobody_is_sent_at_the_edge(self):
+        other = create_object("typeclasses.characters.Character", key="Other", location=self.roof)
+        told_other = []
+        other.msg = lambda text=None, **kw: told_other.append(str(text))
+        grant_trust(other, self.victim, "escort")
+        self.victim.db.escorting = other
+        self.descend(dest_is_sky=True)
+        self.assertIs(self.victim.location, self.below)
+        self.assertIs(other.location, self.roof)
+        self.assertFalse(self.victim.db.escorting)
+        self.assertEqual(told_other, [], told_other)
+        self.assertFalse(any("refuses them" in t for t in self.heard), self.heard)
 
     def test_a_hold_that_still_opens_is_spoken_on_the_roof(self):
         self.victim.move_to = lambda *a, **kw: False
