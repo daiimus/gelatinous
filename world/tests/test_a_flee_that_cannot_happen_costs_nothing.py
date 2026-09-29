@@ -8,8 +8,11 @@ been removed from it, while standing where they were.
 
 Owner (2026-09-29, on #3685): "That makes sense." -- check first, charge
 second. The channel gate is asked at the top; a hold and a barred
-escortee before either contest; the move is made before anything is
-undone, and a refused move says nothing of a flight that did not happen.
+escortee before either contest; only then is the round's attempt
+counted. The move is made before combat is left (the fight lets go in
+the room it was in), and a refused move says nothing of a flight that
+did not happen. One thing ends before the move, after the price: a
+march of the very victim the fleer holds, which the flight gives up.
 
 Controls: a free fleer pays once and goes; the refusal lines the player
 reads are the gates' own.
@@ -202,6 +205,22 @@ class TheHoldGate(_AFleer):
         self._held = True
         return h
 
+    def test_a_march_of_the_held_victim_is_not_a_barred_escort(self):
+        # The gate exempts the held victim (the flight ends that march), so
+        # even at an exit the ward could never walk the fleer is not
+        # refused at the threshold and pays the price as usual.
+        self.exit.delete()
+        self.exit = create_object("typeclasses.exits.Exit", key="ledge", location=self.room1,
+                                  destination=self.room2)
+        self.exit.db.is_edge = True
+        self.fleer.db.stays_aloft = True
+        self.escorting()
+        h = self.holding()
+        self.flee()
+        self.roll.assert_called_once()
+        self.fled()
+        self.assertFalse(self.fleer.db.escorting)
+
     def test_a_fleer_marching_their_own_held_victim_still_flees_and_the_march_ends(self):
         # The fight refuses the held victim's walk at the door, so the
         # usher would refuse the fleer; the march stands on the hold the
@@ -250,6 +269,37 @@ class TheEscortGate(_AFleer):
         self.fled()
         self.assertEqual(self.ward.location, self.room2)
         self.assertEqual(self.fleer.db.escorting, self.ward)
+
+
+class TheFightLetsGoInItsOwnRoom(EvenniaCommandTest):
+    """`remove_combatant(..., room=)`: a fleer who has already left is
+    let go of in the room the fight was in."""
+
+    def test_the_exit_line_lands_in_the_room_named(self):
+        from world.combat.utils import remove_combatant
+        fighter, roof, street = self.char1, self.room1, self.room2
+        fighter.location = street                    # already gone
+        handler = mock.MagicMock()
+        handler._active_combatants_list = None     # a bare Mock here reads as a live round
+        handler.db.combatants = [{"char": fighter}]
+        with mock.patch("world.combat.utils.msg_room_identity") as room_line, \
+             mock.patch("world.combat.utils.cleanup_combatant_state"), \
+             mock.patch("world.llm.observation.observe_event") as noticed:
+            remove_combatant(handler, fighter, room=roof)
+        self.assertEqual(room_line.call_args.kwargs["location"], roof)
+        self.assertIn("steps back from the fight", room_line.call_args.kwargs["template"])
+        self.assertEqual(noticed.call_args.args[0], roof)
+
+    def test_control_without_a_room_the_line_lands_where_they_stand(self):
+        from world.combat.utils import remove_combatant
+        fighter = self.char1
+        handler = mock.MagicMock()
+        handler._active_combatants_list = None
+        handler.db.combatants = [{"char": fighter}]
+        with mock.patch("world.combat.utils.msg_room_identity") as room_line, \
+             mock.patch("world.combat.utils.cleanup_combatant_state"):
+            remove_combatant(handler, fighter)
+        self.assertEqual(room_line.call_args.kwargs["location"], fighter.location)
 
 
 class TheMoveIsChecked(_AFleer):

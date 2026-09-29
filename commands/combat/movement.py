@@ -422,9 +422,17 @@ class CmdFlee(Command):
         # An escortee the usher would walk at an exit that refuses every
         # walker (an edge or a way into air, for a fleer who can stay up
         # and so keeps such exits in their pool): the real usher walks
-        # them now, is refused, and says so -- before any price.
+        # them now, is refused, and says so -- before any price. Not for
+        # a march of the very victim the fleer holds: the flight itself
+        # ends that march (below, after the price), as the leap does.
+        held = None
+        if original_handler_at_flee_start and caller_entry:
+            from world.combat.grappling import get_grappling_target
+            held = get_grappling_target(original_handler_at_flee_start, caller_entry)
         from world.movement_coupling import escort_barred_at, usher_escortee
-        if escort_barred_at(caller, destination) is not None and not usher_escortee(caller, destination):
+        if (escort_barred_at(caller, destination) is not None
+                and not (held is not None and caller.db.escorting == held)
+                and not usher_escortee(caller, destination)):
             splattercast.msg(f"{DEBUG_PREFIX_FLEE}_REFUSED_AT_THRESHOLD: {caller.key}'s escortee is barred at {chosen_exit.key}; nothing paid")
             return
 
@@ -531,8 +539,6 @@ class CmdFlee(Command):
             # held victim at the door, where the fight refuses them, and
             # refuse the fleer. It ends here, after the price, as it ended
             # on its own when leaving combat came before the move (#3687).
-            from world.combat.grappling import get_grappling_target
-            held = get_grappling_target(original_handler_at_flee_start, caller_entry)
             if held is not None and caller.db.escorting == held:
                 caller.db.escorting = None
                 caller.msg(f"You stop leading {held.get_display_name(caller)}; the flight needs your hands.")

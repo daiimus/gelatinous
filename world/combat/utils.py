@@ -929,12 +929,14 @@ def remove_combatant(handler, char, room=None):
                      and char.is_dead())
         conscious = not (callable(getattr(char, "is_unconscious", None))
                          and char.is_unconscious())
+        # The room the fight was in: the character's own, unless they have
+        # already left it (a flee moves first, #3687).
+        where = room if room is not None else getattr(char, "location", None)
         # NPC perception (#954): bystander brains remember how they left
         try:
             from world.llm.observation import combat_exit_line, observe_event
             state = ("dead" if not alive
                      else "unconscious" if not conscious else "walked")
-            where = room if room is not None else getattr(char, "location", None)
             observe_event(where,
                           combat_exit_line(char, state),
                           sound=(None if state == "walked"
@@ -946,7 +948,6 @@ def remove_combatant(handler, char, room=None):
                                    "someone_down", exclude=(char,))
         except Exception:  # noqa: BLE001
             pass
-        where = room if room is not None else getattr(char, "location", None)
         if alive and conscious and where:
             # No local import here: one made `msg_room_identity` local to
             # the whole function and the retarget announcement above

@@ -184,9 +184,15 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 > speak for themselves: the channel gate (`refuse_if_channeling`), a hold
 > on the fleer, and an escortee the usher would walk at an exit that
 > refuses every walker (`escort_barred_at`, then the real
-> `usher_escortee`). Only then are the contests paid, and the move is
-> made before anything is undone: a refused move leaves the body where
-> and as it was and says nothing of a flight that did not happen.
+> `usher_escortee`). Only then is the round's flee attempt counted (a
+> refused flee is no attempt, so it cannot spend a token no round would
+> clear), and only then are the contests paid. The move is made before
+> combat is left, and the fight lets go of the fleer in the room it was
+> in (`remove_combatant(..., room=)`), not the one they ran to; a refused
+> move leaves the body where and as it was and says nothing of a flight
+> that did not happen. One thing does end before the move, after the
+> price: a march of the very victim the fleer holds, which the flight
+> gives up (as the gap jump does, #3684).
 >
 > * `break_aim_lock(caller, *, bonus=0, label=None)` — the
 >   Motorics-vs-Motorics roll that breaks an aimer's lock, with the
