@@ -98,9 +98,10 @@ from world.identity import get_apparent_uid
 
 CHARACTER = "typeclasses.characters.Character"
 
-#: The five phases the four doors speak through.
+#: The phases the doors speak through (five from #3615; the edge drag's
+#: opened hold, #3668, joined them).
 NEW_PHASES = ("release_charge", "release_charge_away", "release_jump",
-              "release_blast", "release_intent")
+              "release_blast", "release_intent", "release_edge")
 
 #: A hold lost, or about to be: the accessor's grapple override paints
 #: all five yellow, the colour a failed grapple already wore.
@@ -628,6 +629,7 @@ class TestTheRetiredSentencesAreGoneFromTheDoors(TestCase):
         for path, phase in (
                 ("commands/combat/jump.py", "release_jump"),
                 ("commands/combat/jump.py", "release_blast"),
+                ("commands/combat/jump.py", "release_edge"),
                 ("commands/combat/movement.py", "release_intent"),
                 ("world/combat/movement_resolution.py", "release_charge"),
                 ("world/combat/movement_resolution.py",

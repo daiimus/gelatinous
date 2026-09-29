@@ -30,7 +30,9 @@ def drag_victim_to(victim, room):
 
     The walk door (`Exit.at_traverse`) and the advance door
     (`_do_advance_move`). The jump drag keeps hooks ON so gravity and
-    posture run there on their own.
+    posture run there on their own, and breaks the victim's acts through
+    the same `break_victim_acts` once the jumper's own gates have been
+    asked (#3668).
 
     The victim's move runs with hooks OFF, deliberately: `at_pre_move`
     would refuse a channeling victim, and refusing the move would make
@@ -58,16 +60,7 @@ def drag_victim_to(victim, room):
     it with their own channel, and breaking that channel first would clear
     the record before anyone could be told about it (#3681).
     """
-    try:
-        from world.medical.procedures import take_patient_away
-        take_patient_away(victim, reason="the patient was dragged away")
-    except Exception:  # noqa: BLE001 -- never block a drag on this
-        pass
-    try:
-        from world.channeled import interrupt_channel
-        interrupt_channel(victim)
-    except Exception:  # noqa: BLE001 -- never block a drag on this
-        pass
+    break_victim_acts(victim, "the patient was dragged away")
     moved = victim.move_to(room, quiet=True, move_hooks=False)
     if not moved or victim.location != room:
         return False
@@ -77,6 +70,26 @@ def drag_victim_to(victim, room):
             or (victim.db.posture and victim.db.posture != "standing")):
         clear()
     return True
+
+
+def break_victim_acts(victim, reason: str) -> None:
+    """A body being hauled keeps nothing it was doing: the procedure on it
+    ends first (a self-surgeon's channel IS that procedure's timer, #3681),
+    then its own channel (BREAKING, not BLOCKED: a hold is not something a
+    channel can refuse, #2774). Shared by every drag door -- the walk, the
+    combat move and the edge (#3668) -- and never blocks the drag.
+    """
+    from .debug import get_splattercast
+    try:
+        from world.medical.procedures import take_patient_away
+        take_patient_away(victim, reason=reason)
+    except Exception as exc:  # noqa: BLE001 -- never block a drag on this
+        get_splattercast().msg(f"DRAG_BREAK_FAILED: procedure on {victim.key}: {exc!r}")
+    try:
+        from world.channeled import interrupt_channel
+        interrupt_channel(victim)
+    except Exception as exc:  # noqa: BLE001 -- never block a drag on this
+        get_splattercast().msg(f"DRAG_BREAK_FAILED: channel of {victim.key}: {exc!r}")
 
 
 def get_grappling_target(combat_handler, combatant_entry):
@@ -348,7 +361,7 @@ def validate_grapple_action(combat_handler, character, action_name):
 # ===================================================================
 
 def speak_grapple_beat(actor, target, phase, *, audiences=("actor", "victim", "room"),
-                       **extra_chars):
+                       room=None, **extra_chars):
     """Tell the three parties one grapple beat from the authored bank
     (`world/combat/messages/grapple.py`): the actor's line, the
     victim's, and the room's per-observer template, exactly as the
@@ -357,7 +370,10 @@ def speak_grapple_beat(actor, target, phase, *, audiences=("actor", "victim", "r
     through it. `hit_location` is where the hold landed, chosen the way
     an attack chooses it. A third party a line names -- the one the
     actor charges, say -- comes in as `charge_target=obj` and renders
-    per audience. `audiences` narrows delivery (a preview is actor-only)."""
+    per audience. `audiences` narrows delivery (a preview is actor-only).
+    `room` names the room that hears it when the actor has already left
+    the scene of the beat (a hold that opens at an edge the jumper has
+    gone over, #3668); by default the actor's own room."""
     from .messages import get_combat_message
     extra = {"audiences": tuple(audiences)}
     if extra_chars:
@@ -376,9 +392,10 @@ def speak_grapple_beat(actor, target, phase, *, audiences=("actor", "victim", "r
     if "victim" in audiences and msgs.get("victim_msg"):
         target.msg(msgs["victim_msg"])
     template = msgs.get("observer_template") or ""
-    if "room" in audiences and template and actor.location:
+    where = room if room is not None else actor.location
+    if "room" in audiences and template and where:
         msg_room_identity(
-            location=actor.location,
+            location=where,
             template=template,
             char_refs=msgs["observer_char_refs"],
             exclude=[actor, target],

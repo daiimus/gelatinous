@@ -456,6 +456,18 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s grip on {target_name} opens; the edge has their attention now."
         },
     ],
+    "release_edge": [  # Action: a dragged victim cannot be taken over the edge (#3668)
+        {
+            "attacker_msg": "Your grip on {target_name} gives at the edge; you go over alone.",
+            "victim_msg": "{attacker_name}'s grip on you gives at the edge; they go over alone.",
+            "observer_msg": "{attacker_name}'s grip on {target_name} gives at the edge; {attacker_name} goes over alone."
+        },
+        {
+            "attacker_msg": "Your hold on {target_name} opens at the lip; the drop takes only you.",
+            "victim_msg": "{attacker_name}'s hold on you opens at the lip; the drop takes only them.",
+            "observer_msg": "{attacker_name}'s hold on {target_name} opens at the lip; the drop takes only {attacker_name}."
+        },
+    ],
     "release_blast": [
         {
             "attacker_msg": "The blast tears {target_name} out of your arms!",
