@@ -490,14 +490,16 @@ class CombatHandler(DefaultScript):
         """
         add_combatant(self, char, target, initial_grappling, initial_grappled_by, initial_is_yielding, ambush_bonus=ambush_bonus)
 
-    def remove_combatant(self, char):
+    def remove_combatant(self, char, room=None):
         """
         Remove a character from combat and clean up their state.
-        
+
         Args:
             char: The character to remove from combat
+            room: the room the fight was in, if the character has already
+                left it (see ``world.combat.utils.remove_combatant``)
         """
-        remove_combatant(self, char)
+        remove_combatant(self, char, room=room)
 
     def _cleanup_combatant_state(self, char, entry):
         """

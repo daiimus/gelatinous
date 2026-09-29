@@ -89,6 +89,10 @@ class TestInsideARoundTheLimitStillHolds(_FleeCase):
     def _in_combat(self):
         handler = mock.MagicMock()
         handler.db.combatants = [{"char": self.char}]
+        # A bare MagicMock answers every lookup with a truthy Mock, which
+        # would read as "grappled" at flee's hold gate (#3687); this fleer
+        # is in a fight, held by nobody.
+        handler.get_grappled_by_obj.return_value = None
         setattr(self.char.ndb, NDB_COMBAT_HANDLER, handler)
         return handler
 

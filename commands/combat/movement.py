@@ -35,6 +35,7 @@ from world.combat.utils import (
     get_highest_opponent_stat, get_numeric_stat, filter_valid_opponents,
     standard_roll, clear_aim_state, get_wielded_weapon,
 )
+from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 
 
@@ -256,7 +257,18 @@ class CmdFlee(Command):
     def func(self):
         caller = self.caller
         splattercast = get_splattercast()
-        
+
+        # BLOCKED while channeling (CHANNELED_ACTIONS_SPEC §2.2): fleeing
+        # is movement. Asked first -- before the round-scoped attempt flag,
+        # before the exits are weighed, before either contest is paid --
+        # so a flee that cannot happen costs nothing (#3687, the flee half
+        # of #3685): a channeling fleer is told to stop first, and nobody
+        # gets a free shot at a body that never leaves.
+        from world.channeled import refuse_if_channeling
+        if refuse_if_channeling(caller):
+            splattercast.msg(f"{DEBUG_PREFIX_FLEE}_REFUSED_AT_THRESHOLD: {caller.key} is channeling; nothing paid")
+            return
+
         original_handler_at_flee_start = getattr(caller.ndb, NDB_COMBAT_HANDLER, None)
         # This is the specific character who has an NDB-level aim lock on the caller.
         # This aimer could be in the same room or an adjacent one.
@@ -289,10 +301,9 @@ class CmdFlee(Command):
             caller.ndb.flee_attempted_this_round = False
             splattercast.msg(f"{DEBUG_PREFIX_FLEE}_STALE_CLEARED: {caller.key} had a flee flag with no combat or aimer; cleared.")
 
-        if in_a_round:
-            # Set flee attempt flag to prevent spam within the same round
-            caller.ndb.flee_attempted_this_round = True
-            splattercast.msg(f"{DEBUG_PREFIX_FLEE}_ATTEMPT: {caller.key} marked as having attempted flee this round.")
+        # (The round's attempt flag is set further down, once every gate
+        # has passed: a refused flee is not an attempt, #3687 -- and for
+        # an aimed fleer with no fight, no round would ever clear it.)
 
         # --- PRE-FLEE SAFETY CHECK: PINNED BY RANGED TARGETERS IN ADJACENT ROOMS ---
         # An edge, a gap or a way into air is not a way to flee for anyone
@@ -362,6 +373,74 @@ class CmdFlee(Command):
             splattercast.msg(f"{DEBUG_PREFIX_FLEE}_DEBUG ({caller.key}): 'Nothing to flee from' condition met (post-safety-check).")
             return
 
+        # The way out is chosen BEFORE anything is paid (#3687), so the
+        # fleer's own gates can be asked first: a hold on them, and an
+        # escortee the usher would walk at an exit that refuses every
+        # walker. A flee that cannot happen costs nothing -- no aim
+        # contest, no disengage roll, no free shot at a body that never
+        # leaves. (A walk through a plain door can still be refused inside
+        # the move for a reason nothing predicts, a lock say; then the
+        # move is simply not made, and nothing is said of a flight that
+        # did not happen.)
+        caller_entry = None
+        if original_handler_at_flee_start:
+            caller_entry = next((e for e in original_handler_at_flee_start.db.combatants if e["char"] == caller), None)
+            if caller_entry:
+                # Held: can't flee while grappled -- asked before any price.
+                grappled_by_char = original_handler_at_flee_start.get_grappled_by_obj(caller_entry)
+                if grappled_by_char:
+                    caller.msg(f"|rYou cannot flee while {grappled_by_char.get_display_name(caller)} is grappling you! Try to escape the grapple first.|n")
+                    splattercast.msg(f"{DEBUG_PREFIX_FLEE}_BLOCKED: {caller.key} cannot flee while grappled by {grappled_by_char.key}.")
+                    return
+
+        pool = available_exits
+        if original_handler_at_flee_start and caller_entry:
+            # Prefer an exit that leads away from ranged targeters (the
+            # pre-check above proved at least one exists; this narrows to it).
+            safe_exits = []
+            for exit_obj in available_exits:
+                destination = exit_obj.destination
+                if destination:
+                    is_safe = True
+                    for char_in_dest in destination.contents:
+                        if char_in_dest == caller or not hasattr(char_in_dest, "ndb"):
+                            continue
+                        other_handler = getattr(char_in_dest.ndb, NDB_COMBAT_HANDLER, None)
+                        if other_handler and other_handler.db.combat_is_running:
+                            other_entry = next((e for e in (other_handler.db.combatants or []) if e["char"] == char_in_dest), None)
+                            if other_entry and original_handler_at_flee_start.get_target_obj(other_entry) == caller:
+                                other_weapon = get_wielded_weapon(char_in_dest)
+                                if other_weapon and other_weapon.db.is_ranged:
+                                    is_safe = False
+                                    break
+                    if is_safe:
+                        safe_exits.append(exit_obj)
+            pool = safe_exits or available_exits
+        chosen_exit = choice(pool)
+        destination = chosen_exit.destination
+
+        # An escortee the usher would walk at an exit that refuses every
+        # walker (an edge, a gap or a way into air, for a fleer who can
+        # stay up and so keeps such exits in their pool): the real usher walks
+        # them now, is refused, and says so -- before any price. Not for
+        # a march of the very victim the fleer holds: the flight itself
+        # ends that march (below, after the price), as the leap does.
+        held = None
+        if original_handler_at_flee_start and caller_entry:
+            from world.combat.grappling import get_grappling_target
+            held = get_grappling_target(original_handler_at_flee_start, caller_entry)
+        from world.movement_coupling import escort_barred_at, usher_escortee
+        if (escort_barred_at(caller, destination) is not None
+                and not (held is not None and caller.db.escorting == held)
+                and not usher_escortee(caller, destination)):
+            splattercast.msg(f"{DEBUG_PREFIX_FLEE}_REFUSED_AT_THRESHOLD: {caller.key}'s escortee is barred at {chosen_exit.key}; nothing paid")
+            return
+
+        # Every gate has passed: this is the round's attempt.
+        if in_a_round:
+            caller.ndb.flee_attempted_this_round = True
+            splattercast.msg(f"{DEBUG_PREFIX_FLEE}_ATTEMPT: {caller.key} marked as having attempted flee this round.")
+
         # --- Part 1: Attempt to break an NDB-level aim lock ---
         # `current_aimer_for_break_attempt` is used locally for this part.
         # It starts as the NDB aimer and can be set to None if the aim is broken.
@@ -380,34 +459,26 @@ class CmdFlee(Command):
         # --- Part 2: Combat Disengagement and Movement ---
         # If we reach here, any aim locks have been handled. Now attempt to flee from combat.
         splattercast.msg(f"{DEBUG_PREFIX_FLEE}_COMBAT_PHASE: {caller.key} attempting to disengage from combat.")
-        
+
         # If we successfully broke an aim but have no combat handler, just move to safety
         if aim_successfully_broken and not original_handler_at_flee_start:
-            chosen_exit = choice(available_exits)
-            destination = chosen_exit.destination
-
-            # Captured BEFORE the move. This used to read
-            # `caller.previous_location`, which is assigned nowhere in the
-            # repo and is not a `DefaultObject` attribute either -- so the
-            # `hasattr` guard below was always False and the departure
-            # line never printed. The move is deliberately `quiet=True`,
-            # so that broadcast was the ONLY thing the room they left
-            # would have seen: bystanders watched them vanish while the
-            # destination announced an arrival, which reads as a teleport
-            # (#2424). The in-combat branch of this same function does it
-            # this way already.
+            # Captured BEFORE the move (#2424): the move is `quiet=True`, so
+            # this broadcast is the only thing the room they left sees.
             old_location = caller.location
 
-            # Move to the chosen exit
-            caller.move_to(destination, quiet=True)
-            
+            # The move, checked: a refused move (an escort a plain door
+            # turns away) is not a flight, and says nothing of one (#3687).
+            if not caller.move_to(destination, quiet=True):
+                splattercast.msg(f"{DEBUG_PREFIX_FLEE}_REFUSED_MOVE: {caller.key} could not leave {old_location.key} via {chosen_exit.key}")
+                return
+
             # Check for rigged grenades after successful movement
             from commands.explosion_utils import check_rigged_grenade, check_auto_defuse
             check_rigged_grenade(caller, chosen_exit)
-            
+
             # Check for auto-defuse opportunities after fleeing to new room
             check_auto_defuse(caller)
-            
+
             # Messages
             caller.msg(f"|gYou successfully flee {chosen_exit.key} to {destination.key}!|n")
             msg_room_identity(
@@ -416,7 +487,7 @@ class CmdFlee(Command):
                 char_refs={"actor": caller},
                 exclude=[caller],
             )
-            
+
             # Message the room they left
             if old_location and old_location != destination:
                 msg_room_identity(
@@ -424,28 +495,18 @@ class CmdFlee(Command):
                     template=f"|y{{actor}} flees {chosen_exit.key}!|n",
                     char_refs={"actor": caller},
                 )
-            
+
             splattercast.msg(f"{DEBUG_PREFIX_FLEE}_SUCCESS: {caller.key} successfully fled after breaking aim via {chosen_exit.key} to {destination.key}.")
             return
-        
+
         if original_handler_at_flee_start:
-            # Character is in combat - attempt to disengage
-            caller_entry = next((e for e in original_handler_at_flee_start.db.combatants if e["char"] == caller), None)
             if not caller_entry:
                 # This shouldn't happen if ndb.combat_handler is properly managed
                 caller.msg("Your combat state seems confused. Moving freely.")
                 splattercast.msg(f"{DEBUG_PREFIX_FLEE}_ERROR: {caller.key} has combat handler but no entry.")
-                destination = choice(available_exits).destination
                 caller.move_to(destination)
                 return
-                
-            # Check if grappled - can't flee while grappled
-            grappled_by_char = original_handler_at_flee_start.get_grappled_by_obj(caller_entry)
-            if grappled_by_char:
-                caller.msg(f"|rYou cannot flee while {grappled_by_char.get_display_name(caller)} is grappling you! Try to escape the grapple first.|n")
-                splattercast.msg(f"{DEBUG_PREFIX_FLEE}_BLOCKED: {caller.key} cannot flee while grappled by {grappled_by_char.key}.")
-                return
-                
+
             # Attempt to disengage from combat: the opposed roll against
             # the best-Motorics opponent targeting the caller, shared with
             # the jump verbs (#3591). Flee keeps its own consequence on a
@@ -465,62 +526,53 @@ class CmdFlee(Command):
                         exclude=[caller] + opponents_targeting_caller,
                     )
                     splattercast.msg(f"{DEBUG_PREFIX_FLEE}_DISENGAGE_FAIL: {caller.key} failed to disengage from combat.")
-                    
+
                     # Apply flee failure penalty (skip next turn)
                     setattr(caller.ndb, NDB_SKIP_ROUND, True)
                     caller.msg("|rYour failed escape attempt leaves you vulnerable!|n")
                     return
-            
-            # Successfully disengaged (or no opponents targeting) - choose exit and move
-            safe_exits = []
-            for exit_obj in available_exits:
-                destination = exit_obj.destination
-                if destination:
-                    # Check if this exit leads away from ranged targeters (already done in pre-check, but double-check)
-                    is_safe = True
-                    for char_in_dest in destination.contents:
-                        if char_in_dest == caller or not hasattr(char_in_dest, "ndb"):
-                            continue
-                        other_handler = getattr(char_in_dest.ndb, NDB_COMBAT_HANDLER, None)
-                        if other_handler and other_handler.db.combat_is_running:
-                            other_entry = next((e for e in (other_handler.db.combatants or []) if e["char"] == char_in_dest), None)
-                            if other_entry and original_handler_at_flee_start.get_target_obj(other_entry) == caller:
-                                other_hands = getattr(char_in_dest, "hands", {})
-                                other_weapon = get_wielded_weapon(char_in_dest)
-                                if other_weapon and other_weapon.db.is_ranged:
-                                    is_safe = False
-                                    break
-                    if is_safe:
-                        safe_exits.append(exit_obj)
-            
-            if not safe_exits:
-                safe_exits = available_exits  # Fallback to any exit if none are "safe"
-                
-            chosen_exit = choice(safe_exits)
-            destination = chosen_exit.destination
-            
-            # Remove from combat before moving (this also clears proximity)
-            original_handler_at_flee_start.remove_combatant(caller)
-            
-            # Clear aim states before moving (consistent with traversal)
+
+            # A march of the very person held: `escort` needs no consent
+            # from a restrained escortee, so a fleer can be escorting the
+            # victim they grapple. The flight gives up the hold (leaving
+            # combat breaks it), and the usher would otherwise walk the
+            # held victim at the door, where the fight refuses them, and
+            # refuse the fleer. It ends here, after the price -- as a march
+            # held by restraint alone used to lapse on its own once leaving
+            # combat broke the hold before the move; one the victim had also
+            # trusted did not, and now ends the same way (#3687).
+            if held is not None and caller.db.escorting == held:
+                caller.db.escorting = None
+                caller.msg(f"You stop leading {held.get_display_name(caller)}; the flight needs your hands.")
+                held.msg(f"{capitalize_first(caller.get_display_name(held))} stops leading you.")
+                splattercast.msg(f"{DEBUG_PREFIX_FLEE}_MARCH_ENDS: {caller.key} stops escorting {held.key} to flee")
+
+            # Successfully disengaged (or no opponents targeting): the move
+            # FIRST, then out of combat -- a refused move (an escort a plain
+            # door turns away) leaves the fleer where and as they were, and
+            # says nothing of a flight that did not happen (#3687).
+            old_location = caller.location
+            if not caller.move_to(destination, quiet=True):
+                splattercast.msg(f"{DEBUG_PREFIX_FLEE}_REFUSED_MOVE: {caller.key} could not leave {old_location.key} via {chosen_exit.key}")
+                return
+
+            # Out of combat (this also clears proximity); the fight lets go
+            # of them in the room it was in, not the one they ran to.
+            original_handler_at_flee_start.remove_combatant(caller, room=old_location)
+
+            # Clear aim states (consistent with traversal)
             if hasattr(caller, "clear_aim_state"):
                 caller.clear_aim_state(reason_for_clearing="as you flee")
             else:
                 clear_aim_state(caller)
-            
-            # Capture old location before moving for departure message
-            old_location = caller.location
-            
-            # Move to the chosen exit
-            caller.move_to(destination, quiet=True)
-            
+
             # Check for rigged grenades after successful movement
             from commands.explosion_utils import check_rigged_grenade, check_auto_defuse
             check_rigged_grenade(caller, chosen_exit)
-            
+
             # Check for auto-defuse opportunities after fleeing to new room
             check_auto_defuse(caller)
-            
+
             # Messages
             caller.msg(f"|gYou successfully flee {chosen_exit.key} to {destination.key}!|n")
             msg_room_identity(
@@ -529,7 +581,7 @@ class CmdFlee(Command):
                 char_refs={"actor": caller},
                 exclude=[caller],
             )
-            
+
             # Message the room they left
             if old_location and old_location != destination:
                 msg_room_identity(
@@ -537,9 +589,9 @@ class CmdFlee(Command):
                     template=f"|y{{actor}} flees {chosen_exit.key}!|n",
                     char_refs={"actor": caller},
                 )
-            
+
             splattercast.msg(f"{DEBUG_PREFIX_FLEE}_SUCCESS: {caller.key} successfully fled via {chosen_exit.key} to {destination.key}.")
-            
+
         else:
             # No combat handler and no aim was broken - this means nothing to flee from
             caller.msg("You have nothing to flee from.")
