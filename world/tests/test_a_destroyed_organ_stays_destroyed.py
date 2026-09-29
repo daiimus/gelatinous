@@ -234,6 +234,32 @@ class TheHealers(EvenniaTest):
         again = T.apply_wound_care(self.char1, self.char2, self._gauze(), "abdomen")
         self.assertEqual(again.get("no_op_reason"), "already_stabilized")
 
+    def test_dressing_the_face_closes_the_heads_bleed(self):
+        # The nose shows at the face but lives in the head, and its bleed is
+        # filed under "head": a dressing named at the face must close THAT.
+        from world.medical.conditions import BleedingCondition
+        nose = self.state.organs["nose"]
+        nose.current_hp = 0
+        self.state.add_condition(BleedingCondition(8, location="head"))
+        result = T.apply_wound_care(self.char1, self.char2, self._gauze(), "face")
+        self.assertIsNone(result.get("no_op_reason"), result["messages"])
+        self.assertEqual([c for c in self.state.conditions if isinstance(c, BleedingCondition)], [],
+                         "the head's bleed was left held by the nose's flag")
+        self.assertTrue(any("head" in m and "closes the site" in m for m in result["messages"]), result["messages"])
+
+    def test_a_mixed_site_closes_once_its_last_healable_organ_is_whole(self):
+        from world.medical.conditions import BleedingCondition
+        self.state.organs["liver"].current_hp = 0
+        stomach = self.state.organs["stomach"]
+        stomach.current_hp = 3
+        self.state.add_condition(BleedingCondition(8, location="abdomen"))
+        T.apply_wound_care(self.char1, self.char2, self._gauze(), "abdomen")
+        self.assertTrue([c for c in self.state.conditions if isinstance(c, BleedingCondition)],
+                        "control: the stomach's bleed is held, not removed")
+        stomach.heal(stomach.max_hp)                       # the tick finishes the stomach
+        self.assertEqual([c for c in self.state.conditions if isinstance(c, BleedingCondition)], [],
+                         "the liver's stale flag held the bleed after the stomach healed")
+
     def test_a_new_wound_reopens_a_site_a_destroyed_organ_kept_flagged(self):
         from world.medical.conditions import BleedingCondition
         liver = self.state.organs["liver"]

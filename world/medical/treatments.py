@@ -445,20 +445,20 @@ def apply_wound_care(actor, target, item, location: str) -> dict:
     result["messages"].append(
         f"The wound at {location.replace('_', ' ')} is stabilized."
     )
-    # A site where nothing can heal further is CLOSED by the dressing: the
-    # held bleed would otherwise never resume (an organ that heals to full
-    # is what lifts a hold) and its condition would keep the medical
-    # script ticking forever (#3679 review). The location's other harm,
-    # a stale flag holding the NEXT wound there, is cleared where the next
-    # wound lands (`MedicalState.take_organ_damage`).
-    if state is not None and beyond_repair and len(beyond_repair) == len(wounded_organs):
-        from world.medical.conditions import BleedingCondition
-        for cond in _conditions_at_location(state, location, BleedingCondition):
-            state.remove_condition(cond)
-        result["messages"].append(
-            f"Nothing at {location.replace('_', ' ')} will heal further; "
-            f"the dressing closes the site and the bleeding stops."
-        )
+    # A site where nothing can heal further is CLOSED by the dressing (the
+    # decision is the state's, per CONTAINER -- bleeds are filed there,
+    # whatever surface the player named; "face" is the nose's display, its
+    # bleed sits under "head"). The location's other harm, a stale flag
+    # holding the NEXT wound there, is cleared where the next wound lands
+    # (`MedicalState.take_organ_damage`).
+    if state is not None and beyond_repair:
+        closed = sorted({o.container for o in wounded_organs
+                         if state.close_site_if_spent(o.container)})
+        for container in closed:
+            result["messages"].append(
+                f"Nothing at {container.replace('_', ' ')} will heal further; "
+                f"the dressing closes the site and the bleeding stops."
+            )
 
     # PR-C: ensure the medical script is running so the healing
     # tick can fire.  Idempotent — returns the existing script if

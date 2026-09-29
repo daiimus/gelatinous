@@ -394,6 +394,10 @@ class Organ:
             # dressing has served its purpose and a future re-injury
             # starts undressed.
             self.dressing_rate = 0
+            # The last healable organ at a mixed site is whole: if what is
+            # left there can never heal, the site closes (#3253).
+            if state is not None:
+                state.close_site_if_spent(self.container)
         
         return self.current_hp - old_hp
         
@@ -788,6 +792,33 @@ class MedicalState:
             if getattr(getattr(character, "db", None), "decapitation_pending", False):
                 return True
         return organ.current_hp <= 0 and not organ_is_bone(organ)
+
+    def close_site_if_spent(self, container) -> bool:
+        """A dressed site where NOTHING can heal further is closed: its
+        bleed conditions are removed rather than held for good.
+
+        A hold is lifted by an organ healing to full, and an organ that is
+        beyond repair never does, so a held bleed there would keep the
+        medical script ticking forever (#3679 review). Asked by the
+        dressing, per CONTAINER (bleeds are filed under the organ's
+        container, whatever surface the player named), and again whenever
+        an organ at the site heals to full, so a mixed site closes once its
+        last healable organ is whole. Returns whether the site was closed."""
+        wounded = [o for o in self.organs.values()
+                   if getattr(o, "container", None) == container
+                   and o.current_hp < o.max_hp]
+        if not wounded:
+            return False
+        if not all(self.organ_beyond_repair(o.name) for o in wounded):
+            return False
+        if not any(getattr(o, "stabilized", False) for o in wounded):
+            return False                     # not dressed yet: the bleed is the wound's own
+        from world.medical.conditions import BleedingCondition
+        bleeds = [c for c in list(self.conditions)
+                  if isinstance(c, BleedingCondition) and c.location == container]
+        for cond in bleeds:
+            self.remove_condition(cond)
+        return True
 
     def full_heal(self):
         """Complete medical restoration of PRESENT anatomy (#526
