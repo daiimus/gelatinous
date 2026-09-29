@@ -9,13 +9,16 @@ was told they fell, took the bodyshield damage and left combat while the
 jumper landed below; in transit the channel simply excused them from the
 ride, the grapple immunity #2774 rejected for the door drags.
 
-Now both branches break the victim's acts first (procedure, then channel,
-the door drags' own breaker), move the victim before the jumper so a hold
-that still opens is spoken of on the roof, and put the victim back when
-the jumper's own move is refused.
+Now the direct drop moves the JUMPER first, so a refused jump touches the
+victim not at all, and only then breaks the victim's acts (procedure,
+then channel, the door drags' own breaker, and their escort, gravity's
+rule) before moving them; transit, which needs the companion in the cell
+first, tries the move as they are and breaks the acts only when refused.
+A move still refused opens the hold: the pairing is broken and the beat
+is spoken to the roof.
 
 Controls: an undisturbed drag lands both; a refused jumper leaves both
-on the roof with nothing said.
+on the roof with nothing said and the victim's act intact.
 """
 from contextlib import ExitStack
 from unittest import mock
@@ -93,6 +96,10 @@ class _EdgeDrag(EvenniaTest):
     def removed_from_combat(self):
         return [c.args[0] for c in self.handler.remove_combatant.call_args_list]
 
+    def grapple_refs(self):
+        entries = self.handler.db.combatants
+        return (entries[0].get(DB_GRAPPLING_DBREF), entries[1].get(DB_GRAPPLED_BY_DBREF))
+
 
 class TheDirectDrop(_EdgeDrag):
 
@@ -130,25 +137,36 @@ class TheDirectDrop(_EdgeDrag):
         self.assertEqual(self.hurt(self.victim), 0)
         self.assertEqual(self.hurt(self.jumper), FALL_DAMAGE_PER_STORY)
         self.assertFalse(any("cushion" in t for t in self.said), self.said)
-        self.assertTrue(any("tears free" in t or "opens at the lip" in t for t in self.said), self.said)
-        self.assertTrue(any("tear free" in t or "opens at the lip" in t for t in self.heard), self.heard)
-        self.assertEqual(self.room_beat.call_args.kwargs["location"], self.roof)
+        self.assertTrue(any("gives at the edge" in t or "opens at the lip" in t for t in self.said), self.said)
+        self.assertTrue(any("gives at the edge" in t or "opens at the lip" in t for t in self.heard), self.heard)
+        self.assertEqual(self.room_beat.call_args.kwargs["location"], self.roof,
+                         "the roof, not the street the jumper landed in, hears the hold open")
+        self.assertEqual(self.grapple_refs(), (None, None), "the pairing outlived the hold")
         self.assertNotIn(self.victim, self.removed_from_combat())
         self.assertIn(self.jumper, self.removed_from_combat())
 
     def test_control_a_refused_jumper_leaves_both_on_the_roof_saying_nothing(self):
-        # The jumper's own channel refuses THEIR move (the real gate), after
-        # the victim has already been set down below: the victim comes back.
+        # The jumper's own channel refuses THEIR move (the real gate). The
+        # victim, who goes second, is never touched: still channeling,
+        # nothing heard, not even an arrival look.
         self.channeling(self.jumper)
+        self.channeling(self.victim)
         self.descend(dest_is_sky=False)
         self.assertIs(self.jumper.location, self.roof)
         self.assertIs(self.victim.location, self.roof)
-        # Only the gate's own refusal reaches the jumper; no leap, no drag.
-        # The victim hears nothing but the auto-look of the hooked move
-        # down and back (the transit branch's own put-back pattern).
         self.assertEqual(self.said, ["You're busy spraying — 'stop' first."], self.said)
-        narrated = [t for t in self.heard if "'type': 'look'" not in t]
-        self.assertEqual(narrated, [], narrated)
+        self.assertEqual(self.heard, [], self.heard)
+        self.assertTrue(channel_of(self.victim), "a refused jump cost the victim their act")
+
+    def test_an_escorting_victim_is_dragged_off_all_the_same(self):
+        # With hooks on, an escort would refuse the move; a body hauled
+        # off a roof escorts nobody (gravity's rule for every companion).
+        other = create_object("typeclasses.characters.Character", key="Other", location=self.roof)
+        self.victim.db.escorting = other
+        self.descend(dest_is_sky=False)
+        self.assertIs(self.victim.location, self.below)
+        self.assertFalse(self.victim.db.escorting)
+
         self.assertEqual(self.hurt(self.victim), 0)
 
 
@@ -168,6 +186,14 @@ class TheTransit(_EdgeDrag):
         self.assertIs(self.victim.location, self.roof)
         self.assertIs(self.jumper.location, self.below)
         self.assertFalse(getattr(self.victim.db, DB_FALLING, None))
-        self.assertTrue(any("tear free" in t or "opens at the lip" in t for t in self.heard), self.heard)
+        self.assertTrue(any("gives at the edge" in t or "opens at the lip" in t for t in self.heard), self.heard)
         self.assertEqual(self.room_beat.call_args.kwargs["location"], self.roof)
+        self.assertEqual(self.grapple_refs(), (None, None), "the pairing outlived the hold")
         self.assertNotIn(self.victim, self.removed_from_combat())
+
+    def test_control_a_victim_with_nothing_to_break_is_not_broken(self):
+        # Transit tries the move as they are; the breaker runs only on a refusal.
+        with mock.patch("world.combat.grappling.break_victim_acts") as breaker:
+            self.descend(dest_is_sky=True)
+        breaker.assert_not_called()
+        self.assertIs(self.victim.location, self.below)
