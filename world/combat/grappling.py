@@ -31,7 +31,7 @@ def drag_victim_to(victim, room):
     The walk door (`Exit.at_traverse`) and the advance door
     (`_do_advance_move`). The jump drag keeps hooks ON so gravity and
     posture run there on their own, and breaks the victim's acts through
-    the same `break_victim_acts` before the hooked move (#3668).
+    the same `break_victim_acts` once the jump is known to happen (#3668).
 
     The victim's move runs with hooks OFF, deliberately: `at_pre_move`
     would refuse a channeling victim, and refusing the move would make

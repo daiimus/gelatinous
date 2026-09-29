@@ -13,9 +13,10 @@ Now the direct drop moves the JUMPER first, so a refused jump touches the
 victim not at all, and only then breaks the victim's acts (procedure,
 then channel, the door drags' own breaker, and their escort, gravity's
 rule) before moving them; transit, which needs the companion in the cell
-first, tries the move as they are and breaks the acts only when refused.
-A move still refused opens the hold: the pairing is broken and the beat
-is spoken to the roof.
+first, asks the jumper's own gates without moving and leaves the victim
+alone when the jumper would be refused, then breaks the acts the same
+way. A move still refused opens the hold: the pairing is broken and the
+beat is spoken to the roof.
 
 Controls: an undisturbed drag lands both; a refused jumper leaves both
 on the roof with nothing said and the victim's act intact.
@@ -210,9 +211,24 @@ class TheTransit(_EdgeDrag):
         self.assertEqual(self.grapple_refs(), (None, None), "the pairing outlived the hold")
         self.assertNotIn(self.victim, self.removed_from_combat())
 
-    def test_control_a_victim_with_nothing_to_break_is_not_broken(self):
-        # Transit tries the move as they are; the breaker runs only on a refusal.
-        with mock.patch("world.combat.grappling.break_victim_acts") as breaker:
+    def test_a_procedure_on_the_victim_ends_with_the_surgeon_told(self):
+        # A victim neither channeling nor escorting still has a surgeon's
+        # channel timing a procedure on them; the ride ends it too.
+        with mock.patch("world.medical.procedures.take_patient_away") as taken:
             self.descend(dest_is_sky=True)
-        breaker.assert_not_called()
+        taken.assert_called_once()
+        self.assertIs(taken.call_args.args[0], self.victim)
         self.assertIs(self.victim.location, self.below)
+
+    def test_control_a_gated_jumper_leaves_the_victim_alone(self):
+        # The jumper's own channel would refuse them; the victim, who has
+        # to go first, is not touched at all and keeps their act.
+        self.channeling(self.jumper)
+        self.channeling(self.victim)
+        self.descend(dest_is_sky=True)
+        self.assertIs(self.jumper.location, self.roof)
+        self.assertIs(self.victim.location, self.roof)
+        self.assertTrue(channel_of(self.victim), "a refused jump cost the victim their act")
+        self.assertEqual(self.heard, [], self.heard)
+        self.assertFalse(getattr(self.victim.db, DB_FALLING, None))
+        self.assertEqual(self.delayed.call_count, 0, "a fall was scheduled for a refused jump")

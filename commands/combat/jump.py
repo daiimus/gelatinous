@@ -474,13 +474,14 @@ class CmdJump(Command):
             caller.msg("|yYou throw yourself at the edge regardless.|n")
         return True
 
-    def victim_would_refuse(self, victim) -> bool:
+    def would_refuse_a_hooked_move(self, who) -> bool:
         """The two gates `Character.at_pre_move` refuses a hooked move on,
         asked without moving: a channel, or an escort (which would also
         send the escortee against the edge). Pure -- the gates themselves
-        speak when asked for real."""
+        speak when asked for real. A gate added there and not here costs
+        nothing worse than the real refusal happening a step later."""
         from world.channeled import is_channeling
-        return bool(is_channeling(victim)) or bool(victim.db.escorting)
+        return bool(is_channeling(who)) or bool(who.db.escorting)
 
     def drop_victims_acts(self, victim):
         """A dragged victim keeps nothing they were doing (#3668): the
@@ -603,7 +604,9 @@ class CmdJump(Command):
                 return
             if grappled_victim:
                 self.drop_victims_acts(grappled_victim)
-                if not grappled_victim.move_to(destination, quiet=True):
+                carried = (grappled_victim.move_to(destination, quiet=True)
+                           or grappled_victim.location is destination)
+                if not carried:
                     grappled_victim = self.hold_opens_at_the_edge(
                         handler, grappled_victim, room=old_location)
             if grappled_victim:
@@ -653,19 +656,23 @@ class CmdJump(Command):
         # leader's record as its companion; if the leader's own move is
         # then refused, the victim is put back on the roof.
         # The victim must be in the cell before the leader arrives, so
-        # they go first here. Their acts are broken only when they have
-        # one that would refuse the move (#3668) -- asked without a move,
-        # so nobody is told "you're busy" and then hauled anyway -- then
-        # the move is made once; still refused, the hold opens on the
-        # roof. (A jumper refused AFTER that has cost a channeling victim
-        # their act for nothing -- the price of the cell needing its
-        # companion first; the door drags and the direct drop move the
-        # grappler before they touch the victim.)
+        # they go first here -- which means the jumper's own gates are
+        # asked first, without a move (#3668): a jumper who would be
+        # refused touches the victim not at all and is refused by the
+        # real gate below, which speaks. Then the victim's acts are
+        # broken like every other drag door's (channel, procedure,
+        # escort) and the move is made once; still refused, the hold
+        # opens on the roof, where both still stand.
+        if grappled_victim and self.would_refuse_a_hooked_move(self.caller):
+            splattercast.msg(f"JUMP_EDGE_JUMPER_GATED: {self.caller.key} would be refused; "
+                             f"{grappled_victim.key} is left alone")
+            grappled_victim = None
         if grappled_victim:
-            if self.victim_would_refuse(grappled_victim):
-                self.drop_victims_acts(grappled_victim)
+            self.drop_victims_acts(grappled_victim)
             setattr(grappled_victim.db, DB_FALLING, {"led_by": self.caller})
-            if not grappled_victim.move_to(destination, quiet=True):
+            carried = (grappled_victim.move_to(destination, quiet=True)
+                       or grappled_victim.location is destination)
+            if not carried:
                 grappled_victim.attributes.remove(DB_FALLING)
                 grappled_victim = self.hold_opens_at_the_edge(handler, grappled_victim)
         setattr(self.caller.ndb, NDB_FALL_INTENT, {
