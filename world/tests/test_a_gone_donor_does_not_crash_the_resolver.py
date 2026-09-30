@@ -62,8 +62,9 @@ class TheGoneDonor(_AnInstallOnTheTable):
         self.assertEqual(step["status"], "failed")
         self.assertIn("gone", step["outcome"])
 
-    def test_a_deleted_donor_on_the_real_resolver_raises_nothing(self):
-        # Belt and braces: the real install resolver behind the guard.
+    def test_a_deleted_donor_with_no_resolver_patched_raises_nothing(self):
+        # The guard refuses before any resolver runs; with nothing patched
+        # the callback must still return quietly.
         self.donor.delete()
         P._resolve_procedure_callback(self.patient, token=self.record["token"])
         self.assertTrue(any("is gone" in t for t in self.told), self.told)
@@ -80,7 +81,7 @@ class TheChannelLogsWhatItSwallows(EvenniaCommandTest):
                                       on_interrupt=lambda f: None, key="working"))
         chan = channel_of(actor)
         token = next(v for k, v in chan.items() if "token" in k)
-        with mock.patch("evennia.utils.logger.log_err") as logged:
+        with mock.patch("evennia.utils.logger.log_trace") as logged:
             _finish(actor, token)        # must not raise
         logged.assert_called_once()
         self.assertIn("resolver crashed", logged.call_args.args[0])

@@ -216,7 +216,7 @@ def _finish(actor: Any, token: object) -> None:
         # ...but it must not vanish either (#3556): the surgeon saw total
         # silence when a resolver raised here.
         from evennia.utils import logger
-        logger.log_err(f"channel '{chan.get('key')}' on_complete for {getattr(actor, 'key', actor)} raised: {exc!r}")
+        logger.log_trace(f"channel '{chan.get('key')}' on_complete for {getattr(actor, 'key', actor)} raised: {exc!r}")
 
 
 def stop_channel(actor: Any) -> bool:
