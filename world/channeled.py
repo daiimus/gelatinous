@@ -212,8 +212,11 @@ def _finish(actor: Any, token: object) -> None:
         return
     try:
         chan["on_complete"]()
-    except Exception:  # noqa: BLE001 — a consumer bug never leaks upward
-        pass
+    except Exception as exc:  # noqa: BLE001 — a consumer bug never leaks upward
+        # ...but it must not vanish either (#3556): the surgeon saw total
+        # silence when a resolver raised here.
+        from evennia.utils import logger
+        logger.log_err(f"channel '{chan.get('key')}' on_complete for {getattr(actor, 'key', actor)} raised: {exc!r}")
 
 
 def stop_channel(actor: Any) -> bool:

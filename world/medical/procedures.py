@@ -803,6 +803,17 @@ def _resolve_procedure_callback(target, token=None) -> None:
     resolver = _VERB_RESOLVERS.get(verb)
     if resolver is None:
         return
+    # The record carries the donor item itself (#3556). Deleted in the
+    # window (builder `@destroy`, a sweep), it reads back as None or as a
+    # husk with no row, and every install resolver dereferences it: an
+    # AttributeError, swallowed to silence on the channeled path. Same
+    # belt as the actor and the patient above: the surgeon is told, the
+    # chart step fails with a reason, nothing is dispatched.
+    for name in _ITEM_KWARGS:
+        if name in kwargs and not getattr(kwargs[name], "pk", None):
+            actor.msg("What you were about to work with is gone; the procedure does not resolve.")
+            _fail_running_step(target, "the donor item was gone")
+            return
     resolver(actor, target, **kwargs)
 
     # Fire the chart-runner advancement hook, already removed from the
@@ -2699,6 +2710,12 @@ def _resolve_install_limb(actor, target, *, organ_item, location: str,
     except Exception as exc:
         _log_guarded_failure("install_limb_item_delete", organ_item, exc)
 
+
+#: Record kwargs that hold a game object (the donor of an install). A
+#: deleted object comes back from the attribute store as None, or as an
+#: instance whose row is gone; the callback re-validates these before
+#: it dispatches (#3556).
+_ITEM_KWARGS = ("organ_item",)
 
 # Mapping consumed by ``_resolve_procedure_callback``.
 _VERB_RESOLVERS = {
