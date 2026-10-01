@@ -12,7 +12,7 @@ On the per-hand model: *"The model is good. For combat, we'd alternate between w
 
 *"Placeholders are fine. I think you should figure out the alternation and handguns for the spec though. The system should be comprehensively design before we implement the first slice otherwise it might as well be a hallucination."*
 
-Standing rulings this design keeps: active natural cyberweapons take precedence over held weapons (`AUGMENT_ABILITIES_SPEC.md` decision 4, 2026-06-12); a severed limb takes its gear (decision 7); one attack per combatant per round (the Q2 guardrail in `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`); the limb count pays only through the initiative ramp.
+Standing rulings this design keeps: active natural cyberweapons take precedence over held weapons (`AUGMENT_ABILITIES_SPEC.md` decision 4, 2026-06-12); a severed limb takes its gear (decision 7); extra grasping limbs buy no extra attacks and no raw damage (the Q2 guardrail in `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`, 2026-06-20): the manipulator count pays through initiative, loadout readiness and disarm resistance only. The event-triggered bonus attacks that exist today (a failed advance or charge) are untouched.
 
 ## 1. Why: how the claws stand today
 
@@ -20,13 +20,13 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 - `get_active_natural_weapon` returns the first deployed host's weapon by dbref and never asks where that object is.
 - Severance (`carry_hardware_to_appendage`) moves each organ's weapon onto the severed appendage and marks that organ retracted. With one shared object, the cut hand takes BOTH hands' claws to the floor while the other hand still reads deployed and still fights with an object lying in a severed hand.
 - Reattachment (`_resolve_install_limb`, `world/medical/procedures.py`) deletes the object at the limb's `weapon_dbref` and resets only that limb's snapshot. The other hand keeps a dead reference: claws render deployed, combat swings fists, one toggle heals it (#3571).
-- Combat has no two-weapon concept. `get_wielded_weapon` (`world/combat/utils.py`) returns one weapon, naturals first, then the first tagged weapon in hand, then the highest-damage held item; `select_weapon_for_engagement` applies range-then-max. There are 20 `get_wielded_weapon` call sites across six files, three `is_wielding_ranged_weapon` sites and three `get_active_natural_weapon` callers. The two resolvers already disagree with each other.
+- Combat has no two-weapon concept. `get_wielded_weapon` (`world/combat/utils.py`) returns one weapon: naturals first, then the first tagged weapon in hand, then the first held item of any kind; `select_weapon_for_engagement` (defined beside it in `utils.py`, called once from `process_attack` in `world/combat/attack.py`) applies range-then-highest-damage. There are 20 `get_wielded_weapon` call sites across six files, three `is_wielding_ranged_weapon` sites and three `get_active_natural_weapon` callers, plus `get_wielded_weapons` and `find_best_weapon` in `utils.py`. The resolvers already disagree with each other.
 - The claws use the `tiger_claws` message bank (`world/combat/messages/tiger_claws.py`), whose prose assumes both hands and, in places, gloves and a belt that an implant does not have.
 
 ## 2. Design at a glance
 
 1. **Each hand owns its claws.** Every host organ's `ability_state` is authoritative; the mirror is deleted; each host spawns its own weapon object. Severance takes exactly that hand's claws; reattachment keeps the object it finds on the appendage.
-2. **One door for "what weapon".** `choose_weapon(char, target=None)` in a new `world/combat/weapon_choice.py` returns a `WeaponChoice` and replaces the five selection functions. Every gate, every attack and every line of prose asks it.
+2. **One door for "what weapon".** `choose_weapon(char, target=None)` in a new `world/combat/weapon_choice.py` returns a `WeaponChoice` and replaces the six selection functions: `get_wielded_weapon`, `get_wielded_weapons`, `is_wielding_ranged_weapon`, `select_weapon_for_engagement` and `find_best_weapon` in `world/combat/utils.py`, and `get_active_natural_weapon` in `world/medical/augments.py`. Every gate, every attack and every line of prose asks it.
 3. **Akimbo is weapon data.** A prototype declares an `akimbo_family` and `akimbo_profiles` keyed by deployed count. Two claws become ONE option with the count-2 profile: one attack, uplifted values, the akimbo bank. One claw is the item's own values and the one-hand bank.
 4. **Alternation is the general rule.** Among the options that can reach the target, the swing rotates in a stable hand order, one option per round. Akimbo groups rotate as one option.
 5. **Toggle acts on every host.** `/nailz` deploys or retracts every living host at once.
@@ -63,7 +63,7 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 
 `has_ranged_option(char)` = any option is ranged after step 3; it replaces the "is the wielded weapon ranged" gates so a knife sorting first no longer blocks a pistol.
 
-**Repoint, then delete** (No Compat Seams): the 20 `get_wielded_weapon` sites (`commands/combat/core_actions.py`, `special_actions.py`, `movement.py`, `commands/forensics.py`, `typeclasses/exits.py`, `world/combat/utils.py`), `select_weapon_for_engagement` in `world/combat/attack.py`, the three `is_wielding_ranged_weapon` sites in `world/combat/movement_resolution.py`, and `get_active_natural_weapon` in `typeclasses/characters.py`. `process_attack` reads every value from the choice. Forensics takes the first option that can sever. Manipulation is the minimum over `choice.slots`; a natural on a grasping host scopes to that hand, Jawz stays body-wide (a head-scoped manipulation fails open to 1.0 in `world/medical/core.py`, a silent buff). No broad `except`.
+**Repoint, then delete** (No Compat Seams): the 20 `get_wielded_weapon` sites (`commands/combat/core_actions.py`, `special_actions.py`, `movement.py`, `commands/forensics.py`, `typeclasses/exits.py`, `world/combat/utils.py`), the one `select_weapon_for_engagement` call in `process_attack` (`world/combat/attack.py`), the three `is_wielding_ranged_weapon` sites in `world/combat/movement_resolution.py`, `get_active_natural_weapon` in `typeclasses/characters.py`, and every caller of `get_wielded_weapons` and `find_best_weapon`. `process_attack` reads every value from the choice. Forensics takes the first option that can sever. Manipulation is the minimum over `choice.slots`; a natural on a grasping host scopes to that hand, Jawz stays body-wide (a head-scoped manipulation fails open to 1.0 in `world/medical/core.py`, a silent buff). No broad `except`.
 
 ## 5. Akimbo profiles by deployed count
 
@@ -77,11 +77,11 @@ Grouping runs after the range filter. Members = options sharing an `akimbo_famil
 
 ## 6. Alternation
 
-The unit of rotation is an option: one weapon or one akimbo group. Still one attack per round (one `_schedule_attack` per combatant in `world/combat/handler.py`). Alternation changes WHICH option swings, never how many.
+The unit of rotation is an option: one weapon or one akimbo group. Still one scheduled attack per combatant per round (one `_schedule_attack` per combatant in `world/combat/handler.py`), plus the event-triggered bonus attacks that exist today. Alternation changes WHICH option swings, never how many.
 
 **Order.** `Character.hands` iterates in the species' `anatomical_display_order` (left hand first), then unlisted slots such as a tail alphabetically. Today it iterates a set, so the order is salted.
 
-**Cursor.** `NDB_LAST_WEAPON_SLOT` on the attacker holds the lead slot of the last option that swung. Next = the first option whose lead slot sorts after it, wrapping. Unset, or one option: the first. Keyed by slot, so disarm, severance or a new wield self-heals. Cleared in `remove_combatant`, so each fight starts at the first slot and the initiate line names the first swing. Kept on ndb rather than the combat entry because advance and charge resolve inside `at_repeat`, which writes its snapshot back over `db.combatants`; a reload only restarts the wheel.
+**Cursor.** `NDB_LAST_WEAPON_SLOT` on the attacker holds the lead slot of the last option that swung. Next = the first option whose lead slot sorts after it, wrapping. Unset, or one option: the first. Keyed by slot, so disarm, severance or a new wield self-heals. Cleared in `cleanup_combatant_state` (`world/combat/utils.py`), beside the ndb attributes it already clears, because both `remove_combatant` and the handler's end-of-fight `cleanup_all_combatants` reach it and a fighter still standing when a fight ends never passes through `remove_combatant`; so each fight starts at the first slot and the initiate line names the first swing. Kept on ndb rather than the combat entry because advance and charge resolve inside `at_repeat`, which writes its snapshot back over `db.combatants`; a reload only restarts the wheel.
 
 **Peek vs commit.** Every caller peeks. `process_attack` commits via `note_weapon_used(attacker, choice)` only after the reach and proximity gates pass, so a failed reach does not turn the wheel. Bonus and opportunity attacks are real swings and commit.
 
@@ -93,8 +93,8 @@ This replaces "then highest damage" (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`
 - `git mv tiger_claws.py tiger_claws_akimbo.py`: it keeps today's both-hands prose. Fix the implant-contradicting lines (gloves, belt, "five blades", a self `{hit_location}`).
 - Write a new one-hand `tiger_claws.py` covering all four phases (a missing kill falls to the flat generic line), seeded from the hand-neutral lines.
 - Only the two `NAILZ_CLAWS` prototype attributes name the bank.
-- All five bank reads use `choice.weapon_type` with `item=choice.item`: the hit and kill reads and the miss read in `world/combat/attack.py`, two in `core_actions.py`, one in `world/combat/utils.py`.
-- No `{hand}` in combat banks for v1; it would bind all five sites.
+- All seven weapon-bank reads use `choice.weapon_type` with `item=choice.item`: hit, miss and kill in `world/combat/attack.py`; three initiate reads in `commands/combat/core_actions.py` (aiming-direction, local, and the target's defensive line); the auto-retarget initiate in `world/combat/utils.py`.
+- No `{hand}` in combat banks for v1; it would bind all seven sites.
 
 **Toggle prose.** Base keys stay the all-hosts prose. New keys `deploy_msg_one`, `retract_msg_one`, `deploy_room_one`, `retract_room_one` (constants beside `CYBERWARE_COMMAND_PREFIX`), used only when the ability has two or more living hosts and exactly one changed; they carry `{hand}`, pre-interpolated before `msg_room_identity`. `deployed_longdesc` is rewritten as one-hand prose with no `_one` variant: it already renders once per chrome location. Room lines stay on `msg_room_identity`.
 
@@ -106,7 +106,7 @@ This replaces "then highest damage" (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`
 
 This fixes a latent bug: two forearm shotgun modules mirror one `weapon_dbref`, so the second arm never gets a gun.
 
-`stow_abilities_at` dispatches only the hosts at the procedure location (#3360: hardware elsewhere on the body is left alone); today it retracts both hands. Readouts: `list_abilities` names the hands only when they differ; the cyberware status screen shows "both hands" or "left deployed / right retracted"; the sdesc names the peeked natural option's item. Voice, blindsight and Jawz loop over one host; nothing changes for them.
+`stow_abilities_at` dispatches only the hosts at the procedure location (#3360: hardware elsewhere on the body is left alone); today it retracts both hands. Readouts: `list_abilities` names the hands only when they differ; the cyberware status screen shows "both hands" or "left deployed / right retracted"; the sdesc names the peeked natural option's item. Voice and Jawz have one host (the cyber-jaw hardpoint); nothing changes for them. Blindsight can have two hosts (a targeting processor in each cyber arm): it reads as any-deployed and is unaffected in play, but the per-host toggle and the readouts must cover it like the shotgun pair.
 
 ## 9. Severance and reattachment
 
@@ -114,7 +114,7 @@ This fixes a latent bug: two forearm shotgun modules mirror one `weapon_dbref`, 
 
 **Reattachment** applies to chrome only; flesh never reattaches. `_resolve_install_limb` stops deleting the object at `weapon_dbref`. It reclaims the object only if `weapon.location` is the appendage being reattached: location set to None, dbref kept, `deployed` False (it comes back retracted). Otherwise it drops the dbref (the object respawns lazily) and touches nothing, so a legacy shared reference cannot steal the survivor's off-grid claws. This happens before `organ_item.delete()`, because Evennia's delete relocates contents. It also applies to arm-guns; `AUGMENT_ABILITIES_SPEC.md` §8 ("the deployed weapon item does not survive the cut") is rewritten with slice 1.
 
-A flesh hand's claws come back only by harvest and reinstall; a new tray seats only the hand that lacks `nailz`.
+A flesh hand's claws are expected to come back only by harvest and reinstall, which is unverified (§15); a new tray seats only the hand that lacks `nailz`.
 
 ## 10. Ranged weapons and handguns
 
@@ -142,7 +142,7 @@ A one-shot `split_shared_ability_weapons()` in `world/medical/augments.py`, run 
 
 Read-only census first: characters and NPCs with two or more `nailz` hosts; bodies with two shotgun arms; Iver Kestrel (state captured first and left as found).
 
-For each living character, for each ability with two or more living hosts, in slot order: hosts sharing a dbref keep it on the first only if the object sits where it belongs (None for natural, the character for integrated); the others drop the dbref and a deployed one spawns its own object now, so no player sees a change. A host whose object lies elsewhere (a severed appendage) drops both dbref and deployed. Each Nailz host's install-time ability spec is refreshed from the current `organ_spec`, or old installs lack the `_one` prose and render the old both-hands longdesc twice. Existing `NAILZ_CLAWS` objects are updated with Evennia's `batch_update_objects_with_prototype` after a read-only check that a live object carries the `from_prototype` tag. Snapshots sharing a dbref are counted and left alone.
+For each living character, for each ability with two or more living hosts, in slot order: hosts sharing a dbref keep it on the first only if the object sits where it belongs (None for a natural weapon; for an integrated weapon, the character when deployed and None when retracted); the others drop the dbref, and a deployed one spawns its own object now. For natural weapons no player sees a change. For integrated hosts (two shotgun arms) the second arm gains a gun it never had, which seats in that hand and drops what it held: a visible mechanic change, to be labelled as such. A host whose object lies elsewhere (a severed appendage) drops both dbref and deployed. Each Nailz host's install-time ability spec is refreshed from the current `organ_spec`, or old installs lack the `_one` prose and render the old both-hands longdesc twice. Existing `NAILZ_CLAWS` objects are updated with Evennia's `batch_update_objects_with_prototype` after a read-only check that a live object carries the `from_prototype` tag. Snapshots sharing a dbref are counted and left alone.
 
 ## 13. Slices
 
@@ -177,7 +177,7 @@ For each living character, for each ability with two or more living hosts, in sl
 - Bodies with two shotgun arms change (two guns); take the census first.
 - Mixed loadouts lose the guaranteed best swing (arm-gun 20 versus pistol); label it a mechanic change.
 - Flesh-hand Nailz harvest and reinstall is unverified (the install writes no provenance).
-- Legacy snapshots sharing a dbref hand the claws to the first limb cut.
+- Legacy corpse snapshots sharing a dbref move the one shared object onto each limb as it is cut, so it ends on the last limb cut and the first loses it.
 - `get` can push a deployed arm-gun out of the first full hand.
 - A missed spec refresh leaves the both-hands longdesc rendering twice on chrome hands.
 - Evennia treats module-level dicts in `world/prototypes.py` as prototypes; keep profiles inline (unverified against the Evennia source, which is not in this repo).
