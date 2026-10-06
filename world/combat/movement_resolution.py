@@ -29,9 +29,10 @@ from .dice import roll_with_disadvantage, standard_roll
 from .utils import (
     queued_action_target,
     get_numeric_stat, initialize_proximity_ndb,
-    is_wielding_ranged_weapon, clear_aim_state,
+    clear_aim_state,
     get_character_by_dbref, get_display_name_safe,
 )
+from .weapon_choice import has_ranged_option
 from .proximity import (
     establish_proximity, break_proximity, is_in_proximity,
 )
@@ -584,7 +585,7 @@ def _resolve_advance_cross_room(
         )
 
         # Check if target has ranged weapon for bonus attack
-        if is_wielding_ranged_weapon(target):
+        if has_ranged_option(target):
             target.msg(
                 f"|gYour ranged weapon gives you a clear shot as "
                 f"{get_display_name_safe(char, target)} fails to reach "
@@ -1004,7 +1005,7 @@ def _resolve_charge_same_room(
         )
 
         # Check if target has ranged weapon for bonus attack
-        if is_wielding_ranged_weapon(target):
+        if has_ranged_option(target):
             handler.resolve_bonus_attack(target, char)
             splattercast.msg(
                 f"{DEBUG_PREFIX_HANDLER}_CHARGE: {char.key} failed "
@@ -1073,7 +1074,7 @@ def _resolve_charge_cross_room(
         return
 
     # Check if target has ranged weapon
-    target_has_ranged = is_wielding_ranged_weapon(target)
+    target_has_ranged = has_ranged_option(target)
 
     # Same gate as cross-room advance (#3158). The disadvantage below
     # is charge's own flavour on the CROSSING roll; the break-away is

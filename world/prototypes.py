@@ -2384,19 +2384,27 @@ NAILZ = {
 
 # The claw weapon Nailz extends (#526 M4).  Never held — the claws
 # ARE the hand; combat resolution reads it via natural-weapon
-# precedence.  Reuses the tiger_claws message set.
+# precedence.  One hand speaks the tiger_claws bank, both hands the
+# tiger_claws_akimbo bank (the pair profile below).
+# One hand's claws (MULTI_WEAPON_COMBAT_SPEC §3, §5): each Nailz host
+# owns one of these. Both hands out group into ONE attack on the pair
+# profile below (d6+9, +1 to hit, the `tiger_claws_akimbo` bank); one
+# hand swings on these attributes (d6+6, +0, `tiger_claws`). Placeholder
+# numbers, BALANCE_LEDGER.md.
 NAILZ_CLAWS = {
     "prototype_parent": "MELEE_WEAPON_BASE",
     "key": "carbide blades",
     "aliases": ["blades", "nailz", "nailz blades", "finger-blades"],
-    "desc": "Ten slender carbide blades, extended from beneath the fingernails, each four centimetres of monofilament edge. They are not for opening letters.",
-    "damage": 9,
+    "desc": "Five slender carbide blades, extended from beneath the fingernails of one hand, each four centimetres of monofilament edge. They are not for opening letters.",
+    "damage": 6,
     "locks": "get:false();drop:false();give:false()",
     "attrs": [
         ("weapon_type", "tiger_claws"),
         ("damage_type", "cut"),
         ("hands_required", 1),
         ("integrated", True),
+        ("akimbo_family", "nailz"),
+        ("akimbo_profiles", {2: {"damage": 9, "hit_bonus": 1, "weapon_type": "tiger_claws_akimbo"}}),
     ],
 }
 

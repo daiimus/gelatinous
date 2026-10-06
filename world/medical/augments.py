@@ -13,7 +13,7 @@ later is this one constant.
 The integrated_weapon type exploits held-is-wielded: deploying
 moves a locked weapon item INTO the hand slot, which simultaneously
 makes the hand unusable for holding and makes the weapon the active
-combat weapon (``get_wielded_weapon`` reads hands).  Retracting
+combat weapon (the one door, ``choose_weapon``, reads hands).  Retracting
 parks the item off-grid (``location = None`` — it is folded inside
 your arm, not in your backpack).
 """

@@ -224,13 +224,18 @@ def _limb_ancestors(attacker, slot):
     return ancestors
 
 
-def manipulation_hit_factor(attacker, weapon) -> float:
+def manipulation_hit_factor(attacker, weapon, slots=None) -> float:
     """Multiplier on *attacker*'s motorics from the hand(s) gripping *weapon*.
 
     Per-effector (§6.1): scoped to the gripping hand's limb chain, not body-wide.
     When two hands grip one weapon, the weaker hand drags it (``min`` for now;
-    exact min-vs-blend is TBD, spec §10). Falls back to body-wide manipulation
-    for unarmed / natural-weapon / undeterminable grips. Fail-open to ``1.0``.
+    exact min-vs-blend is TBD, spec §10). ``slots`` names the slots the
+    attack occupies when the caller knows them (the one door's
+    ``WeaponChoice.slots``: a natural weapon on a grasping host scopes to
+    that hand, an akimbo pair to both, MULTI_WEAPON_COMBAT_SPEC §4-§5);
+    otherwise the slots gripping *weapon* are read off the hands. Falls
+    back to body-wide manipulation for unarmed / undeterminable grips and a
+    natural weapon on a non-grasping host (Jawz). Fail-open to ``1.0``.
     """
     if _has_override(attacker, MANIPULATION_OVERRIDE_CONDITION):
         return 1.0
@@ -238,7 +243,10 @@ def manipulation_hit_factor(attacker, weapon) -> float:
     state = getattr(attacker, "medical_state", None)
     scoped = getattr(state, "calculate_capacity_scoped", None)
 
-    gripping = _gripping_slots(attacker, weapon) if weapon is not None else []
+    if slots is not None:
+        gripping = list(slots)
+    else:
+        gripping = _gripping_slots(attacker, weapon) if weapon is not None else []
     if not gripping or not callable(scoped):
         # Unarmed, natural weapon, or no scoped model — body-wide manipulation.
         raw = _read_capacity(attacker, "manipulation")

@@ -205,7 +205,7 @@ class TheTypedSeverVerbIsTheSameDoorTest(EvenniaCommandTest):
         def _roll(char, stat, *args, **kwargs):
             return {"intellect": 9, "motorics": 9}.get(stat, 9)
 
-        with mock.patch.object(cmd_module, "get_wielded_weapon", return_value=blade), \
+        with mock.patch.object(cmd_module, "_blade_in_hand", return_value=blade), \
              mock.patch.object(cmd_module.utils, "delay", side_effect=_immediate), \
              mock.patch.object(cmd_module, "roll_stat", side_effect=_roll):
             self.said = self.call(cmd_module.CmdSever(), f"{what} from {corpse.key}", caller=self.char1)

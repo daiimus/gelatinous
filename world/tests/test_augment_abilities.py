@@ -103,8 +103,8 @@ class TestAbilityLayer(EvenniaTest):
             self.organ.ability_state["shotgun"]["deployed"]
         )
         # Held-is-wielded: combat resolves the deployed gun.
-        from world.combat.utils import get_wielded_weapon
-        self.assertIs(get_wielded_weapon(self.char), self.gun)
+        from world.combat.weapon_choice import choose_weapon
+        self.assertIs(choose_weapon(self.char).item, self.gun)
 
     def test_deploy_auto_drops_held_item(self):
         knife = create_object(
@@ -156,7 +156,7 @@ class TestAbilityLayer(EvenniaTest):
     def test_natural_weapon_toggle_and_precedence(self):
         """#526 M4: claws never touch the hand slots, and active
         claws beat anything held (settled decision 2026-06-12)."""
-        from world.combat.utils import get_wielded_weapon
+        from world.combat.weapon_choice import choose_weapon
 
         claws_organ = Organ("left_metacarpals_clawed", organ_data={
             "container": "left_hand", "max_hp": 15,
@@ -189,11 +189,11 @@ class TestAbilityLayer(EvenniaTest):
         # ARE the combat weapon.
         self.assertIsNone(claws.location)
         self.assertNotIn(claws, self.char.hands.values())
-        self.assertIs(get_wielded_weapon(self.char), claws)
+        self.assertIs(choose_weapon(self.char).item, claws)
 
         toggle_ability(self.char, "nailz")
         # Retracted: the held knife serves again.
-        self.assertIs(get_wielded_weapon(self.char), knife)
+        self.assertIs(choose_weapon(self.char).item, knife)
 
     def test_resetmedical_preserves_chrome(self):
         """#526 review: @resetmedical rebuilds flesh from the current
@@ -220,7 +220,7 @@ class TestAbilityLayer(EvenniaTest):
 
     def test_no_inline_weapon_picks_outside_the_resolver(self):
         """Doctrine pin (#516 playtest): combat code must resolve
-        weapons through get_wielded_weapon, never the inline
+        weapons through the one door (choose_weapon), never the inline
         first-held-item idiom — that idiom is how the engagement
         message brandished a zippo while the hit fired the arm-gun.
         """
@@ -237,7 +237,7 @@ class TestAbilityLayer(EvenniaTest):
                     offenders.append(str(path.relative_to(root)))
         self.assertEqual(
             offenders, [],
-            "inline weapon picks found — use get_wielded_weapon: "
+            "inline weapon picks found — use choose_weapon: "
             f"{offenders}",
         )
 
@@ -295,7 +295,7 @@ class TestAbilityLayer(EvenniaTest):
         not the cigarette in the other hand — weapons (weapon_type)
         take priority over other held items regardless of hand
         order."""
-        from world.combat.utils import get_wielded_weapon
+        from world.combat.weapon_choice import choose_weapon
 
         self.gun.db.weapon_type = "cybernetic_shotgun"
         # The real discriminator: every Item defaults weapon_type to
@@ -307,11 +307,11 @@ class TestAbilityLayer(EvenniaTest):
         )
         self.char.hands = {"left_hand": cigarette}
         toggle_ability(self.char, "shotgun")
-        self.assertIs(get_wielded_weapon(self.char), self.gun)
+        self.assertIs(choose_weapon(self.char).item, self.gun)
         # Retracted, the cigarette is all that's held — brawl-with-
         # whatever behavior is preserved.
         toggle_ability(self.char, "shotgun")
-        self.assertIs(get_wielded_weapon(self.char), cigarette)
+        self.assertIs(choose_weapon(self.char).item, cigarette)
 
 
 class TestSeveranceDropsHeldItems(EvenniaTest):

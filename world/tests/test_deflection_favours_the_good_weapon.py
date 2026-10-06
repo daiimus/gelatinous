@@ -30,7 +30,7 @@ defaults to melee (the brawl-with-anything design), so a lit cigarette
 deflected grenades exactly as well as a baseline weapon.
 
 The discriminator is the `("weapon", "type")` tag carried by
-`MELEE_WEAPON_BASE`. That is the same one `get_wielded_weapon` settled
+`MELEE_WEAPON_BASE`. That is the same one the one door (`choose_weapon`) settled
 on in #516, for the same stated reason — `db.weapon_type` is useless
 because every item carries "melee" at creation. Reused rather than
 re-derived, so "is this a weapon" has one answer.
@@ -151,11 +151,11 @@ class TestOnlyAWeaponDeflects(EvenniaTest):
         self.assertFalse(is_melee_weapon(
             self._thing("a pistol", weapon=True, ranged=True)))
 
-    def test_it_uses_the_same_tag_as_get_wielded_weapon(self):
+    def test_it_uses_the_same_tag_as_the_one_door(self):
         """One answer to "is this a weapon", not two (#516)."""
         import pathlib
         root = pathlib.Path(__file__).resolve().parents[2]
-        utils = (root / "world" / "combat" / "utils.py").read_text(
+        utils = (root / "world" / "combat" / "weapon_choice.py").read_text(
             errors="ignore")
         throwing = (root / "world" / "combat" / "throwing.py").read_text(
             errors="ignore")

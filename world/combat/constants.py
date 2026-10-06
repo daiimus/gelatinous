@@ -542,6 +542,13 @@ DEFAULT_DICE_SIDES = 1
 
 # Weapon categories
 WEAPON_TYPE_UNARMED = "unarmed"
+
+# Weapon item attributes read by the one door (MULTI_WEAPON_COMBAT_SPEC
+# §3, §5), all with defaults, never written onto existing items.
+WEAPON_ATTR_HIT_BONUS = "hit_bonus"            # int, to-hit term beside the charge bonus
+WEAPON_ATTR_AKIMBO_FAMILY = "akimbo_family"    # str; members of one family may group
+WEAPON_ATTR_AKIMBO_PROFILES = "akimbo_profiles"  # {count: {field: value}}
+AKIMBO_PROFILE_FIELDS = ("damage", "hit_bonus", "weapon_type", "damage_type")
 WEAPON_TYPE_RANGED = "ranged"
 WEAPON_TYPE_MELEE = "melee"
 

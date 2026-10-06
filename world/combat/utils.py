@@ -130,87 +130,6 @@ def find_best_weapon(character):
     return best
 
 
-def get_wielded_weapon(character):
-    """
-    Get the weapon the character fights with.
-
-    Actual weapons take priority over other held items — a deployed
-    arm-shotgun beats the cigarette in the off hand (#516 playtest
-    fix; previously this returned the FIRST held item of any kind,
-    so hand order decided whether you shot or brandished your
-    smoke).  "Actual weapon" means the ``("weapon", "type")`` tag
-    from the weapon base prototypes — ``db.weapon_type`` is useless
-    as a discriminator because EVERY item defaults to ``"melee"``
-    at creation (the brawl-with-anything design).  With no real
-    weapon in hand, the first held item still serves — brawling
-    with a bottle works as before.
-
-    Args:
-        character: The character to check
-
-    Returns:
-        The weapon object, or None if no weapon is wielded
-    """
-    # Active natural cyberweapons win outright (#526 M4, settled
-    # decision 2026-06-12): claws out means you fight with claws,
-    # knife in hand or not.  Toggle them off to use the knife.
-    try:
-        from world.medical.augments import get_active_natural_weapons
-        naturals = get_active_natural_weapons(character)
-        if naturals:
-            return naturals[0][1]
-    except Exception:
-        # Test stubs without a medical state fall through to hands.
-        pass
-
-    hands = getattr(character, "hands", {})
-    held = [item for item in hands.values() if item]
-    for item in held:
-        tags = getattr(item, "tags", None)
-        if tags is not None and tags.has("weapon", category="type"):
-            return item
-    return held[0] if held else None
-
-
-def is_wielding_ranged_weapon(character):
-    """
-    Check if a character is wielding a ranged weapon.
-    
-    Args:
-        character: The character to check
-        
-    Returns:
-        bool: True if wielding a ranged weapon, False otherwise
-    """
-    # Use the same hands detection logic as core_actions.py
-    hands = getattr(character, "hands", {})
-    for hand, weapon in hands.items():
-        if weapon and hasattr(weapon, 'db') and weapon.db.is_ranged:
-            return True
-    
-    return False
-
-
-def get_wielded_weapons(character):
-    """
-    Get all weapons a character is currently wielding.
-    
-    Args:
-        character: The character to check
-        
-    Returns:
-        list: List of wielded weapon objects
-    """
-    weapons = []
-    hands = getattr(character, "hands", {})
-    
-    for hand, weapon in hands.items():
-        if weapon:
-            weapons.append(weapon)
-    
-    return weapons
-
-
 def get_weapon_damage(weapon, default=0):
     """
     Safely get weapon damage with fallback to default.
@@ -234,10 +153,6 @@ def get_weapon_damage(weapon, default=0):
     return int(damage)
 
 
-def _weapon_is_ranged(weapon) -> bool:
-    return bool(getattr(getattr(weapon, "db", None), "is_ranged", False))
-
-
 def _in_melee_range(attacker, target) -> bool:
     """True when *target* is in *attacker*'s melee proximity (same room +
     closed to melee). Mirrors the engagement gate in ``process_attack``."""
@@ -246,46 +161,6 @@ def _in_melee_range(attacker, target) -> bool:
     ndb = getattr(attacker, "ndb", None)
     proximity = getattr(ndb, NDB_PROXIMITY, None) if ndb is not None else None
     return bool(proximity) and target in proximity
-
-
-def select_weapon_for_engagement(attacker, target):
-    """Pick the best in-hand weapon for the current engagement (auto-prioritizer).
-
-    Combat fights with the right tool for the range automatically — the payoff
-    of holding several weapons at once (the loadout-readiness half of the
-    multi-appendage design, CAPACITY_CONSUMERS spec §6.1 Q2). Priority:
-
-    1. An active natural cyberweapon wins outright (settled precedence).
-    2. **Range-appropriate first.** At range, only ranged weapons reach; in
-       melee, anything works (a gun point-blank included).
-    3. **Then highest damage potential.** (Skill weighting joins this once a
-       skill system exists — for now, damage is the tiebreaker.)
-
-    A single-weapon fighter always gets that one weapon, so behaviour is
-    unchanged except for those actually holding a choice. Returns the chosen
-    weapon, or ``None`` when unarmed (caller falls back to fists).
-    """
-    try:
-        from world.medical.augments import get_active_natural_weapons
-        naturals = get_active_natural_weapons(attacker)
-        if naturals:
-            return naturals[0][1]
-    except Exception:
-        pass
-
-    weapons = get_wielded_weapons(attacker)
-    if not weapons:
-        return None
-
-    if _in_melee_range(attacker, target):
-        usable = weapons  # everything is usable point-blank
-    else:
-        # At range only ranged weapons reach; if none, keep the held set so the
-        # caller's reach gate still produces the right "can't reach" message.
-        ranged = [w for w in weapons if _weapon_is_ranged(w)]
-        usable = ranged or weapons
-
-    return max(usable, key=lambda w: get_weapon_damage(w, 0))
 
 
 # Surplus grasping limbs buy initiative (CAPACITY_CONSUMERS spec §6.1 Q2 —
@@ -745,8 +620,8 @@ def remove_combatant(handler, char, room=None):
 
             # Attempt smart auto-retargeting: find someone who is actively attacking this character
             # For melee weapons, prioritize targets in proximity; for ranged weapons, any attacker is fine
-            other_char_weapon = get_wielded_weapon(other_char)
-            other_char_is_ranged = other_char_weapon and hasattr(other_char_weapon, "db") and other_char_weapon.db.is_ranged
+            from .weapon_choice import has_ranged_option
+            other_char_is_ranged = has_ranged_option(other_char)
             
             new_target = None
             proximity_attackers = []  # Attackers in proximity (for melee priority)
@@ -849,10 +724,10 @@ def remove_combatant(handler, char, room=None):
                 
                 # Get weapon info for initiate message
                 from .messages import get_combat_message
-                weapon_obj = get_wielded_weapon(other_char)
-                weapon_type = WEAPON_TYPE_UNARMED
-                if weapon_obj and hasattr(weapon_obj, 'db') and weapon_obj.db.weapon_type is not None:
-                    weapon_type = weapon_obj.db.weapon_type
+                from .weapon_choice import choose_weapon
+                choice = choose_weapon(other_char, new_target)
+                weapon_obj = choice.item if choice else None
+                weapon_type = choice.weapon_type if choice else WEAPON_TYPE_UNARMED
                 
                 # Send initiate messages (same as attack command)
                 try:

@@ -480,7 +480,7 @@ hands = getattr(character, "hands", {})
 ```
 
 **Functions to Extract**:
-- `get_wielded_weapon()` - 15 lines
+- `get_wielded_weapon()` — *status 2026-10-06: weapon selection shipped as `world/combat/weapon_choice.py` (`choose_weapon`, #3695); `get_wielded_weapon`, `is_wielding_ranged_weapon` and `get_wielded_weapons` are deleted, `get_weapon_damage` remains in utils.* - 15 lines
 - `is_wielding_ranged_weapon()` - 12 lines  
 - `get_wielded_weapons()` - 18 lines
 - `get_weapon_damage()` - 10 lines

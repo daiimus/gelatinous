@@ -261,7 +261,7 @@ class ClothingMixin:
         # jacket` while already wearing something at that layer, is
         # correctly told it conflicts, and the jacket is now in their
         # inventory rather than their hand. Every hand-slot consumer
-        # (`get_wielded_weapon`, `inventory`, the throw / hide / give
+        # (the one door `choose_weapon`, `inventory`, the throw / hide / give
         # matchers) then sees an empty hand for an action that was
         # refused, and re-wielding is a second command the player has no
         # reason to know they need.

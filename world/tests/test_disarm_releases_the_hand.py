@@ -73,7 +73,7 @@ class TestASuccessfulDisarmEmptiesTheHand(_DisarmCase):
         self.assertNotIn(self.weapon, self.held().values())
 
     def test_the_derived_view_agrees(self):
-        """`hands` is what `get_wielded_weapon` and `inventory` read. It
+        """`hands` is what `choose_weapon` and `inventory` read. It
         reported the weapon as still wielded while it lay on the floor."""
         self.disarm()
         self.assertIsNone(self.victim.hands.get("right_hand"))

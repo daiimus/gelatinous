@@ -205,7 +205,7 @@ def _sever_env(*, weapon=None, intel=None, motor=None, create_return=None):
         intel, motor = _split(_SUCCESS)
     create_mock = MagicMock(return_value=create_return or MagicMock())
     with patch.object(
-        cmd_module, "get_wielded_weapon", return_value=weapon
+        cmd_module, "_blade_in_hand", return_value=weapon
     ), patch.object(
         cmd_module.utils, "delay", side_effect=_immediate_delay
     ), patch.object(
@@ -329,7 +329,7 @@ class CmdSeverTests(TestCase):
         caller = _make_caller()
         _make_corpse(caller, snapshot=_snapshot_with_limbs())
         with patch.object(
-            cmd_module, "get_wielded_weapon", return_value=None
+            cmd_module, "_blade_in_hand", return_value=None
         ), patch.object(cmd_module.utils, "delay") as delay:
             _make_cmd(caller=caller, args="left_arm from corpse").func()
             delay.assert_not_called()
@@ -340,7 +340,7 @@ class CmdSeverTests(TestCase):
         _make_corpse(caller, snapshot=_snapshot_with_limbs())
         blunt = _make_weapon(can_sever=False, display="a club")
         with patch.object(
-            cmd_module, "get_wielded_weapon", return_value=blunt
+            cmd_module, "_blade_in_hand", return_value=blunt
         ), patch.object(cmd_module.utils, "delay") as delay:
             _make_cmd(caller=caller, args="left_arm from corpse").func()
             delay.assert_not_called()
@@ -351,7 +351,7 @@ class CmdSeverTests(TestCase):
         caller.ndb.sever_task = MagicMock()  # a cut already pending
         _make_corpse(caller, snapshot=_snapshot_with_limbs())
         with patch.object(
-            cmd_module, "get_wielded_weapon", return_value=_make_weapon()
+            cmd_module, "_blade_in_hand", return_value=_make_weapon()
         ), patch.object(cmd_module.utils, "delay") as delay:
             _make_cmd(caller=caller, args="left_arm from corpse").func()
             delay.assert_not_called()
@@ -365,7 +365,7 @@ class CmdSeverTests(TestCase):
         caller = _make_caller()
         _make_corpse(caller, snapshot=_snapshot_with_limbs())
         with patch.object(
-            cmd_module, "get_wielded_weapon", return_value=_make_weapon()
+            cmd_module, "_blade_in_hand", return_value=_make_weapon()
         ), patch.object(cmd_module.utils, "delay") as delay, \
                 patch("evennia.create_object") as mk:
             _make_cmd(caller=caller, args="left_arm from corpse").func()
@@ -399,7 +399,7 @@ class CmdSeverTests(TestCase):
         # Blade present at the gate, gone by completion.
         weapon = _make_weapon()
         with patch.object(
-            cmd_module, "get_wielded_weapon", side_effect=[weapon, None]
+            cmd_module, "_blade_in_hand", side_effect=[weapon, None]
         ), patch.object(
             cmd_module.utils, "delay", side_effect=_immediate_delay
         ), patch("evennia.create_object") as mk:

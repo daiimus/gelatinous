@@ -27,10 +27,11 @@ from world.combat.constants import (
 from commands._identity_targeting import resolve_character_target
 from world.combat.handler import get_or_create_combat
 from world.combat.messages import get_combat_message
+from world.combat.weapon_choice import aimed_weapon_name, choose_weapon, has_ranged_option
 from world.medical.utils import select_hit_location
 from world.combat.proximity import establish_proximity
 from world.combat.utils import (
-    initialize_proximity_ndb, get_wielded_weapon, get_numeric_stat,
+    initialize_proximity_ndb, get_numeric_stat,
     get_display_name_safe,
 )
 from world.grammar import capitalize_first
@@ -75,7 +76,11 @@ class CmdAttack(Command):
 
         # --- WEAPON IDENTIFICATION (early) ---
         hands = getattr(caller, "hands", {})
-        weapon_obj = get_wielded_weapon(caller)
+        # The one door (MULTI_WEAPON_COMBAT_SPEC §4): a peek without the
+        # target for the gate prose; the initiate re-asks with the target
+        # so gates, initiate and the swing agree.
+        choice = choose_weapon(caller)
+        weapon_obj = choice.item if choice else None
         
         # Debug weapon detection
         splattercast.msg(f"WEAPON_DETECT: {caller.key} hands={hands}, weapon_obj={weapon_obj.key if weapon_obj else 'None'}")
@@ -84,9 +89,9 @@ class CmdAttack(Command):
                            f"db.is_ranged={weapon_obj.db.is_ranged if weapon_obj.db.is_ranged is not None else 'MISSING'}, "
                            f"db.weapon_type={weapon_obj.db.weapon_type if weapon_obj.db.weapon_type is not None else 'MISSING'}")
         
-        is_ranged_weapon = weapon_obj and weapon_obj.db.is_ranged
+        is_ranged_weapon = has_ranged_option(caller)
         weapon_name_for_msg = weapon_obj.key if weapon_obj else "your fists"
-        weapon_type_for_msg = (str(weapon_obj.db.weapon_type).lower() if weapon_obj and weapon_obj.db.weapon_type else "unarmed")
+        weapon_type_for_msg = choice.weapon_type if choice else "unarmed"
         
         splattercast.msg(f"WEAPON_FINAL: {caller.key} is_ranged={is_ranged_weapon}, weapon_type={weapon_type_for_msg}")
         # --- END WEAPON IDENTIFICATION ---
@@ -370,6 +375,9 @@ class CmdAttack(Command):
             splattercast.msg(f"{DEBUG_PREFIX_ATTACK}: Aiming direction attack by {caller.key} towards {aiming_direction} into {target_room.key}.")
 
             # --- ADDITIONAL AIMING DIRECTION LOGIC ---
+            choice = choose_weapon(caller, target)
+            weapon_obj = choice.item if choice else None
+            weapon_type_for_msg = choice.weapon_type if choice else "unarmed"
             initiate_msg_obj = get_combat_message(
                 weapon_type_for_msg, "initiate", attacker=caller, target=target, item=weapon_obj,
                 hit_location=select_hit_location(target, 0, caller))
@@ -435,6 +443,9 @@ class CmdAttack(Command):
             
         else:
             # Standard local attack initiation message (use get_combat_message)
+            choice = choose_weapon(caller, target)
+            weapon_obj = choice.item if choice else None
+            weapon_type_for_msg = choice.weapon_type if choice else "unarmed"
             initiate_msg_obj = get_combat_message(
                 weapon_type_for_msg, "initiate", attacker=caller, target=target, item=weapon_obj,
                 hit_location=select_hit_location(target, 0, caller))
@@ -510,10 +521,9 @@ class CmdAttack(Command):
             
             if should_show_target_initiate and target != caller:
                 # Get target's weapon for their defensive initiate message
-                target_weapon = get_wielded_weapon(target)
-                target_weapon_type = "unarmed"
-                if target_weapon and target_weapon.db.weapon_type is not None:
-                    target_weapon_type = target_weapon.db.weapon_type
+                target_choice = choose_weapon(target, caller)
+                target_weapon = target_choice.item if target_choice else None
+                target_weapon_type = target_choice.weapon_type if target_choice else "unarmed"
                 
                 # Get target's initiate message (defensive reaction)
                 target_initiate_msg_obj = get_combat_message(
@@ -619,10 +629,8 @@ class CmdStop(Command):
                 # Clear override_place and handle mutual showdown cleanup
                 self._clear_aim_override_place_on_stop(caller, aiming_target)
                 
-                # Get weapon name for better messaging
-                hands = getattr(caller, "hands", {})
-                weapon = get_wielded_weapon(caller)
-                weapon_name = weapon.key if weapon else "weapon"
+                # Get weapon name for better messaging: the weapon the aim named
+                weapon_name = aimed_weapon_name(caller, aiming_target)
                 
                 caller.msg(f"You stop aiming at {get_display_name_safe(aiming_target, caller)} and lower your {weapon_name}.")
                 aiming_target.msg(f"{capitalize_first(get_display_name_safe(caller, aiming_target))} stops aiming at you.")
@@ -636,9 +644,7 @@ class CmdStop(Command):
                     caller.override_place = ""
                 
                 # Get weapon name for better messaging
-                hands = getattr(caller, "hands", {})
-                weapon = get_wielded_weapon(caller)
-                weapon_name = weapon.key if weapon else "weapon"
+                weapon_name = aimed_weapon_name(caller)
                 
                 # Try to get the actual exit name from the direction
                 exit_obj = caller.search(aiming_direction, location=caller.location, quiet=True)
