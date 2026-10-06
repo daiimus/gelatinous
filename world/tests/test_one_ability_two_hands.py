@@ -337,7 +337,8 @@ class TwoArmGunsFromTheOldModel(EvenniaTest):
     """Legacy shared state on two integrated hosts: both forearm modules
     point at one gun. A per-host deploy must not seat that one gun in the
     left hand and then move it to the right (MULTI_WEAPON_COMBAT_SPEC §3,
-    §12): the first arm keeps it, the second spawns its own."""
+    §12): the hand that holds it keeps it, otherwise the first; the others
+    spawn their own."""
 
     def setUp(self):
         super().setUp()
@@ -444,6 +445,30 @@ class TheStowIsAtTheCut(_NailzCase):
         self.assertIn("left hand", said)
         self.assertNotIn("your hands are just hands again", said)
 
+    def test_a_stow_at_the_keeper_hand_leaves_the_other_hands_legacy_claws_fighting(self):
+        # Legacy shared state: both hands deployed on ONE object. The stow
+        # settles the share over every living host, and the stowed hand is
+        # the keeper; the other hand lets go but is deployed, so it gets
+        # its own blades at once and keeps fighting, instead of reading
+        # deployed with nothing behind it.
+        from evennia import create_object
+        from world.medical.augments import (find_ability_hosts, get_active_natural_weapons,
+                                            stow_abilities_at, _ability_state)
+        shared = create_object("typeclasses.items.Item", key="old blades", location=None)
+        hosts = find_ability_hosts(self.char1, "nailz")
+        for host in hosts:
+            _ability_state(host, "nailz").update({"deployed": True, "weapon_dbref": shared.dbref})
+        self.char1.save_medical_state()
+        keeper, other = hosts[0], hosts[1]
+        messages = stow_abilities_at(self.char1, keeper.container)
+        self.assertEqual(len(messages), 1, messages)
+        found = get_active_natural_weapons(self.char1)
+        self.assertEqual([c for c, _ in found], [other.container], "the other hand stopped fighting")
+        self.assertNotEqual(found[0][1].id, shared.id, "the other hand fights with the stowed hand's blades")
+        self.assertIsNone(found[0][1].location)
+        self.assertTrue(_ability_state(other, "nailz").get("deployed"))
+        self.assertTrue(shared.pk, "the shared object was deleted")
+
 
 class TheNaturalLookupIsPerHost(_NailzCase):
 
@@ -480,3 +505,32 @@ class TestSeveranceStaysPerHand(_NailzCase):
         still = self.deployed_hands()
         self.assertEqual(still, ["right_hand"],
                          "the surviving hand lost its blades")
+
+    def test_a_shared_legacy_object_is_settled_at_the_cut(self):
+        # Legacy shared state: both hands deployed on ONE object. The cut
+        # arm takes it; the survivor must let go of it right there, or a
+        # surgeon reattaching that arm to ANOTHER body leaves one object
+        # claimed by two. Deployed and natural, the survivor gets its own
+        # blades at once and keeps fighting.
+        from evennia import create_object
+        from typeclasses.items import apply_sever_to_character
+        from world.medical.augments import (find_ability_hosts, get_active_natural_weapons,
+                                            _ability_state)
+        shared = create_object("typeclasses.items.Item", key="old blades", location=None)
+        for host in find_ability_hosts(self.char1, "nailz"):
+            _ability_state(host, "nailz").update({"deployed": True, "weapon_dbref": shared.dbref})
+        self.char1.save_medical_state()
+        apply_sever_to_character(self.char1, "left_arm")
+        arm = next((o for o in self.room1.contents
+                    if o.is_typeclass("typeclasses.items.Appendage", exact=False)), None)
+        self.assertIsNotNone(arm, "fixture: the arm did not come off")
+        self.assertEqual(shared.location, arm, "the limb did not take the shared blades")
+        (survivor,) = find_ability_hosts(self.char1, "nailz")
+        self.assertEqual(survivor.container, "right_hand")
+        state = _ability_state(survivor, "nailz")
+        self.assertTrue(state.get("deployed"), "the survivor lost its deployed flag")
+        self.assertNotEqual(state.get("weapon_dbref"), shared.dbref,
+                            "the survivor still points at blades lying in a severed arm")
+        found = get_active_natural_weapons(self.char1)
+        self.assertEqual([c for c, _ in found], ["right_hand"], "the surviving hand stopped fighting")
+        self.assertNotEqual(found[0][1].id, shared.id)

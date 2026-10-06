@@ -111,6 +111,56 @@ class ALimbCutOffACorpseTakesItsHardwareTest(_ChromeDeath):
         self.assertIsNone(self.gun.location)
 
 
+class ASharedGunOnACorpseGoesWithTheFirstLimbTest(_ChromeDeath):
+    """A master-era body with two shotgun arms recorded ONE gun on both
+    arms (the mirror), and its corpse keeps that snapshot. The first arm
+    cut off the corpse takes the gun. The second cut must not pull it back
+    out of whoever has since been fitted with the first arm, nor off the
+    first arm itself (#3695 review; MULTI_WEAPON_COMBAT_SPEC §9)."""
+
+    def setUp(self):
+        super().setUp()
+        state = self.patient.medical_state
+        left = Organ("left_cybernetic_humerus", organ_data={
+            "container": "left_arm", "max_hp": 30, "hit_weight": "common",
+            "bone_type": "actuator_column", "inorganic": True, "prosthetic_frame": True,
+            "abilities": {"shotgun": {"type": "integrated_weapon", "slot": "left_hand",
+                                      "weapon_prototype": "SHOTGUN_ARM_GUN"}},
+        })
+        left.medical_state = state
+        state.organs["left_cybernetic_humerus"] = left
+        left.ability_state = {"shotgun": {"weapon_dbref": self.gun.dbref}}
+        self.patient.save_medical_state()
+
+    def _second_arm_state(self, arm):
+        return arm.get_medical_snapshot()["organs"]["left_cybernetic_humerus"]["ability_state"]["shotgun"]
+
+    def test_control_the_first_cut_takes_the_shared_gun(self):
+        corpse = self._die()
+        first = spawn_severed_part_from_corpse(corpse, "right_arm")
+        self.assertEqual(self.gun.location, first)
+
+    def test_the_second_cut_leaves_the_gun_in_a_living_hand(self):
+        corpse = self._die()
+        first = spawn_severed_part_from_corpse(corpse, "right_arm")
+        self.assertEqual(self.gun.location, first, "fixture: the first arm did not take the gun")
+        # the arm is fitted to someone, who deploys: the gun is in their hand
+        self.gun.location = self.char1
+        self.char1.hands = {"right_hand": self.gun}
+        second = spawn_severed_part_from_corpse(corpse, "left_arm")
+        self.assertIsNotNone(second, "fixture: the second arm did not come off")
+        self.assertEqual(self.gun.location, self.char1, "the second cut pulled the gun out of a living hand")
+        self.assertEqual(self.char1.hands.get("right_hand"), self.gun)
+        self.assertNotIn("weapon_dbref", self._second_arm_state(second), "the second arm still claims the gun")
+
+    def test_the_second_cut_leaves_the_gun_on_the_first_arm(self):
+        corpse = self._die()
+        first = spawn_severed_part_from_corpse(corpse, "right_arm")
+        second = spawn_severed_part_from_corpse(corpse, "left_arm")
+        self.assertEqual(self.gun.location, first, "the second cut took the gun off the first arm")
+        self.assertNotIn("weapon_dbref", self._second_arm_state(second))
+
+
 class TheTypedSeverVerbIsTheSameDoorTest(EvenniaCommandTest):
     """Play caught this (2026-09-14): the helper carried the gun, the typed
     `sever` verb -- which builds its own Appendage inline -- did not. The

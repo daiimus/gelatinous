@@ -240,6 +240,20 @@ def _dispatch_toggle(character, name, spec, hosts, deploy) -> str:
     return self_line
 
 
+def _disown(character, host, name) -> None:
+    """``host`` lets go of an object another host now owns (a shared
+    reference from before each hand owned its claws). A deployed natural
+    weapon spawns its own at once, off-grid and silent, so the hand keeps
+    fighting; an integrated host's hand never held the shared gun, so it
+    keeps only its flag and its next toggle reads it retracted. Nothing
+    is deleted (MULTI_WEAPON_COMBAT_SPEC §3)."""
+    state = _ability_state(host, name)
+    state.pop("weapon_dbref", None)
+    spec = _spec_of(host, name)
+    if state.get("deployed") and spec.get("type") == "natural_weapon":
+        _get_or_spawn_weapon(character, state, spec)
+
+
 def _unshare_weapons(character, name) -> None:
     """Legacy state from before each hand owned its claws: every host of
     an ability points at ONE object. Left alone, a per-host deploy would
@@ -248,7 +262,7 @@ def _unshare_weapons(character, name) -> None:
     OTHER hand. Settled over every living host, whichever are being
     toggled (a surgical stow passes one): the host whose hand holds the
     object keeps the reference, otherwise the first in organ order; the
-    rest drop theirs and spawn their own on their next deploy
+    rest let go (`_disown`) and own their own from here
     (MULTI_WEAPON_COMBAT_SPEC §3, §12; the one-shot migration settles
     stored bodies the same way). Nothing is deleted."""
     groups = {}
@@ -269,7 +283,7 @@ def _unshare_weapons(character, name) -> None:
                 break
         for host in sharers:
             if host is not keeper:
-                _ability_state(host, name).pop("weapon_dbref", None)
+                _disown(character, host, name)
 
 
 def _toggle_prose(ability_type, spec, deploy, one_of_many, hand, weapon_name, slot):
@@ -653,9 +667,13 @@ def carry_snapshot_hardware_to_appendage(appendage) -> None:
     Reads the appendage's OWN snapshot (the overlay already copied the
     chain's organs, ``ability_state`` and ``weapon_dbref`` included)
     rather than walking live ``Organ`` objects, moves each weapon onto
-    the appendage wherever it sits (parked off-grid, or loose inside a
-    pre-#3486 corpse) and records it retracted. Reassigns the snapshot
-    so the attribute persists."""
+    the appendage from where a corpse's hardware sits (parked off-grid,
+    or loose inside a pre-#3486 corpse) and records it retracted. An
+    object lying on a character or on another appendage belongs to
+    whoever got the limb that carried it first (a shared reference from
+    before each hand owned its claws, reattached): it stays, and this
+    entry drops its reference (MULTI_WEAPON_COMBAT_SPEC §9). Reassigns
+    the snapshot so the attribute persists."""
     getter = getattr(appendage, "get_medical_snapshot", None)
     snapshot = getter() if callable(getter) else None
     organs = (snapshot or {}).get("organs") if hasattr(snapshot, "get") else None
@@ -671,7 +689,13 @@ def carry_snapshot_hardware_to_appendage(appendage) -> None:
                 continue
             weapon = _find_weapon(ability_state)
             if weapon is not None and weapon.location is not appendage:
-                weapon.location = appendage
+                owner = weapon.location
+                if owner is not None and (
+                        owner.is_typeclass("typeclasses.characters.Character", exact=False)
+                        or owner.is_typeclass("typeclasses.items.Appendage", exact=False)):
+                    ability_state.pop("weapon_dbref", None)
+                else:
+                    weapon.location = appendage
                 changed = True
             if ability_state.get("deployed"):
                 ability_state["deployed"] = False
@@ -689,12 +713,20 @@ def carry_hardware_to_appendage(character, chain, appendage) -> None:
     covers the RETRACTED case — the item parked at ``location=None``,
     folded inside the arm that just hit the floor.  Idempotent for
     the deployed case.
+
+    The limb takes its object; a host left on the body that still
+    points at that object (a shared reference from before each hand
+    owned its claws) lets go here (`_disown`), or reattaching the limb
+    to ANOTHER body would leave one object claimed by two. Settled at
+    the cut, not at the next toggle: a survivor with one living host
+    has nothing to unshare against (MULTI_WEAPON_COMBAT_SPEC §9).
     """
     state = getattr(character, "medical_state", None)
     organs = getattr(state, "organs", None) if state else None
     if not organs:
         return
     chain_set = set(chain)
+    carried = {}   # ability name -> the dbrefs that left with the limb
     for organ in organs.values():
         if getattr(organ, "container", None) not in chain_set:
             continue
@@ -705,4 +737,17 @@ def carry_hardware_to_appendage(character, chain, appendage) -> None:
             weapon = _find_weapon(ability_state)
             if weapon is not None and weapon.location is not appendage:
                 weapon.location = appendage
+            if ability_state.get("weapon_dbref"):
+                carried.setdefault(name, set()).add(ability_state["weapon_dbref"])
             ability_state["deployed"] = False
+    if not carried:
+        return
+    for organ in organs.values():
+        if (getattr(organ, "container", None) in chain_set
+                or getattr(organ, "current_hp", 0) <= 0):
+            continue
+        store = getattr(organ, "ability_state", None) or {}
+        for name, refs in carried.items():
+            ability_state = store.get(name)
+            if isinstance(ability_state, dict) and ability_state.get("weapon_dbref") in refs:
+                _disown(character, organ, name)
