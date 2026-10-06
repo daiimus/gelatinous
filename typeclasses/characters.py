@@ -2150,7 +2150,8 @@ class Character(
         * Minus any container currently severed
         * Backing values from ``self.held_items``
 
-        Reads are cheap (one species lookup + one severance scan)
+        Reads are cheap (two species lookups, one severance scan and a
+        sort of two or three names)
         and intentionally not cached — severance state can change
         at any time, and over-caching here was the root cause of
         the pre-PR-H2 "wield in severed hand" bug.
@@ -2197,12 +2198,25 @@ class Character(
                         for o in at_location):
                     severed = set(severed) | {location}
 
+        # Defined order, not hashed (MULTI_WEAPON_COMBAT_SPEC §6, §11):
+        # the species' anatomical display order first (left hand before
+        # right), then unlisted slots such as a tail alphabetically. The
+        # wheel, wield, get and disarm all read this order.
         held = self.held_items or {}
         return {
             location: held.get(location)
-            for location in grasping
+            for location in self.slot_order(grasping)
             if location not in severed
         }
+
+    def slot_order(self, slots):
+        """``slots`` sorted the way the body lists them: the species'
+        ``anatomical_display_order`` first, then anything unlisted
+        alphabetically (MULTI_WEAPON_COMBAT_SPEC §11)."""
+        from world.anatomy import get_species_anatomical_display_order
+        order = get_species_anatomical_display_order(getattr(self.db, "species", None))
+        rank = {name: i for i, name in enumerate(order)}
+        return sorted(slots, key=lambda slot: (rank.get(slot, len(rank)), str(slot)))
 
     @hands.setter
     def hands(self, value):

@@ -66,9 +66,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s face is set in concentration, finger hovering near the pistol's trigger."
         },
         {
-            'attacker_msg': "The pistol feels like a reliable, efficient tool of violence in your hands.",
-            'victim_msg': "The pistol feels like a reliable, efficient tool of violence in {attacker_name}'s hands.",
-            'observer_msg': "The pistol feels like a reliable, efficient tool of violence in {attacker_name}'s hands."
+            'attacker_msg': "The pistol feels like a reliable, efficient tool of violence in your grip.",
+            'victim_msg': "The pistol feels like a reliable, efficient tool of violence in {attacker_name}'s grip.",
+            'observer_msg': "The pistol feels like a reliable, efficient tool of violence in {attacker_name}'s grip."
         },
         {
             'attacker_msg': "You shift your weight, bracing for the pistol's manageable recoil and quick follow-up shots.",

@@ -14,7 +14,7 @@ from random import randint
 from .debug import get_splattercast
 
 from world.combat.messages import get_combat_message
-from world.combat.weapon_choice import choose_weapon
+from world.combat.weapon_choice import choose_weapon, note_weapon_used
 from world.combat.capacity import (
     sight_hit_factor, moving_dodge_factor, manipulation_hit_factor,
 )
@@ -297,11 +297,11 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
         )
         return
 
-    # Auto-prioritizer (CAPACITY_CONSUMERS spec §6.1 Q2): pick the best in-hand
-    # weapon for THIS engagement — range-appropriate first, then highest damage.
-    # The engagement (not the weapon) decides melee vs ranged. A one-weapon
-    # fighter gets that weapon unchanged; holding several (multi-armed / cyber
-    # tail) lets combat bring the right one to bear automatically.
+    # The one door (MULTI_WEAPON_COMBAT_SPEC §4, §6): the option THIS swing
+    # uses — range filter first, then natural precedence, then akimbo
+    # grouping, then the wheel's next option after the last slot that
+    # swung. The engagement (not the weapon) decides melee vs ranged. A
+    # one-weapon fighter gets that weapon every time.
     choice = choose_weapon(attacker, target)
     is_ranged_attack = bool(choice and choice.is_ranged)
 
@@ -343,6 +343,10 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
             f"{target.key} from {attacker.location.key} to "
             f"{target.location.key}."
         )
+
+    # The reach and proximity gates have passed: this swing is real, so
+    # the wheel turns here and not on a refused attack (§6).
+    note_weapon_used(attacker, choice)
 
     # ── Human Shield System Check ──────────────────────────────────────
     # Check if target is grappling someone who could act as a human shield

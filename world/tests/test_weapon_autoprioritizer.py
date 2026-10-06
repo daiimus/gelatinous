@@ -2,17 +2,18 @@
 
 `choose_weapon(char, target)` picks the weapon THIS attack uses, by the
 spec's rule order: candidates in slot order, real weapons over improvised
-ones, range before natural precedence, then akimbo grouping. Held weapons
-keep range-then-max in slice 1. `has_ranged_option` answers the gates.
+ones, range before natural precedence, then akimbo grouping. The wheel
+(slice 2, owner rulings §14 #1, #3, #4, #8) then takes the next option that
+can reach, in the body's slot order. `has_ranged_option` answers the gates.
 `weapon_options` is the ordered wheel.
 """
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
-from world.combat.constants import NDB_PROXIMITY
+from world.combat.constants import NDB_LAST_WEAPON_SLOT, NDB_PROXIMITY
 from world.combat.weapon_choice import (aimed_weapon_name, choose_weapon, has_ranged_option,
-                                        weapon_options)
+                                        note_weapon_used, weapon_options)
 
 
 class _Tags:
@@ -32,6 +33,14 @@ def _weapon(key, ranged, damage, *, weapon=True, **attrs):
 
 
 _ROOM = object()
+_LISTED = ("head", "left_hand", "right_hand")     # the human display order, abridged
+
+
+def _body_order(names):
+    """The body's rule, as the stub: listed slots in display order (the
+    head before the hands, left hand first), then anything unlisted
+    alphabetically."""
+    return sorted(names, key=lambda n: (n not in _LISTED, _LISTED.index(n) if n in _LISTED else 0, n))
 
 
 def _char(weapons, location=_ROOM, proximity=(), slots=None):
@@ -41,6 +50,7 @@ def _char(weapons, location=_ROOM, proximity=(), slots=None):
         hands=hands,
         location=location,
         ndb=SimpleNamespace(**{NDB_PROXIMITY: set(proximity)}),
+        slot_order=_body_order,
     )
 
 
@@ -91,10 +101,14 @@ class RangedEngagementTests(TestCase):
         attacker = _char([_weapon("sword", False, 20), _weapon("pistol", True, 10)], proximity=())
         self.assertEqual(choose_weapon(attacker, tgt).item.key, "pistol")
 
-    def test_at_range_highest_damage_ranged_wins(self):
+    def test_at_range_two_guns_alternate(self):
         tgt = _target()
         attacker = _char([_weapon("pistol", True, 10), _weapon("rifle", True, 18)], proximity=())
+        self.assertEqual(choose_weapon(attacker, tgt).item.key, "pistol")
+        note_weapon_used(attacker, choose_weapon(attacker, tgt))
         self.assertEqual(choose_weapon(attacker, tgt).item.key, "rifle")
+        note_weapon_used(attacker, choose_weapon(attacker, tgt))
+        self.assertEqual(choose_weapon(attacker, tgt).item.key, "pistol")
 
     def test_at_range_only_melee_falls_back(self):
         # No ranged option: a held weapon comes back so the caller's reach
@@ -118,11 +132,11 @@ class RangedEngagementTests(TestCase):
             self.assertIs(choose_weapon(attacker).item, claws)
             self.assertIs(choose_weapon(attacker, at_range=True).item, pistol)
 
-    def test_the_aiming_peek_names_the_gun_over_a_heavier_blade(self):
+    def test_the_aiming_peek_names_the_gun_over_a_blade_in_the_first_slot(self):
         katana = _weapon("katana", False, 14)
         pistol = _weapon("pistol", True, 12)
         attacker = _char([katana, pistol])
-        self.assertIs(choose_weapon(attacker).item, katana)
+        self.assertIs(choose_weapon(attacker).item, katana)       # first slot, no target
         self.assertIs(choose_weapon(attacker, at_range=True).item, pistol)
 
     def test_the_aiming_peek_with_nothing_ranged_still_names_something(self):
@@ -142,10 +156,12 @@ class TheAimLinesAgree(TestCase):
         with _naturals(("left_hand", claws)):
             self.assertEqual(aimed_weapon_name(attacker), "pistol")
 
-    def test_a_target_aim_in_melee_names_the_blade(self):
+    def test_a_target_aim_in_melee_names_what_swings_next(self):
         tgt = _target()
         attacker = _char([_weapon("katana", False, 14), _weapon("pistol", True, 12)], proximity=(tgt,))
         self.assertEqual(aimed_weapon_name(attacker, tgt), "katana")
+        note_weapon_used(attacker, choose_weapon(attacker, tgt))
+        self.assertEqual(aimed_weapon_name(attacker, tgt), "pistol")
 
     def test_the_three_target_stop_sites_pass_the_aims_target(self):
         # The stop and move lines after a TARGET aim must ask the same
@@ -173,14 +189,19 @@ class TheAimLinesAgree(TestCase):
 
 
 class MeleeEngagementTests(TestCase):
-    def test_in_melee_highest_damage_wins(self):
+    """Owner ruling §14 #1: no "then highest damage"; in melee every option
+    that can reach takes its turn, first slot first."""
+
+    def test_in_melee_the_first_slot_swings_first_whatever_it_hits_for(self):
         tgt = _target()
         attacker = _char([_weapon("pistol", True, 12), _weapon("sword", False, 20)], proximity=(tgt,))
-        self.assertEqual(choose_weapon(attacker, tgt).item.key, "sword")
+        self.assertEqual(choose_weapon(attacker, tgt).item.key, "pistol")
 
-    def test_in_melee_gun_used_pointblank_if_higher_damage(self):
+    def test_in_melee_a_gun_takes_its_turn_pointblank(self):
         tgt = _target()
-        attacker = _char([_weapon("hand cannon", True, 28), _weapon("knife", False, 14)], proximity=(tgt,))
+        attacker = _char([_weapon("knife", False, 14), _weapon("hand cannon", True, 28)], proximity=(tgt,))
+        self.assertEqual(choose_weapon(attacker, tgt).item.key, "knife")
+        note_weapon_used(attacker, choose_weapon(attacker, tgt))
         self.assertEqual(choose_weapon(attacker, tgt).item.key, "hand cannon")
 
 
@@ -219,11 +240,98 @@ class NaturalPrecedenceAfterRangeTests(TestCase):
             self.assertEqual(choose_weapon(attacker).slots, ("left_hand",))
 
 
+class TheWheel(TestCase):
+    """§6: one option per attack, the next option that can reach next, in
+    slot order, wrapping; the cursor self-heals; a lone option never waits."""
+
+    def test_a_lone_option_swings_every_time(self):
+        pistol = _weapon("pistol", True, 10)
+        attacker = _char([pistol])
+        for _ in range(3):
+            choice = choose_weapon(attacker)
+            self.assertIs(choice.item, pistol)
+            note_weapon_used(attacker, choice)
+
+    def test_two_pistols_alternate_left_right_left(self):
+        left, right = _weapon("left pistol", True, 10), _weapon("right pistol", True, 10)
+        attacker = _char([left, right], slots=["left_hand", "right_hand"])
+        seen = []
+        for _ in range(4):
+            choice = choose_weapon(attacker)
+            seen.append(choice.item.key)
+            note_weapon_used(attacker, choice)
+        self.assertEqual(seen, ["left pistol", "right pistol", "left pistol", "right pistol"])
+
+    def test_pistol_and_knife_at_range_fire_the_pistol_every_round(self):
+        tgt = _target()
+        attacker = _char([_weapon("knife", False, 4), _weapon("pistol", True, 10)], proximity=())
+        for _ in range(3):
+            choice = choose_weapon(attacker, tgt)
+            self.assertEqual(choice.item.key, "pistol")
+            note_weapon_used(attacker, choice)
+
+    def test_pistol_and_knife_in_melee_alternate(self):
+        tgt = _target()
+        attacker = _char([_weapon("knife", False, 4), _weapon("pistol", True, 10)], proximity=(tgt,))
+        seen = []
+        for _ in range(3):
+            choice = choose_weapon(attacker, tgt)
+            seen.append(choice.item.key)
+            note_weapon_used(attacker, choice)
+        self.assertEqual(seen, ["knife", "pistol", "knife"])
+
+    def test_the_cursor_self_heals_when_its_slot_is_gone(self):
+        # Disarmed or severed between swings: the cursor names a slot no
+        # option holds; the wheel takes the next slot after it, wrapping.
+        a, c = _weapon("a", False, 5), _weapon("c", False, 5)
+        attacker = _char([a, c], slots=["hand_a", "hand_c"])
+        setattr(attacker.ndb, NDB_LAST_WEAPON_SLOT, "hand_b")
+        self.assertEqual(choose_weapon(attacker).item.key, "c")
+        setattr(attacker.ndb, NDB_LAST_WEAPON_SLOT, "hand_z")
+        self.assertEqual(choose_weapon(attacker).item.key, "a")
+
+    def test_nailz_and_jawz_alternate(self):
+        # Owner ruling §14 #3. The pair groups as one option under the
+        # left hand; the fangs sit on the head, a non-grasping host that
+        # the display order lists before the hands (JAWZ host "head").
+        prof = {2: {"damage": 9, "hit_bonus": 1, "weapon_type": "nailz_akimbo"}}
+        left = _weapon("left claws", False, 6, akimbo_family="nailz", akimbo_profiles=dict(prof))
+        right = _weapon("right claws", False, 6, akimbo_family="nailz", akimbo_profiles=dict(prof))
+        fangs = _weapon("fangs", False, 8)
+        attacker = _char([None, None], slots=["left_hand", "right_hand"])
+        with _naturals(("left_hand", left), ("right_hand", right), ("head", fangs)):
+            seen = []
+            for _ in range(4):
+                choice = choose_weapon(attacker)
+                seen.append((choice.weapon_type, choice.lead_slot))
+                note_weapon_used(attacker, choice)
+        # the head comes before the hands in the body's order: fangs, pair, fangs, pair
+        self.assertEqual(seen, [("fangs", "head"), ("nailz_akimbo", "left_hand"),
+                                ("fangs", "head"), ("nailz_akimbo", "left_hand")])
+
+    def test_peeks_never_turn_the_wheel(self):
+        # Only note_weapon_used moves the cursor; the refused-swing case is
+        # pinned in test_the_roll_takes_the_weapons_hit_bonus.
+        left, right = _weapon("l", True, 10), _weapon("r", True, 10)
+        attacker = _char([left, right], slots=["left_hand", "right_hand"])
+        for _ in range(3):
+            self.assertIs(choose_weapon(attacker).item, left)
+
+    def test_the_peek_and_the_swing_agree(self):
+        # The initiate line peeks; the swing that follows commits the same option.
+        left, right = _weapon("l", True, 10), _weapon("r", True, 10)
+        attacker = _char([left, right], slots=["left_hand", "right_hand"])
+        peeked = choose_weapon(attacker)
+        note_weapon_used(attacker, peeked)
+        self.assertIs(peeked.item, left)
+        self.assertIs(choose_weapon(attacker).item, right)
+
+
 class AkimboGroupingTests(TestCase):
-    PROFILES = {2: {"damage": 9, "hit_bonus": 1, "weapon_type": "tiger_claws_akimbo"}}
+    PROFILES = {2: {"damage": 9, "hit_bonus": 1, "weapon_type": "nailz_akimbo"}}
 
     def _claw(self, key="claws"):
-        return _weapon(key, False, 6, weapon_type="tiger_claws", damage_type="cut",
+        return _weapon(key, False, 6, weapon_type="nailz", damage_type="cut",
                        akimbo_family="nailz", akimbo_profiles=dict(self.PROFILES))
 
     def test_two_claws_make_one_attack_on_the_pair_profile(self):
@@ -235,7 +343,7 @@ class AkimboGroupingTests(TestCase):
         self.assertEqual(choice.items, (left, right))
         self.assertEqual(choice.slots, ("left_hand", "right_hand"))
         self.assertEqual((choice.damage, choice.hit_bonus, choice.weapon_type, choice.damage_type),
-                         (9, 1, "tiger_claws_akimbo", "cut"))
+                         (9, 1, "nailz_akimbo", "cut"))
 
     def test_one_claw_keeps_the_single_profile(self):
         left = self._claw()
@@ -243,7 +351,7 @@ class AkimboGroupingTests(TestCase):
         with _naturals(("left_hand", left)):
             choice = choose_weapon(attacker)
         self.assertFalse(choice.akimbo)
-        self.assertEqual((choice.damage, choice.hit_bonus, choice.weapon_type), (6, 0, "tiger_claws"))
+        self.assertEqual((choice.damage, choice.hit_bonus, choice.weapon_type), (6, 0, "nailz"))
 
     def test_three_claws_with_a_pair_profile_make_a_pair_and_a_single(self):
         a, b, c = (self._claw(k) for k in ("a", "b", "c"))

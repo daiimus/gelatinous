@@ -334,15 +334,18 @@ them into one body-wide number is wrong.
   + loadout-readiness**. NOT extra attacks or raw damage (combat-balance
   guardrail). Three sub-payoffs, all **decided 2026-06-20**:
   - **Loadout-readiness ✅ SHIPPED — the auto-prioritizer.** Rather than a
-    weapon-swap action economy, combat *automatically* brings the best in-hand
+    weapon-swap action economy, combat *automatically* brings an in-hand
     weapon to bear for the engagement: **range-appropriate first** (only ranged
-    reach at range; anything works point-blank), **then highest damage** (skill
-    weighting joins this once skills exist). The engagement — not the weapon —
-    decides melee vs ranged. Since 2026-10-05 the one door
+    reach at range; anything works point-blank), then, until 2026-10-06, the
+    highest damage. The engagement — not the weapon — decides melee vs
+    ranged. Since 2026-10-05 the one door
     `world/combat/weapon_choice.py` `choose_weapon` (used by `process_attack`
     and every other reader of the wielded weapon; MULTI_WEAPON_COMBAT_SPEC §4):
-    range filter first, THEN natural-weapon precedence, then akimbo grouping;
-    single-weapon fighters unchanged. Manipulation is the minimum over the
+    range filter first, THEN natural-weapon precedence, then akimbo grouping,
+    then the wheel (slice 2, owner ruling 2026-10-06): one option swings per
+    attack and the next attack takes the next option that can reach, in the
+    body's slot order; "then highest damage" is gone. Single-weapon fighters
+    unchanged. Manipulation is the minimum over the
     choice's slots (`manipulation_hit_factor(attacker, weapon, slots=...)`): a
     natural weapon on a grasping host scopes to that hand, an akimbo pair to
     both, Jawz stays body-wide. Tests: `test_weapon_autoprioritizer.py`,

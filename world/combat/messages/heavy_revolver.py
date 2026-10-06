@@ -26,9 +26,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} levels the heavy revolver, its weight a counter to the anticipated fierce recoil."
         },
         {
-            'attacker_msg': "The imposing lines of the powerful revolver are unmistakable as you take a firm two-handed aim.",
-            'victim_msg': "The imposing lines of the powerful revolver are unmistakable as {attacker_name} takes a firm two-handed aim.",
-            'observer_msg': "The imposing lines of the powerful revolver are unmistakable as {attacker_name} takes a firm two-handed aim."
+            'attacker_msg': "The imposing lines of the powerful revolver are unmistakable as you take a firm aim.",
+            'victim_msg': "The imposing lines of the powerful revolver are unmistakable as {attacker_name} takes a firm aim.",
+            'observer_msg': "The imposing lines of the powerful revolver are unmistakable as {attacker_name} takes a firm aim."
         },
         {
             'attacker_msg': "You point the heavy revolver towards {target_name}, a clear and overwhelming deadly threat.",
@@ -66,9 +66,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s face is set in grim concentration, finger deliberately taking up the slack on the revolver's trigger."
         },
         {
-            'attacker_msg': "The heavy revolver feels like an instrument of brutal, decisive force in your hands.",
-            'victim_msg': "The heavy revolver feels like an instrument of brutal, decisive force in {attacker_name}'s hands.",
-            'observer_msg': "The heavy revolver feels like an instrument of brutal, decisive force in {attacker_name}'s hands."
+            'attacker_msg': "The heavy revolver feels like an instrument of brutal, decisive force in your grip.",
+            'victim_msg': "The heavy revolver feels like an instrument of brutal, decisive force in {attacker_name}'s grip.",
+            'observer_msg': "The heavy revolver feels like an instrument of brutal, decisive force in {attacker_name}'s grip."
         },
         {
             'attacker_msg': "You plant your feet, bracing for the revolver's powerful kickback.",

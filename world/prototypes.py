@@ -2384,12 +2384,13 @@ NAILZ = {
 
 # The claw weapon Nailz extends (#526 M4).  Never held — the claws
 # ARE the hand; combat resolution reads it via natural-weapon
-# precedence.  One hand speaks the tiger_claws bank, both hands the
-# tiger_claws_akimbo bank (the pair profile below).
+# precedence.  One hand speaks the nailz bank, both hands the
+# nailz_akimbo bank (the pair profile below; owner ruling: Nailz has its
+# own pair, the held Tiger Claws will have theirs).
 # One hand's claws (MULTI_WEAPON_COMBAT_SPEC §3, §5): each Nailz host
 # owns one of these. Both hands out group into ONE attack on the pair
-# profile below (d6+9, +1 to hit, the `tiger_claws_akimbo` bank); one
-# hand swings on these attributes (d6+6, +0, `tiger_claws`). Placeholder
+# profile below (d6+9, +1 to hit, the `nailz_akimbo` bank); one hand
+# swings on these attributes (d6+6, +0, `nailz`). Placeholder
 # numbers, BALANCE_LEDGER.md.
 NAILZ_CLAWS = {
     "prototype_parent": "MELEE_WEAPON_BASE",
@@ -2399,12 +2400,12 @@ NAILZ_CLAWS = {
     "damage": 6,
     "locks": "get:false();drop:false();give:false()",
     "attrs": [
-        ("weapon_type", "tiger_claws"),
+        ("weapon_type", "nailz"),
         ("damage_type", "cut"),
         ("hands_required", 1),
         ("integrated", True),
         ("akimbo_family", "nailz"),
-        ("akimbo_profiles", {2: {"damage": 9, "hit_bonus": 1, "weapon_type": "tiger_claws_akimbo"}}),
+        ("akimbo_profiles", {2: {"damage": 9, "hit_bonus": 1, "weapon_type": "nailz_akimbo"}}),
     ],
 }
 

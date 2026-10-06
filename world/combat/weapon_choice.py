@@ -26,13 +26,16 @@ Rule order, a pure peek (nothing here changes state):
 5. Akimbo grouping (§5): options sharing an ``akimbo_family`` become ONE
    option on the lead item's attributes overlaid with the profile for the
    largest count the group covers. One attack, never one per limb.
-6. Rotation is slice 2. In slice 1 held weapons keep range-then-max and
-   naturals take the first option.
+6. The wheel (§6): one option swings per attack; the next attack takes the
+   next option that can reach, in slot order, wrapping. A cursor on the
+   attacker (`NDB_LAST_WEAPON_SLOT`) remembers the lead slot that swung;
+   `process_attack` commits it only after the reach gates pass, so a
+   refused swing does not turn the wheel. Every other reader peeks.
 """
 from dataclasses import dataclass, replace
 
 from world.combat.constants import (
-    AKIMBO_PROFILE_FIELDS, WEAPON_ATTR_AKIMBO_FAMILY,
+    AKIMBO_PROFILE_FIELDS, NDB_LAST_WEAPON_SLOT, WEAPON_ATTR_AKIMBO_FAMILY,
     WEAPON_ATTR_AKIMBO_PROFILES, WEAPON_ATTR_HIT_BONUS, WEAPON_TYPE_UNARMED,
 )
 from world.combat.utils import _in_melee_range, get_weapon_damage
@@ -42,9 +45,12 @@ from world.combat.utils import _in_melee_range, get_weapon_damage
 class WeaponChoice:
     """One attack's worth of weapon. ``items`` in slot order, the lead
     first; ``slots`` the grasping slots it occupies (empty for a natural
-    weapon on a non-grasping host, which keeps body-wide manipulation)."""
+    weapon on a non-grasping host, which keeps body-wide manipulation);
+    ``lead_slot`` the slot the wheel files it under (the host container
+    for a natural weapon, the first grasping slot for a held one)."""
     items: tuple
     slots: tuple
+    lead_slot: str
     damage: int
     hit_bonus: int
     damage_type: object
@@ -78,9 +84,10 @@ def _is_real_weapon(item) -> bool:
         return False
 
 
-def _single(item, slots, natural) -> WeaponChoice:
+def _single(item, slots, natural, lead_slot=None) -> WeaponChoice:
     return WeaponChoice(
         items=(item,), slots=tuple(slots),
+        lead_slot=str(lead_slot if lead_slot is not None else (slots[0] if slots else "")),
         damage=get_weapon_damage(item, 0),
         hit_bonus=int(_db(item, WEAPON_ATTR_HIT_BONUS, 0) or 0),
         damage_type=_db(item, "damage_type"),
@@ -118,41 +125,51 @@ def _grouped(members) -> WeaponChoice:
     if "weapon_type" in overrides:
         overrides["weapon_type"] = str(overrides["weapon_type"])
     return replace(lead, items=tuple(m.item for m in members),
-                   slots=tuple(s for m in members for s in m.slots), **overrides)
+                   slots=tuple(s for m in members for s in m.slots),
+                   lead_slot=lead.lead_slot, **overrides)
 
 
 def _group_akimbo(options):
     """Step 5. Members of one family, distinct objects, in slot order; the
     profile for the largest count k with k <= n takes k members as one
-    option, leftovers regroup by the same rule or stay single. Options
-    without a family pass through in place."""
-    out, pending = [], {}
-    order = []
-    for option in options:
+    option, leftovers regroup by the same rule or stay single. Every option
+    keeps its place in slot order: a group stands where its first member
+    stood, so the wheel (§6) turns through groups and singles alike in the
+    body's order."""
+    placed, pending = [], {}
+    for index, option in enumerate(options):
         family = _db(option.item, WEAPON_ATTR_AKIMBO_FAMILY)
         if not family:
-            out.append(option)
+            placed.append((index, option))
             continue
-        if family not in pending:
-            pending[family] = []
-            order.append(family)
-        pending[family].append(option)
-    for family in order:
-        members = pending[family]
+        pending.setdefault(family, []).append((index, option))
+    for members in pending.values():
         while members:
-            keys = [k for k in _profiles(members[0].item) if 1 < k <= len(members)]
+            keys = [k for k in _profiles(members[0][1].item) if 1 < k <= len(members)]
             if not keys:
-                out.append(members.pop(0))
+                placed.append(members.pop(0))
                 continue
             k = max(keys)
-            out.append(_grouped(members[:k]))
-            members = members[k:]
-    return out
+            group, members = members[:k], members[k:]
+            placed.append((group[0][0], _grouped([option for _, option in group])))
+    return [option for _, option in sorted(placed, key=lambda pair: pair[0])]
+
+
+def _slot_order(char, slots):
+    """The body's own slot order (species display order, then unlisted
+    slots alphabetically); a stub without the method keeps its own."""
+    order = getattr(char, "slot_order", None)
+    if callable(order):
+        try:
+            return list(order(slots))
+        except Exception:  # noqa: BLE001 — a stub's order is its own
+            pass
+    return list(slots)
 
 
 def _candidates(char):
-    """Step 1: deployed naturals (each hand's own object), then held items,
-    one option per distinct object."""
+    """Step 1: deployed naturals (each hand's own object) in slot order,
+    then held items in the hands' order, one option per distinct object."""
     seen, options = set(), []
     hands = getattr(char, "hands", None) or {}
     try:
@@ -160,12 +177,16 @@ def _candidates(char):
         naturals = get_active_natural_weapons(char)
     except Exception:  # noqa: BLE001 — a stub without a medical model fights with its hands
         naturals = []
+    by_host = {}
     for container, item in naturals:
         if id(item) in seen:
             continue
         seen.add(id(item))
-        slots = (container,) if container in hands else ()
-        options.append(_single(item, slots, natural=True))
+        by_host.setdefault(container, []).append(item)
+    for container in _slot_order(char, by_host):
+        for item in by_host[container]:
+            slots = (container,) if container in hands else ()
+            options.append(_single(item, slots, natural=True, lead_slot=container))
     held = {}
     for slot, item in hands.items():
         if item is None or id(item) in seen:
@@ -216,18 +237,38 @@ def weapon_options(char, target=None, *, at_range=False, precedence=True):
 
 
 def choose_weapon(char, target=None, *, at_range=False):
-    """The weapon THIS attack uses, or None when unarmed. Slice 1: a
-    natural option takes the first place in the wheel; held weapons keep
-    range-then-max. ``at_range=True`` is the aiming peek: the option that
-    would fire at range, so the aim, aim-stop and move-while-aiming lines
-    name the gun the ranged gate approved, not the claws or the heavier
-    blade that would swing in melee."""
+    """The weapon the NEXT attack uses, or None when unarmed: the first
+    option in the wheel whose lead slot sorts after the slot that swung
+    last, wrapping; with no cursor, or one option, the first. A pure peek;
+    `note_weapon_used` turns the wheel. ``at_range=True`` is the aiming
+    peek: the option that would fire at range, so the aim, aim-stop and
+    move-while-aiming lines name the gun the ranged gate approved rather
+    than the claws or the heavier blade that would swing in melee."""
     options = weapon_options(char, target, at_range=at_range)
     if not options:
         return None
-    if options[0].natural:
+    if len(options) == 1:
         return options[0]
-    return max(options, key=lambda o: o.damage)
+    last = getattr(getattr(char, "ndb", None), NDB_LAST_WEAPON_SLOT, None)
+    if last is None:
+        return options[0]
+    ranked = _slot_order(char, {o.lead_slot for o in options} | {str(last)})
+    after = ranked[ranked.index(str(last)) + 1:]
+    for slot in after:
+        for option in options:
+            if option.lead_slot == slot:
+                return option
+    return options[0]
+
+
+def note_weapon_used(char, choice) -> None:
+    """Turn the wheel: remember the lead slot of the option that swung.
+    Called by `process_attack` once the reach gates have passed, for
+    scheduled, bonus and opportunity attacks alike (owner ruling §14 #4);
+    cleared with the rest of combat state in `cleanup_combatant_state`."""
+    ndb = getattr(char, "ndb", None)
+    if ndb is not None and choice is not None:
+        setattr(ndb, NDB_LAST_WEAPON_SLOT, choice.lead_slot)
 
 
 def aimed_weapon_name(char, target=None, fallback="weapon") -> str:

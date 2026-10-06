@@ -1,5 +1,6 @@
-"""Nailz, one hand out (MULTI_WEAPON_COMBAT_SPEC §7): the hand-neutral lines
-of the pair bank, seeded for the single profile. Placeholder prose; a
+"""Nailz, one hand out (MULTI_WEAPON_COMBAT_SPEC §7; owner ruling §14 #10:
+Nailz has its own bank pair). The hand-neutral lines of the pair bank,
+seeded for the single profile. Placeholder prose; a
 missing phase falls to the loader's generic line.
 """
 MESSAGES = {

@@ -21,9 +21,9 @@ MESSAGES = {
             "observer_msg": "The pistol that appears in {attacker_name}'s hand is a beast, its large-bore muzzle a dark, terrifying void."
         },
         {
-            "attacker_msg": "You level your pistol with both hands, bracing against the anticipated ferocious recoil.",
-            "victim_msg": "{attacker_name} levels their pistol with both hands, bracing against the anticipated ferocious recoil, aiming at you.",
-            "observer_msg": "{attacker_name} levels the pistol with both hands, bracing against the anticipated ferocious recoil."
+            "attacker_msg": "You level your pistol, bracing against the anticipated ferocious recoil.",
+            "victim_msg": "{attacker_name} levels their pistol, bracing against the anticipated ferocious recoil, aiming at you.",
+            "observer_msg": "{attacker_name} levels the pistol, bracing against the anticipated ferocious recoil."
         },
         {
             "attacker_msg": "The imposing, blocky lines of your semi-automatic pistol are unmistakable as you take a powerful, grounded stance.",
@@ -66,9 +66,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}’s face is a mask of grim concentration, finger deliberately taking up the pistol's long, heavy trigger pull."
         },
         {
-            "attacker_msg": "Your pistol feels like an instrument of pure, brutal, concussive force in your hands, almost a small cannon.",
-            "victim_msg": "The pistol in {attacker_name}'s hands looks like an instrument of pure, brutal, concussive force, almost a small cannon, and it's pointed at you.",
-            "observer_msg": "The pistol feels like an instrument of pure, brutal, concussive force in {attacker_name}'s hands, almost a small cannon."
+            "attacker_msg": "Your pistol feels like an instrument of pure, brutal, concussive force in your grip, almost a small cannon.",
+            "victim_msg": "The pistol in {attacker_name}'s grip looks like an instrument of pure, brutal, concussive force, almost a small cannon, and it's pointed at you.",
+            "observer_msg": "The pistol feels like an instrument of pure, brutal, concussive force in {attacker_name}'s grip, almost a small cannon."
         },
         {
             "attacker_msg": "You plant your feet wide, leaning into the shot, bracing for your pistol's powerful, shoulder-jarring recoil.",
