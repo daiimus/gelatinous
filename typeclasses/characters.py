@@ -1217,10 +1217,10 @@ class Character(
         # wielded); active natural weapons (claws) live off-grid, so
         # check them explicitly first.
         try:
-            from world.medical.augments import get_active_natural_weapon
-            natural = get_active_natural_weapon(self)
-            if natural is not None:
-                return format_wielded_feature(natural.key)
+            from world.medical.augments import get_active_natural_weapons
+            naturals = get_active_natural_weapons(self)
+            if naturals:
+                return format_wielded_feature(naturals[0][1].key)
         except Exception:
             pass
         # Only an actual weapon or explosive carries enough weight to

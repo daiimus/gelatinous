@@ -15,13 +15,21 @@ Run via::
 from types import SimpleNamespace
 from unittest import TestCase
 
-from world.medical.augments import _toggle_voice_modulator
+from world.medical.augments import _ability_state, _dispatch_toggle
 from world.voice import (
     get_apparent_voice_uid,
     get_assigned_voice_name,
     is_voice_modulated,
     remember_voice,
 )
+
+
+def _toggle_one(char, organ, name, spec):
+    """One host through the dispatcher, the way `toggle_ability` does it
+    since each host keeps its own state (MULTI_WEAPON_COMBAT_SPEC): the
+    per-type toggler changes state only; the dispatcher speaks."""
+    deploy = not _ability_state(organ, name).get("deployed")
+    return _dispatch_toggle(char, name, dict(spec, type="voice_modulator"), [organ], deploy)
 
 
 class _Organ:
@@ -52,11 +60,11 @@ class VoiceModulatorToggleTests(TestCase):
         organ = char.organ
         self.assertFalse(is_voice_modulated(char))
 
-        _toggle_voice_modulator(char, organ, "modulate", {})
+        _toggle_one(char, organ, "modulate", {})
         self.assertTrue(is_voice_modulated(char))
         self.assertTrue(organ.ability_state["modulate"]["deployed"])
 
-        _toggle_voice_modulator(char, organ, "modulate", {})
+        _toggle_one(char, organ, "modulate", {})
         self.assertFalse(is_voice_modulated(char))
         self.assertFalse(organ.ability_state["modulate"]["deployed"])
 
@@ -65,7 +73,7 @@ class VoiceModulatorToggleTests(TestCase):
         no teardown hook runs, and the toggle can no longer find it
         (#2484)."""
         char = _Char()
-        _toggle_voice_modulator(char, char.organ, "modulate", {})
+        _toggle_one(char, char.organ, "modulate", {})
         self.assertTrue(is_voice_modulated(char))
         char.organ.current_hp = 0
         self.assertFalse(is_voice_modulated(char))
@@ -75,17 +83,17 @@ class VoiceModulatorToggleTests(TestCase):
         organ = char.organ
         spec = {"deploy_msg": "DEPLOY!", "retract_msg": "RETRACT!"}
         self.assertEqual(
-            _toggle_voice_modulator(char, organ, "modulate", spec), "DEPLOY!"
+            _toggle_one(char, organ, "modulate", spec), "DEPLOY!"
         )
         self.assertEqual(
-            _toggle_voice_modulator(char, organ, "modulate", spec), "RETRACT!"
+            _toggle_one(char, organ, "modulate", spec), "RETRACT!"
         )
 
     def test_modulation_changes_voice_uid(self):
         char = _Char()
         organ = char.organ
         bare = get_apparent_voice_uid(char)
-        _toggle_voice_modulator(char, organ, "modulate", {})
+        _toggle_one(char, organ, "modulate", {})
         masked = get_apparent_voice_uid(char)
         self.assertNotEqual(bare, masked)
 
@@ -97,8 +105,8 @@ class VoiceModulatorToggleTests(TestCase):
         remember_voice(observer, speaker, "Bob")
         self.assertEqual(get_assigned_voice_name(observer, speaker), "Bob")
         # ...then they engage the modulator → unknown voice.
-        _toggle_voice_modulator(speaker, organ, "modulate", {})
+        _toggle_one(speaker, organ, "modulate", {})
         self.assertIsNone(get_assigned_voice_name(observer, speaker))
         # Disengage → recognised again.
-        _toggle_voice_modulator(speaker, organ, "modulate", {})
+        _toggle_one(speaker, organ, "modulate", {})
         self.assertEqual(get_assigned_voice_name(observer, speaker), "Bob")

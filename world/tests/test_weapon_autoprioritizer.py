@@ -120,8 +120,8 @@ class NaturalWeaponPrecedenceTests(TestCase):
         claws = _weapon("claws", False, 30)
         attacker = _char([_weapon("pistol", True, 10)], proximity=())
         with patch(
-            "world.medical.augments.get_active_natural_weapon",
-            return_value=claws,
+            "world.medical.augments.get_active_natural_weapons",
+            return_value=[("left_hand", claws)],
         ):
             self.assertIs(
                 select_weapon_for_engagement(attacker, _target()), claws

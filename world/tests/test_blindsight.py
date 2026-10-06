@@ -17,7 +17,15 @@ from unittest import TestCase
 
 from world.combat.capacity import sight_hit_factor, _blindsight_active
 from world.perception import can_see
-from world.medical.augments import _toggle_blindsight
+from world.medical.augments import _ability_state, _dispatch_toggle
+
+
+def _toggle_one(char, organ, name, spec):
+    """One host through the dispatcher, the way `toggle_ability` does it
+    since each host keeps its own state (MULTI_WEAPON_COMBAT_SPEC): the
+    per-type toggler changes state only; the dispatcher speaks."""
+    deploy = not _ability_state(organ, name).get("deployed")
+    return _dispatch_toggle(char, name, dict(spec, type="blindsight"), [organ], deploy)
 
 
 class _Med:
@@ -39,7 +47,7 @@ class _Char:
         self.organ = _Organ("blindsight", "blindsight")
         self.medical_state.organs = {"suite": self.organ}
         if blindsight:
-            _toggle_blindsight(self, self.organ, "blindsight", {})
+            _toggle_one(self, self.organ, "blindsight", {})
 
 
 class _Organ:
@@ -79,11 +87,11 @@ class BlindsightToggleTests(TestCase):
         organ = ch.organ
         self.assertFalse(_blindsight_active(ch))
 
-        _toggle_blindsight(ch, organ, "blindsight", {})
+        _toggle_one(ch, organ, "blindsight", {})
         self.assertTrue(_blindsight_active(ch))
         self.assertTrue(organ.ability_state["blindsight"]["deployed"])
 
-        _toggle_blindsight(ch, organ, "blindsight", {})
+        _toggle_one(ch, organ, "blindsight", {})
         self.assertFalse(_blindsight_active(ch))
         self.assertFalse(organ.ability_state["blindsight"]["deployed"])
 
@@ -91,7 +99,7 @@ class BlindsightToggleTests(TestCase):
         """No teardown hook runs when the module is simply shot out, so
         derivation is the only thing that ends the effect (#2484)."""
         ch = _Char()
-        _toggle_blindsight(ch, ch.organ, "blindsight", {})
+        _toggle_one(ch, ch.organ, "blindsight", {})
         self.assertTrue(_blindsight_active(ch))
         ch.organ.current_hp = 0
         self.assertFalse(_blindsight_active(ch))
@@ -101,5 +109,5 @@ class BlindsightToggleTests(TestCase):
         ch = _Char()
         organ = ch.organ
         spec = {"deploy_msg": "ON", "retract_msg": "OFF"}
-        self.assertEqual(_toggle_blindsight(ch, organ, "blindsight", spec), "ON")
-        self.assertEqual(_toggle_blindsight(ch, organ, "blindsight", spec), "OFF")
+        self.assertEqual(_toggle_one(ch, organ, "blindsight", spec), "ON")
+        self.assertEqual(_toggle_one(ch, organ, "blindsight", spec), "OFF")

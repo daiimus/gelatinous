@@ -2547,8 +2547,8 @@ def _resolve_install_limb(actor, target, *, organ_item, location: str,
     (module already harvested out) reattaches fine.  Looted chrome:
     any compatible body, gated by the target having a stump at every
     one of the limb's containers (you amputate first, then bolt the
-    scavenged arm on).  Deployed weapons don't survive the cut, so
-    modules come back retracted.
+    scavenged arm on).  Modules come back retracted, with the weapon
+    object the limb took when it was cut (MULTI_WEAPON_COMBAT_SPEC §9).
     """
     from world.identity_utils import msg_room_identity
     from world.medical.charts import mark_running_step_failed
@@ -2647,22 +2647,32 @@ def _resolve_install_limb(actor, target, *, organ_item, location: str,
         organ.max_hp = odata.get("max_hp", organ.max_hp)
         organ.current_hp = odata.get("current_hp", organ.max_hp)
         organ.wound_stage = odata.get("wound_stage")
-        # Modules come back retracted — the deployed weapon item did
-        # not survive the severance.  Clean up the orphaned weapon if
-        # it's still floating, then reset the toggle state.
+        # Modules come back retracted, with their own hardware: the
+        # limb took its gear when it was cut (decision 7), so the weapon
+        # object lying on this appendage is reclaimed -- parked back in
+        # the body, dbref kept, deployed False (owner 2026-10-05: "I
+        # concur. Keep it."). A reference to an object that is NOT on
+        # this appendage (a legacy shared claw object the other hand
+        # still uses, or one long gone) is dropped and the hand respawns
+        # its own on the next deploy; nothing is deleted. This runs
+        # before `organ_item.delete()` below, which would relocate the
+        # appendage's contents (MULTI_WEAPON_COMBAT_SPEC §9).
         raw_ability = odata.get("ability_state") or {}
         reset_state = {}
         for ability_name, astate in raw_ability.items():
             if hasattr(astate, "get"):
+                kept = None
                 dbref = astate.get("weapon_dbref")
                 if dbref:
-                    try:
-                        from evennia.utils.search import search_object
-                        for found in search_object(dbref):
-                            found.delete()
-                    except Exception:
-                        pass
-                reset_state[ability_name] = {"deployed": False}
+                    from evennia.utils.search import search_object
+                    found = search_object(dbref)
+                    weapon = found[0] if found else None
+                    if weapon is not None and weapon.location == organ_item:
+                        weapon.location = None
+                        kept = dbref
+                reset_state[ability_name] = (
+                    {"deployed": False, "weapon_dbref": kept} if kept
+                    else {"deployed": False})
         organ.ability_state = reset_state
         organ.medical_state = state
         state.add_organ(name, organ)

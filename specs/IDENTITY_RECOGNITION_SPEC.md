@@ -156,7 +156,7 @@ A held **weapon or explosive** outranks clothing and hair — what someone is br
 
 Format: `"wielding {article} {weapon}"` — e.g., `"wielding a kitchen knife"`.
 
-**Deployed cyberweapons dominate too.** An integrated weapon (arm-shotgun) sits in the `hands` dict while deployed, so it's picked here naturally; an active natural weapon (claws) lives off-grid and is checked explicitly via `get_active_natural_weapon`. Either way a deployed cyber weapon carries normal weapon weight in the sdesc while staying out of the "holding" list (it's part of the body — see `AUGMENT_ABILITIES_SPEC`).
+**Deployed cyberweapons dominate too.** An integrated weapon (arm-shotgun) sits in the `hands` dict while deployed, so it's picked here naturally; an active natural weapon (claws) lives off-grid and is checked explicitly via `get_active_natural_weapons`. Either way a deployed cyber weapon carries normal weapon weight in the sdesc while staying out of the "holding" list (it's part of the body — see `AUGMENT_ABILITIES_SPEC`).
 
 #### Clothing-based Feature
 

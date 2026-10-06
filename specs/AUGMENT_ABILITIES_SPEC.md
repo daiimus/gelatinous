@@ -164,9 +164,10 @@ are visibly brandishing an arm-gun.
 ### 3.4 · natural_weapon precedence (Phase 3, designed now)
 
 > **Note 2026-09-11 (re-verification):** "designed now" is stale — this
-> shipped. `get_wielded_weapon` checks `get_active_natural_weapon`
-> first (`world/combat/utils.py:151-158`), `_toggle_natural_weapon`
-> never touches `held_items` (`world/medical/augments.py:301-355`), and
+> shipped. `get_wielded_weapon` checks `get_active_natural_weapons`
+> first (`world/combat/utils.py`; since MULTI_WEAPON_COMBAT_SPEC slice 1
+> it lists every deployed host), `_toggle_natural_weapon`
+> never touches `held_items` (`world/medical/augments.py`), and
 > `world/tests/test_weapon_autoprioritizer.py:118-130` asserts the
 > precedence — against `select_weapon_for_engagement`, the #616
 > selector, so the rule survived the weapon auto-prioritizer.
@@ -310,9 +311,11 @@ organs.  Two things determine what can be done with it:
 **Reattachment is a lossless round-trip apart from two deltas:** the
 limb's damage/condition travels with it (HP and wound stage are in
 the snapshot and restored as-is — a shot-up arm reattaches shot-up),
-and deployed weapons come back **retracted** (the deployed weapon
-item does not survive the cut; the module re-spawns it on the next
-toggle).  Everything else — chassis, seated module, frame flag,
+and deployed weapons come back **retracted** (the weapon item travels
+with the severed limb and comes back with it: reattachment reclaims an
+object lying on the appendage, parked and retracted, and the module
+re-spawns one only if it is gone — MULTI_WEAPON_COMBAT_SPEC §9,
+2026-10-05).  Everything else — chassis, seated module, frame flag,
 side, longdesc — is preserved.
 
 Mechanically: an installed prosthetic and its severed appendage are
