@@ -244,7 +244,10 @@ def _usher(leader, escortee, exit_obj, destination):
     follow. Split out so the re-entrancy flag above has a single scope
     to wrap."""
     escortee.execute_cmd(exit_obj.key)
-    if escortee.location is not destination:
+    # By row, not by identity (#3699): the idmapper can hand back two
+    # instances of one room, and `is not` then refused a leader whose
+    # escortee had just walked through, separating the pair.
+    if escortee.location != destination:
         # The escortee bounced (lock, state). Ushering someone through a
         # door that refuses them stops YOU at the threshold too — the
         # coupling holds, the move doesn't happen.
