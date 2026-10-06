@@ -26,11 +26,12 @@ from __future__ import annotations
 #: (the dispatcher keys itself on this constant).
 CYBERWARE_COMMAND_PREFIX = "/"
 
-#: Toggle prose keys an ability spec may carry for the case where it
-#: lives in two or more hosts and exactly ONE of them changed (a hand
-#: the other hand's claws are already out of). They take ``{hand}``,
-#: pre-interpolated here before any room broadcast. Absent, the base
-#: keys are used (MULTI_WEAPON_COMBAT_SPEC §7).
+#: Toggle prose keys an ability spec may carry for the case where
+#: exactly ONE host changed, however many live: a surgical stow of one
+#: hand while the other hand's claws stay out, or a body down to one
+#: hand (#3700). They take ``{hand}``, pre-interpolated here before any
+#: room broadcast. Absent, the base keys are used
+#: (MULTI_WEAPON_COMBAT_SPEC §7).
 ABILITY_MSG_DEPLOY_ONE = "deploy_msg_one"
 ABILITY_MSG_RETRACT_ONE = "retract_msg_one"
 ABILITY_ROOM_DEPLOY_ONE = "deploy_room_one"
