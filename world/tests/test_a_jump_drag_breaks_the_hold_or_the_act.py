@@ -311,6 +311,57 @@ class TheGatesAgree(_EdgeDrag):
         self.assertTrue(_usher(leader, escortee, SimpleNamespace(key="out"), there))
         self.assertEqual(told, [])
 
+    def test_the_followers_keep_the_trail_across_a_fresh_room_instance(self):
+        # The follow twin of #3699: the leader has arrived; the follower
+        # walks and lands in a fresh instance of the same room. The trail
+        # must hold.
+        from world import movement_coupling as MC
+
+        class _Room:
+            def __init__(self, pk, contents=()): self.pk = pk; self.contents = list(contents)
+            def __eq__(self, other): return isinstance(other, _Room) and other.pk == self.pk
+            def __hash__(self): return hash(self.pk)
+
+        here = _Room(1)
+        there, there_again = _Room(2), _Room(2)
+        door = SimpleNamespace(key="out", destination=there)
+        here.contents.append(door)
+        leader = SimpleNamespace(location=there, get_display_name=lambda viewer: "Lead")
+        told = []
+        follower = SimpleNamespace(pk=9, location=here, db=SimpleNamespace(following=leader),
+                                   msg=lambda text=None, **kw: told.append(str(text)))
+        follower.execute_cmd = lambda key: setattr(follower, "location", there_again)
+        here.contents.append(follower)
+        with mock.patch.object(MC, "sever_follow") as severed:
+            MC.bring_followers(leader, here)
+        severed.assert_not_called()
+        self.assertEqual(told, [])
+
+    def test_the_usher_does_not_separate_a_pair_standing_in_one_room_twice_fetched(self):
+        # usher_escortee's "are we still together" check, same trap: the
+        # leader and the escortee hold different instances of one room.
+        from world import movement_coupling as MC
+
+        class _Room:
+            def __init__(self, pk, contents=()): self.pk = pk; self.contents = list(contents)
+            def __eq__(self, other): return isinstance(other, _Room) and other.pk == self.pk
+            def __hash__(self): return hash(self.pk)
+
+        hall, hall_again = _Room(3), _Room(3)
+        yard, yard_again = _Room(4), _Room(4)
+        door = SimpleNamespace(key="out", destination=yard)
+        hall.contents.append(door)
+        told = []
+        escortee = SimpleNamespace(pk=8, location=hall_again, get_display_name=lambda viewer: "Other")
+        escortee.execute_cmd = lambda key: setattr(escortee, "location", yard_again)
+        leader = SimpleNamespace(location=hall, ndb=SimpleNamespace(), db=SimpleNamespace(escorting=escortee),
+                                 msg=lambda text=None, **kw: told.append(str(text)))
+        with mock.patch("world.consent.is_conscious", return_value=True), \
+             mock.patch("world.consent.check_consent", return_value=True):
+            self.assertTrue(MC.usher_escortee(leader, yard))
+        self.assertEqual(leader.db.escorting, escortee, "the pair was separated")
+        self.assertEqual(told, [])
+
     def test_a_separated_escort_is_none_and_the_usher_releases(self):
         self.other.location = self.street
         self.assertIsNone(self.live(self.jumper, self.exit.destination))

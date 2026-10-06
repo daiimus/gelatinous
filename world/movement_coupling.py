@@ -67,7 +67,7 @@ def sever_follow(follower, silent=False):
         leader.msg(f"{follower.get_display_name(leader)} stops following you.")
     except Exception:  # noqa: BLE001 — notification is best-effort
         pass
-    if follower.location and follower.location is leader.location:
+    if follower.location and follower.location == leader.location:
         try:
             from world.identity_utils import msg_room_identity
             msg_room_identity(
@@ -90,7 +90,7 @@ def bring_followers(leader, source_location):
     leader move with no traceable exit (teleport) sheds followers too.
     """
     destination = leader.location
-    if not source_location or destination is source_location:
+    if not source_location or destination == source_location:
         return
     followers = followers_of(leader, source_location)
     if not followers:
@@ -102,7 +102,7 @@ def bring_followers(leader, source_location):
             follower.msg("You lose them — they're simply gone.")
             continue
         follower.execute_cmd(exit_obj.key)
-        if follower.location is not destination:
+        if follower.location != destination:
             # Couldn't keep up (lock, state, combat) — the trail is lost.
             sever_follow(follower, silent=True)
             follower.msg(
@@ -127,7 +127,7 @@ def live_escortee(leader, destination):
     escortee = leader.db.escorting
     if not _valid(escortee):
         return None
-    if escortee.location is not leader.location:
+    if escortee.location != leader.location:
         return None
     from world.consent import check_consent, is_conscious
     if not is_conscious(escortee) or not check_consent(leader, escortee, "escort"):
@@ -174,7 +174,7 @@ def usher_escortee(leader, destination):
     if not _valid(escortee):
         leader.db.escorting = None
         return True
-    if escortee.location is not leader.location:
+    if escortee.location != leader.location:
         # Separated (they broke away, fled, were moved) — link dissolves.
         leader.db.escorting = None
         leader.msg("Your escort is no longer with you.")
@@ -244,9 +244,11 @@ def _usher(leader, escortee, exit_obj, destination):
     follow. Split out so the re-entrancy flag above has a single scope
     to wrap."""
     escortee.execute_cmd(exit_obj.key)
-    # By row, not by identity (#3699): the idmapper can hand back two
-    # instances of one room, and `is not` then refused a leader whose
-    # escortee had just walked through, separating the pair.
+    # By row, not by identity (#3699): after a cache flush the idmapper
+    # hands back a fresh instance of a room while an older one is still
+    # held, and `is not` then refused a leader whose escortee had just
+    # walked through, separating the pair. Every room comparison in this
+    # module is by row for the same reason.
     if escortee.location != destination:
         # The escortee bounced (lock, state). Ushering someone through a
         # door that refuses them stops YOU at the threshold too — the
