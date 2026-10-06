@@ -38,8 +38,8 @@ from world.combat.constants import (
 )
 from world.combat.utils import (
     log_combat_action, initialize_proximity_ndb, get_display_name_safe,
-    get_wielded_weapon,
 )
+from world.combat.weapon_choice import choose_weapon, has_ranged_option
 from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 from commands._identity_targeting import resolve_character_target
@@ -447,8 +447,8 @@ class CmdAim(Command):
                 self._clear_aim_override_place(caller, current_target)
                 
                 # Get weapon name for better messaging
-                hands = getattr(caller, "hands", {})
-                weapon = get_wielded_weapon(caller)
+                choice = choose_weapon(caller)
+                weapon = choice.item if choice else None
                 weapon_name = weapon.key if weapon else "weapon"
                 
                 caller.msg(f"You stop aiming at {get_display_name_safe(current_target, caller)} and lower your {weapon_name}.")
@@ -464,8 +464,8 @@ class CmdAim(Command):
                     caller.override_place = ""
                 
                 # Get weapon name for better messaging
-                hands = getattr(caller, "hands", {})
-                weapon = get_wielded_weapon(caller)
+                choice = choose_weapon(caller)
+                weapon = choice.item if choice else None
                 weapon_name = weapon.key if weapon else "weapon"
                 
                 # Try to get the actual exit name from the direction
@@ -555,14 +555,10 @@ class CmdAim(Command):
                     delattr(caller.ndb, NDB_AIMING_DIRECTION)
                 
                 # Check if caller has a ranged weapon for direction aiming
-                hands = getattr(caller, "hands", {})
-                weapon = get_wielded_weapon(caller)
+                choice = choose_weapon(caller)
+                weapon = choice.item if choice else None
                 
-                is_ranged_weapon = False
-                if weapon:
-                    weapon_db = getattr(weapon, "db", None)
-                    if weapon_db:
-                        is_ranged_weapon = getattr(weapon_db, "is_ranged", False)
+                is_ranged_weapon = has_ranged_option(caller)
                 
                 if not is_ranged_weapon:
                     caller.msg("You need a ranged weapon to aim in a direction.")
@@ -584,8 +580,8 @@ class CmdAim(Command):
                 splattercast.msg(f"AIM_DEBUG: Immediate test retrieval: '{test_direction}'")
                 
                 # Get held weapon for better messaging
-                hands = getattr(caller, "hands", {})
-                weapon = get_wielded_weapon(caller)
+                choice = choose_weapon(caller)
+                weapon = choice.item if choice else None
                 weapon_name = weapon.key if weapon else "weapon"
                 
                 # Use the exit's actual name instead of hardcoded direction mapping
@@ -651,14 +647,10 @@ class CmdAim(Command):
                 return
 
             # Check if caller has a ranged weapon
-            hands = getattr(caller, "hands", {})
-            weapon = get_wielded_weapon(caller)
+            choice = choose_weapon(caller)
+            weapon = choice.item if choice else None
             
-            is_ranged_weapon = False
-            if weapon:
-                weapon_db = getattr(weapon, "db", None)
-                if weapon_db:
-                    is_ranged_weapon = getattr(weapon_db, "is_ranged", False)
+            is_ranged_weapon = has_ranged_option(caller)
 
             # Set target aim relationship
             setattr(caller.ndb, NDB_AIMING_AT, target)
@@ -668,8 +660,8 @@ class CmdAim(Command):
             self._set_aim_override_place(caller, target)
 
             # Send messages - get weapon name for better messaging
-            hands = getattr(caller, "hands", {})
-            weapon = get_wielded_weapon(caller)
+            choice = choose_weapon(caller)
+            weapon = choice.item if choice else None
             weapon_name = weapon.key if weapon else "weapon"
             
             caller.msg(f"You raise your {weapon_name}, taking careful aim at {get_display_name_safe(target, caller)}.")
@@ -708,14 +700,10 @@ class CmdAim(Command):
             if valid_direction:
                 splattercast.msg(f"AIM_DEBUG: Direction '{direction}' is valid, proceeding with aiming")
                 # Check if caller has a ranged weapon for direction aiming
-                hands = getattr(caller, "hands", {})
-                weapon = get_wielded_weapon(caller)
+                choice = choose_weapon(caller)
+                weapon = choice.item if choice else None
                 
-                is_ranged_weapon = False
-                if weapon:
-                    weapon_db = getattr(weapon, "db", None)
-                    if weapon_db:
-                        is_ranged_weapon = getattr(weapon_db, "is_ranged", False)
+                is_ranged_weapon = has_ranged_option(caller)
                 
                 if not is_ranged_weapon:
                     caller.msg("You need a ranged weapon to aim in a direction.")
@@ -737,8 +725,8 @@ class CmdAim(Command):
                 splattercast.msg(f"AIM_DEBUG: Immediate test retrieval: '{test_direction}'")
                 
                 # Get held weapon for better messaging
-                hands = getattr(caller, "hands", {})
-                weapon = get_wielded_weapon(caller)
+                choice = choose_weapon(caller)
+                weapon = choice.item if choice else None
                 weapon_name = weapon.key if weapon else "weapon"
                 
                 # For this path, we don't have a target object since it's a fallback direction aim

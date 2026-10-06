@@ -14,6 +14,7 @@ from random import randint
 from .debug import get_splattercast
 
 from world.combat.messages import get_combat_message
+from world.combat.weapon_choice import choose_weapon
 from world.combat.capacity import (
     sight_hit_factor, moving_dodge_factor, manipulation_hit_factor,
 )
@@ -46,9 +47,7 @@ from .constants import (
 )
 from .utils import (
     get_numeric_stat, get_display_name_safe,
-    get_wielded_weapon, is_wielding_ranged_weapon,
-    select_weapon_for_engagement,
-    get_weapon_damage, get_combatant_grappling_target,
+    get_combatant_grappling_target,
     get_character_dbref,
 )
 from world.identity_utils import msg_room_identity
@@ -178,28 +177,6 @@ def process_delayed_attack(handler, attacker, target, attacker_entry, combatants
         )
 
 
-def determine_injury_type(weapon):
-    """
-    Determine the injury type based on weapon's damage_type attribute.
-
-    Args:
-        weapon: The weapon object being used (or ``None`` for unarmed).
-
-    Returns:
-        str: Valid injury type for the medical system.
-    """
-    if not weapon:
-        return "blunt"  # Unarmed attacks are blunt trauma
-
-    # Get damage_type from weapon, default to "blunt" if not specified
-    damage_type = (
-        weapon.db.damage_type
-        if weapon.db.damage_type is not None
-        else "blunt"
-    )
-    return damage_type
-
-
 def calculate_shield_chance(
     handler, grappler, victim, is_ranged_attack, combatants_list
 ):
@@ -325,11 +302,8 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
     # The engagement (not the weapon) decides melee vs ranged. A one-weapon
     # fighter gets that weapon unchanged; holding several (multi-armed / cyber
     # tail) lets combat bring the right one to bear automatically.
-    chosen_weapon = select_weapon_for_engagement(attacker, target)
-    is_ranged_attack = bool(
-        chosen_weapon
-        and getattr(getattr(chosen_weapon, "db", None), "is_ranged", False)
-    )
+    choice = choose_weapon(attacker, target)
+    is_ranged_attack = bool(choice and choice.is_ranged)
 
     # For melee attacks, check same-room and proximity requirements
     if not is_ranged_attack:
@@ -416,8 +390,15 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
     # ── Get weapon and stats ───────────────────────────────────────────
     # Use the engagement-selected weapon (above) so damage/messages/is_ranged
     # all agree on the one weapon being brought to bear.
-    weapon = chosen_weapon
+    weapon = choice.item if choice else None
     weapon_name = weapon.key if weapon else "unarmed"
+    if choice:
+        splattercast.msg(
+            f"ATTACK_WEAPON: {attacker.key} {choice.weapon_type} "
+            f"x{len(choice.items)} slots={list(choice.slots)} "
+            f"dmg+{choice.damage} hit+{choice.hit_bonus} "
+            f"{'ranged' if choice.is_ranged else 'melee'}"
+        )
 
     attacker_skill = get_numeric_stat(attacker, "motorics", 1)
     target_skill = get_numeric_stat(target, "motorics", 1)
@@ -433,7 +414,8 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
     # one-armed shooter with a good hand fights at full accuracy.  Completes the
     # combat stack — ranged: motorics × sight × manipulation(trigger hand);
     # melee: motorics × manipulation(wield hand) × light-sight.
-    manip_factor = manipulation_hit_factor(attacker, weapon)
+    manip_factor = manipulation_hit_factor(
+        attacker, weapon, slots=choice.slots if choice else None)
     effective_skill = attacker_skill * sight_factor * manip_factor
     if sight_factor < 1.0 or manip_factor < 1.0:
         splattercast.msg(
@@ -468,6 +450,15 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
     # Roll for attack
     attacker_roll = randint(1, 20) + effective_skill
     target_roll = randint(1, 20) + effective_dodge
+
+    # The weapon's own to-hit term (MULTI_WEAPON_COMBAT_SPEC §5): an akimbo
+    # profile's +1, a plain weapon's 0. Beside the charge bonus below.
+    if choice and choice.hit_bonus:
+        attacker_roll += choice.hit_bonus
+        splattercast.msg(
+            f"ATTACK_BONUS: {attacker.key} gets {choice.hit_bonus:+d} from "
+            f"{choice.weapon_type}."
+        )
 
     # Check for charge bonus
     has_attr = hasattr(attacker.ndb, NDB_CHARGE_BONUS)
@@ -529,12 +520,11 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
         # Hit — calculate damage
         # NOTE: Strict > means ties favor the defender. This is intentional.
         damage = randint(1, 6)  # Base damage
-        if weapon:
-            weapon_damage = get_weapon_damage(weapon, 0)
-            damage += weapon_damage
+        if choice:
+            damage += choice.damage
 
-        # Determine injury type based on weapon
-        injury_type = determine_injury_type(weapon)
+        # Injury type from the choice (an akimbo profile may override it)
+        injury_type = choice.damage_type if choice and choice.damage_type else "blunt"
 
         # Calculate success margin for precision targeting
         success_margin = attacker_roll - target_roll
@@ -570,10 +560,8 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
             f"hit {hit_location}:{target_organ}"
         )
 
-        # Determine weapon type for messages
-        weapon_type = WEAPON_TYPE_UNARMED
-        if weapon and hasattr(weapon, "db") and weapon.db.weapon_type:
-            weapon_type = weapon.db.weapon_type
+        # Bank from the choice: one hand or the designed pair (§7)
+        weapon_type = choice.weapon_type if choice else WEAPON_TYPE_UNARMED
 
         # Stage attacker / weapon on target ndb so downstream severance
         # messaging (issue #332, fired from _maybe_sever_from_damage) can
@@ -633,9 +621,7 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
         # failed.  Compute the intended location with the same
         # selector used for hits — it surfaces as the attacker's
         # *aim*, not the actual contact.
-        weapon_type = WEAPON_TYPE_UNARMED
-        if weapon and hasattr(weapon, "db") and weapon.db.weapon_type:
-            weapon_type = weapon.db.weapon_type
+        weapon_type = choice.weapon_type if choice else WEAPON_TYPE_UNARMED
 
         intended_hit_location = select_hit_location(
             target, attacker_roll - target_roll, attacker,

@@ -41,7 +41,6 @@ from world.combat.constants import (
     SEVER_TIME_SECONDS,
 )
 from world.combat.dice import roll_stat
-from world.combat.utils import get_wielded_weapon
 from typeclasses.objects import BloodPool
 from world.forensics import (
     attempt_forensic_recognition,
@@ -50,6 +49,19 @@ from world.forensics import (
     render_forensic_report,
 )
 from world.identity_utils import msg_room_identity
+
+
+def _blade_in_hand(caller):
+    """The first weapon option that can sever; else the first option, so
+    the dull-blade line names it; else None. The one door decides what is
+    in hand (MULTI_WEAPON_COMBAT_SPEC §4): claws out do not hide the knife
+    in the other hand, and claws themselves do not sever."""
+    from world.combat.weapon_choice import weapon_options
+    options = weapon_options(caller)
+    for option in options:
+        if getattr(getattr(option.item, "db", None), "can_sever", None) is True:
+            return option.item
+    return options[0].item if options else None
 
 
 class CmdInspect(Command):
@@ -515,7 +527,7 @@ class CmdSever(Command):
         # Wielded-blade gate (PR #190): the cut requires an edged
         # weapon flagged ``can_sever``.  ``db.can_sever is not True``
         # treats an unset / non-edged weapon as ineligible.
-        weapon = get_wielded_weapon(caller)
+        weapon = _blade_in_hand(caller)
         if weapon is None:
             caller.msg(
                 "You need a bladed weapon in hand to sever a limb."
@@ -591,7 +603,7 @@ class CmdSever(Command):
             return
 
         # Blade still in hand and still keen?
-        weapon = get_wielded_weapon(caller)
+        weapon = _blade_in_hand(caller)
         if weapon is None or weapon.db.can_sever is not True:
             caller.msg(
                 f"Without a blade in hand the cut for the "

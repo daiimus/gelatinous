@@ -338,11 +338,16 @@ them into one body-wide number is wrong.
     weapon to bear for the engagement: **range-appropriate first** (only ranged
     reach at range; anything works point-blank), **then highest damage** (skill
     weighting joins this once skills exist). The engagement — not the weapon —
-    decides melee vs ranged. `world/combat/utils.py`
-    `select_weapon_for_engagement` (used by `process_attack`); natural-weapon
-    precedence preserved; single-weapon fighters unchanged. Tests:
-    `test_weapon_autoprioritizer.py`. Holding several weapons (multi-armed /
-    cyber tail) is what feeds the picker more options.
+    decides melee vs ranged. Since 2026-10-05 the one door
+    `world/combat/weapon_choice.py` `choose_weapon` (used by `process_attack`
+    and every other reader of the wielded weapon; MULTI_WEAPON_COMBAT_SPEC §4):
+    range filter first, THEN natural-weapon precedence, then akimbo grouping;
+    single-weapon fighters unchanged. Manipulation is the minimum over the
+    choice's slots (`manipulation_hit_factor(attacker, weapon, slots=...)`): a
+    natural weapon on a grasping host scopes to that hand, an akimbo pair to
+    both, Jawz stays body-wide. Tests: `test_weapon_autoprioritizer.py`,
+    `test_combat_manipulation_resolver.py`. Holding several weapons
+    (multi-armed / cyber tail) is what feeds the picker more options.
   - **Disarm — *once per gripping hand* ✅ ALREADY SATISFIED.** `resolve_disarm`
     (`world/combat/actions.py`) already knocks out **one** weapon per successful
     attempt, so a multi-weapon fighter needs one disarm *per* gripping hand to be

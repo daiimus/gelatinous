@@ -124,6 +124,38 @@ class ManipulationHitFactorTests(TestCase):
         attacker = _attacker({}, state)
         self.assertAlmostEqual(manipulation_hit_factor(attacker, None), 1.0)
 
+    # The one door hands the slots in (MULTI_WEAPON_COMBAT_SPEC §4-§5): a
+    # natural weapon on a grasping host scopes to that hand, an akimbo
+    # pair to both, Jawz (no slots) stays body-wide.
+    def test_claws_on_a_wrecked_hand_scope_to_that_hand(self):
+        state = _human_state()
+        state.organs["left_humerus"].current_hp = 0
+        state._cache_dirty = True
+        claws = object()                       # never in hands
+        attacker = _attacker({}, state)
+        self.assertLess(manipulation_hit_factor(attacker, claws, slots=("left_hand",)), 1.0)
+        self.assertAlmostEqual(manipulation_hit_factor(attacker, claws, slots=("right_hand",)), 1.0)
+
+    def test_an_akimbo_pair_is_dragged_by_the_weaker_hand(self):
+        state = _human_state()
+        state.organs["left_humerus"].current_hp = 0
+        state._cache_dirty = True
+        claws = object()
+        attacker = _attacker({}, state)
+        self.assertLess(
+            manipulation_hit_factor(attacker, claws, slots=("left_hand", "right_hand")),
+            manipulation_hit_factor(attacker, claws, slots=("right_hand",)),
+        )
+
+    def test_a_natural_on_a_non_grasping_host_stays_body_wide(self):
+        state = _human_state()
+        state.organs["left_humerus"].current_hp = 0
+        state._cache_dirty = True
+        jawz = object()
+        attacker = _attacker({}, state)
+        self.assertAlmostEqual(manipulation_hit_factor(attacker, jawz, slots=()),
+                               manipulation_hit_factor(attacker, None))
+
 
 class ManipulationOverrideAndFailOpenTests(TestCase):
     class _Stub:

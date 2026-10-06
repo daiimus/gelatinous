@@ -20,7 +20,8 @@ separate registry, no bookkeeping to drift.
 
 The second principle, discovered in the code: **held is wielded.**
 Combat's weapon is literally whatever item sits in the `hands`
-dict (`get_wielded_weapon` returns the first held item).  So an
+dict (the one door, `world/combat/weapon_choice.py` `choose_weapon`, reads
+the hands; MULTI_WEAPON_COMBAT_SPEC §4).  So an
 integrated weapon that "consumes your hand" needs no new combat
 plumbing — deploying it *fills the hand slot with the weapon item*,
 which simultaneously makes the hand unusable for holding and makes
@@ -42,10 +43,12 @@ the weapon the active weapon.
    2026-06-12): the hand transforms regardless; the knife clatters
    to the floor.  No confirmation prompt.
 4. **Active non-slot cyberweapons take precedence over held
-   weapons** (user decision 2026-06-12): claws out means you fight
-   with claws, knife in hand or not.  Weapon resolution order:
-   active natural cyberweapon > held weapon > fists.  Toggle claws
-   off to use the knife.
+   weapons** (user decision 2026-06-12), among the options that can
+   reach (owner ruling 2026-10-03, MULTI_WEAPON_COMBAT_SPEC §4, §14
+   ruling 2): in melee, claws out means you fight with claws, knife in
+   hand or not; at range a held pistol fires while the claws stay out.
+   Resolution order: range filter, then active natural cyberweapon >
+   held weapon > fists.  Toggle claws off to use the knife in melee.
 5. **First consumer: the shotgun arm** — the first *replacement*
    augment.  Acquisition is amputate-first: take the flesh arm off
    (combat or surgical amputation), then mount the gun arm over the
@@ -163,18 +166,21 @@ are visibly brandishing an arm-gun.
 
 ### 3.4 · natural_weapon precedence (Phase 3, designed now)
 
-> **Note 2026-09-11 (re-verification):** "designed now" is stale — this
-> shipped. `get_wielded_weapon` checks `get_active_natural_weapons`
-> first (`world/combat/utils.py`; since MULTI_WEAPON_COMBAT_SPEC slice 1
-> it lists every deployed host), `_toggle_natural_weapon`
-> never touches `held_items` (`world/medical/augments.py`), and
-> `world/tests/test_weapon_autoprioritizer.py:118-130` asserts the
-> precedence — against `select_weapon_for_engagement`, the #616
-> selector, so the rule survived the weapon auto-prioritizer.
+> **Note 2026-10-05 (MULTI_WEAPON_COMBAT_SPEC slice 1):** this shipped,
+> and the selectors it named are gone. One door, `choose_weapon` in
+> `world/combat/weapon_choice.py`, lists `get_active_natural_weapons`
+> (every deployed host, its own object) as candidates, applies the range
+> filter, then natural precedence, then akimbo grouping; every reader of
+> the wielded weapon (the swing, the gates, the initiate prose, the aim
+> verbs, the sever verb, the flee check) asks it.
+> `world/tests/test_weapon_autoprioritizer.py` asserts the order.
 
-`get_wielded_weapon` gains the precedence rule: an organ-active
-natural cyberweapon's item profile wins over held items.  Claws
-spawn/park the same way; they just never touch `held_items`.
+Natural precedence lives in the one door: an organ-active natural
+cyberweapon wins over held items among the options that can reach.
+Claws spawn/park the same way; they just never touch `held_items`.
+Each Nailz hand owns one `NAILZ_CLAWS` (d6+6, +0 to hit, bank
+`tiger_claws`); both out group into ONE attack on the pair profile
+(d6+9, +1, `tiger_claws_akimbo`) — placeholders, BALANCE_LEDGER.md.
 
 ### 3.5 · Multi-container substrate extension
 

@@ -9,7 +9,7 @@ on the failure path put it back.
 A player holding a jacket types `wear jacket` while already wearing
 something at that layer. They are told it conflicts — correctly — and the
 jacket is now in their inventory, not their hand. Every hand-slot
-consumer (`get_wielded_weapon`, `inventory`, the throw / hide / give
+consumer (`choose_weapon`, `inventory`, the throw / hide / give
 matchers) then sees an empty hand for an action that was **refused**, and
 re-wielding is a second command the player has no reason to know they
 need.

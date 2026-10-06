@@ -18,7 +18,7 @@ and one called once. The next reader will file this again otherwise.
 
 Also removed while here: `hands = getattr(traversing_object, "hands", {})`
 at two sites in the same function, assigned and never read — left behind
-when the weapon lookup moved to `get_wielded_weapon`.
+when the weapon lookup moved to the one door (`choose_weapon`).
 """
 from evennia.utils.test_resources import EvenniaTest
 
@@ -60,4 +60,4 @@ class TestTheDeadLocalsAreGone(EvenniaTest):
         import pathlib
         root = pathlib.Path(__file__).resolve().parents[2]
         body = (root / "typeclasses" / "exits.py").read_text(errors="ignore")
-        self.assertIn("get_wielded_weapon(traversing_object)", body)
+        self.assertIn("choose_weapon(traversing_object)", body)

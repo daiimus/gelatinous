@@ -33,8 +33,9 @@ from world.combat.constants import (
 from commands._identity_targeting import resolve_character_in_rooms
 from world.combat.utils import (
     get_highest_opponent_stat, get_numeric_stat, filter_valid_opponents,
-    standard_roll, clear_aim_state, get_wielded_weapon,
+    standard_roll, clear_aim_state,
 )
+from world.combat.weapon_choice import has_ranged_option
 from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 
@@ -348,10 +349,7 @@ class CmdFlee(Command):
                         if other_h and other_h.db.combat_is_running and other_h.db.combatants:
                             other_entry = next((e for e in other_h.db.combatants if e["char"] == char_in_dest), None)
                             if other_entry and other_h.get_target_obj(other_entry) == caller:
-                                other_hands = getattr(char_in_dest, "hands", {})
-                                other_weapon_obj = get_wielded_weapon(char_in_dest)
-                                other_is_ranged = other_weapon_obj and other_weapon_obj.db.is_ranged
-                                if other_is_ranged:
+                                if has_ranged_option(char_in_dest):
                                     is_this_exit_safe_from_ranged_targeters = False
                                     splattercast.msg(f"{DEBUG_PREFIX_FLEE}_PRE_CHECK_UNSAFE_EXIT: {caller.key} - exit {potential_exit.key} to {destination_room.key} is unsafe. Reason: {char_in_dest.key} is a ranged targeter in combat handler {other_h.key}.")
                                     break # This destination is unsafe due to this char_in_dest
@@ -409,8 +407,7 @@ class CmdFlee(Command):
                         if other_handler and other_handler.db.combat_is_running:
                             other_entry = next((e for e in (other_handler.db.combatants or []) if e["char"] == char_in_dest), None)
                             if other_entry and original_handler_at_flee_start.get_target_obj(other_entry) == caller:
-                                other_weapon = get_wielded_weapon(char_in_dest)
-                                if other_weapon and other_weapon.db.is_ranged:
+                                if has_ranged_option(char_in_dest):
                                     is_safe = False
                                     break
                     if is_safe:

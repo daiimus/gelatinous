@@ -82,7 +82,7 @@ def is_melee_weapon(obj):
     grenades exactly as well as a baseline weapon (#2493).
 
     The discriminator is the ``("weapon", "type")`` tag from the weapon
-    base prototypes — the same one `get_wielded_weapon` settled on in
+    base prototypes — the same one the one door (`choose_weapon`) settled on in
     #516, and for the same reason: `db.weapon_type` is useless because
     every item carries "melee" at creation. Reused rather than
     re-derived so "is this a weapon" has one answer.

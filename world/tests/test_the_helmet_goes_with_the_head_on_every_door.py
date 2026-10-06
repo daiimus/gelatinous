@@ -138,7 +138,7 @@ class TestTheTypedSeverCommand(_Corpse):
         dagger.db.can_sever = True
         cmd = CmdSever(); cmd.caller = self.char1; cmd.args = "head from corpse"; cmd.switches = ()
         intel, motor = _split(_SUCCESS)
-        with patch("commands.forensics.get_wielded_weapon", return_value=dagger), \
+        with patch("commands.forensics._blade_in_hand", return_value=dagger), \
              patch("commands.forensics.roll_stat", side_effect=_rolls(intel, motor)):
             cmd._complete_sever(self.char1, self.corpse, "head")
         heads = [o for o in self.char1.contents if o.is_typeclass("typeclasses.items.SeveredHead", exact=False)]
