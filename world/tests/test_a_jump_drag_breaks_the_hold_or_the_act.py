@@ -38,6 +38,19 @@ from world.combat.constants import (
 from world.combat.utils import get_character_dbref
 
 
+class _Room:
+    """A room stub that is equal by row and distinct by instance, the shape
+    the idmapper hands out after a cache flush (#3699)."""
+    def __init__(self, pk, contents=()):
+        self.pk = pk
+        self.contents = list(contents)
+
+    def __eq__(self, other):
+        return isinstance(other, _Room) and other.pk == self.pk
+
+    def __hash__(self):
+        return hash(self.pk)
+
 class _EdgeDrag(EvenniaTest):
     """jumper (char1) holds victim (char2) on the roof (room1); the exit
     is an edge onto room2, a street or an air cell."""
@@ -297,11 +310,6 @@ class TheGatesAgree(_EdgeDrag):
         # same room; the escortee has arrived all the same.
         from world.movement_coupling import _usher
 
-        class _Room:
-            def __init__(self, pk): self.pk = pk
-            def __eq__(self, other): return isinstance(other, _Room) and other.pk == self.pk
-            def __hash__(self): return hash(self.pk)
-
         there, there_again = _Room(7), _Room(7)
         self.assertIsNot(there, there_again)
         told = []
@@ -316,11 +324,6 @@ class TheGatesAgree(_EdgeDrag):
         # walks and lands in a fresh instance of the same room. The trail
         # must hold.
         from world import movement_coupling as MC
-
-        class _Room:
-            def __init__(self, pk, contents=()): self.pk = pk; self.contents = list(contents)
-            def __eq__(self, other): return isinstance(other, _Room) and other.pk == self.pk
-            def __hash__(self): return hash(self.pk)
 
         here = _Room(1)
         there, there_again = _Room(2), _Room(2)
@@ -341,11 +344,6 @@ class TheGatesAgree(_EdgeDrag):
         # usher_escortee's "are we still together" check, same trap: the
         # leader and the escortee hold different instances of one room.
         from world import movement_coupling as MC
-
-        class _Room:
-            def __init__(self, pk, contents=()): self.pk = pk; self.contents = list(contents)
-            def __eq__(self, other): return isinstance(other, _Room) and other.pk == self.pk
-            def __hash__(self): return hash(self.pk)
 
         hall, hall_again = _Room(3), _Room(3)
         yard, yard_again = _Room(4), _Room(4)
