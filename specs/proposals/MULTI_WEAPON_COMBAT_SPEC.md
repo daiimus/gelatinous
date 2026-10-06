@@ -63,7 +63,7 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 3. **Range**: with a target not in melee range, ranged options only; with none, keep all so the existing reach message fires.
 4. **Natural precedence** (decision 4, applied among the options that can reach): if any deployed natural weapon survived the range step, only naturals count. Ruled 2026-10-03 (§14, ruling 2): at range a held pistol fires while the claws stay out; in melee deployed claws win outright and the knife waits. Today natural precedence runs before range, so claws out means claws swing even where they cannot reach, and the reach gate refuses the attack while a loaded gun sits in the other hand.
 5. **Akimbo grouping** (§5).
-6. **The wheel** (§6; slice 2, shipped): the next option after the last slot that swung. Until slice 2, held weapons kept range-then-max and naturals took the first option.
+6. **The wheel** (§6; slice 2): the next option after the last slot that swung. Until slice 2, held weapons kept range-then-max and naturals took the first option.
 
 `has_ranged_option(char)` = any real option is ranged (step 3 cannot change that answer, so it takes no target); it replaces the "is the wielded weapon ranged" gates so a knife sorting first no longer blocks a pistol. `choose_weapon(char, at_range=True)` is the aiming peek: the option that would fire at range, so the aim, aim-stop and move-while-aiming lines name the gun the gate approved rather than the claws or the heavier blade that would swing in melee; a target aim names `choose_weapon(char, target)`. One helper, `aimed_weapon_name(char, target=None)`, speaks for every aim, stop and move-while-aiming line. It is worked out when the line runs: a stop after melee range changed mid-aim (a retreat) names what would fire now, not what the aim line named. Text only; accepted (review 2026-10-05).
 
@@ -83,7 +83,7 @@ Grouping runs after the range filter. Members = options sharing an `akimbo_famil
 
 The unit of rotation is an option: one weapon or one akimbo group. Still one scheduled attack per combatant per round (one `_schedule_attack` per combatant in `world/combat/handler.py`), plus the event-triggered bonus attacks that exist today. Alternation changes WHICH option swings, never how many.
 
-**Order.** `Character.hands` iterates in the species' `anatomical_display_order` (left hand first), then unlisted slots such as a tail alphabetically. Today it iterates a set, so the order is salted.
+**Order.** `Character.hands` iterates in the species' `anatomical_display_order` (left hand first), then unlisted slots such as a tail alphabetically (`Character.slot_order`, slice 2). Until slice 2 it iterated a set, so the order was salted per process.
 
 **Cursor.** `NDB_LAST_WEAPON_SLOT` on the attacker holds the lead slot of the last option that swung. Next = the first option whose lead slot sorts after it, wrapping. Unset, or one option: the first. Keyed by slot, so disarm, severance or a new wield self-heals. Cleared in `cleanup_combatant_state` (`world/combat/utils.py`), beside the ndb attributes it already clears, because both `remove_combatant` and the handler's end-of-fight `cleanup_all_combatants` reach it and a fighter still standing when a fight ends never passes through `remove_combatant`; so each fight starts at the first slot and the initiate line names the first swing. Kept on ndb rather than the combat entry because advance and charge resolve inside `at_repeat`, which writes its snapshot back over `db.combatants`; a reload only restarts the wheel.
 
@@ -124,7 +124,7 @@ A flesh hand's claws are expected to come back only by harvest and reinstall, wh
 
 Two pistols (`hands_required` 1) are two options. They fire one shot per round: left, right, left. Each shot uses its own damage, its own bank and its own hand's manipulation. Heavy plus light alternate, because different families never pair; average damage falls against today's always-heavy, and that is the stated cost.
 
-Range: at range only ranged options rotate, so pistol plus knife fires the pistol every round with no reach line; in melee they alternate (a gun already works point-blank). A deployed arm-gun is a held weapon, not a natural, so it rotates with a pistol; today its damage of 20 always wins.
+Range: at range only ranged options rotate, so pistol plus knife fires the pistol every round with no reach line; in melee they alternate (a gun already works point-blank). A deployed arm-gun is a held weapon, not a natural, so it rotates with a pistol; until slice 2 its damage of 20 always won.
 
 Aim stays per character and gives no accuracy bonus. Either gun fires under it; aim stop or moving clears it once. Aim and stop prose name the peeked option's item. The ranged gates use `has_ranged_option`.
 
