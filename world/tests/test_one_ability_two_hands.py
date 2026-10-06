@@ -424,6 +424,51 @@ class TwoArmGunsFromTheOldModel(EvenniaTest):
         self.assertFalse(states["right_arm"].get("deployed"))
         self.assertNotIn("weapon_dbref", states["right_arm"], "the right arm still shares the left hand's gun")
 
+    def test_a_stow_at_the_keeper_arm_reads_the_other_arm_retracted(self):
+        # The other arm's deployed flag was the mirror's word alone (its
+        # hand never held the gun). Disowned, it reads retracted, so the
+        # readout, the longdesc and the director stop describing a firing
+        # socket that is not there, and the next /shotgun deploys.
+        from world.medical.augments import (find_ability_hosts, is_ability_deployed,
+                                            stow_abilities_at, _ability_state)
+        self.gun.location = self.char1
+        self.char1.hands = {"left_hand": self.gun}
+        for organ in self.organs:
+            organ.ability_state = {"shotgun": {"deployed": True, "weapon_dbref": self.gun.dbref}}
+        self.char1.save_medical_state()
+        stow_abilities_at(self.char1, "left_arm")
+        self.assertIsNone(self.gun.location, "the keeper's gun was not folded away")
+        self.assertFalse(is_ability_deployed(self.char1, "shotgun"), "an arm reads deployed with no gun")
+        states = {o.container: _ability_state(o, "shotgun")
+                  for o in find_ability_hosts(self.char1, "shotgun")}
+        self.assertFalse(states["right_arm"].get("deployed"))
+        self.assertNotIn("weapon_dbref", states["right_arm"])
+
+    def test_a_cut_arm_leaves_the_gun_with_the_hand_that_holds_it(self):
+        # Both legacy hosts deployed on one shared gun, seated in the LEFT
+        # hand. Cutting the RIGHT arm must not carry that gun off in the
+        # right arm and leave the left hand gripping a ghost: the hand that
+        # holds it keeps it; the limb's entry lets go.
+        from typeclasses.items import apply_sever_to_character
+        from world.medical.augments import find_ability_hosts, _ability_state
+        self.gun.location = self.char1
+        self.char1.hands = {"left_hand": self.gun}
+        for organ in self.organs:
+            organ.ability_state = {"shotgun": {"deployed": True, "weapon_dbref": self.gun.dbref}}
+        self.char1.save_medical_state()
+        apply_sever_to_character(self.char1, "right_arm")
+        arm = next((o for o in self.room1.contents
+                    if o.is_typeclass("typeclasses.items.Appendage", exact=False)), None)
+        self.assertIsNotNone(arm, "fixture: the arm did not come off")
+        self.assertEqual(self.gun.location, self.char1, "the cut arm carried off the gun the left hand holds")
+        self.assertEqual(self.char1.hands.get("left_hand"), self.gun)
+        (survivor,) = find_ability_hosts(self.char1, "shotgun")
+        state = _ability_state(survivor, "shotgun")
+        self.assertEqual(survivor.container, "left_arm")
+        self.assertTrue(state.get("deployed"))
+        self.assertEqual(state.get("weapon_dbref"), self.gun.dbref, "the hand that holds the gun lost its reference")
+        self.assertNotIn(self.gun, arm.contents)
+
 
 class TheStowIsAtTheCut(_NailzCase):
     """A surgeon stows the hardware AT the cut (#3360); the other hand's
@@ -534,3 +579,24 @@ class TestSeveranceStaysPerHand(_NailzCase):
         found = get_active_natural_weapons(self.char1)
         self.assertEqual([c for c, _ in found], ["right_hand"], "the surviving hand stopped fighting")
         self.assertNotEqual(found[0][1].id, shared.id)
+
+    def test_the_settle_is_saved_with_the_cut(self):
+        # A combat sever saves medical state BEFORE the hardware carry and
+        # never again. The settle must be saved by the carry itself, or a
+        # reload brings the shared reference back and orphans the
+        # survivor's new blades.
+        from evennia import create_object
+        from typeclasses.items import apply_sever_to_character
+        from world.medical.augments import find_ability_hosts, _ability_state
+        shared = create_object("typeclasses.items.Item", key="old blades", location=None)
+        for host in find_ability_hosts(self.char1, "nailz"):
+            _ability_state(host, "nailz").update({"deployed": True, "weapon_dbref": shared.dbref})
+        self.char1.save_medical_state()
+        apply_sever_to_character(self.char1, "left_arm")
+        (survivor,) = find_ability_hosts(self.char1, "nailz")
+        own = _ability_state(survivor, "nailz").get("weapon_dbref")
+        self.assertNotEqual(own, shared.dbref)
+        self.char1._medical_state = None          # drop the cache: read what was SAVED
+        (reloaded,) = find_ability_hosts(self.char1, "nailz")
+        self.assertEqual(_ability_state(reloaded, "nailz").get("weapon_dbref"), own,
+                         "the settle lived only in memory")

@@ -160,6 +160,22 @@ class ASharedGunOnACorpseGoesWithTheFirstLimbTest(_ChromeDeath):
         self.assertEqual(self.gun.location, first, "the second cut took the gun off the first arm")
         self.assertNotIn("weapon_dbref", self._second_arm_state(second))
 
+    def test_the_first_cut_settles_the_corpse_so_a_retracted_gun_is_not_taken_back(self):
+        # The first arm is fitted to someone, who leaves it retracted: the
+        # gun sits off-grid, exactly where the corpse's own hardware sits.
+        # No location test can tell them apart, so the first cut must have
+        # taken the claim out of the corpse's other entries already.
+        corpse = self._die()
+        first = spawn_severed_part_from_corpse(corpse, "right_arm")
+        self.assertEqual(self.gun.location, first, "fixture: the first arm did not take the gun")
+        left_on_corpse = corpse.get_medical_snapshot()["organs"]["left_cybernetic_humerus"]["ability_state"]["shotgun"]
+        self.assertNotIn("weapon_dbref", left_on_corpse, "the corpse's other arm still claims the gun")
+        self.gun.location = None                     # reattached elsewhere, retracted
+        second = spawn_severed_part_from_corpse(corpse, "left_arm")
+        self.assertIsNotNone(second)
+        self.assertIsNone(self.gun.location, "the second cut pulled a retracted gun out of another body")
+        self.assertNotIn("weapon_dbref", self._second_arm_state(second))
+
 
 class TheTypedSeverVerbIsTheSameDoorTest(EvenniaCommandTest):
     """Play caught this (2026-09-14): the helper carried the gun, the typed

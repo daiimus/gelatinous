@@ -1901,7 +1901,7 @@ class Appendage(Item):
         # Organ objects.
         try:
             from world.medical.augments import carry_snapshot_hardware_to_appendage
-            carry_snapshot_hardware_to_appendage(self)
+            carry_snapshot_hardware_to_appendage(self, corpse=corpse)
         except Exception as exc:
             # Deliberate (#469): hardware bookkeeping must never block
             # the severance itself.  Audit-logged for investigation.
@@ -3634,7 +3634,7 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         # as Appendage.configure_from_sever; guarded the same way.
         try:
             from world.medical.augments import carry_snapshot_hardware_to_appendage
-            carry_snapshot_hardware_to_appendage(self)
+            carry_snapshot_hardware_to_appendage(self, corpse=corpse)
         except Exception as exc:
             from world.combat.debug import get_splattercast
             get_splattercast().msg(
