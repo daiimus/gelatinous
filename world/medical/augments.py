@@ -195,7 +195,7 @@ def _dispatch_toggle(character, name, spec, hosts, deploy) -> str:
         return f"{name} doesn't respond. (unknown ability type {ability_type!r})"
     toggler = globals()[toggler_name]
 
-    _unshare_weapons(hosts, name)
+    _unshare_weapons(character, name)
     changed, failures, weapon = [], [], None
     for host in hosts:
         state = _ability_state(host, name)
@@ -240,23 +240,36 @@ def _dispatch_toggle(character, name, spec, hosts, deploy) -> str:
     return self_line
 
 
-def _unshare_weapons(hosts, name) -> None:
+def _unshare_weapons(character, name) -> None:
     """Legacy state from before each hand owned its claws: every host of
     an ability points at ONE object. Left alone, a per-host deploy would
-    seat that one gun in the first arm and then move it to the second.
-    The first host keeps the reference; the others drop theirs and spawn
-    their own on deploy (MULTI_WEAPON_COMBAT_SPEC §3; the migration does
-    the same at scale). Nothing is deleted."""
-    seen = set()
-    for host in hosts:
-        state = _ability_state(host, name)
-        ref = state.get("weapon_dbref")
-        if not ref:
-            continue
-        if ref in seen:
-            state.pop("weapon_dbref", None)
-        else:
-            seen.add(ref)
+    seat that one gun in the first arm and then move it to the second,
+    and a retract through the wrong host would fold the gun out of the
+    OTHER hand. Settled over every living host, whichever are being
+    toggled (a surgical stow passes one): the host whose hand holds the
+    object keeps the reference, otherwise the first in organ order; the
+    rest drop theirs and spawn their own on their next deploy
+    (MULTI_WEAPON_COMBAT_SPEC §3, §12; the one-shot migration settles
+    stored bodies the same way). Nothing is deleted."""
+    groups = {}
+    for host in find_ability_hosts(character, name):
+        ref = _ability_state(host, name).get("weapon_dbref")
+        if ref:
+            groups.setdefault(ref, []).append(host)
+    shared = [sharers for sharers in groups.values() if len(sharers) > 1]
+    if not shared:
+        return
+    hands = getattr(character, "hands", None) or {}
+    for sharers in shared:
+        keeper = sharers[0]
+        for host in sharers:
+            held = hands.get((_spec_of(host, name) or {}).get("slot"))
+            if held is not None and held.dbref == _ability_state(host, name).get("weapon_dbref"):
+                keeper = host
+                break
+        for host in sharers:
+            if host is not keeper:
+                _ability_state(host, name).pop("weapon_dbref", None)
 
 
 def _toggle_prose(ability_type, spec, deploy, one_of_many, hand, weapon_name, slot):
@@ -546,22 +559,22 @@ def _get_or_spawn_weapon(character, state, spec):
     path but severance)."""
     weapon = _find_weapon(state)
     if weapon is not None:
-        # The object must be where this body's hardware lives: parked
-        # off-grid, or (an integrated weapon, deployed) on the body. One
-        # loose in the body's own room is still its own -- a hand-only
+        # Parked off-grid, or (an integrated weapon, deployed) on the
+        # body: this host's, as it stands. Lying on a severed appendage:
+        # carried off -- a shared reference from before each hand owned
+        # its claws; reattachment is what reclaims an object there. Unlink
+        # it and give this host its own; nothing is deleted. Anywhere
+        # else, it is still this host's and is taken back: a hand-only
         # sever drops a deployed forearm gun to the floor, locked and
-        # undroppable -- and is taken back. One lying anywhere else (on a
-        # severed limb, in another room) is not this host's: a shared
-        # reference from before each hand owned its claws, carried off.
-        # Unlink it and give this host its own; nothing is deleted
-        # (MULTI_WEAPON_COMBAT_SPEC §3, §12).
+        # undroppable, and the body may have walked away before the hand
+        # came back (#3697; MULTI_WEAPON_COMBAT_SPEC §3, §9).
         if weapon.location is None or weapon.location == character:
             return weapon
-        here = getattr(character, "location", None)
-        if here is not None and weapon.location == here:
+        if weapon.location.is_typeclass("typeclasses.items.Appendage", exact=False):
+            state.pop("weapon_dbref", None)
+        else:
             weapon.location = None
             return weapon
-        state.pop("weapon_dbref", None)
 
     prototype = spec.get("weapon_prototype")
     if not prototype:

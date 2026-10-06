@@ -235,7 +235,8 @@ class TestBothHandsDeploy(_NailzCase):
         from evennia import create_object
         from world.medical.augments import (find_ability_hosts, toggle_ability,
                                             _ability_state, get_active_natural_weapons)
-        stray = create_object("typeclasses.items.Item", key="old blades", location=self.room2)  # carried off
+        limb = create_object("typeclasses.items.Appendage", key="a severed left hand", location=self.room1)
+        stray = create_object("typeclasses.items.Item", key="old blades", location=limb)  # carried off
         for host in find_ability_hosts(self.char1, "nailz"):
             _ability_state(host, "nailz").update({"deployed": False, "weapon_dbref": stray.dbref})
         toggle_ability(self.char1, "nailz")
@@ -372,14 +373,55 @@ class TwoArmGunsFromTheOldModel(EvenniaTest):
 
     def test_a_gun_dropped_on_the_floor_by_a_hand_sever_is_taken_back(self):
         # A hand-only sever drops the deployed forearm gun to the room,
-        # locked and undroppable; the next deploy must reclaim it rather
-        # than spawn a second and leave the first on the floor for good.
+        # locked and undroppable (#3697), and the body walks on
+        # before the hand comes back; the next deploy must take it back
+        # from wherever it lies rather than spawn a second and leave the
+        # first on a floor for good.
         from world.medical.augments import toggle_ability
         self.organs[1].ability_state = {"shotgun": {}}           # only the left arm has a gun
-        self.gun.location = self.room1
+        self.gun.location = self.room2
         toggle_ability(self.char1, "shotgun")
         self.assertEqual(self.char1.hands["left_hand"].id, self.gun.id)
         self.assertEqual(self.gun.location, self.char1)
+
+    def test_a_retract_folds_the_gun_out_of_the_hand_that_holds_it(self):
+        # The shared gun is seated in the SECOND arm's hand (the first
+        # module was dead when it deployed, then healed). The keeper is
+        # the hand that holds it, not the first in order, or the retract
+        # through the first host finds nothing and the gun stays seated
+        # while the readout says retracted.
+        from world.medical.augments import is_ability_deployed, toggle_ability
+        self.gun.location = self.char1
+        self.char1.hands = {"right_hand": self.gun}
+        self.organs[0].ability_state = {"shotgun": {"deployed": False, "weapon_dbref": self.gun.dbref}}
+        self.organs[1].ability_state = {"shotgun": {"deployed": True, "weapon_dbref": self.gun.dbref}}
+        self.char1.save_medical_state()
+        toggle_ability(self.char1, "shotgun")
+        self.assertFalse(is_ability_deployed(self.char1, "shotgun"))
+        self.assertIsNone(self.char1.hands.get("right_hand"), "the gun stayed in the hand")
+        self.assertIsNone(self.gun.location, "the gun was not folded away")
+
+    def test_a_stow_at_one_arm_leaves_the_other_arms_gun_out(self):
+        # Both legacy hosts deployed on one shared gun, seated in the left
+        # hand. A surgeon's stow at the RIGHT arm settles the reference
+        # over every living host first, so it folds nothing out of the
+        # left hand and the left module still reads deployed.
+        from world.medical.augments import (find_ability_hosts, stow_abilities_at,
+                                            _ability_state)
+        self.gun.location = self.char1
+        self.char1.hands = {"left_hand": self.gun}
+        for organ in self.organs:
+            organ.ability_state = {"shotgun": {"deployed": True, "weapon_dbref": self.gun.dbref}}
+        self.char1.save_medical_state()
+        messages = stow_abilities_at(self.char1, "right_arm")
+        self.assertEqual(len(messages), 1, messages)
+        self.assertEqual(self.char1.hands["left_hand"].id, self.gun.id, "the left hand's gun was folded away")
+        self.assertEqual(self.gun.location, self.char1)
+        states = {o.container: _ability_state(o, "shotgun")
+                  for o in find_ability_hosts(self.char1, "shotgun")}
+        self.assertTrue(states["left_arm"].get("deployed"))
+        self.assertFalse(states["right_arm"].get("deployed"))
+        self.assertNotIn("weapon_dbref", states["right_arm"], "the right arm still shares the left hand's gun")
 
 
 class TheStowIsAtTheCut(_NailzCase):
