@@ -16,6 +16,15 @@ class TheOrder(EvenniaTest):
         self.char1.db.species = "human"
         self.assertEqual(list(self.char1.hands), ["left_hand", "right_hand"])
 
+    def test_the_view_follows_the_display_order_not_the_set(self):
+        # Deterministic control: with the display order reversed, the view
+        # reverses with it; a set-iterating getter would pass the left-first
+        # test by chance on half of hash seeds.
+        self.char1.db.species = "human"
+        with mock.patch("world.anatomy.get_species_anatomical_display_order",
+                        return_value=["right_hand", "left_hand"]):
+            self.assertEqual(list(self.char1.hands), ["right_hand", "left_hand"])
+
     def test_an_unlisted_slot_sorts_after_the_listed_ones_alphabetically(self):
         self.char1.db.species = "human"
         self.assertEqual(self.char1.slot_order({"tail", "right_hand", "antenna", "left_hand"}),

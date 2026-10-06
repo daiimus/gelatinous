@@ -2150,7 +2150,8 @@ class Character(
         * Minus any container currently severed
         * Backing values from ``self.held_items``
 
-        Reads are cheap (one species lookup + one severance scan)
+        Reads are cheap (two species lookups, one severance scan and a
+        sort of two or three names)
         and intentionally not cached — severance state can change
         at any time, and over-caching here was the root cause of
         the pre-PR-H2 "wield in severed hand" bug.

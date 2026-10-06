@@ -1,4 +1,5 @@
-"""Both claw banks resolve every phase (MULTI_WEAPON_COMBAT_SPEC §7, §13).
+"""Both Nailz banks resolve every phase (MULTI_WEAPON_COMBAT_SPEC §7, §13) and
+name no other weapon (owner ruling §14 #10).
 
 `nailz` is one hand, `nailz_akimbo` the designed pair; the
 loader reaches each by `choice.weapon_type`. Neither may leave a phase to
@@ -9,6 +10,13 @@ import importlib
 from unittest import TestCase
 
 PHASES = ("initiate", "hit", "miss", "kill")
+
+
+def _lines(bank):
+    for phase, entries in importlib.import_module(f"world.combat.messages.{bank}").MESSAGES.items():
+        for entry in entries:
+            for role, line in entry.items():
+                yield phase, role, line
 
 
 class BothBanksResolve(TestCase):
@@ -49,3 +57,11 @@ class BothBanksResolve(TestCase):
                                          hit_location="chest", damage=3, audiences=("actor",))
                 self.assertTrue(out.get("attacker_msg"), (name, phase))
                 self.assertNotIn("Error:", out["attacker_msg"], (name, phase))
+
+
+class TheNailzBanksNameNoOtherWeapon(TestCase):
+
+    def test_no_tiger_in_the_nailz_banks(self):
+        for bank in ("nailz", "nailz_akimbo"):
+            for phase, role, line in _lines(bank):
+                self.assertNotIn("tiger", line.lower(), (bank, phase, role, line))

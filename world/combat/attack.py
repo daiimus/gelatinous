@@ -297,11 +297,11 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
         )
         return
 
-    # Auto-prioritizer (CAPACITY_CONSUMERS spec §6.1 Q2): pick the best in-hand
-    # weapon for THIS engagement — range-appropriate first, then highest damage.
-    # The engagement (not the weapon) decides melee vs ranged. A one-weapon
-    # fighter gets that weapon unchanged; holding several (multi-armed / cyber
-    # tail) lets combat bring the right one to bear automatically.
+    # The one door (MULTI_WEAPON_COMBAT_SPEC §4, §6): the option THIS swing
+    # uses — range filter first, then natural precedence, then akimbo
+    # grouping, then the wheel's next option after the last slot that
+    # swung. The engagement (not the weapon) decides melee vs ranged. A
+    # one-weapon fighter gets that weapon every time.
     choice = choose_weapon(attacker, target)
     is_ranged_attack = bool(choice and choice.is_ranged)
 

@@ -131,9 +131,12 @@ class _HandsViewStub:
 
     @property
     def hands(self):
-        # Direct copy of the Character.hands property body for
-        # isolation testing.  (The real property also runs a
-        # migration step which is exercised separately.)
+        # Copy of the Character.hands property body as it stood before
+        # slice 2 ordered it (MULTI_WEAPON_COMBAT_SPEC §6): this stub
+        # iterates the set, so only order-insensitive assertions belong
+        # here; the order is pinned on the real Character in
+        # test_the_hands_keep_the_bodys_order.py. (The real property also
+        # runs a migration step which is exercised separately.)
         from world.anatomy import get_species_grasping_containers
         species = getattr(self.db, "species", None)
         grasping = set(get_species_grasping_containers(species))

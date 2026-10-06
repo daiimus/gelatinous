@@ -309,8 +309,9 @@ class TheWheel(TestCase):
         self.assertEqual(seen, [("fangs", "head"), ("nailz_akimbo", "left_hand"),
                                 ("fangs", "head"), ("nailz_akimbo", "left_hand")])
 
-    def test_a_refused_swing_does_not_turn_the_wheel(self):
-        # Peeks never move the cursor; only note_weapon_used does.
+    def test_peeks_never_turn_the_wheel(self):
+        # Only note_weapon_used moves the cursor; the refused-swing case is
+        # pinned in test_the_roll_takes_the_weapons_hit_bonus.
         left, right = _weapon("l", True, 10), _weapon("r", True, 10)
         attacker = _char([left, right], slots=["left_hand", "right_hand"])
         for _ in range(3):
