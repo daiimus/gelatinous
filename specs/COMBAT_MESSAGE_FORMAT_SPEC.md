@@ -60,7 +60,7 @@ MESSAGES = {
 
 ### Bank pairs (MULTI_WEAPON_COMBAT_SPEC §7, shipped 2026-10-05)
 
-A designed akimbo weapon has TWO banks: the base bank is one weapon in one hand, `<type>_akimbo` is the pair. The loader needs no change: the one door's `choice.weapon_type` names the bank, and an akimbo profile (`akimbo_profiles[2].weapon_type`) swaps it. The first pair: `tiger_claws.py` (one hand of Nailz; the hand-neutral lines, 24/30/30/28 per phase) and `tiger_claws_akimbo.py` (both hands; the full original bank, with the implant's lines no longer dressed in gloves or a belt). Only the `NAILZ_CLAWS` prototype names them. No `{hand}` in combat banks for v1. `world/tests/test_both_claw_banks_resolve.py` pins that both banks resolve all four phases.
+A designed akimbo weapon has TWO banks: the base bank is one weapon in one hand, `<type>_akimbo` is the pair. The loader needs no change: the one door's `choice.weapon_type` names the bank, and an akimbo profile (`akimbo_profiles[2].weapon_type`) swaps it. The first pair: `nailz.py` (one hand of Nailz; the hand-neutral lines, 24/30/30/28 per phase) and `nailz_akimbo.py` (both hands; the full original bank, with the implant's lines no longer dressed in gloves or a belt); they were `tiger_claws` / `tiger_claws_akimbo` until slice 2, when the owner ruled Nailz gets its own pair and the held Tiger Claws theirs. Only the `NAILZ_CLAWS` prototype names them. No `{hand}` in combat banks for v1. `world/tests/test_both_claw_banks_resolve.py` pins that both banks resolve all four phases.
 
 ### Special Extended Phases (for specific weapons):
 - **`escape_hit`** / **`escape_miss`** - Grappling escape attempts

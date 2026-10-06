@@ -66,9 +66,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s face is set in concentration, finger hovering near the revolver's trigger."
         },
         {
-            'attacker_msg': "The revolver feels like a reliable, deadly tool in your hands.",
-            'victim_msg': "The revolver feels like a reliable, deadly tool in {attacker_name}'s hands.",
-            'observer_msg': "The revolver feels like a reliable, deadly tool in {attacker_name}'s hands."
+            'attacker_msg': "The revolver feels like a reliable, deadly tool in your grip.",
+            'victim_msg': "The revolver feels like a reliable, deadly tool in {attacker_name}'s grip.",
+            'observer_msg': "The revolver feels like a reliable, deadly tool in {attacker_name}'s grip."
         },
         {
             'attacker_msg': "You shift your weight, bracing for the revolver's manageable recoil.",

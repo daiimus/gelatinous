@@ -884,8 +884,13 @@ def cleanup_combatant_state(char, entry, handler):
     # "Still off-balance from your failed charge" (#2425).
     from .constants import (NDB_CHARGE_BONUS, NDB_CHARGE_PENALTY,
                             NDB_CHARGE_VULNERABILITY)
+    # NDB_LAST_WEAPON_SLOT is the wheel's cursor (MULTI_WEAPON_COMBAT_SPEC
+    # §6): cleared HERE, not in remove_combatant, because a fighter still
+    # standing when a fight ends never passes through remove_combatant,
+    # and each fight should start at the first slot.
+    from .constants import NDB_LAST_WEAPON_SLOT
     ndb_attrs = [NDB_PROXIMITY, NDB_SKIP_ROUND, NDB_CHARGE_VULNERABILITY,
-                 NDB_CHARGE_BONUS, NDB_CHARGE_PENALTY]
+                 NDB_CHARGE_BONUS, NDB_CHARGE_PENALTY, NDB_LAST_WEAPON_SLOT]
     for attr in ndb_attrs:
         if hasattr(char.ndb, attr):
             delattr(char.ndb, attr)

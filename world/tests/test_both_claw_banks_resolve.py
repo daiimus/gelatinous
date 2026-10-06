@@ -1,6 +1,6 @@
 """Both claw banks resolve every phase (MULTI_WEAPON_COMBAT_SPEC §7, §13).
 
-`tiger_claws` is one hand, `tiger_claws_akimbo` the designed pair; the
+`nailz` is one hand, `nailz_akimbo` the designed pair; the
 loader reaches each by `choice.weapon_type`. Neither may leave a phase to
 the generic fallback, and the pair bank no longer dresses an implant in
 gloves or a belt.
@@ -17,7 +17,7 @@ class BothBanksResolve(TestCase):
         return importlib.import_module(f"world.combat.messages.{name}").MESSAGES
 
     def test_every_phase_has_entries_in_both_banks(self):
-        for name in ("tiger_claws", "tiger_claws_akimbo"):
+        for name in ("nailz", "nailz_akimbo"):
             bank = self._bank(name)
             for phase in PHASES:
                 self.assertTrue(bank.get(phase), f"{name} has no {phase} lines")
@@ -27,13 +27,13 @@ class BothBanksResolve(TestCase):
     def test_the_one_hand_bank_never_speaks_of_both_hands(self):
         import re
         pat = re.compile(r"\b(both hands|both|ten|hands|fingers|gloves?|belt|five blades|pair|twin|two)\b", re.I)
-        for phase, entries in self._bank("tiger_claws").items():
+        for phase, entries in self._bank("nailz").items():
             for entry in entries:
                 for line in entry.values():
                     self.assertIsNone(pat.search(line), (phase, line))
 
     def test_the_pair_bank_is_an_implant_not_a_glove(self):
-        for phase, entries in self._bank("tiger_claws_akimbo").items():
+        for phase, entries in self._bank("nailz_akimbo").items():
             for entry in entries:
                 for line in entry.values():
                     self.assertNotIn("glove", line.lower(), (phase, line))
@@ -43,7 +43,7 @@ class BothBanksResolve(TestCase):
 
     def test_the_loader_reaches_both_by_weapon_type(self):
         from world.combat.messages import get_combat_message
-        for name in ("tiger_claws", "tiger_claws_akimbo"):
+        for name in ("nailz", "nailz_akimbo"):
             for phase in PHASES:
                 out = get_combat_message(name, phase, attacker=None, target=None, item=None,
                                          hit_location="chest", damage=3, audiences=("actor",))

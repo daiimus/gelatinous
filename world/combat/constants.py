@@ -332,6 +332,7 @@ DEBUG_TEMPLATE = "DEBUG"  # Generic debug prefix for utility functions
 NDB_COMBAT_HANDLER = "combat_handler"
 NDB_PROXIMITY = "in_proximity_with"
 NDB_SKIP_ROUND = "skip_combat_round"
+NDB_LAST_WEAPON_SLOT = "last_weapon_slot"   # the wheel's cursor (MULTI_WEAPON_COMBAT_SPEC §6)
 
 # Charge system fields (temporary states)
 NDB_CHARGE_BONUS = "charge_attack_bonus_active"

@@ -11,9 +11,9 @@ MESSAGES = {
             'observer_msg': "With a jerky motion, {attacker_name} slams a long, thin stick magazine into the machine pistol, the simple weapon looking almost like a toy, but promising a terrifying rate of fire."
         },
         {
-            'attacker_msg': "Your {hit_location} barely contains the machine pistol's narrow grip, the other hand instinctively moving to brace the wildly jumping muzzle.",
-            'victim_msg': "{attacker_name}'s hand barely contains the machine pistol's narrow grip, the other hand instinctively moving to brace the wildly jumping muzzle.",
-            'observer_msg': "{attacker_name}'s hand barely contains the machine pistol's narrow grip, the other hand instinctively moving to brace the wildly jumping muzzle."
+            'attacker_msg': "Your hand barely contains the machine pistol's narrow grip, your wrist locking against the wildly jumping muzzle.",
+            'victim_msg': "{attacker_name}'s hand barely contains the machine pistol's narrow grip, their wrist locking against the wildly jumping muzzle.",
+            'observer_msg': "{attacker_name}'s hand barely contains the machine pistol's narrow grip, their wrist locking against the wildly jumping muzzle."
         },
         {
             'attacker_msg': "The machine pistol appears in your {hit_location} as if from nowhere, a crude assembly of stamped metal and plastic, built for one purpose: spewing lead.",
@@ -66,9 +66,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s face is a grimace of pure, unadulterated 'here goes nothing,' ready to fight the machine pistol's vicious, unpredictable muzzle climb."
         },
         {
-            'attacker_msg': "The machine pistol feels like a barely contained firecracker chain reaction waiting to happen in your hands, vibrating with anticipation.",
-            'victim_msg': "The machine pistol feels like a barely contained firecracker chain reaction waiting to happen in {attacker_name}'s hands, vibrating with anticipation.",
-            'observer_msg': "The machine pistol feels like a barely contained firecracker chain reaction waiting to happen in {attacker_name}'s hands, vibrating with anticipation."
+            'attacker_msg': "The machine pistol feels like a barely contained firecracker chain reaction waiting to happen in your grip, vibrating with anticipation.",
+            'victim_msg': "The machine pistol feels like a barely contained firecracker chain reaction waiting to happen in {attacker_name}'s grip, vibrating with anticipation.",
+            'observer_msg': "The machine pistol feels like a barely contained firecracker chain reaction waiting to happen in {attacker_name}'s grip, vibrating with anticipation."
         },
         {
             'attacker_msg': "You lean forward aggressively, trying to impose some semblance of control over the machine pistol's inevitable, chaotic spray pattern.",
@@ -268,9 +268,9 @@ MESSAGES = {
             'observer_msg': "A close-range deluge from {attacker_name}'s machine pistol tears multiple horrific, closely-packed, and instantly bleeding wounds all over {target_name}'s {hit_location} and {hit_location}."
         },
         {
-            'attacker_msg': "The machine pistol proves brutally effective by sheer, overwhelming volume as you land a devastating, unavoidable spray on {target_name}, the weapon bucking and climbing wildly in your {hit_location}s like a live thing.",
-            'victim_msg': "The machine pistol proves brutally effective by sheer, overwhelming volume as {attacker_name} lands a devastating, unavoidable spray on you, the weapon bucking and climbing wildly in their hands like a live thing.",
-            'observer_msg': "The machine pistol proves brutally effective by sheer, overwhelming volume as {attacker_name} lands a devastating, unavoidable spray on {target_name}, the weapon bucking and climbing wildly in their hands like a live thing."
+            'attacker_msg': "The machine pistol proves brutally effective by sheer, overwhelming volume as you land a devastating, unavoidable spray on {target_name}, the weapon bucking and climbing wildly in your grip like a live thing.",
+            'victim_msg': "The machine pistol proves brutally effective by sheer, overwhelming volume as {attacker_name} lands a devastating, unavoidable spray on you, the weapon bucking and climbing wildly in their grip like a live thing.",
+            'observer_msg': "The machine pistol proves brutally effective by sheer, overwhelming volume as {attacker_name} lands a devastating, unavoidable spray on {target_name}, the weapon bucking and climbing wildly in their grip like a live thing."
         },
         {
             'attacker_msg': "Your machine pistol bullets make impact, leaving a dense, bloody cluster of ragged punctures in {target_name}'s defenses, spent brass carpeting the area like a sudden, metallic hailstorm.",

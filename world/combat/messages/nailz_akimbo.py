@@ -1,7 +1,8 @@
-"""Nailz, both hands out: the designed pair (MULTI_WEAPON_COMBAT_SPEC §7).
-
-The bank pair convention: `tiger_claws` is one hand, `tiger_claws_akimbo`
-the pair. Only the NAILZ_CLAWS prototype names these banks.
+"""Nailz, both hands out: the designed pair (MULTI_WEAPON_COMBAT_SPEC §7;
+owner ruling §14 #10: Nailz has its own bank pair). `nailz` is one hand,
+`nailz_akimbo` the pair. Only the NAILZ_CLAWS prototype names these banks;
+the held Tiger Claws (slice 4) will bring `tiger_claws` and
+`tiger_claws_akimbo` of their own.
 """
 MESSAGES = {
     'initiate': [
@@ -116,9 +117,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} drags one claw across a nearby surface. The screech is deliberate and ugly."
         },
         {
-            'attacker_msg': "You flex your fingers, the tiger claws sliding into place with a soft metal whisper.",
-            'victim_msg': "{attacker_name} flexes their fingers, the tiger claws sliding into place with a soft metal whisper.",
-            'observer_msg': "{attacker_name} flexes their fingers, the tiger claws sliding into place with a soft metal whisper."
+            'attacker_msg': "You flex your fingers, the blades sliding into place with a soft metal whisper.",
+            'victim_msg': "{attacker_name} flexes their fingers, the blades sliding into place with a soft metal whisper.",
+            'observer_msg': "{attacker_name} flexes their fingers, the blades sliding into place with a soft metal whisper."
         },
         {
             'attacker_msg': "You hold up both hands. Ten fingers, ten blades. Math in blood.",

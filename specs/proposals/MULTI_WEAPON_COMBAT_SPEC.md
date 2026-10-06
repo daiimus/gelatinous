@@ -50,7 +50,7 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 
 **Constants** in `world/combat/constants.py`: `WEAPON_ATTR_HIT_BONUS`, `WEAPON_ATTR_AKIMBO_FAMILY`, `WEAPON_ATTR_AKIMBO_PROFILES`, `AKIMBO_PROFILE_FIELDS`, `NDB_LAST_WEAPON_SLOT`. Bank names stay prototype data like every `weapon_type`.
 
-**`NAILZ_CLAWS`** becomes one hand: five blades, placeholder damage 6, `weapon_type` `tiger_claws`, `akimbo_family` `nailz`, `akimbo_profiles {2: {damage: 9, hit_bonus: 1, weapon_type: "tiger_claws_akimbo"}}`. An intact owner keeps today's damage 9.
+**`NAILZ_CLAWS`** becomes one hand: five blades, placeholder damage 6, `weapon_type` `nailz` (was `tiger_claws` until slice 2), `akimbo_family` `nailz`, `akimbo_profiles {2: {damage: 9, hit_bonus: 1, weapon_type: "nailz_akimbo"}}`. An intact owner keeps today's damage 9.
 
 **`WeaponChoice`** (frozen dataclass): `items` in slot order, `slots`, `damage`, `hit_bonus`, `damage_type`, `weapon_type`, `is_ranged`; `.item = items[0]`; `.akimbo = len(items) > 1`. `None` means unarmed, as today.
 
@@ -73,7 +73,7 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 
 Grouping runs after the range filter. Members = options sharing an `akimbo_family`, distinct objects, in slot order; n = member count. k = the largest key in `akimbo_profiles` with k ≤ n. With no such key, or n = 1, members stay single. k members become ONE option: the lead item's attributes overlaid with `akimbo_profiles[k]` (profile fields only). Leftovers regroup by the same rule or rotate singly. Three claws never ride a count-2 profile with the third absorbed.
 
-**Nailz placeholders:** one hand d6+6, +0 hit, bank `tiger_claws`; both hands d6+9, +1 hit, bank `tiger_claws_akimbo`. A severed or retracted hand drops n to 1 on the next swing with no state to clear.
+**Nailz placeholders:** one hand d6+6, +0 hit, bank `nailz`; both hands d6+9, +1 hit, bank `nailz_akimbo`. A severed or retracted hand drops n to 1 on the next swing with no state to clear.
 
 **To-hit:** `attacker_roll += choice.hit_bonus`, beside the existing +2 charge bonus in `world/combat/attack.py`; defaults to 0, so no other weapon changes. Damage stays d6 + `choice.damage`; injury type from `choice.damage_type`. Manipulation = min over the group's slots, so the weaker hand drags.
 
@@ -94,7 +94,7 @@ This replaces "then highest damage" (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`
 ## 7. Messages
 
 **Bank pair convention:** the base bank is one weapon; `<type>_akimbo` is the designed pair. Bank = `choice.weapon_type`; the loader needs no change.
-- `git mv tiger_claws.py tiger_claws_akimbo.py`: it keeps today's both-hands prose. Fix the implant-contradicting lines (gloves, belt, "five blades", a self `{hit_location}`).
+- Slice 2 (owner ruling §14 #10) renamed the pair to `nailz.py` / `nailz_akimbo.py`; `tiger_claws` and `tiger_claws_akimbo` are left for the held Tiger Claws (slice 4). The slice-1 history: `git mv tiger_claws.py tiger_claws_akimbo.py`: it keeps today's both-hands prose. Fix the implant-contradicting lines (gloves, belt, "five blades", a self `{hit_location}`).
 - Write a new one-hand `tiger_claws.py` covering all four phases (a missing kill falls to the flat generic line), seeded from the hand-neutral lines.
 - Only the two `NAILZ_CLAWS` prototype attributes name the bank.
 - All seven weapon-bank reads use `choice.weapon_type` with `item=choice.item`: hit, miss and kill in `world/combat/attack.py`; three initiate reads in `commands/combat/core_actions.py` (aiming-direction, local, and the target's defensive line); the auto-retarget initiate in `world/combat/utils.py`.
@@ -170,7 +170,7 @@ For each living character, for each ability with two or more living hosts, in sl
 
 - **0 (now):** this spec; the ledger gap (§16). No issue.
 - **1, claws plus the one door — SHIPPED** (PR A #3696 and #3701 on 2026-10-05, PR B #3702 on 2026-10-06; the migration PR C was dropped after the census, §12; #3695 and #3571 closed): per-host toggle; delete the mirror; per-location stow; `is_ability_deployed` and the director; readouts; `get_active_natural_weapons`; `weapon_choice.py` with grouping; repoint the 20 + 1 + 3 + 1 call sites and delete the five old functions; the hit term; manipulation by slots; the `NAILZ_CLAWS` profiles; the bank split; `_one` prose; reattach keeps the object; the migration. Held weapons keep range-then-max, but gates, initiate and the swing agree. Tests: rewrite `test_one_ability_two_hands.py` (one assertion inverts), `test_weapon_autoprioritizer.py`, `test_combat_manipulation_resolver.py`; add a test that both claw banks resolve all four phases. Specs: `AUGMENT_ABILITIES_SPEC.md` §1/§3/§8, `COMBAT_MESSAGE_FORMAT_SPEC.md`, `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md` §6.1. Play, checked via splattercast: deploy, fight akimbo, sever, fight single, surgical stow, chrome reattach.
-- **2, alternation and handguns:** ordered `Character.hands`; the ndb cursor; `note_weapon_used`; the max rule removed; disarm order; pistol bank rewrites. Play: two light pistols; pistol plus knife at range and in melee; arm-gun plus pistol; Nailz plus Jawz.
+- **2, alternation and handguns** (issue #3707, owner "Go." 2026-10-06; in build): ordered `Character.hands` (`slot_order`); the ndb cursor `NDB_LAST_WEAPON_SLOT`; `note_weapon_used` after the attack gates; the max rule removed; akimbo groups keep their slot place; the Nailz bank rename; disarm order; pistol bank rewrites. Play: two light pistols; pistol plus knife at range and in melee; arm-gun plus pistol; Nailz plus Jawz.
 - **3, grip enforcement (`hands_required`; owner ruling 2026-10-06, §14 #13):** a two-handed weapon occupies two grasping slots when wielded; one-handed use is refused or penalised by a ruling to come; the wheel treats the grip as one option (§4 step 1 already allows it). Touches wield, get, disarm and the hands view. Design pass first.
 - **4, owner-gated content:** akimbo pistol models; a branded held Tiger Claws pair.
 

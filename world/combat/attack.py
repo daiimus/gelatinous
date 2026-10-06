@@ -14,7 +14,7 @@ from random import randint
 from .debug import get_splattercast
 
 from world.combat.messages import get_combat_message
-from world.combat.weapon_choice import choose_weapon
+from world.combat.weapon_choice import choose_weapon, note_weapon_used
 from world.combat.capacity import (
     sight_hit_factor, moving_dodge_factor, manipulation_hit_factor,
 )
@@ -343,6 +343,10 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
             f"{target.key} from {attacker.location.key} to "
             f"{target.location.key}."
         )
+
+    # The reach and proximity gates have passed: this swing is real, so
+    # the wheel turns here and not on a refused attack (§6).
+    note_weapon_used(attacker, choice)
 
     # ── Human Shield System Check ──────────────────────────────────────
     # Check if target is grappling someone who could act as a human shield
