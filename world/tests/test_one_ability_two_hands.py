@@ -550,6 +550,40 @@ class TheStowIsAtTheCut(_NailzCase):
         self.assertTrue(shared.pk, "the shared object was deleted")
 
 
+class TheSurvivorSpeaksForOneHand(_NailzCase):
+    """A body down to one hand has one hand's claws to move: the one-hand
+    prose, naming the hand, not ten blades on five fingers (#3700)."""
+
+    def setUp(self):
+        super().setUp()
+        from world.medical.augments import find_ability_hosts
+        left = next(o for o in find_ability_hosts(self.char1, "nailz")
+                    if getattr(o, "container", None) == "left_hand")
+        left.current_hp = 0          # the way severance leaves it
+
+    def test_the_deploy_names_the_surviving_hand(self):
+        from world.medical.augments import toggle_ability
+        said = toggle_ability(self.char1, "nailz")
+        self.assertIn("right hand", said)
+        self.assertNotIn("ten carbide blades", said)
+
+    def test_the_retract_names_the_surviving_hand(self):
+        from world.medical.augments import toggle_ability
+        toggle_ability(self.char1, "nailz")
+        said = toggle_ability(self.char1, "nailz")
+        self.assertIn("right hand", said)
+        self.assertNotIn("your hands are just hands again", said)
+
+    def test_control_both_hands_still_speak_as_one(self):
+        # the left hand restored: both move, so the both-hands line
+        from world.medical.augments import toggle_ability
+        for organ in self.char1.medical_state.organs.values():
+            if getattr(organ, "container", None) == "left_hand":
+                organ.current_hp = organ.max_hp
+        said = toggle_ability(self.char1, "nailz")
+        self.assertIn("ten carbide blades", said)
+
+
 class TheNaturalLookupIsPerHost(_NailzCase):
 
     def test_every_deployed_hand_is_listed_with_its_own_item(self):

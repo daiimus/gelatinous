@@ -100,7 +100,7 @@ This replaces "then highest damage" (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`
 - All seven weapon-bank reads use `choice.weapon_type` with `item=choice.item`: hit, miss and kill in `world/combat/attack.py`; three initiate reads in `commands/combat/core_actions.py` (aiming-direction, local, and the target's defensive line); the auto-retarget initiate in `world/combat/utils.py`.
 - No `{hand}` in combat banks for v1; it would bind all seven sites.
 
-**Toggle prose.** Base keys stay the all-hosts prose. New keys `deploy_msg_one`, `retract_msg_one`, `deploy_room_one`, `retract_room_one` (constants beside `CYBERWARE_COMMAND_PREFIX`), used only when the ability has two or more living hosts and exactly one changed; they carry `{hand}`, pre-interpolated before `msg_room_identity`. `deployed_longdesc` is rewritten as one-hand prose with no `_one` variant: it already renders once per chrome location. Room lines stay on `msg_room_identity`.
+**Toggle prose.** Base keys stay the all-hosts prose. New keys `deploy_msg_one`, `retract_msg_one`, `deploy_room_one`, `retract_room_one` (constants beside `CYBERWARE_COMMAND_PREFIX`), used when exactly one host changed, whatever was dispatched or lives: a surgical stow of one hand, or a body down to one hand (#3700); an ability without them falls back to its base keys. They carry `{hand}`, pre-interpolated before `msg_room_identity`. `deployed_longdesc` is rewritten as one-hand prose with no `_one` variant: it already renders once per chrome location. Room lines stay on `msg_room_identity`.
 
 `COMBAT_MESSAGE_FORMAT_SPEC.md` gains a bank-pair section when slice 1 ships.
 

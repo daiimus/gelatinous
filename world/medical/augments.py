@@ -212,11 +212,12 @@ def _dispatch_toggle(character, name, spec, hosts, deploy) -> str:
             f"{name} is already {'deployed' if deploy else 'retracted'}.")
     _persist(character)
 
-    # "One of many" is measured against the ability's LIVING hosts, not
-    # the list dispatched here: a surgical stow of one hand passes one
-    # host, and the other hand's claws are still out.
-    living = find_ability_hosts(character, name)
-    one_of_many = len(living) >= 2 and len(changed) == 1
+    # One hand moved: the one-hand prose, naming it. Judged by what
+    # CHANGED, not by what was dispatched or what lives: a surgical stow
+    # passes one host while the other hand's claws stay out, and a body
+    # down to one hand has one hand's claws to move (#3700). An ability
+    # without ``_one`` prose falls back to its plain line.
+    one_hand = len(changed) == 1
     hand = _hand_of(changed[0])
     weapon_name = weapon.key if weapon is not None else name
     # Prose from the host that changed: an install bakes the side into a
@@ -226,7 +227,7 @@ def _dispatch_toggle(character, name, spec, hosts, deploy) -> str:
     prose_spec = {**spec, **(_spec_of(changed[0], name) or {})}
     slot = prose_spec.get("slot") or hand
     self_line, room_line = _toggle_prose(
-        ability_type, prose_spec, deploy, one_of_many, hand, weapon_name, slot)
+        ability_type, prose_spec, deploy, one_hand, hand, weapon_name, slot)
     location = getattr(character, "location", None)
     if room_line and ability_type not in _COVERT_TYPES and location is not None:
         msg_room_identity(
@@ -292,10 +293,10 @@ def _unshare_weapons(character, name) -> None:
                 _disown(character, host, name)
 
 
-def _toggle_prose(ability_type, spec, deploy, one_of_many, hand, weapon_name, slot):
+def _toggle_prose(ability_type, spec, deploy, one_hand, hand, weapon_name, slot):
     """The self line and the room template for a toggle. The spec's own
-    prose first (the ``_one`` keys when exactly one of several hosts
-    changed), then the type's default. ``{hand}`` is interpolated here;
+    prose first (the ``_one`` keys when exactly one host changed), then
+    the type's default. ``{hand}`` is interpolated here;
     ``{actor}`` is left for `msg_room_identity`."""
     if deploy:
         self_key, room_key = ("deploy_msg", "deploy_room")
@@ -303,8 +304,8 @@ def _toggle_prose(ability_type, spec, deploy, one_of_many, hand, weapon_name, sl
     else:
         self_key, room_key = ("retract_msg", "retract_room")
         one_self, one_room = (ABILITY_MSG_RETRACT_ONE, ABILITY_ROOM_RETRACT_ONE)
-    self_line = (one_of_many and spec.get(one_self)) or spec.get(self_key)
-    room_line = (one_of_many and spec.get(one_room)) or spec.get(room_key)
+    self_line = (one_hand and spec.get(one_self)) or spec.get(self_key)
+    room_line = (one_hand and spec.get(one_room)) or spec.get(room_key)
     slot_words = str(slot).replace("_", " ")
     if ability_type == "integrated_weapon":
         self_line = self_line or (
