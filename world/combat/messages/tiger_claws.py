@@ -70,9 +70,9 @@ MESSAGES = {
             'observer_msg': 'The curved blades gleam as {attacker_name} extends them — not as a warning, but as a promise.',
         },
         {
-            'attacker_msg': 'The sharpened tips twitch as you rotate your wrists — a motion too smooth to be safe.',
-            'victim_msg': 'The sharpened tips twitch as {attacker_name} rotates their wrists — a motion too smooth to be safe.',
-            'observer_msg': 'The sharpened tips twitch as {attacker_name} rotates their wrists — a motion too smooth to be safe.',
+            'attacker_msg': 'The sharpened tips twitch as you rotate your wrist — a motion too smooth to be safe.',
+            'victim_msg': 'The sharpened tips twitch as {attacker_name} rotates their wrist — a motion too smooth to be safe.',
+            'observer_msg': 'The sharpened tips twitch as {attacker_name} rotates their wrist — a motion too smooth to be safe.',
         },
         {
             'attacker_msg': "The steel arcs forward. You grin like this isn't the first blood you'll draw today.",
@@ -115,9 +115,9 @@ MESSAGES = {
             'observer_msg': '{attacker_name} rolls their knuckles. The claws arc like smiles with bad intent.',
         },
         {
-            'attacker_msg': 'You rotate your wrists. The claws catch the light like teeth ready to bite.',
-            'victim_msg': '{attacker_name} rotates their wrists. The claws catch the light like teeth ready to bite.',
-            'observer_msg': '{attacker_name} rotates their wrists. The claws catch the light like teeth ready to bite.',
+            'attacker_msg': 'You rotate your wrist. The claws catch the light like teeth ready to bite.',
+            'victim_msg': '{attacker_name} rotates their wrist. The claws catch the light like teeth ready to bite.',
+            'observer_msg': '{attacker_name} rotates their wrist. The claws catch the light like teeth ready to bite.',
         },
         {
             'attacker_msg': 'You scratch the wall with one clawed hand. The screech is deliberate.',
@@ -137,9 +137,9 @@ MESSAGES = {
             'observer_msg': "A brutal slash cuts the {hit_location} of {target_name}'s {hit_location}. They fall, claw marks trailing.",
         },
         {
-            'attacker_msg': 'A double-handed rake leaves {target_name} staggering — open, bleeding, slower now.',
-            'victim_msg': 'A double-handed rake leaves you staggering — open, bleeding, slower now.',
-            'observer_msg': 'A double-handed rake leaves {target_name} staggering — open, bleeding, slower now.',
+            'attacker_msg': 'A raking slash leaves {target_name} staggering — open, bleeding, slower now.',
+            'victim_msg': 'A raking slash leaves you staggering — open, bleeding, slower now.',
+            'observer_msg': 'A raking slash leaves {target_name} staggering — open, bleeding, slower now.',
         },
         {
             'attacker_msg': "A downward arc bites into the {hit_location}. {target_name}'s shirt turns dark instantly.",

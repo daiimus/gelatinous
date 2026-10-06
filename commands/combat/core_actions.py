@@ -630,7 +630,7 @@ class CmdStop(Command):
                 self._clear_aim_override_place_on_stop(caller, aiming_target)
                 
                 # Get weapon name for better messaging
-                choice = choose_weapon(caller)
+                choice = choose_weapon(caller, at_range=True)   # the aimed weapon
                 weapon_name = choice.item.key if choice else "weapon"
                 
                 caller.msg(f"You stop aiming at {get_display_name_safe(aiming_target, caller)} and lower your {weapon_name}.")
@@ -645,7 +645,7 @@ class CmdStop(Command):
                     caller.override_place = ""
                 
                 # Get weapon name for better messaging
-                choice = choose_weapon(caller)
+                choice = choose_weapon(caller, at_range=True)   # the aimed weapon
                 weapon_name = choice.item.key if choice else "weapon"
                 
                 # Try to get the actual exit name from the direction

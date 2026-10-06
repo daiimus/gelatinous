@@ -315,7 +315,7 @@ surplus effectors**, both measured against the **species baseline** derived
 > `_resolve_capacity_contribution` and shared with the body-wide method), read
 > by its two consumers `manipulation_hit_factor` and `moving_dodge_factor`
 > (`world/combat/capacity.py`); the meta-bonus half (b) is separate again —
-> `surplus_limb_initiative_bonus` and `select_weapon_for_engagement`
+> `surplus_limb_initiative_bonus` and the one door `choose_weapon` (`world/combat/weapon_choice.py`)
 > (`world/combat/utils.py`), see §6.1. One resolver returning both halves was
 > the design; two collaborating layers is what exists.
 
@@ -587,7 +587,7 @@ is the content lift) → per-effector resolver (manipulation/moving).
    (surplus-appendage initiative / disarm-resist / loadout) — a future combat
    revision.~~
    **✅ Superseded 2026-09-11 — the Q2 breadth bonuses are in:**
-   **loadout-readiness** via `select_weapon_for_engagement`
+   **loadout-readiness** via the one door `choose_weapon`
    (`world/combat/utils.py`, called from `process_attack` in
    `world/combat/attack.py`); **initiative** via `surplus_limb_initiative_bonus`
    (`world/combat/utils.py`), added to the `d20 + motorics` initiative roll —

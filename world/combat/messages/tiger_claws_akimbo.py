@@ -587,9 +587,9 @@ MESSAGES = {
             'observer_msg': "{target_name}'s gut splits open. Their fall is slow. The ending is not."
         },
         {
-            'attacker_msg': "You drive all five points into the neck. The collapse is wet and absolute.",
-            'victim_msg': "{attacker_name} drives all five points into your {hit_location}. Your collapse is wet and absolute.",
-            'observer_msg': "{attacker_name} drives all five points into {target_name}'s {hit_location}. Their collapse is wet and absolute."
+            'attacker_msg': "You drive all ten points into the neck. The collapse is wet and absolute.",
+            'victim_msg': "{attacker_name} drives all ten points into your {hit_location}. Your collapse is wet and absolute.",
+            'observer_msg': "{attacker_name} drives all ten points into {target_name}'s {hit_location}. Their collapse is wet and absolute."
         },
         {
             'attacker_msg': "You rake the chest in a cross pattern. Blood fountains from the intersect.",

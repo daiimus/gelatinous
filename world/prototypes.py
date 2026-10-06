@@ -2384,7 +2384,8 @@ NAILZ = {
 
 # The claw weapon Nailz extends (#526 M4).  Never held — the claws
 # ARE the hand; combat resolution reads it via natural-weapon
-# precedence.  Reuses the tiger_claws message set.
+# precedence.  One hand speaks the tiger_claws bank, both hands the
+# tiger_claws_akimbo bank (the pair profile below).
 # One hand's claws (MULTI_WEAPON_COMBAT_SPEC §3, §5): each Nailz host
 # owns one of these. Both hands out group into ONE attack on the pair
 # profile below (d6+9, +1 to hit, the `tiger_claws_akimbo` bank); one

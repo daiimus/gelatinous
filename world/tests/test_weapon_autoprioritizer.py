@@ -68,7 +68,7 @@ class SingleWeaponUnchangedTests(TestCase):
 
     def test_unarmed_returns_none(self):
         self.assertIsNone(choose_weapon(_char([]), _target()))
-        self.assertFalse(has_ranged_option(_char([]), _target()))
+        self.assertFalse(has_ranged_option(_char([])))
 
 
 class RealWeaponsOverImprovisedTests(TestCase):
@@ -101,11 +101,32 @@ class RangedEngagementTests(TestCase):
         tgt = _target()
         attacker = _char([_weapon("sword", False, 20)], proximity=())
         self.assertEqual(choose_weapon(attacker, tgt).item.key, "sword")
-        self.assertFalse(has_ranged_option(attacker, tgt))
+        self.assertFalse(has_ranged_option(attacker))
 
     def test_a_knife_sorting_first_does_not_hide_the_pistol(self):
         attacker = _char([_weapon("knife", False, 4), _weapon("pistol", True, 10)])
         self.assertTrue(has_ranged_option(attacker))
+
+    def test_the_aiming_peek_names_the_gun_not_the_claws(self):
+        # The direction-aim gate passes on the pistol; the prose must name it,
+        # not the claws that natural precedence would swing in melee.
+        claws = _weapon("claws", False, 30)
+        pistol = _weapon("pistol", True, 10)
+        attacker = _char([pistol])
+        with _naturals(("left_hand", claws)):
+            self.assertIs(choose_weapon(attacker).item, claws)
+            self.assertIs(choose_weapon(attacker, at_range=True).item, pistol)
+
+    def test_the_aiming_peek_names_the_gun_over_a_heavier_blade(self):
+        katana = _weapon("katana", False, 14)
+        pistol = _weapon("pistol", True, 12)
+        attacker = _char([katana, pistol])
+        self.assertIs(choose_weapon(attacker).item, katana)
+        self.assertIs(choose_weapon(attacker, at_range=True).item, pistol)
+
+    def test_the_aiming_peek_with_nothing_ranged_still_names_something(self):
+        knife = _weapon("knife", False, 4)
+        self.assertIs(choose_weapon(_char([knife]), at_range=True).item, knife)
 
 
 class MeleeEngagementTests(TestCase):
@@ -206,9 +227,15 @@ class AkimboGroupingTests(TestCase):
         self.assertEqual([len(o.items) for o in options], [1, 1])
 
     def test_a_profile_field_outside_the_allowed_set_is_ignored(self):
-        left = _weapon("l", False, 6, akimbo_family="x", akimbo_profiles={2: {"damage": 9, "is_ranged": True}})
+        # is_ranged and natural are dataclass fields a profile could reach
+        # through replace(); a stray key ("reach") would raise there. The
+        # AKIMBO_PROFILE_FIELDS filter keeps all three out.
+        left = _weapon("l", False, 6, akimbo_family="x",
+                       akimbo_profiles={2: {"damage": 9, "is_ranged": True, "natural": False, "reach": 3}})
         right = _weapon("r", False, 6, akimbo_family="x", akimbo_profiles={2: {"damage": 9}})
         attacker = _char([None, None], slots=["a", "b"])
         with _naturals(("a", left), ("b", right)):
             choice = choose_weapon(attacker)
+        self.assertEqual(choice.damage, 9)
         self.assertFalse(choice.is_ranged)
+        self.assertTrue(choice.natural)

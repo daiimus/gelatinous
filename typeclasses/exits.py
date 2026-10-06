@@ -207,7 +207,7 @@ class Exit(DefaultExit):
                 
                 # Get weapon name for better messaging
                 from world.combat.weapon_choice import choose_weapon
-                choice = choose_weapon(traversing_object)
+                choice = choose_weapon(traversing_object, at_range=True)   # the aimed weapon
                 weapon_name = choice.item.key if choice else "weapon"
                 
                 traversing_object.msg(f"You stop aiming at {old_aim_target.get_display_name(traversing_object)} and lower your {weapon_name} as you move.")
@@ -223,7 +223,7 @@ class Exit(DefaultExit):
                 
                 # Get weapon name for better messaging
                 from world.combat.weapon_choice import choose_weapon
-                choice = choose_weapon(traversing_object)
+                choice = choose_weapon(traversing_object, at_range=True)   # the aimed weapon
                 weapon_name = choice.item.key if choice else "weapon"
                 
                 # Try to get the actual exit name from the direction

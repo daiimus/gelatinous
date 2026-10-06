@@ -60,4 +60,4 @@ class TestTheDeadLocalsAreGone(EvenniaTest):
         import pathlib
         root = pathlib.Path(__file__).resolve().parents[2]
         body = (root / "typeclasses" / "exits.py").read_text(errors="ignore")
-        self.assertIn("choose_weapon(traversing_object)", body)
+        self.assertIn("choose_weapon(traversing_object", body)   # the aiming peek, at_range=True

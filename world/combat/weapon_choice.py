@@ -29,7 +29,7 @@ Rule order, a pure peek (nothing here changes state):
 6. Rotation is slice 2. In slice 1 held weapons keep range-then-max and
    naturals take the first option.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from world.combat.constants import (
     AKIMBO_PROFILE_FIELDS, WEAPON_ATTR_AKIMBO_FAMILY,
@@ -106,20 +106,19 @@ def _profiles(item) -> dict:
 def _grouped(members) -> WeaponChoice:
     """``members`` (two or more singles of one family, in slot order)
     become one option: the lead's attributes under the profile for the
-    largest count the group covers."""
+    largest count the group covers. Only the profile fields may change;
+    anything else a profile says is dropped here."""
     lead = members[0]
-    overrides = _profiles(lead.item).get(len(members), {})
-    fields = {k: v for k, v in overrides.items() if k in AKIMBO_PROFILE_FIELDS}
-    return WeaponChoice(
-        items=tuple(m.item for m in members),
-        slots=tuple(s for m in members for s in m.slots),
-        damage=int(fields.get("damage", lead.damage)),
-        hit_bonus=int(fields.get("hit_bonus", lead.hit_bonus)),
-        damage_type=fields.get("damage_type", lead.damage_type),
-        weapon_type=str(fields.get("weapon_type", lead.weapon_type)),
-        is_ranged=lead.is_ranged,
-        natural=lead.natural,
-    )
+    overrides = {k: v for k, v in _profiles(lead.item).get(len(members), {}).items()
+                 if k in AKIMBO_PROFILE_FIELDS}
+    if "damage" in overrides:
+        overrides["damage"] = int(overrides["damage"])
+    if "hit_bonus" in overrides:
+        overrides["hit_bonus"] = int(overrides["hit_bonus"])
+    if "weapon_type" in overrides:
+        overrides["weapon_type"] = str(overrides["weapon_type"])
+    return replace(lead, items=tuple(m.item for m in members),
+                   slots=tuple(s for m in members for s in m.slots), **overrides)
 
 
 def _group_akimbo(options):
@@ -193,29 +192,33 @@ def _real_weapons(options):
     return naturals + [max(held, key=lambda o: o.damage)]
 
 
-def _in_reach(options, char, target):
-    """Step 3."""
-    if target is None or _in_melee_range(char, target):
+def _in_reach(options, char, target, at_range):
+    """Step 3. ``at_range`` asks the question without a target: what would
+    fire at range (the aiming peek)."""
+    if not at_range and (target is None or _in_melee_range(char, target)):
         return options
     ranged = [o for o in options if o.is_ranged]
     return ranged or options
 
 
-def weapon_options(char, target=None):
+def weapon_options(char, target=None, *, at_range=False):
     """The ordered wheel of options after every step (§11): what a future
     "k attacks per round" ruling would take the next k of."""
-    options = _in_reach(_real_weapons(_candidates(char)), char, target)
+    options = _in_reach(_real_weapons(_candidates(char)), char, target, at_range)
     naturals = [o for o in options if o.natural]
     if naturals:
         options = naturals                      # step 4, natural precedence
     return _group_akimbo(options)
 
 
-def choose_weapon(char, target=None):
+def choose_weapon(char, target=None, *, at_range=False):
     """The weapon THIS attack uses, or None when unarmed. Slice 1: a
     natural option takes the first place in the wheel; held weapons keep
-    range-then-max."""
-    options = weapon_options(char, target)
+    range-then-max. ``at_range=True`` is the aiming peek: the option that
+    would fire at range, so the aim, aim-stop and move-while-aiming lines
+    name the gun the ranged gate approved, not the claws or the heavier
+    blade that would swing in melee."""
+    options = weapon_options(char, target, at_range=at_range)
     if not options:
         return None
     if options[0].natural:
@@ -223,9 +226,9 @@ def choose_weapon(char, target=None):
     return max(options, key=lambda o: o.damage)
 
 
-def has_ranged_option(char, target=None) -> bool:
-    """Any option is ranged after the range step, before natural
-    precedence: the gates that used to ask "is the wielded weapon ranged"
-    ask this, so a knife sorting first no longer blocks a pistol."""
-    options = _in_reach(_real_weapons(_candidates(char)), char, target)
-    return any(o.is_ranged for o in options)
+def has_ranged_option(char) -> bool:
+    """Any real option is ranged: the gates that used to ask "is the
+    wielded weapon ranged" ask this, so a knife sorting first no longer
+    blocks a pistol. The range step cannot change the answer (it keeps
+    every option or exactly the ranged ones), so no target is taken."""
+    return any(o.is_ranged for o in _real_weapons(_candidates(char)))

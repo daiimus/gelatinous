@@ -447,7 +447,7 @@ class CmdAim(Command):
                 self._clear_aim_override_place(caller, current_target)
                 
                 # Get weapon name for better messaging
-                choice = choose_weapon(caller)
+                choice = choose_weapon(caller, at_range=True)   # the aimed weapon
                 weapon = choice.item if choice else None
                 weapon_name = weapon.key if weapon else "weapon"
                 
@@ -464,7 +464,7 @@ class CmdAim(Command):
                     caller.override_place = ""
                 
                 # Get weapon name for better messaging
-                choice = choose_weapon(caller)
+                choice = choose_weapon(caller, at_range=True)   # the aimed weapon
                 weapon = choice.item if choice else None
                 weapon_name = weapon.key if weapon else "weapon"
                 
@@ -580,7 +580,7 @@ class CmdAim(Command):
                 splattercast.msg(f"AIM_DEBUG: Immediate test retrieval: '{test_direction}'")
                 
                 # Get held weapon for better messaging
-                choice = choose_weapon(caller)
+                choice = choose_weapon(caller, at_range=True)   # the aimed weapon
                 weapon = choice.item if choice else None
                 weapon_name = weapon.key if weapon else "weapon"
                 
@@ -660,7 +660,7 @@ class CmdAim(Command):
             self._set_aim_override_place(caller, target)
 
             # Send messages - get weapon name for better messaging
-            choice = choose_weapon(caller)
+            choice = choose_weapon(caller, target)
             weapon = choice.item if choice else None
             weapon_name = weapon.key if weapon else "weapon"
             
@@ -725,7 +725,7 @@ class CmdAim(Command):
                 splattercast.msg(f"AIM_DEBUG: Immediate test retrieval: '{test_direction}'")
                 
                 # Get held weapon for better messaging
-                choice = choose_weapon(caller)
+                choice = choose_weapon(caller, at_range=True)   # the aimed weapon
                 weapon = choice.item if choice else None
                 weapon_name = weapon.key if weapon else "weapon"
                 
