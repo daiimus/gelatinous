@@ -195,6 +195,7 @@ def _dispatch_toggle(character, name, spec, hosts, deploy) -> str:
         return f"{name} doesn't respond. (unknown ability type {ability_type!r})"
     toggler = globals()[toggler_name]
 
+    _unshare_weapons(hosts, name)
     changed, failures, weapon = [], [], None
     for host in hosts:
         state = _ability_state(host, name)
@@ -237,6 +238,25 @@ def _dispatch_toggle(character, name, spec, hosts, deploy) -> str:
     if failures:
         self_line = self_line + " " + " ".join(failures)
     return self_line
+
+
+def _unshare_weapons(hosts, name) -> None:
+    """Legacy state from before each hand owned its claws: every host of
+    an ability points at ONE object. Left alone, a per-host deploy would
+    seat that one gun in the first arm and then move it to the second.
+    The first host keeps the reference; the others drop theirs and spawn
+    their own on deploy (MULTI_WEAPON_COMBAT_SPEC §3; the migration does
+    the same at scale). Nothing is deleted."""
+    seen = set()
+    for host in hosts:
+        state = _ability_state(host, name)
+        ref = state.get("weapon_dbref")
+        if not ref:
+            continue
+        if ref in seen:
+            state.pop("weapon_dbref", None)
+        else:
+            seen.add(ref)
 
 
 def _toggle_prose(ability_type, spec, deploy, one_of_many, hand, weapon_name, slot):
@@ -528,11 +548,18 @@ def _get_or_spawn_weapon(character, state, spec):
     if weapon is not None:
         # The object must be where this body's hardware lives: parked
         # off-grid, or (an integrated weapon, deployed) on the body. One
-        # lying anywhere else is not this host's -- a shared reference
-        # from before each hand owned its claws, carried off inside a
-        # severed limb (MULTI_WEAPON_COMBAT_SPEC §3, §12). Unlink it and
-        # give this host its own; nothing is deleted.
+        # loose in the body's own room is still its own -- a hand-only
+        # sever drops a deployed forearm gun to the floor, locked and
+        # undroppable -- and is taken back. One lying anywhere else (on a
+        # severed limb, in another room) is not this host's: a shared
+        # reference from before each hand owned its claws, carried off.
+        # Unlink it and give this host its own; nothing is deleted
+        # (MULTI_WEAPON_COMBAT_SPEC §3, §12).
         if weapon.location is None or weapon.location == character:
+            return weapon
+        here = getattr(character, "location", None)
+        if here is not None and weapon.location == here:
+            weapon.location = None
             return weapon
         state.pop("weapon_dbref", None)
 

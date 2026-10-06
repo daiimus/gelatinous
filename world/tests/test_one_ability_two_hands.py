@@ -235,7 +235,7 @@ class TestBothHandsDeploy(_NailzCase):
         from evennia import create_object
         from world.medical.augments import (find_ability_hosts, toggle_ability,
                                             _ability_state, get_active_natural_weapons)
-        stray = create_object("typeclasses.items.Item", key="old blades", location=self.room1)
+        stray = create_object("typeclasses.items.Item", key="old blades", location=self.room2)  # carried off
         for host in find_ability_hosts(self.char1, "nailz"):
             _ability_state(host, "nailz").update({"deployed": False, "weapon_dbref": stray.dbref})
         toggle_ability(self.char1, "nailz")
@@ -311,12 +311,75 @@ class TestSingleHostAbilitiesAreUnchanged(EvenniaTest):
             (getattr(organ, "ability_state", None) or {})
             .get("eyez", {}).get("deployed"))
 
+    def test_the_prose_comes_from_the_host_that_changed(self):
+        """Two hosts with DIFFERENT prose (an install bakes the side into
+        a sided arm's lines): the line spoken is the changed host's."""
+        from world.medical.augments import toggle_ability, _ability_state
+        head = self._seat("head", "eyez", {"type": "blindsight", "deploy_msg": "HEAD ON", "retract_msg": "HEAD OFF"})
+        chest = self._seat("chest", "eyez", {"type": "blindsight", "deploy_msg": "CHEST ON", "retract_msg": "CHEST OFF"})
+        _ability_state(chest, "eyez")["deployed"] = True        # mixed: chest out, head in
+        said = toggle_ability(self.char1, "eyez")               # retracts the chest only
+        self.assertEqual(said, "CHEST OFF")
+        _ability_state(head, "eyez")["deployed"] = True
+        said = toggle_ability(self.char1, "eyez")               # retracts the head only
+        self.assertEqual(said, "HEAD OFF")
+
     def test_find_ability_still_returns_one_organ(self):
         from world.medical.augments import find_ability
         self._seat("head", "eyez", {"type": "blindsight"})
         organ, spec = find_ability(self.char1, "eyez")
         self.assertEqual(getattr(organ, "container", None), "head")
         self.assertEqual(spec["type"], "blindsight")
+
+
+class TwoArmGunsFromTheOldModel(EvenniaTest):
+    """Legacy shared state on two integrated hosts: both forearm modules
+    point at one gun. A per-host deploy must not seat that one gun in the
+    left hand and then move it to the right (MULTI_WEAPON_COMBAT_SPEC §3,
+    §12): the first arm keeps it, the second spawns its own."""
+
+    def setUp(self):
+        super().setUp()
+        from evennia import create_object
+        from world.medical.core import Organ
+        state = self.char1.medical_state
+        self.organs = []
+        for side in ("left", "right"):
+            organ = Organ(f"{side}_gun_arm", organ_data={
+                "container": f"{side}_arm", "max_hp": 30, "hit_weight": "common",
+                "bone_type": "actuator_column", "inorganic": True, "prosthetic_frame": True,
+                "abilities": {"shotgun": {"type": "integrated_weapon", "slot": f"{side}_hand",
+                                          "weapon_prototype": "SHOTGUN_ARM_GUN"}},
+            })
+            organ.medical_state = state
+            state.organs[f"{side}_gun_arm"] = organ
+            self.organs.append(organ)
+        self.gun = create_object("typeclasses.items.Item", key="arm shotgun", location=None)
+        self.gun.db.integrated = True
+        for organ in self.organs:
+            organ.ability_state = {"shotgun": {"weapon_dbref": self.gun.dbref}}
+        self.char1.medical_state = state
+        self.char1.save_medical_state()
+
+    def test_each_arm_ends_with_its_own_gun_in_hand(self):
+        from world.medical.augments import toggle_ability
+        toggle_ability(self.char1, "shotgun")
+        hands = self.char1.hands
+        self.assertIsNotNone(hands.get("left_hand"), hands)
+        self.assertIsNotNone(hands.get("right_hand"), hands)
+        self.assertNotEqual(hands["left_hand"].id, hands["right_hand"].id, "one gun hopped between the arms")
+        self.assertIn(self.gun.id, {hands["left_hand"].id, hands["right_hand"].id}, "the legacy gun was abandoned")
+
+    def test_a_gun_dropped_on_the_floor_by_a_hand_sever_is_taken_back(self):
+        # A hand-only sever drops the deployed forearm gun to the room,
+        # locked and undroppable; the next deploy must reclaim it rather
+        # than spawn a second and leave the first on the floor for good.
+        from world.medical.augments import toggle_ability
+        self.organs[1].ability_state = {"shotgun": {}}           # only the left arm has a gun
+        self.gun.location = self.room1
+        toggle_ability(self.char1, "shotgun")
+        self.assertEqual(self.char1.hands["left_hand"].id, self.gun.id)
+        self.assertEqual(self.gun.location, self.char1)
 
 
 class TheStowIsAtTheCut(_NailzCase):

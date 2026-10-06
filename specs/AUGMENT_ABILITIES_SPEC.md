@@ -311,9 +311,11 @@ organs.  Two things determine what can be done with it:
 **Reattachment is a lossless round-trip apart from two deltas:** the
 limb's damage/condition travels with it (HP and wound stage are in
 the snapshot and restored as-is — a shot-up arm reattaches shot-up),
-and deployed weapons come back **retracted** (the deployed weapon
-item does not survive the cut; the module re-spawns it on the next
-toggle).  Everything else — chassis, seated module, frame flag,
+and deployed weapons come back **retracted** (the weapon item travels
+with the severed limb and comes back with it: reattachment reclaims an
+object lying on the appendage, parked and retracted, and the module
+re-spawns one only if it is gone — MULTI_WEAPON_COMBAT_SPEC §9,
+2026-10-05).  Everything else — chassis, seated module, frame flag,
 side, longdesc — is preserved.
 
 Mechanically: an installed prosthetic and its severed appendage are
