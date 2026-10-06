@@ -15,7 +15,15 @@ Run via::
 from types import SimpleNamespace
 from unittest import TestCase
 
-from world.medical.augments import _toggle_voice_modulator
+from world.medical.augments import _ability_state, _dispatch_toggle
+
+
+def _toggle_voice_modulator(char, organ, name, spec):
+    """One host through the dispatcher, the way `toggle_ability` does it
+    since each host keeps its own state (MULTI_WEAPON_COMBAT_SPEC): the
+    per-type toggler changes state only; the dispatcher speaks."""
+    deploy = not _ability_state(organ, name).get("deployed")
+    return _dispatch_toggle(char, name, dict(spec, type="voice_modulator"), [organ], deploy)
 from world.voice import (
     get_apparent_voice_uid,
     get_assigned_voice_name,

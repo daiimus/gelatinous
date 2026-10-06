@@ -80,6 +80,17 @@ class TheWeaponComesBackWithTheArm(_AnArmOffAndBackOn):
         self.assertEqual(self.gun.location, self.patient)
         self.assertIn(self.gun, self.patient.hands.values())
 
+    def test_an_object_parked_in_the_body_is_not_stolen(self):
+        # The case §9 names: a legacy shared reference to the other hand's
+        # claws, parked off-grid (location None). The reattached limb must
+        # not claim it; it is unlinked and stays where it is.
+        arm = self.sever()
+        self.gun.location = None
+        state = self.reattach(arm)
+        self.assertTrue(self.gun.pk)
+        self.assertIsNone(self.gun.location)
+        self.assertNotIn("weapon_dbref", state)
+
     def test_an_object_not_on_the_appendage_is_unlinked_and_left_alone(self):
         # A reference to something elsewhere (the other hand's shared
         # claws under the old model, or a gun someone carried off) must

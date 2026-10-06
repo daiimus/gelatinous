@@ -17,7 +17,15 @@ from unittest import TestCase
 
 from world.combat.capacity import sight_hit_factor, _blindsight_active
 from world.perception import can_see
-from world.medical.augments import _toggle_blindsight
+from world.medical.augments import _ability_state, _dispatch_toggle
+
+
+def _toggle_blindsight(char, organ, name, spec):
+    """One host through the dispatcher, the way `toggle_ability` does it
+    since each host keeps its own state (MULTI_WEAPON_COMBAT_SPEC): the
+    per-type toggler changes state only; the dispatcher speaks."""
+    deploy = not _ability_state(organ, name).get("deployed")
+    return _dispatch_toggle(char, name, dict(spec, type="blindsight"), [organ], deploy)
 
 
 class _Med:

@@ -2547,8 +2547,8 @@ def _resolve_install_limb(actor, target, *, organ_item, location: str,
     (module already harvested out) reattaches fine.  Looted chrome:
     any compatible body, gated by the target having a stump at every
     one of the limb's containers (you amputate first, then bolt the
-    scavenged arm on).  Deployed weapons don't survive the cut, so
-    modules come back retracted.
+    scavenged arm on).  Modules come back retracted, with the weapon
+    object the limb took when it was cut (MULTI_WEAPON_COMBAT_SPEC §9).
     """
     from world.identity_utils import msg_room_identity
     from world.medical.charts import mark_running_step_failed

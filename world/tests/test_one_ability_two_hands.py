@@ -165,13 +165,23 @@ class TestBothHandsDeploy(_NailzCase):
         self.assertEqual(len(set(refs)), 2, f"the hands share one weapon: {refs}")
 
     def test_a_mixed_state_retracts_both(self):
-        """Owner 2026-10-05: "Retract both to sync up makes sense." """
+        """Owner 2026-10-05: "Retract both to sync up makes sense." The
+        FIRST host is the one put away here: a reader of the first host
+        alone would deploy from this state; the any-host rule retracts."""
         from world.medical.augments import (find_ability_hosts,
                                             toggle_ability, _ability_state)
         toggle_ability(self.char1, "nailz")
-        right = next(o for o in find_ability_hosts(self.char1, "nailz")
-                     if o.container == "right_hand")
-        _ability_state(right, "nailz")["deployed"] = False     # one hand in
+        first = find_ability_hosts(self.char1, "nailz")[0]
+        _ability_state(first, "nailz")["deployed"] = False     # first hand in, other out
+        toggle_ability(self.char1, "nailz")
+        self.assertEqual(self.deployed_hands(), [])
+
+    def test_a_mixed_state_the_other_way_also_retracts(self):
+        from world.medical.augments import (find_ability_hosts,
+                                            toggle_ability, _ability_state)
+        toggle_ability(self.char1, "nailz")
+        last = find_ability_hosts(self.char1, "nailz")[-1]
+        _ability_state(last, "nailz")["deployed"] = False
         toggle_ability(self.char1, "nailz")
         self.assertEqual(self.deployed_hands(), [])
 
@@ -183,10 +193,56 @@ class TestBothHandsDeploy(_NailzCase):
         left = next(o for o in find_ability_hosts(self.char1, "nailz")
                     if o.container == "left_hand")
         _ability_state(left, "nailz")["deployed"] = True        # one already out
-        said = toggle_ability(self.char1, "nailz")              # retracts the one
+        from unittest import mock
+        with mock.patch("world.identity_utils.msg_room_identity") as room:
+            said = toggle_ability(self.char1, "nailz")          # retracts the one
         self.assertIn("left hand", said)
         self.assertNotIn("{hand}", said)
+        self.assertNotIn("your hands are just hands again", said, "the both-hands prose was used")
+        self.assertTrue(room.called)
+        self.assertIn("left hand", room.call_args.kwargs["template"])
+        self.assertNotIn("{hand}", room.call_args.kwargs["template"])
         self.assertEqual(self.deployed_hands(), [])
+
+    def test_the_listing_names_the_hands_only_when_they_differ(self):
+        from world.medical.augments import (find_ability_hosts, list_abilities,
+                                            toggle_ability, _ability_state)
+        self.assertIn("/nailz — retracted", list_abilities(self.char1))
+        toggle_ability(self.char1, "nailz")
+        self.assertIn("/nailz — deployed", list_abilities(self.char1))
+        last = find_ability_hosts(self.char1, "nailz")[-1]
+        _ability_state(last, "nailz")["deployed"] = False
+        out = list_abilities(self.char1)
+        self.assertIn("left hand deployed", out)
+        self.assertIn("right hand retracted", out)
+
+    def test_the_director_reads_any_host(self):
+        from world.director.security import _weapon_deployed
+        from world.medical.augments import (find_ability_hosts, toggle_ability,
+                                            _ability_state)
+        self.assertFalse(_weapon_deployed(self.char1, "nailz"))
+        toggle_ability(self.char1, "nailz")
+        self.assertTrue(_weapon_deployed(self.char1, "nailz"))
+        first = find_ability_hosts(self.char1, "nailz")[0]
+        _ability_state(first, "nailz")["deployed"] = False
+        self.assertTrue(_weapon_deployed(self.char1, "nailz"), "the first host alone was read")
+
+    def test_a_shared_object_carried_off_is_not_reused(self):
+        """Legacy state from before each hand owned its claws: both hosts
+        point at one object, and that object lies inside a severed limb.
+        Deploying must give the surviving hand its OWN claws, not a
+        reference to blades on the floor (MULTI_WEAPON_COMBAT_SPEC §3)."""
+        from evennia import create_object
+        from world.medical.augments import (find_ability_hosts, toggle_ability,
+                                            _ability_state, get_active_natural_weapons)
+        stray = create_object("typeclasses.items.Item", key="old blades", location=self.room1)
+        for host in find_ability_hosts(self.char1, "nailz"):
+            _ability_state(host, "nailz").update({"deployed": False, "weapon_dbref": stray.dbref})
+        toggle_ability(self.char1, "nailz")
+        active = get_active_natural_weapons(self.char1)
+        self.assertEqual(len(active), 2)
+        self.assertTrue(all(w.id != stray.id for _, w in active), "the stray object was reused")
+        self.assertTrue(stray.pk, "the stray object was deleted")
 
 
 class TestTheReadoutIsHonest(_NailzCase):
@@ -273,6 +329,15 @@ class TheStowIsAtTheCut(_NailzCase):
         messages = stow_abilities_at(self.char1, "left_hand")
         self.assertEqual(len(messages), 1)
         self.assertEqual(self.deployed_hands(), ["right_hand"])
+
+    def test_the_stow_of_one_hand_names_that_hand(self):
+        # "One of many" is judged against the living hosts, not the one
+        # host the stow dispatches: the other hand's claws are still out.
+        from world.medical.augments import stow_abilities_at, toggle_ability
+        toggle_ability(self.char1, "nailz")
+        (said,) = stow_abilities_at(self.char1, "left_hand")
+        self.assertIn("left hand", said)
+        self.assertNotIn("your hands are just hands again", said)
 
 
 class TheNaturalLookupIsPerHost(_NailzCase):

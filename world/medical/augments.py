@@ -211,15 +211,25 @@ def _dispatch_toggle(character, name, spec, hosts, deploy) -> str:
             f"{name} is already {'deployed' if deploy else 'retracted'}.")
     _persist(character)
 
-    one_of_many = len(hosts) >= 2 and len(changed) == 1
+    # "One of many" is measured against the ability's LIVING hosts, not
+    # the list dispatched here: a surgical stow of one hand passes one
+    # host, and the other hand's claws are still out.
+    living = find_ability_hosts(character, name)
+    one_of_many = len(living) >= 2 and len(changed) == 1
     hand = _hand_of(changed[0])
     weapon_name = weapon.key if weapon is not None else name
-    slot = (_spec_of(changed[0], name) or spec).get("slot") or hand
+    # Prose from the host that changed: an install bakes the side into a
+    # sided arm's lines, and the first host is not always the one moving.
+    # Its own spec overlays the one handed in (the first host's, or a
+    # caller's), so a key a host lacks still falls back.
+    prose_spec = {**spec, **(_spec_of(changed[0], name) or {})}
+    slot = prose_spec.get("slot") or hand
     self_line, room_line = _toggle_prose(
-        ability_type, spec, deploy, one_of_many, hand, weapon_name, slot)
-    if room_line and ability_type not in _COVERT_TYPES and character.location is not None:
+        ability_type, prose_spec, deploy, one_of_many, hand, weapon_name, slot)
+    location = getattr(character, "location", None)
+    if room_line and ability_type not in _COVERT_TYPES and location is not None:
         msg_room_identity(
-            location=character.location,
+            location=location,
             template=room_line,
             char_refs={"actor": character},
             exclude=[character],
@@ -516,7 +526,15 @@ def _get_or_spawn_weapon(character, state, spec):
     path but severance)."""
     weapon = _find_weapon(state)
     if weapon is not None:
-        return weapon
+        # The object must be where this body's hardware lives: parked
+        # off-grid, or (an integrated weapon, deployed) on the body. One
+        # lying anywhere else is not this host's -- a shared reference
+        # from before each hand owned its claws, carried off inside a
+        # severed limb (MULTI_WEAPON_COMBAT_SPEC §3, §12). Unlink it and
+        # give this host its own; nothing is deleted.
+        if weapon.location is None or weapon.location == character:
+            return weapon
+        state.pop("weapon_dbref", None)
 
     prototype = spec.get("weapon_prototype")
     if not prototype:

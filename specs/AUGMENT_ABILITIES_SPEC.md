@@ -164,9 +164,10 @@ are visibly brandishing an arm-gun.
 ### 3.4 · natural_weapon precedence (Phase 3, designed now)
 
 > **Note 2026-09-11 (re-verification):** "designed now" is stale — this
-> shipped. `get_wielded_weapon` checks `get_active_natural_weapon`
-> first (`world/combat/utils.py:151-158`), `_toggle_natural_weapon`
-> never touches `held_items` (`world/medical/augments.py:301-355`), and
+> shipped. `get_wielded_weapon` checks `get_active_natural_weapons`
+> first (`world/combat/utils.py`; since MULTI_WEAPON_COMBAT_SPEC slice 1
+> it lists every deployed host), `_toggle_natural_weapon`
+> never touches `held_items` (`world/medical/augments.py`), and
 > `world/tests/test_weapon_autoprioritizer.py:118-130` asserts the
 > precedence — against `select_weapon_for_engagement`, the #616
 > selector, so the rule survived the weapon auto-prioritizer.
