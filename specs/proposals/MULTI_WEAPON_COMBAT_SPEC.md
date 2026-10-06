@@ -142,18 +142,34 @@ Natural weapons on non-grasping hosts (Jawz) join the natural wheel with body-wi
 
 ## 12. Migration
 
-A one-shot `split_shared_ability_weapons()` in `world/medical/augments.py`, run once with `@py` at deploy with owner approval, with its own test and its counts in the PR, deleted in the next PR. Not a boot sweep.
+**Dropped 2026-10-06 (owner: *"Yeah. Clean up is good."*).** The read-only census on live, run before any function was written, found nothing to migrate:
+
+| census item (live, 2026-10-06) | count |
+|---|---|
+| bodies with medical state | 155 |
+| ability hosts in all | 8 |
+| bodies with two or more living Nailz hosts | 0 |
+| bodies with two shotgun arms | 0 |
+| weapon references shared within a body | 0 |
+| weapon references recorded on more than one body | 0 |
+| stored limbs or heads whose snapshot records a weapon | 0 |
+| `carbide blades` objects (to update to the one-hand prototype) | 0 |
+| Iver Kestrel's ability hosts | 0 |
+
+No one-shot function is written. What the migration would have settled, the live code now settles as it goes: a shared reference is resolved on every toggle (§3) and at every cut, living or corpse (§9), and a claw object spawns from the current prototype. The cross-body rule below stays as the description of what the code does at a cut; nothing stored needed it. The paragraphs that follow are kept as the record of the plan.
+
+The plan was a one-shot `split_shared_ability_weapons()` in `world/medical/augments.py`, run once with `@py` at deploy with owner approval, with its own test and its counts in the PR, deleted in the next PR. Not a boot sweep.
 
 Read-only census first: characters and NPCs with two or more `nailz` hosts; bodies with two shotgun arms; objects whose dbref is recorded on more than one body (a limb reattached before severance settled the share; the per-character pass cannot see these); Iver Kestrel (state captured first and left as found).
 
 For each living character, for each ability with two or more living hosts, in slot order: hosts sharing a dbref keep it on the host whose hand holds the object, otherwise the first, and only if the object sits where it belongs (None for a natural weapon; for an integrated weapon, the character when deployed and None when retracted); the others drop the dbref, and a deployed one spawns its own object now. For natural weapons no player sees a change. For integrated hosts (two shotgun arms) the second arm gains a gun it never had, which seats in that hand and drops what it held: a visible mechanic change, to be labelled as such. A host whose object lies elsewhere (a severed appendage) drops both dbref and deployed. Each Nailz host's install-time ability spec is refreshed from the current `organ_spec`, or old installs lack the `_one` prose and render the old both-hands longdesc twice. Existing `NAILZ_CLAWS` objects are updated with Evennia's `batch_update_objects_with_prototype` after a read-only check that a live object carries the `from_prototype` tag. Snapshots sharing a dbref are counted and left alone.
 
-**Cross-body shares.** A limb cut before cuts settled the share (on master) and reattached to another body leaves one object recorded by two living bodies, and no per-body code can see it; a stored appendage whose snapshot records a dbref a living body also records is the same share waiting to happen (surfaced by the #3696 review, round 7). The census lists both. The settle, across bodies: the body whose hand holds the object keeps it, else the body whose host is deployed, else the lower dbref; the others let go (a deployed natural host spawns its own at once; an integrated host clears its flag). A stored appendage's snapshot drops a dbref a living body keeps, so its reattach spawns fresh. OPEN: this cross-body rule needs the owner's go with PR C.
+**Cross-body shares.** A limb cut before cuts settled the share (on master) and reattached to another body leaves one object recorded by two living bodies, and no per-body code can see it; a stored appendage whose snapshot records a dbref a living body also records is the same share waiting to happen (surfaced by the #3696 review, round 7). The census lists both. The settle, across bodies: the body whose hand holds the object keeps it, else the body whose host is deployed, else the lower dbref; the others let go (a deployed natural host spawns its own at once; an integrated host clears its flag). A stored appendage's snapshot drops a dbref a living body keeps, so its reattach spawns fresh. With the migration dropped, this rule is moot for stored data; it remains the rule the cut applies (§9).
 
 ## 13. Slices
 
 - **0 (now):** this spec; the ledger gap (§16). No issue.
-- **1, claws plus the one door** (issue first; PR A #3696 shipped 2026-10-05; PR B is the one door; PR C the migration follows): per-host toggle; delete the mirror; per-location stow; `is_ability_deployed` and the director; readouts; `get_active_natural_weapons`; `weapon_choice.py` with grouping; repoint the 20 + 1 + 3 + 1 call sites and delete the five old functions; the hit term; manipulation by slots; the `NAILZ_CLAWS` profiles; the bank split; `_one` prose; reattach keeps the object; the migration. Held weapons keep range-then-max, but gates, initiate and the swing agree. Tests: rewrite `test_one_ability_two_hands.py` (one assertion inverts), `test_weapon_autoprioritizer.py`, `test_combat_manipulation_resolver.py`; add a test that both claw banks resolve all four phases. Specs: `AUGMENT_ABILITIES_SPEC.md` §1/§3/§8, `COMBAT_MESSAGE_FORMAT_SPEC.md`, `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md` §6.1. Play, checked via splattercast: deploy, fight akimbo, sever, fight single, surgical stow, chrome reattach.
+- **1, claws plus the one door — SHIPPED** (PR A #3696 and #3701 on 2026-10-05, PR B #3702 on 2026-10-06; the migration PR C was dropped after the census, §12; #3695 and #3571 closed): per-host toggle; delete the mirror; per-location stow; `is_ability_deployed` and the director; readouts; `get_active_natural_weapons`; `weapon_choice.py` with grouping; repoint the 20 + 1 + 3 + 1 call sites and delete the five old functions; the hit term; manipulation by slots; the `NAILZ_CLAWS` profiles; the bank split; `_one` prose; reattach keeps the object; the migration. Held weapons keep range-then-max, but gates, initiate and the swing agree. Tests: rewrite `test_one_ability_two_hands.py` (one assertion inverts), `test_weapon_autoprioritizer.py`, `test_combat_manipulation_resolver.py`; add a test that both claw banks resolve all four phases. Specs: `AUGMENT_ABILITIES_SPEC.md` §1/§3/§8, `COMBAT_MESSAGE_FORMAT_SPEC.md`, `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md` §6.1. Play, checked via splattercast: deploy, fight akimbo, sever, fight single, surgical stow, chrome reattach.
 - **2, alternation and handguns:** ordered `Character.hands`; the ndb cursor; `note_weapon_used`; the max rule removed; disarm order; pistol bank rewrites. Play: two light pistols; pistol plus knife at range and in melee; arm-gun plus pistol; Nailz plus Jawz.
 - **3, owner-gated content:** akimbo pistol models; a branded held Tiger Claws pair.
 
@@ -168,17 +184,22 @@ Decided (slice 1 gates), owner's words verbatim:
 - **#11 Claw accuracy uses the host hand's manipulation**; the fangs stay body-wide. 2026-10-05: *"Per hand makes sense. We want consistency."*
 - **#12 Migration keeps deployed claws deployed** (the second object is spawned at once); the second shotgun arm gaining a gun is called out in the migration's counts as a mechanic change. 2026-10-05: *"Your rec is fine. We're still in pre-alpha."*
 
-Open (slice 2 gates):
+Decided (slice 2 gates), 2026-10-06, owner's words verbatim:
 
-1. Alternation replaces "then highest damage" among weapons that can reach; range-first stays. Yes or no?
-3. Nailz and Jawz both out: alternate, or a fixed precedence, and which?
-4. Do bonus and opportunity attacks turn the wheel? Yes or no?
-7. Only the same `akimbo_family` pairs, so heavy and light pistols alternate. Yes or no?
-8. Rotation order follows species display order (left hand first), which also becomes the default hand for wield, get and disarm. Yes, or add a dominant hand?
-10. Nailz shares `tiger_claws` and `tiger_claws_akimbo` with a future held Tiger Claws, or gets its own pair?
-13. Ammunition and `hands_required` enforcement stay out. Yes or no?
+- **#1 Alternation replaces "then highest damage" among weapons that can reach; range-first stays.** *"Yes. Using a weapon which won't even be in-range to attack makes no sense. Our order of operation is sound."*
+- **#3 Nailz and Jawz both out alternate.** *"Alternation seems fine. Maybe in a future state we can have an amalgamation of all cybernetic weapons so someone with a lot of arms can be quite interesting combat-wise."* (The amalgamation is a remark, recorded for later, not a decision.)
+- **#4 Bonus and opportunity attacks turn the wheel.** Owner: *"I kinda defer to the easier design. Either is fine."* The easier design is the one door with no special case: every attack, scheduled or not, runs `process_attack`, which asks `choose_weapon` and notes the slot used; the wheel turns on every swing.
+- **#7 Only the same `akimbo_family` pairs; heavy and light pistols alternate.** *"Yes, but the important part of this design is being able to assign Akimbo combinations so we can build on the system. Make sense?"* Combinations are data: `akimbo_family` and `akimbo_profiles` on the item; a later pairing table may name cross-family pairs without touching the door.
+- **#8 Rotation follows species display order (left hand first), which is also the default hand for wield, get and disarm; no dominant hand.** *"Species display order is fine. Eventually, we may want to setup dominant hand but that's a lot of complexity for minimal returns."*
+- **#10 Nailz gets its own bank pair.** *"They should each get their own messaging pairs. They're distinctly different weapons."* Slice 2 renames the Nailz banks to `nailz` and `nailz_akimbo` (prototype `weapon_type` and the pair profile follow); `tiger_claws` and `tiger_claws_akimbo` are left for the held Tiger Claws.
+- **#13 Ammunition stays out.** *"Ammunition, yes, it isn't design yet. Right?"* Right: `COMBAT_SYSTEM.md` lists ammunition as aspirational and not designed, with a standing note not to build it unasked. **`hands_required` enforcement: OPEN.** Owner: *"Hands_required need clarity. What is the ask there?"* The ask is answered in §15 (hands_required); the decision waits.
+
+Slice 1 close-out, 2026-10-06, owner's words: *"Yeah. Clean up is good."* The migration (§12) is dropped: the census found nothing to migrate. #3699 (the escort usher's identity comparison) is taken next: *"Sure."*
 
 ## 15. Risks
+
+**`hands_required` (open ruling, §14 #13).** Today `hands_required` is written once at item creation (`typeclasses/items.py`, every item gets 1) and two ranged prototypes declare 2; nothing reads it. "Enforcement" would mean: a two-handed weapon occupies two grasping slots when wielded (so a one-armed body cannot bring a rifle to bear, and the other hand cannot hold a knife while it is up), firing or swinging it with one hand is refused or penalised, and the wheel treats the two-slot grip as one option (§4 step 1 already allows that). It touches wield, get, disarm and the hands view, and it is the one-handed-shooter question the owner has not ruled on. The ask is only whether that work stays out of slice 2. Recommendation: out; it is its own design.
+
 
 - Slice 1 repoints about 25 call sites; every gate and prose path needs play testing; the suite takes about 53 minutes.
 - Ordering `Character.hands` changes the default hand for wield, get and disarm for everyone.
