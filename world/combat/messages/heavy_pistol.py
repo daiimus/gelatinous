@@ -11,12 +11,12 @@ MESSAGES = {
             "observer_msg": "With a deliberate, forceful motion, {attacker_name} slams a magazine of large-caliber rounds into the pistol, the weapon's weight evident."
         },
         {
-            "attacker_msg": "Your {hit_location} struggles slightly to encompass the wide grip of your pistol, thumbing off the stiff safety with a loud *CLICK*.",
+            "attacker_msg": "Your hand struggles slightly to encompass the wide grip of your pistol, thumbing off the stiff safety with a loud *CLICK*.",
             "victim_msg": "{attacker_name}'s hand struggles slightly to encompass the wide grip of their pistol, thumbing off the stiff safety with a loud *CLICK*.",
             "observer_msg": "{attacker_name}'s hand struggles slightly to encompass the wide grip of the pistol, thumbing off the stiff safety with a loud *CLICK*."
         },
         {
-            "attacker_msg": "The pistol that appears in your {hit_location} is a beast, its large-bore muzzle a dark, terrifying void.",
+            "attacker_msg": "The pistol that appears in your hand is a beast, its large-bore muzzle a dark, terrifying void.",
             "victim_msg": "The pistol that appears in {attacker_name}'s hand is a beast, its large-bore muzzle a dark, terrifying void, and it seems to be pointed at you.",
             "observer_msg": "The pistol that appears in {attacker_name}'s hand is a beast, its large-bore muzzle a dark, terrifying void."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             "observer_msg": "The air seems to thicken with tension as {attacker_name} prepares to fire the pistol, anticipating the deafening *BOOM* and violent kick."
         },
         {
-            "attacker_msg": "Your {hit_location} is a mask of grim concentration, finger deliberately taking up your pistol's long, heavy trigger pull.",
+            "attacker_msg": "Your face is a mask of grim concentration, finger deliberately taking up your pistol's long, heavy trigger pull.",
             "victim_msg": "{attacker_name}’s face is a mask of grim concentration, finger deliberately taking up the pistol's long, heavy trigger pull, aimed at you.",
             "observer_msg": "{attacker_name}’s face is a mask of grim concentration, finger deliberately taking up the pistol's long, heavy trigger pull."
         },
@@ -365,7 +365,7 @@ MESSAGES = {
             "observer_msg": "A quick sidestep from {target_name} leaves {attacker_name}'s pistol to punch a massive, ragged hole in an empty oil drum, which visibly deforms from the impact, brass ejecting."
         },
         {
-            "attacker_msg": "Your pistol bucks violently and almost uncontrollably in your {hit_location} as you miss {target_name}, the powerful recoil throwing your {hit_location} sharply upwards, nearly hitting you in the face.",
+            "attacker_msg": "Your pistol bucks violently and almost uncontrollably in your hand as you miss {target_name}, the powerful recoil throwing your arm sharply upwards, nearly hitting you in the face.",
             "victim_msg": "{attacker_name}'s pistol bucks violently and almost uncontrollably in their hand as they miss you, the powerful recoil throwing their arm sharply upwards, nearly hitting them in the face.",
             "observer_msg": "{attacker_name}'s pistol bucks violently and almost uncontrollably in their hand as they miss {target_name}, the powerful recoil throwing their arm sharply upwards, nearly hitting them in the face."
         },

@@ -11,12 +11,12 @@ MESSAGES = {
             'observer_msg': "With a deliberate motion, {attacker_name} spins the massive cylinder of the revolver, its chambers holding potent rounds."
         },
         {
-            'attacker_msg': "Your {hit_location} grips the substantial frame of the revolver, thumbing back the heavy hammer with a loud, authoritative *CLICK*.",
+            'attacker_msg': "Your hand grips the substantial frame of the revolver, thumbing back the heavy hammer with a loud, authoritative *CLICK*.",
             'victim_msg': "{attacker_name}'s hand grips the substantial frame of the revolver, thumbing back the heavy hammer with a loud, authoritative *CLICK*.",
             'observer_msg': "{attacker_name}'s hand grips the substantial frame of the revolver, thumbing back the heavy hammer with a loud, authoritative *CLICK*."
         },
         {
-            'attacker_msg': "The formidable revolver appears in your {hit_location}, its oversized muzzle a dark promise of destruction.",
+            'attacker_msg': "The formidable revolver appears in your hand, its oversized muzzle a dark promise of destruction.",
             'victim_msg': "The formidable revolver appears in {attacker_name}'s hand, its oversized muzzle a dark promise of destruction.",
             'observer_msg': "The formidable revolver appears in {attacker_name}'s hand, its oversized muzzle a dark promise of destruction."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air seems to crackle with tension as {attacker_name} prepares to fire the revolver, anticipating the deafening roar."
         },
         {
-            'attacker_msg': "Your {hit_location} is set in grim concentration, finger deliberately taking up the slack on the revolver's trigger.",
+            'attacker_msg': "Your face is set in grim concentration, finger deliberately taking up the slack on the revolver's trigger.",
             'victim_msg': "{attacker_name}'s face is set in grim concentration, finger deliberately taking up the slack on the revolver's trigger.",
             'observer_msg': "{attacker_name}'s face is set in grim concentration, finger deliberately taking up the slack on the revolver's trigger."
         },
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s revolver to punch a massive hole in an empty oil drum."
         },
         {
-            'attacker_msg': "The heavy revolver bucks violently in your {hit_location} as you miss, the powerful recoil throwing your {hit_location} upwards.",
+            'attacker_msg': "The heavy revolver bucks violently in your hand as you miss, the powerful recoil throwing your arm upwards.",
             'victim_msg': "The heavy revolver bucks violently in {attacker_name}'s hand as they miss, the powerful recoil throwing their arm upwards.",
             'observer_msg': "The heavy revolver bucks violently in {attacker_name}'s hand as they miss, the powerful recoil throwing their arm upwards."
         },
