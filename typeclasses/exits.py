@@ -206,9 +206,8 @@ class Exit(DefaultExit):
                     old_aim_target.msg(f"{traversing_object.get_display_name(old_aim_target)} stops aiming at you as they move.")
                 
                 # Get weapon name for better messaging
-                from world.combat.weapon_choice import choose_weapon
-                choice = choose_weapon(traversing_object, old_aim_target)   # the weapon the aim named
-                weapon_name = choice.item.key if choice else "weapon"
+                from world.combat.weapon_choice import aimed_weapon_name
+                weapon_name = aimed_weapon_name(traversing_object, old_aim_target)
                 
                 traversing_object.msg(f"You stop aiming at {old_aim_target.get_display_name(traversing_object)} and lower your {weapon_name} as you move.")
                 
@@ -222,9 +221,8 @@ class Exit(DefaultExit):
                 del traversing_object.ndb.aiming_direction
                 
                 # Get weapon name for better messaging
-                from world.combat.weapon_choice import choose_weapon
-                choice = choose_weapon(traversing_object, at_range=True)   # the aimed weapon
-                weapon_name = choice.item.key if choice else "weapon"
+                from world.combat.weapon_choice import aimed_weapon_name
+                weapon_name = aimed_weapon_name(traversing_object)
                 
                 # Try to get the actual exit name from the direction
                 exit_obj = traversing_object.location.search(old_aim_direction, quiet=True)

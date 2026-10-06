@@ -39,7 +39,7 @@ from world.combat.constants import (
 from world.combat.utils import (
     log_combat_action, initialize_proximity_ndb, get_display_name_safe,
 )
-from world.combat.weapon_choice import choose_weapon, has_ranged_option
+from world.combat.weapon_choice import aimed_weapon_name, has_ranged_option
 from world.grammar import capitalize_first
 from world.identity_utils import msg_room_identity
 from commands._identity_targeting import resolve_character_target
@@ -447,9 +447,7 @@ class CmdAim(Command):
                 self._clear_aim_override_place(caller, current_target)
                 
                 # Get weapon name for better messaging: the weapon the aim named
-                choice = choose_weapon(caller, current_target)
-                weapon = choice.item if choice else None
-                weapon_name = weapon.key if weapon else "weapon"
+                weapon_name = aimed_weapon_name(caller, current_target)
                 
                 caller.msg(f"You stop aiming at {get_display_name_safe(current_target, caller)} and lower your {weapon_name}.")
                 current_target.msg(f"{capitalize_first(get_display_name_safe(caller, current_target))} stops aiming at you.")
@@ -464,9 +462,7 @@ class CmdAim(Command):
                     caller.override_place = ""
                 
                 # Get weapon name for better messaging
-                choice = choose_weapon(caller, at_range=True)   # the aimed weapon
-                weapon = choice.item if choice else None
-                weapon_name = weapon.key if weapon else "weapon"
+                weapon_name = aimed_weapon_name(caller)
                 
                 # Try to get the actual exit name from the direction
                 exit_obj = caller.search(current_direction, location=caller.location, quiet=True)
@@ -577,9 +573,7 @@ class CmdAim(Command):
                 splattercast.msg(f"AIM_DEBUG: Immediate test retrieval: '{test_direction}'")
                 
                 # Get held weapon for better messaging
-                choice = choose_weapon(caller, at_range=True)   # the aimed weapon
-                weapon = choice.item if choice else None
-                weapon_name = weapon.key if weapon else "weapon"
+                weapon_name = aimed_weapon_name(caller)
                 
                 # Use the exit's actual name instead of hardcoded direction mapping
                 exit_name = target.key if target else direction
@@ -651,9 +645,7 @@ class CmdAim(Command):
             self._set_aim_override_place(caller, target)
 
             # Send messages - get weapon name for better messaging
-            choice = choose_weapon(caller, target)
-            weapon = choice.item if choice else None
-            weapon_name = weapon.key if weapon else "weapon"
+            weapon_name = aimed_weapon_name(caller, target)
             
             caller.msg(f"You raise your {weapon_name}, taking careful aim at {get_display_name_safe(target, caller)}.")
             target.msg(f"|r{capitalize_first(get_display_name_safe(caller, target))} is aiming at you! You feel locked in place.|n")
@@ -713,9 +705,7 @@ class CmdAim(Command):
                 splattercast.msg(f"AIM_DEBUG: Immediate test retrieval: '{test_direction}'")
                 
                 # Get held weapon for better messaging
-                choice = choose_weapon(caller, at_range=True)   # the aimed weapon
-                weapon = choice.item if choice else None
-                weapon_name = weapon.key if weapon else "weapon"
+                weapon_name = aimed_weapon_name(caller)
                 
                 # For this path, we don't have a target object since it's a fallback direction aim
                 # Try to find the exit to get its name

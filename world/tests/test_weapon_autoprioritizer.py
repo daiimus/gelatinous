@@ -11,7 +11,8 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from world.combat.constants import NDB_PROXIMITY
-from world.combat.weapon_choice import choose_weapon, has_ranged_option, weapon_options
+from world.combat.weapon_choice import (aimed_weapon_name, choose_weapon, has_ranged_option,
+                                        weapon_options)
 
 
 class _Tags:
@@ -127,6 +128,34 @@ class RangedEngagementTests(TestCase):
     def test_the_aiming_peek_with_nothing_ranged_still_names_something(self):
         knife = _weapon("knife", False, 4)
         self.assertIs(choose_weapon(_char([knife]), at_range=True).item, knife)
+
+
+class TheAimLinesAgree(TestCase):
+    """One helper names the weapon in the aim, stop and move lines: a
+    direction aim names what would fire at range; a target aim names what
+    would swing at that target, so its stop line, asked the same question,
+    gives the same answer."""
+
+    def test_a_direction_aim_names_the_gun_over_claws_and_blade(self):
+        claws = _weapon("claws", False, 30)
+        attacker = _char([_weapon("katana", False, 14), _weapon("pistol", True, 12)])
+        with _naturals(("left_hand", claws)):
+            self.assertEqual(aimed_weapon_name(attacker), "pistol")
+
+    def test_a_target_aim_in_melee_names_the_blade_and_so_does_its_stop(self):
+        tgt = _target()
+        attacker = _char([_weapon("katana", False, 14), _weapon("pistol", True, 12)], proximity=(tgt,))
+        self.assertEqual(aimed_weapon_name(attacker, tgt), "katana")
+        self.assertEqual(aimed_weapon_name(attacker, tgt), aimed_weapon_name(attacker, tgt))
+
+    def test_a_target_aim_at_range_names_the_gun(self):
+        tgt = _target()
+        attacker = _char([_weapon("katana", False, 14), _weapon("pistol", True, 12)], proximity=())
+        self.assertEqual(aimed_weapon_name(attacker, tgt), "pistol")
+
+    def test_empty_hands_fall_back_to_the_word_weapon(self):
+        self.assertEqual(aimed_weapon_name(_char([])), "weapon")
+        self.assertEqual(aimed_weapon_name(_char([]), _target(), fallback="fists"), "fists")
 
 
 class MeleeEngagementTests(TestCase):

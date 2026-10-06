@@ -230,6 +230,19 @@ def choose_weapon(char, target=None, *, at_range=False):
     return max(options, key=lambda o: o.damage)
 
 
+def aimed_weapon_name(char, target=None, fallback="weapon") -> str:
+    """The name an aim line speaks, and the matching stop and move lines.
+    With a target: what would swing at that target, melee or ranged. With
+    none (a direction): the option that would fire at range. Worked out
+    when the line runs, so a stop after the range changed mid-aim (a
+    retreat) names what would fire now; text only, accepted."""
+    if target is not None:
+        choice = choose_weapon(char, target)
+    else:
+        choice = choose_weapon(char, at_range=True)
+    return choice.item.key if choice else fallback
+
+
 def has_ranged_option(char) -> bool:
     """Any real option is ranged: the gates that used to ask "is the
     wielded weapon ranged" ask this, so a knife sorting first no longer

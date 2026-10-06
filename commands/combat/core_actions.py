@@ -27,7 +27,7 @@ from world.combat.constants import (
 from commands._identity_targeting import resolve_character_target
 from world.combat.handler import get_or_create_combat
 from world.combat.messages import get_combat_message
-from world.combat.weapon_choice import choose_weapon, has_ranged_option
+from world.combat.weapon_choice import aimed_weapon_name, choose_weapon, has_ranged_option
 from world.medical.utils import select_hit_location
 from world.combat.proximity import establish_proximity
 from world.combat.utils import (
@@ -630,8 +630,7 @@ class CmdStop(Command):
                 self._clear_aim_override_place_on_stop(caller, aiming_target)
                 
                 # Get weapon name for better messaging: the weapon the aim named
-                choice = choose_weapon(caller, aiming_target)
-                weapon_name = choice.item.key if choice else "weapon"
+                weapon_name = aimed_weapon_name(caller, aiming_target)
                 
                 caller.msg(f"You stop aiming at {get_display_name_safe(aiming_target, caller)} and lower your {weapon_name}.")
                 aiming_target.msg(f"{capitalize_first(get_display_name_safe(caller, aiming_target))} stops aiming at you.")
@@ -645,8 +644,7 @@ class CmdStop(Command):
                     caller.override_place = ""
                 
                 # Get weapon name for better messaging
-                choice = choose_weapon(caller, at_range=True)   # the aimed weapon
-                weapon_name = choice.item.key if choice else "weapon"
+                weapon_name = aimed_weapon_name(caller)
                 
                 # Try to get the actual exit name from the direction
                 exit_obj = caller.search(aiming_direction, location=caller.location, quiet=True)
