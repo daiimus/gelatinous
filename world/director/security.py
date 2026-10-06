@@ -244,11 +244,8 @@ def _weapon_deployed(npc: Any, ability: str = ARM_WEAPON) -> bool:
     the same record the toggle writes.
     """
     try:
-        from world.medical.augments import _ability_state, find_ability
-        organ, _spec = find_ability(npc, ability)
-        if organ is None:
-            return False
-        return bool(_ability_state(organ, ability).get("deployed"))
+        from world.medical.augments import is_ability_deployed
+        return is_ability_deployed(npc, ability)
     except Exception:  # noqa: BLE001 — unreadable hardware reads as stowed
         return False
 

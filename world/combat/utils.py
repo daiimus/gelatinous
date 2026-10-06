@@ -155,10 +155,10 @@ def get_wielded_weapon(character):
     # decision 2026-06-12): claws out means you fight with claws,
     # knife in hand or not.  Toggle them off to use the knife.
     try:
-        from world.medical.augments import get_active_natural_weapon
-        natural = get_active_natural_weapon(character)
-        if natural is not None:
-            return natural
+        from world.medical.augments import get_active_natural_weapons
+        naturals = get_active_natural_weapons(character)
+        if naturals:
+            return naturals[0][1]
     except Exception:
         # Test stubs without a medical state fall through to hands.
         pass
@@ -266,10 +266,10 @@ def select_weapon_for_engagement(attacker, target):
     weapon, or ``None`` when unarmed (caller falls back to fists).
     """
     try:
-        from world.medical.augments import get_active_natural_weapon
-        natural = get_active_natural_weapon(attacker)
-        if natural is not None:
-            return natural
+        from world.medical.augments import get_active_natural_weapons
+        naturals = get_active_natural_weapons(attacker)
+        if naturals:
+            return naturals[0][1]
     except Exception:
         pass
 

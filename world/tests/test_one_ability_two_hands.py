@@ -37,6 +37,11 @@ toggling, not to losing a limb.
 `nailz` is the only multi-host ability in the game today, so the fix has
 exactly one consumer to satisfy — but it is written at the state layer,
 so a second one will work.
+
+**2026-10-05, MULTI_WEAPON_COMBAT_SPEC:** the mirror that kept both hands'
+state identical is gone. Each hand owns its claws and its own weapon
+object; one `/nailz` still acts on every host, and a mixed state syncs
+by retracting (owner: "Retract both to sync up makes sense.").
 """
 from evennia.utils.test_resources import EvenniaTest
 
@@ -146,15 +151,42 @@ class TestBothHandsDeploy(_NailzCase):
             toggle_ability(self.char1, "nailz")
         self.assertEqual(self.deployed_hands(), ["left_hand", "right_hand"])
 
-    def test_both_hands_point_at_the_same_weapon(self):
-        """One ability, one weapon item — not one per hand."""
+    def test_each_hand_has_its_own_weapon(self):
+        """One ability, one weapon item PER HAND (MULTI_WEAPON_COMBAT_SPEC
+        §3): a severed hand takes exactly its own claws."""
         from world.medical.augments import (find_ability_hosts,
                                             toggle_ability)
         toggle_ability(self.char1, "nailz")
-        refs = {(getattr(o, "ability_state", None) or {})
+        refs = [(getattr(o, "ability_state", None) or {})
                 .get("nailz", {}).get("weapon_dbref")
-                for o in find_ability_hosts(self.char1, "nailz")}
-        self.assertEqual(len(refs), 1, f"hands disagree about the weapon: {refs}")
+                for o in find_ability_hosts(self.char1, "nailz")]
+        self.assertEqual(len(refs), 2)
+        self.assertTrue(all(refs), refs)
+        self.assertEqual(len(set(refs)), 2, f"the hands share one weapon: {refs}")
+
+    def test_a_mixed_state_retracts_both(self):
+        """Owner 2026-10-05: "Retract both to sync up makes sense." """
+        from world.medical.augments import (find_ability_hosts,
+                                            toggle_ability, _ability_state)
+        toggle_ability(self.char1, "nailz")
+        right = next(o for o in find_ability_hosts(self.char1, "nailz")
+                     if o.container == "right_hand")
+        _ability_state(right, "nailz")["deployed"] = False     # one hand in
+        toggle_ability(self.char1, "nailz")
+        self.assertEqual(self.deployed_hands(), [])
+
+    def test_one_hand_changing_names_the_hand(self):
+        from world.medical.augments import (find_ability_hosts,
+                                            toggle_ability, _ability_state)
+        toggle_ability(self.char1, "nailz")
+        toggle_ability(self.char1, "nailz")                     # both in
+        left = next(o for o in find_ability_hosts(self.char1, "nailz")
+                    if o.container == "left_hand")
+        _ability_state(left, "nailz")["deployed"] = True        # one already out
+        said = toggle_ability(self.char1, "nailz")              # retracts the one
+        self.assertIn("left hand", said)
+        self.assertNotIn("{hand}", said)
+        self.assertEqual(self.deployed_hands(), [])
 
 
 class TestTheReadoutIsHonest(_NailzCase):
@@ -174,6 +206,18 @@ class TestTheReadoutIsHonest(_NailzCase):
         from world.medical.cyberware_status import render_system
         self.assertIn("both hands",
                       str(render_system(self.char1)))
+
+    def test_a_mixed_state_names_each_hand(self):
+        from world.medical.augments import (find_ability_hosts,
+                                            toggle_ability, _ability_state)
+        from world.medical.cyberware_status import render_system
+        toggle_ability(self.char1, "nailz")
+        right = next(o for o in find_ability_hosts(self.char1, "nailz")
+                     if o.container == "right_hand")
+        _ability_state(right, "nailz")["deployed"] = False
+        out = str(render_system(self.char1))
+        self.assertIn("left hand", out)
+        self.assertIn("right hand retracted", out)
 
 
 class TestSingleHostAbilitiesAreUnchanged(EvenniaTest):
@@ -217,6 +261,38 @@ class TestSingleHostAbilitiesAreUnchanged(EvenniaTest):
         organ, spec = find_ability(self.char1, "eyez")
         self.assertEqual(getattr(organ, "container", None), "head")
         self.assertEqual(spec["type"], "blindsight")
+
+
+class TheStowIsAtTheCut(_NailzCase):
+    """A surgeon stows the hardware AT the cut (#3360); the other hand's
+    claws are not at the cut and stay out."""
+
+    def test_stowing_one_hand_leaves_the_other_out(self):
+        from world.medical.augments import stow_abilities_at, toggle_ability
+        toggle_ability(self.char1, "nailz")
+        messages = stow_abilities_at(self.char1, "left_hand")
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(self.deployed_hands(), ["right_hand"])
+
+
+class TheNaturalLookupIsPerHost(_NailzCase):
+
+    def test_every_deployed_hand_is_listed_with_its_own_item(self):
+        from world.medical.augments import get_active_natural_weapons, toggle_ability
+        toggle_ability(self.char1, "nailz")
+        found = get_active_natural_weapons(self.char1)
+        self.assertEqual(sorted(c for c, _ in found), ["left_hand", "right_hand"])
+        self.assertEqual(len({w.id for _, w in found}), 2)
+
+    def test_an_item_lying_elsewhere_is_not_a_weapon(self):
+        """The stale-reference guard: an object on a severed limb (or
+        anywhere but parked in the body) does not fight."""
+        from world.medical.augments import get_active_natural_weapons, toggle_ability
+        toggle_ability(self.char1, "nailz")
+        found = get_active_natural_weapons(self.char1)
+        _, item = found[0]
+        item.location = self.room1
+        self.assertEqual(len(get_active_natural_weapons(self.char1)), 1)
 
 
 class TestSeveranceStaysPerHand(_NailzCase):

@@ -170,15 +170,18 @@ def render_system(character) -> str:
         else:
             where = " · ".join(sorted(h.replace("_", " ") for h in hosts))
         # Read the GROUP, not the first host it happened to meet
-        # (#2483). `entry["organ"]` is fixed by `setdefault` to whichever
-        # host came first, so a line reading "both hands" reported one
-        # hand's state for both. Claws out in either hand is claws out.
-        state = (
-            "|rDEPLOYED|n"
-            if any(_ability_state(o, aname).get("deployed")
-                   for o in (entry.get("organs") or [entry["organ"]]))
-            else "retracted"
-        )
+        # (#2483). Each hand keeps its own state (MULTI_WEAPON_COMBAT_SPEC
+        # §8): one word when the hands agree, each hand named when they
+        # do not ("left hand deployed / right hand retracted").
+        organs_here = entry.get("organs") or [entry["organ"]]
+        flags = [bool(_ability_state(o, aname).get("deployed")) for o in organs_here]
+        if len(set(flags)) == 1:
+            state = "|rDEPLOYED|n" if flags[0] else "retracted"
+        else:
+            state = " / ".join(
+                f"{(getattr(o, 'container', '') or '').replace('_', ' ')} "
+                f"{'|rdeployed|n' if d else 'retracted'}"
+                for o, d in zip(organs_here, flags))
         # An implant is only as good as the flesh it is bolted to, so the
         # readout takes the WORST host — a gun in a wrecked hand is not
         # ONLINE. This branch used to hardcode the green tag and never
