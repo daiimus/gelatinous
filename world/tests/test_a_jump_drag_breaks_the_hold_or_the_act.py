@@ -22,6 +22,7 @@ Controls: an undisturbed drag lands both; a refused jumper leaves both
 on the roof with nothing said and the victim's act intact.
 """
 from contextlib import ExitStack
+from types import SimpleNamespace
 from unittest import mock
 
 from evennia import create_object
@@ -36,6 +37,19 @@ from world.combat.constants import (
 )
 from world.combat.utils import get_character_dbref
 
+
+class _Room:
+    """A room stub that is equal by row and distinct by instance, the shape
+    the idmapper hands out after a cache flush (#3699)."""
+    def __init__(self, pk, contents=()):
+        self.pk = pk
+        self.contents = list(contents)
+
+    def __eq__(self, other):
+        return isinstance(other, _Room) and other.pk == self.pk
+
+    def __hash__(self):
+        return hash(self.pk)
 
 class _EdgeDrag(EvenniaTest):
     """jumper (char1) holds victim (char2) on the roof (room1); the exit
@@ -107,15 +121,15 @@ class TheDirectDrop(_EdgeDrag):
 
     def test_control_an_undisturbed_drag_lands_both(self):
         self.descend(dest_is_sky=False)
-        self.assertIs(self.jumper.location, self.below)
-        self.assertIs(self.victim.location, self.below)
+        self.assertEqual(self.jumper.location, self.below)
+        self.assertEqual(self.victim.location, self.below)
         self.assertTrue(any("drags you off" in t for t in self.heard), self.heard)
         self.assertIn(self.victim, self.removed_from_combat())
 
     def test_a_channeling_victim_is_dragged_off_all_the_same(self):
         self.channeling(self.victim)
         self.descend(dest_is_sky=False)
-        self.assertIs(self.victim.location, self.below, "the channel excused them from the drop")
+        self.assertEqual(self.victim.location, self.below, "the channel excused them from the drop")
         self.assertFalse(channel_of(self.victim), "the channel survived being hauled off a roof")
         self.assertTrue(any("drags you off" in t for t in self.heard), self.heard)
         self.assertGreater(self.hurt(self.victim), 0)
@@ -133,8 +147,8 @@ class TheDirectDrop(_EdgeDrag):
         # roof hears it too, and the pairing is gone.
         self.victim.move_to = lambda *a, **kw: False
         self.descend(dest_is_sky=False)
-        self.assertIs(self.victim.location, self.roof)
-        self.assertIs(self.jumper.location, self.below)
+        self.assertEqual(self.victim.location, self.roof)
+        self.assertEqual(self.jumper.location, self.below)
         self.assertFalse(any("drags you off" in t for t in self.heard), self.heard)
         self.assertFalse(any("bodyshield" in t for t in self.heard), self.heard)
         self.assertEqual(self.hurt(self.victim), 0)
@@ -155,8 +169,8 @@ class TheDirectDrop(_EdgeDrag):
         self.channeling(self.jumper)
         self.channeling(self.victim)
         self.descend(dest_is_sky=False)
-        self.assertIs(self.jumper.location, self.roof)
-        self.assertIs(self.victim.location, self.roof)
+        self.assertEqual(self.jumper.location, self.roof)
+        self.assertEqual(self.victim.location, self.roof)
         self.assertEqual(self.said, ["You're busy spraying — 'stop' first."], self.said)
         self.assertEqual(self.heard, [], self.heard)
         self.assertTrue(channel_of(self.victim), "a refused jump cost the victim their act")
@@ -169,7 +183,7 @@ class TheDirectDrop(_EdgeDrag):
         grant_trust(other, self.victim, "escort")     # a real escort, not one consent ends
         self.victim.db.escorting = other
         self.descend(dest_is_sky=False)
-        self.assertIs(self.victim.location, self.below)
+        self.assertEqual(self.victim.location, self.below)
         self.assertFalse(self.victim.db.escorting)
         self.assertFalse(any("no longer follows" in t or "refuses them" in t for t in self.heard),
                          self.heard)
@@ -180,7 +194,7 @@ class TheTransit(_EdgeDrag):
     def test_a_channeling_victim_rides_the_fall(self):
         self.channeling(self.victim)
         self.descend(dest_is_sky=True)
-        self.assertIs(self.victim.location, self.below, "the channel excused them from the ride")
+        self.assertEqual(self.victim.location, self.below, "the channel excused them from the ride")
         self.assertFalse(channel_of(self.victim))
         self.assertEqual(getattr(self.victim.db, DB_FALLING, {}).get("led_by"), self.jumper)
         self.assertTrue(any("drags you off" in t for t in self.heard), self.heard)
@@ -195,7 +209,7 @@ class TheTransit(_EdgeDrag):
         grant_trust(other, self.victim, "escort")
         self.victim.db.escorting = other
         self.descend(dest_is_sky=True)
-        self.assertIs(self.victim.location, self.below)
+        self.assertEqual(self.victim.location, self.below)
         self.assertIs(other.location, self.roof)
         self.assertFalse(self.victim.db.escorting)
         self.assertEqual(told_other, [], told_other)
@@ -204,8 +218,8 @@ class TheTransit(_EdgeDrag):
     def test_a_hold_that_still_opens_is_spoken_on_the_roof(self):
         self.victim.move_to = lambda *a, **kw: False
         self.descend(dest_is_sky=True)
-        self.assertIs(self.victim.location, self.roof)
-        self.assertIs(self.jumper.location, self.below)
+        self.assertEqual(self.victim.location, self.roof)
+        self.assertEqual(self.jumper.location, self.below)
         self.assertFalse(getattr(self.victim.db, DB_FALLING, None))
         self.assertTrue(any("gives at the edge" in t or "opens at the lip" in t for t in self.heard), self.heard)
         self.assertEqual(self.room_beat.call_args.kwargs["location"], self.roof)
@@ -219,7 +233,7 @@ class TheTransit(_EdgeDrag):
             self.descend(dest_is_sky=True)
         taken.assert_called_once()
         self.assertIs(taken.call_args.args[0], self.victim)
-        self.assertIs(self.victim.location, self.below)
+        self.assertEqual(self.victim.location, self.below)
 
     def test_control_a_gated_jumper_leaves_the_victim_alone(self):
         # The jumper's own channel would refuse them; the victim, who has
@@ -227,8 +241,8 @@ class TheTransit(_EdgeDrag):
         self.channeling(self.jumper)
         self.channeling(self.victim)
         self.descend(dest_is_sky=True)
-        self.assertIs(self.jumper.location, self.roof)
-        self.assertIs(self.victim.location, self.roof)
+        self.assertEqual(self.jumper.location, self.roof)
+        self.assertEqual(self.victim.location, self.roof)
         self.assertTrue(channel_of(self.victim), "a refused jump cost the victim their act")
         self.assertEqual(self.heard, [], self.heard)
         self.assertFalse(getattr(self.victim.db, DB_FALLING, None))
@@ -249,8 +263,8 @@ class TheTransit(_EdgeDrag):
         other = self.escorted_by_jumper()
         self.channeling(self.victim)
         self.descend(dest_is_sky=True)
-        self.assertIs(self.jumper.location, self.roof)
-        self.assertIs(self.victim.location, self.roof)
+        self.assertEqual(self.jumper.location, self.roof)
+        self.assertEqual(self.victim.location, self.roof)
         self.assertIs(other.location, self.roof)
         self.assertTrue(channel_of(self.victim), "a refused jump cost the victim their act")
         self.assertEqual(self.heard, [], self.heard)
@@ -263,8 +277,8 @@ class TheTransit(_EdgeDrag):
         self.escorted_by_jumper()
         with mock.patch("world.consent.is_conscious", return_value=False):
             self.descend(dest_is_sky=True)
-        self.assertIs(self.jumper.location, self.below)
-        self.assertIs(self.victim.location, self.below, "a stale escort excused the victim")
+        self.assertEqual(self.jumper.location, self.below)
+        self.assertEqual(self.victim.location, self.below, "a stale escort excused the victim")
         self.assertFalse(self.jumper.db.escorting)
         self.assertTrue(any("drags you off" in t for t in self.heard), self.heard)
 
@@ -288,8 +302,63 @@ class TheGatesAgree(_EdgeDrag):
         self.assertIs(self.live(self.jumper, self.exit.destination), self.other)
         # walked ahead through a plain exit: the leader may proceed and the link holds
         self.assertTrue(self.usher(self.jumper, self.exit.destination))
-        self.assertIs(self.other.location, self.exit.destination)
-        self.assertIs(self.jumper.db.escorting, self.other)
+        self.assertEqual(self.other.location, self.exit.destination)
+        self.assertEqual(self.jumper.db.escorting, self.other)
+
+    def test_the_usher_judges_arrival_by_row_not_identity(self):
+        # #3699: the idmapper may hand back a different instance of the
+        # same room; the escortee has arrived all the same.
+        from world.movement_coupling import _usher
+
+        there, there_again = _Room(7), _Room(7)
+        self.assertIsNot(there, there_again)
+        told = []
+        leader = SimpleNamespace(msg=lambda text=None, **kw: told.append(str(text)))
+        escortee = SimpleNamespace(location=None, get_display_name=lambda viewer: "Other")
+        escortee.execute_cmd = lambda key: setattr(escortee, "location", there_again)
+        self.assertTrue(_usher(leader, escortee, SimpleNamespace(key="out"), there))
+        self.assertEqual(told, [])
+
+    def test_the_followers_keep_the_trail_across_a_fresh_room_instance(self):
+        # The follow twin of #3699: the leader has arrived; the follower
+        # walks and lands in a fresh instance of the same room. The trail
+        # must hold.
+        from world import movement_coupling as MC
+
+        here = _Room(1)
+        there, there_again = _Room(2), _Room(2)
+        door = SimpleNamespace(key="out", destination=there)
+        here.contents.append(door)
+        leader = SimpleNamespace(location=there, get_display_name=lambda viewer: "Lead")
+        told = []
+        follower = SimpleNamespace(pk=9, location=here, db=SimpleNamespace(following=leader),
+                                   msg=lambda text=None, **kw: told.append(str(text)))
+        follower.execute_cmd = lambda key: setattr(follower, "location", there_again)
+        here.contents.append(follower)
+        with mock.patch.object(MC, "sever_follow") as severed:
+            MC.bring_followers(leader, here)
+        severed.assert_not_called()
+        self.assertEqual(told, [])
+
+    def test_the_usher_does_not_separate_a_pair_standing_in_one_room_twice_fetched(self):
+        # usher_escortee's "are we still together" check, same trap: the
+        # leader and the escortee hold different instances of one room.
+        from world import movement_coupling as MC
+
+        hall, hall_again = _Room(3), _Room(3)
+        yard, yard_again = _Room(4), _Room(4)
+        door = SimpleNamespace(key="out", destination=yard)
+        hall.contents.append(door)
+        told = []
+        escortee = SimpleNamespace(pk=8, location=hall_again, get_display_name=lambda viewer: "Other")
+        escortee.execute_cmd = lambda key: setattr(escortee, "location", yard_again)
+        leader = SimpleNamespace(location=hall, ndb=SimpleNamespace(), db=SimpleNamespace(escorting=escortee),
+                                 msg=lambda text=None, **kw: told.append(str(text)))
+        with mock.patch("world.consent.is_conscious", return_value=True), \
+             mock.patch("world.consent.check_consent", return_value=True):
+            self.assertTrue(MC.usher_escortee(leader, yard))
+        self.assertEqual(leader.db.escorting, escortee, "the pair was separated")
+        self.assertEqual(told, [])
 
     def test_a_separated_escort_is_none_and_the_usher_releases(self):
         self.other.location = self.street
@@ -314,7 +383,7 @@ class TheGatesAgree(_EdgeDrag):
         self.assertIsNone(self.live(self.jumper, nowhere_near))
         self.assertTrue(self.usher(self.jumper, nowhere_near))
         self.assertIs(self.jumper.db.escorting, self.other, "the usher keeps the link when it steps aside")
-        self.assertIs(self.other.location, self.roof)
+        self.assertEqual(self.other.location, self.roof)
 
     def test_barred_only_by_an_edge_a_gap_or_a_way_into_air(self):
         from world.movement_coupling import escort_barred_at
