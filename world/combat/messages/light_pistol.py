@@ -11,12 +11,12 @@ MESSAGES = {
             'observer_msg': "With a practiced motion, {attacker_name} checks the magazine of the pistol, then snaps it firmly into place."
         },
         {
-            'attacker_msg': "Your {hit_location} closes around the polymer or steel grip of the pistol, finger indexing along the slide.",
+            'attacker_msg': "Your hand closes around the polymer or steel grip of the pistol, finger indexing along the slide.",
             'victim_msg': "{attacker_name}'s hand closes around the polymer or steel grip of the pistol, finger indexing along the slide.",
             'observer_msg': "{attacker_name}'s hand closes around the polymer or steel grip of the pistol, finger indexing along the slide."
         },
         {
-            'attacker_msg': "The pistol appears in your {hit_location}, its muzzle a dark, efficient-looking circle.",
+            'attacker_msg': "The pistol appears in your hand, its muzzle a dark, efficient-looking circle.",
             'victim_msg': "The pistol appears in {attacker_name}'s hand, its muzzle a dark, efficient-looking circle.",
             'observer_msg': "The pistol appears in {attacker_name}'s hand, its muzzle a dark, efficient-looking circle."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air seems to still as {attacker_name} prepares to fire the pistol, anticipating the sharp *crack* of the shot."
         },
         {
-            'attacker_msg': "Your {hit_location} is set in concentration, finger hovering near the pistol's trigger.",
+            'attacker_msg': "Your face is set in concentration, finger hovering near the pistol's trigger.",
             'victim_msg': "{attacker_name}'s face is set in concentration, finger hovering near the pistol's trigger.",
             'observer_msg': "{attacker_name}'s face is set in concentration, finger hovering near the pistol's trigger."
         },
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s pistol to punch a hole in an empty barrel, brass ejecting."
         },
         {
-            'attacker_msg': "The pistol bucks in your {hit_location} as you miss, the recoil spoiling your aim for a moment.",
+            'attacker_msg': "The pistol bucks in your hand as you miss, the recoil spoiling your aim for a moment.",
             'victim_msg': "The pistol bucks in {attacker_name}'s hand as they miss, the recoil spoiling their aim for a moment.",
             'observer_msg': "The pistol bucks in {attacker_name}'s hand as they miss, the recoil spoiling their aim for a moment."
         },

@@ -11,12 +11,12 @@ MESSAGES = {
             'observer_msg': "With a practiced motion, {attacker_name} checks the cylinder of the revolver, ensuring it's loaded."
         },
         {
-            'attacker_msg': "Your {hit_location} closes around the checkered grip of the revolver, thumbing back the hammer with a distinct *click*.",
+            'attacker_msg': "Your hand closes around the checkered grip of the revolver, thumbing back the hammer with a distinct *click*.",
             'victim_msg': "{attacker_name}'s hand closes around the checkered grip of the revolver, thumbing back the hammer with a distinct *click*.",
             'observer_msg': "{attacker_name}'s hand closes around the checkered grip of the revolver, thumbing back the hammer with a distinct *click*."
         },
         {
-            'attacker_msg': "The revolver appears in your {hit_location}, its muzzle a dark, ominous circle.",
+            'attacker_msg': "The revolver appears in your hand, its muzzle a dark, ominous circle.",
             'victim_msg': "The revolver appears in {attacker_name}'s hand, its muzzle a dark, ominous circle.",
             'observer_msg': "The revolver appears in {attacker_name}'s hand, its muzzle a dark, ominous circle."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air seems to still as {attacker_name} prepares to fire the revolver, anticipating the sharp crack of the shot."
         },
         {
-            'attacker_msg': "Your {hit_location} is set in concentration, finger hovering near the revolver's trigger.",
+            'attacker_msg': "Your face is set in concentration, finger hovering near the revolver's trigger.",
             'victim_msg': "{attacker_name}'s face is set in concentration, finger hovering near the revolver's trigger.",
             'observer_msg': "{attacker_name}'s face is set in concentration, finger hovering near the revolver's trigger."
         },
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s revolver to punch a hole in an empty barrel."
         },
         {
-            'attacker_msg': "The revolver bucks in your {hit_location} as you miss, the recoil perhaps spoiling your aim.",
+            'attacker_msg': "The revolver bucks in your hand as you miss, the recoil perhaps spoiling your aim.",
             'victim_msg': "The revolver bucks in {attacker_name}'s hand as they miss, the recoil perhaps spoiling their aim.",
             'observer_msg': "The revolver bucks in {attacker_name}'s hand as they miss, the recoil perhaps spoiling their aim."
         },
