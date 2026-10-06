@@ -142,11 +142,25 @@ class TheAimLinesAgree(TestCase):
         with _naturals(("left_hand", claws)):
             self.assertEqual(aimed_weapon_name(attacker), "pistol")
 
-    def test_a_target_aim_in_melee_names_the_blade_and_so_does_its_stop(self):
+    def test_a_target_aim_in_melee_names_the_blade(self):
         tgt = _target()
         attacker = _char([_weapon("katana", False, 14), _weapon("pistol", True, 12)], proximity=(tgt,))
         self.assertEqual(aimed_weapon_name(attacker, tgt), "katana")
-        self.assertEqual(aimed_weapon_name(attacker, tgt), aimed_weapon_name(attacker, tgt))
+
+    def test_the_three_target_stop_sites_pass_the_aims_target(self):
+        # The stop and move lines after a TARGET aim must ask the same
+        # question the aim line asked, or a retreat-free stop names the
+        # pistol after the aim named the katana (PR #3702 review, round 2).
+        import pathlib
+        root = pathlib.Path(__file__).resolve().parents[2]
+        pins = {
+            "commands/combat/special_actions.py": "aimed_weapon_name(caller, current_target)",
+            "commands/combat/core_actions.py": "aimed_weapon_name(caller, aiming_target)",
+            "typeclasses/exits.py": "aimed_weapon_name(traversing_object, old_aim_target)",
+        }
+        for rel, needle in pins.items():
+            body = (root / rel).read_text(errors="ignore")
+            self.assertIn(needle, body, rel)
 
     def test_a_target_aim_at_range_names_the_gun(self):
         tgt = _target()
