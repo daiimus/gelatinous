@@ -1,6 +1,6 @@
 # Multi-Weapon Combat Specification
 
-> **Status:** 📋 Proposal — designed 2026-10-01, nothing built. Covers claws per hand, akimbo profiles by deployed count, alternation between held weapons, handguns, and species with many hands. Slice 1 (claws) is gated on the open rulings in §14. Supersedes defect #3571 when slice 1 ships.
+> **Status:** 📋 Proposal — designed 2026-10-01, nothing built. Covers claws per hand, akimbo profiles by deployed count, alternation between held weapons, handguns, and species with many hands. The six rulings that gate slice 1 (claws) were decided 2026-10-03 to 2026-10-05 (§14); the seven that gate slice 2 are open. Supersedes defect #3571 when slice 1 ships.
 
 ## 0. Owner rulings (2026-10-01, verbatim)
 
@@ -55,9 +55,9 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 `choose_weapon(char, target=None)` is a pure peek. Rule order:
 
 1. **Candidates** in slot order: natural options, then held items, de-duplicated by object. A future two-slot grip is one option with two slots.
-2. **Natural precedence** (decision 4): if any natural weapon is deployed, only naturals count.
-3. **Real weapons**: if any held item is tagged `weapon`, drop untagged items (the #516 rule). With nothing tagged, keep only the single highest-damage improvised item, so nothing rotates a cigarette.
-4. **Range**: with a target not in melee range, ranged options only; with none, keep all so the existing reach message fires.
+2. **Real weapons**: if any held item is tagged `weapon`, drop untagged items (the #516 rule). With nothing tagged, keep only the single highest-damage improvised item, so nothing rotates a cigarette.
+3. **Range**: with a target not in melee range, ranged options only; with none, keep all so the existing reach message fires.
+4. **Natural precedence** (decision 4, applied among the options that can reach): if any deployed natural weapon survived the range step, only naturals count. Ruled 2026-10-03 (§14, ruling 2): at range a held pistol fires while the claws stay out; in melee deployed claws win outright and the knife waits. Today natural precedence runs before range, so claws out means claws swing even where they cannot reach, and the reach gate refuses the attack while a loaded gun sits in the other hand.
 5. **Akimbo grouping** (§5).
 6. **Rotation** (§6; slice 2). In slice 1 held weapons keep range-then-max and naturals take the first option.
 
@@ -151,20 +151,25 @@ For each living character, for each ability with two or more living hosts, in sl
 - **2, alternation and handguns:** ordered `Character.hands`; the ndb cursor; `note_weapon_used`; the max rule removed; disarm order; pistol bank rewrites. Play: two light pistols; pistol plus knife at range and in melee; arm-gun plus pistol; Nailz plus Jawz.
 - **3, owner-gated content:** akimbo pistol models; a branded held Tiger Claws pair.
 
-## 14. Open owner rulings
+## 14. Owner rulings
+
+Decided (slice 1 gates), owner's words verbatim:
+
+- **#6 Akimbo is ONE attack on the pair profile**, never two swings; placeholders 6/+0 for one hand, 9/+1 for both. 2026-10-03: *"Ruling 1 seems fine."*
+- **#2 Claws out and a weapon in the other hand.** Reach is checked first; among the options that can reach, deployed claws win outright. So at range a held pistol fires and the claws stay out; in melee the claws swing and the knife waits. 2026-10-03, after *"I agree about avoiding the odd case of claws being chosen at range - so I think we're aligned."* and the question *"So if claws are out and I'm holding a pistol but at range - which would the attack occur with?"* (the pistol): *"Ok. That makes sense."* The §4 order was changed to match.
+- **#5 `/nailz` in a mixed state retracts every host**; otherwise it deploys every host. 2026-10-05: *"Retract both to sync up makes sense."*
+- **#9 Reattachment keeps the hand's original claw or gun object**, parked back in the body, retracted. 2026-10-05: *"I concur. Keep it."*
+- **#11 Claw accuracy uses the host hand's manipulation**; the fangs stay body-wide. 2026-10-05: *"Per hand makes sense. We want consistency."*
+- **#12 Migration keeps deployed claws deployed** (the second object is spawned at once); the second shotgun arm gaining a gun is called out in the migration's counts as a mechanic change. 2026-10-05: *"Your rec is fine. We're still in pre-alpha."*
+
+Open (slice 2 gates):
 
 1. Alternation replaces "then highest damage" among weapons that can reach; range-first stays. Yes or no?
-2. One hand's claws out and a weapon in the other hand: claws win outright (as today, and no ranged bonus shots), or the claws join the rotation?
 3. Nailz and Jawz both out: alternate, or a fixed precedence, and which?
 4. Do bonus and opportunity attacks turn the wheel? Yes or no?
-5. `/nailz` with only one hand out: retract both (proposed), or deploy the other?
-6. Akimbo is ONE attack on the pair profile, a designed-pair property, never two swings; placeholders 6/+0 for one hand, 9/+1 for both. Yes or no?
 7. Only the same `akimbo_family` pairs, so heavy and light pistols alternate. Yes or no?
 8. Rotation order follows species display order (left hand first), which also becomes the default hand for wield, get and disarm. Yes, or add a dominant hand?
-9. Reattachment keeps the hand's original claw or gun object. Yes or no?
 10. Nailz shares `tiger_claws` and `tiger_claws_akimbo` with a future held Tiger Claws, or gets its own pair?
-11. Claw accuracy uses the host hand's manipulation instead of body-wide. Yes or no?
-12. Migration keeps deployed claws deployed (spawns the second object), or retracts everyone once?
 13. Ammunition and `hands_required` enforcement stay out. Yes or no?
 
 ## 15. Risks
