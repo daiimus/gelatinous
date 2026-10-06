@@ -1,6 +1,6 @@
 # Grip Enforcement (`hands_required`)
 
-> **Status:** 📋 Proposal — designed 2026-10-06 from a read-only map of the tree; nothing built. Slice 3 of `MULTI_WEAPON_COMBAT_SPEC.md` (§13, §15). Owner ruling 2026-10-06, verbatim: *"hands_require should have enforcement. Whether it happens now or in the future isn't relevant to me."*
+> **Status:** 📋 Proposal — designed 2026-10-06 from a read-only map of the tree; the five rulings decided the same day (§6); nothing built. Slice 3 of `MULTI_WEAPON_COMBAT_SPEC.md` (§13, §15). Owner ruling 2026-10-06, verbatim: *"hands_require should have enforcement. Whether it happens now or in the future isn't relevant to me."*
 
 ## 0. What is already decided
 
@@ -26,7 +26,7 @@ This proposal builds on those four sentences. §6 lists what still needs the own
 ## 2. Design at a glance
 
 1. **Data.** `WEAPON_ATTR_HANDS_REQUIRED` beside the other weapon attribute constants; read with default 1; prototypes gain `hands_required` where their banks already say two hands (§6, ruling 3). `TENNIS_RACKET`'s stray key is fixed.
-2. **The grip.** `wield <weapon>` takes as many free grasping slots as the weapon requires, up to what is free, in the body's slot order; with fewer free slots than required it takes what it can and the wield line says so. `wield <weapon> in <hand>` takes that one slot on purpose. Wielding a weapon already in hand adds a free slot to its grip instead of refusing. One object in several slots is one entry in `inventory`, `look` and the persona, marked "(both hands)" or "(all N hands)".
+2. **The grip.** `wield <weapon>` takes as many free grasping slots as the weapon requires, up to what is free, in the body's slot order; with fewer free slots than required it takes what it can and the wield line says so (ruling 5: nobody under-grips by choice). `wield <weapon> in <hand>` names the leading hand; a two-hander still takes a second free hand when one exists. Wielding a weapon already in hand adds a free slot to its grip instead of refusing. One object in several slots is one entry in `inventory`, `look` and the persona, marked "(both hands)" or "(all N hands)".
 3. **The penalty.** `WeaponChoice` gains `hands_required` and `grip` (slots held); `process_attack` multiplies the attacker's effective skill by a **grip factor** when `grip < hands_required`, a separate term beside manipulation so it survives the manipulation override and the fail-open paths. Placeholder: one of two hands → 0.6; recorded in `BALANCE_LEDGER.md`. A natural weapon and an integrated weapon are never under-gripped (their requirement is their own body).
 4. **Hands come and go.** The grip is whatever slots hold the object when the swing happens, so a hand broken in place or healed changes the factor with no state to clear. What a cut does to a two-hand grip is ruling 2 (§6).
 5. **Everything else reads the view.** Free-hand pickers (get, give, catch, armor, shops) see no free slot while both are gripped: "hands full" as today. Disarm takes the whole weapon (decided). The wheel sees one option (shipped). Surplus-limb initiative counts free grasping limbs as today.
@@ -34,7 +34,7 @@ This proposal builds on those four sentences. §6 lists what still needs the own
 
 ## 3. The grip in detail
 
-**Forming it.** `CmdWield` resolves the weapon, reads `hands_required` (default 1), lists free slots in `slot_order`, and calls `wield_item(item, hands=[...])` with up to `hands_required` of them. With a named hand, exactly that slot. With zero free slots, the current refusal.
+**Forming it.** `CmdWield` resolves the weapon, reads `hands_required` (default 1), lists free slots in `slot_order`, and calls `wield_item(item, hands=[...])` with up to `hands_required` of them. With a named hand, that slot first and then the next free slots up to the requirement (ruling 5). With zero free slots, the current refusal.
 
 **Growing it.** `wield rifle` while the rifle is already held in one slot and another is free adds the free slot. The refusal "already wielding X" remains only when no slot is free.
 
@@ -52,27 +52,27 @@ This proposal builds on those four sentences. §6 lists what still needs the own
 
 - **One hand.** A one-armed body wields a rifle under-gripped and fights at the factor; nothing is refused (ruling 1 confirms or overturns). The initiate and aim prose do not change.
 - **Broken in place.** The hand drops out of the view, the object stays in the store under the hidden slot; the view-side grip shrinks, the factor applies, and heal restores it. Pre-existing and now paid for, not fixed here.
-- **Cut.** Today the cut hand's item drops and the whole grip ends. Ruling 2 decides whether a two-hand grip stays in the surviving hand (under-gripped) or drops as today.
+- **Cut.** Today the cut hand's item drops and the whole grip ends. Ruled (2): a two-hand grip stays in the surviving hand, under-gripped; only a one-slot grip's item drops with its hand.
 - **Three or more hands.** A tail or a third arm is one more free slot; a two-hand weapon takes two in slot order and the rest stay free; a four-armed body can grip a rifle and still draw a pistol.
 - **Integrated and natural weapons.** Never under-gripped; their requirement is satisfied by their own body (the arm-gun's "flesh hand steadying" is flavour).
 
 ## 6. Owner rulings
 
-Open, to be asked one per turn:
+Decided 2026-10-06, owner's words verbatim, asked one per turn:
 
-1. **Penalised, not refused.** Confirm the standing decision (CAPACITY §6.1, 2026-06-20) that under-gripping is a scaled penalty and never a refusal, or overturn it. Recommendation: confirm.
-2. **A cut hand mid-grip.** The two-hand weapon stays in the surviving hand, under-gripped (recommended: the hand that still holds it holds it), or drops as every held item does today.
-3. **Melee two-handers by data.** Baseball bat, staff and chainsaw become `hands_required 2` now; the long sword and katana stay 1 (hand-and-a-half, one-handed by their prose); the SMG stays 1 as its prototype says. Recommendation: yes.
-4. **The placeholder.** One of two hands → 0.6 on accuracy; two of three → 0.8; in `BALANCE_LEDGER.md` beside the claws' placeholders. Recommendation: yes.
-5. **Automatic two-hand wield.** `wield rifle` with two free hands takes both; `wield rifle in left` takes one on purpose. Recommendation: yes.
+1. **Penalised, never refused.** The standing decision (CAPACITY §6.1, 2026-06-20) stands: under-gripping is a scaled penalty; a one-armed body still brings a rifle to bear, badly. *"Confirmed."*
+2. **A cut hand mid-grip: the weapon stays.** A two-hand weapon stays in the surviving hand, under-gripped, when one gripping hand is cut; the cut's narrative says so. *"It stays."* (The hand that still holds it holds it, the rule the claws follow.)
+3. **Melee two-handers by data.** The baseball bat, the staff and the chainsaw become `hands_required 2`; the long sword and katana stay 1 (hand-and-a-half, one-handed by their prose); the SMG stays 1 as its prototype says. *"Yes."*
+4. **The placeholder.** One of two hands → 0.6 on accuracy; two of three → 0.8; recorded in `BALANCE_LEDGER.md` beside the claws' placeholders, nothing tuned. *"Sure."*
+5. **Nobody under-grips by choice.** Asked whether `wield rifle` takes both free hands and `wield rifle in left` takes one on purpose: *"Tricky. I think people should only wield in one-hand or under-grip when no other options is present. Reasonable?"* So: a two-handed weapon takes both hands whenever two are free, even when a hand is named (the named hand leads); it is held one-handed only when no second free hand exists, because the other hand is full or gone. The named-hand form keeps its meaning for one-handed weapons.
 
 Decided before this proposal and not re-asked: the minimum, the scaled penalty, the weaker hand drags, disarm takes the whole weapon.
 
 ## 7. Slices
 
 - **3a, the grip and the penalty** (one issue): the constant and reads; `TENNIS_RACKET`; `wield_item(hands=...)` and `CmdWield` taking up to `hands_required` free slots, growing a grip, the named-hand form; grouped display in `inventory`, `look`, the persona; throw and wrest clearing and restoring every slot; the stale write-back in `detach_items_to_appendage` fixed first and tested; `WeaponChoice.hands_required` and `grip`; `grip_hit_factor` in the roll with its splattercast line; the wield-time line. Tests: a rifle takes two hands; a named hand takes one; a second wield grows the grip; one display line per object; the factor by held/required; natural and integrated never penalised; the cut leaves no ghost in the surviving slot. Play: wield a rifle one- and two-handed and read the audit factor; sever one hand of a two-hand grip.
-- **3b, melee data** (after ruling 3): bat, staff, chainsaw to 2; their banks already agree.
-- **3c, the cut** (after ruling 2): keep-or-drop at `detach_items_to_appendage` with its narrative line.
+- **3b, melee data** (ruled): bat, staff, chainsaw to 2; their banks already agree.
+- **3c, the cut** (ruled: it stays): `detach_items_to_appendage` drops only a one-slot grip's item; a multi-slot grip loses the cut slot and keeps the rest, with its narrative line.
 
 ## 8. Risks
 
