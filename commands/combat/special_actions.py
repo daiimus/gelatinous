@@ -446,8 +446,8 @@ class CmdAim(Command):
                 # Clear override_place and check for mutual showdown cleanup
                 self._clear_aim_override_place(caller, current_target)
                 
-                # Get weapon name for better messaging
-                choice = choose_weapon(caller, at_range=True)   # the aimed weapon
+                # Get weapon name for better messaging: the weapon the aim named
+                choice = choose_weapon(caller, current_target)
                 weapon = choice.item if choice else None
                 weapon_name = weapon.key if weapon else "weapon"
                 
@@ -555,9 +555,6 @@ class CmdAim(Command):
                     delattr(caller.ndb, NDB_AIMING_DIRECTION)
                 
                 # Check if caller has a ranged weapon for direction aiming
-                choice = choose_weapon(caller)
-                weapon = choice.item if choice else None
-                
                 is_ranged_weapon = has_ranged_option(caller)
                 
                 if not is_ranged_weapon:
@@ -646,12 +643,6 @@ class CmdAim(Command):
                 caller.msg(MSG_AIM_SELF_TARGET)
                 return
 
-            # Check if caller has a ranged weapon
-            choice = choose_weapon(caller)
-            weapon = choice.item if choice else None
-            
-            is_ranged_weapon = has_ranged_option(caller)
-
             # Set target aim relationship
             setattr(caller.ndb, NDB_AIMING_AT, target)
             setattr(target.ndb, NDB_AIMED_AT_BY, caller)
@@ -700,9 +691,6 @@ class CmdAim(Command):
             if valid_direction:
                 splattercast.msg(f"AIM_DEBUG: Direction '{direction}' is valid, proceeding with aiming")
                 # Check if caller has a ranged weapon for direction aiming
-                choice = choose_weapon(caller)
-                weapon = choice.item if choice else None
-                
                 is_ranged_weapon = has_ranged_option(caller)
                 
                 if not is_ranged_weapon:

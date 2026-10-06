@@ -629,8 +629,8 @@ class CmdStop(Command):
                 # Clear override_place and handle mutual showdown cleanup
                 self._clear_aim_override_place_on_stop(caller, aiming_target)
                 
-                # Get weapon name for better messaging
-                choice = choose_weapon(caller, at_range=True)   # the aimed weapon
+                # Get weapon name for better messaging: the weapon the aim named
+                choice = choose_weapon(caller, aiming_target)
                 weapon_name = choice.item.key if choice else "weapon"
                 
                 caller.msg(f"You stop aiming at {get_display_name_safe(aiming_target, caller)} and lower your {weapon_name}.")

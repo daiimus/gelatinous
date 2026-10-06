@@ -54,10 +54,11 @@ from world.identity_utils import msg_room_identity
 def _blade_in_hand(caller):
     """The first weapon option that can sever; else the first option, so
     the dull-blade line names it; else None. The one door decides what is
-    in hand (MULTI_WEAPON_COMBAT_SPEC §4): claws out do not hide the knife
-    in the other hand, and claws themselves do not sever."""
+    in hand (MULTI_WEAPON_COMBAT_SPEC §4), read before natural precedence:
+    claws out do not hide the knife in the other hand, and claws themselves
+    do not sever."""
     from world.combat.weapon_choice import weapon_options
-    options = weapon_options(caller)
+    options = weapon_options(caller, precedence=False)
     for option in options:
         if getattr(getattr(option.item, "db", None), "can_sever", None) is True:
             return option.item

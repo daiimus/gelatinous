@@ -201,13 +201,17 @@ def _in_reach(options, char, target, at_range):
     return ranged or options
 
 
-def weapon_options(char, target=None, *, at_range=False):
+def weapon_options(char, target=None, *, at_range=False, precedence=True):
     """The ordered wheel of options after every step (§11): what a future
-    "k attacks per round" ruling would take the next k of."""
+    "k attacks per round" ruling would take the next k of. ``precedence=False``
+    leaves step 4 out: every real option that can reach, naturals and held
+    alike, for a reader that wants a particular kind of item rather than
+    the attack's pick (the sever verb's blade)."""
     options = _in_reach(_real_weapons(_candidates(char)), char, target, at_range)
-    naturals = [o for o in options if o.natural]
-    if naturals:
-        options = naturals                      # step 4, natural precedence
+    if precedence:
+        naturals = [o for o in options if o.natural]
+        if naturals:
+            options = naturals                  # step 4, natural precedence
     return _group_akimbo(options)
 
 
