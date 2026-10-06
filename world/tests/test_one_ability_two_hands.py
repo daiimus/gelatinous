@@ -469,6 +469,41 @@ class TwoArmGunsFromTheOldModel(EvenniaTest):
         self.assertEqual(state.get("weapon_dbref"), self.gun.dbref, "the hand that holds the gun lost its reference")
         self.assertNotIn(self.gun, arm.contents)
 
+    def test_a_cut_arm_does_not_pull_the_gun_off_another_limb(self):
+        # Master-era state: this body's first arm was cut before cuts
+        # settled the share, so the gun lies on THAT limb and the other
+        # arm still records it. Cutting the other arm now must not pull
+        # the gun off the old limb onto the new one; the entry lets go.
+        from evennia import create_object
+        from typeclasses.items import apply_sever_to_character
+        old_limb = create_object("typeclasses.items.Appendage", key="a severed left arm", location=self.room2)
+        self.gun.location = old_limb
+        self.organs[0].ability_state = {"shotgun": {"weapon_dbref": self.gun.dbref}}
+        self.organs[1].ability_state = {"shotgun": {"weapon_dbref": self.gun.dbref}}
+        self.char1.save_medical_state()
+        apply_sever_to_character(self.char1, "right_arm")
+        arm = next((o for o in self.room1.contents
+                    if o.is_typeclass("typeclasses.items.Appendage", exact=False)), None)
+        self.assertIsNotNone(arm, "fixture: the arm did not come off")
+        self.assertEqual(self.gun.location, old_limb, "the cut pulled the gun off another limb")
+        self.assertNotIn(self.gun, arm.contents)
+        # the cut entry let go (the live organ; the limb's snapshot is copied
+        # before the carry and reattachment reclaims only what lies on it)
+        self.assertNotIn("weapon_dbref", self.organs[1].ability_state["shotgun"],
+                         "the cut arm still claims a gun lying on another limb")
+
+    def test_a_cut_arm_does_not_pull_the_gun_out_of_another_body(self):
+        # The same stale reference, but the old limb has since been fitted
+        # to someone else, who deployed: the gun is in their hand.
+        from typeclasses.items import apply_sever_to_character
+        self.gun.location = self.char2
+        self.char2.hands = {"left_hand": self.gun}
+        self.organs[1].ability_state = {"shotgun": {"weapon_dbref": self.gun.dbref}}
+        self.char1.save_medical_state()
+        apply_sever_to_character(self.char1, "right_arm")
+        self.assertEqual(self.gun.location, self.char2, "the cut pulled the gun out of another body's hand")
+        self.assertEqual(self.char2.hands.get("left_hand"), self.gun)
+
 
 class TheStowIsAtTheCut(_NailzCase):
     """A surgeon stows the hardware AT the cut (#3360); the other hand's

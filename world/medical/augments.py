@@ -667,6 +667,18 @@ def park_all_hardware(character) -> None:
             park_organ_hardware(character, organ)
 
 
+def _lies_with_another(weapon) -> bool:
+    """An object lying on a character or on a severed appendage belongs
+    to whoever has that body or limb: a shared reference from before each
+    hand owned its claws, reattached or carried off before cuts settled
+    the share. Neither carry moves such an object; the entry pointing at
+    it lets go (MULTI_WEAPON_COMBAT_SPEC §9)."""
+    owner = getattr(weapon, "location", None)
+    return owner is not None and (
+        owner.is_typeclass("typeclasses.characters.Character", exact=False)
+        or owner.is_typeclass("typeclasses.items.Appendage", exact=False))
+
+
 def carry_snapshot_hardware_to_appendage(appendage, corpse=None) -> None:
     """The corpse-side twin of :func:`carry_hardware_to_appendage`
     (#3487): a limb cut off a CORPSE takes its integrated hardware too.
@@ -702,10 +714,7 @@ def carry_snapshot_hardware_to_appendage(appendage, corpse=None) -> None:
                 carried.add(ability_state["weapon_dbref"])
             weapon = _find_weapon(ability_state)
             if weapon is not None and weapon.location is not appendage:
-                owner = weapon.location
-                if owner is not None and (
-                        owner.is_typeclass("typeclasses.characters.Character", exact=False)
-                        or owner.is_typeclass("typeclasses.items.Appendage", exact=False)):
+                if _lies_with_another(weapon):
                     ability_state.pop("weapon_dbref", None)
                 else:
                     weapon.location = appendage
@@ -756,8 +765,10 @@ def carry_hardware_to_appendage(character, chain, appendage) -> None:
     (still on the body after ``detach_items_to_appendage`` emptied the
     chain's hands) stays with that hand and the limb's entry lets go;
     otherwise the limb takes the object and every host left on the body
-    that still points at it lets go (`_disown`). Either way reattaching
-    the limb to ANOTHER body cannot leave one object claimed by two.
+    that still points at it lets go (`_disown`). An object already lying
+    on another character or limb is theirs: the entry lets go and nothing
+    moves (`_lies_with_another`). Either way reattaching the limb to
+    ANOTHER body cannot leave one object claimed by two.
     Settled at the cut, not at the next toggle: a survivor with one
     living host has nothing to unshare against. Saved at once: a combat
     sever saves nothing after this (MULTI_WEAPON_COMBAT_SPEC §9).
@@ -780,7 +791,10 @@ def carry_hardware_to_appendage(character, chain, appendage) -> None:
             if weapon is not None and weapon.location == character:
                 ability_state.pop("weapon_dbref", None)   # a surviving hand holds it
             elif weapon is not None and weapon.location is not appendage:
-                weapon.location = appendage
+                if _lies_with_another(weapon):
+                    ability_state.pop("weapon_dbref", None)   # another body's or limb's
+                else:
+                    weapon.location = appendage
             if ability_state.get("weapon_dbref"):
                 carried.setdefault(name, set()).add(ability_state["weapon_dbref"])
             ability_state["deployed"] = False
