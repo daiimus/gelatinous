@@ -2219,23 +2219,37 @@ class Character(
         except (TypeError, ValueError, AttributeError):
             return False
 
-    def grip_notes(self, just_taken=None) -> str:
+    def grip_notes(self, just_taken=None, only_taken=False) -> str:
         """What taking ``just_taken`` into a hand cost the grip (GRIP_ENFORCEMENT_SPEC
-        §2 item 3), spoken once at the moment: a two-handed weapon left with no
-        free second hand "hangs one-handed"; a two-handed weapon taken with no
-        second hand free "wants both hands". Empty when nothing changed."""
+        §2 item 3), spoken once at the moment: a two-handed weapon taken with no
+        second hand free "wants both hands"; another two-handed weapon left with
+        no free second hand "hangs one-handed". The taken weapon speaks first.
+        ``only_taken`` keeps the second kind quiet (a get that swapped a held
+        item out changed nothing for the weapon in the other hand). Empty when
+        a hand is still free, or when the weapon fills as many slots as it
+        wants."""
         hands = self.hands or {}
         if any(held is None for held in hands.values()):
             return ""
-        notes = []
+        slots_of = {}
         for held in hands.values():
-            if held is None or not self.wants_two_hands(held):
+            if held is not None:
+                slots_of.setdefault(id(held), [held, 0])[1] += 1
+        taken, others = "", []
+        for held, count in slots_of.values():
+            if not self.wants_two_hands(held):
+                continue
+            try:
+                wanted = int(getattr(held.db, "hands_required", 1) or 1)
+            except (TypeError, ValueError, AttributeError):
+                wanted = 1
+            if count >= wanted:
                 continue
             if held is just_taken:
-                notes.append(" It wants both hands.")
-            else:
-                notes.append(f" The {held.get_display_name(self)} hangs one-handed.")
-        return "".join(notes)
+                taken = " It wants both hands."
+            elif not only_taken:
+                others.append(f" The {held.get_display_name(self)} hangs one-handed.")
+        return taken + "".join(others)
 
     def slot_order(self, slots):
         """``slots`` sorted the way the body lists them: the species'

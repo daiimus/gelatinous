@@ -83,7 +83,6 @@ class TheRollPays(EvenniaTest):
         self.char1.hands = {"left_hand": self.rifle}
         roll, lines = self._roll()
         self.assertFalse(any("grip 0." in line for line in lines), lines)
-        self.full = roll
 
     def test_a_full_other_hand_pays(self):
         self.char1.hands = {"left_hand": self.rifle}
@@ -124,6 +123,25 @@ class ThePlayerIsTold(EvenniaCommandTest):
         self.char1.wield_item(bottle, "right_hand")
         said = self.char1.wield_item(self._rifle(self.char1), "left_hand")
         self.assertIn("It wants both hands.", said)
+
+    def test_get_with_both_hands_full_says_the_taken_two_hander_wants_both(self):
+        from commands.CmdInventory import CmdGet
+        self.char1.db.species = "human"
+        for key, hand in (("bottle", "left_hand"), ("knife", "right_hand")):
+            self.char1.wield_item(create_object("typeclasses.items.Item", key=key, location=self.char1), hand)
+        self._rifle(self.room1)
+        out = self.call(CmdGet(), "rifle", caller=self.char1)
+        self.assertIn("Your hands are full.", out)
+        self.assertIn("It wants both hands.", out)
+        self.assertNotIn("hangs one-handed", out)
+
+    def test_the_taken_weapon_speaks_first_and_each_weapon_once(self):
+        self.char1.db.species = "human"
+        bat = create_object("typeclasses.items.Item", key="baseball bat", location=self.char1)
+        bat.db.hands_required = 2
+        self.char1.wield_item(bat, "left_hand")
+        said = self.char1.wield_item(self._rifle(self.char1), "right_hand")
+        self.assertTrue(said.endswith(" It wants both hands. The baseball bat hangs one-handed."), said)
 
     def test_get_tells_the_same(self):
         from commands.CmdInventory import CmdGet

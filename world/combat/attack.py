@@ -416,8 +416,8 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
     # Manipulation consumes the attacker's aim too (CAPACITY_CONSUMERS spec §6.1,
     # §9 layer 4b — offensive half).  Per-gripping-hand, NOT body-wide: a
     # one-armed shooter with a good hand fights at full accuracy.  Completes the
-    # combat stack — ranged: motorics × sight × manipulation(trigger hand);
-    # melee: motorics × manipulation(wield hand) × light-sight.
+    # combat stack — ranged: motorics × sight × manipulation(trigger hand) × grip;
+    # melee: motorics × manipulation(wield hand) × light-sight × grip.
     manip_factor = manipulation_hit_factor(
         attacker, weapon, slots=choice.slots if choice else None)
     # The grip (GRIP_ENFORCEMENT_SPEC §2, §4): a two-handed weapon wants a

@@ -776,6 +776,7 @@ class CmdGet(Command):
                     caller.msg(
                         f"Your hands are full. You move {held_name} to inventory "
                         f"and hold {item_name} from {container_name} in your {hand_display}."
+                        + caller.grip_notes(item, only_taken=True)
                     )
                     msg_room_identity(
                         location=caller.location,
@@ -787,6 +788,7 @@ class CmdGet(Command):
                     caller.msg(
                         f"Your hands are full. You move {held_name} to inventory "
                         f"and hold {item_name} in your {hand_display}."
+                        + caller.grip_notes(item, only_taken=True)
                     )
                     msg_room_identity(
                         location=caller.location,
