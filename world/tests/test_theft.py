@@ -78,8 +78,8 @@ class TestStealableInventory(TestCase):
         self.assertEqual(_stealable_inventory(t), [loose])
 
     def test_integrated_hardware_is_never_loose(self):
-        # #3698: an arm-gun deployed in a pulped hand is in the contents but
-        # not in the hands view; it is still part of the body.
+        # #3698: integrated hardware is never loose, even with no slot
+        # naming it (the flag clause alone; the store clause is next).
         from commands.CmdTheft import _stealable_inventory
         loose, gun = _item("a chip"), _item("a forearm shotgun", integrated=True)
         t = _target(contents=[loose, gun], hands={"l": None, "r": None}, held_items={"l": None, "r": None})
@@ -289,7 +289,27 @@ class TheGunStaysInTheBody(EvenniaCommandTest):
         self.assertEqual(self.gun.location, self.char2)
 
     def test_a_blind_steal_takes_the_chip_never_the_gun(self):
-        with patch("commands.CmdTheft.can_contest", return_value=False):
+        # choice() pinned to the first loose item: on master's filter that
+        # is the gun, every run.
+        with patch("commands.CmdTheft.can_contest", return_value=False), \
+                patch("commands.CmdTheft.choice", lambda seq: seq[0]):
             self.call(CmdSteal(), "Char2", caller=self.char1)
         self.assertEqual(self.gun.location, self.char2)
         self.assertEqual(self.chip.location, self.char1)
+
+    def test_a_plain_knife_in_the_pulped_hand_is_not_loose_either(self):
+        # The store clause on a real body: held_items is a saver mapping,
+        # not a dict, and the view has dropped the hand; the knife the slot
+        # still names is not loose.
+        from collections.abc import Mapping
+        from commands.CmdTheft import _stealable_inventory
+        knife = create_object("typeclasses.items.Item", key="knife", location=self.char2)
+        self.char2.held_items = {"left_hand": knife}
+        self.assertTrue(isinstance(self.char2.held_items, Mapping))
+        self.assertFalse(isinstance(self.char2.held_items, dict))
+        self.assertNotIn("left_hand", self.char2.hands)
+        self.assertEqual(_stealable_inventory(self.char2), [self.chip])
+        with patch("commands.CmdTheft.can_contest", return_value=False):
+            out = self.call(CmdSteal(), "knife from Char2", caller=self.char1)
+        self.assertIn("can't get at", out)
+        self.assertEqual(knife.location, self.char2)
