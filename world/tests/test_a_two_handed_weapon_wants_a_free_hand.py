@@ -124,16 +124,28 @@ class ThePlayerIsTold(EvenniaCommandTest):
         said = self.char1.wield_item(self._rifle(self.char1), "left_hand")
         self.assertIn("It wants both hands.", said)
 
-    def test_get_with_both_hands_full_says_the_taken_two_hander_wants_both(self):
+    def test_get_with_both_hands_full_says_only_that_the_taken_two_hander_wants_both(self):
+        # The swap frees nothing and fills nothing for the other hand, so a
+        # two-hander already hanging there stays unmentioned.
         from commands.CmdInventory import CmdGet
         self.char1.db.species = "human"
-        for key, hand in (("bottle", "left_hand"), ("knife", "right_hand")):
-            self.char1.wield_item(create_object("typeclasses.items.Item", key=key, location=self.char1), hand)
+        bat = create_object("typeclasses.items.Item", key="baseball bat", location=self.char1)
+        bat.db.hands_required = 2
+        self.char1.wield_item(create_object("typeclasses.items.Item", key="bottle", location=self.char1), "left_hand")
+        self.char1.wield_item(bat, "right_hand")
         self._rifle(self.room1)
         out = self.call(CmdGet(), "rifle", caller=self.char1)
         self.assertIn("Your hands are full.", out)
         self.assertIn("It wants both hands.", out)
-        self.assertNotIn("hangs one-handed", out)
+        self.assertNotIn("baseball bat hangs", out)
+
+    def test_a_weapon_filling_the_slots_it_wants_is_not_hanging(self):
+        # One object stored in two slots (the broken-hand path) is one
+        # weapon with both hands: no note, and never two notes.
+        self.char1.db.species = "human"
+        rifle = self._rifle(self.char1)
+        self.char1.held_items = {"left_hand": rifle, "right_hand": rifle}
+        self.assertEqual(self.char1.grip_notes(), "")
 
     def test_the_taken_weapon_speaks_first_and_each_weapon_once(self):
         self.char1.db.species = "human"
