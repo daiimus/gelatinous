@@ -119,6 +119,13 @@ a "Value" column as a considered answer:
   two shots, and all are sized against nothing else. Alternation between
   held weapons (slice 2) lowers the average damage of mixed loadouts
   against today's always-best rule; nobody has measured by how much.
+- **Shop prices at Gaia's Treasures are untuned (2026-10-06).** The live
+  shelving there (#2011) lists the bat, fan, katana, dagger, sword, staff,
+  throwing knife, axe and shuriken at 0₮, and the Voxhaul Tiger claw at
+  180₮ (its weapons-shelf price, MULTI_WEAPON_COMBAT_SPEC §13 slice 4).
+  Owner, asked whether to leave the claw at 180: *"Sure. Future balance
+  issue."* Nothing to size it against until the balance pass prices the
+  rest.
 
 ## See Also
 
