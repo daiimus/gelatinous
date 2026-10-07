@@ -31,7 +31,7 @@ class TheHitBonusLandsOnTheRoll(EvenniaTest):
         self.claws = create_object("typeclasses.items.Item", key="carbide blades", location=None)
 
     def _swing(self, hit_bonus):
-        choice = WeaponChoice(items=(self.claws,), slots=(), lead_slot="left_hand", damage=0,
+        choice = WeaponChoice(items=(self.claws,), slots=(), lead_slot="left_hand", hands_required=1, damage=0,
                               hit_bonus=hit_bonus, damage_type="cut", weapon_type="nailz_akimbo",
                               is_ranged=False, natural=True)
         spl = mock.MagicMock()
@@ -68,7 +68,7 @@ class TheWheelTurnsOnlyOnARealSwing(TheHitBonusLandsOnTheRoll):
         setattr(self.char1.ndb, NDB_PROXIMITY, set())            # not closed to melee
         if getattr(self.char1.ndb, NDB_LAST_WEAPON_SLOT, None) is not None:
             delattr(self.char1.ndb, NDB_LAST_WEAPON_SLOT)
-        choice = WeaponChoice(items=(self.claws,), slots=("left_hand",), lead_slot="left_hand", damage=0,
+        choice = WeaponChoice(items=(self.claws,), slots=("left_hand",), lead_slot="left_hand", hands_required=1, damage=0,
                               hit_bonus=0, damage_type="cut", weapon_type="nailz", is_ranged=False, natural=True)
         with mock.patch.object(A, "choose_weapon", return_value=choice), \
              mock.patch.object(A, "get_splattercast", return_value=mock.MagicMock()):

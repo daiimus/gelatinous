@@ -79,6 +79,7 @@ contest in `commands/combat/movement.py`.
 ---
 
 ## Gaps the ledger is NOT sized against
+- **Under-grip factor (GRIP_ENFORCEMENT_SPEC §4, 2026-10-06):** a two-handed weapon with no free second hand multiplies accuracy by 0.60 (one of two), 0.80 (two of three); placeholder anchors `(0, .20), (.5, .60), (2/3, .80), (1, 1)`. Nothing tuned; owner: *"Sure."*
 
 The rows above say what each number tunes. None of them says what it was
 balanced *against*, because the things they would have to be balanced

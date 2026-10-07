@@ -1,6 +1,6 @@
 # Grip Enforcement (`hands_required`)
 
-> **Status:** 📋 Proposal — designed 2026-10-06 from a read-only map of the tree; the five rulings decided the same day (§6); nothing built. Slice 3 of `MULTI_WEAPON_COMBAT_SPEC.md` (§13, §15). Owner ruling 2026-10-06, verbatim: *"hands_require should have enforcement. Whether it happens now or in the future isn't relevant to me."*
+> **Status:** 📋 Proposal — designed 2026-10-06 from a read-only map of the tree; the five rulings decided the same day (§6); the grip model changed to the implicit one the same evening on the owner's concern (§2); in build as #3716. Slice 3 of `MULTI_WEAPON_COMBAT_SPEC.md` (§13, §15). Owner ruling 2026-10-06, verbatim: *"hands_require should have enforcement. Whether it happens now or in the future isn't relevant to me."*
 
 ## 0. What is already decided
 
@@ -25,35 +25,30 @@ This proposal builds on those four sentences. §6 lists what still needs the own
 
 ## 2. Design at a glance
 
-1. **Data.** `WEAPON_ATTR_HANDS_REQUIRED` beside the other weapon attribute constants; read with default 1; prototypes gain `hands_required` where their banks already say two hands (§6, ruling 3). `TENNIS_RACKET`'s stray key is fixed.
-2. **The grip.** `wield <weapon>` takes as many free grasping slots as the weapon requires, up to what is free, in the body's slot order; with fewer free slots than required it takes what it can and the wield line says so (ruling 5: nobody under-grips by choice). `wield <weapon> in <hand>` names the leading hand; a two-hander still takes a second free hand when one exists. Wielding a weapon already in hand adds a free slot to its grip instead of refusing. One object in several slots is one entry in `inventory`, `look` and the persona, marked "(both hands)" or "(all N hands)".
-3. **The penalty.** `WeaponChoice` gains `hands_required` and `grip` (slots held); `process_attack` multiplies the attacker's effective skill by a **grip factor** when `grip < hands_required`, a separate term beside manipulation so it survives the manipulation override and the fail-open paths. Placeholder: one of two hands → 0.6; recorded in `BALANCE_LEDGER.md`. A natural weapon and an integrated weapon are never under-gripped (their requirement is their own body).
-4. **Hands come and go.** The grip is whatever slots hold the object when the swing happens, so a hand broken in place or healed changes the factor with no state to clear. What a cut does to a two-hand grip is ruling 2 (§6).
-5. **Everything else reads the view.** Free-hand pickers (get, give, catch, armor, shops) see no free slot while both are gripped: "hands full" as today. Disarm takes the whole weapon (decided). The wheel sees one option (shipped). Surplus-limb initiative counts free grasping limbs as today.
-6. **Prose, v1.** One line at wield time for an under-grip ("You take the rifle in one hand; it wants two."); the `(both hands)` marker; no bank changes.
+**The grip is implicit.** A two-handed weapon sits in one hand, as every weapon does today; there is no stored grip. At the moment of the swing the game asks one question: is another grasping slot free? Free, full grip, no penalty. Full or gone, under-gripped, the penalty. The state is exactly what `inventory` shows. This is what CAPACITY §6.1 said in June ("2H weapon held one-handed, **no free second hand**"), and the owner chose it over a stored two-slot grip after the rulings: *"I'm concerned about ruling 5 and the logic. Seems like it'll cause issues with juggling items and it'll be unclear to players."* ... *"Sounds good to me."*
 
-## 3. The grip in detail
+1. **Data.** `WEAPON_ATTR_HANDS_REQUIRED` beside the other weapon attribute constants; read with default 1; the bat, the staff and the chainsaw gain `hands_required 2` (ruling 3); `TENNIS_RACKET`'s stray `hands` key goes.
+2. **The penalty.** `WeaponChoice` carries `hands_required`. `grip_hit_factor(choice, free_slots)` in `world/combat/capacity.py` beside `manipulation_hit_factor`: 1.0 for a natural or integrated weapon, for a weapon wanting one hand, or when the slots held plus the free slots meet the requirement; otherwise the placeholder curve by effective hands over required (1 of 2 → 0.6, 2 of 3 → 0.8; ruling 4). `process_attack` multiplies it into the attacker's effective skill beside manipulation and logs it in the `ATTACK_CAPACITY` line.
+3. **Telling the player.** The `inventory` Held line marks a two-handed weapon "(two-handed)". When a wield or a get fills the last free hand, the line says what it cost: "The bolt-action rifle hangs one-handed." When the weapon taken is itself two-handed and no second hand is free: "It wants both hands."
+4. **Hands come and go** (ruling 2, "It stays"). Cut or break the free hand and the weapon stays where it is, now under-gripped; cut the holding hand and it drops, as every held item does. No state to clear.
+5. **Everything else is unchanged.** Wield and get pick hands as today; disarm takes the item; the wheel sees one option; many hands means a spare steadying hand.
 
-**Forming it.** `CmdWield` resolves the weapon, reads `hands_required` (default 1), lists free slots in `slot_order`, and calls `wield_item(item, hands=[...])` with up to `hands_required` of them. With a named hand, that slot first and then the next free slots up to the requirement (ruling 5). With zero free slots, the current refusal.
+## 3. The cut's stale write-back
 
-**Growing it.** `wield rifle` while the rifle is already held in one slot and another is free adds the free slot. The refusal "already wielding X" remains only when no slot is free.
-
-**Breaking it.** Any move of the object out of the body clears every slot (`release_slots`, shipped). `unwield`, `drop`, `give`, `throw`, `wrest` and death already end there; throw's `remove_from_hand` and wrest's restore are made to clear and restore every slot the grip had. `detach_items_to_appendage` re-reads the store after each drop instead of writing a stale snapshot back (the latent bug in §1, fixed first and on its own).
-
-**Showing it.** `inventory` Held, `look` and the LLM persona group slots by object: "a bolt-action rifle (both hands)". `list_held_items` follows.
+`detach_items_to_appendage` drops the cut hand's item through a move that clears every slot holding it, then writes a snapshot taken before the drop back into the store. With one object in two slots (reachable today through the broken-hand path, §1) the surviving slot would point at an object on the floor. The store is re-read after the drops and only the cut keys are cleared. Fixed first, with its own test, because the grip factor reads the hands view.
 
 ## 4. The penalty in detail
 
-- `grip_hit_factor(choice)` in `world/combat/capacity.py` beside `manipulation_hit_factor`: `1.0` when `choice.natural`, when `hands_required <= 1`, or when `len(choice.slots) >= hands_required`; otherwise the placeholder curve by `held / required` (1/2 → 0.6; 2/3 → 0.8 for a future three-hand weapon). `process_attack`: `effective_skill = motorics × sight × manipulation × grip`, logged to splattercast as `ATTACK_CAPACITY ... grip 0.60` when below one.
-- Not folded into `hit_bonus`: an akimbo profile replaces `hit_bonus`, and the manipulation override would null a grip penalty that has nothing to do with chrome.
-- Ranged and melee alike; the aim verbs peek the same choice and need no change.
+- `grip_hit_factor(choice, free_slots)`: `effective = min(required, held + free)`; below the requirement, `_piecewise(effective / required, UNDER_GRIP_CURVE)` with the placeholder anchors `(0, 0.20), (0.5, 0.60), (2/3, 0.80), (1, 1.0)`; recorded in `BALANCE_LEDGER.md`.
+- A separate factor, not folded into `hit_bonus` (an akimbo profile replaces that) and not inside `manipulation_hit_factor` (its override and fail-open paths have nothing to do with a grip).
+- Ranged and melee alike. The aim verbs peek the same choice and need no change.
 
 ## 5. Bodies
 
-- **One hand.** A one-armed body wields a rifle under-gripped and fights at the factor; nothing is refused (ruling 1 confirms or overturns). The initiate and aim prose do not change.
-- **Broken in place.** The hand drops out of the view, the object stays in the store under the hidden slot; the view-side grip shrinks, the factor applies, and heal restores it. Pre-existing and now paid for, not fixed here.
-- **Cut.** Today the cut hand's item drops and the whole grip ends. Ruled (2): a two-hand grip stays in the surviving hand, under-gripped; only a one-slot grip's item drops with its hand.
-- **Three or more hands.** A tail or a third arm is one more free slot; a two-hand weapon takes two in slot order and the rest stay free; a four-armed body can grip a rifle and still draw a pistol.
+- **One hand.** A one-armed body has no second slot, so a two-handed weapon is always under-gripped; nothing is refused (ruling 1). The initiate and aim prose do not change.
+- **Broken in place.** The hand drops out of the view, so it is no longer a free slot; the factor applies until it heals. The object a broken hand held stays in the store under the hidden slot (pre-existing; not fixed here).
+- **Cut.** The cut hand's item drops as today; a two-handed weapon in the other hand stays and is under-gripped from then on (ruling 2 falls out of the model).
+- **Three or more hands.** A tail or a third arm is one more slot that may be free: a rifle in one hand and a pistol in the other still have a steadying tail. Extra hands buy readiness, as §11 of the multi-weapon spec promised.
 - **Integrated and natural weapons.** Never under-gripped; their requirement is satisfied by their own body (the arm-gun's "flesh hand steadying" is flavour).
 
 ## 6. Owner rulings
@@ -70,15 +65,13 @@ Decided before this proposal and not re-asked: the minimum, the scaled penalty, 
 
 ## 7. Slices
 
-- **3a, the grip and the penalty** (one issue): the constant and reads; `TENNIS_RACKET`; `wield_item(hands=...)` and `CmdWield` taking up to `hands_required` free slots, growing a grip, the named-hand form; grouped display in `inventory`, `look`, the persona; throw and wrest clearing and restoring every slot; the stale write-back in `detach_items_to_appendage` fixed first and tested; `WeaponChoice.hands_required` and `grip`; `grip_hit_factor` in the roll with its splattercast line; the wield-time line. Tests: a rifle takes two hands; a named hand takes one; a second wield grows the grip; one display line per object; the factor by held/required; natural and integrated never penalised; the cut leaves no ghost in the surviving slot. Play: wield a rifle one- and two-handed and read the audit factor; sever one hand of a two-hand grip.
-- **3b, melee data** (ruled): bat, staff, chainsaw to 2; their banks already agree.
-- **3c, the cut** (ruled: it stays): `detach_items_to_appendage` drops only a one-slot grip's item; a multi-slot grip loses the cut slot and keeps the rest, with its narrative line.
+- **3, one issue (#3716):** the constant and reads; `TENNIS_RACKET`; bat, staff, chainsaw to 2; `WeaponChoice.hands_required`; `grip_hit_factor` in the roll with its audit line; the inventory marker; the wield and get notices; the stale write-back fixed first. Tests: the factor by hands (free, full, gone, one-hander, natural, integrated, two of three); the roll with and without a free hand; the marker; the notices; the data; the cut leaves no ghost in the surviving slot. Play: a rifle with a free hand (no grip line in the audit), with a bottle in the other hand (0.60), on a one-armed body (0.60); the inventory marker; the notice.
 
 ## 8. Risks
 
 - Reading `hands_required` off every Item means corpses, radios and terminals carry a 1 nobody meant; the reads are guarded by the weapon tag path (the door's real-weapon filter) so a radio in hand never counts.
 - Live objects carry whatever was written at spawn; a melee data change (3b) reaches existing objects only through the prototype batch update or a respawn. Census first.
-- The grouped display touches `look`, `inventory` and the persona; a stray double listing would be visible at once in play.
+- The inventory marker is the one display change; `look` and the persona are untouched.
 
 ## See also
 

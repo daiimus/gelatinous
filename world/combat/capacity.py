@@ -194,6 +194,9 @@ def moving_dodge_factor(character) -> float:
 # Breadth from surplus arms (Q2: initiative / disarm-resist / loadout) is a
 # separate output and a future combat revision — not modelled here.
 MANIPULATION_CURVE = ((0.0, 0.20), (0.5, 0.65), (1.0, 1.0))
+# Under-grip: effective hands over hands required (GRIP_ENFORCEMENT_SPEC §4;
+# placeholder, BALANCE_LEDGER): one of two -> 0.60, two of three -> 0.80.
+UNDER_GRIP_CURVE = ((0.0, 0.20), (0.5, 0.60), (2.0 / 3.0, 0.80), (1.0, 1.0))
 MANIPULATION_OVERRIDE_CONDITION = "manipulation_override"
 
 
@@ -263,3 +266,32 @@ def manipulation_hit_factor(attacker, weapon, slots=None) -> float:
     if not caps:
         return 1.0
     return _piecewise(min(caps), MANIPULATION_CURVE)
+
+
+def grip_hit_factor(choice, free_slots) -> float:
+    """Multiplier on the attacker's motorics from how many hands the weapon
+    has against how many it wants (GRIP_ENFORCEMENT_SPEC §2, §4; CAPACITY §6.1).
+
+    The grip is implicit: a two-handed weapon sits in one hand, and a FREE
+    grasping slot is the second hand. ``free_slots`` is how many other slots
+    hold nothing right now. Natural and integrated weapons are their own
+    body and never under-grip; a weapon wanting one hand never does either.
+    Owner rulings 2026-10-06: penalised, never refused; nobody under-grips
+    by choice, only when the other hand is full or gone.
+    """
+    if choice is None or getattr(choice, "natural", False):
+        return 1.0
+    item = getattr(choice, "item", None)
+    if getattr(getattr(item, "db", None), "integrated", False):
+        return 1.0
+    try:
+        required = int(getattr(choice, "hands_required", 1) or 1)
+    except (TypeError, ValueError):
+        required = 1
+    if required <= 1:
+        return 1.0
+    held = len(getattr(choice, "slots", ()) or ()) or 1
+    effective = min(required, held + max(0, int(free_slots or 0)))
+    if effective >= required:
+        return 1.0
+    return _piecewise(effective / required, UNDER_GRIP_CURVE)

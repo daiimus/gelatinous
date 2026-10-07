@@ -16,7 +16,7 @@ from .debug import get_splattercast
 from world.combat.messages import get_combat_message
 from world.combat.weapon_choice import choose_weapon, note_weapon_used
 from world.combat.capacity import (
-    sight_hit_factor, moving_dodge_factor, manipulation_hit_factor,
+    sight_hit_factor, moving_dodge_factor, manipulation_hit_factor, grip_hit_factor,
 )
 from world.medical.utils import select_hit_location, select_target_organ
 
@@ -420,11 +420,15 @@ def process_attack(handler, attacker, target, attacker_entry, combatants_list):
     # melee: motorics × manipulation(wield hand) × light-sight.
     manip_factor = manipulation_hit_factor(
         attacker, weapon, slots=choice.slots if choice else None)
-    effective_skill = attacker_skill * sight_factor * manip_factor
-    if sight_factor < 1.0 or manip_factor < 1.0:
+    # The grip (GRIP_ENFORCEMENT_SPEC §2, §4): a two-handed weapon wants a
+    # free second hand; a free slot anywhere on the body is that hand.
+    free_slots = sum(1 for held in (getattr(attacker, "hands", None) or {}).values() if held is None)
+    grip_factor = grip_hit_factor(choice, free_slots)
+    effective_skill = attacker_skill * sight_factor * manip_factor * grip_factor
+    if sight_factor < 1.0 or manip_factor < 1.0 or grip_factor < 1.0:
         splattercast.msg(
             f"ATTACK_CAPACITY: {attacker.key} sight {sight_factor:.2f} × "
-            f"manip {manip_factor:.2f} "
+            f"manip {manip_factor:.2f} × grip {grip_factor:.2f} "
             f"({'ranged' if is_ranged_attack else 'melee'}) — motorics "
             f"{attacker_skill} -> {effective_skill:.1f}"
         )

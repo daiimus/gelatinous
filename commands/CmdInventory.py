@@ -276,9 +276,10 @@ class CmdInventory(Command):
                         f"{display}."
                     )
                 else:
+                    two_handed = " (two-handed)" if caller.wants_two_hands(item) else ""
                     lines.append(
                         f"A {item.get_display_name(caller)} is held in "
-                        f"your {display}."
+                        f"your {display}{two_handed}."
                     )
             else:
                 lines.append(f"Nothing is in your {display}.")
@@ -741,7 +742,8 @@ class CmdGet(Command):
 
                 hand_display = hand.replace("_", " ")
                 if from_container:
-                    caller.msg(f"You take {item_name} from {container_name} and hold it in your {hand_display}.")
+                    caller.msg(f"You take {item_name} from {container_name} and hold it in your {hand_display}."
+                               + caller.grip_notes(item))
                     msg_room_identity(
                         location=caller.location,
                         template=f"{{actor}} takes {item_name} from {container_name}.",
@@ -749,7 +751,8 @@ class CmdGet(Command):
                         exclude=[caller],
                     )
                 else:
-                    caller.msg(f"You pick up {item_name} and hold it in your {hand_display}.")
+                    caller.msg(f"You pick up {item_name} and hold it in your {hand_display}."
+                               + caller.grip_notes(item))
                     msg_room_identity(
                         location=caller.location,
                         template=f"{{actor}} picks up {item_name} and holds it in {hand_display}.",
