@@ -9,6 +9,7 @@ witness to Alert (keyed on the thief's apparent-uid — a disguise protects you)
 and raises a sourceless disturbance so the block runs hot.
 """
 
+from collections.abc import Mapping
 from random import choice, randint
 
 from evennia import Command
@@ -35,15 +36,29 @@ def _resolve_mark(caller, query):
 
 
 def _stealable_inventory(target):
-    """Carried items only — not worn, not held. What a pickpocket's fingers
-    can reach without a struggle."""
+    """Carried items only — not worn, not in a hand slot, never integrated
+    hardware. What a pickpocket's fingers can reach without a struggle.
+
+    The slot store (``held_items``) is read, not the derived ``hands`` view:
+    the view drops a slot whose hand is pulped in place, but what that slot
+    still holds is not loose. Integrated cyberware leaves a body by
+    severance or surgery only (AUGMENT_ABILITIES_SPEC), whatever slot it
+    sits in and whatever state that hand is in (#3698)."""
     worn = set()
     get_worn = getattr(target, "get_worn_items", None)
     if callable(get_worn):
         worn = {id(i) for i in (get_worn() or [])}
-    held = {id(i) for i in (getattr(target, "hands", None) or {}).values() if i}
+    # Mapping, not dict: a stored Attribute comes back as Evennia's
+    # _SaverDict, which is a MutableMapping and no dict subclass (the trap
+    # test_a_saverdict_is_not_a_dict pins). A stub without a store falls
+    # back to the view.
+    store = getattr(target, "held_items", None)
+    if not isinstance(store, Mapping):
+        store = getattr(target, "hands", None) or {}
+    held = {id(i) for i in store.values() if i}
     return [obj for obj in target.contents
-            if id(obj) not in worn and id(obj) not in held]
+            if id(obj) not in worn and id(obj) not in held
+            and not getattr(getattr(obj, "db", None), "integrated", False)]
 
 
 def _caught(thief, victim):

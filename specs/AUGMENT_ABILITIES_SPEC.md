@@ -36,8 +36,9 @@ the weapon the active weapon.
    Bare `/` lists your installed abilities and their states.
 2. **Slot-consuming weapons fill the slot.**  Deploy moves a real,
    persistent, character-owned weapon item into the hand slot;
-   retract removes it.  The item is locked against drop / give /
-   steal and flagged `integrated` (disarm checks the flag) — it is
+   retract removes it.  The item is locked against drop / give and
+   flagged `integrated`; disarm, wrest, throw and steal check the flag
+   (steal's lift moves quietly and never read the lock, #3698) — it is
    bolted to your skeleton.
 3. **Deploying auto-drops whatever the hand held** (user decision
    2026-06-12): the hand transforms regardless; the knife clatters
@@ -231,8 +232,8 @@ as a hand until you `/shotgun`.
   shotgun; retract restores the empty hand; state survives
   persistence round-trip.
 * Auto-drop: deploying over a held item drops it to the room.
-* Locks: the integrated item refuses drop/give/steal; disarm
-  refuses on `integrated`.
+* Locks: the integrated item refuses drop/give; disarm, wrest, throw
+  and steal's reachable-inventory filter refuse on `integrated` (#3698).
 * Gates: severed arm can't toggle; the ability vanishes with the
   organ.
 * Severance: deployed and retracted both end with the hardware on
