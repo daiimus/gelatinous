@@ -18,8 +18,7 @@ class _Tags:
 def _item(key, can_sever=None, damage=5):
     return SimpleNamespace(key=key, tags=_Tags(),
                            db=SimpleNamespace(is_ranged=False, damage=damage, weapon_type=key,
-                                              damage_type="cut", hit_bonus=None, akimbo_family=None,
-                                              akimbo_profiles=None, can_sever=can_sever))
+                                              damage_type="cut", hit_bonus=None, can_sever=can_sever))
 
 
 def _caller(**hands):

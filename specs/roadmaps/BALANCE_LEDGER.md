@@ -110,9 +110,13 @@ a "Value" column as a considered answer:
   `MULTI_WEAPON_COMBAT_SPEC.md` gives the Nailz claws prototype values of
   6 damage / +0 to-hit for one hand and 9 damage / +1 to-hit for both
   hands (an akimbo profile), and adds a `hit_bonus` term to every attack
-  roll that defaults to zero. They are prototype data, not constants, so
-  no row above tracks them; they were picked to keep an intact owner at
-  today's 9 damage and are sized against nothing else. Alternation between
+  roll that defaults to zero. Since slice 4 (2026-10-06) the pair values
+  live in `AKIMBO_PROFILES_BY_TYPE` in `world/combat/constants.py` (rows
+  `nailz` 9 / +1, `tiger_claws` 9 / +1, `light_pistol` 16 / −1 against
+  12 / +0 for one pistol); no row above tracks them. The Nailz numbers
+  were picked to keep an intact owner at today's 9 damage, the others to
+  match them or to make two pistols worth more than one and less than
+  two shots, and all are sized against nothing else. Alternation between
   held weapons (slice 2) lowers the average damage of mixed loadouts
   against today's always-best rule; nobody has measured by how much.
 

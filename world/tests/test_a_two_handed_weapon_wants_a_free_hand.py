@@ -178,8 +178,7 @@ class TheDataSaysSo(TestCase):
     def test_the_door_reads_the_requirement(self):
         rifle = SimpleNamespace(key="rifle", tags=SimpleNamespace(has=lambda k, category=None: True),
                                 db=SimpleNamespace(is_ranged=True, damage=5, weapon_type="bolt-action_rifle",
-                                                   damage_type=None, hit_bonus=None, akimbo_family=None,
-                                                   akimbo_profiles=None, hands_required=2, integrated=False))
+                                                   damage_type=None, hit_bonus=None, hands_required=2, integrated=False))
         char = SimpleNamespace(hands={"left_hand": rifle, "right_hand": None}, location=object(),
                                ndb=SimpleNamespace(), slot_order=lambda names: sorted(names))
         with mock.patch("world.medical.augments.get_active_natural_weapons", return_value=[]):

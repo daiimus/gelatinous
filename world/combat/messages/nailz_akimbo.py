@@ -1,7 +1,7 @@
 """Nailz, both hands out: the designed pair (MULTI_WEAPON_COMBAT_SPEC §7;
 owner ruling §14 #10: Nailz has its own bank pair). `nailz` is one hand,
-`nailz_akimbo` the pair. Only the NAILZ_CLAWS prototype names these banks;
-the held Tiger Claws (slice 4) will bring `tiger_claws` and
+`nailz_akimbo` the pair, named by the `nailz` row of
+`AKIMBO_PROFILES_BY_TYPE`; the held Tiger claws have `tiger_claws` and
 `tiger_claws_akimbo` of their own.
 """
 MESSAGES = {

@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
-from world.combat.constants import NDB_LAST_WEAPON_SLOT, NDB_PROXIMITY
+from world.combat.constants import AKIMBO_PROFILES_BY_TYPE, NDB_LAST_WEAPON_SLOT, NDB_PROXIMITY
 from world.combat.weapon_choice import (aimed_weapon_name, choose_weapon, has_ranged_option,
                                         note_weapon_used, weapon_options)
 
@@ -26,9 +26,7 @@ class _Tags:
 
 def _weapon(key, ranged, damage, *, weapon=True, **attrs):
     db = SimpleNamespace(is_ranged=ranged, damage=damage, weapon_type=attrs.pop("weapon_type", key),
-                         damage_type=attrs.pop("damage_type", None), hit_bonus=attrs.pop("hit_bonus", None),
-                         akimbo_family=attrs.pop("akimbo_family", None),
-                         akimbo_profiles=attrs.pop("akimbo_profiles", None))
+                         damage_type=attrs.pop("damage_type", None), hit_bonus=attrs.pop("hit_bonus", None))
     return SimpleNamespace(key=key, db=db, tags=_Tags(weapon))
 
 
@@ -294,9 +292,8 @@ class TheWheel(TestCase):
         # Owner ruling §14 #3. The pair groups as one option under the
         # left hand; the fangs sit on the head, a non-grasping host that
         # the display order lists before the hands (JAWZ host "head").
-        prof = {2: {"damage": 9, "hit_bonus": 1, "weapon_type": "nailz_akimbo"}}
-        left = _weapon("left claws", False, 6, akimbo_family="nailz", akimbo_profiles=dict(prof))
-        right = _weapon("right claws", False, 6, akimbo_family="nailz", akimbo_profiles=dict(prof))
+        left = _weapon("left claws", False, 6, weapon_type="nailz")
+        right = _weapon("right claws", False, 6, weapon_type="nailz")
         fangs = _weapon("fangs", False, 8)
         attacker = _char([None, None], slots=["left_hand", "right_hand"])
         with _naturals(("left_hand", left), ("right_hand", right), ("head", fangs)):
@@ -331,8 +328,7 @@ class AkimboGroupingTests(TestCase):
     PROFILES = {2: {"damage": 9, "hit_bonus": 1, "weapon_type": "nailz_akimbo"}}
 
     def _claw(self, key="claws"):
-        return _weapon(key, False, 6, weapon_type="nailz", damage_type="cut",
-                       akimbo_family="nailz", akimbo_profiles=dict(self.PROFILES))
+        return _weapon(key, False, 6, weapon_type="nailz", damage_type="cut")
 
     def test_two_claws_make_one_attack_on_the_pair_profile(self):
         left, right = self._claw("left claws"), self._claw("right claws")
@@ -362,18 +358,20 @@ class AkimboGroupingTests(TestCase):
         self.assertEqual(options[0].items, (a, b))
         self.assertIs(options[1].item, c)
 
-    def test_a_stored_string_count_still_groups(self):
-        left = _weapon("l", False, 6, akimbo_family="nailz", akimbo_profiles={"2": {"damage": 9}})
-        right = _weapon("r", False, 6, akimbo_family="nailz", akimbo_profiles={"2": {"damage": 9}})
-        attacker = _char([None, None], slots=["left_hand", "right_hand"])
-        with _naturals(("left_hand", left), ("right_hand", right)):
-            self.assertEqual(choose_weapon(attacker).damage, 9)
+    def test_a_type_without_a_row_never_pairs(self):
+        # Two knives are two options: only a weapon_type with a row in
+        # AKIMBO_PROFILES_BY_TYPE groups (owner ruling §14 #14).
+        self.assertNotIn("knife", AKIMBO_PROFILES_BY_TYPE)
+        left, right = _weapon("l", False, 6, weapon_type="knife"), _weapon("r", False, 6, weapon_type="knife")
+        attacker = _char([left, right], slots=["left_hand", "right_hand"])
+        self.assertEqual([len(o.items) for o in weapon_options(attacker)], [1, 1])
 
-    def test_different_families_never_pair(self):
+    def test_two_types_with_rows_never_pair(self):
         left = self._claw()
-        other = _weapon("jawz", False, 8, akimbo_family="jawz", akimbo_profiles=dict(self.PROFILES))
+        other = _weapon("jawz", False, 8, weapon_type="jawz")
         attacker = _char([None], slots=["left_hand"])
-        with _naturals(("left_hand", left), ("jaw", other)):
+        with patch.dict(AKIMBO_PROFILES_BY_TYPE, {"jawz": dict(self.PROFILES)}), \
+                _naturals(("left_hand", left), ("jaw", other)):
             options = weapon_options(attacker)
         self.assertEqual([len(o.items) for o in options], [1, 1])
 
@@ -381,11 +379,10 @@ class AkimboGroupingTests(TestCase):
         # is_ranged and natural are dataclass fields a profile could reach
         # through replace(); a stray key ("reach") would raise there. The
         # AKIMBO_PROFILE_FIELDS filter keeps all three out.
-        left = _weapon("l", False, 6, akimbo_family="x",
-                       akimbo_profiles={2: {"damage": 9, "is_ranged": True, "natural": False, "reach": 3}})
-        right = _weapon("r", False, 6, akimbo_family="x", akimbo_profiles={2: {"damage": 9}})
+        left, right = _weapon("l", False, 6, weapon_type="x"), _weapon("r", False, 6, weapon_type="x")
         attacker = _char([None, None], slots=["a", "b"])
-        with _naturals(("a", left), ("b", right)):
+        row = {2: {"damage": 9, "is_ranged": True, "natural": False, "reach": 3}}
+        with patch.dict(AKIMBO_PROFILES_BY_TYPE, {"x": row}), _naturals(("a", left), ("b", right)):
             choice = choose_weapon(attacker)
         self.assertEqual(choice.damage, 9)
         self.assertFalse(choice.is_ranged)
