@@ -27,7 +27,7 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 
 1. **Each hand owns its claws.** Every host organ's `ability_state` is authoritative; the mirror is deleted; each host spawns its own weapon object. Severance takes exactly that hand's claws; reattachment keeps the object it finds on the appendage.
 2. **One door for "what weapon".** `choose_weapon(char, target=None)` in a new `world/combat/weapon_choice.py` returns a `WeaponChoice` and replaces the six selection functions: `get_wielded_weapon`, `get_wielded_weapons`, `is_wielding_ranged_weapon`, `select_weapon_for_engagement` and `find_best_weapon` in `world/combat/utils.py`, and `get_active_natural_weapon` in `world/medical/augments.py`. Every gate, every attack and every line of prose asks it.
-3. **Akimbo is weapon data.** A prototype declares an `akimbo_family` and `akimbo_profiles` keyed by deployed count. Two claws become ONE option with the count-2 profile: one attack, uplifted values, the akimbo bank. One claw is the item's own values and the one-hand bank.
+3. **Akimbo is weapon-type data.** `AKIMBO_PROFILES_BY_TYPE` in `world/combat/constants.py` maps a `weapon_type` to profiles keyed by count (owner ruling §14 #14, slice 4; slices 1-3 carried `akimbo_family` and `akimbo_profiles` on each prototype instead). Two items of one type with a row become ONE option with the count-2 profile: one attack, uplifted values, the pair bank with the lead item's name in its lines. One item is its own values and its own bank.
 4. **Alternation is the general rule.** Among the options that can reach the target, the swing rotates in a stable hand order, one option per round. Akimbo groups rotate as one option.
 5. **Toggle acts on every host.** `/nailz` deploys or retracts every living host at once.
 6. **Handguns follow the same rule** without new code: two pistols alternate; akimbo pistols are later data.
@@ -45,12 +45,11 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 
 **Weapon attributes** (read with defaults; never written onto existing items):
 - `hit_bonus` (int, default 0): a to-hit term added beside the charge bonus.
-- `akimbo_family` (str): members of one family may group.
-- `akimbo_profiles` (`{count: overrides}`): overrides limited to `damage`, `hit_bonus`, `weapon_type`, `damage_type`. Count 1 is the item's own attributes.
+- Pairing is not an item attribute (slice 4): `AKIMBO_PROFILES_BY_TYPE[weapon_type]` = `{count: overrides}`, overrides limited to `damage`, `hit_bonus`, `weapon_type`, `damage_type`. Count 1 is the item's own attributes. Rows: `nailz`, `tiger_claws`, `light_pistol`.
 
-**Constants** in `world/combat/constants.py`: `WEAPON_ATTR_HIT_BONUS`, `WEAPON_ATTR_AKIMBO_FAMILY`, `WEAPON_ATTR_AKIMBO_PROFILES`, `AKIMBO_PROFILE_FIELDS`, `NDB_LAST_WEAPON_SLOT`. Bank names stay prototype data like every `weapon_type`.
+**Constants** in `world/combat/constants.py`: `WEAPON_ATTR_HIT_BONUS`, `AKIMBO_PROFILE_FIELDS`, `AKIMBO_PROFILES_BY_TYPE`, `NDB_LAST_WEAPON_SLOT`. Bank names stay prototype data like every `weapon_type`.
 
-**`NAILZ_CLAWS`** becomes one hand: five blades, placeholder damage 6, `weapon_type` `nailz` (was `tiger_claws` until slice 2), `akimbo_family` `nailz`, `akimbo_profiles {2: {damage: 9, hit_bonus: 1, weapon_type: "nailz_akimbo"}}`. An intact owner keeps today's damage 9.
+**`NAILZ_CLAWS`** becomes one hand: five blades, placeholder damage 6, `weapon_type` `nailz` (was `tiger_claws` until slice 2), its pair row `{2: {damage: 9, hit_bonus: 1, weapon_type: "nailz_akimbo"}}` (on the prototype until slice 4, in `AKIMBO_PROFILES_BY_TYPE` since). An intact owner keeps today's damage 9.
 
 **`WeaponChoice`** (frozen dataclass): `items` in slot order, `slots`, `lead_slot` (the host container for a natural weapon, the first grasping slot for a held one; the wheel's key), `damage`, `hit_bonus`, `damage_type`, `weapon_type`, `is_ranged`, `natural`; `.item = items[0]`; `.akimbo = len(items) > 1`. `None` means unarmed, as today.
 
@@ -71,7 +70,7 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 
 ## 5. Akimbo profiles by deployed count
 
-Grouping runs after the range filter. Members = options sharing an `akimbo_family`, distinct objects, in slot order; n = member count. k = the largest key in `akimbo_profiles` with k ≤ n. With no such key, or n = 1, members stay single. k members become ONE option: the lead item's attributes overlaid with `akimbo_profiles[k]` (profile fields only). Leftovers regroup by the same rule or rotate singly. Three claws never ride a count-2 profile with the third absorbed.
+Grouping runs after the range filter. Members = options of one `weapon_type` that has a row in `AKIMBO_PROFILES_BY_TYPE`, distinct objects, in slot order; n = member count. k = the largest key in that row with k ≤ n. With no such key, or n = 1, members stay single. k members become ONE option: the lead item's attributes overlaid with the row's profile for k (profile fields only). Leftovers regroup by the same rule or rotate singly. Three claws never ride a count-2 profile with the third absorbed.
 
 **Nailz placeholders:** one hand d6+6, +0 hit, bank `nailz`; both hands d6+9, +1 hit, bank `nailz_akimbo`. A severed or retracted hand drops n to 1 on the next swing with no state to clear.
 
@@ -128,7 +127,7 @@ Range: at range only ranged options rotate, so pistol plus knife fires the pisto
 
 Aim stays per character and gives no accuracy bonus. Either gun fires under it; aim stop or moving clears it once. Aim and stop prose name the peeked option's item. The ranged gates use `has_ranged_option`.
 
-Akimbo pistols later are data only: `akimbo_family`, `akimbo_profiles {2: {...weapon_type: "light_pistol_akimbo"}}`, and that bank. A pair is ONE attack, never two shots. Slice 2 makes the two-hand-grip lines in the heavy pistol, heavy revolver and machine pistol banks hand-neutral.
+Akimbo pistols are one row (slice 4): `light_pistol` → `{2: {damage 16, hit_bonus -1, weapon_type: "light_pistol_akimbo"}}` and that bank; any two light pistols pair whatever their make, and the bank says `{item_name}` for the lead pistol. A pair is ONE attack, never two shots. Slice 2 makes the two-hand-grip lines in the heavy pistol, heavy revolver and machine pistol banks hand-neutral.
 
 Out of scope: ammunition (`COMBAT_SYSTEM.md` banner); `hands_required` enforcement (today it only sets a default).
 
@@ -172,7 +171,7 @@ For each living character, for each ability with two or more living hosts, in sl
 - **1, claws plus the one door — SHIPPED** (PR A #3696 and #3701 on 2026-10-05, PR B #3702 on 2026-10-06; the migration PR C was dropped after the census, §12; #3695 and #3571 closed): per-host toggle; delete the mirror; per-location stow; `is_ability_deployed` and the director; readouts; `get_active_natural_weapons`; `weapon_choice.py` with grouping; repoint the 20 + 1 + 3 + 1 call sites and delete the five old functions; the hit term; manipulation by slots; the `NAILZ_CLAWS` profiles; the bank split; `_one` prose; reattach keeps the object; the migration. Held weapons keep range-then-max, but gates, initiate and the swing agree. Tests: rewrite `test_one_ability_two_hands.py` (one assertion inverts), `test_weapon_autoprioritizer.py`, `test_combat_manipulation_resolver.py`; add a test that both claw banks resolve all four phases. Specs: `AUGMENT_ABILITIES_SPEC.md` §1/§3/§8, `COMBAT_MESSAGE_FORMAT_SPEC.md`, `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md` §6.1. Play, checked via splattercast: deploy, fight akimbo, sever, fight single, surgical stow, chrome reattach.
 - **2, alternation and handguns** (issue #3707, owner "Go." 2026-10-06; in build): ordered `Character.hands` (`slot_order`); the ndb cursor `NDB_LAST_WEAPON_SLOT`; `note_weapon_used` after the attack gates; the max rule removed; akimbo groups keep their slot place; the Nailz bank rename; disarm order; pistol bank rewrites. Play: two light pistols; pistol plus knife at range and in melee; arm-gun plus pistol; Nailz plus Jawz.
 - **3, grip enforcement (`hands_required`; owner ruling 2026-10-06, §14 #13):** a two-handed weapon occupies two grasping slots when wielded; one-handed use is refused or penalised by a ruling to come; the wheel treats the grip as one option (§4 step 1 already allows it). Touches wield, get, disarm and the hands view. Design pass first.
-- **4, owner-gated content:** akimbo pistol models; a branded held Tiger Claws pair.
+- **4, content by weapon type (issue #3718, owner rulings 2026-10-06, §14 #14):** pairing moves from per-item attributes to `AKIMBO_PROFILES_BY_TYPE` (rows `nailz`, `tiger_claws`, `light_pistol`; Nailz unchanged in play); the `TIGER_CLAWS` prototype (Voxhaul Tiger claw, one per hand, damage 6, weapons rack 180); banks `tiger_claws`, `tiger_claws_akimbo` (fresh glove prose, 19-23 / 24 per phase) and `light_pistol_akimbo` (16 per phase).
 
 ## 14. Owner rulings
 
@@ -190,10 +189,11 @@ Decided (slice 2 gates), 2026-10-06, owner's words verbatim:
 - **#1 Alternation replaces "then highest damage" among weapons that can reach; range-first stays.** *"Yes. Using a weapon which won't even be in-range to attack makes no sense. Our order of operation is sound."*
 - **#3 Nailz and Jawz both out alternate.** *"Alternation seems fine. Maybe in a future state we can have an amalgamation of all cybernetic weapons so someone with a lot of arms can be quite interesting combat-wise."* (The amalgamation is a remark, recorded for later, not a decision.)
 - **#4 Bonus and opportunity attacks turn the wheel.** Owner: *"I kinda defer to the easier design. Either is fine."* The easier design is the one door with no special case: every attack, scheduled or not, runs `process_attack`, which asks `choose_weapon` and notes the slot used; the wheel turns on every swing.
-- **#7 Only the same `akimbo_family` pairs; heavy and light pistols alternate.** *"Yes, but the important part of this design is being able to assign Akimbo combinations so we can build on the system. Make sense?"* Combinations are data: `akimbo_family` and `akimbo_profiles` on the item; a later pairing table may name cross-family pairs without touching the door.
+- **#7 Only the same `akimbo_family` pairs; heavy and light pistols alternate.** *"Yes, but the important part of this design is being able to assign Akimbo combinations so we can build on the system. Make sense?"* Combinations are data: `akimbo_family` and `akimbo_profiles` on the item; a later pairing table may name cross-family pairs without touching the door. (Slice 4, #14, made the table real and retired the item attributes: `AKIMBO_PROFILES_BY_TYPE`, keyed by `weapon_type`.)
 - **#8 Rotation follows species display order (left hand first), which is also the default hand for wield, get and disarm; no dominant hand.** *"Species display order is fine. Eventually, we may want to setup dominant hand but that's a lot of complexity for minimal returns."*
 - **#10 Nailz gets its own bank pair.** *"They should each get their own messaging pairs. They're distinctly different weapons."* Slice 2 renames the Nailz banks to `nailz` and `nailz_akimbo` (prototype `weapon_type` and the pair profile follow); `tiger_claws` and `tiger_claws_akimbo` are left for the held Tiger Claws.
 - **#13 Ammunition stays out.** *"Ammunition, yes, it isn't design yet. Right?"* Right: `COMBAT_SYSTEM.md` lists ammunition as aspirational and not designed, with a standing note not to build it unasked. **`hands_required` enforcement is wanted; when is the builder's call.** Owner, after the ask was written down in §15: *"hands_require should have enforcement. Whether it happens now or in the future isn't relevant to me."* Placed as slice 3 (§13), after alternation.
+- **#14 Akimbo pairs by weapon type; the bank inserts the item's name.** On the slice-4 draft (the Model 6 pairing with itself; a Voxhaul Tiger claw per hand at Nailz numbers, 180 on the rack; the claws' banks restored from history and the pistol pair bank new; nothing else to build): *"A. I dig it. I think the design would make sense to focus on weapon type akimbo combinations and then just insert the item name. Get me? This creates fewer dedicated pairings initially but covers a wider gauntlet. B. Seems fine. These are just staples. C. Cool. D. Cool."* So: one table keyed by `weapon_type`, the per-item `akimbo_family` / `akimbo_profiles` attributes retired (Nailz moves into the table with the same numbers and banks), `{item_name}` in the pair banks. The claws' banks were written fresh rather than restored: #10 gives each weapon its own prose, and the historical bank is the Nailz pair bank under another name.
 
 Slice 1 close-out, 2026-10-06, owner's words: *"Yeah. Clean up is good."* The migration (§12) is dropped: the census found nothing to migrate. #3699 (the escort usher's identity comparison) is taken next: *"Sure."*
 

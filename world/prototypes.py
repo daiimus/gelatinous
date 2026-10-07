@@ -258,6 +258,22 @@ DAGGER = {
     "can_sever": True,  # Edged: can sever limbs from a corpse (PR #190)
 }
 
+# Voxhaul Tiger claw: a held claw-glove, sold one to a hand
+# (MULTI_WEAPON_COMBAT_SPEC §13 slice 4, #3718). Two of them pair through the
+# `tiger_claws` row of AKIMBO_PROFILES_BY_TYPE into one attack on the
+# `tiger_claws_akimbo` bank; one glove swings on `tiger_claws`.
+TIGER_CLAWS = {
+    "prototype_parent": "MELEE_WEAPON_BASE",
+    "key": "Voxhaul Tiger claw",
+    "aliases": ["tiger claw", "claw", "claws", "tiger claws", "voxhaul claw", "claw glove"],
+    "desc": "A Voxhaul Tiger claw: a reinforced leather glove with a stamped-steel knuckle plate and four curved blades riveted over the fingers, a wide strap and a buckle at the wrist. The brand mark on the strap is a tiger's head worn to a smear. Sold one to a hand; the second is a matter of taste.",
+    "damage": 6,
+    "deflection_bonus": -0.05,  # a glove is nothing to parry with
+    "weapon_type": "tiger_claws",
+    "damage_type": "cut",  # Medical system injury type
+    "can_sever": True,  # Edged: can sever limbs from a corpse (PR #190)
+}
+
 # Tessen (iron war fan)
 FIGHTING_FAN = {
     "prototype_parent": "MELEE_WEAPON_BASE",
@@ -2406,8 +2422,6 @@ NAILZ_CLAWS = {
         ("damage_type", "cut"),
         ("hands_required", 1),
         ("integrated", True),
-        ("akimbo_family", "nailz"),
-        ("akimbo_profiles", {2: {"damage": 9, "hit_bonus": 1, "weapon_type": "nailz_akimbo"}}),
     ],
 }
 
@@ -3415,6 +3429,7 @@ WEAPONS_SHELF = {
             "KATANA": 500,
             "SWORD": 250,
             "DAGGER": 80,
+            "TIGER_CLAWS": 180,
             "CHAINSAW": 800,
             "STAFF": 150,
             "BASEBALL_BAT": 60,

@@ -23,9 +23,11 @@ Rule order, a pure peek (nothing here changes state):
    options that can reach, deployed naturals win outright. At range a
    held pistol fires while the claws stay out; in melee the claws swing
    and the knife waits.
-5. Akimbo grouping (§5): options sharing an ``akimbo_family`` become ONE
-   option on the lead item's attributes overlaid with the profile for the
-   largest count the group covers. One attack, never one per limb.
+5. Akimbo grouping (§5): options of one ``weapon_type`` with a row in
+   ``AKIMBO_PROFILES_BY_TYPE`` become ONE option on the lead item's
+   attributes overlaid with the row for the largest count the group covers
+   (owner ruling §14 #14: pairs by weapon type, the item's name in the
+   bank). One attack, never one per limb.
 6. The wheel (§6): one option swings per attack; the next attack takes the
    next option that can reach, in slot order, wrapping. A cursor on the
    attacker (`NDB_LAST_WEAPON_SLOT`) remembers the lead slot that swung;
@@ -35,8 +37,8 @@ Rule order, a pure peek (nothing here changes state):
 from dataclasses import dataclass, replace
 
 from world.combat.constants import (
-    AKIMBO_PROFILE_FIELDS, NDB_LAST_WEAPON_SLOT, WEAPON_ATTR_AKIMBO_FAMILY,
-    WEAPON_ATTR_AKIMBO_PROFILES, WEAPON_ATTR_HANDS_REQUIRED, WEAPON_ATTR_HIT_BONUS,
+    AKIMBO_PROFILE_FIELDS, AKIMBO_PROFILES_BY_TYPE, NDB_LAST_WEAPON_SLOT,
+    WEAPON_ATTR_HANDS_REQUIRED, WEAPON_ATTR_HIT_BONUS,
     WEAPON_TYPE_UNARMED,
 )
 from world.combat.utils import _in_melee_range, get_weapon_damage
@@ -109,17 +111,10 @@ def _single(item, slots, natural, lead_slot=None) -> WeaponChoice:
     )
 
 
-def _profiles(item) -> dict:
-    """``akimbo_profiles`` with integer counts; a stored key may come back
-    as a string."""
-    raw = _db(item, WEAPON_ATTR_AKIMBO_PROFILES) or {}
-    out = {}
-    for key, overrides in dict(raw).items():
-        try:
-            out[int(key)] = dict(overrides or {})
-        except (TypeError, ValueError):
-            continue
-    return out
+def _profiles(option) -> dict:
+    """The pair rows for the option's weapon type: ``{count: overrides}``,
+    empty for the many types that never pair."""
+    return AKIMBO_PROFILES_BY_TYPE.get(option.weapon_type, {})
 
 
 def _grouped(members) -> WeaponChoice:
@@ -128,7 +123,7 @@ def _grouped(members) -> WeaponChoice:
     largest count the group covers. Only the profile fields may change;
     anything else a profile says is dropped here."""
     lead = members[0]
-    overrides = {k: v for k, v in _profiles(lead.item).get(len(members), {}).items()
+    overrides = {k: v for k, v in _profiles(lead).get(len(members), {}).items()
                  if k in AKIMBO_PROFILE_FIELDS}
     if "damage" in overrides:
         overrides["damage"] = int(overrides["damage"])
@@ -142,22 +137,22 @@ def _grouped(members) -> WeaponChoice:
 
 
 def _group_akimbo(options):
-    """Step 5. Members of one family, distinct objects, in slot order; the
-    profile for the largest count k with k <= n takes k members as one
-    option, leftovers regroup by the same rule or stay single. Every option
-    keeps its place in slot order: a group stands where its first member
-    stood, so the wheel (§6) turns through groups and singles alike in the
-    body's order."""
+    """Step 5. Members of one weapon type that has a row in
+    ``AKIMBO_PROFILES_BY_TYPE`` (owner ruling §14 #14: pairs by weapon type,
+    not by make), distinct objects, in slot order; the profile for the
+    largest count k with k <= n takes k members as one option, leftovers
+    regroup by the same rule or stay single. Every option keeps its place in
+    slot order: a group stands where its first member stood, so the wheel
+    (§6) turns through groups and singles alike in the body's order."""
     placed, pending = [], {}
     for index, option in enumerate(options):
-        family = _db(option.item, WEAPON_ATTR_AKIMBO_FAMILY)
-        if not family:
+        if option.weapon_type not in AKIMBO_PROFILES_BY_TYPE:
             placed.append((index, option))
             continue
-        pending.setdefault(family, []).append((index, option))
+        pending.setdefault(option.weapon_type, []).append((index, option))
     for members in pending.values():
         while members:
-            keys = [k for k in _profiles(members[0][1].item) if 1 < k <= len(members)]
+            keys = [k for k in _profiles(members[0][1]) if 1 < k <= len(members)]
             if not keys:
                 placed.append(members.pop(0))
                 continue
