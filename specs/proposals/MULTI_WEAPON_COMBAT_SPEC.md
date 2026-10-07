@@ -1,6 +1,6 @@
 # Multi-Weapon Combat Specification
 
-> **Status:** 📋 Proposal — designed 2026-10-01; slice 1 shipped 2026-10-05/06, slice 2 in review 2026-10-06. Covers claws per hand, akimbo profiles by deployed count, alternation between held weapons, handguns, and species with many hands. The six rulings that gate slice 1 (claws) were decided 2026-10-03 to 2026-10-05 (§14); the seven that gate slice 2 are open. Supersedes defect #3571 when slice 1 ships.
+> **Status:** 📋 Proposal — designed 2026-10-01; slices 1, 2 and 3 shipped 2026-10-05/06, slice 4 (pairs by weapon type, the Tiger claw, the pistol pair) in review 2026-10-06. Covers claws per hand, akimbo profiles by weapon type and count, alternation between held weapons, handguns, the grip, and species with many hands. The fourteen rulings in §14 were decided 2026-10-03 to 2026-10-06. Supersedes defect #3571 (closed with slice 1).
 
 ## 0. Owner rulings (2026-10-01, verbatim)
 
@@ -30,7 +30,7 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 3. **Akimbo is weapon-type data.** `AKIMBO_PROFILES_BY_TYPE` in `world/combat/constants.py` maps a `weapon_type` to profiles keyed by count (owner ruling §14 #14, slice 4; slices 1-3 carried `akimbo_family` and `akimbo_profiles` on each prototype instead). Two items of one type with a row become ONE option with the count-2 profile: one attack, uplifted values, the pair bank with the lead item's name in its lines. One item is its own values and its own bank.
 4. **Alternation is the general rule.** Among the options that can reach the target, the swing rotates in a stable hand order, one option per round. Akimbo groups rotate as one option.
 5. **Toggle acts on every host.** `/nailz` deploys or retracts every living host at once.
-6. **Handguns follow the same rule** without new code: two pistols alternate; akimbo pistols are later data.
+6. **Handguns follow the same rule** without new code: two pistols of different types alternate; two of one type that has a row in `AKIMBO_PROFILES_BY_TYPE` (two light pistols, slice 4) are one attack.
 7. **Nothing assumes two hands.** Slots come from the species' grasping containers; order from its display order.
 
 ## 3. Data model
@@ -95,7 +95,7 @@ This replaces "then highest damage" (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`
 **Bank pair convention:** the base bank is one weapon; `<type>_akimbo` is the designed pair. Bank = `choice.weapon_type`; the loader needs no change.
 - Slice 2 (owner ruling §14 #10) renamed the pair to `nailz.py` / `nailz_akimbo.py`; `tiger_claws` and `tiger_claws_akimbo` are left for the held Tiger Claws (slice 4). The slice-1 history: `git mv tiger_claws.py tiger_claws_akimbo.py`: it keeps today's both-hands prose. Fix the implant-contradicting lines (gloves, belt, "five blades", a self `{hit_location}`).
 - (slice 1) A new one-hand bank covering all four phases (a missing kill falls to the flat generic line), seeded from the hand-neutral lines.
-- Only the two `NAILZ_CLAWS` prototype attributes name the bank.
+- Only the `nailz` row of `AKIMBO_PROFILES_BY_TYPE` names the pair bank; the prototype's `weapon_type` names `nailz`.
 - All seven weapon-bank reads use `choice.weapon_type` with `item=choice.item`: hit, miss and kill in `world/combat/attack.py`; three initiate reads in `commands/combat/core_actions.py` (aiming-direction, local, and the target's defensive line); the auto-retarget initiate in `world/combat/utils.py`.
 - No `{hand}` in combat banks for v1; it would bind all seven sites.
 
@@ -121,7 +121,7 @@ A flesh hand's claws are expected to come back only by harvest and reinstall, wh
 
 ## 10. Ranged weapons and handguns
 
-Two pistols (`hands_required` 1) are two options. They fire one shot per round: left, right, left. Each shot uses its own damage, its own bank and its own hand's manipulation. Heavy plus light alternate, because different families never pair; average damage falls against today's always-heavy, and that is the stated cost.
+Two pistols of different types (`hands_required` 1) are two options. They fire one shot per round: left, right, left. Each shot uses its own damage, its own bank and its own hand's manipulation. Heavy plus light alternate, because two types never pair; average damage falls against today's always-heavy, and that is the stated cost. Two pistols of ONE type that has a row (two light pistols, slice 4) are one option on the pair row instead, and the bank names the lead pistol.
 
 Range: at range only ranged options rotate, so pistol plus knife fires the pistol every round with no reach line; in melee they alternate (a gun already works point-blank). A deployed arm-gun is a held weapon, not a natural, so it rotates with a pistol; until slice 2 its damage of 20 always won.
 

@@ -109,6 +109,11 @@ class TheNewBanksResolve(TestCase):
         for phase, role, line in _lines("tiger_claws"):
             self.assertIsNone(pat.search(line), (phase, role, line))
 
+    def test_blood_is_a_token_never_a_colour(self):
+        for name in NEW_BANKS:
+            for phase, role, line in _lines(name):
+                self.assertNotRegex(line, r"\b(red|crimson|scarlet|cobalt|amber)\b", (name, phase, role, line))
+
     def test_each_bank_keeps_to_its_own_weapon(self):
         for name in ("tiger_claws", "tiger_claws_akimbo"):
             for phase, role, line in _lines(name):
@@ -141,6 +146,8 @@ class TheDataSaysSo(TestCase):
         self.assertEqual((P.TIGER_CLAWS["weapon_type"], P.TIGER_CLAWS["damage"], P.TIGER_CLAWS["damage_type"]),
                          ("tiger_claws", 6, "cut"))
         self.assertNotIn("hands_required", P.TIGER_CLAWS)
+        # Nailz parity: hooks sever nothing and parry no better than bare steel.
+        self.assertFalse({"can_sever", "deflection_bonus"} & set(P.TIGER_CLAWS))
         self.assertEqual(dict(P.WEAPONS_SHELF["attrs"])["prototype_inventory"]["TIGER_CLAWS"], 180)
 
     def test_the_light_pistol_type_has_the_pair_row(self):

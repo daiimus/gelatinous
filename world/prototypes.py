@@ -268,10 +268,10 @@ TIGER_CLAWS = {
     "aliases": ["tiger claw", "claw", "claws", "tiger claws", "voxhaul claw", "claw glove"],
     "desc": "A Voxhaul Tiger claw: a reinforced leather glove with a stamped-steel knuckle plate and four curved blades riveted over the fingers, a wide strap and a buckle at the wrist. The brand mark on the strap is a tiger's head worn to a smear. Sold one to a hand; the second is a matter of taste.",
     "damage": 6,
-    "deflection_bonus": -0.05,  # a glove is nothing to parry with
     "weapon_type": "tiger_claws",
     "damage_type": "cut",  # Medical system injury type
-    "can_sever": True,  # Edged: can sever limbs from a corpse (PR #190)
+    # Like Nailz: hooks, not a severing edge (no can_sever), and no
+    # deflection tweak; the owner approved the glove "at Nailz numbers".
 }
 
 # Tessen (iron war fan)
@@ -2403,11 +2403,11 @@ NAILZ = {
 # The claw weapon Nailz extends (#526 M4).  Never held — the claws
 # ARE the hand; combat resolution reads it via natural-weapon
 # precedence.  One hand speaks the nailz bank, both hands the
-# nailz_akimbo bank (the pair profile below; owner ruling: Nailz has its
-# own pair, the held Tiger Claws will have theirs).
+# nailz_akimbo bank (the `nailz` row of AKIMBO_PROFILES_BY_TYPE; owner
+# ruling: Nailz has its own pair, the held Tiger claws have theirs).
 # One hand's claws (MULTI_WEAPON_COMBAT_SPEC §3, §5): each Nailz host
 # owns one of these. Both hands out group into ONE attack on the pair
-# profile below (d6+9, +1 to hit, the `nailz_akimbo` bank); one hand
+# row in AKIMBO_PROFILES_BY_TYPE (d6+9, +1 to hit, the `nailz_akimbo` bank); one hand
 # swings on these attributes (d6+6, +0, `nailz`). Placeholder
 # numbers, BALANCE_LEDGER.md.
 NAILZ_CLAWS = {

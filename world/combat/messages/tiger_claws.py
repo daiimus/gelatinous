@@ -138,9 +138,9 @@ MESSAGES = {
             'observer_msg': "The {item_name} bites {target_name}'s {hit_location} and holds a heartbeat too long. They scream into it."
         },
         {
-            'attacker_msg': "A flick of the wrist and the hook tips kiss the {hit_location}. Shallow, red, deliberate.",
-            'victim_msg': "A flick of the wrist and the hook tips kiss your {hit_location}. Shallow, red, deliberate.",
-            'observer_msg': "A flick of the wrist and the hook tips kiss {target_name}'s {hit_location}. Shallow, red, deliberate."
+            'attacker_msg': "A flick of the wrist and the hook tips kiss the {hit_location}. Shallow, {blood}, deliberate.",
+            'victim_msg': "A flick of the wrist and the hook tips kiss your {hit_location}. Shallow, {blood}, deliberate.",
+            'observer_msg': "A flick of the wrist and the hook tips kiss {target_name}'s {hit_location}. Shallow, {blood}, deliberate."
         },
         {
             'attacker_msg': "You punch through {target_name}'s guard and the claws punch through the {hit_location} behind it.",
@@ -188,9 +188,9 @@ MESSAGES = {
             'observer_msg': "A slap with an open claw lays {target_name}'s {hit_location} open to the wrist strap."
         },
         {
-            'attacker_msg': "A single rake across {target_name}'s {hit_location}. Four lines, evenly spaced, filling in red.",
-            'victim_msg': "A single rake across your {hit_location}. Four lines, evenly spaced, filling in red.",
-            'observer_msg': "A single rake across {target_name}'s {hit_location}. Four lines, evenly spaced, filling in red."
+            'attacker_msg': "A single rake across {target_name}'s {hit_location}. Four lines, evenly spaced, filling in {blood}.",
+            'victim_msg': "A single rake across your {hit_location}. Four lines, evenly spaced, filling in {blood}.",
+            'observer_msg': "A single rake across {target_name}'s {hit_location}. Four lines, evenly spaced, filling in {blood}."
         },
         {
             'attacker_msg': "The lone claw hooks the {hit_location} and you lean your weight on it.",
@@ -407,9 +407,9 @@ MESSAGES = {
             'observer_msg': "A straight punch, blades first, into {target_name}'s {hit_location}. They stand for one more breath out of habit."
         },
         {
-            'attacker_msg': "The hooks tear through the {hit_location} and the glove is red to the buckle. {target_name} is red everywhere else.",
-            'victim_msg': "The hooks tear through your {hit_location} and the glove is red to the buckle. You are red everywhere else.",
-            'observer_msg': "The hooks tear through {target_name}'s {hit_location} and the glove is red to the buckle. {target_name} is red everywhere else."
+            'attacker_msg': "The hooks tear through the {hit_location} and the glove is {blood} to the buckle. {target_name} is {blood} everywhere else.",
+            'victim_msg': "The hooks tear through your {hit_location} and the glove is {blood} to the buckle. You are {blood} everywhere else.",
+            'observer_msg': "The hooks tear through {target_name}'s {hit_location} and the glove is {blood} to the buckle. {target_name} is {blood} everywhere else."
         },
         {
             'attacker_msg': "A slow pull with the claws set deep in the {hit_location}. {target_name}'s eyes go first; the rest follows.",

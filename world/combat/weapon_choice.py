@@ -118,7 +118,7 @@ def _profiles(option) -> dict:
 
 
 def _grouped(members) -> WeaponChoice:
-    """``members`` (two or more singles of one family, in slot order)
+    """``members`` (two or more singles of one weapon type, in slot order)
     become one option: the lead's attributes under the profile for the
     largest count the group covers. Only the profile fields may change;
     anything else a profile says is dropped here."""
