@@ -1344,9 +1344,16 @@ def pull_plate_into_hand(caller, plate, carrier, slot_name):
     carrier.installed_plates = installed_plates
     plate.move_to(caller, quiet=True)
     caller.wield_item(plate, hand=hand)
+    # A test actor may be a mock whose attributes answer anything: only a
+    # real string note is spoken (GRIP_ENFORCEMENT_SPEC §2 item 3).
+    notes = getattr(caller, "grip_notes", None)
+    grip_note = notes(plate) if callable(notes) else ""
+    if not isinstance(grip_note, str):
+        grip_note = ""
     caller.msg(
         f"You pull the {plate.key} out of the {slot_name}"
         f" slot of {yours} {carrier.key} and hold it."
+        + grip_note
     )
     if caller.location:
         msg_room_identity(

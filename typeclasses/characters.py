@@ -2209,6 +2209,48 @@ class Character(
             if location not in severed
         }
 
+    def wants_two_hands(self, item) -> bool:
+        """The item's ``hands_required`` is two or more (GRIP_ENFORCEMENT_SPEC);
+        integrated hardware is its own body and never wants a second hand."""
+        if item is None or getattr(getattr(item, "db", None), "integrated", False):
+            return False
+        try:
+            return int(getattr(item.db, "hands_required", 1) or 1) >= 2
+        except (TypeError, ValueError, AttributeError):
+            return False
+
+    def grip_notes(self, just_taken=None, only_taken=False) -> str:
+        """What taking ``just_taken`` into a hand cost the grip (GRIP_ENFORCEMENT_SPEC
+        §2 item 3), spoken once at the moment: a two-handed weapon taken with no
+        second hand free "wants both hands"; another two-handed weapon left with
+        no free second hand "hangs one-handed". The taken weapon speaks first.
+        ``only_taken`` keeps the second kind quiet (a get that swapped a held
+        item out changed nothing for the weapon in the other hand). Empty when
+        a hand is still free, or when the weapon fills as many slots as it
+        wants."""
+        hands = self.hands or {}
+        if any(held is None for held in hands.values()):
+            return ""
+        slots_of = {}
+        for held in hands.values():
+            if held is not None:
+                slots_of.setdefault(id(held), [held, 0])[1] += 1
+        taken, others = "", []
+        for held, count in slots_of.values():
+            if not self.wants_two_hands(held):
+                continue
+            try:
+                wanted = int(getattr(held.db, "hands_required", 1) or 1)
+            except (TypeError, ValueError, AttributeError):
+                wanted = 1
+            if count >= wanted:
+                continue
+            if held is just_taken:
+                taken = " It wants both hands."
+            elif not only_taken:
+                others.append(f" The {held.get_display_name(self)} hangs one-handed.")
+        return taken + "".join(others)
+
     def slot_order(self, slots):
         """``slots`` sorted the way the body lists them: the species'
         ``anatomical_display_order`` first, then anything unlisted
@@ -2502,7 +2544,7 @@ class Character(
         # Keep item.location = self (wielded items stay in inventory
         # location-wise) — they're just tracked separately in held_items.
         self.held_items = held
-        return f"You wield {item.get_display_name(self)} in your {display}."
+        return f"You wield {item.get_display_name(self)} in your {display}." + self.grip_notes(item)
 
     def unwield_item(self, hand="right"):
         canonical = _canonical_hand(hand)

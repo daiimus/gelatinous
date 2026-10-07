@@ -550,6 +550,7 @@ WEAPON_ATTR_HIT_BONUS = "hit_bonus"            # int, to-hit term beside the cha
 WEAPON_ATTR_AKIMBO_FAMILY = "akimbo_family"    # str; members of one family may group
 WEAPON_ATTR_AKIMBO_PROFILES = "akimbo_profiles"  # {count: {field: value}}
 AKIMBO_PROFILE_FIELDS = ("damage", "hit_bonus", "weapon_type", "damage_type")
+WEAPON_ATTR_HANDS_REQUIRED = "hands_required"  # int, default 1 (GRIP_ENFORCEMENT_SPEC)
 WEAPON_TYPE_RANGED = "ranged"
 WEAPON_TYPE_MELEE = "melee"
 

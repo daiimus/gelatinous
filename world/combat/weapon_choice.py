@@ -36,7 +36,8 @@ from dataclasses import dataclass, replace
 
 from world.combat.constants import (
     AKIMBO_PROFILE_FIELDS, NDB_LAST_WEAPON_SLOT, WEAPON_ATTR_AKIMBO_FAMILY,
-    WEAPON_ATTR_AKIMBO_PROFILES, WEAPON_ATTR_HIT_BONUS, WEAPON_TYPE_UNARMED,
+    WEAPON_ATTR_AKIMBO_PROFILES, WEAPON_ATTR_HANDS_REQUIRED, WEAPON_ATTR_HIT_BONUS,
+    WEAPON_TYPE_UNARMED,
 )
 from world.combat.utils import _in_melee_range, get_weapon_damage
 
@@ -51,6 +52,7 @@ class WeaponChoice:
     items: tuple
     slots: tuple
     lead_slot: str
+    hands_required: int
     damage: int
     hit_bonus: int
     damage_type: object
@@ -72,6 +74,15 @@ def _db(item, name, default=None):
     return default if value is None else value
 
 
+def _hands_required(item) -> int:
+    """How many hands the item wants (GRIP_ENFORCEMENT_SPEC); every Item is
+    written 1 at creation and long guns declare 2."""
+    try:
+        return max(1, int(_db(item, WEAPON_ATTR_HANDS_REQUIRED, 1) or 1))
+    except (TypeError, ValueError):
+        return 1
+
+
 def _is_ranged(item) -> bool:
     return bool(_db(item, "is_ranged", False))
 
@@ -88,6 +99,7 @@ def _single(item, slots, natural, lead_slot=None) -> WeaponChoice:
     return WeaponChoice(
         items=(item,), slots=tuple(slots),
         lead_slot=str(lead_slot if lead_slot is not None else (slots[0] if slots else "")),
+        hands_required=_hands_required(item),
         damage=get_weapon_damage(item, 0),
         hit_bonus=int(_db(item, WEAPON_ATTR_HIT_BONUS, 0) or 0),
         damage_type=_db(item, "damage_type"),

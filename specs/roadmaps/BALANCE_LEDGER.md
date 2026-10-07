@@ -85,6 +85,7 @@ balanced *against*, because the things they would have to be balanced
 against are themselves untuned or unbuilt. Recorded here so nobody reads
 a "Value" column as a considered answer:
 
+- **Under-grip factor (GRIP_ENFORCEMENT_SPEC §4, 2026-10-06):** a two-handed weapon with no free second hand multiplies accuracy by 0.60 (one of two), 0.80 (two of three); placeholder anchors `(0, .20), (.5, .60), (2/3, .80), (1, 1)`. Nothing tuned; owner: *"Sure."*
 - **Bleeding is untuned.** Every chunk of fall damage that lands adds
   pain and, at ≥10 damage to a container, a bleeding condition. Bleeding
   rates have never been through a balance pass, so the real lethality of

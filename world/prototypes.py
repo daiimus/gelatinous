@@ -204,6 +204,7 @@ BASEBALL_BAT = {
     "deflection_bonus": 0.30,  # +6 to deflection threshold (0.30 * 20)
     "weapon_type": "baseball_bat",  # Using existing message type
     "damage_type": "blunt",  # Medical system injury type
+    "hands_required": 2,  # owner ruling 2026-10-06 (GRIP_ENFORCEMENT_SPEC §6 #3): its bank swings two-handed
 }
 
 # Staff (good deflection)
@@ -216,6 +217,7 @@ STAFF = {
     "deflection_bonus": 0.10,  # +2 to deflection threshold (0.10 * 20)
     "weapon_type": "staff",  # Using existing message type
     "damage_type": "blunt",  # Medical system injury type
+    "hands_required": 2,  # owner ruling 2026-10-06 (GRIP_ENFORCEMENT_SPEC §6 #3): "in both hands"
 }
 
 # Tennis Racket (excellent deflection!)
@@ -228,7 +230,6 @@ TENNIS_RACKET = {
     "deflection_bonus": 0.50,  # +10 to deflection threshold (0.50 * 20) - BEST deflection weapon!
     "weapon_type": "tennis_racket",
     "damage_type": "blunt",  # Medical system injury type
-    "hands": 1,
 }
 
 # Katana (legendary weapon of the samurai soul)
@@ -281,6 +282,7 @@ CHAINSAW = {
     "weapon_type": "chainsaw",  # Using our newly converted message type
     "damage_type": "laceration",  # Medical system injury type
     "can_sever": True,  # Edged: can sever limbs from a corpse (PR #190)
+    "hands_required": 2,  # owner ruling 2026-10-06 (GRIP_ENFORCEMENT_SPEC §6 #3)
 }
 
 # =============================================================================

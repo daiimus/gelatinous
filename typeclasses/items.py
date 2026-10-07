@@ -3116,7 +3116,17 @@ def detach_items_to_appendage(character, appendage, containers):
                 # are intentionally not appended to it.
 
         if using_backing:
-            character.held_items = store
+            # Re-read, do not write the snapshot back: each drop above ran
+            # the move hook, which clears EVERY slot holding the dropped
+            # object; a stale snapshot would put an object lying on the floor
+            # back into a surviving slot (GRIP_ENFORCEMENT_SPEC §3). Only the
+            # cut keys are cleared here.
+            fresh = dict(getattr(character, "held_items", None) or {})
+            for hand in hands_to_clear:
+                for key in (hand, _canonical_hand(hand)):
+                    if key in fresh:
+                        fresh[key] = None
+            character.held_items = fresh
         else:
             character.hands = store
 

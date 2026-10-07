@@ -372,7 +372,9 @@ undisarmable, faster initiative).
 **Minimum requirements + scaled penalty.** A weapon's `hands_required` is a
 *minimum*; the gripping effectors must meet it. **Under-gripping** (2H weapon
 held one-handed, no free second hand) is a **scaled** handling penalty, not a
-flat tier. Combining multiple gripping hands on one weapon scales handling
+flat tier. *Shipped 2026-10-06 as `grip_hit_factor` (GRIP_ENFORCEMENT_SPEC §4):
+the grip is implicit, a free second slot counts as the second hand, and the
+placeholder is 0.60 for one hand of two.* Combining multiple gripping hands on one weapon scales handling
 (the weaker hand drags it — exact min-vs-blend TBD, §10).
 
 **Effector targeting already exists.** `wield <item> in <hand>` is implemented
