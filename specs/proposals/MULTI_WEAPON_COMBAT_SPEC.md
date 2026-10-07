@@ -47,7 +47,7 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 - `hit_bonus` (int, default 0): a to-hit term added beside the charge bonus.
 - Pairing is not an item attribute (slice 4): `AKIMBO_PROFILES_BY_TYPE[weapon_type]` = `{count: overrides}`, overrides limited to `damage`, `hit_bonus`, `weapon_type`, `damage_type`. Count 1 is the item's own attributes. Rows: `nailz`, `tiger_claws`, `light_pistol`.
 
-**Constants** in `world/combat/constants.py`: `WEAPON_ATTR_HIT_BONUS`, `AKIMBO_PROFILE_FIELDS`, `AKIMBO_PROFILES_BY_TYPE`, `NDB_LAST_WEAPON_SLOT`. Bank names stay prototype data like every `weapon_type`.
+**Constants** in `world/combat/constants.py`: `WEAPON_ATTR_HIT_BONUS`, `AKIMBO_PROFILE_FIELDS`, `AKIMBO_PROFILES_BY_TYPE`, `NDB_LAST_WEAPON_SLOT`. A one-weapon bank is still named by the prototype's `weapon_type`; a pair bank is named by its row in `AKIMBO_PROFILES_BY_TYPE` (slice 4).
 
 **`NAILZ_CLAWS`** becomes one hand: five blades, placeholder damage 6, `weapon_type` `nailz` (was `tiger_claws` until slice 2), its pair row `{2: {damage: 9, hit_bonus: 1, weapon_type: "nailz_akimbo"}}` (on the prototype until slice 4, in `AKIMBO_PROFILES_BY_TYPE` since). An intact owner keeps today's damage 9.
 
@@ -169,8 +169,8 @@ For each living character, for each ability with two or more living hosts, in sl
 
 - **0 (now):** this spec; the ledger gap (§16). No issue.
 - **1, claws plus the one door — SHIPPED** (PR A #3696 and #3701 on 2026-10-05, PR B #3702 on 2026-10-06; the migration PR C was dropped after the census, §12; #3695 and #3571 closed): per-host toggle; delete the mirror; per-location stow; `is_ability_deployed` and the director; readouts; `get_active_natural_weapons`; `weapon_choice.py` with grouping; repoint the 20 + 1 + 3 + 1 call sites and delete the five old functions; the hit term; manipulation by slots; the `NAILZ_CLAWS` profiles; the bank split; `_one` prose; reattach keeps the object; the migration. Held weapons keep range-then-max, but gates, initiate and the swing agree. Tests: rewrite `test_one_ability_two_hands.py` (one assertion inverts), `test_weapon_autoprioritizer.py`, `test_combat_manipulation_resolver.py`; add a test that both claw banks resolve all four phases. Specs: `AUGMENT_ABILITIES_SPEC.md` §1/§3/§8, `COMBAT_MESSAGE_FORMAT_SPEC.md`, `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md` §6.1. Play, checked via splattercast: deploy, fight akimbo, sever, fight single, surgical stow, chrome reattach.
-- **2, alternation and handguns** (issue #3707, owner "Go." 2026-10-06; in build): ordered `Character.hands` (`slot_order`); the ndb cursor `NDB_LAST_WEAPON_SLOT`; `note_weapon_used` after the attack gates; the max rule removed; akimbo groups keep their slot place; the Nailz bank rename; disarm order; pistol bank rewrites. Play: two light pistols; pistol plus knife at range and in melee; arm-gun plus pistol; Nailz plus Jawz.
-- **3, grip enforcement (`hands_required`; owner ruling 2026-10-06, §14 #13):** a two-handed weapon occupies two grasping slots when wielded; one-handed use is refused or penalised by a ruling to come; the wheel treats the grip as one option (§4 step 1 already allows it). Touches wield, get, disarm and the hands view. Design pass first.
+- **2, alternation and handguns — SHIPPED** (issue #3707, owner "Go." 2026-10-06; PRs #3709 and #3711 on 2026-10-06): ordered `Character.hands` (`slot_order`); the ndb cursor `NDB_LAST_WEAPON_SLOT`; `note_weapon_used` after the attack gates; the max rule removed; akimbo groups keep their slot place; the Nailz bank rename; disarm order; pistol bank rewrites. Play: two light pistols; pistol plus knife at range and in melee; arm-gun plus pistol; Nailz plus Jawz.
+- **3, grip enforcement — SHIPPED (`hands_required`; owner ruling 2026-10-06, §14 #13; the implicit grip of GRIP_ENFORCEMENT_SPEC.md, PR #3717 on 2026-10-06):** a two-handed weapon occupies two grasping slots when wielded; one-handed use is refused or penalised by a ruling to come; the wheel treats the grip as one option (§4 step 1 already allows it). Touches wield, get, disarm and the hands view. Design pass first.
 - **4, content by weapon type (issue #3718, owner rulings 2026-10-06, §14 #14):** pairing moves from per-item attributes to `AKIMBO_PROFILES_BY_TYPE` (rows `nailz`, `tiger_claws`, `light_pistol`; Nailz unchanged in play); the `TIGER_CLAWS` prototype (Voxhaul Tiger claw, one per hand, damage 6, weapons rack 180); banks `tiger_claws`, `tiger_claws_akimbo` (fresh glove prose, 19-23 / 24 per phase) and `light_pistol_akimbo` (16 per phase).
 
 ## 14. Owner rulings
@@ -217,7 +217,7 @@ Slice 1 close-out, 2026-10-06, owner's words: *"Yeah. Clean up is good."* The mi
 
 ## 16. Balance
 
-All weapon numbers stay prototype data, like every other weapon. The placeholders (one hand 6/+0, both hands 9/+1) and the new `hit_bonus` term are untuned; `BALANCE_LEDGER.md` records them under "Gaps the ledger is NOT sized against" until the balance pass. The ledger test reads only `world/combat/constants.py`, so no ledger row is required for prototype data.
+One-weapon numbers stay prototype data, like every other weapon; the pair rows (Nailz 9/+1, Tiger claws 9/+1, two light pistols 16/−1) are the `AKIMBO_PROFILES_BY_TYPE` table in `world/combat/constants.py` since slice 4. All of them and the `hit_bonus` term are untuned placeholders; `BALANCE_LEDGER.md` records them under "Gaps the ledger is NOT sized against" until the balance pass. The ledger test collects only the annotated constants in that file, so the table needs no ledger row.
 
 ## See also
 

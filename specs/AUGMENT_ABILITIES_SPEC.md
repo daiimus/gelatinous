@@ -179,10 +179,12 @@ Natural precedence lives in the one door: an organ-active natural
 cyberweapon wins over held items among the options that can reach.
 Claws spawn/park the same way; they just never touch `held_items`.
 Each Nailz hand owns one `NAILZ_CLAWS` (d6+6, +0 to hit, bank
-`nailz`); both out group into ONE attack on the pair profile
-(d6+9, +1, `nailz_akimbo`) — placeholders, BALANCE_LEDGER.md. The banks
+`nailz`); both out group into ONE attack on the `nailz` row of
+`AKIMBO_PROFILES_BY_TYPE` (d6+9, +1, `nailz_akimbo`; slice 4 moved the
+row off the prototype) — placeholders, BALANCE_LEDGER.md. The banks
 were `tiger_claws` / `tiger_claws_akimbo` until slice 2 (owner ruling
-2026-10-06: Nailz has its own pair; the held Tiger Claws will have theirs).
+2026-10-06: Nailz has its own pair; the held Voxhaul Tiger claw has
+`tiger_claws` / `tiger_claws_akimbo`, slice 4).
 
 ### 3.5 · Multi-container substrate extension
 
