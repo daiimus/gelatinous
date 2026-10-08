@@ -64,10 +64,11 @@ the weapon the active weapon.
    integrated hardware where it lies, never on the floor, and the
    severance hook moves it onto the appendage, #3697) or retracted
    (folded into the arm; the same hook moves the linked item onto the
-   appendage). A HAND cut off a surviving gun arm instead folds the
-   deployed gun back inside the arm (`location=None`, `deployed`
-   False), so the next toggle is a deploy.  Recoverable by harvest from the appendage,
-   not by looting (locks hold).
+   appendage).  Recoverable by harvest from the appendage, not by
+   looting (locks hold).  A HAND cut off a surviving gun arm instead
+   folds the deployed gun back inside the arm (`location=None`,
+   `deployed` False): nothing lies on the floor or the hand, and the
+   next toggle is a deploy, refused until the hand is restored.
 8. **Theming stays in prose** (ANATOMY_AUGMENTS §4): claws, nailz,
    cyber-teeth, biotech variants are item data over the same
    ability types.

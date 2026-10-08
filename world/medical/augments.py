@@ -587,9 +587,11 @@ def _get_or_spawn_weapon(character, state, spec):
         # its claws; reattachment is what reclaims an object there. Unlink
         # it and give this host its own; nothing is deleted. Anywhere
         # else, it is still this host's and is taken back: a hand-only
-        # sever drops a deployed forearm gun to the floor, locked and
-        # undroppable, and the body may have walked away before the hand
-        # came back (#3697; MULTI_WEAPON_COMBAT_SPEC §3, §9).
+        # sever used to drop a deployed forearm gun to the floor, locked
+        # and undroppable, and the body may have walked away before the
+        # hand came back; the cut folds it back now, and this stays as
+        # the safety net for guns left on floors before the fix (#3697;
+        # MULTI_WEAPON_COMBAT_SPEC §3, §9).
         if weapon.location is None or weapon.location == character:
             return weapon
         if weapon.location.is_typeclass("typeclasses.items.Appendage", exact=False):
@@ -796,15 +798,20 @@ def carry_hardware_to_appendage(character, chain, appendage) -> None:
         for name, ability_state in store.items():
             if not isinstance(ability_state, dict):
                 continue
-            weapon = _find_weapon(ability_state)
             if not in_chain:
-                if (ability_state.get("deployed") and weapon is not None
-                        and weapon.location == character
+                # A host the cut left on the body: only a DEPLOYED weapon
+                # that lost its slot to the cut is looked up, and folded
+                # back inside the arm (#3697).
+                if not ability_state.get("deployed"):
+                    continue
+                weapon = _find_weapon(ability_state)
+                if (weapon is not None and weapon.location == character
                         and getattr(weapon, "pk", None) not in held_pks):
-                    weapon.location = None   # folded back inside the arm (#3697)
+                    weapon.location = None   # folded back inside the arm
                     ability_state["deployed"] = False
                     changed = True
                 continue
+            weapon = _find_weapon(ability_state)
             if weapon is not None and getattr(weapon, "pk", None) in held_pks:
                 ability_state.pop("weapon_dbref", None)   # a surviving hand holds it
             elif weapon is not None and weapon.location is not appendage:

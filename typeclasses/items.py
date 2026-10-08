@@ -3254,9 +3254,11 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
 
     detach_items_to_appendage(character, appendage, chain)
 
-    # Integrated cyberware hardware travels with the limb (#516).
-    # Deployed weapons already moved (they sat in held_items); this
-    # covers retracted hardware folded inside the severed arm.
+    # Integrated cyberware hardware travels with the limb (#516). The
+    # cut above only emptied the slots (#3697): this carry is what moves
+    # a deployed gun onto the limb, moves a retracted one folded inside
+    # the severed arm, and folds a surviving arm's gun back when only
+    # its hand went.
     try:
         from world.medical.augments import carry_hardware_to_appendage
         carry_hardware_to_appendage(character, chain, appendage)
