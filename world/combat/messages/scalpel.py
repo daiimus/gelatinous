@@ -260,7 +260,7 @@ MESSAGES = {
         {
             'attacker_msg': "A slice across the {hit_location} of the {hit_location} leaves {target_name} howling.",
             'victim_msg': "The scalpel opens the {hit_location} of your {hit_location}, tendons and nerves screaming in unison.",
-            'observer_msg': "{target_name} howls as the scalpel parts tendons in the {hit_location} of their {hit_location}."
+            'observer_msg': "{target_name} howls as the scalpel parts tendons in the back of their {hit_location}."
         },
         {
             'attacker_msg': "You jab the blade into {target_name}'s {hit_location}, twisting for emphasis.",
