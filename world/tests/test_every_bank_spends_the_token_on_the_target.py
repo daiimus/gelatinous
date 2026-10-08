@@ -31,8 +31,14 @@ ADVERB_SEAT = re.compile(r"\b(stagger|staggers|staggering|stumble|stumbles|stumb
 # word plainly) is a victim-side gap, not this issue; its survivors are named
 # so a new one fails and a fix must strike its entry.
 SURVIVORS = {
-    "bowel_disruptor/hit/31", "bowel_disruptor/hit/35", "bowel_disruptor/hit/38", "bowel_disruptor/miss/37",
-    "robot_riot_gun/miss/11", "robot_riot_gun/kill/8", "scalpel/hit/2", "scalpel/kill/12", "spraycan/initiate/12",
+    "bowel_disruptor/hit/31",
+    "bowel_disruptor/hit/38",
+    "bowel_disruptor/miss/37",
+    "robot_riot_gun/kill/8",
+    "robot_riot_gun/miss/11",
+    "scalpel/hit/2",
+    "scalpel/kill/12",
+    "spraycan/initiate/12",
 }
 
 
@@ -79,7 +85,7 @@ class TheTokenIsAlwaysTheTargets(TestCase):
                  if ADVERB_SEAT.search(e.get(role, ""))]
         self.assertEqual(slips, [], f"{len(slips)} adverb seats: {slips[:5]}")
 
-    def test_the_heuristic_survivors_are_exactly_the_named_nine(self):
+    def test_the_heuristic_survivors_are_exactly_the_named_ones(self):
         # Down from 252 on 2026-10-08; a new one fails here, a fix strikes
         # its entry from SURVIVORS.
         found = {f"{b}/{p}/{i}" for b, p, i, e in _entries()
