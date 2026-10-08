@@ -86,7 +86,7 @@ MESSAGES = {
             'observer_msg': "The weapon hangs heavy in {attacker_name}'s grip. The silence stretches to meet it."
         },
         {
-            'attacker_msg': "The weight rests against your {hit_location}. It's not heavy. It's familiar.",
+            'attacker_msg': "The weight rests against your shoulder. It's not heavy. It's familiar.",
             'victim_msg': "The weight rests against {attacker_name}'s shoulder. It's not heavy. It's familiar.",
             'observer_msg': "The weight rests against {attacker_name}'s shoulder. It's not heavy. It's familiar."
         },
@@ -136,7 +136,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} plants both feet and leans into the grip. This is happening."
         },
         {
-            'attacker_msg': "You roll your {hit_location}, then the hammer — both promise pain.",
+            'attacker_msg': "You roll your neck, then the hammer — both promise pain.",
             'victim_msg': "{attacker_name} rolls their neck, then the hammer — both promise pain.",
             'observer_msg': "{attacker_name} rolls their neck, then the hammer — both promise pain."
         },

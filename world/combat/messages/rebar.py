@@ -22,7 +22,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} scrapes the rebar across the ground, raising sparks and a warning."
         },
         {
-            'attacker_msg': "You twirl the rebar once and rest it against your {hit_location}, steel humming with promise.",
+            'attacker_msg': "You twirl the rebar once and rest it against your shoulder, steel humming with promise.",
             'victim_msg': "{attacker_name} twirls the rebar once and rests it against their shoulder, steel humming with promise.",
             'observer_msg': "{attacker_name} twirls the rebar once and rests it against their shoulder, steel humming with promise."
         },
@@ -42,7 +42,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} gives the rebar a lazy spin before cracking it against their palm with a dull, heavy sound."
         },
         {
-            'attacker_msg': "You roll your {hit_location}, then raise the rebar like you're about to knock on death's front door.",
+            'attacker_msg': "You roll your neck, then raise the rebar like you're about to knock on death's front door.",
             'victim_msg': "{attacker_name} rolls their neck, then raises the rebar like they're about to knock on death's front door.",
             'observer_msg': "{attacker_name} rolls their neck, then raises the rebar like they're about to knock on death's front door."
         },
@@ -127,7 +127,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} twitches the bar slightly—enough to make anyone watching tense."
         },
         {
-            'attacker_msg': "You tap the bar against your {hit_location}. A casual threat. A promise.",
+            'attacker_msg': "You tap the bar against your shoulder. A casual threat. A promise.",
             'victim_msg': "{attacker_name} taps the bar against their shoulder. A casual threat. A promise.",
             'observer_msg': "{attacker_name} taps the bar against their shoulder. A casual threat. A promise."
         },
@@ -421,7 +421,7 @@ MESSAGES = {
             'observer_msg': "The rebar glances off a support beam. No damage. Just warning."
         },
         {
-            'attacker_msg': "Your strike clips a brick wall. The jolt runs up your {hit_location}.",
+            'attacker_msg': "Your strike clips a brick wall. The jolt runs up your arm.",
             'victim_msg': "{attacker_name}'s strike clips a brick wall. The jolt runs up their arm.",
             'observer_msg': "{attacker_name}'s strike clips a brick wall. The jolt runs up their arm."
         },

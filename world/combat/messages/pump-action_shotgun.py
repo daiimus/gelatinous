@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air is tense as {attacker_name} prepares to fire the pump-action shotgun, anticipating the powerful *BOOM* and the immediate, forceful cycle of the action."
         },
         {
-            'attacker_msg': "Your {hit_location} is determined, finger ready on the trigger of the pump-action shotgun, poised to send a cloud of buckshot or a heavy slug.",
+            'attacker_msg': "Your face is determined, finger ready on the trigger of the pump-action shotgun, poised to send a cloud of buckshot or a heavy slug.",
             'victim_msg': "{attacker_name}'s face is determined, finger ready on the trigger of the pump-action shotgun, poised to send a cloud of buckshot or a heavy slug.",
             'observer_msg': "{attacker_name}'s face is determined, finger ready on the trigger of the pump-action shotgun, poised to send a cloud of buckshot or a heavy slug."
         },
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s pump-action shotgun to blast a pattern into a wall. {attacker_name} cycles the pump, unflinching, ready to fire again."
         },
         {
-            'attacker_msg': "The pump-action shotgun jumps in your {hit_location} as you miss. You cycle the pump, chambering a fresh, potent shell, correcting your stance.",
+            'attacker_msg': "The pump-action shotgun jumps in your shoulder as you miss. You cycle the pump, chambering a fresh, potent shell, correcting your stance.",
             'victim_msg': "The pump-action shotgun jumps in {attacker_name}'s shoulder as they miss. {attacker_name} cycles the pump, chambering a fresh, potent shell, correcting their stance.",
             'observer_msg': "The pump-action shotgun jumps in {attacker_name}'s shoulder as they miss. {attacker_name} cycles the pump, chambering a fresh, potent shell, correcting their stance."
         },

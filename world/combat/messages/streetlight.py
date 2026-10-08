@@ -254,7 +254,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The streetlight's weight drives {target_name} to their knees.",
-            'victim_msg': "The streetlight's weight drives you to your {hit_location}s.",
+            'victim_msg': "The streetlight's weight drives you to your knees.",
             'observer_msg': "The streetlight's weight drives {target_name} to their knees."
         },
         {

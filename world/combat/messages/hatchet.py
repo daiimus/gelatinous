@@ -16,7 +16,7 @@ MESSAGES = {
             'observer_msg': "A whisper of rust and wood fills the air as {attacker_name} lifts the hatchet from their belt."
         },
         {
-            'attacker_msg': "It's not much, but in your {hit_location}, the hatchet looks holy. In a terrible way.",
+            'attacker_msg': "It's not much, but in your hand, the hatchet looks holy. In a terrible way.",
             'victim_msg': "It's not much, but in {attacker_name}'s hand, the hatchet looks holy. In a terrible way.",
             'observer_msg': "It's not much, but in {attacker_name}'s hand, the hatchet looks holy. In a terrible way."
         },
@@ -61,12 +61,12 @@ MESSAGES = {
             'observer_msg': "The hatchet hangs low in {attacker_name}'s grip, heavy with history and blood yet to be shed."
         },
         {
-            'attacker_msg': "The hatchet rests on your {hit_location} like a burden you've carried before — and loved.",
+            'attacker_msg': "The hatchet rests on your shoulder like a burden you've carried before — and loved.",
             'victim_msg': "The hatchet rests on {attacker_name}'s shoulder like a burden they've carried before — and loved.",
             'observer_msg': "The hatchet rests on {attacker_name}'s shoulder like a burden they've carried before — and loved."
         },
         {
-            'attacker_msg': "The hatchet spins once, then lands blade-down in your {hit_location}. The movement is fluid. Familiar.",
+            'attacker_msg': "The hatchet spins once, then lands blade-down in your hand. The movement is fluid. Familiar.",
             'victim_msg': "The hatchet spins once, then lands blade-down in {attacker_name}'s hand. The movement is fluid. Familiar.",
             'observer_msg': "The hatchet spins once, then lands blade-down in {attacker_name}'s hand. The movement is fluid. Familiar."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} flips the hatchet lazily, catching it by the handle with practiced ease. The edge never stops gleaming."
         },
         {
-            'attacker_msg': "You flip the hatchet once in your {hit_location}, testing the edge with a glance that cuts deeper than the blade.",
+            'attacker_msg': "You flip the hatchet once in your hand, testing the edge with a glance that cuts deeper than the blade.",
             'victim_msg': "{attacker_name} flips the hatchet once in their hand, testing the edge with a glance that cuts deeper than the blade.",
             'observer_msg': "{attacker_name} flips the hatchet once in their hand, testing the edge with a glance that cuts deeper than the blade."
         },
@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "A shallow swing slices open a {hit_location}. Blood drips like punctuation."
         },
         {
-            'attacker_msg': "A sideways hack lands across the {hit_location}line. {target_name} turns {blood} and stumbles.",
-            'victim_msg': "A sideways hack lands across the {hit_location}line. You turn {blood} and stumble.",
-            'observer_msg': "A sideways hack lands across the {hit_location}line. {target_name} turns {blood} and stumbles."
+            'attacker_msg': "A sideways hack lands across the jawline. {target_name} turns {blood} and stumbles.",
+            'victim_msg': "A sideways hack lands across the jawline. You turn {blood} and stumble.",
+            'observer_msg': "A sideways hack lands across the jawline. {target_name} turns {blood} and stumbles."
         },
         {
             'attacker_msg': "A sideways strike splits the {hit_location}. Blood spurts. {target_name} stumbles with wide eyes.",

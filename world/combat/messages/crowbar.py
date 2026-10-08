@@ -26,7 +26,7 @@ MESSAGES = {
             "observer_msg": "Rust flakes from the hook as {attacker_name} rotates it slowly. The weapon remembers pain."
         },
         {
-            "attacker_msg": "The bar rests across your {hit_location} as you survey the field. Casual violence in posture alone.",
+            "attacker_msg": "The bar rests across your forearm as you survey the field. Casual violence in posture alone.",
             "victim_msg": "The bar rests across {attacker_name}'s forearm as they survey the field. Casual violence in posture alone.",
             "observer_msg": "The bar rests across {attacker_name}'s forearm as they survey the field. Casual violence in posture alone."
         },
@@ -36,7 +36,7 @@ MESSAGES = {
             "observer_msg": "The bar swings lightly at {attacker_name}'s side, every step marking the countdown toward violence."
         },
         {
-            "attacker_msg": "The crowbar rests against your {hit_location} like an old friend — mean, ugly, loyal.",
+            "attacker_msg": "The crowbar rests against your shoulder like an old friend — mean, ugly, loyal.",
             "victim_msg": "The crowbar rests against {attacker_name}'s shoulder like an old friend — mean, ugly, loyal.",
             "observer_msg": "The crowbar rests against {attacker_name}'s shoulder like an old friend — mean, ugly, loyal."
         },
@@ -121,7 +121,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} draws the crowbar from their belt, letting the sound announce what's next."
         },
         {
-            "attacker_msg": "You flex the crowbar in your {hit_location} like it's a living thing. It rattles once, eager.",
+            "attacker_msg": "You flex the crowbar in your hand like it's a living thing. It rattles once, eager.",
             "victim_msg": "{attacker_name} flexes the crowbar in their hand like it's a living thing. It rattles once, eager.",
             "observer_msg": "{attacker_name} flexes the crowbar in their hand like it's a living thing. It rattles once, eager."
         },
@@ -131,7 +131,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} hefts the crowbar with one hand and taps it against their palm. It's not subtle. It's not meant to be."
         },
         {
-            "attacker_msg": "You lean the bar across your shoulders, flexing your {hit_location} like you're just warming up.",
+            "attacker_msg": "You lean the bar across your shoulders, flexing your neck like you're just warming up.",
             "victim_msg": "{attacker_name} leans the bar across their shoulders, flexing their neck like they're just warming up.",
             "observer_msg": "{attacker_name} leans the bar across their shoulders, flexing their neck like they're just warming up."
         },
@@ -198,9 +198,9 @@ MESSAGES = {
             "observer_msg": "A swing to the {hit_location} knocks the air from {target_name}. The follow-up is already coming."
         },
         {
-            "attacker_msg": "One clean jab into the {hit_location}pit. A scream. A limp {hit_location}. Mission accomplished.",
-            "victim_msg": "One clean jab into the {hit_location}pit. A scream. A limp {hit_location}. Mission accomplished.",
-            "observer_msg": "One clean jab into the {hit_location}pit. A scream. A limp {hit_location}. Mission accomplished."
+            "attacker_msg": "One clean jab into the armpit. A scream. A limp {hit_location}. Mission accomplished.",
+            "victim_msg": "One clean jab into the armpit. A scream. A limp {hit_location}. Mission accomplished.",
+            "observer_msg": "One clean jab into the armpit. A scream. A limp {hit_location}. Mission accomplished."
         },
         {
             "attacker_msg": "One clean strike to the {hit_location}. Something snaps. Something important.",
@@ -293,9 +293,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} lands a hook to the {hit_location}. {target_name} stumbles forward, eyes wide and airless."
         },
         {
-            "attacker_msg": "You sweep the {hit_location}s with the bar. {target_name} lands wrong. They don't get up right.",
-            "victim_msg": "{attacker_name} sweeps the {hit_location}s with the bar. You land wrong. You don't get up right.",
-            "observer_msg": "{attacker_name} sweeps the {hit_location}s with the bar. {target_name} lands wrong. They don't get up right."
+            "attacker_msg": "You sweep the legs with the bar. {target_name} lands wrong. They don't get up right.",
+            "victim_msg": "{attacker_name} sweeps the legs with the bar. You land wrong. You don't get up right.",
+            "observer_msg": "{attacker_name} sweeps the legs with the bar. {target_name} lands wrong. They don't get up right."
         },
         {
             "attacker_msg": "You swing low. The bar hits {target_name}'s {hit_location}. {target_name} hits the floor.",

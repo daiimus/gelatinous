@@ -1,7 +1,7 @@
 MESSAGES = {
     "initiate": [
         {
-            "attacker_msg": "You snap your assault rifle to your {hit_location}, its modern, utilitarian lines exuding efficiency as you aim at {target_name}.",
+            "attacker_msg": "You snap your assault rifle to your shoulder, its modern, utilitarian lines exuding efficiency as you aim at {target_name}.",
             "victim_msg": "{attacker_name} snaps an assault rifle to their shoulder, aiming at you; its modern, utilitarian lines exude efficiency.",
             "observer_msg": "{attacker_name} snaps an assault rifle to their shoulder, the weapon's modern, utilitarian lines exuding efficiency as they aim at {target_name}."
         },
@@ -228,9 +228,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}’s assault rifle bullets slam into {target_name} in quick succession. More rounds are chambered automatically with a series of solid sounds."
         },
         {
-            "attacker_msg": "A burst from your assault rifle hits {target_name}'s {hit_location}s, making them drop what they're holding. Your rifle cycles as you press the advantage.",
-            "victim_msg": "A burst from {attacker_name}'s assault rifle hits your {hit_location}s, making you drop what you're holding! The rifle cycles as they press the advantage.",
-            "observer_msg": "A burst from the assault rifle hits {target_name}'s {hit_location}s, making them drop what they're holding. The rifle cycles, {attacker_name} pressing the advantage."
+            "attacker_msg": "A burst from your assault rifle hits {target_name}'s hands, making them drop what they're holding. Your rifle cycles as you press the advantage.",
+            "victim_msg": "A burst from {attacker_name}'s assault rifle hits your hands, making you drop what you're holding! The rifle cycles as they press the advantage.",
+            "observer_msg": "A burst from the assault rifle hits {target_name}'s hands, making them drop what they're holding. The rifle cycles, {attacker_name} pressing the advantage."
         },
         {
             "attacker_msg": "Your assault rifle's bullets make a series of solid thuds against {target_name}'s {hit_location}. Your rifle cycles, chambering fresh rounds with a blur of motion.",
@@ -365,7 +365,7 @@ MESSAGES = {
             "observer_msg": "A quick sidestep from {target_name} leaves {attacker_name}'s assault rifle to punch a pattern of holes in a nearby wall. The rifle cycles, {attacker_name} maintaining their aim, ready to fire again."
         },
         {
-            "attacker_msg": "Your assault rifle bucks in your {hit_location} as you send a burst wide of {target_name}. Your rifle cycles, chambering fresh rounds, as you quickly compensate for muzzle climb.",
+            "attacker_msg": "Your assault rifle bucks in your shoulder as you send a burst wide of {target_name}. Your rifle cycles, chambering fresh rounds, as you quickly compensate for muzzle climb.",
             "victim_msg": "{attacker_name}'s assault rifle bucks in their shoulder as they send a burst wide of you! Their rifle cycles, chambering fresh rounds, as they quickly compensate for muzzle climb.",
             "observer_msg": "The assault rifle bucks in {attacker_name}'s shoulder as they send a burst wide of {target_name}. The rifle cycles, chambering fresh rounds, {attacker_name} quickly compensating for muzzle climb."
         },

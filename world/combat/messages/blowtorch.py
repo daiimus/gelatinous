@@ -66,7 +66,7 @@ MESSAGES = {
             "observer_msg": "The torch clicks, flares, and steadies into a whispering cone of heat. {attacker_name} steps forward without a word."
         },
         {
-            "attacker_msg": "The torch ignites with a bark of flame. Your {hit_location} is steady, your expression unreadable.",
+            "attacker_msg": "The torch ignites with a bark of flame. Your hand is steady, your expression unreadable.",
             "victim_msg": "The torch ignites with a bark of flame. {attacker_name}'s hand is steady, their expression unreadable.",
             "observer_msg": "The torch ignites with a bark of flame. {attacker_name}'s hand is steady, their expression unreadable."
         },

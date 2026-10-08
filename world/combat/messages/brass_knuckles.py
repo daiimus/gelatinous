@@ -6,7 +6,7 @@ MESSAGES = {
             "observer_msg": "A low grunt. A breath. Then {attacker_name} steps forward, the sound of their knuckles clinking together the only herald needed."
         },
         {
-            "attacker_msg": "You tilt your {hit_location}, take a subtle inhale. Your brass is ready to meet bone. The dance is already starting.",
+            "attacker_msg": "You tilt your head, take a subtle inhale. Your brass is ready to meet bone. The dance is already starting.",
             "victim_msg": "A tilt of {attacker_name}'s head. A subtle inhale. Then brass meets bone — not yours, not yet, but soon. The dance is already starting.",
             "observer_msg": "A tilt of {attacker_name}'s head. A subtle inhale. Then brass meets bone — not {target_name}'s, not yet, but soon. The dance is already starting."
         },
@@ -41,7 +41,7 @@ MESSAGES = {
             "observer_msg": "Nothing theatrical. Just {attacker_name} standing there, hands clenched, the brass dull and worn, like it's been through a hundred exits."
         },
         {
-            "attacker_msg": "One ring at a time, you slide your knuckles into place. The sound is soft metal, but it thuds in your {hit_location} like a threat.",
+            "attacker_msg": "One ring at a time, you slide your knuckles into place. The sound is soft metal, but it thuds in your chest like a threat.",
             "victim_msg": "One ring at a time, the knuckles slide into place. The sound is soft metal, but it thuds in the chest like a threat as {attacker_name} readies them.",
             "observer_msg": "One ring at a time, the knuckles slide into place. The sound is soft metal, but it thuds in the chest like a threat as {attacker_name} readies them."
         },
@@ -51,7 +51,7 @@ MESSAGES = {
             "observer_msg": "The air seems to change as {attacker_name} raises their hands. No blade. No flash. Just fists wrapped in the cold shine of brass and an aura that says they’ve ended things with less."
         },
         {
-            "attacker_msg": "Your brass clinks as you rotate your {hit_location}. Not flashy. Not elegant. Just deliberate — like punctuation at the end of a sentence.",
+            "attacker_msg": "Your brass clinks as you rotate your wrist. Not flashy. Not elegant. Just deliberate — like punctuation at the end of a sentence.",
             "victim_msg": "The brass clinks as {attacker_name} rotates their wrist. Not flashy. Not elegant. Just deliberate — like punctuation at the end of a sentence.",
             "observer_msg": "The brass clinks as {attacker_name} rotates their wrist. Not flashy. Not elegant. Just deliberate — like punctuation at the end of a sentence."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} cracks their knuckles — flesh against metal, a promise made audible. There's no flash of steel, just the dull gleam of pain made personal."
         },
         {
-            "attacker_msg": "You crack your {hit_location} and slide your brass knuckles on with a solemn kind of ritual. Not flashy — just final.",
+            "attacker_msg": "You crack your neck and slide your brass knuckles on with a solemn kind of ritual. Not flashy — just final.",
             "victim_msg": "{attacker_name} cracks their neck and slides the brass knuckles on with a solemn kind of ritual. Not flashy — just final.",
             "observer_msg": "{attacker_name} cracks their neck and slides the brass knuckles on with a solemn kind of ritual. Not flashy — just final."
         },
@@ -156,12 +156,12 @@ MESSAGES = {
             "observer_msg": "{attacker_name} rolls their fingers into a ball, testing the weight. The brass hums with muscle memory and old grudges."
         },
         {
-            "attacker_msg": "You roll your {hit_location} with a soft pop and slide your brass into place like a relic returned. You can feel the weight of memory in the way you tighten your fist — this isn’t the first time you’ve buried your past in someone else's face.",
+            "attacker_msg": "You roll your neck with a soft pop and slide your brass into place like a relic returned. You can feel the weight of memory in the way you tighten your fist — this isn’t the first time you’ve buried your past in someone else's face.",
             "victim_msg": "{attacker_name} rolls their neck with a soft pop and slides the brass into place like a relic returned. You can feel the weight of memory in the way they tighten their fist — this isn’t the first time they’ve buried their past in your {hit_location}.",
             "observer_msg": "{attacker_name} rolls their neck with a soft pop and slides the brass into place like a relic returned. You can feel the weight of memory in the way they tighten their fist — this isn’t the first time they’ve buried their past in {target_name}'s {hit_location}."
         },
         {
-            "attacker_msg": "You rotate your {hit_location}, your brass gleaming like old teeth. The sound echoes louder than it should.",
+            "attacker_msg": "You rotate your wrist, your brass gleaming like old teeth. The sound echoes louder than it should.",
             "victim_msg": "{attacker_name} rotates their wrist, the brass gleaming like old teeth. The sound echoes louder than it should.",
             "observer_msg": "{attacker_name} rotates their wrist, the brass gleaming like old teeth. The sound echoes louder than it should."
         },
@@ -224,7 +224,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your knuckles meet {target_name}'s {hit_location} and the result is immediate — their {hit_location} whips sideways, a fine mist of spit and {blood} trailing behind like punctuation. There’s a beat, a stagger, and the dull thud of knees losing faith.",
-            "victim_msg": "{attacker_name}'s knuckles meet your {hit_location} and the result is immediate — your {hit_location} whips sideways, a fine mist of spit and {blood} trailing behind like punctuation. There’s a beat, a stagger, and the dull thud of your {hit_location}s losing faith.",
+            "victim_msg": "{attacker_name}'s knuckles meet your {hit_location} and the result is immediate — your {hit_location} whips sideways, a fine mist of spit and {blood} trailing behind like punctuation. There’s a beat, a stagger, and the dull thud of your knees losing faith.",
             "observer_msg": "{attacker_name}'s knuckles meet {target_name}'s {hit_location} and the result is immediate — their {hit_location} whips sideways, a fine mist of spit and {blood} trailing behind like punctuation. There’s a beat, a stagger, and the dull thud of knees losing faith."
         },
         {
@@ -284,7 +284,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The sound of your impact is dull but wet — a kind of hush. {target_name} drops their guard, their breath, and finally their knees.",
-            "victim_msg": "The sound of {attacker_name}'s impact is dull but wet — a kind of hush. You drop your guard, your breath, and finally your {hit_location}s.",
+            "victim_msg": "The sound of {attacker_name}'s impact is dull but wet — a kind of hush. You drop your guard, your breath, and finally your knees.",
             "observer_msg": "The sound of {attacker_name}'s impact is dull but wet — a kind of hush. {target_name} drops their guard, their breath, and finally their knees."
         },
         {
@@ -303,9 +303,9 @@ MESSAGES = {
             "observer_msg": "The strike from {attacker_name} comes from nowhere. Brass, bone, and gravity find consensus in {target_name}'s {hit_location}."
         },
         {
-            "attacker_msg": "There's a crunch, sick and final, as your fist connects with {target_name}'s {hit_location}bone. Bone and brass argue. Your brass wins.",
-            "victim_msg": "There's a crunch, sick and final, as {attacker_name}'s fist connects with your {hit_location}bone. Bone and brass argue. Brass wins.",
-            "observer_msg": "There's a crunch, sick and final, as {attacker_name}'s fist connects with {target_name}'s {hit_location}bone. Bone and brass argue. Brass wins."
+            "attacker_msg": "There's a crunch, sick and final, as your fist connects with {target_name}'s cheekbone. Bone and brass argue. Your brass wins.",
+            "victim_msg": "There's a crunch, sick and final, as {attacker_name}'s fist connects with your cheekbone. Bone and brass argue. Brass wins.",
+            "observer_msg": "There's a crunch, sick and final, as {attacker_name}'s fist connects with {target_name}'s cheekbone. Bone and brass argue. Brass wins."
         },
         {
             "attacker_msg": "You feel the impact through the floor as {target_name} collapses — a low thud. You don’t stop to admire it.",

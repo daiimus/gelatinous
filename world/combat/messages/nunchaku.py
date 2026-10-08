@@ -106,7 +106,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} draws the weapon in silence. The chain sways like a serpent learning hunger."
         },
         {
-            'attacker_msg': "You flick the chain once against your {hit_location}. It snaps into readiness.",
+            'attacker_msg': "You flick the chain once against your back. It snaps into readiness.",
             'victim_msg': "{attacker_name} flicks the chain once against their back. It snaps into readiness.",
             'observer_msg': "{attacker_name} flicks the chain once against their back. It snaps into readiness."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} flicks the nunchaku upward and catches them again — no wasted motion, no wasted mercy."
         },
         {
-            'attacker_msg': "You let the chain coil around your {hit_location}, then snap it free with surgical precision.",
+            'attacker_msg': "You let the chain coil around your forearm, then snap it free with surgical precision.",
             'victim_msg': "{attacker_name} lets the chain coil around their forearm, then snaps it free with surgical precision.",
             'observer_msg': "{attacker_name} lets the chain coil around their forearm, then snaps it free with surgical precision."
         },
@@ -158,9 +158,9 @@ MESSAGES = {
             'observer_msg': "A downward whip crashes against {target_name}'s {hit_location}. They arch in agony."
         },
         {
-            'attacker_msg': "A fast double-strike to {target_name}'s {hit_location}s makes them stagger and wheeze.",
-            'victim_msg': "A fast double-strike to your {hit_location}s makes you stagger and wheeze.",
-            'observer_msg': "A fast double-strike to {target_name}'s {hit_location}s makes them stagger and wheeze."
+            'attacker_msg': "A fast double-strike to {target_name}'s shoulders makes them stagger and wheeze.",
+            'victim_msg': "A fast double-strike to your shoulders makes you stagger and wheeze.",
+            'observer_msg': "A fast double-strike to {target_name}'s shoulders makes them stagger and wheeze."
         },
         {
             'attacker_msg': "A feint high ends in a crushing blow to {target_name}'s {hit_location}. They buckle with a gasp.",
@@ -224,7 +224,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The nunchaku snap into {target_name}'s {hit_location}. Their eyes roll before their knees even know to buckle.",
-            'victim_msg': "The nunchaku snap into your {hit_location}. Your eyes roll before your {hit_location}s even know to buckle.",
+            'victim_msg': "The nunchaku snap into your {hit_location}. Your eyes roll before your knees even know to buckle.",
             'observer_msg': "The nunchaku snap into {target_name}'s {hit_location}. Their eyes roll before their knees even know to buckle."
         },
         {
@@ -238,9 +238,9 @@ MESSAGES = {
             'observer_msg': "The nunchaku wrap around {target_name}'s {hit_location} and jerk. The fall is ugly. The pain is worse."
         },
         {
-            'attacker_msg': "The stick spins over your {hit_location}, then crashes into {target_name}'s {hit_location} with a thud.",
-            'victim_msg': "The stick spins over {attacker_name}'s {hit_location}, then crashes into your {hit_location} with a thud.",
-            'observer_msg': "The stick spins over {attacker_name}'s {hit_location}, then crashes into {target_name}'s {hit_location} with a thud."
+            'attacker_msg': "The stick spins over your shoulder, then crashes into {target_name}'s {hit_location} with a thud.",
+            'victim_msg': "The stick spins over {attacker_name}'s shoulder, then crashes into your {hit_location} with a thud.",
+            'observer_msg': "The stick spins over {attacker_name}'s shoulder, then crashes into {target_name}'s {hit_location} with a thud."
         },
         {
             'attacker_msg': "The sticks blur and land against {target_name}'s {hit_location}. Blood spits through broken teeth.",
@@ -293,9 +293,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} spins the nunchaku low and cracks them across {target_name}'s {hit_location}."
         },
         {
-            'attacker_msg': "You spin under and strike {target_name}'s {hit_location}cap. They buckle, screaming.",
-            'victim_msg': "{attacker_name} spins under and strikes your {hit_location}cap. You buckle, screaming.",
-            'observer_msg': "{attacker_name} spins under and strikes {target_name}'s {hit_location}cap. They buckle, screaming."
+            'attacker_msg': "You spin under and strike {target_name}'s kneecap. They buckle, screaming.",
+            'victim_msg': "{attacker_name} spins under and strikes your kneecap. You buckle, screaming.",
+            'observer_msg': "{attacker_name} spins under and strikes {target_name}'s kneecap. They buckle, screaming."
         },
         {
             'attacker_msg': "You whip the sticks into {target_name}'s {hit_location}. The crunch is sharp and immediate.",
@@ -345,7 +345,7 @@ MESSAGES = {
             'observer_msg': "A whirling arc slams into a crate. Wood splinters. {target_name} doesn't wait around."
         },
         {
-            'attacker_msg': "One strike hits a railing. The vibration travels up your {hit_location}.",
+            'attacker_msg': "One strike hits a railing. The vibration travels up your arm.",
             'victim_msg': "One strike hits a railing. The vibration travels up {attacker_name}'s arm.",
             'observer_msg': "One strike hits a railing. The vibration travels up {attacker_name}'s arm."
         },

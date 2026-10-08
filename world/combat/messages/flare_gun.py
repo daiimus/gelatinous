@@ -26,7 +26,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} cocks the hammer or action of the flare gun, its simple mechanism ready to launch a burning projectile."
         },
         {
-            'attacker_msg': "The flare gun, often plastic or rugged metal, feels chunky and purposeful in your {hit_location}.",
+            'attacker_msg': "The flare gun, often plastic or rugged metal, feels chunky and purposeful in your hand.",
             'victim_msg': "The flare gun, often plastic or rugged metal, feels chunky and purposeful in {attacker_name}'s hand.",
             'observer_msg': "The flare gun, often plastic or rugged metal, feels chunky and purposeful in {attacker_name}'s hand."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air seems to still as {attacker_name} prepares to fire the flare gun, anticipating the sudden eruption of light and sound."
         },
         {
-            'attacker_msg': "Your {hit_location} is set in concentration, finger tightening on the flare gun's trigger.",
+            'attacker_msg': "Your face is set in concentration, finger tightening on the flare gun's trigger.",
             'victim_msg': "{attacker_name}'s face is set in concentration, finger tightening on the flare gun's trigger.",
             'observer_msg': "{attacker_name}'s face is set in concentration, finger tightening on the flare gun's trigger."
         },
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s flare gun to launch its payload into an empty doorway."
         },
         {
-            'attacker_msg': "The flare gun bucks in your {hit_location} as you miss, the recoil throwing off your aim for a follow-up (if you had one).",
+            'attacker_msg': "The flare gun bucks in your hand as you miss, the recoil throwing off your aim for a follow-up (if you had one).",
             'victim_msg': "The flare gun bucks in {attacker_name}'s hand as they miss, the recoil throwing off their aim for a follow-up (if they had one).",
             'observer_msg': "The flare gun bucks in {attacker_name}'s hand as they miss, the recoil throwing off their aim for a follow-up (if they had one)."
         },

@@ -27,7 +27,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} tests the rapier's flex, the thin blade quivering, eager for a thrust."
         },
         {
-            'attacker_msg': "The rapier flashes in your {hit_location}, a silver sliver ready to dance.",
+            'attacker_msg': "The rapier flashes in your hand, a silver sliver ready to dance.",
             'victim_msg': "The rapier flashes in {attacker_name}'s hand, a silver sliver ready to dance.",
             'observer_msg': "The rapier flashes in {attacker_name}'s hand, a silver sliver ready to dance."
         },
@@ -77,7 +77,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes are like chips of ice, sighting down the length of the poised rapier."
         },
         {
-            'attacker_msg': "The rapier feels alive in your {hit_location}, a delicate instrument of deadly precision.",
+            'attacker_msg': "The rapier feels alive in your hand, a delicate instrument of deadly precision.",
             'victim_msg': "The rapier feels alive in {attacker_name}'s hand, a delicate instrument of deadly precision.",
             'observer_msg': "The rapier feels alive in {attacker_name}'s hand, a delicate instrument of deadly precision."
         },
@@ -199,9 +199,9 @@ MESSAGES = {
             'observer_msg': "A well-aimed feint, then {attacker_name}'s rapier darts out to prick {target_name}'s {hit_location}."
         },
         {
-            'attacker_msg': "The rapier's needle point finds a chink in {target_name}'s {hit_location}or, leaving a telling mark.",
-            'victim_msg': "The rapier's needle point finds a chink in your {hit_location}or, leaving a telling mark.",
-            'observer_msg': "The rapier's needle point finds a chink in {target_name}'s {hit_location}or, leaving a telling mark."
+            'attacker_msg': "The rapier's needle point finds a chink in {target_name}'s armor, leaving a telling mark.",
+            'victim_msg': "The rapier's needle point finds a chink in your armor, leaving a telling mark.",
+            'observer_msg': "The rapier's needle point finds a chink in {target_name}'s armor, leaving a telling mark."
         },
         {
             'attacker_msg': "Your blade flickers like a serpent's tongue before striking {target_name}'s exposed {hit_location}.",
@@ -239,9 +239,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s follow-up lunge with the rapier catches {target_name} as they recoil."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} sends the rapier's tip into {target_name}'s exposed {hit_location}.",
-            'victim_msg': "A flick of {attacker_name}'s {hit_location} sends the rapier's tip into your exposed {hit_location}.",
-            'observer_msg': "A flick of {attacker_name}'s {hit_location} sends the rapier's tip into {target_name}'s exposed {hit_location}."
+            'attacker_msg': "A flick of your wrist sends the rapier's tip into {target_name}'s exposed {hit_location}.",
+            'victim_msg': "A flick of {attacker_name}'s wrist sends the rapier's tip into your exposed {hit_location}.",
+            'observer_msg': "A flick of {attacker_name}'s wrist sends the rapier's tip into {target_name}'s exposed {hit_location}."
         },
         {
             'attacker_msg': "The rapier sings its deadly tune as it connects with {target_name}, drawing a bead of blood.",

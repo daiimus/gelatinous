@@ -16,7 +16,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} fumbles for a moment, then produces a bright {blood} flare, its purpose now grimly offensive."
         },
         {
-            'attacker_msg': "A sharp scrape, and the flare in your {hit_location} erupts with a dazzling, intense light and a hiss of smoke.",
+            'attacker_msg': "A sharp scrape, and the flare in your hand erupts with a dazzling, intense light and a hiss of smoke.",
             'victim_msg': "A sharp scrape, and the flare in {attacker_name}'s hand erupts with a dazzling, intense light and a hiss of smoke.",
             'observer_msg': "A sharp scrape, and the flare in {attacker_name}'s hand erupts with a dazzling, intense light and a hiss of smoke."
         },
@@ -41,7 +41,7 @@ MESSAGES = {
             'observer_msg': "Light erupts from the flare, painfully bright, as {attacker_name} prepares to use it as a weapon."
         },
         {
-            'attacker_msg': "You offer no warning, just the sudden, blinding ignition of the flare in your {hit_location}.",
+            'attacker_msg': "You offer no warning, just the sudden, blinding ignition of the flare in your hand.",
             'victim_msg': "{attacker_name} offers no warning, just the sudden, blinding ignition of the flare in their hand.",
             'observer_msg': "{attacker_name} offers no warning, just the sudden, blinding ignition of the flare in their hand."
         },
@@ -61,12 +61,12 @@ MESSAGES = {
             'observer_msg': "The air around the flare shimmers with heat as {attacker_name} aims its incandescent tip."
         },
         {
-            'attacker_msg': "Your {hit_location} is illuminated by the harsh, flickering light of the flare, your expression fierce.",
+            'attacker_msg': "Your face is illuminated by the harsh, flickering light of the flare, your expression fierce.",
             'victim_msg': "{attacker_name}'s face is illuminated by the harsh, flickering light of the flare, their expression fierce.",
             'observer_msg': "{attacker_name}'s face is illuminated by the harsh, flickering light of the flare, their expression fierce."
         },
         {
-            'attacker_msg': "The flare feels dangerously hot in your {hit_location}, a tool of desperate, fiery attack.",
+            'attacker_msg': "The flare feels dangerously hot in your hand, a tool of desperate, fiery attack.",
             'victim_msg': "The flare feels dangerously hot in {attacker_name}'s hand, a tool of desperate, fiery attack.",
             'observer_msg': "The flare feels dangerously hot in {attacker_name}'s hand, a tool of desperate, fiery attack."
         },
@@ -136,7 +136,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} seems to draw courage from the flare's defiant light, their eyes fixed on {target_name}."
         },
         {
-            'attacker_msg': "Silence is broken by the fierce hiss of the flare igniting in your {hit_location}.",
+            'attacker_msg': "Silence is broken by the fierce hiss of the flare igniting in your hand.",
             'victim_msg': "Silence is broken by the fierce hiss of the flare igniting in {attacker_name}'s hand.",
             'observer_msg': "Silence is broken by the fierce hiss of the flare igniting in {attacker_name}'s hand."
         },

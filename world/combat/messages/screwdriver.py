@@ -6,7 +6,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} pulls a battered screwdriver from their pocket, spinning it once in their palm."
         },
         {
-            "attacker_msg": "You tap the screwdriver against your {hit_location}, eyes locked on {target_name}.",
+            "attacker_msg": "You tap the screwdriver against your thigh, eyes locked on {target_name}.",
             "victim_msg": "{attacker_name} taps the screwdriver against their thigh, eyes locked on you.",
             "observer_msg": "{attacker_name} taps the screwdriver against their thigh, eyes locked on {target_name}."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} balances the screwdriver on a fingertip, then lets it drop into their grip."
         },
         {
-            "attacker_msg": "You trace the tip along your {hit_location}, leaving a thin {blood} line.",
+            "attacker_msg": "You trace the tip along your forearm, leaving a thin {blood} line.",
             "victim_msg": "{attacker_name} traces the tip along their forearm, leaving a thin {blood} line.",
             "observer_msg": "{attacker_name} traces the tip along their forearm, leaving a thin {blood} line."
         },
@@ -141,7 +141,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} holds the screwdriver like a brush, ready to paint in {blood}."
         },
         {
-            "attacker_msg": "You let the screwdriver rest on your tongue for a heartbeat before spitting it into your {hit_location}.",
+            "attacker_msg": "You let the screwdriver rest on your tongue for a heartbeat before spitting it into your hand.",
             "victim_msg": "{attacker_name} lets the screwdriver rest on their tongue for a heartbeat before spitting it into their hand.",
             "observer_msg": "{attacker_name} lets the screwdriver rest on their tongue for a heartbeat before spitting it into their hand."
         },
@@ -199,7 +199,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "A shallow cut across the {hit_location} leaves {target_name} clutching at their guts.",
-            "victim_msg": "A shallow cut across the {hit_location} leaves you clutching at your {hit_location}s.",
+            "victim_msg": "A shallow cut across the {hit_location} leaves you clutching at your guts.",
             "observer_msg": "A shallow cut across the {hit_location} leaves {target_name} clutching at their guts."
         },
         {

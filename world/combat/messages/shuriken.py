@@ -36,7 +36,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} grips the throwing star lightly, wrist coiled like a spring, ready to strike {target_name}."
         },
         {
-            'attacker_msg': "The shuriken spins once in your palm before you cock your {hit_location} back toward {target_name}.",
+            'attacker_msg': "The shuriken spins once in your palm before you cock your arm back toward {target_name}.",
             'victim_msg': "The shuriken spins once in {attacker_name}'s palm before they cock their arm back toward you.",
             'observer_msg': "The shuriken spins once in {attacker_name}'s palm before they cock their arm back toward {target_name}."
         },

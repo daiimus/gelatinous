@@ -11,7 +11,7 @@ MESSAGES = {
             'observer_msg': "With a fluid motion, {attacker_name} brings the long sword to a ready stance, its point unwavering."
         },
         {
-            'attacker_msg': "You test the balance of the long sword, the blade a silver extension of your {hit_location}.",
+            'attacker_msg': "You test the balance of the long sword, the blade a silver extension of your arm.",
             'victim_msg': "{attacker_name} tests the balance of the long sword, the blade a silver extension of their arm.",
             'observer_msg': "{attacker_name} tests the balance of the long sword, the blade a silver extension of their arm."
         },
@@ -213,9 +213,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s precise cut opens a gash on {target_name}'s {hit_location}, blood momentarily blinding them."
         },
         {
-            'attacker_msg': "A resounding clang as your long sword smashes against {target_name}'s {hit_location}or, the force jarring.",
-            'victim_msg': "A resounding clang as {attacker_name}'s long sword smashes against your {hit_location}or, the force jarring.",
-            'observer_msg': "A resounding clang as {attacker_name}'s long sword smashes against {target_name}'s {hit_location}or, the force jarring."
+            'attacker_msg': "A resounding clang as your long sword smashes against {target_name}'s armor, the force jarring.",
+            'victim_msg': "A resounding clang as {attacker_name}'s long sword smashes against your armor, the force jarring.",
+            'observer_msg': "A resounding clang as {attacker_name}'s long sword smashes against {target_name}'s armor, the force jarring."
         },
         {
             'attacker_msg': "The keen blade of the long sword leaves a deep cut along {target_name}'s {hit_location}.",
@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s follow-through strike with the long sword catches {target_name} off-balance."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} sends the long sword's tip into {target_name}'s {hit_location}.",
-            'victim_msg': "A flick of {attacker_name}'s {hit_location} sends the long sword's tip into your {hit_location}.",
-            'observer_msg': "A flick of {attacker_name}'s {hit_location} sends the long sword's tip into {target_name}'s {hit_location}."
+            'attacker_msg': "A flick of your wrist sends the long sword's tip into {target_name}'s {hit_location}.",
+            'victim_msg': "A flick of {attacker_name}'s wrist sends the long sword's tip into your {hit_location}.",
+            'observer_msg': "A flick of {attacker_name}'s wrist sends the long sword's tip into {target_name}'s {hit_location}."
         },
         {
             'attacker_msg': "The long sword sings a deadly song as it connects with {target_name}, drawing blood.",

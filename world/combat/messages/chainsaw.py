@@ -6,7 +6,7 @@ MESSAGES = {
             'observer_msg': "A guttural sound fills the room as {attacker_name} turns over their saw. It doesn't want to start — it *needs* to."
         },
         {
-            'attacker_msg': "A single rev makes the air vibrate. You tilt your {hit_location}, like you're listening for the exact moment fear begins.",
+            'attacker_msg': "A single rev makes the air vibrate. You tilt your head, like you're listening for the exact moment fear begins.",
             'victim_msg': "A single rev makes the air vibrate. {attacker_name} tilts their head, like they're listening for the exact moment fear begins.",
             'observer_msg': "A single rev makes the air vibrate. {attacker_name} tilts their head, like they're listening for the exact moment fear begins."
         },

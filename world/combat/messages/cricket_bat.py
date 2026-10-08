@@ -81,7 +81,7 @@ MESSAGES = {
             "observer_msg": "The distinctive shape of the cricket bat – broad and flat – is clearly visible, a testament to its unique design."
         },
         {
-            "attacker_msg": "You hold the cricket bat angled over your {hit_location}, ready to bring its full width down upon {target_name}.",
+            "attacker_msg": "You hold the cricket bat angled over your shoulder, ready to bring its full width down upon {target_name}.",
             "victim_msg": "{attacker_name} holds the cricket bat angled over their shoulder, ready to bring its full width down upon you.",
             "observer_msg": "{attacker_name} holds the cricket bat angled over their shoulder, ready to bring its full width down upon {target_name}."
         },

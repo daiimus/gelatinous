@@ -22,7 +22,7 @@ MESSAGES = {
             'observer_msg': "With a grim expression, {attacker_name} selects a fist-sized rock, ready to crush and bludgeon."
         },
         {
-            'attacker_msg': "Your {hit_location} closes around a rough, heavy rock, its surface gritty and unforgiving.",
+            'attacker_msg': "Your hand closes around a rough, heavy rock, its surface gritty and unforgiving.",
             'victim_msg': "{attacker_name}'s hand closes around a rough, heavy rock, its surface gritty and unforgiving.",
             'observer_msg': "{attacker_name}'s hand closes around a rough, heavy rock, its surface gritty and unforgiving."
         },
@@ -47,7 +47,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} points the heaviest end of the rock towards {target_name}, a clear, primitive threat."
         },
         {
-            'attacker_msg': "Dust and grit fall from the rock in your {hit_location} as you prepare to strike.",
+            'attacker_msg': "Dust and grit fall from the rock in your hand as you prepare to strike.",
             'victim_msg': "Dust and grit fall from the rock in {attacker_name}'s hand as they prepare to strike.",
             'observer_msg': "Dust and grit fall from the rock in {attacker_name}'s hand as they prepare to strike."
         },
@@ -77,7 +77,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes are narrowed, sighting along the rock towards {target_name}'s {hit_location}."
         },
         {
-            'attacker_msg': "The rock feels solid and unforgiving in your {hit_location}, a tool of pure, blunt force.",
+            'attacker_msg': "The rock feels solid and unforgiving in your hand, a tool of pure, blunt force.",
             'victim_msg': "The rock feels solid and unforgiving in {attacker_name}'s hand, a tool of pure, blunt force.",
             'observer_msg': "The rock feels solid and unforgiving in {attacker_name}'s hand, a tool of pure, blunt force."
         },
@@ -376,7 +376,7 @@ MESSAGES = {
             'observer_msg': "A quick retreat from {target_name} leaves {attacker_name}'s rock to impact nothing but air."
         },
         {
-            'attacker_msg': "The rock feels dangerously heavy in your {hit_location} as the intended crushing blow fails to connect.",
+            'attacker_msg': "The rock feels dangerously heavy in your hand as the intended crushing blow fails to connect.",
             'victim_msg': "The rock feels dangerously heavy in {attacker_name}'s hand as the intended crushing blow fails to connect.",
             'observer_msg': "The rock feels dangerously heavy in {attacker_name}'s hand as the intended crushing blow fails to connect."
         },
@@ -533,7 +533,7 @@ MESSAGES = {
             'observer_msg': "A merciless, heavy blow with the rock, and {target_name} is no more, overcome by the vicious, blunt trauma."
         },
         {
-            'attacker_msg': "The rock, now slick with gore, drops from your {hit_location} as {target_name} lies lifeless and broken.",
+            'attacker_msg': "The rock, now slick with gore, drops from your hand as {target_name} lies lifeless and broken.",
             'victim_msg': "The rock, now slick with gore, drops from {attacker_name}'s hand as you lie lifeless and broken.",
             'observer_msg': "The rock, now slick with gore, drops from {attacker_name}'s hand as {target_name} lies lifeless and broken."
         },

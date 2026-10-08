@@ -36,7 +36,7 @@ MESSAGES = {
             'observer_msg': "No sheath. No belt. Just a hidden pocket and a moment's warning before violence begins."
         },
         {
-            'attacker_msg': "The blade is barely the length of a finger — but in your {hit_location}, it means so much more.",
+            'attacker_msg': "The blade is barely the length of a finger — but in your hand, it means so much more.",
             'victim_msg': "The blade is barely the length of a finger — but in {attacker_name}'s hand, it means so much more.",
             'observer_msg': "The blade is barely the length of a finger — but in {attacker_name}'s hand, it means so much more."
         },
@@ -46,7 +46,7 @@ MESSAGES = {
             'observer_msg': "The blade is barely visible — until {attacker_name} brings it to the light. Then it's all that exists."
         },
         {
-            'attacker_msg': "The blade is hidden until it's not. You lift your {hit_location}, and the light finds it instantly.",
+            'attacker_msg': "The blade is hidden until it's not. You lift your hand, and the light finds it instantly.",
             'victim_msg': "The blade is hidden until it's not. {attacker_name} lifts their hand, and the light finds it instantly.",
             'observer_msg': "The blade is hidden until it's not. {attacker_name} lifts their hand, and the light finds it instantly."
         },
@@ -56,7 +56,7 @@ MESSAGES = {
             'observer_msg': "The glint is brief. The danger is not. {attacker_name}'s stance changes the air."
         },
         {
-            'attacker_msg': "The handle barely fits your {hit_location}, but you make it work like an artist with a scalpel.",
+            'attacker_msg': "The handle barely fits your hand, but you make it work like an artist with a scalpel.",
             'victim_msg': "The handle barely fits the hand, but {attacker_name} makes it work like an artist with a scalpel.",
             'observer_msg': "The handle barely fits the hand, but {attacker_name} makes it work like an artist with a scalpel."
         },
@@ -146,7 +146,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slips the small knife from a hidden pocket. It glints only once before vanishing into motion."
         },
         {
-            'attacker_msg': "You snap open the small knife with a flick of your {hit_location}. The sound is soft, but final.",
+            'attacker_msg': "You snap open the small knife with a flick of your wrist. The sound is soft, but final.",
             'victim_msg': "{attacker_name} snaps open the small knife with a flick of their wrist. The sound is soft, but final.",
             'observer_msg': "{attacker_name} snaps open the small knife with a flick of their wrist. The sound is soft, but final."
         }
@@ -289,7 +289,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You slash down across the {hit_location}. {target_name} screams and falls to their knees.",
-            'victim_msg': "{attacker_name} slashes down across your {hit_location}. You scream and fall to your {hit_location}s.",
+            'victim_msg': "{attacker_name} slashes down across your {hit_location}. You scream and fall to your knees.",
             'observer_msg': "{attacker_name} slashes down across the {hit_location}. {target_name} screams and falls to their knees."
         },
         {

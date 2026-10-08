@@ -76,7 +76,7 @@ MESSAGES = {
             'observer_msg': "The stun gun crackles in rhythm with {attacker_name}'s heartbeat. A duet of malice."
         },
         {
-            'attacker_msg': "The stun gun hums to life in your {hit_location}, eager and impatient.",
+            'attacker_msg': "The stun gun hums to life in your hand, eager and impatient.",
             'victim_msg': "The stun gun hums to life in {attacker_name}'s hand, eager and impatient.",
             'observer_msg': "The stun gun hums to life in {attacker_name}'s hand, eager and impatient."
         },
@@ -198,9 +198,9 @@ MESSAGES = {
             'observer_msg': "One click and contact — {target_name}'s limbs jerk like a puppet caught mid-sentence."
         },
         {
-            'attacker_msg': "One sharp zap to the {hit_location} locks {target_name}'s {hit_location}s. They topple stiffly.",
-            'victim_msg': "One sharp zap to your {hit_location} locks your {hit_location}s. You topple stiffly.",
-            'observer_msg': "One sharp zap to the {hit_location} locks {target_name}'s {hit_location}s. They topple stiffly."
+            'attacker_msg': "One sharp zap to the {hit_location} locks {target_name}'s legs. They topple stiffly.",
+            'victim_msg': "One sharp zap to your {hit_location} locks your legs. You topple stiffly.",
+            'observer_msg': "One sharp zap to the {hit_location} locks {target_name}'s legs. They topple stiffly."
         },
         {
             'attacker_msg': "Sparks fly as you drive the prongs into {target_name}'s {hit_location}. They shudder and slump.",
@@ -248,9 +248,9 @@ MESSAGES = {
             'observer_msg': "The stun gun bites into {target_name}'s {hit_location}. Voltage floods through them."
         },
         {
-            'attacker_msg': "The stun gun connects with the lower {hit_location}. {target_name}'s {hit_location}s give out instantly.",
+            'attacker_msg': "The stun gun connects with the lower {hit_location}. {target_name}'s legs give out instantly.",
             'victim_msg': "The stun gun connects with your lower {hit_location}. Your legs give out instantly.",
-            'observer_msg': "The stun gun connects with the lower {hit_location}. {target_name}'s {hit_location}s give out instantly."
+            'observer_msg': "The stun gun connects with the lower {hit_location}. {target_name}'s legs give out instantly."
         },
         {
             'attacker_msg': "The voltage climbs up {target_name}'s {hit_location}. They arch, then collapse.",

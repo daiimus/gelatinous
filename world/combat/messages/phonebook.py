@@ -11,7 +11,7 @@ MESSAGES = {
             'observer_msg': "With a desperate look, {attacker_name} grabs a nearby phonebook, preparing to use its bulk as a weapon."
         },
         {
-            'attacker_msg': "Your {hit_location} closes around the spine of a heavy phonebook, its cover crinkling.",
+            'attacker_msg': "Your hand closes around the spine of a heavy phonebook, its cover crinkling.",
             'victim_msg': "{attacker_name}'s hand closes around the spine of a heavy phonebook, its cover crinkling.",
             'observer_msg': "{attacker_name}'s hand closes around the spine of a heavy phonebook, its cover crinkling."
         },
@@ -36,7 +36,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} swings the phonebook experimentally, its weight and unwieldiness apparent."
         },
         {
-            'attacker_msg': "Dust and the faint smell of old paper emanate from the phonebook in your {hit_location}.",
+            'attacker_msg': "Dust and the faint smell of old paper emanate from the phonebook in your hand.",
             'victim_msg': "Dust and the faint smell of old paper emanate from the phonebook in {attacker_name}'s hand.",
             'observer_msg': "Dust and the faint smell of old paper emanate from the phonebook in {attacker_name}'s hand."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes are narrowed, sighting along the edge of the phonebook towards {target_name}'s {hit_location}."
         },
         {
-            'attacker_msg': "The phonebook feels surprisingly heavy and unforgiving in your {hit_location}, a tool of pure, blunt desperation.",
+            'attacker_msg': "The phonebook feels surprisingly heavy and unforgiving in your hand, a tool of pure, blunt desperation.",
             'victim_msg': "The phonebook feels surprisingly heavy and unforgiving in {attacker_name}'s hand, a tool of pure, blunt desperation.",
             'observer_msg': "The phonebook feels surprisingly heavy and unforgiving in {attacker_name}'s hand, a tool of pure, blunt desperation."
         },
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick retreat from {target_name} leaves {attacker_name}'s phonebook to impact nothing but air with a soft *whoomph*."
         },
         {
-            'attacker_msg': "The phonebook feels dangerously unwieldy in your {hit_location} as the intended crushing blow fails to connect.",
+            'attacker_msg': "The phonebook feels dangerously unwieldy in your hand as the intended crushing blow fails to connect.",
             'victim_msg': "The phonebook feels dangerously unwieldy in {attacker_name}'s hand as the intended crushing blow fails to connect.",
             'observer_msg': "The phonebook feels dangerously unwieldy in {attacker_name}'s hand as the intended crushing blow fails to connect."
         },
@@ -522,7 +522,7 @@ MESSAGES = {
             'observer_msg': "A merciless, heavy blow with the phonebook to the back of the head, and {target_name} is no more, overcome by the vicious, blunt trauma."
         },
         {
-            'attacker_msg': "The phonebook, now tattered and perhaps bloodied, drops from your {hit_location} as {target_name} lies lifeless and broken.",
+            'attacker_msg': "The phonebook, now tattered and perhaps bloodied, drops from your hand as {target_name} lies lifeless and broken.",
             'victim_msg': "The phonebook, now tattered and perhaps bloodied, drops from {attacker_name}'s hand as you lie lifeless and broken.",
             'observer_msg': "The phonebook, now tattered and perhaps bloodied, drops from {attacker_name}'s hand as {target_name} lies lifeless and broken."
         },

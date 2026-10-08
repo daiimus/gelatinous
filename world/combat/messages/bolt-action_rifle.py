@@ -61,7 +61,7 @@ MESSAGES = {
             "observer_msg": "The air seems to still as {attacker_name} prepares to fire the bolt-action rifle, anticipating the sharp, heavy *CRACK* of the shot."
         },
         {
-            "attacker_msg": "Your {hit_location} is a mask of concentration, finger slowly taking up the trigger slack on the bolt-action rifle.",
+            "attacker_msg": "Your face is a mask of concentration, finger slowly taking up the trigger slack on the bolt-action rifle.",
             "victim_msg": "{attacker_name}’s face is a mask of concentration, finger slowly taking up the trigger slack on the bolt-action rifle.",
             "observer_msg": "{attacker_name}’s face is a mask of concentration, finger slowly taking up the trigger slack on the bolt-action rifle."
         },
@@ -365,7 +365,7 @@ MESSAGES = {
             "observer_msg": "A quick sidestep from {target_name} leaves {attacker_name}'s bolt-action rifle to punch a massive hole in an empty oil drum. {attacker_name} cycles the bolt, unflinching."
         },
         {
-            "attacker_msg": "The bolt-action rifle bucks powerfully in your {hit_location} as you miss, the recoil throwing your aim off for a moment. You work the bolt, chambering a fresh round.",
+            "attacker_msg": "The bolt-action rifle bucks powerfully in your shoulder as you miss, the recoil throwing your aim off for a moment. You work the bolt, chambering a fresh round.",
             "victim_msg": "The bolt-action rifle bucks powerfully in {attacker_name}'s shoulder as they miss, the recoil throwing their aim off for a moment. {attacker_name} works the bolt, chambering a fresh round.",
             "observer_msg": "The bolt-action rifle bucks powerfully in {attacker_name}'s shoulder as they miss, the recoil throwing their aim off for a moment. {attacker_name} works the bolt, chambering a fresh round."
         },

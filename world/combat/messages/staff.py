@@ -71,7 +71,7 @@ MESSAGES = {
             'observer_msg': "The staff moves like memory — fast, fluid, practiced. {attacker_name} is already moving."
         },
         {
-            'attacker_msg': "The staff rests against your {hit_location} before snapping into place. The rhythm is muscle memory.",
+            'attacker_msg': "The staff rests against your hip before snapping into place. The rhythm is muscle memory.",
             'victim_msg': "The staff rests against {attacker_name}'s hip before snapping into place. The rhythm is muscle memory.",
             'observer_msg': "The staff rests against {attacker_name}'s hip before snapping into place. The rhythm is muscle memory."
         },
@@ -86,7 +86,7 @@ MESSAGES = {
             'observer_msg': "The wood creaks with motion. {attacker_name}'s hands know exactly where to hold."
         },
         {
-            'attacker_msg': "The wood spins across your {hit_location} and into ready hands. This is ritual, not showmanship.",
+            'attacker_msg': "The wood spins across your back and into ready hands. This is ritual, not showmanship.",
             'victim_msg': "The wood spins across {attacker_name}'s back and into ready hands. This is ritual, not showmanship.",
             'observer_msg': "The wood spins across {attacker_name}'s back and into ready hands. This is ritual, not showmanship."
         },
@@ -178,9 +178,9 @@ MESSAGES = {
             'observer_msg': "A low jab to the {hit_location} doubles {target_name} over, wheezing."
         },
         {
-            'attacker_msg': "A low sweep knocks {target_name}'s {hit_location}s out from under them. The fall isn't graceful.",
-            'victim_msg': "A low sweep knocks your {hit_location}s out from under you. The fall isn't graceful.",
-            'observer_msg': "A low sweep knocks {target_name}'s {hit_location}s out from under them. The fall isn't graceful."
+            'attacker_msg': "A low sweep knocks {target_name}'s legs out from under them. The fall isn't graceful.",
+            'victim_msg': "A low sweep knocks your legs out from under you. The fall isn't graceful.",
+            'observer_msg': "A low sweep knocks {target_name}'s legs out from under them. The fall isn't graceful."
         },
         {
             'attacker_msg': "A sharp crack to the {hit_location} buckles {target_name} with a shout.",
@@ -279,7 +279,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You slam the staff across {target_name}'s {hit_location}. They drop to their knees.",
-            'victim_msg': "{attacker_name} slams the staff across your {hit_location}. You drop to your {hit_location}s.",
+            'victim_msg': "{attacker_name} slams the staff across your {hit_location}. You drop to your knees.",
             'observer_msg': "{attacker_name} slams the staff across {target_name}'s {hit_location}. They drop to their knees."
         },
         {

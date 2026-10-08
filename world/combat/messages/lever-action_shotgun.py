@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air is tense as {attacker_name} prepares to fire the lever-action shotgun, anticipating the powerful *BOOM* and the immediate, fluid cycle of the lever."
         },
         {
-            'attacker_msg': "Your {hit_location} is set, finger ready on the trigger of the lever-action shotgun, poised to send a cloud of buckshot or a heavy slug.",
+            'attacker_msg': "Your face is set, finger ready on the trigger of the lever-action shotgun, poised to send a cloud of buckshot or a heavy slug.",
             'victim_msg': "{attacker_name}'s face is set, finger ready on the trigger of the lever-action shotgun, poised to send a cloud of buckshot or a heavy slug.",
             'observer_msg': "{attacker_name}'s face is set, finger ready on the trigger of the lever-action shotgun, poised to send a cloud of buckshot or a heavy slug."
         },
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s lever-action shotgun to blast a pattern into a wall. {attacker_name} cycles the lever, unflinching, ready to fire again."
         },
         {
-            'attacker_msg': "The lever-action shotgun jumps in your {hit_location} as you miss. You cycle the lever, chambering a fresh, potent shell, correcting your stance.",
+            'attacker_msg': "The lever-action shotgun jumps in your shoulder as you miss. You cycle the lever, chambering a fresh, potent shell, correcting your stance.",
             'victim_msg': "The lever-action shotgun jumps in {attacker_name}'s shoulder as they miss. {attacker_name} cycles the lever, chambering a fresh, potent shell, correcting their stance.",
             'observer_msg': "The lever-action shotgun jumps in {attacker_name}'s shoulder as they miss. {attacker_name} cycles the lever, chambering a fresh, potent shell, correcting their stance."
         },

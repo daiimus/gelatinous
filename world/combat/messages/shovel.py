@@ -111,7 +111,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} drags the edge across the ground. Sparks follow. So does certainty."
         },
         {
-            'attacker_msg': "You flip the shovel in your {hit_location}, blade first, like you're weighing more than steel.",
+            'attacker_msg': "You flip the shovel in your hand, blade first, like you're weighing more than steel.",
             'victim_msg': "{attacker_name} flips the shovel in their hand, blade first, like they're weighing more than steel.",
             'observer_msg': "{attacker_name} flips the shovel in their hand, blade first, like they're weighing more than steel."
         },
@@ -131,7 +131,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} grips the shovel's splintered handle like an old friend they've buried secrets with."
         },
         {
-            'attacker_msg': "You hoist the shovel over your {hit_location} like a grave digger with different plans.",
+            'attacker_msg': "You hoist the shovel over your shoulder like a grave digger with different plans.",
             'victim_msg': "{attacker_name} hoists the shovel over their shoulder like a grave digger with different plans.",
             'observer_msg': "{attacker_name} hoists the shovel over their shoulder like a grave digger with different plans."
         },
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slams the flat against {target_name}'s {hit_location} blade. They drop, gasping."
         },
         {
-            'attacker_msg': "You smash the {hit_location}le into their {hit_location}. The crack echoes. So does their scream.",
-            'victim_msg': "{attacker_name} smashes the {hit_location}le into your {hit_location}. The crack echoes. So does your scream.",
-            'observer_msg': "{attacker_name} smashes the {hit_location}le into {target_name}'s {hit_location}. The crack echoes. So does their scream."
+            'attacker_msg': "You smash the handle into their {hit_location}. The crack echoes. So does their scream.",
+            'victim_msg': "{attacker_name} smashes the handle into your {hit_location}. The crack echoes. So does your scream.",
+            'observer_msg': "{attacker_name} smashes the handle into {target_name}'s {hit_location}. The crack echoes. So does their scream."
         },
         {
             'attacker_msg': "You swing low and connect with the {hit_location}. They collapse with a grunt.",
@@ -288,9 +288,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} swings low and connects with {target_name}'s {hit_location}. They collapse with a grunt."
         },
         {
-            'attacker_msg': "You thrust the {hit_location}le into the {hit_location}. The wheeze is immediate.",
-            'victim_msg': "{attacker_name} thrusts the {hit_location}le into your {hit_location}. Your wheeze is immediate.",
-            'observer_msg': "{attacker_name} thrusts the {hit_location}le into {target_name}'s {hit_location}. Their wheeze is immediate."
+            'attacker_msg': "You thrust the handle into the {hit_location}. The wheeze is immediate.",
+            'victim_msg': "{attacker_name} thrusts the handle into your {hit_location}. Your wheeze is immediate.",
+            'observer_msg': "{attacker_name} thrusts the handle into {target_name}'s {hit_location}. Their wheeze is immediate."
         },
         {
             'attacker_msg': "You yank the blade sideways through the flesh. They scream and twist away.",

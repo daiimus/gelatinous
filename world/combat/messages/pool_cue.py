@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} wipes the cue on their sleeve, as if it matters."
         },
         {
-            'attacker_msg': "You let the cue rest on your {hit_location}, casual as a hustler at closing time.",
+            'attacker_msg': "You let the cue rest on your shoulder, casual as a hustler at closing time.",
             'victim_msg': "{attacker_name} lets the cue rest on their shoulder, casual as a hustler at closing time.",
             'observer_msg': "{attacker_name} lets the cue rest on their shoulder, casual as a hustler at closing time."
         },
@@ -131,7 +131,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the cue like a brush, ready to paint in {blood}."
         },
         {
-            'attacker_msg': "You let the cue rest on your {hit_location}, eyes never leaving {target_name}.",
+            'attacker_msg': "You let the cue rest on your shoulder, eyes never leaving {target_name}.",
             'victim_msg': "{attacker_name} lets the cue rest on their shoulder, eyes never leaving you.",
             'observer_msg': "{attacker_name} lets the cue rest on their shoulder, eyes never leaving {target_name}."
         },
@@ -199,7 +199,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A heavy swing across the {hit_location} leaves {target_name} clutching at their guts.",
-            'victim_msg': "A heavy swing across the {hit_location} leaves you clutching at your {hit_location}s.",
+            'victim_msg': "A heavy swing across the {hit_location} leaves you clutching at your guts.",
             'observer_msg': "A heavy swing across the {hit_location} leaves {target_name} clutching at their guts."
         },
         {

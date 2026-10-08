@@ -144,8 +144,8 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your backhand swing with the tennis racket catches {target_name} across the {hit_location}, strings singing with contact.",
-            "victim_msg": "{attacker_name}'s {hit_location}hand swing with their tennis racket catches you across the {hit_location}, strings singing with contact!",
-            "observer_msg": "{attacker_name}'s {hit_location}hand swing with the tennis racket catches {target_name} across the {hit_location}, strings singing with contact."
+            "victim_msg": "{attacker_name}'s backhand swing with their tennis racket catches you across the {hit_location}, strings singing with contact!",
+            "observer_msg": "{attacker_name}'s backhand swing with the tennis racket catches {target_name} across the {hit_location}, strings singing with contact."
         },
         {
             "attacker_msg": "The lightweight frame of your tennis racket proves deceptively painful as it strikes {target_name}'s {hit_location}.",
@@ -188,9 +188,9 @@ MESSAGES = {
             "observer_msg": "A wicked slice from the tennis racket spins unexpectedly, catching {target_name} off-balance and striking their {hit_location}."
         },
         {
-            "attacker_msg": "Your tennis racket's {hit_location}le becomes a weapon as you drive the butt end into {target_name}'s solar plexus.",
-            "victim_msg": "{attacker_name}'s tennis racket's {hit_location}le becomes a weapon as they drive the butt end into your solar plexus!",
-            "observer_msg": "The tennis racket's {hit_location}le becomes a weapon as {attacker_name} drives the butt end into {target_name}'s solar plexus."
+            "attacker_msg": "Your tennis racket's handle becomes a weapon as you drive the butt end into {target_name}'s solar plexus.",
+            "victim_msg": "{attacker_name}'s tennis racket's handle becomes a weapon as they drive the butt end into your solar plexus!",
+            "observer_msg": "The tennis racket's handle becomes a weapon as {attacker_name} drives the butt end into {target_name}'s solar plexus."
         },
         {
             "attacker_msg": "A championship-caliber stroke with your tennis racket leaves {blood} welts across {target_name}'s exposed skin.",
@@ -233,9 +233,9 @@ MESSAGES = {
             "observer_msg": "The tennis racket finds its mark with a satisfying *ping*, the aluminum frame ringing against {target_name}'s {hit_location}."
         },
         {
-            "attacker_msg": "A textbook groundstroke with your tennis racket sweeps {target_name}'s {hit_location}s, sending them crashing down.",
-            "victim_msg": "A textbook groundstroke from {attacker_name}'s tennis racket sweeps your {hit_location}s, sending you crashing down!",
-            "observer_msg": "A textbook groundstroke from the tennis racket sweeps {target_name}'s {hit_location}s, sending them crashing down."
+            "attacker_msg": "A textbook groundstroke with your tennis racket sweeps {target_name}'s legs, sending them crashing down.",
+            "victim_msg": "A textbook groundstroke from {attacker_name}'s tennis racket sweeps your legs, sending you crashing down!",
+            "observer_msg": "A textbook groundstroke from the tennis racket sweeps {target_name}'s legs, sending them crashing down."
         },
         {
             "attacker_msg": "Your tennis racket's grip tape provides perfect traction as you deliver a bone-jarring blow to {target_name}'s {hit_location}.",

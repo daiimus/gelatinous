@@ -41,7 +41,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} briefly struggles with the weight of the oversized shears before settling into a firm two-handed stance."
         },
         {
-            'attacker_msg': "You rest the heavy, long-handled shears on your {hit_location}, the formidable blades pointing skyward.",
+            'attacker_msg': "You rest the heavy, long-handled shears on your shoulder, the formidable blades pointing skyward.",
             'victim_msg': "{attacker_name} rests the heavy, long-handled shears on their shoulder, the formidable blades pointing skyward.",
             'observer_msg': "{attacker_name} rests the heavy, long-handled shears on their shoulder, the formidable blades pointing skyward."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} works the long handles, clicking the heavy shears open and shut, the rhythm a steady, menacing beat of impending action."
         },
         {
-            'attacker_msg': "You carefully trace one of the long, wickedly sharp edges of the shears along your {hit_location}, a silent vow.",
+            'attacker_msg': "You carefully trace one of the long, wickedly sharp edges of the shears along your forearm, a silent vow.",
             'victim_msg': "{attacker_name} carefully traces one of the long, wickedly sharp edges of the shears along their forearm, a silent vow.",
             'observer_msg': "{attacker_name} carefully traces one of the long, wickedly sharp edges of the shears along their forearm, a silent vow."
         },
@@ -131,7 +131,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} leans on the long-handled shears, the heavy blades resting on the ground, a picture of grim readiness."
         },
         {
-            'attacker_msg': "You touch one of the cold, long blades of the heavy shears to your tongue, a savage grin spreading across your {hit_location}.",
+            'attacker_msg': "You touch one of the cold, long blades of the heavy shears to your tongue, a savage grin spreading across your face.",
             'victim_msg': "{attacker_name} touches one of the cold, long blades of the heavy shears to their tongue, a savage grin spreading across their face.",
             'observer_msg': "{attacker_name} touches one of the cold, long blades of the heavy shears to their tongue, a savage grin spreading across their face."
         },

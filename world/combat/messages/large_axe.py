@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "The axe crashes into {target_name}'s {hit_location}. The scream barely escapes."
         },
         {
-            'attacker_msg': "The axe lands mid-spine. {target_name}'s {hit_location}s give out without argument.",
+            'attacker_msg': "The axe lands mid-spine. {target_name}'s legs give out without argument.",
             'victim_msg': "The axe lands mid-spine. Your legs give out without argument.",
-            'observer_msg': "The axe lands mid-spine. {target_name}'s {hit_location}s give out without argument."
+            'observer_msg': "The axe lands mid-spine. {target_name}'s legs give out without argument."
         },
         {
             'attacker_msg': "The axe punches into the {hit_location}. {target_name} folds around it, blood-first.",

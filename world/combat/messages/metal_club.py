@@ -51,7 +51,7 @@ MESSAGES = {
             'observer_msg': "The club rotates once before locking into a ready grip. {attacker_name} doesn't pose — they prepare."
         },
         {
-            'attacker_msg': "The club's handle fits like a memory in your {hit_location}. Bad ones. Repeatable ones.",
+            'attacker_msg': "The club's handle fits like a memory in your hand. Bad ones. Repeatable ones.",
             'victim_msg': "The club's handle fits like a memory in {attacker_name}'s hand. Bad ones. Repeatable ones.",
             'observer_msg': "The club's handle fits like a memory in {attacker_name}'s hand. Bad ones. Repeatable ones."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} hoists the club like it's not the first time. The dents say it's not the last either."
         },
         {
-            'attacker_msg': "You pull the club free from your {hit_location}. Gravity does the rest.",
+            'attacker_msg': "You pull the club free from your back. Gravity does the rest.",
             'victim_msg': "{attacker_name} pulls the club free from their back. Gravity does the rest.",
             'observer_msg': "{attacker_name} pulls the club free from their back. Gravity does the rest."
         },
@@ -131,7 +131,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} raises the club with deliberate ease. They've been waiting for this moment."
         },
         {
-            'attacker_msg': "You roll the club in your {hit_location} like it's a coin flip that only ends one way.",
+            'attacker_msg': "You roll the club in your hand like it's a coin flip that only ends one way.",
             'victim_msg': "{attacker_name} rolls the club in their hand like it's a coin flip that only ends one way.",
             'observer_msg': "{attacker_name} rolls the club in their hand like it's a coin flip that only ends one way."
         },
@@ -283,9 +283,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} drives the club into the {hit_location} of the {hit_location}. {target_name} falls like a shelf giving out."
         },
         {
-            'attacker_msg': "You hook the end under the chin. {target_name}'s {hit_location} whips {hit_location}, and the {hit_location}s follow.",
-            'victim_msg': "{attacker_name} hooks the end under the chin. Your {hit_location} whips {hit_location}, and the {hit_location}s follow.",
-            'observer_msg': "{attacker_name} hooks the end under the chin. {target_name}'s {hit_location} whips {hit_location}, and the {hit_location}s follow."
+            'attacker_msg': "You hook the end under the chin. {target_name}'s {hit_location} whips back, and the knees follow.",
+            'victim_msg': "{attacker_name} hooks the end under the chin. Your {hit_location} whips back, and the knees follow.",
+            'observer_msg': "{attacker_name} hooks the end under the chin. {target_name}'s {hit_location} whips back, and the knees follow."
         },
         {
             'attacker_msg': "You jab the club into the {hit_location}. Once. Twice. The third time knocks something loose.",

@@ -6,7 +6,7 @@ MESSAGES = {
             'observer_msg': "A dented plate of steel, held together by spite. {attacker_name} wields it like a banner of ruin."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} and the weight settles. You lean into it like home.",
+            'attacker_msg': "A flick of your wrist and the weight settles. You lean into it like home.",
             'victim_msg': "A flick of {attacker_name}'s wrist and the weight settles. They lean into it like home.",
             'observer_msg': "A flick of {attacker_name}'s wrist and the weight settles. They lean into it like home."
         },
@@ -56,7 +56,7 @@ MESSAGES = {
             'observer_msg': "The object barely qualifies as armor. In {attacker_name}'s hands, it's wrath repurposed."
         },
         {
-            'attacker_msg': "The scrap shakes once in your {hit_location}, then stills. That's all it takes.",
+            'attacker_msg': "The scrap shakes once in your hand, then stills. That's all it takes.",
             'victim_msg': "The scrap shakes once in {attacker_name}'s hand, then stills. That's all it takes.",
             'observer_msg': "The scrap shakes once in {attacker_name}'s hand, then stills. That's all it takes."
         },
@@ -203,9 +203,9 @@ MESSAGES = {
             'observer_msg': "The corner of the shield hooks {target_name}'s {hit_location} and yanks. Gravity does the rest."
         },
         {
-            'attacker_msg': "The edge of the shield cuts the {hit_location}bone. Skin splits. {target_name} cries out.",
-            'victim_msg': "The edge of the shield cuts your {hit_location}bone. Skin splits. You cry out.",
-            'observer_msg': "The edge of the shield cuts the {hit_location}bone. Skin splits. {target_name} cries out."
+            'attacker_msg': "The edge of the shield cuts the cheekbone. Skin splits. {target_name} cries out.",
+            'victim_msg': "The edge of the shield cuts your cheekbone. Skin splits. You cry out.",
+            'observer_msg': "The edge of the shield cuts the cheekbone. Skin splits. {target_name} cries out."
         },
         {
             'attacker_msg': "The edge of the shield slams into the {hit_location} of {target_name}'s {hit_location}. Blood blooms. So does confusion.",

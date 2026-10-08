@@ -26,7 +26,7 @@ MESSAGES = {
             'observer_msg': "Each step forward shortens the leash. The whip is ready. {attacker_name} is worse."
         },
         {
-            'attacker_msg': "Leather coils around your {hit_location} like a pet serpent. It's ready to bite.",
+            'attacker_msg': "Leather coils around your hand like a pet serpent. It's ready to bite.",
             'victim_msg': "Leather coils around {attacker_name}'s hand like a pet serpent. It's ready to bite.",
             'observer_msg': "Leather coils around {attacker_name}'s hand like a pet serpent. It's ready to bite."
         },
@@ -101,7 +101,7 @@ MESSAGES = {
             'observer_msg': "With no ceremony, {attacker_name} flicks the whip and lets the silence do the rest."
         },
         {
-            'attacker_msg': "You coil the whip around your {hit_location}, then flick it free. The air snaps.",
+            'attacker_msg': "You coil the whip around your arm, then flick it free. The air snaps.",
             'victim_msg': "{attacker_name} coils the whip around their arm, then flicks it free. The air snaps.",
             'observer_msg': "{attacker_name} coils the whip around their arm, then flicks it free. The air snaps."
         },
@@ -121,7 +121,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} loops the handle once, eyes locked on {target_name}. The rest is just echo."
         },
         {
-            'attacker_msg': "You roll your {hit_location}. The whip slithers loose and twitching.",
+            'attacker_msg': "You roll your wrist. The whip slithers loose and twitching.",
             'victim_msg': "{attacker_name} rolls their wrist. The whip slithers loose and twitching.",
             'observer_msg': "{attacker_name} rolls their wrist. The whip slithers loose and twitching."
         },
@@ -131,7 +131,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} snaps the whip once — not to intimidate, but to announce the end."
         },
         {
-            'attacker_msg': "You spin the whip behind your {hit_location}. It arcs forward, tense and lethal.",
+            'attacker_msg': "You spin the whip behind your back. It arcs forward, tense and lethal.",
             'victim_msg': "{attacker_name} spins the whip behind their back. It arcs forward, tense and lethal.",
             'observer_msg': "{attacker_name} spins the whip behind their back. It arcs forward, tense and lethal."
         },
@@ -141,7 +141,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} uncoils the whip in one slow movement. It slithers across the ground like it's hunting."
         },
         {
-            'attacker_msg': "You wind the whip around your {hit_location} — then release it in one silent gesture.",
+            'attacker_msg': "You wind the whip around your wrist — then release it in one silent gesture.",
             'victim_msg': "{attacker_name} winds the whip around their wrist — then releases it in one silent gesture.",
             'observer_msg': "{attacker_name} winds the whip around their wrist — then releases it in one silent gesture."
         },
@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "A strike slices the top of the {hit_location}. The weapon drops. So does the fight."
         },
         {
-            'attacker_msg': "A twist of your {hit_location} and the whip cracks against the lower {hit_location}. {target_name} arches in pain.",
-            'victim_msg': "A twist of the {hit_location} and the whip cracks against your lower {hit_location}. You arch in pain.",
-            'observer_msg': "A twist of the {hit_location} and the whip cracks against the lower {hit_location}. {target_name} arches in pain."
+            'attacker_msg': "A twist of your wrist and the whip cracks against the lower {hit_location}. {target_name} arches in pain.",
+            'victim_msg': "A twist of the wrist and the whip cracks against your lower {hit_location}. You arch in pain.",
+            'observer_msg': "A twist of the wrist and the whip cracks against the lower {hit_location}. {target_name} arches in pain."
         },
         {
             'attacker_msg': "A twisting snap slashes the {hit_location}. {target_name}'s skin opens like paper.",
@@ -284,7 +284,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You deliver a strike that lashes across both thighs. {target_name} hits the floor hard.",
-            'victim_msg': "{attacker_name} delivers a strike that lashes across both your {hit_location}s. You hit the floor hard.",
+            'victim_msg': "{attacker_name} delivers a strike that lashes across both your thighs. You hit the floor hard.",
             'observer_msg': "{attacker_name} delivers a strike that lashes across both thighs. {target_name} hits the floor hard."
         },
         {

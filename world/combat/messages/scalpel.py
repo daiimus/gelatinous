@@ -293,7 +293,7 @@ MESSAGES = {
             'observer_msg': "The scalpel opens {target_name}'s {hit_location}, revealing teeth through the surgical cut."
         },
         {
-            'attacker_msg': "The scalpel finds the gap in {target_name}'s {hit_location}or, sliding home with wet finality.",
+            'attacker_msg': "The scalpel finds the gap in {target_name}'s armor, sliding home with wet finality.",
             'victim_msg': "You feel the blade find the weak point in your protection and slide deep.",
             'observer_msg': "The scalpel bypasses {target_name}'s defenses with surgical precision."
         },

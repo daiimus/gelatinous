@@ -11,12 +11,12 @@ MESSAGES = {
             "observer_msg": "With a grim look, {attacker_name} brandishes the bulky cellphone, its long, rigid antenna jutting out menacingly."
         },
         {
-            "attacker_msg": "Your {hit_location} closes around the solid, weighty plastic of the cellphone, a true 'brick' by any standard.",
+            "attacker_msg": "Your hand closes around the solid, weighty plastic of the cellphone, a true 'brick' by any standard.",
             "victim_msg": "{attacker_name}'s hand closes around the solid, weighty plastic of the cellphone, a true 'brick' by any standard.",
             "observer_msg": "{attacker_name}'s hand closes around the solid, weighty plastic of the cellphone, a true 'brick' by any standard."
         },
         {
-            "attacker_msg": "A cellphone, more akin to a small club than just a communication device, becomes a weapon in your {hit_location}.",
+            "attacker_msg": "A cellphone, more akin to a small club than just a communication device, becomes a weapon in your hand.",
             "victim_msg": "A cellphone, more akin to a small club than just a communication device, becomes a weapon in {attacker_name}'s hand.",
             "observer_msg": "A cellphone, more akin to a small club than just a communication device, becomes a weapon in {attacker_name}'s hand."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s eyes are narrowed, sighting along the blocky length of the cellphone towards {target_name}'s {hit_location}."
         },
         {
-            "attacker_msg": "The cellphone feels unexpectedly weapon-like in your {hit_location}, a tool of pure, blunt force.",
+            "attacker_msg": "The cellphone feels unexpectedly weapon-like in your hand, a tool of pure, blunt force.",
             "victim_msg": "The cellphone feels unexpectedly weapon-like in {attacker_name}'s hand, a tool of pure, blunt force.",
             "observer_msg": "The cellphone feels unexpectedly weapon-like in {attacker_name}'s hand, a tool of pure, blunt force."
         },
@@ -365,7 +365,7 @@ MESSAGES = {
             "observer_msg": "A quick retreat from {target_name} leaves {attacker_name}'s cellphone to impact nothing but air with a solid *SWOOSH*."
         },
         {
-            "attacker_msg": "The cellphone feels dangerously unwieldy in your {hit_location} as the intended crushing blow fails to connect, nearly wrenching your {hit_location}.",
+            "attacker_msg": "The cellphone feels dangerously unwieldy in your hand as the intended crushing blow fails to connect, nearly wrenching your wrist.",
             "victim_msg": "The cellphone feels dangerously unwieldy in {attacker_name}'s hand as the intended crushing blow fails to connect, nearly wrenching their wrist.",
             "observer_msg": "The cellphone feels dangerously unwieldy in {attacker_name}'s hand as the intended crushing blow fails to connect, nearly wrenching their wrist."
         },
@@ -522,7 +522,7 @@ MESSAGES = {
             "observer_msg": "A merciless, heavy blow with the cellphone to the back of the head, and {target_name} is no more, overcome by the vicious, blunt trauma from the heavy weapon, its antenna bent into their flesh."
         },
         {
-            "attacker_msg": "The cellphone, now battered, its antenna broken, and perhaps its casing cracked, drops from your {hit_location} as {target_name} lies lifeless and broken.",
+            "attacker_msg": "The cellphone, now battered, its antenna broken, and perhaps its casing cracked, drops from your hand as {target_name} lies lifeless and broken.",
             "victim_msg": "The cellphone, now battered, its antenna broken, and perhaps its casing cracked, drops from {attacker_name}'s hand as you lie lifeless and broken.",
             "observer_msg": "The cellphone, now battered, its antenna broken, and perhaps its casing cracked, drops from {attacker_name}'s hand as {target_name} lies lifeless and broken."
         },

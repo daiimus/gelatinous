@@ -56,7 +56,7 @@ MESSAGES = {
             'observer_msg': "The nightstick extends with a click and a hiss. {attacker_name} doesn't smile. They don't need to."
         },
         {
-            'attacker_msg': "The nightstick rests against your {hit_location}, a calm before a storm made of plastic and pain.",
+            'attacker_msg': "The nightstick rests against your forearm, a calm before a storm made of plastic and pain.",
             'victim_msg': "The nightstick rests against {attacker_name}'s forearm, a calm before a storm made of plastic and pain.",
             'observer_msg': "The nightstick rests against {attacker_name}'s forearm, a calm before a storm made of plastic and pain."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "The nightstick spins once before locking into place. {attacker_name} doesn't look down — only forward."
         },
         {
-            'attacker_msg': "The polymer baton spins once in your {hit_location}. You catch it without looking.",
+            'attacker_msg': "The polymer baton spins once in your hand. You catch it without looking.",
             'victim_msg': "The polymer baton spins once in {attacker_name}'s hand. They catch it without looking.",
             'observer_msg': "The polymer baton spins once in {attacker_name}'s hand. They catch it without looking."
         },
@@ -76,7 +76,7 @@ MESSAGES = {
             'observer_msg': "The weapon extends with the practiced precision of someone who's done this before — and enjoyed it."
         },
         {
-            'attacker_msg': "The weapon is deceptively plain. In your {hit_location}, it becomes doctrine.",
+            'attacker_msg': "The weapon is deceptively plain. In your hand, it becomes doctrine.",
             'victim_msg': "The weapon is deceptively plain. In {attacker_name}'s hand, it becomes doctrine.",
             'observer_msg': "The weapon is deceptively plain. In {attacker_name}'s hand, it becomes doctrine."
         },
@@ -111,7 +111,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the nightstick like a judge holds a gavel. The verdict is violence."
         },
         {
-            'attacker_msg': "You roll your {hit_location} once, letting the stick spin into a ready grip. Control. Tension. Command.",
+            'attacker_msg': "You roll your wrist once, letting the stick spin into a ready grip. Control. Tension. Command.",
             'victim_msg': "{attacker_name} rolls their wrist once, letting the stick spin into a ready grip. Control. Tension. Command.",
             'observer_msg': "{attacker_name} rolls their wrist once, letting the stick spin into a ready grip. Control. Tension. Command."
         },
@@ -141,7 +141,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} spins the nightstick in a slow circle, testing weight, distance, control — all dialed in."
         },
         {
-            'attacker_msg': "You tap the nightstick against your {hit_location}. Each knock feels like a countdown.",
+            'attacker_msg': "You tap the nightstick against your leg. Each knock feels like a countdown.",
             'victim_msg': "{attacker_name} taps the nightstick against their leg. Each knock feels like a countdown.",
             'observer_msg': "{attacker_name} taps the nightstick against their leg. Each knock feels like a countdown."
         },

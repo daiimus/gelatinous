@@ -1,7 +1,7 @@
 MESSAGES = {
     "initiate": [
         {
-            'attacker_msg': "You bring a classic lever-action rifle to your {hit_location}, the polished wood stock and blued steel gleaming with deadly promise.",
+            'attacker_msg': "You bring a classic lever-action rifle to your shoulder, the polished wood stock and blued steel gleaming with deadly promise.",
             'victim_msg': "{attacker_name} brings a classic lever-action rifle to their shoulder, the polished wood stock and blued steel gleaming with deadly promise.",
             'observer_msg': "{attacker_name} brings a classic lever-action rifle to their shoulder, the polished wood stock and blued steel gleaming with deadly promise."
         },
@@ -61,12 +61,12 @@ MESSAGES = {
             'observer_msg': "The air is tense as {attacker_name} prepares to fire the lever-action rifle, anticipating the solid *CRACK* of the shot and the immediate, fluid cycle of the lever."
         },
         {
-            'attacker_msg': "Your {hit_location} is set in concentration, finger ready on the trigger of the lever-action rifle, poised to send lead and then quickly reload.",
+            'attacker_msg': "Your face is set in concentration, finger ready on the trigger of the lever-action rifle, poised to send lead and then quickly reload.",
             'victim_msg': "{attacker_name}'s face is set in concentration, finger ready on the trigger of the lever-action rifle, poised to send lead and then quickly reload.",
             'observer_msg': "{attacker_name}'s face is set in concentration, finger ready on the trigger of the lever-action rifle, poised to send lead and then quickly reload."
         },
         {
-            'attacker_msg': "The lever-action rifle feels like a trusty, dependable extension of your {hit_location}, a tool of the trade honed by generations.",
+            'attacker_msg': "The lever-action rifle feels like a trusty, dependable extension of your arm, a tool of the trade honed by generations.",
             'victim_msg': "The lever-action rifle feels like a trusty, dependable extension of {attacker_name}'s arm, a tool of the trade honed by generations.",
             'observer_msg': "The lever-action rifle feels like a trusty, dependable extension of {attacker_name}'s arm, a tool of the trade honed by generations."
         },
@@ -325,7 +325,7 @@ MESSAGES = {
             'observer_msg': "The heavy bullet streaks wide of {target_name}, a wasted but quickly rectified shot from the lever-action rifle. {attacker_name} chambers another round with a decisive, rapid *clack-clack* of the lever, already re-sighting."
         },
         {
-            'attacker_msg': "You jerk the trigger of the lever-action rifle in haste, the bullet blasting a hole in the ground well short of {target_name}, kicking up dirt. You quickly work the lever, ejecting the hot brass, a flicker of annoyance on your {hit_location}.",
+            'attacker_msg': "You jerk the trigger of the lever-action rifle in haste, the bullet blasting a hole in the ground well short of {target_name}, kicking up dirt. You quickly work the lever, ejecting the hot brass, a flicker of annoyance on your face.",
             'victim_msg': "{attacker_name} jerks the trigger of the lever-action rifle in haste, the bullet blasting a hole in the ground well short of you, kicking up dirt. {attacker_name} quickly works the lever, ejecting the hot brass, a flicker of annoyance on their face.",
             'observer_msg': "{attacker_name} jerks the trigger of the lever-action rifle in haste, the bullet blasting a hole in the ground well short of {target_name}, kicking up dirt. {attacker_name} quickly works the lever, ejecting the hot brass, a flicker of annoyance on their face."
         },
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s lever-action rifle to punch a neat, round hole in an empty wooden crate. {attacker_name} cycles the lever, unflinching, another round ready almost before the echo fades."
         },
         {
-            'attacker_msg': "The lever-action rifle jumps in your {hit_location} a bit more than expected as you miss, the recoil spoiling the follow-through for a precious second. You work the lever, chambering a fresh round, re-focusing.",
+            'attacker_msg': "The lever-action rifle jumps in your shoulder a bit more than expected as you miss, the recoil spoiling the follow-through for a precious second. You work the lever, chambering a fresh round, re-focusing.",
             'victim_msg': "The lever-action rifle jumps in {attacker_name}'s shoulder a bit more than expected as they miss, the recoil spoiling the follow-through for a precious second. {attacker_name} works the lever, chambering a fresh round, re-focusing.",
             'observer_msg': "The lever-action rifle jumps in {attacker_name}'s shoulder a bit more than expected as they miss, the recoil spoiling the follow-through for a precious second. {attacker_name} works the lever, chambering a fresh round, re-focusing."
         },

@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air grows palpably hotter as {attacker_name} prepares to fire the flamethrower, anticipating the deafening *ROAR* of ignited fuel."
         },
         {
-            'attacker_msg': "Your {hit_location} is grim, finger tightening on the flamethrower's trigger, ready to unleash a hellish torrent.",
+            'attacker_msg': "Your face is grim, finger tightening on the flamethrower's trigger, ready to unleash a hellish torrent.",
             'victim_msg': "{attacker_name}'s face is grim, finger tightening on the flamethrower's trigger, ready to unleash a hellish torrent.",
             'observer_msg': "{attacker_name}'s face is grim, finger tightening on the flamethrower's trigger, ready to unleash a hellish torrent."
         },
@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s flamethrower blast engulfs {target_name}, the intense heat charring them instantly. The roar of the flames is the only sound besides {target_name}'s choked cries."
         },
         {
-            'attacker_msg': "A burst of fire from the flamethrower hits {target_name}'s {hit_location}s; they drop everything, screaming as their hands are instantly cooked and blackened by the intense, clinging flames.",
-            'victim_msg': "A burst of fire from the flamethrower hits your {hit_location}s; you drop everything, screaming as your {hit_location}s are instantly cooked and blackened by the intense, clinging flames.",
-            'observer_msg': "A burst of fire from the flamethrower hits {target_name}'s {hit_location}s; they drop everything, screaming as their hands are instantly cooked and blackened by the intense, clinging flames."
+            'attacker_msg': "A burst of fire from the flamethrower hits {target_name}'s hands; they drop everything, screaming as their hands are instantly cooked and blackened by the intense, clinging flames.",
+            'victim_msg': "A burst of fire from the flamethrower hits your hands; you drop everything, screaming as your hands are instantly cooked and blackened by the intense, clinging flames.",
+            'observer_msg': "A burst of fire from the flamethrower hits {target_name}'s hands; they drop everything, screaming as their hands are instantly cooked and blackened by the intense, clinging flames."
         },
         {
             'attacker_msg': "The flamethrower's fiery stream makes horrific contact with {target_name}'s {hit_location}, the flames spreading across their body like a malevolent liquid. Their struggles become weaker as the fire consumes them.",

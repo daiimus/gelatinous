@@ -198,9 +198,9 @@ MESSAGES = {
             'observer_msg': "A thrust splits the {hit_location} of the {hit_location}. Blood fountains in a terrible rhythm."
         },
         {
-            'attacker_msg': "One sharp jab to the {hit_location}pit. {target_name}'s {hit_location} goes limp, so does their resolve.",
-            'victim_msg': "One sharp jab to your {hit_location}pit. Your {hit_location} goes limp, so does your resolve.",
-            'observer_msg': "One sharp jab to the {hit_location}pit. {target_name}'s {hit_location} goes limp, so does their resolve."
+            'attacker_msg': "One sharp jab to the armpit. {target_name}'s {hit_location} goes limp, so does their resolve.",
+            'victim_msg': "One sharp jab to your armpit. Your {hit_location} goes limp, so does your resolve.",
+            'observer_msg': "One sharp jab to the armpit. {target_name}'s {hit_location} goes limp, so does their resolve."
         },
         {
             'attacker_msg': "One stab buries into the {hit_location}. The sound is wet. The response, worse.",

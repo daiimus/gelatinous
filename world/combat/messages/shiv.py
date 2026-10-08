@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "There's a pause, like the world is giving {target_name} one last chance to walk away. Then {attacker_name} breathes out, and the blade begins to move."
         },
         {
-            'attacker_msg': "You breathe in deep, the way some people pray. The shiv is already in your {hit_location}, and the moment is already lost.",
+            'attacker_msg': "You breathe in deep, the way some people pray. The shiv is already in your hand, and the moment is already lost.",
             'victim_msg': "{attacker_name} breathes in deep, the way some people pray. The shiv is already in their hand, and the moment is already lost.",
             'observer_msg': "{attacker_name} breathes in deep, the way some people pray. The shiv is already in their hand, and the moment is already lost."
         },
@@ -96,7 +96,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} pulls the shiv with fingers that tremble—not from fear, but anticipation. The room tightens around them like a drumskin. The blade doesn't hum—it waits. It knows it will be fed soon."
         },
         {
-            'attacker_msg': "You crack your {hit_location} and breathe out slow, as if violence is the only language you ever learned fluently. The shiv is your punctuation. In that flicker of steel, you can almost hear it whisper.",
+            'attacker_msg': "You crack your neck and breathe out slow, as if violence is the only language you ever learned fluently. The shiv is your punctuation. In that flicker of steel, you can almost hear it whisper.",
             'victim_msg': "{attacker_name} cracks their neck and breathes out slow, as if violence is the only language they ever learned fluently. The shiv is their punctuation. In that flicker of steel, you can almost hear it whisper.",
             'observer_msg': "{attacker_name} cracks their neck and breathes out slow, as if violence is the only language they ever learned fluently. The shiv is their punctuation. In that flicker of steel, you can almost hear it whisper."
         },
@@ -111,7 +111,7 @@ MESSAGES = {
             'observer_msg': "No theatrics. {attacker_name} just steps forward and opens the scene with a flick of steel. It's not a warning. It's a promise. The silence around them becomes dense, syrupy. The violence is implied."
         },
         {
-            'attacker_msg': "You tilt your {hit_location} like you're listening to something distant. Then the shiv is in your {hit_location}, and the silence ends. You feel it, too—that crackle of static before something ruptures.",
+            'attacker_msg': "You tilt your head like you're listening to something distant. Then the shiv is in your hand, and the silence ends. You feel it, too—that crackle of static before something ruptures.",
             'victim_msg': "{attacker_name} tilts their head like they're listening to something distant. Then the shiv is in their hand, and the silence ends. You feel it, too—that crackle of static before something ruptures.",
             'observer_msg': "{attacker_name} tilts their head like they're listening to something distant. Then the shiv is in their hand, and the silence ends. You feel it, too—that crackle of static before something ruptures."
         },
@@ -126,7 +126,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} draws the shiv like a memory they wish they could forget. The blade is crude, worn down to jagged metal. Their eyes say they don't plan to miss. Nothing about this is casual. The weight of the moment stains the air."
         },
         {
-            'attacker_msg': "You move slow, savoring the moment. The shiv glints like a broken promise in your grip, catching the light—and maybe {target_name}'s reflection. There's no tremble in your {hit_location}. Just inevitability.",
+            'attacker_msg': "You move slow, savoring the moment. The shiv glints like a broken promise in your grip, catching the light—and maybe {target_name}'s reflection. There's no tremble in your wrist. Just inevitability.",
             'victim_msg': "{attacker_name} moves slow, savoring the moment. The shiv glints like a broken promise in their grip, catching the light—and maybe your reflection. There's no tremble in their wrist. Just inevitability.",
             'observer_msg': "{attacker_name} moves slow, savoring the moment. The shiv glints like a broken promise in their grip, catching the light—and maybe {target_name}'s reflection. There's no tremble in their wrist. Just inevitability."
         },
@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "The metal finds flesh with surgical precision. {target_name} gasps like they're drowning in air too thick to breathe."
         },
         {
-            'attacker_msg': "Your {hit_location} flicks, and the shiv disappears into {target_name}'s {hit_location}. For a moment, it's like the blade was never there—until the {blood} starts to show.",
-            'victim_msg': "{attacker_name}'s {hit_location} flicks, and the shiv disappears into your {hit_location}. For a moment, it's like the blade was never there—until the {blood} starts to show.",
-            'observer_msg': "{attacker_name}'s {hit_location} flicks, and the shiv disappears into {target_name}'s {hit_location}. For a moment, it's like the blade was never there—until the {blood} starts to show."
+            'attacker_msg': "Your wrist flicks, and the shiv disappears into {target_name}'s {hit_location}. For a moment, it's like the blade was never there—until the {blood} starts to show.",
+            'victim_msg': "{attacker_name}'s wrist flicks, and the shiv disappears into your {hit_location}. For a moment, it's like the blade was never there—until the {blood} starts to show.",
+            'observer_msg': "{attacker_name}'s wrist flicks, and the shiv disappears into {target_name}'s {hit_location}. For a moment, it's like the blade was never there—until the {blood} starts to show."
         },
         {
             'attacker_msg': "The blade parts skin like a zipper being pulled too fast. {target_name}'s mouth opens, but no sound comes—just the metallic taste of surprise.",
@@ -208,9 +208,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slides the shiv up under {target_name}'s ribcage like they're picking a lock. The tumblers fall into place with a wet click."
         },
         {
-            'attacker_msg': "Steel meets flesh meets bone in a symphony of wet percussion. {target_name}'s {hit_location}s buckle like they're genuflecting before something dark.",
+            'attacker_msg': "Steel meets flesh meets bone in a symphony of wet percussion. {target_name}'s knees buckle like they're genuflecting before something dark.",
             'victim_msg': "Steel meets flesh meets bone in a symphony of wet percussion. Your knees buckle like you're genuflecting before something dark.",
-            'observer_msg': "Steel meets flesh meets bone in a symphony of wet percussion. {target_name}'s {hit_location}s buckle like they're genuflecting before something dark."
+            'observer_msg': "Steel meets flesh meets bone in a symphony of wet percussion. {target_name}'s knees buckle like they're genuflecting before something dark."
         },
         {
             'attacker_msg': "The shiv finds the soft spot below {target_name}'s {hit_location} and whispers its way deeper. Their eyes flutter like they're trying to wake up from a dream they can't escape.",
@@ -283,9 +283,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} guides the blade up under {target_name}'s {hit_location} with surgical precision. {target_name} gasps, and the sound is hollow—like air escaping from a punctured tire."
         },
         {
-            'attacker_msg': "The metal finds meat with a wet sound that's almost musical. {target_name}'s {hit_location}s buckle, and they look at you with eyes that are already going somewhere else.",
+            'attacker_msg': "The metal finds meat with a wet sound that's almost musical. {target_name}'s knees buckle, and they look at you with eyes that are already going somewhere else.",
             'victim_msg': "The metal finds meat with a wet sound that's almost musical. Your knees buckle, and you look at {attacker_name} with eyes that are already going somewhere else.",
-            'observer_msg': "The metal finds meat with a wet sound that's almost musical. {target_name}'s {hit_location}s buckle, and they look at {attacker_name} with eyes that are already going somewhere else."
+            'observer_msg': "The metal finds meat with a wet sound that's almost musical. {target_name}'s knees buckle, and they look at {attacker_name} with eyes that are already going somewhere else."
         },
         {
             'attacker_msg': "You feel the shiv slide between {target_name}'s {hit_location} like a key finding its lock. Their breath stutters, and for a moment, they're more question than person.",
@@ -294,7 +294,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The blade parts {target_name}'s flesh with a sound like ripping fabric. They clutch at the wound, but their hands can't hold what's already spilling out.",
-            'victim_msg': "The blade parts your flesh with a sound like ripping fabric. You clutch at the wound, but your {hit_location}s can't hold what's already spilling out.",
+            'victim_msg': "The blade parts your flesh with a sound like ripping fabric. You clutch at the wound, but your hands can't hold what's already spilling out.",
             'observer_msg': "The blade parts {target_name}'s flesh with a sound like ripping fabric. {target_name} clutches at the wound, but their hands can't hold what's already spilling out."
         },
         {
@@ -308,7 +308,7 @@ MESSAGES = {
             'observer_msg': "The thrust is intimate, precise. {attacker_name} slides the blade up under {target_name}'s {hit_location} like they're threading a needle, and {target_name} exhales once—a long, slow leak of everything they used to be."
         },
         {
-            'attacker_msg': "Steel finds flesh finds bone with a wet percussion that echoes in your {hit_location}. {target_name} staggers, and their shadow seems to separate from their body.",
+            'attacker_msg': "Steel finds flesh finds bone with a wet percussion that echoes in your chest. {target_name} staggers, and their shadow seems to separate from their body.",
             'victim_msg': "Steel finds flesh finds bone with a wet percussion that echoes in your {hit_location}. You stagger, and your shadow seems to separate from your body.",
             'observer_msg': "Steel finds flesh finds bone with a wet percussion that echoes in the air. {target_name} staggers, and their shadow seems to separate from their body."
         },
@@ -490,7 +490,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s thrust goes wide, and the shiv parts air that tastes of missed opportunities. {target_name} is already three steps ahead of {attacker_name}'s intentions."
         },
         {
-            'attacker_msg': "The blade whispers past {target_name}'s {hit_location}, close enough to steal warmth from their skin. Your {hit_location} tightens—proximity is not contact.",
+            'attacker_msg': "The blade whispers past {target_name}'s {hit_location}, close enough to steal warmth from their skin. Your jaw tightens—proximity is not contact.",
             'victim_msg': "The blade whispers past your {hit_location}, close enough to steal warmth from your skin. {attacker_name}'s jaw tightens—proximity is not contact.",
             'observer_msg': "The blade whispers past {target_name}'s {hit_location}, close enough to steal warmth from their skin. {attacker_name}'s jaw tightens—proximity is not contact."
         },

@@ -61,7 +61,7 @@ MESSAGES = {
             "observer_msg": "The air is tense as {attacker_name} prepares to fire the break-action shotgun, anticipating the deafening *BOOM* and the immediate need to reload."
         },
         {
-            "attacker_msg": "Your {hit_location} is set, finger ready on the trigger of your break-action shotgun, poised to send a cloud of buckshot.",
+            "attacker_msg": "Your face is set, finger ready on the trigger of your break-action shotgun, poised to send a cloud of buckshot.",
             "victim_msg": "{attacker_name}’s face is set, finger ready on the trigger of the break-action shotgun, poised to send a cloud of buckshot.",
             "observer_msg": "{attacker_name}’s face is set, finger ready on the trigger of the break-action shotgun, poised to send a cloud of buckshot."
         },
@@ -365,7 +365,7 @@ MESSAGES = {
             "observer_msg": "A quick sidestep from {target_name} leaves {attacker_name}'s break-action shotgun to punch a wide pattern of holes in an empty doorway. {attacker_name} reloads, unflinching."
         },
         {
-            "attacker_msg": "Your break-action shotgun jumps in your {hit_location} as you miss, the recoil spoiling the follow-through. You break the action, chambering fresh, potent shells.",
+            "attacker_msg": "Your break-action shotgun jumps in your shoulder as you miss, the recoil spoiling the follow-through. You break the action, chambering fresh, potent shells.",
             "victim_msg": "{attacker_name}'s break-action shotgun jumps in their shoulder as they miss, the recoil spoiling the follow-through. {attacker_name} breaks the action, chambering fresh, potent shells.",
             "observer_msg": "{attacker_name}'s break-action shotgun jumps in their shoulder as they miss, the recoil spoiling the follow-through. {attacker_name} breaks the action, chambering fresh, potent shells."
         },

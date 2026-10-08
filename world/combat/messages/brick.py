@@ -86,7 +86,7 @@ MESSAGES = {
             "observer_msg": "They don’t yell. They don’t threaten. {attacker_name} just lifts the brick with the casual cruelty of someone who's done this before."
         },
         {
-            "attacker_msg": "With a grunt, You pull the brick from a jacket pocket. It lands in your {hit_location} with a sound like punctuation.",
+            "attacker_msg": "With a grunt, You pull the brick from a jacket pocket. It lands in your hand with a sound like punctuation.",
             "victim_msg": "With a grunt, {attacker_name} pulls the brick from a jacket pocket. It lands in their hand with a sound like punctuation.",
             "observer_msg": "With a grunt, {attacker_name} pulls the brick from a jacket pocket. It lands in their hand with a sound like punctuation."
         },
@@ -121,7 +121,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} pulls the brick from a coat pocket. It’s chipped, dirty, and exactly what this moment calls for."
         },
         {
-            "attacker_msg": "You raise the brick and let it rest against your {hit_location}. It’s not a threat — it’s a promise.",
+            "attacker_msg": "You raise the brick and let it rest against your shoulder. It’s not a threat — it’s a promise.",
             "victim_msg": "{attacker_name} raises the brick and lets it rest against their shoulder. It’s not a threat — it’s a promise.",
             "observer_msg": "{attacker_name} raises the brick and lets it rest against their shoulder. It’s not a threat — it’s a promise."
         },
@@ -131,17 +131,17 @@ MESSAGES = {
             "observer_msg": "{attacker_name} rolls the brick across their knuckles like brass. It isn’t for show. It’s for momentum."
         },
         {
-            "attacker_msg": "You roll the brick in your {hit_location} like weighing dice. This game ends in fractures.",
+            "attacker_msg": "You roll the brick in your hand like weighing dice. This game ends in fractures.",
             "victim_msg": "{attacker_name} rolls the brick in their hand like weighing dice. This game ends in fractures.",
             "observer_msg": "{attacker_name} rolls the brick in their hand like weighing dice. This game ends in fractures."
         },
         {
-            "attacker_msg": "You roll your {hit_location}, flexing fingers around the brick. The message is clear. This won’t take long.",
+            "attacker_msg": "You roll your wrist, flexing fingers around the brick. The message is clear. This won’t take long.",
             "victim_msg": "{attacker_name} rolls their wrist, flexing fingers around the brick. The message is clear. This won’t take long.",
             "observer_msg": "{attacker_name} rolls their wrist, flexing fingers around the brick. The message is clear. This won’t take long."
         },
         {
-            "attacker_msg": "You rotate the brick in your {hit_location}, aligning the chipped corner forward like a blade. It’s blunt precision.",
+            "attacker_msg": "You rotate the brick in your hand, aligning the chipped corner forward like a blade. It’s blunt precision.",
             "victim_msg": "{attacker_name} rotates the brick in their hand, aligning the chipped corner forward like a blade. It’s blunt precision.",
             "observer_msg": "{attacker_name} rotates the brick in their hand, aligning the chipped corner forward like a blade. It’s blunt precision."
         },
@@ -305,7 +305,7 @@ MESSAGES = {
     ],
     'miss': [
         {
-            "attacker_msg": "A missed lunge twists Your {hit_location} off center. The recovery is fast. Too fast.",
+            "attacker_msg": "A missed lunge twists Your torso off center. The recovery is fast. Too fast.",
             "victim_msg": "A missed lunge twists {attacker_name}'s torso off center. The recovery is fast. Too fast.",
             "observer_msg": "A missed lunge twists {attacker_name}'s torso off center. The recovery is fast. Too fast."
         },
@@ -445,7 +445,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} swings wild and low. The brick carves the floor instead of flesh."
         },
         {
-            "attacker_msg": "Your strike veers wide. The force behind it leaves your {hit_location} aching.",
+            "attacker_msg": "Your strike veers wide. The force behind it leaves your shoulder aching.",
             "victim_msg": "{attacker_name}'s strike veers wide. The force behind it leaves their shoulder aching.",
             "observer_msg": "{attacker_name}'s strike veers wide. The force behind it leaves their shoulder aching."
         },

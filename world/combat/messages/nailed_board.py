@@ -46,7 +46,7 @@ MESSAGES = {
             'observer_msg': "The board creaks. The nails click. {attacker_name} smiles faintly. This is going to get messy."
         },
         {
-            'attacker_msg': "The board leans against your {hit_location}. You tap it gently, like coaxing it to remember how it kills.",
+            'attacker_msg': "The board leans against your shoulder. You tap it gently, like coaxing it to remember how it kills.",
             'victim_msg': "The board leans against {attacker_name}'s shoulder. They tap it gently, like coaxing it to remember how it kills.",
             'observer_msg': "The board leans against {attacker_name}'s shoulder. They tap it gently, like coaxing it to remember how it kills."
         },

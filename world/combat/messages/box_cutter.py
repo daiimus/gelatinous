@@ -76,7 +76,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} tests the edge on their thumb, drawing a bead of blood and a smile."
         },
         {
-            "attacker_msg": "You let the blade rest on your tongue for a heartbeat before spitting it into your {hit_location}.",
+            "attacker_msg": "You let the blade rest on your tongue for a heartbeat before spitting it into your hand.",
             "victim_msg": "{attacker_name} lets the blade rest on their tongue for a heartbeat before spitting it into their hand.",
             "observer_msg": "{attacker_name} lets the blade rest on their tongue for a heartbeat before spitting it into their hand."
         },
@@ -126,7 +126,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} lets the box cutter dangle from their fingers, blade swinging like a pendulum."
         },
         {
-            "attacker_msg": "You trace the blade along your {hit_location}, leaving a thin {blood} line.",
+            "attacker_msg": "You trace the blade along your forearm, leaving a thin {blood} line.",
             "victim_msg": "{attacker_name} traces the blade along their forearm, leaving a thin {blood} line.",
             "observer_msg": "{attacker_name} traces the blade along their forearm, leaving a thin {blood} line."
         },
@@ -183,9 +183,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} draws the blade across {target_name}'s knuckles, tendons snapping under the edge."
         },
         {
-            "attacker_msg": "A flick of your {hit_location} opens {target_name}'s eyebrow. Blood blinds one of their eyes.",
-            "victim_msg": "A flick of {attacker_name}'s {hit_location} opens your eyebrow. Blood blinds one of your eyes.",
-            "observer_msg": "A flick of {attacker_name}'s {hit_location} opens {target_name}'s eyebrow. Blood blinds one of their eyes."
+            "attacker_msg": "A flick of your wrist opens {target_name}'s eyebrow. Blood blinds one of their eyes.",
+            "victim_msg": "A flick of {attacker_name}'s wrist opens your eyebrow. Blood blinds one of your eyes.",
+            "observer_msg": "A flick of {attacker_name}'s wrist opens {target_name}'s eyebrow. Blood blinds one of their eyes."
         },
         {
             "attacker_msg": "Your blade punctures {target_name}'s {hit_location}; you twist it before pulling it free.",
@@ -199,7 +199,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "A shallow cut from your box cutter across the {hit_location} leaves {target_name} clutching at their guts.",
-            "victim_msg": "A shallow cut from {attacker_name}'s box cutter across the {hit_location} leaves you clutching at your {hit_location}s.",
+            "victim_msg": "A shallow cut from {attacker_name}'s box cutter across the {hit_location} leaves you clutching at your guts.",
             "observer_msg": "A shallow cut from {attacker_name}'s box cutter across the {hit_location} leaves {target_name} clutching at their guts."
         },
         {
@@ -340,7 +340,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} stabs at {target_name}, but the blade glances off armor."
         },
         {
-            "attacker_msg": "A flick of your {hit_location} misses, the blade slicing only air.",
+            "attacker_msg": "A flick of your wrist misses, the blade slicing only air.",
             "victim_msg": "A flick of {attacker_name}'s wrist misses, the blade slicing only air.",
             "observer_msg": "A flick of {attacker_name}'s wrist misses, the blade slicing only air."
         },
@@ -445,7 +445,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s blade glances off a boot, doing nothing."
         },
         {
-            "attacker_msg": "A flick of your {hit_location} misses, the blade humming in the air.",
+            "attacker_msg": "A flick of your wrist misses, the blade humming in the air.",
             "victim_msg": "A flick of {attacker_name}'s wrist misses, the blade humming in the air.",
             "observer_msg": "A flick of {attacker_name}'s wrist misses, the blade humming in the air."
         },

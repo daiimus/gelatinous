@@ -26,7 +26,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slams the bat against the ground once, spikes digging into the floor with a hungry sound."
         },
         {
-            'attacker_msg': "You tilt your {hit_location} and smirk, bat held low like an afterthought. The nails are not.",
+            'attacker_msg': "You tilt your head and smirk, bat held low like an afterthought. The nails are not.",
             'victim_msg': "{attacker_name} tilts their head and smirks, bat held low like an afterthought. The nails are not.",
             'observer_msg': "{attacker_name} tilts their head and smirks, bat held low like an afterthought. The nails are not."
         },
@@ -36,12 +36,12 @@ MESSAGES = {
             'observer_msg': "A grunt escapes {attacker_name} as they lift the bat high and take a low stance, ready to bring the pain."
         },
         {
-            'attacker_msg': "You crack your {hit_location} to one side, then the other, before raising the nail-studded bat to chest level.",
+            'attacker_msg': "You crack your neck to one side, then the other, before raising the nail-studded bat to chest level.",
             'victim_msg': "{attacker_name} cracks their neck to one side, then the other, before raising the nail-studded bat to chest level.",
             'observer_msg': "{attacker_name} cracks their neck to one side, then the other, before raising the nail-studded bat to chest level."
         },
         {
-            'attacker_msg': "You rest the nail bat against your {hit_location}, tapping the head in a slow, rhythmic beat of what's to come.",
+            'attacker_msg': "You rest the nail bat against your shoulder, tapping the head in a slow, rhythmic beat of what's to come.",
             'victim_msg': "{attacker_name} rests the nail bat against their shoulder, tapping the head in a slow, rhythmic beat of what's to come.",
             'observer_msg': "{attacker_name} rests the nail bat against their shoulder, tapping the head in a slow, rhythmic beat of what's to come."
         },
@@ -71,7 +71,7 @@ MESSAGES = {
             'observer_msg': "Nails clink against stone as {attacker_name} drags the bat forward like a butcher with a trophy."
         },
         {
-            'attacker_msg': "You lift the bat over your {hit_location}, letting the nails catch the light like tiny fangs.",
+            'attacker_msg': "You lift the bat over your head, letting the nails catch the light like tiny fangs.",
             'victim_msg': "{attacker_name} lifts the bat over their head, letting the nails catch the light like tiny fangs.",
             'observer_msg': "{attacker_name} lifts the bat over their head, letting the nails catch the light like tiny fangs."
         },
@@ -86,7 +86,7 @@ MESSAGES = {
             'observer_msg': "With a casual swing, {attacker_name} warms up the bat on the air, testing its thirst."
         },
         {
-            'attacker_msg': "You step in, dragging the bat across your {hit_location} like a war drum stick.",
+            'attacker_msg': "You step in, dragging the bat across your shoulder like a war drum stick.",
             'victim_msg': "{attacker_name} steps in, dragging the bat across their shoulder like a war drum stick.",
             'observer_msg': "{attacker_name} steps in, dragging the bat across their shoulder like a war drum stick."
         },
@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "The nails hook into {target_name}'s {hit_location}—{attacker_name} yanks {hit_location}, tearing flesh with a wet pop."
         },
         {
-            'attacker_msg': "A brutal overhead slam hits {target_name} between the {hit_location}s, and they crumple like trash.",
-            'victim_msg': "A brutal overhead slam hits you between the {hit_location}s, and you crumple like trash.",
-            'observer_msg': "A brutal overhead slam hits {target_name} between the {hit_location}s, and they crumple like trash."
+            'attacker_msg': "A brutal overhead slam hits {target_name} between the collarbones, and they crumple like trash.",
+            'victim_msg': "A brutal overhead slam hits you between the collarbones, and you crumple like trash.",
+            'observer_msg': "A brutal overhead slam hits {target_name} between the collarbones, and they crumple like trash."
         },
         {
             'attacker_msg': "A sideways swing sends {target_name} reeling, the bat leaving a lattice of bloody holes behind.",

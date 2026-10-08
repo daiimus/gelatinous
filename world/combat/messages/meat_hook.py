@@ -21,7 +21,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} dangles the hook from a chain-wrapped wrist, letting gravity speak first."
         },
         {
-            'attacker_msg': "The meat hook glints in flickering light as you roll your {hit_location} and step forward.",
+            'attacker_msg': "The meat hook glints in flickering light as you roll your neck and step forward.",
             'victim_msg': "The meat hook glints in flickering light as {attacker_name} rolls their neck and steps forward.",
             'observer_msg': "The meat hook glints in flickering light as {attacker_name} rolls their neck and steps forward."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "A grunt, a glare, and then the hook rises—{attacker_name} speaks fluent brutality."
         },
         {
-            'attacker_msg': "You test the weight of the hook in your {hit_location}, as if remembering how much damage it used to do.",
+            'attacker_msg': "You test the weight of the hook in your hand, as if remembering how much damage it used to do.",
             'victim_msg': "{attacker_name} tests the weight of the hook in their hand, as if remembering how much damage it used to do.",
             'observer_msg': "{attacker_name} tests the weight of the hook in their hand, as if remembering how much damage it used to do."
         },
@@ -298,7 +298,7 @@ MESSAGES = {
             'observer_msg': "{target_name} tries to block. The hook still gets in."
         },
         {
-            'attacker_msg': "A twist of your {hit_location} and the hook digs deeper than anyone expected. {target_name}'s eyes say the rest.",
+            'attacker_msg': "A twist of your wrist and the hook digs deeper than anyone expected. {target_name}'s eyes say the rest.",
             'victim_msg': "A twist of {attacker_name}'s wrist and the hook digs deeper than anyone expected. Your eyes say the rest.",
             'observer_msg': "A twist of the wrist and the hook digs deeper than anyone expected. {target_name}'s eyes say the rest."
         }
@@ -430,7 +430,7 @@ MESSAGES = {
             'observer_msg': "The hook bounces off a metal railing as {target_name} sidesteps."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} gone wrong—steel meets pavement.",
+            'attacker_msg': "A flick of your wrist gone wrong—steel meets pavement.",
             'victim_msg': "A flick of {attacker_name}'s wrist gone wrong—steel meets pavement.",
             'observer_msg': "A flick of the wrist gone wrong—steel meets pavement."
         },

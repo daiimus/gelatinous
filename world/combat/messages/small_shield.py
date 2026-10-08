@@ -81,7 +81,7 @@ MESSAGES = {
             'observer_msg': "The shield snaps into place with a clatter. The noise makes people flinch. So does {attacker_name}."
         },
         {
-            'attacker_msg': "The small shield thuds against your {hit_location}. You smile. This one's personal.",
+            'attacker_msg': "The small shield thuds against your forearm. You smile. This one's personal.",
             'victim_msg': "The small shield thuds against {attacker_name}'s forearm. They smile. This one's personal.",
             'observer_msg': "The small shield thuds against {attacker_name}'s forearm. They smile. This one's personal."
         },
@@ -101,12 +101,12 @@ MESSAGES = {
             'observer_msg': "{attacker_name} draws the shield like a duelist preparing for the final round."
         },
         {
-            'attacker_msg': "You draw the small shield across your {hit_location} and lock stance. It doesn't need to be big — just brutal.",
+            'attacker_msg': "You draw the small shield across your chest and lock stance. It doesn't need to be big — just brutal.",
             'victim_msg': "{attacker_name} draws the small shield across their chest and locks stance. It doesn't need to be big — just brutal.",
             'observer_msg': "{attacker_name} draws the small shield across their chest and locks stance. It doesn't need to be big — just brutal."
         },
         {
-            'attacker_msg': "You flick the shield into place with a snap of your {hit_location}. The metal responds like it's been waiting.",
+            'attacker_msg': "You flick the shield into place with a snap of your wrist. The metal responds like it's been waiting.",
             'victim_msg': "{attacker_name} flicks the shield into place with a snap of their wrist. The metal responds like it's been waiting.",
             'observer_msg': "{attacker_name} flicks the shield into place with a snap of their wrist. The metal responds like it's been waiting."
         },

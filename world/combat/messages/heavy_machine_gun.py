@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air itself seems to grow heavy as {attacker_name} prepares to fire the heavy machine gun, anticipating the bone-jarring *THUD-THUD-THUD* and the shockwaves."
         },
         {
-            'attacker_msg': "Your {hit_location} is a grim mask of focus, thumbs or finger hovering over the butterfly trigger or heavy trigger of the HMG.",
+            'attacker_msg': "Your face is a grim mask of focus, thumbs or finger hovering over the butterfly trigger or heavy trigger of the HMG.",
             'victim_msg': "{attacker_name}'s face is a grim mask of focus, thumbs or finger hovering over the butterfly trigger or heavy trigger of the HMG.",
             'observer_msg': "{attacker_name}'s face is a grim mask of focus, thumbs or finger hovering over the butterfly trigger or heavy trigger of the HMG."
         },

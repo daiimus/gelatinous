@@ -81,7 +81,7 @@ MESSAGES = {
             "observer_msg": "The grain of the wood (or the gleam of aluminum) on the baseball bat is visible, a testament to its simple effectiveness against {target_name}."
         },
         {
-            "attacker_msg": "You hold your baseball bat cocked over your {hit_location}, ready to bring its full weight down upon {target_name}.",
+            "attacker_msg": "You hold your baseball bat cocked over your shoulder, ready to bring its full weight down upon {target_name}.",
             "victim_msg": "{attacker_name} holds a baseball bat cocked over their shoulder, ready to bring its full weight down upon you.",
             "observer_msg": "{attacker_name} holds the baseball bat cocked over their shoulder, ready to bring its full weight down upon {target_name}."
         },
@@ -228,7 +228,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name}’s follow-through swing with the baseball bat catches {target_name} off-balance and in considerable pain."
         },
         {
-            "attacker_msg": "A flick of your {hit_location} sends the end of your baseball bat into {target_name}'s {hit_location} with a sharp crack.",
+            "attacker_msg": "A flick of your wrist sends the end of your baseball bat into {target_name}'s {hit_location} with a sharp crack.",
             "victim_msg": "A flick of {attacker_name}'s wrist sends the end of their baseball bat into your {hit_location} with a sharp crack!",
             "observer_msg": "A flick of {attacker_name}'s wrist sends the end of the baseball bat into {target_name}'s {hit_location} with a sharp crack."
         },

@@ -126,12 +126,12 @@ MESSAGES = {
             "observer_msg": "{attacker_name} lifts their axe with effort and purpose. No swing will be wasted."
         },
         {
-            "attacker_msg": "You pull your battle axe from your {hit_location} with a grunt. It's less a weapon, more a reckoning.",
+            "attacker_msg": "You pull your battle axe from your back with a grunt. It's less a weapon, more a reckoning.",
             "victim_msg": "{attacker_name} pulls their battle axe from their back with a grunt. It's less a weapon, more a reckoning.",
             "observer_msg": "{attacker_name} pulls their battle axe from their back with a grunt. It's less a weapon, more a reckoning."
         },
         {
-            "attacker_msg": "You rest your axe against your {hit_location}. It’s not rest. It’s warning.",
+            "attacker_msg": "You rest your axe against your shoulder. It’s not rest. It’s warning.",
             "victim_msg": "{attacker_name} rests their axe against their shoulder. It’s not rest. It’s warning.",
             "observer_msg": "{attacker_name} rests their axe against their shoulder. It’s not rest. It’s warning."
         },
@@ -184,8 +184,8 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your sideways strike caves {target_name}'s {hit_location}. The scream is long — and last.",
-            "victim_msg": "{attacker_name}'s {hit_location}ways strike caves your {hit_location}. Your scream is long — and last.",
-            "observer_msg": "{attacker_name}'s {hit_location}ways strike caves {target_name}'s {hit_location}. The scream is long — and last."
+            "victim_msg": "{attacker_name}'s sideways strike caves your {hit_location}. Your scream is long — and last.",
+            "observer_msg": "{attacker_name}'s sideways strike caves {target_name}'s {hit_location}. The scream is long — and last."
         },
         {
             "attacker_msg": "Your one heavy blow cracks {target_name}'s {hit_location}. They twitch and fall without dignity.",

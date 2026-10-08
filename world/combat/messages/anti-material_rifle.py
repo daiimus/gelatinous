@@ -61,7 +61,7 @@ MESSAGES = {
             "observer_msg": "The air itself seems to grow heavy as {attacker_name} prepares to fire the anti-material rifle, anticipating the bone-jarring *BOOM* and the shockwave."
         },
         {
-            "attacker_msg": "Your {hit_location} is a grim mask of focus, finger slowly approaching the heavy trigger of your anti-material rifle.",
+            "attacker_msg": "Your face is a grim mask of focus, finger slowly approaching the heavy trigger of your anti-material rifle.",
             "victim_msg": "{attacker_name}’s face is a grim mask of focus, finger slowly approaching the heavy trigger of their anti-material rifle, aimed at you.",
             "observer_msg": "{attacker_name}’s face is a grim mask of focus, finger slowly approaching the heavy trigger of the anti-material rifle."
         },
@@ -283,9 +283,9 @@ MESSAGES = {
             "observer_msg": "A painful, echoing, ground-shaking crack as the bullet from {attacker_name}'s anti-material rifle strikes {target_name}'s {hit_location}, which, along with most of their chest cavity, are instantly atomized. {attacker_name} cycles the bolt, chambering another heavy, destructive round."
         },
         {
-            "attacker_msg": "The projectile from your anti-material rifle hits {target_name}’s collarbone; their entire upper {hit_location} explodes outward in a cloud of {blood}. The bolt is worked, ejecting the casing with a flick of your {hit_location}.",
-            "victim_msg": "The projectile from {attacker_name}'s anti-material rifle hits your {hit_location}; your entire upper {hit_location} explodes outward in a cloud of {blood}! The bolt is worked, ejecting the casing with a flick of their {hit_location}.",
-            "observer_msg": "The projectile from {attacker_name}'s anti-material rifle hits {target_name}’s collarbone; their entire upper {hit_location} explodes outward in a cloud of {blood}. The bolt is worked, ejecting the casing with a flick of {attacker_name}'s {hit_location}."
+            "attacker_msg": "The projectile from your anti-material rifle hits {target_name}’s collarbone; their entire upper body explodes outward in a cloud of {blood}. The bolt is worked, ejecting the casing with a flick of your wrist.",
+            "victim_msg": "The projectile from {attacker_name}'s anti-material rifle hits your {hit_location}; your entire upper body explodes outward in a cloud of {blood}! The bolt is worked, ejecting the casing with a flick of their wrist.",
+            "observer_msg": "The projectile from {attacker_name}'s anti-material rifle hits {target_name}’s collarbone; their entire upper body explodes outward in a cloud of {blood}. The bolt is worked, ejecting the casing with a flick of {attacker_name}'s wrist."
         },
         {
             "attacker_msg": "Your anti-material rifle delivers another brutal, penetrating, and utterly devastating impact to {target_name}’s {hit_location}, which ceases to be recognizable. The bolt is cycled, the sound a grim promise of more destruction.",
@@ -365,7 +365,7 @@ MESSAGES = {
             "observer_msg": "A quick sidestep from {target_name} leaves {attacker_name}'s anti-material rifle to punch a massive, gaping hole clean through an empty armored personnel carrier. {attacker_name} cycles the bolt, unflinching at the display of raw power."
         },
         {
-            "attacker_msg": "Your anti-material rifle bucks ferociously in your {hit_location} as you miss {target_name}, the recoil throwing your aim completely off for a moment and kicking up a cloud of dust around you. You work the bolt, chambering a fresh, devastating round.",
+            "attacker_msg": "Your anti-material rifle bucks ferociously in your shoulder as you miss {target_name}, the recoil throwing your aim completely off for a moment and kicking up a cloud of dust around you. You work the bolt, chambering a fresh, devastating round.",
             "victim_msg": "{attacker_name}'s anti-material rifle bucks ferociously in their shoulder as they miss you, the recoil throwing their aim completely off for a moment and kicking up a cloud of dust around them! {attacker_name} works the bolt, chambering a fresh, devastating round.",
             "observer_msg": "{attacker_name}'s anti-material rifle bucks ferociously in their shoulder as they miss {target_name}, the recoil throwing their aim completely off for a moment and kicking up a cloud of dust around them. {attacker_name} works the bolt, chambering a fresh, devastating round."
         },
@@ -415,7 +415,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name}’s aim is hurried, the bullet from the anti-material rifle veering wildly off target and impacting with a distant, explosive crash. {attacker_name} cycles the bolt, chambering another heavy, destructive round."
         },
         {
-            "attacker_msg": "A desperate dive from {target_name} means your anti-material rifle shot only tears a large, smoking hole in their discarded, heavy flak jacket, which offers no protection. The bolt is worked, ejecting the casing with a flick of your {hit_location}.",
+            "attacker_msg": "A desperate dive from {target_name} means your anti-material rifle shot only tears a large, smoking hole in their discarded, heavy flak jacket, which offers no protection. The bolt is worked, ejecting the casing with a flick of your wrist.",
             "victim_msg": "Your desperate dive means {attacker_name}'s anti-material rifle shot only tears a large, smoking hole in your discarded, heavy flak jacket, which offers no protection! The bolt is worked, ejecting the casing with a flick of their wrist.",
             "observer_msg": "A desperate dive from {target_name} means {attacker_name}'s anti-material rifle shot only tears a large, smoking hole in their discarded, heavy flak jacket, which offers no protection. The bolt is worked, ejecting the casing with a flick of {attacker_name}'s wrist."
         },
@@ -572,7 +572,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s anti-material rifle, an instrument of deadly, precise, and overwhelming efficiency, claims another victim in {target_name} with shocking, gory, and absolute finality, leaving no doubt. The bolt is cycled, chambering another heavy, destructive round."
         },
         {
-            "attacker_msg": "{target_name}’s eyes widen in disbelief and pure, abject terror as your anti-material rifle delivers the final, life-ending, body-obliterating bullet. The bolt is worked, ejecting the casing with a flick of your {hit_location}, the deed done.",
+            "attacker_msg": "{target_name}’s eyes widen in disbelief and pure, abject terror as your anti-material rifle delivers the final, life-ending, body-obliterating bullet. The bolt is worked, ejecting the casing with a flick of your wrist, the deed done.",
             "victim_msg": "Your eyes widen in disbelief and pure, abject terror as {attacker_name}'s anti-material rifle delivers the final, life-ending, body-obliterating bullet. Darkness takes you...",
             "observer_msg": "{target_name}’s eyes widen in disbelief and pure, abject terror as {attacker_name}'s anti-material rifle delivers the final, life-ending, body-obliterating bullet. The bolt is worked, ejecting the casing with a flick of {attacker_name}'s wrist, the deed done."
         },

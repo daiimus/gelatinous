@@ -36,7 +36,7 @@ MESSAGES = {
             'observer_msg': "A soft glint and the ice pick appears in {attacker_name}'s grip, cold and deliberate."
         },
         {
-            'attacker_msg': "You roll your {hit_location} lazily, the pick spinning into position like it remembers the last kill.",
+            'attacker_msg': "You roll your wrist lazily, the pick spinning into position like it remembers the last kill.",
             'victim_msg': "{attacker_name} rolls their wrist lazily, the pick spinning into position like it remembers the last kill.",
             'observer_msg': "{attacker_name} rolls their wrist lazily, the pick spinning into position like it remembers the last kill."
         },
@@ -91,7 +91,7 @@ MESSAGES = {
             'observer_msg': "The weapon isn't flashy. Just deadly. {attacker_name} lifts it like it's nothing—and everything."
         },
         {
-            'attacker_msg': "The pick twitches in your {hit_location}, an extension of your thoughts—sharp ones.",
+            'attacker_msg': "The pick twitches in your hand, an extension of your thoughts—sharp ones.",
             'victim_msg': "The pick twitches in {attacker_name}'s hand, an extension of their thoughts—sharp ones.",
             'observer_msg': "The pick twitches in {attacker_name}'s hand, an extension of their thoughts—sharp ones."
         },
@@ -141,7 +141,7 @@ MESSAGES = {
             'observer_msg': "There's no noise except the slight 'ting' as the pick hits a belt buckle on its way out."
         },
         {
-            'attacker_msg': "Your {hit_location} softens—like an artist before a masterpiece. The pick is your brush.",
+            'attacker_msg': "Your face softens—like an artist before a masterpiece. The pick is your brush.",
             'victim_msg': "{attacker_name}'s face softens—like an artist before a masterpiece. The pick is their brush.",
             'observer_msg': "{attacker_name}'s face softens—like an artist before a masterpiece. The pick is their brush."
         },
@@ -268,9 +268,9 @@ MESSAGES = {
             'observer_msg': "A short thrust lands in {target_name}'s {hit_location}. Their {hit_location} gives way instantly."
         },
         {
-            'attacker_msg': "A gouging stab leaves a deep wound across {target_name}'s {hit_location}line.",
-            'victim_msg': "A gouging stab leaves a deep wound across your {hit_location}line.",
-            'observer_msg': "A gouging stab leaves a deep wound across {target_name}'s {hit_location}line."
+            'attacker_msg': "A gouging stab leaves a deep wound across {target_name}'s jawline.",
+            'victim_msg': "A gouging stab leaves a deep wound across your jawline.",
+            'observer_msg': "A gouging stab leaves a deep wound across {target_name}'s jawline."
         },
         {
             'attacker_msg': "You jab the pick into the pit of {target_name}'s {hit_location}—arterial, precise, devastating.",
@@ -330,7 +330,7 @@ MESSAGES = {
             'observer_msg': "A tight jab skims past {target_name}'s {hit_location}—no purchase, just a whisper of death denied."
         },
         {
-            'attacker_msg': "Your {hit_location} flicks, but {target_name} has already ducked beneath the strike.",
+            'attacker_msg': "Your wrist flicks, but {target_name} has already ducked beneath the strike.",
             'victim_msg': "{attacker_name}'s wrist flicks, but you have already ducked beneath the strike.",
             'observer_msg': "{attacker_name}'s wrist flicks, but {target_name} has already ducked beneath the strike."
         },
@@ -405,7 +405,7 @@ MESSAGES = {
             'observer_msg': "The weapon slices through fog. {target_name} fades back."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} sends the pick skyward. You regain control—barely.",
+            'attacker_msg': "A flick of your wrist sends the pick skyward. You regain control—barely.",
             'victim_msg': "A flick of {attacker_name}'s wrist sends the pick skyward. They regain control—barely.",
             'observer_msg': "A flick of {attacker_name}'s wrist sends the pick skyward. They regain control—barely."
         },
@@ -435,7 +435,7 @@ MESSAGES = {
             'observer_msg': "A quick dodge saves {target_name}'s spleen from becoming street art."
         },
         {
-            'attacker_msg': "Your {hit_location} slips. The strike veers harmlessly off target.",
+            'attacker_msg': "Your foot slips. The strike veers harmlessly off target.",
             'victim_msg': "{attacker_name}'s foot slips. The strike veers harmlessly off target.",
             'observer_msg': "{attacker_name}'s foot slips. The strike veers harmlessly off target."
         },

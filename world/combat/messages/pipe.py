@@ -81,7 +81,7 @@ MESSAGES = {
             'observer_msg': "The cold, unadorned steel of the metal pipe is visible, a testament to its crude but effective nature."
         },
         {
-            'attacker_msg': "You hold the metal pipe cocked over your {hit_location}, ready to bring its full, crushing weight down.",
+            'attacker_msg': "You hold the metal pipe cocked over your shoulder, ready to bring its full, crushing weight down.",
             'victim_msg': "{attacker_name} holds the metal pipe cocked over their shoulder, ready to bring its full, crushing weight down.",
             'observer_msg': "{attacker_name} holds the metal pipe cocked over their shoulder, ready to bring its full, crushing weight down."
         },
