@@ -587,9 +587,11 @@ def _get_or_spawn_weapon(character, state, spec):
         # its claws; reattachment is what reclaims an object there. Unlink
         # it and give this host its own; nothing is deleted. Anywhere
         # else, it is still this host's and is taken back: a hand-only
-        # sever drops a deployed forearm gun to the floor, locked and
-        # undroppable, and the body may have walked away before the hand
-        # came back (#3697; MULTI_WEAPON_COMBAT_SPEC §3, §9).
+        # sever used to drop a deployed forearm gun to the floor, locked
+        # and undroppable, and the body may have walked away before the
+        # hand came back; the cut folds it back now, and this stays as
+        # the safety net for guns left on floors before the fix (#3697;
+        # MULTI_WEAPON_COMBAT_SPEC §3, §9).
         if weapon.location is None or weapon.location == character:
             return weapon
         if weapon.location.is_typeclass("typeclasses.items.Appendage", exact=False):
@@ -756,11 +758,14 @@ def carry_hardware_to_appendage(character, chain, appendage) -> None:
     """Move integrated hardware whose organ just severed onto the
     severed appendage (spec decision 7: the limb takes its gear).
 
-    Deployed weapons travel automatically (they sit in ``held_items``
-    and ``detach_items_to_appendage`` already moved them); this hook
-    covers the RETRACTED case — the item parked at ``location=None``,
-    folded inside the arm that just hit the floor.  Idempotent for
-    the deployed case.
+    ``detach_items_to_appendage`` has already emptied the chain's slots
+    and left integrated hardware where it lay (#3697: it never drops);
+    this hook moves it. A host organ inside the chain takes its weapon
+    onto the limb, deployed or parked. A host OUTSIDE the chain whose
+    deployed weapon sat in a slot the cut took (a chrome hand cut off a
+    surviving gun arm) folds it back inside the arm: ``location=None``,
+    ``deployed`` False, so the next toggle is a deploy and nothing lies
+    on the floor locked against every verb.
 
     A shared reference from before each hand owned its claws is settled
     here, by the keeper rule: an object a surviving hand still holds
@@ -780,23 +785,41 @@ def carry_hardware_to_appendage(character, chain, appendage) -> None:
     if not organs:
         return
     chain_set = set(chain)
+    # The slots that survive the cut, by pk (idmapper may hand back a
+    # different instance for the same row): what one of them still names
+    # is a surviving hand's, wherever the object's location says it lies.
+    held_pks = {getattr(item, "pk", None)
+                for item in dict(getattr(character, "held_items", None) or {}).values() if item}
     carried = {}   # ability name -> the dbrefs that left with the limb
     changed = False
     for organ in organs.values():
-        if getattr(organ, "container", None) not in chain_set:
-            continue
+        in_chain = getattr(organ, "container", None) in chain_set
         store = getattr(organ, "ability_state", None) or {}
         for name, ability_state in store.items():
             if not isinstance(ability_state, dict):
                 continue
+            if not in_chain:
+                # A host the cut left on the body: only a DEPLOYED host is
+                # looked up; its weapon folds back inside the arm only if
+                # it lies on the body with no surviving slot naming it,
+                # which is the slot the cut took (#3697).
+                if not ability_state.get("deployed"):
+                    continue
+                weapon = _find_weapon(ability_state)
+                if (weapon is not None and weapon.location == character
+                        and getattr(weapon, "pk", None) not in held_pks):
+                    weapon.location = None   # folded back inside the arm
+                    ability_state["deployed"] = False
+                    changed = True
+                continue
             weapon = _find_weapon(ability_state)
-            if weapon is not None and weapon.location == character:
+            if weapon is not None and getattr(weapon, "pk", None) in held_pks:
                 ability_state.pop("weapon_dbref", None)   # a surviving hand holds it
             elif weapon is not None and weapon.location is not appendage:
-                if _lies_with_another(weapon):
+                if weapon.location != character and _lies_with_another(weapon):
                     ability_state.pop("weapon_dbref", None)   # another body's or limb's
                 else:
-                    weapon.location = appendage
+                    weapon.location = appendage   # the limb takes its gear
             if ability_state.get("weapon_dbref"):
                 carried.setdefault(name, set()).add(ability_state["weapon_dbref"])
             ability_state["deployed"] = False

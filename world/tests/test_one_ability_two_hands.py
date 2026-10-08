@@ -373,11 +373,13 @@ class TwoArmGunsFromTheOldModel(EvenniaTest):
         self.assertIn(self.gun.id, {hands["left_hand"].id, hands["right_hand"].id}, "the legacy gun was abandoned")
 
     def test_a_gun_dropped_on_the_floor_by_a_hand_sever_is_taken_back(self):
-        # A hand-only sever drops the deployed forearm gun to the room,
-        # locked and undroppable (#3697), and the body walks on
-        # before the hand comes back; the next deploy must take it back
-        # from wherever it lies rather than spawn a second and leave the
-        # first on a floor for good.
+        # Before #3697 was fixed a hand-only sever dropped the deployed
+        # forearm gun to the room, locked and undroppable, and the body
+        # walked on before the hand came back. The cut folds the gun back
+        # now (test_a_hand_cut_folds_the_arm_gun_back); this pins the
+        # safety net for a gun left on a floor by the old behaviour: the
+        # next deploy takes it back from wherever it lies rather than
+        # spawn a second and leave the first on a floor for good.
         from world.medical.augments import toggle_ability
         self.organs[1].ability_state = {"shotgun": {}}           # only the left arm has a gun
         self.gun.location = self.room2
