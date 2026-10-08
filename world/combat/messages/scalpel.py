@@ -258,8 +258,8 @@ MESSAGES = {
             'observer_msg': "{target_name}'s {hit_location} collapses as the scalpel severs vital connections."
         },
         {
-            'attacker_msg': "A slice across the {hit_location} of the {hit_location} leaves {target_name} howling.",
-            'victim_msg': "The scalpel opens the {hit_location} of your {hit_location}, tendons and nerves screaming in unison.",
+            'attacker_msg': "A slice across the back of the {hit_location} leaves {target_name} howling.",
+            'victim_msg': "The scalpel opens the back of your {hit_location}, tendons and nerves screaming in unison.",
             'observer_msg': "{target_name} howls as the scalpel parts tendons in the back of their {hit_location}."
         },
         {
