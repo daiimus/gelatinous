@@ -238,9 +238,9 @@ MESSAGES = {
             "observer_msg": "The cutlass sings its grim song as it connects with {target_name}, tearing flesh with its heavy edge."
         },
         {
-            "attacker_msg": "Your blade finds purchase, carving a horrific wound into {target_name}'s {hit_location}, dropping them to a {hit_location}.",
-            "victim_msg": "{attacker_name}'s blade finds purchase, carving a horrific wound into your {hit_location}, dropping you to a {hit_location}.",
-            "observer_msg": "{attacker_name}'s blade finds purchase, carving a horrific wound into {target_name}'s {hit_location}, dropping them to a {hit_location}."
+            "attacker_msg": "Your blade finds purchase, carving a horrific wound into {target_name}'s {hit_location}, dropping them to a knee.",
+            "victim_msg": "{attacker_name}'s blade finds purchase, carving a horrific wound into your {hit_location}, dropping you to a knee.",
+            "observer_msg": "{attacker_name}'s blade finds purchase, carving a horrific wound into {target_name}'s {hit_location}, dropping them to a knee."
         },
         {
             "attacker_msg": "A glancing blow from the cutlass still manages to rip through armor and draw significant blood from {target_name}.",

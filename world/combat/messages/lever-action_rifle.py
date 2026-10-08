@@ -173,9 +173,9 @@ MESSAGES = {
             'observer_msg': "Lead meets flesh with brutal authority as the bullet from {attacker_name}'s lever-action rifle slams into {target_name}'s {hit_location} with a meaty, sickening thud. {attacker_name} chambers another round with a decisive, rapid *clack-clack* of the lever."
         },
         {
-            'attacker_msg': "The lever-action rifle's bullet strikes {target_name}'s {hit_location}, the impact dropping them to a {hit_location} with a grunt of pain. You quickly work the lever, ejecting the hot brass, the rifle eager for more.",
-            'victim_msg': "The lever-action rifle's bullet strikes your {hit_location}, the impact dropping you to a {hit_location} with a grunt of pain. {attacker_name} quickly works the lever, ejecting the hot brass, the rifle eager for more.",
-            'observer_msg': "The lever-action rifle's bullet strikes {target_name}'s {hit_location}, the impact dropping them to a {hit_location} with a grunt of pain. {attacker_name} quickly works the lever, ejecting the hot brass, the rifle eager for more."
+            'attacker_msg': "The lever-action rifle's bullet strikes {target_name}'s {hit_location}, the impact dropping them to a knee with a grunt of pain. You quickly work the lever, ejecting the hot brass, the rifle eager for more.",
+            'victim_msg': "The lever-action rifle's bullet strikes your {hit_location}, the impact dropping you to a knee with a grunt of pain. {attacker_name} quickly works the lever, ejecting the hot brass, the rifle eager for more.",
+            'observer_msg': "The lever-action rifle's bullet strikes {target_name}'s {hit_location}, the impact dropping them to a knee with a grunt of pain. {attacker_name} quickly works the lever, ejecting the hot brass, the rifle eager for more."
         },
         {
             'attacker_msg': "Your well-aimed shot with the lever-action rifle leaves a deep, profusely bleeding wound in {target_name}. The lever is cycled with a smooth, almost casual motion, another round sliding smoothly home.",

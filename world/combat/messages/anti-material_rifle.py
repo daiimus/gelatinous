@@ -228,9 +228,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}’s anti-material rifle bullet slams into {target_name}, the sheer kinetic energy lifting them off their feet and tearing them apart mid-air. Another enormous round is chambered with a solid, ominous sound."
         },
         {
-            "attacker_msg": "A shot from your anti-material rifle hits {target_name}'s {hit_location}; the {hit_location}, wrist, and forearm are obliterated in an instant spray of bone and blood. You cycle the bolt, unflinching at the carnage.",
-            "victim_msg": "A shot from {attacker_name}'s anti-material rifle hits your {hit_location}; your {hit_location}, wrist, and forearm are obliterated in an instant spray of bone and blood! {attacker_name} cycles the bolt, unflinching at the carnage.",
-            "observer_msg": "A shot from {attacker_name}'s anti-material rifle hits {target_name}'s {hit_location}; the {hit_location}, wrist, and forearm are obliterated in an instant spray of bone and blood. {attacker_name} cycles the bolt, unflinching at the carnage."
+            "attacker_msg": "A shot from your anti-material rifle hits {target_name}'s {hit_location}; the hand, wrist, and forearm are obliterated in an instant spray of bone and blood. You cycle the bolt, unflinching at the carnage.",
+            "victim_msg": "A shot from {attacker_name}'s anti-material rifle hits your {hit_location}; your hand, wrist, and forearm are obliterated in an instant spray of bone and blood! {attacker_name} cycles the bolt, unflinching at the carnage.",
+            "observer_msg": "A shot from {attacker_name}'s anti-material rifle hits {target_name}'s {hit_location}; the hand, wrist, and forearm are obliterated in an instant spray of bone and blood. {attacker_name} cycles the bolt, unflinching at the carnage."
         },
         {
             "attacker_msg": "Your anti-material rifle's bullet makes solid, catastrophic contact with {target_name}'s {hit_location}, the shockwave of impact visibly rippling through them before they explode. You work the bolt, chambering a fresh, devastating round.",

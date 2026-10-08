@@ -168,9 +168,9 @@ MESSAGES = {
             "observer_msg": "A fast upward swing knocks {target_name}'s {hit_location} closed. Their teeth meet in shock and pain."
         },
         {
-            "attacker_msg": "A {hit_location} punch with steel. {target_name} retches and stumbles, eyes wide.",
-            "victim_msg": "A {hit_location} punch with steel. You retch and stumble, eyes wide.",
-            "observer_msg": "A {hit_location} punch with steel. {target_name} retches and stumbles, eyes wide."
+            "attacker_msg": "A gut punch with steel. {target_name} retches and stumbles, eyes wide.",
+            "victim_msg": "A gut punch with steel. You retch and stumble, eyes wide.",
+            "observer_msg": "A gut punch with steel. {target_name} retches and stumbles, eyes wide."
         },
         {
             "attacker_msg": "A heavy downward strike lands on {target_name}'s {hit_location}. The socket pops. Their {hit_location} hangs loose.",

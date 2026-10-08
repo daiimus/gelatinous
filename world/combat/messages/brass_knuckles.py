@@ -228,9 +228,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s knuckles meet {target_name}'s {hit_location} and the result is immediate — their {hit_location} whips sideways, a fine mist of spit and {blood} trailing behind like punctuation. There’s a beat, a stagger, and the dull thud of knees losing faith."
         },
         {
-            "attacker_msg": "No wasted motion from you — just the brutal truth of metal meeting {target_name}'s {hit_location}. They blink, then sway, then drop to a {hit_location}.",
-            "victim_msg": "No wasted motion from {attacker_name} — just the brutal truth of metal meeting your {hit_location}. You blink, then sway, then drop to a {hit_location}.",
-            "observer_msg": "No wasted motion from {attacker_name} — just the brutal truth of metal meeting {target_name}'s {hit_location}. They blink, then sway, then drop to a {hit_location}."
+            "attacker_msg": "No wasted motion from you — just the brutal truth of metal meeting {target_name}'s {hit_location}. They blink, then sway, then drop to a knee.",
+            "victim_msg": "No wasted motion from {attacker_name} — just the brutal truth of metal meeting your {hit_location}. You blink, then sway, then drop to a knee.",
+            "observer_msg": "No wasted motion from {attacker_name} — just the brutal truth of metal meeting {target_name}'s {hit_location}. They blink, then sway, then drop to a knee."
         },
         {
             "attacker_msg": "Your blow crunches into {target_name}'s {hit_location}. For a moment, everything pauses. Then the blood starts.",

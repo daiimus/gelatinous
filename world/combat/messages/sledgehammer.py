@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "A short arc blasts into {target_name}'s {hit_location}. They go down in a clatter of limbs."
         },
         {
-            'attacker_msg': "A sideways swing folds them at the {hit_location}. They groan like a dying engine.",
-            'victim_msg': "A sideways swing folds you at the {hit_location}. You groan like a dying engine.",
-            'observer_msg': "A sideways swing folds {target_name} at the {hit_location}. They groan like a dying engine."
+            'attacker_msg': "A sideways swing folds them at the waist. They groan like a dying engine.",
+            'victim_msg': "A sideways swing folds you at the waist. You groan like a dying engine.",
+            'observer_msg': "A sideways swing folds {target_name} at the waist. They groan like a dying engine."
         },
         {
             'attacker_msg': "A sweeping blow crashes into their {hit_location}. They collapse mid-step.",
