@@ -358,9 +358,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} doesn't hesitate. The chainsaw carves into flesh like a drunk god drawing new commandments."
         },
         {
-            'attacker_msg': "You drag the saw upward through {target_name}, spine sparking on the teeth. It smells like burned meat.",
-            'victim_msg': "{attacker_name} drags the saw upward through you, spine sparking on the teeth. It smells like burned meat.",
-            'observer_msg': "{attacker_name} drags the saw upward through {target_name}, spine sparking on the teeth. It smells like burned meat."
+            'attacker_msg': "You drag the saw upward through {target_name}, {hit_location} sparking on the teeth. It smells like burned meat.",
+            'victim_msg': "{attacker_name} drags the saw upward through you, {hit_location} sparking on the teeth. It smells like burned meat.",
+            'observer_msg': "{attacker_name} drags the saw upward through {target_name}, {hit_location} sparking on the teeth. It smells like burned meat."
         },
         {
             'attacker_msg': "You follow through as the saw tears down the centerline. The damage isn't a wound — it's a statement.",
@@ -398,9 +398,9 @@ MESSAGES = {
             'observer_msg': "{target_name} tries to dodge, but the edge catches them across the {hit_location}. Their scream is guttural. The smell is copper and smoke."
         },
         {
-            'attacker_msg': "{target_name} turns too late. Your saw greets them with a full-throated growl and a mouthful of shoulder.",
-            'victim_msg': "You turn too late. The saw greets you with a full-throated growl and a mouthful of shoulder.",
-            'observer_msg': "{target_name} turns too late. The saw greets them with a full-throated growl and a mouthful of shoulder."
+            'attacker_msg': "{target_name} turns too late. Your saw greets them with a full-throated growl and a mouthful of {hit_location}.",
+            'victim_msg': "You turn too late. The saw greets you with a full-throated growl and a mouthful of {hit_location}.",
+            'observer_msg': "{target_name} turns too late. The saw greets them with a full-throated growl and a mouthful of {hit_location}."
         },
         {
             'attacker_msg': "{target_name}'s scream is swallowed whole by the motor. Their body jerks as the chain digs, sputters, and *eats*.",

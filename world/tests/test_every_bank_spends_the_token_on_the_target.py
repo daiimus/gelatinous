@@ -34,7 +34,7 @@ from unittest import TestCase
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BANK_DIR = os.path.join(HERE, "combat", "messages")
 SELF = re.compile(r"\b[Yy]our \{hit_location\}(?![A-Za-z])")
-ATTACKERS_PART = re.compile(r"\{attacker_name\}['’]s \{hit_location\}")
+ATTACKERS_PART = re.compile(r"\{attacker_name\}['’]s \{hit_location\}(?![A-Za-z-])")   # a glued one is GLUED's
 GLUED = re.compile(r"[A-Za-z]\{hit_location\}|\{hit_location\}[a-z]|\{hit_location\}-[a-z]")
 # The conversion also tokenized the adverb "back" ("they stagger back") and
 # list items ("the hand, wrist, and forearm"); the ancestor words were

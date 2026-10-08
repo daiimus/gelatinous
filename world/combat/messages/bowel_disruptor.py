@@ -47,7 +47,7 @@ MESSAGES = {
             "observer_msg": "A low thrum from {attacker_name}'s {item_name} signals imminent, unpleasant consequences for {target_name}. A precautionary step back, or perhaps several, seems prudent.",
         },
         {
-            "attacker_msg": "Your finger tightens on the trigger of the {item_name}. {target_name} is about to experience a revelation, a full-body confession. A silent, manic scream builds in your throat.",
+            "attacker_msg": "Your finger tightens on the trigger of the {item_name}. {target_name} is about to experience a revelation, a full-body confession. A silent, manic scream builds in your chest.",
             "victim_msg": "The world narrows to the grotesque nozzle of {attacker_name}'s {item_name}. Your life isn't flashing before your eyes, but your last meal certainly is making a reappearance bid. Your {hit_location} churns with a dread that is both existential and very, very physical.",
             "observer_msg": "{attacker_name} looks like a prophet of some forgotten, filthy god, preparing to deliver a sermon of pure, unadulterated gastrointestinal chaos upon {target_name}. The air is thick with anticipation and a faint, sewage-like aroma.",
         },
