@@ -799,9 +799,10 @@ def carry_hardware_to_appendage(character, chain, appendage) -> None:
             if not isinstance(ability_state, dict):
                 continue
             if not in_chain:
-                # A host the cut left on the body: only a DEPLOYED weapon
-                # that lost its slot to the cut is looked up, and folded
-                # back inside the arm (#3697).
+                # A host the cut left on the body: only a DEPLOYED host is
+                # looked up; its weapon folds back inside the arm only if
+                # it lies on the body with no surviving slot naming it,
+                # which is the slot the cut took (#3697).
                 if not ability_state.get("deployed"):
                     continue
                 weapon = _find_weapon(ability_state)
