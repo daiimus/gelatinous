@@ -263,9 +263,9 @@ MESSAGES = {
             'observer_msg': "It hits at an angle. Not clean. Not kind. The saw chews and {target_name} shrieks, dancing with death they didn't invite."
         },
         {
-            'attacker_msg': "One {hit_location} of {target_name} caves in under the churning chain. Their body doesn't break — it *melts* around the motion.",
-            'victim_msg': "One {hit_location} of you caves in under the churning chain. Your body doesn't break — it *melts* around the motion.",
-            'observer_msg': "One {hit_location} of {target_name} caves in under the churning chain. Their body doesn't break — it *melts* around the motion."
+            'attacker_msg': "One side of {target_name} caves in under the churning chain. Their body doesn't break — it *melts* around the motion.",
+            'victim_msg': "One side of you caves in under the churning chain. Your body doesn't break — it *melts* around the motion.",
+            'observer_msg': "One side of {target_name} caves in under the churning chain. Their body doesn't break — it *melts* around the motion."
         },
         {
             'attacker_msg': "One slash, from shoulder to hip. {target_name} collapses mid-turn, blood trailing behind them like punctuation.",

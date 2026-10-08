@@ -194,7 +194,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You slice the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor.",
-            'victim_msg': "{attacker_name} slices the {hit_location} of your {hit_location}, weapon clattering to the floor.",
+            'victim_msg': "{attacker_name} slices the back of your {hit_location}, weapon clattering to the floor.",
             'observer_msg': "{attacker_name} slices the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor."
         },
         {

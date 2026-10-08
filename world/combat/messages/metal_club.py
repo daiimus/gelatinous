@@ -178,9 +178,9 @@ MESSAGES = {
             'observer_msg': "A quick step and a brutal swing lands across {target_name}'s {hit_location}. They scream and collapse like scaffolding."
         },
         {
-            'attacker_msg': "A {hit_location} swing crashes into {target_name}'s {hit_location}. It's not broken — it's ruined.",
-            'victim_msg': "A {hit_location} swing crashes into your {hit_location}. It's not broken — it's ruined.",
-            'observer_msg': "A {hit_location} swing crashes into {target_name}'s {hit_location}. It's not broken — it's ruined."
+            'attacker_msg': "A side swing crashes into {target_name}'s {hit_location}. It's not broken — it's ruined.",
+            'victim_msg': "A side swing crashes into your {hit_location}. It's not broken — it's ruined.",
+            'observer_msg': "A side swing crashes into {target_name}'s {hit_location}. It's not broken — it's ruined."
         },
         {
             'attacker_msg': "A sudden backhand with the club rings off {target_name}'s {hit_location}. Teeth clatter to the floor.",
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} brings the metal down hard on the {hit_location}. Bone gives. So does the will to fight."
         },
         {
-            'attacker_msg': "You drive the club into the {hit_location} of the {hit_location}. {target_name} falls like a shelf giving out.",
-            'victim_msg': "{attacker_name} drives the club into the {hit_location} of the {hit_location}. You fall like a shelf giving out.",
-            'observer_msg': "{attacker_name} drives the club into the {hit_location} of the {hit_location}. {target_name} falls like a shelf giving out."
+            'attacker_msg': "You drive the club into the side of the {hit_location}. {target_name} falls like a shelf giving out.",
+            'victim_msg': "{attacker_name} drives the club into the side of the {hit_location}. You fall like a shelf giving out.",
+            'observer_msg': "{attacker_name} drives the club into the side of the {hit_location}. {target_name} falls like a shelf giving out."
         },
         {
             'attacker_msg': "You hook the end under the chin. {target_name}'s {hit_location} whips back, and the knees follow.",

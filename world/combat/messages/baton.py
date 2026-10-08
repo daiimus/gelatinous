@@ -239,7 +239,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your baton slams into the {hit_location} of {target_name}'s {hit_location}, snapping their {hit_location} with a wet crunch. They fall mid-step, face-first into failure.",
-            "victim_msg": "{attacker_name}'s baton slams into the {hit_location} of your {hit_location}, snapping your {hit_location} with a wet crunch. You fall mid-step, face-first into failure.",
+            "victim_msg": "{attacker_name}'s baton slams into the side of your {hit_location}, snapping your {hit_location} with a wet crunch. You fall mid-step, face-first into failure.",
             "observer_msg": "{attacker_name}'s baton slams into the {hit_location} of {target_name}'s {hit_location}, snapping their {hit_location} with a wet crunch. They fall mid-step, face-first into failure."
         },
         {
@@ -259,7 +259,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your baton whistles through the air before finding the {hit_location} of {target_name}'s {hit_location}. A tooth skips across the floor like a pebble.",
-            "victim_msg": "{attacker_name}'s baton whistles through the air before finding the {hit_location} of your {hit_location}. A tooth skips across the floor like a pebble.",
+            "victim_msg": "{attacker_name}'s baton whistles through the air before finding the side of your {hit_location}. A tooth skips across the floor like a pebble.",
             "observer_msg": "{attacker_name}'s baton whistles through the air before finding the {hit_location} of {target_name}'s {hit_location}. A tooth skips across the floor like a pebble."
         },
         {

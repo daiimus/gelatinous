@@ -178,9 +178,9 @@ MESSAGES = {
             "observer_msg": "A sharp smash to the {hit_location} sends {target_name} down in an ugly twist. The bone didn’t like that."
         },
         {
-            "attacker_msg": "A {hit_location} strike catches {target_name} in the mouth. Blood and teeth scatter like dice on pavement.",
-            "victim_msg": "A {hit_location} strike catches you in the mouth. Blood and teeth scatter like dice on pavement.",
-            "observer_msg": "A {hit_location} strike catches {target_name} in the mouth. Blood and teeth scatter like dice on pavement."
+            "attacker_msg": "A side strike catches {target_name} in the mouth. Blood and teeth scatter like dice on pavement.",
+            "victim_msg": "A side strike catches you in the mouth. Blood and teeth scatter like dice on pavement.",
+            "observer_msg": "A side strike catches {target_name} in the mouth. Blood and teeth scatter like dice on pavement."
         },
         {
             "attacker_msg": "A sideways arc takes {target_name} in the {hit_location}. The brick sticks for a second. Then comes loose.",
@@ -288,9 +288,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} smashes the brick into {target_name}'s nose. It doesn’t break — it *detonates*."
         },
         {
-            "attacker_msg": "You swing from the {hit_location} and crash the brick into {target_name}'s {hit_location}. The sound is wet. The scream worse.",
-            "victim_msg": "{attacker_name} swings from the {hit_location} and crashes the brick into your {hit_location}. The sound is wet. The scream worse.",
-            "observer_msg": "{attacker_name} swings from the {hit_location} and crashes the brick into {target_name}'s {hit_location}. The sound is wet. The scream worse."
+            "attacker_msg": "You swing from the hip and crash the brick into {target_name}'s {hit_location}. The sound is wet. The scream worse.",
+            "victim_msg": "{attacker_name} swings from the hip and crashes the brick into your {hit_location}. The sound is wet. The scream worse.",
+            "observer_msg": "{attacker_name} swings from the hip and crashes the brick into {target_name}'s {hit_location}. The sound is wet. The scream worse."
         },
         {
             "attacker_msg": "You swing low and crack the brick into {target_name}'s {hit_location}. A howl follows. Then a collapse.",

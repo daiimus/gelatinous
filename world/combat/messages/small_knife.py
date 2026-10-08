@@ -208,14 +208,14 @@ MESSAGES = {
             'observer_msg': "One swift stab to the {hit_location} makes {target_name} crumple with a shout."
         },
         {
-            'attacker_msg': "The blade carves along the {hit_location} of the {hit_location} — not deep, but deep enough.",
-            'victim_msg': "The blade carves along the {hit_location} of your {hit_location} — not deep, but deep enough.",
-            'observer_msg': "The blade carves along the {hit_location} of the {hit_location} — not deep, but deep enough."
+            'attacker_msg': "The blade carves along the side of the {hit_location} — not deep, but deep enough.",
+            'victim_msg': "The blade carves along the side of your {hit_location} — not deep, but deep enough.",
+            'observer_msg': "The blade carves along the side of the {hit_location} — not deep, but deep enough."
         },
         {
-            'attacker_msg': "The blade cuts the {hit_location} of the {hit_location}. {target_name} buckles hard.",
-            'victim_msg': "The blade cuts the {hit_location} of your {hit_location}. You buckle hard.",
-            'observer_msg': "The blade cuts the {hit_location} of the {hit_location}. {target_name} buckles hard."
+            'attacker_msg': "The blade cuts the back of the {hit_location}. {target_name} buckles hard.",
+            'victim_msg': "The blade cuts the back of your {hit_location}. You buckle hard.",
+            'observer_msg': "The blade cuts the back of the {hit_location}. {target_name} buckles hard."
         },
         {
             'attacker_msg': "The blade darts out and opens a shallow wound across {target_name}'s {hit_location}.",
@@ -238,9 +238,9 @@ MESSAGES = {
             'observer_msg': "The blade slides under the {hit_location} and finds the soft space there. {target_name} whimpers, eyes wide."
         },
         {
-            'attacker_msg': "The cut is shallow, but the blood is not. {target_name} drops to one {hit_location}, surprised.",
-            'victim_msg': "The cut is shallow, but the blood is not. You drop to one {hit_location}, surprised.",
-            'observer_msg': "The cut is shallow, but the blood is not. {target_name} drops to one {hit_location}, surprised."
+            'attacker_msg': "The cut is shallow, but the blood is not. {target_name} drops to one knee, surprised.",
+            'victim_msg': "The cut is shallow, but the blood is not. You drop to one knee, surprised.",
+            'observer_msg': "The cut is shallow, but the blood is not. {target_name} drops to one knee, surprised."
         },
         {
             'attacker_msg': "The knife finds flesh at the crook of the {hit_location}. {target_name} staggers, clutching the wound.",
@@ -268,14 +268,14 @@ MESSAGES = {
             'observer_msg': "The stab is quick and close, aimed at the {hit_location} blade. {target_name} cries out and stumbles."
         },
         {
-            'attacker_msg': "With precision, you puncture the {hit_location} of the {hit_location}. Blood flows freely as {target_name} staggers.",
-            'victim_msg': "With precision, {attacker_name} punctures the {hit_location} of your {hit_location}. Blood flows freely as you stagger.",
-            'observer_msg': "With precision, {attacker_name} punctures the {hit_location} of the {hit_location}. Blood flows freely as {target_name} staggers."
+            'attacker_msg': "With precision, you puncture the side of the {hit_location}. Blood flows freely as {target_name} staggers.",
+            'victim_msg': "With precision, {attacker_name} punctures the side of your {hit_location}. Blood flows freely as you stagger.",
+            'observer_msg': "With precision, {attacker_name} punctures the side of the {hit_location}. Blood flows freely as {target_name} staggers."
         },
         {
-            'attacker_msg': "You draw the knife across the {hit_location} of the {hit_location}. The pain is instant, the blood immediate.",
-            'victim_msg': "{attacker_name} draws the knife across the {hit_location} of your {hit_location}. The pain is instant, the blood immediate.",
-            'observer_msg': "{attacker_name} draws the knife across the {hit_location} of the {hit_location}. The pain is instant, the blood immediate."
+            'attacker_msg': "You draw the knife across the back of the {hit_location}. The pain is instant, the blood immediate.",
+            'victim_msg': "{attacker_name} draws the knife across the back of your {hit_location}. The pain is instant, the blood immediate.",
+            'observer_msg': "{attacker_name} draws the knife across the back of the {hit_location}. The pain is instant, the blood immediate."
         },
         {
             'attacker_msg': "You flick the blade across the {hit_location} — shallow, but enough. {target_name} stumbles backward, panicked.",

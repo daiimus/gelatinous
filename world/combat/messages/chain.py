@@ -223,9 +223,9 @@ MESSAGES = {
             "observer_msg": "The chain lashes up, catching {target_name} under the chin. They bite their own tongue trying not to scream."
         },
         {
-            "attacker_msg": "The chain lashes {target_name}'s {hit_location}. They tumble, one {hit_location} folded wrong under the weight of pain.",
-            "victim_msg": "The chain lashes your {hit_location}. You tumble, one {hit_location} folded wrong under the weight of pain.",
-            "observer_msg": "The chain lashes {target_name}'s {hit_location}. They tumble, one {hit_location} folded wrong under the weight of pain."
+            "attacker_msg": "The chain lashes {target_name}'s {hit_location}. They tumble, one leg folded wrong under the weight of pain.",
+            "victim_msg": "The chain lashes your {hit_location}. You tumble, one leg folded wrong under the weight of pain.",
+            "observer_msg": "The chain lashes {target_name}'s {hit_location}. They tumble, one leg folded wrong under the weight of pain."
         },
         {
             "attacker_msg": "The chain loops around {target_name}'s waist. One hard tug, and they crash into the ground like bad news.",

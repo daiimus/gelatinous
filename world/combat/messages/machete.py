@@ -153,7 +153,7 @@ MESSAGES = {
     ],
     'hit': [
         {
-            'attacker_msg': "A brutal overhead chop lands square on the {hit_location}. Bone cracks. Blood sprays.",
+            'attacker_msg': "A brutal overhead chop lands square on the collarbone. Bone cracks. Blood sprays.",
             'victim_msg': "A brutal overhead chop lands square on your {hit_location}. Bone cracks. Blood sprays.",
             'observer_msg': "A brutal overhead chop lands square on {target_name}'s {hit_location}. Bone cracks. Blood sprays."
         },
@@ -208,7 +208,7 @@ MESSAGES = {
             'observer_msg': "One upward swing slices {target_name}'s {hit_location} open. The machete speaks in viscera."
         },
         {
-            'attacker_msg': "Steel crashes against {hit_location}. {target_name} shrieks and drops like bricks.",
+            'attacker_msg': "Steel crashes against thigh. {target_name} shrieks and drops like bricks.",
             'victim_msg': "Steel crashes against your {hit_location}. You shriek and drop like bricks.",
             'observer_msg': "Steel crashes against {target_name}'s {hit_location}. {target_name} shrieks and drops like bricks."
         },
@@ -298,7 +298,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slashes across {target_name}'s {hit_location}. The shirt darkens fast."
         },
         {
-            'attacker_msg': "You slash downward, opening a jagged wound from {hit_location} to chest.",
+            'attacker_msg': "You slash downward, opening a jagged wound from shoulder to chest.",
             'victim_msg': "{attacker_name} slashes downward, opening a jagged wound from your {hit_location} to chest.",
             'observer_msg': "{attacker_name} slashes downward, opening a jagged wound from {target_name}'s {hit_location} to chest."
         }

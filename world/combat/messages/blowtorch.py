@@ -168,9 +168,9 @@ MESSAGES = {
             "observer_msg": "A direct blast to the {hit_location} leaves {target_name} hopping, swearing, and leaving a trail of scorched boot rubber."
         },
         {
-            "attacker_msg": "A jet of flame catches {target_name} across the {hit_location} of the {hit_location}. Their hands shoot up, but too late — the damage is done.",
-            "victim_msg": "A jet of flame catches you across the {hit_location} of the {hit_location}. Your hands shoot up, but too late — the damage is done.",
-            "observer_msg": "A jet of flame catches {target_name} across the {hit_location} of the {hit_location}. Their hands shoot up, but too late — the damage is done."
+            "attacker_msg": "A jet of flame catches {target_name} across the side of the {hit_location}. Their hands shoot up, but too late — the damage is done.",
+            "victim_msg": "A jet of flame catches you across the side of the {hit_location}. Your hands shoot up, but too late — the damage is done.",
+            "observer_msg": "A jet of flame catches {target_name} across the side of the {hit_location}. Their hands shoot up, but too late — the damage is done."
         },
         {
             "attacker_msg": "A short jet of fire sears {target_name}'s {hit_location}. They stumble, dropping into a crouch and slapping at their own {hit_location}.",
@@ -249,7 +249,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "The torch hits the {hit_location} of {target_name}'s {hit_location}. They shriek, skin curling away from bone like burnt paper.",
-            "victim_msg": "The torch hits the {hit_location} of your {hit_location}. You shriek, skin curling away from bone like burnt paper.",
+            "victim_msg": "The torch hits the back of your {hit_location}. You shriek, skin curling away from bone like burnt paper.",
             "observer_msg": "The torch hits the {hit_location} of {target_name}'s {hit_location}. They shriek, skin curling away from bone like burnt paper."
         },
         {

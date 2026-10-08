@@ -273,14 +273,14 @@ MESSAGES = {
             "observer_msg": "The haft of {attacker_name}'s axe jabs into {target_name}'s {hit_location}, then the blade follows. It’s brutal punctuation."
         },
         {
-            "attacker_msg": "The {hit_location} of your blade clips {target_name}'s {hit_location}. They reel, {blood} staining their breath.",
-            "victim_msg": "The {hit_location} of {attacker_name}'s blade clips your {hit_location}. You reel, {blood} staining your breath.",
-            "observer_msg": "The {hit_location} of {attacker_name}'s blade clips {target_name}'s {hit_location}. They reel, {blood} staining their breath."
+            "attacker_msg": "The side of your blade clips {target_name}'s {hit_location}. They reel, {blood} staining their breath.",
+            "victim_msg": "The side of {attacker_name}'s blade clips your {hit_location}. You reel, {blood} staining your breath.",
+            "observer_msg": "The side of {attacker_name}'s blade clips {target_name}'s {hit_location}. They reel, {blood} staining their breath."
         },
         {
-            "attacker_msg": "You drive the {hit_location} of your axe into {target_name}'s {hit_location}. Bone cracks, skin parts.",
-            "victim_msg": "{attacker_name} drives the {hit_location} of their axe into your {hit_location}. Bone cracks, skin parts.",
-            "observer_msg": "{attacker_name} drives the {hit_location} of their axe into {target_name}'s {hit_location}. Bone cracks, skin parts."
+            "attacker_msg": "You drive the head of your axe into {target_name}'s {hit_location}. Bone cracks, skin parts.",
+            "victim_msg": "{attacker_name} drives the head of their axe into your {hit_location}. Bone cracks, skin parts.",
+            "observer_msg": "{attacker_name} drives the head of their axe into {target_name}'s {hit_location}. Bone cracks, skin parts."
         },
         {
             "attacker_msg": "You hook the blade of your axe into {target_name}'s {hit_location} and yank. The result is... messy.",

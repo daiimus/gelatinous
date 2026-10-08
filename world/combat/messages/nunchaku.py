@@ -264,7 +264,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The weapon strikes the {hit_location} of {target_name}'s ribcage. The sound is wet and wooden.",
-            'victim_msg': "The weapon strikes the {hit_location} of your ribcage. The sound is wet and wooden.",
+            'victim_msg': "The weapon strikes the side of your ribcage. The sound is wet and wooden.",
             'observer_msg': "The weapon strikes the {hit_location} of {target_name}'s ribcage. The sound is wet and wooden."
         },
         {
@@ -279,7 +279,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You pivot and deliver a strike to the {hit_location} of {target_name}'s {hit_location}. They fold inward.",
-            'victim_msg': "{attacker_name} pivots and delivers a strike to the {hit_location} of your {hit_location}. You fold inward.",
+            'victim_msg': "{attacker_name} pivots and delivers a strike to the back of your {hit_location}. You fold inward.",
             'observer_msg': "{attacker_name} pivots and delivers a strike to the {hit_location} of {target_name}'s {hit_location}. They fold inward."
         },
         {

@@ -194,7 +194,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You make a sweeping slice with the long shears, striking the {hit_location} of {target_name}'s {hit_location}, forcing them to drop their weapon.",
-            'victim_msg': "{attacker_name} makes a sweeping slice with the long shears, striking the {hit_location} of your {hit_location}, forcing you to drop your weapon.",
+            'victim_msg': "{attacker_name} makes a sweeping slice with the long shears, striking the back of your {hit_location}, forcing you to drop your weapon.",
             'observer_msg': "{attacker_name} makes a sweeping slice with the long shears, striking the {hit_location} of {target_name}'s {hit_location}, forcing them to drop their weapon."
         },
         {
@@ -268,9 +268,9 @@ MESSAGES = {
             'observer_msg': "The heavy blades of the shears bite into {target_name}'s {hit_location}, the powerful leverage buckling the joint."
         },
         {
-            'attacker_msg': "A sweeping slice across the {hit_location} of the {hit_location} with the long shears leaves {target_name} howling in pain and fury.",
-            'victim_msg': "A sweeping slice across the {hit_location} of the {hit_location} with the long shears leaves you howling in pain and fury.",
-            'observer_msg': "A sweeping slice across the {hit_location} of the {hit_location} with the long shears leaves {target_name} howling in pain and fury."
+            'attacker_msg': "A sweeping slice across the back of the {hit_location} with the long shears leaves {target_name} howling in pain and fury.",
+            'victim_msg': "A sweeping slice across the back of the {hit_location} with the long shears leaves you howling in pain and fury.",
+            'observer_msg': "A sweeping slice across the back of the {hit_location} with the long shears leaves {target_name} howling in pain and fury."
         },
         {
             'attacker_msg': "You jab the closed points of the heavy shears into {target_name}'s {hit_location}, twisting the long handles for emphasis.",

@@ -244,7 +244,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your brass slams into the {hit_location} of {target_name}'s {hit_location} with blunt finality. They reel like they forgot how legs work.",
-            "victim_msg": "The brass from {attacker_name} slams into the {hit_location} of your {hit_location} with blunt finality. You reel like you forgot how legs work.",
+            "victim_msg": "The brass from {attacker_name} slams into the side of your {hit_location} with blunt finality. You reel like you forgot how legs work.",
             "observer_msg": "The brass from {attacker_name} slams into the {hit_location} of {target_name}'s {hit_location} with blunt finality. They reel like they forgot how legs work."
         },
         {

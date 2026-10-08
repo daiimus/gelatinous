@@ -234,7 +234,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The bat connects with the {hit_location} of {target_name}'s {hit_location}, sending teeth skittering across the floor.",
-            'victim_msg': "The bat connects with the {hit_location} of your {hit_location}, sending teeth skittering across the floor.",
+            'victim_msg': "The bat connects with the side of your {hit_location}, sending teeth skittering across the floor.",
             'observer_msg': "The bat connects with the {hit_location} of {target_name}'s {hit_location}, sending teeth skittering across the floor."
         },
         {

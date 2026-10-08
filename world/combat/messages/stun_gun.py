@@ -173,8 +173,8 @@ MESSAGES = {
             'observer_msg': "A sudden arc hits the {hit_location}. {target_name}'s muscles seize, then drop."
         },
         {
-            'attacker_msg': "A tight jab to the {hit_location} of the {hit_location}. Lights out. Muscles fail.",
-            'victim_msg': "A tight jab to the {hit_location} of your {hit_location}. Lights out. Muscles fail.",
+            'attacker_msg': "A tight jab to the side of the {hit_location}. Lights out. Muscles fail.",
+            'victim_msg': "A tight jab to the side of your {hit_location}. Lights out. Muscles fail.",
             'observer_msg': "A tight jab to the {hit_location} of {target_name}'s {hit_location}. Lights out. Muscles fail."
         },
         {

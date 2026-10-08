@@ -218,9 +218,9 @@ MESSAGES = {
             'observer_msg': "The handle cracks against {target_name}'s {hit_location}. Their scream gets caught mid-burst."
         },
         {
-            'attacker_msg': "The handle jabs into the {hit_location}. They gag and drop to one {hit_location}.",
-            'victim_msg': "The handle jabs into your {hit_location}. You gag and drop to one {hit_location}.",
-            'observer_msg': "The handle jabs into {target_name}'s {hit_location}. They gag and drop to one {hit_location}."
+            'attacker_msg': "The handle jabs into the {hit_location}. They gag and drop to one knee.",
+            'victim_msg': "The handle jabs into your {hit_location}. You gag and drop to one knee.",
+            'observer_msg': "The handle jabs into {target_name}'s {hit_location}. They gag and drop to one knee."
         },
         {
             'attacker_msg': "The metal lip digs into their {hit_location}. Their howl is feral.",

@@ -248,9 +248,9 @@ MESSAGES = {
             "observer_msg": "The crowbar slaps against {target_name}'s {hit_location} with a thunderous clap. They fold like paper."
         },
         {
-            "attacker_msg": "The crowbar slaps the {hit_location} of the {hit_location}. It leaves bruises shaped like memory.",
-            "victim_msg": "The crowbar slaps the {hit_location} of the {hit_location}. It leaves bruises shaped like memory.",
-            "observer_msg": "The crowbar slaps the {hit_location} of the {hit_location}. It leaves bruises shaped like memory."
+            "attacker_msg": "The crowbar slaps the side of the {hit_location}. It leaves bruises shaped like memory.",
+            "victim_msg": "The crowbar slaps the side of the {hit_location}. It leaves bruises shaped like memory.",
+            "observer_msg": "The crowbar slaps the side of the {hit_location}. It leaves bruises shaped like memory."
         },
         {
             "attacker_msg": "The curved end rakes across {target_name}'s scalp, opening lines of {blood} like handwriting.",

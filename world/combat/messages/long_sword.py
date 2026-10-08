@@ -203,9 +203,9 @@ MESSAGES = {
             'observer_msg': "With a grunt of effort, {attacker_name} drives the long sword against {target_name}, forcing them back."
         },
         {
-            'attacker_msg': "The long sword scores a hit on {target_name}'s sword {hit_location}, weakening their grip.",
-            'victim_msg': "The long sword scores a hit on your sword {hit_location}, weakening your grip.",
-            'observer_msg': "The long sword scores a hit on {target_name}'s sword {hit_location}, weakening their grip."
+            'attacker_msg': "The long sword scores a hit on {target_name}'s sword arm, weakening their grip.",
+            'victim_msg': "The long sword scores a hit on your sword arm, weakening your grip.",
+            'observer_msg': "The long sword scores a hit on {target_name}'s sword arm, weakening their grip."
         },
         {
             'attacker_msg': "Your precise cut opens a gash on {target_name}'s {hit_location}, blood momentarily blinding them.",

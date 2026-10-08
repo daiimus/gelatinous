@@ -194,7 +194,7 @@ MESSAGES = {
         },
         {
             "attacker_msg": "You slice the {hit_location} of {target_name}'s {hit_location}, their weapon clattering to the floor.",
-            "victim_msg": "{attacker_name} slices the {hit_location} of your {hit_location}, your weapon clattering to the floor.",
+            "victim_msg": "{attacker_name} slices the back of your {hit_location}, your weapon clattering to the floor.",
             "observer_msg": "{attacker_name} slices the {hit_location} of {target_name}'s {hit_location}, their weapon clattering to the floor."
         },
         {
@@ -268,9 +268,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s blade bites into {target_name}'s {hit_location}. The joint gives way."
         },
         {
-            "attacker_msg": "A slice from your box cutter across the {hit_location} of the {hit_location} leaves {target_name} howling.",
-            "victim_msg": "A slice from {attacker_name}'s box cutter across the {hit_location} of the {hit_location} leaves you howling.",
-            "observer_msg": "A slice from {attacker_name}'s box cutter across the {hit_location} of the {hit_location} leaves {target_name} howling."
+            "attacker_msg": "A slice from your box cutter across the back of the {hit_location} leaves {target_name} howling.",
+            "victim_msg": "A slice from {attacker_name}'s box cutter across the back of the {hit_location} leaves you howling.",
+            "observer_msg": "A slice from {attacker_name}'s box cutter across the back of the {hit_location} leaves {target_name} howling."
         },
         {
             "attacker_msg": "You jab the blade into {target_name}'s {hit_location}, twisting for emphasis.",

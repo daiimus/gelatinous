@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "A strike to the {hit_location} gouges flesh. {target_name}'s eye wells up — with blood, not tears."
         },
         {
-            'attacker_msg': "A thrust splits the {hit_location} of the {hit_location}. Blood fountains in a terrible rhythm.",
-            'victim_msg': "A thrust splits the {hit_location} of your {hit_location}. Blood fountains in a terrible rhythm.",
-            'observer_msg': "A thrust splits the {hit_location} of the {hit_location}. Blood fountains in a terrible rhythm."
+            'attacker_msg': "A thrust splits the side of the {hit_location}. Blood fountains in a terrible rhythm.",
+            'victim_msg': "A thrust splits the side of your {hit_location}. Blood fountains in a terrible rhythm.",
+            'observer_msg': "A thrust splits the side of the {hit_location}. Blood fountains in a terrible rhythm."
         },
         {
             'attacker_msg': "One sharp jab to the armpit. {target_name}'s {hit_location} goes limp, so does their resolve.",
@@ -253,9 +253,9 @@ MESSAGES = {
             'observer_msg': "The tip finds the gap between ribs. {target_name} gasps and clutches their {hit_location}."
         },
         {
-            'attacker_msg': "The tip punches through the {hit_location} of the {hit_location}. {target_name} shrieks and jerks away.",
-            'victim_msg': "The tip punches through the {hit_location} of your {hit_location}. You shriek and jerk away.",
-            'observer_msg': "The tip punches through the {hit_location} of the {hit_location}. {target_name} shrieks and jerks away."
+            'attacker_msg': "The tip punches through the back of the {hit_location}. {target_name} shrieks and jerks away.",
+            'victim_msg': "The tip punches through the back of your {hit_location}. You shriek and jerk away.",
+            'observer_msg': "The tip punches through the back of the {hit_location}. {target_name} shrieks and jerks away."
         },
         {
             'attacker_msg': "You drive the stake into {target_name}'s {hit_location}. They buckle, blood streaming.",

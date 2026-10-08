@@ -184,7 +184,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A sweeping blow claps into the {hit_location} of {target_name}'s {hit_location}. The crack is dull, final.",
-            'victim_msg': "A sweeping blow claps into the {hit_location} of your {hit_location}. The crack is dull, final.",
+            'victim_msg': "A sweeping blow claps into the side of your {hit_location}. The crack is dull, final.",
             'observer_msg': "A sweeping blow claps into the {hit_location} of {target_name}'s {hit_location}. The crack is dull, final."
         },
         {
@@ -199,7 +199,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "One swift arc claps the {hit_location} of {target_name}'s {hit_location}. Bone groans. Blood follows.",
-            'victim_msg': "One swift arc claps the {hit_location} of your {hit_location}. Bone groans. Blood follows.",
+            'victim_msg': "One swift arc claps the side of your {hit_location}. Bone groans. Blood follows.",
             'observer_msg': "One swift arc claps the {hit_location} of {target_name}'s {hit_location}. Bone groans. Blood follows."
         },
         {
@@ -223,9 +223,9 @@ MESSAGES = {
             'observer_msg': "The baton thuds against {target_name}'s {hit_location}. Nerves twitch. The whole limb drops."
         },
         {
-            'attacker_msg': "The baton wraps around {target_name}'s {hit_location}. They drop, one {hit_location} refusing orders.",
-            'victim_msg': "The baton wraps around your {hit_location}. You drop, one {hit_location} refusing orders.",
-            'observer_msg': "The baton wraps around {target_name}'s {hit_location}. They drop, one {hit_location} refusing orders."
+            'attacker_msg': "The baton wraps around {target_name}'s {hit_location}. They drop, one leg refusing orders.",
+            'victim_msg': "The baton wraps around your {hit_location}. You drop, one leg refusing orders.",
+            'observer_msg': "The baton wraps around {target_name}'s {hit_location}. They drop, one leg refusing orders."
         },
         {
             'attacker_msg': "The nightstick bounces off {target_name}'s {hit_location}. A numb {hit_location} follows.",
@@ -269,7 +269,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You crash the stick into the {hit_location} of {target_name}'s {hit_location}. They topple like bad scaffolding.",
-            'victim_msg': "{attacker_name} crashes the stick into the {hit_location} of your {hit_location}. You topple like bad scaffolding.",
+            'victim_msg': "{attacker_name} crashes the stick into the back of your {hit_location}. You topple like bad scaffolding.",
             'observer_msg': "{attacker_name} crashes the stick into the {hit_location} of {target_name}'s {hit_location}. They topple like bad scaffolding."
         },
         {

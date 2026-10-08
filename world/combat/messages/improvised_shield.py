@@ -209,7 +209,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The edge of the shield slams into the {hit_location} of {target_name}'s {hit_location}. Blood blooms. So does confusion.",
-            'victim_msg': "The edge of the shield slams into the {hit_location} of your {hit_location}. Blood blooms. So does confusion.",
+            'victim_msg': "The edge of the shield slams into the side of your {hit_location}. Blood blooms. So does confusion.",
             'observer_msg': "The edge of the shield slams into the {hit_location} of {target_name}'s {hit_location}. Blood blooms. So does confusion."
         },
         {

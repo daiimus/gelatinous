@@ -68,9 +68,9 @@ MESSAGES = {
             'observer_msg': "Perfect rotation! The throwing axe embeds itself in {target_name}, the weight driving the blade deep."
         },
         {
-            'attacker_msg': "The axe {hit_location} gleams as it spins through the air, finding its mark in {target_name} with devastating impact.",
-            'victim_msg': "The axe {hit_location} gleams as it spins through the air, finding its mark in you with devastating impact.",
-            'observer_msg': "The axe {hit_location} gleams as it spins through the air, finding its mark in {target_name} with devastating impact."
+            'attacker_msg': "The axe head gleams as it spins through the air, finding its mark in {target_name} with devastating impact.",
+            'victim_msg': "The axe head gleams as it spins through the air, finding its mark in you with devastating impact.",
+            'observer_msg': "The axe head gleams as it spins through the air, finding its mark in {target_name} with devastating impact."
         },
         {
             'attacker_msg': "{target_name} staggers as the throwing axe buries itself in their flesh, the heavy blade doing terrible damage.",

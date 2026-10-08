@@ -259,7 +259,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The whip slashes the {hit_location} of {target_name}'s {hit_location}. They buckle immediately.",
-            'victim_msg': "The whip slashes the {hit_location} of your {hit_location}. You buckle immediately.",
+            'victim_msg': "The whip slashes the back of your {hit_location}. You buckle immediately.",
             'observer_msg': "The whip slashes the {hit_location} of {target_name}'s {hit_location}. They buckle immediately."
         },
         {

@@ -253,9 +253,9 @@ MESSAGES = {
             'observer_msg': "The hatchet crashes into the {hit_location}, opening a ragged gash. {target_name} howls and stumbles."
         },
         {
-            'attacker_msg': "The hatchet hooks the {hit_location} of the {hit_location}. It doesn't go deep, but it goes enough.",
-            'victim_msg': "The hatchet hooks the {hit_location} of the {hit_location}. It doesn't go deep, but it goes enough.",
-            'observer_msg': "The hatchet hooks the {hit_location} of the {hit_location}. It doesn't go deep, but it goes enough."
+            'attacker_msg': "The hatchet hooks the side of the {hit_location}. It doesn't go deep, but it goes enough.",
+            'victim_msg': "The hatchet hooks the side of the {hit_location}. It doesn't go deep, but it goes enough.",
+            'observer_msg': "The hatchet hooks the side of the {hit_location}. It doesn't go deep, but it goes enough."
         },
         {
             'attacker_msg': "The hatchet lands low, carving into shin. {target_name} drops with a howl.",
@@ -288,9 +288,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} carves a shallow wound down {target_name}'s {hit_location}. It bleeds fast, wide, and angry."
         },
         {
-            'attacker_msg': "You drive the hatchet downward, catching collarbone. The crack is crisp, final.",
-            'victim_msg': "{attacker_name} drives the hatchet downward, catching collarbone. The crack is crisp, final.",
-            'observer_msg': "{attacker_name} drives the hatchet downward, catching collarbone. The crack is crisp, final."
+            'attacker_msg': "You drive the hatchet downward, catching the {hit_location}. The crack is crisp, final.",
+            'victim_msg': "{attacker_name} drives the hatchet downward, catching the {hit_location}. The crack is crisp, final.",
+            'observer_msg': "{attacker_name} drives the hatchet downward, catching the {hit_location}. The crack is crisp, final."
         },
         {
             'attacker_msg': "You hack into the {hit_location}. {target_name} buckles with a howl.",

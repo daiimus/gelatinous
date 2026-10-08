@@ -173,9 +173,9 @@ MESSAGES = {
             "observer_msg": "The glass rakes down {target_name}'s {hit_location}, tearing cloth and skin in equal measure. {attacker_name} smiles."
         },
         {
-            "attacker_msg": "You jab the {hit_location} into {target_name}'s {hit_location}. Blood and glass both stick around.",
-            "victim_msg": "{attacker_name} jabs the {hit_location} into your {hit_location}. Blood and glass both stick around.",
-            "observer_msg": "{attacker_name} jabs the {hit_location} into {target_name}'s {hit_location}. Blood and glass both stick around."
+            "attacker_msg": "You jab the neck into {target_name}'s {hit_location}. Blood and glass both stick around.",
+            "victim_msg": "{attacker_name} jabs the neck into your {hit_location}. Blood and glass both stick around.",
+            "observer_msg": "{attacker_name} jabs the neck into {target_name}'s {hit_location}. Blood and glass both stick around."
         },
         {
             "attacker_msg": "A wide slash from your bottle opens a {blood} smile across {target_name}'s {hit_location}.",
@@ -273,9 +273,9 @@ MESSAGES = {
             "observer_msg": "The base crashes into {target_name}'s {hit_location}, dazing them before the shards follow up. {attacker_name} sees the opening."
         },
         {
-            "attacker_msg": "You bury the {hit_location} into {target_name}'s {hit_location} mid-punch. The fight leaves with the blood.",
-            "victim_msg": "{attacker_name} buries the {hit_location} into your {hit_location} mid-punch. The fight leaves with the blood.",
-            "observer_msg": "{attacker_name} buries the {hit_location} into {target_name}'s {hit_location} mid-punch. The fight leaves with the blood."
+            "attacker_msg": "You bury the neck into {target_name}'s {hit_location} mid-punch. The fight leaves with the blood.",
+            "victim_msg": "{attacker_name} buries the neck into your {hit_location} mid-punch. The fight leaves with the blood.",
+            "observer_msg": "{attacker_name} buries the neck into {target_name}'s {hit_location} mid-punch. The fight leaves with the blood."
         },
         {
             "attacker_msg": "A short-range stab to the {hit_location} halts {target_name} mid-motion. You feel the resistance.",

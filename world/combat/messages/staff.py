@@ -203,9 +203,9 @@ MESSAGES = {
             'observer_msg': "One smooth arc lands behind the {hit_location}. {target_name} collapses with a shriek."
         },
         {
-            'attacker_msg': "One solid hit to the {hit_location} of the {hit_location}. {target_name} stumbles with a choking grunt.",
-            'victim_msg': "One solid hit to the {hit_location} of your {hit_location}. You stumble with a choking grunt.",
-            'observer_msg': "One solid hit to the {hit_location} of the {hit_location}. {target_name} stumbles with a choking grunt."
+            'attacker_msg': "One solid hit to the side of the {hit_location}. {target_name} stumbles with a choking grunt.",
+            'victim_msg': "One solid hit to the side of your {hit_location}. You stumble with a choking grunt.",
+            'observer_msg': "One solid hit to the side of the {hit_location}. {target_name} stumbles with a choking grunt."
         },
         {
             'attacker_msg': "The butt drives into the {hit_location}. {target_name} crumbles into a heap of curses.",
@@ -298,9 +298,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} thrusts the staff end into {target_name}'s {hit_location}. They clutch their {hit_location}, gasping."
         },
         {
-            'attacker_msg': "Your staff cracks across {target_name}'s {hit_location}. They drop to one {hit_location}, dazed.",
-            'victim_msg': "{attacker_name}'s staff cracks across your {hit_location}. You drop to one {hit_location}, dazed.",
-            'observer_msg': "{attacker_name}'s staff cracks across {target_name}'s {hit_location}. They drop to one {hit_location}, dazed."
+            'attacker_msg': "Your staff cracks across {target_name}'s {hit_location}. They drop to one knee, dazed.",
+            'victim_msg': "{attacker_name}'s staff cracks across your {hit_location}. You drop to one knee, dazed.",
+            'observer_msg': "{attacker_name}'s staff cracks across {target_name}'s {hit_location}. They drop to one knee, dazed."
         }
     ],
     'miss': [

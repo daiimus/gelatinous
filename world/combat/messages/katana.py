@@ -188,9 +188,9 @@ MESSAGES = {
             'observer_msg': "Steel sings, and {target_name} answers in a gasp as {attacker_name}'s blade bites deep into their {hit_location}."
         },
         {
-            'attacker_msg': "One step, one motion, and {target_name} is marked from {hit_location} to hip in a stroke older than remorse.",
-            'victim_msg': "One step, one motion, and you are marked from {hit_location} to hip in a stroke older than remorse.",
-            'observer_msg': "One step, one motion, and {target_name} is marked from {hit_location} to hip in a stroke older than remorse."
+            'attacker_msg': "One step, one motion, and {target_name} is marked from shoulder to hip in a stroke older than remorse.",
+            'victim_msg': "One step, one motion, and you are marked from shoulder to hip in a stroke older than remorse.",
+            'observer_msg': "One step, one motion, and {target_name} is marked from shoulder to hip in a stroke older than remorse."
         },
         {
             'attacker_msg': "You glide past, and {target_name} realizes only too late the pain blooming across their {hit_location}.",

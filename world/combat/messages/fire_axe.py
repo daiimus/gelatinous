@@ -153,9 +153,9 @@ MESSAGES = {
     ],
     'hit': [
         {
-            'attacker_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. {target_name} drops to one {hit_location}, disbelief painted in {blood}.",
-            'victim_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. You drop to one {hit_location}, disbelief painted in {blood}.",
-            'observer_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. {target_name} drops to one {hit_location}, disbelief painted in {blood}."
+            'attacker_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. {target_name} drops to one knee, disbelief painted in {blood}.",
+            'victim_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. You drop to one knee, disbelief painted in {blood}.",
+            'observer_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. {target_name} drops to one knee, disbelief painted in {blood}."
         },
         {
             'attacker_msg': "A downward cleave crashes through {target_name}'s {hit_location} and stays. You let go. The axe holds itself now.",

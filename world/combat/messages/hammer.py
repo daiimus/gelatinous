@@ -194,7 +194,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "You jab the cue into the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor.",
-            'victim_msg': "{attacker_name} jabs the cue into the {hit_location} of your {hit_location}, weapon clattering to the floor.",
+            'victim_msg': "{attacker_name} jabs the cue into the back of your {hit_location}, weapon clattering to the floor.",
             'observer_msg': "{attacker_name} jabs the cue into the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor."
         },
         {
@@ -268,9 +268,9 @@ MESSAGES = {
             'observer_msg': "The shaft bites into {target_name}'s {hit_location}. The joint gives way."
         },
         {
-            'attacker_msg': "A swing across the {hit_location} of the {hit_location} leaves {target_name} howling.",
-            'victim_msg': "A swing across the {hit_location} of the {hit_location} leaves you howling.",
-            'observer_msg': "A swing across the {hit_location} of the {hit_location} leaves {target_name} howling."
+            'attacker_msg': "A swing across the back of the {hit_location} leaves {target_name} howling.",
+            'victim_msg': "A swing across the back of the {hit_location} leaves you howling.",
+            'observer_msg': "A swing across the back of the {hit_location} leaves {target_name} howling."
         },
         {
             'attacker_msg': "You bury the cue in {target_name}'s {hit_location}, snapping the wood.",

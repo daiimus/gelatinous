@@ -276,7 +276,7 @@ MESSAGES = {
         {
             "attacker_msg": "{target_name} stumbles, a low, wet moan escaping their lips. The Disruptor has clearly hit the 'existential dread' nerve cluster in their colon. Their {hit_location} is a mask of agony.",
             "victim_msg": "A moan escapes you. It's a sound of pure, primal suffering. Your colon is screaming. Your soul is screaming. Everything is screaming. And leaking. Profusely. You clutch your {hit_location} in vain.",
-            "observer_msg": "{target_name} is hit and lets out a sound that will haunt your nightmares. They look like they've seen the {hit_location} of a very brown, very angry god, and it has judged them wanting.",
+            "observer_msg": "{target_name} is hit and lets out a sound that will haunt your nightmares. They look like they've seen the face of a very brown, very angry god, and it has judged them wanting.",
         },
         {
             "attacker_msg": "The impact makes {target_name} look like a badly-packed sausage casing that just met a very angry boot. Bits are... escaping. In a torrent.",
