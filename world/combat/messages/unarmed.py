@@ -108,9 +108,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} knocks {target_name}'s {hit_location} sideways with a quick jab."
         },
         {
-            "attacker_msg": "You send {target_name} stumbling with a {hit_location} check.",
-            "victim_msg": "{attacker_name} sends you stumbling with a {hit_location} check.",
-            "observer_msg": "{attacker_name} sends {target_name} stumbling with a {hit_location} check."
+            "attacker_msg": "You send {target_name} stumbling with a shoulder check.",
+            "victim_msg": "{attacker_name} sends you stumbling with a shoulder check.",
+            "observer_msg": "{attacker_name} sends {target_name} stumbling with a shoulder check."
         },
         {
             "attacker_msg": "Your punch lands like a hammer — right to {target_name}'s {hit_location}.",

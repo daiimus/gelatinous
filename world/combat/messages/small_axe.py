@@ -126,7 +126,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} draws the small axe with a jerk. It sings a short, sharp note of promise."
         },
         {
-            'attacker_msg': "You flip the small axe in your {hit_location}. It spins fast, hungry.",
+            'attacker_msg': "You flip the small axe in your hand. It spins fast, hungry.",
             'victim_msg': "{attacker_name} flips the small axe in their hand. It spins fast, hungry.",
             'observer_msg': "{attacker_name} flips the small axe in their hand. It spins fast, hungry."
         },
@@ -243,9 +243,9 @@ MESSAGES = {
             'observer_msg': "The axe sinks into {target_name}'s {hit_location}. Their limb jerks and refuses orders."
         },
         {
-            'attacker_msg': "The axe splits open the {hit_location} of the {hit_location}. They drop everything — including composure.",
-            'victim_msg': "The axe splits open the {hit_location} of your {hit_location}. You drop everything — including composure.",
-            'observer_msg': "The axe splits open the {hit_location} of {target_name}'s {hit_location}. They drop everything — including composure."
+            'attacker_msg': "The axe splits open the back of the {hit_location}. They drop everything — including composure.",
+            'victim_msg': "The axe splits open the back of your {hit_location}. You drop everything — including composure.",
+            'observer_msg': "The axe splits open the back of {target_name}'s {hit_location}. They drop everything — including composure."
         },
         {
             'attacker_msg': "The blade hacks into the {hit_location}. They stumble as blood fans out.",
@@ -263,9 +263,9 @@ MESSAGES = {
             'observer_msg': "The blade stabs into {target_name}'s {hit_location}. They gag on what doesn't matter anymore."
         },
         {
-            'attacker_msg': "The edge cuts from chin to {hit_location}. Blood pours from both ends.",
-            'victim_msg': "The edge cuts from your chin to {hit_location}. Blood pours from both ends.",
-            'observer_msg': "The edge cuts from {target_name}'s chin to {hit_location}. Blood pours from both ends."
+            'attacker_msg': "The edge cuts from chin to clavicle. Blood pours from both ends.",
+            'victim_msg': "The edge cuts from your chin to clavicle. Blood pours from both ends.",
+            'observer_msg': "The edge cuts from {target_name}'s chin to clavicle. Blood pours from both ends."
         },
         {
             'attacker_msg': "The small axe bites into their {hit_location}. It sticks for a moment — then comes free {blood}.",
@@ -385,7 +385,7 @@ MESSAGES = {
             'observer_msg': "The axe glances off shelving. The rain of junk is loud, not lethal."
         },
         {
-            'attacker_msg': "The axe tip chips concrete. The shiver travels up your {hit_location}.",
+            'attacker_msg': "The axe tip chips concrete. The shiver travels up your spine.",
             'victim_msg': "The axe tip chips concrete. The shiver travels up {attacker_name}'s spine.",
             'observer_msg': "The axe tip chips concrete. The shiver travels up {attacker_name}'s spine."
         },

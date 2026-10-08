@@ -51,7 +51,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} flicks the blade open with a practiced snap, the motion smooth and final."
         },
         {
-            'attacker_msg': "You trace the razor along your {hit_location}, leaving a thin {blood} line.",
+            'attacker_msg': "You trace the razor along your forearm, leaving a thin {blood} line.",
             'victim_msg': "{attacker_name} traces the razor along their forearm, leaving a thin {blood} line.",
             'observer_msg': "{attacker_name} traces the razor along their forearm, leaving a thin {blood} line."
         },
@@ -136,7 +136,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} presses the blade to their tongue, then grins at {target_name}."
         },
         {
-            'attacker_msg': "You let the razor rest on your {hit_location}, eyes never leaving {target_name}.",
+            'attacker_msg': "You let the razor rest on your shoulder, eyes never leaving {target_name}.",
             'victim_msg': "{attacker_name} lets the razor rest on their shoulder, eyes never leaving you.",
             'observer_msg': "{attacker_name} lets the razor rest on their shoulder, eyes never leaving {target_name}."
         },
@@ -158,7 +158,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} drags the razor across {target_name}'s {hit_location}, opening a thin, ugly line."
         },
         {
-            'attacker_msg': "The blade slips between {hit_location}, leaving {target_name} gasping and bleeding.",
+            'attacker_msg': "The blade slips between ribs, leaving {target_name} gasping and bleeding.",
             'victim_msg': "The blade slips between your {hit_location}, leaving you gasping and bleeding.",
             'observer_msg': "The blade slips between {target_name}'s {hit_location}, leaving them gasping and bleeding."
         },
@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} draws the blade across {target_name}'s knuckles, skin splitting under the edge."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} opens {target_name}'s eyebrow. Blood blinds one eye.",
-            'victim_msg': "A flick of {attacker_name}'s {hit_location} opens your eyebrow. Blood blinds one eye.",
-            'observer_msg': "A flick of {attacker_name}'s {hit_location} opens {target_name}'s eyebrow. Blood blinds one eye."
+            'attacker_msg': "A flick of your wrist opens {target_name}'s eyebrow. Blood blinds one eye.",
+            'victim_msg': "A flick of {attacker_name}'s wrist opens your eyebrow. Blood blinds one eye.",
+            'observer_msg': "A flick of {attacker_name}'s wrist opens {target_name}'s eyebrow. Blood blinds one eye."
         },
         {
             'attacker_msg': "The blade punctures {target_name}'s {hit_location}, twisting before you pull it free.",
@@ -193,13 +193,13 @@ MESSAGES = {
             'observer_msg': "The blade punctures {target_name}'s {hit_location}, twisting before {attacker_name} pulls it free."
         },
         {
-            'attacker_msg': "You slice the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor.",
-            'victim_msg': "{attacker_name} slices the {hit_location} of your {hit_location}, weapon clattering to the floor.",
-            'observer_msg': "{attacker_name} slices the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor."
+            'attacker_msg': "You slice the back of {target_name}'s {hit_location}, weapon clattering to the floor.",
+            'victim_msg': "{attacker_name} slices the back of your {hit_location}, weapon clattering to the floor.",
+            'observer_msg': "{attacker_name} slices the back of {target_name}'s {hit_location}, weapon clattering to the floor."
         },
         {
             'attacker_msg': "A shallow cut across the {hit_location} leaves {target_name} clutching at their guts.",
-            'victim_msg': "A shallow cut across your {hit_location} leaves you clutching at your {hit_location}s.",
+            'victim_msg': "A shallow cut across your {hit_location} leaves you clutching at your guts.",
             'observer_msg': "A shallow cut across the {hit_location} leaves {target_name} clutching at their guts."
         },
         {
@@ -258,9 +258,9 @@ MESSAGES = {
             'observer_msg': "The blade finds the soft spot behind {target_name}'s ear, blood pooling."
         },
         {
-            'attacker_msg': "You carve a smile across {target_name}'s {hit_location}line, grin matching the wound.",
-            'victim_msg': "{attacker_name} carves a smile across your {hit_location}line, grin matching the wound.",
-            'observer_msg': "{attacker_name} carves a smile across {target_name}'s {hit_location}line, grin matching the wound."
+            'attacker_msg': "You carve a smile across {target_name}'s jawline, grin matching the wound.",
+            'victim_msg': "{attacker_name} carves a smile across your jawline, grin matching the wound.",
+            'observer_msg': "{attacker_name} carves a smile across {target_name}'s jawline, grin matching the wound."
         },
         {
             'attacker_msg': "The razor slices through {target_name}'s hamstring. They buckle.",
@@ -274,7 +274,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A flick across the {hit_location} sends {target_name} to their knees, Achilles severed.",
-            'victim_msg': "A flick across your {hit_location} sends you to your {hit_location}s, Achilles severed.",
+            'victim_msg': "A flick across your {hit_location} sends you to your knees, Achilles severed.",
             'observer_msg': "A flick across the {hit_location} sends {target_name} to their knees, Achilles severed."
         },
         {
@@ -283,9 +283,9 @@ MESSAGES = {
             'observer_msg': "The blade parts {target_name}'s scalp, blood running into their eyes."
         },
         {
-            'attacker_msg': "You slice across {target_name}'s {hit_location}s, the wound shallow but agonizing.",
-            'victim_msg': "{attacker_name} slices across your {hit_location}s, the wound shallow but agonizing.",
-            'observer_msg': "{attacker_name} slices across {target_name}'s {hit_location}s, the wound shallow but agonizing."
+            'attacker_msg': "You slice across {target_name}'s kidneys, the wound shallow but agonizing.",
+            'victim_msg': "{attacker_name} slices across your kidneys, the wound shallow but agonizing.",
+            'observer_msg': "{attacker_name} slices across {target_name}'s kidneys, the wound shallow but agonizing."
         },
         {
             'attacker_msg': "A shallow cut opens {target_name}'s {hit_location}, just enough to terrify.",
@@ -340,7 +340,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} stabs at {target_name}, but the blade glances off armor."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} misses, the blade slicing only air.",
+            'attacker_msg': "A flick of your wrist misses, the blade slicing only air.",
             'victim_msg': "A flick of {attacker_name}'s wrist misses, the blade slicing only air.",
             'observer_msg': "A flick of {attacker_name}'s wrist misses, the blade slicing only air."
         },
@@ -445,7 +445,7 @@ MESSAGES = {
             'observer_msg': "The blade glances off a boot, doing nothing."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} misses, the blade humming in the air.",
+            'attacker_msg': "A flick of your wrist misses, the blade humming in the air.",
             'victim_msg': "A flick of {attacker_name}'s wrist misses, the blade humming in the air.",
             'observer_msg': "A flick of {attacker_name}'s wrist misses, the blade humming in the air."
         },

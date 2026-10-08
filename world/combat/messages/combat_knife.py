@@ -126,12 +126,12 @@ MESSAGES = {
             "observer_msg": "{attacker_name} holds the knife in both hands for a moment. Then just one. That's all it takes."
         },
         {
-            "attacker_msg": "You pull the combat knife from a sheath strapped to your {hit_location}. It moves like part of you.",
+            "attacker_msg": "You pull the combat knife from a sheath strapped to your leg. It moves like part of you.",
             "victim_msg": "{attacker_name} pulls the combat knife from a sheath strapped to their leg. It moves like part of them.",
             "observer_msg": "{attacker_name} pulls the combat knife from a sheath strapped to their leg. It moves like part of them."
         },
         {
-            "attacker_msg": "You roll your {hit_location} once, knife gliding effortlessly between fingers. A warm-up for blood.",
+            "attacker_msg": "You roll your wrist once, knife gliding effortlessly between fingers. A warm-up for blood.",
             "victim_msg": "{attacker_name} rolls their wrist once, knife gliding effortlessly between fingers. A warm-up for blood.",
             "observer_msg": "{attacker_name} rolls their wrist once, knife gliding effortlessly between fingers. A warm-up for blood."
         },

@@ -6,7 +6,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} pulls a battered screwdriver from their pocket, spinning it once in their palm."
         },
         {
-            "attacker_msg": "You tap the screwdriver against your {hit_location}, eyes locked on {target_name}.",
+            "attacker_msg": "You tap the screwdriver against your thigh, eyes locked on {target_name}.",
             "victim_msg": "{attacker_name} taps the screwdriver against their thigh, eyes locked on you.",
             "observer_msg": "{attacker_name} taps the screwdriver against their thigh, eyes locked on {target_name}."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} balances the screwdriver on a fingertip, then lets it drop into their grip."
         },
         {
-            "attacker_msg": "You trace the tip along your {hit_location}, leaving a thin {blood} line.",
+            "attacker_msg": "You trace the tip along your forearm, leaving a thin {blood} line.",
             "victim_msg": "{attacker_name} traces the tip along their forearm, leaving a thin {blood} line.",
             "observer_msg": "{attacker_name} traces the tip along their forearm, leaving a thin {blood} line."
         },
@@ -141,7 +141,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} holds the screwdriver like a brush, ready to paint in {blood}."
         },
         {
-            "attacker_msg": "You let the screwdriver rest on your tongue for a heartbeat before spitting it into your {hit_location}.",
+            "attacker_msg": "You let the screwdriver rest on your tongue for a heartbeat before spitting it into your hand.",
             "victim_msg": "{attacker_name} lets the screwdriver rest on their tongue for a heartbeat before spitting it into their hand.",
             "observer_msg": "{attacker_name} lets the screwdriver rest on their tongue for a heartbeat before spitting it into their hand."
         },
@@ -183,9 +183,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} draws the tip across {target_name}'s knuckles, skin splitting under the pressure."
         },
         {
-            "attacker_msg": "A flick of the {hit_location} opens {target_name}'s eyebrow. Blood blinds one eye.",
-            "victim_msg": "A flick of the {hit_location} opens your eyebrow. Blood blinds one eye.",
-            "observer_msg": "A flick of the {hit_location} opens {target_name}'s eyebrow. Blood blinds one eye."
+            "attacker_msg": "A flick of the wrist opens {target_name}'s eyebrow. Blood blinds one eye.",
+            "victim_msg": "A flick of the wrist opens your eyebrow. Blood blinds one eye.",
+            "observer_msg": "A flick of the wrist opens {target_name}'s eyebrow. Blood blinds one eye."
         },
         {
             "attacker_msg": "The shaft punctures {target_name}'s {hit_location}, twisting before it's pulled free.",
@@ -193,13 +193,13 @@ MESSAGES = {
             "observer_msg": "The shaft punctures {target_name}'s {hit_location}, twisting before it's pulled free."
         },
         {
-            "attacker_msg": "You stab the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor.",
-            "victim_msg": "{attacker_name} stabs the {hit_location} of your {hit_location}, weapon clattering to the floor.",
-            "observer_msg": "{attacker_name} stabs the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor."
+            "attacker_msg": "You stab the back of {target_name}'s {hit_location}, weapon clattering to the floor.",
+            "victim_msg": "{attacker_name} stabs the back of your {hit_location}, weapon clattering to the floor.",
+            "observer_msg": "{attacker_name} stabs the back of {target_name}'s {hit_location}, weapon clattering to the floor."
         },
         {
             "attacker_msg": "A shallow cut across the {hit_location} leaves {target_name} clutching at their guts.",
-            "victim_msg": "A shallow cut across the {hit_location} leaves you clutching at your {hit_location}s.",
+            "victim_msg": "A shallow cut across the {hit_location} leaves you clutching at your guts.",
             "observer_msg": "A shallow cut across the {hit_location} leaves {target_name} clutching at their guts."
         },
         {
@@ -268,9 +268,9 @@ MESSAGES = {
             "observer_msg": "The shaft bites into {target_name}'s {hit_location}. The joint gives way."
         },
         {
-            "attacker_msg": "A slice across the {hit_location} of the {hit_location} leaves {target_name} howling.",
-            "victim_msg": "A slice across the {hit_location} of the {hit_location} leaves you howling.",
-            "observer_msg": "A slice across the {hit_location} of the {hit_location} leaves {target_name} howling."
+            "attacker_msg": "A slice across the back of the {hit_location} leaves {target_name} howling.",
+            "victim_msg": "A slice across the back of the {hit_location} leaves you howling.",
+            "observer_msg": "A slice across the back of the {hit_location} leaves {target_name} howling."
         },
         {
             "attacker_msg": "You jab the tip into {target_name}'s {hit_location}, twisting for emphasis.",
@@ -293,9 +293,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} carves a spiral up {target_name}'s {hit_location}. The pattern is deliberate."
         },
         {
-            "attacker_msg": "The tip slips between {hit_location}, blood welling with every breath.",
-            "victim_msg": "The tip slips between {hit_location}, blood welling with every breath.",
-            "observer_msg": "The tip slips between {hit_location}, blood welling with every breath."
+            "attacker_msg": "The tip slips between ribs, blood welling with every breath.",
+            "victim_msg": "The tip slips between ribs, blood welling with every breath.",
+            "observer_msg": "The tip slips between ribs, blood welling with every breath."
         },
         {
             "attacker_msg": "A quick slash opens {target_name}'s {hit_location}, teeth showing through the wound.",

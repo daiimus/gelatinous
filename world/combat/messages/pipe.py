@@ -81,7 +81,7 @@ MESSAGES = {
             'observer_msg': "The cold, unadorned steel of the metal pipe is visible, a testament to its crude but effective nature."
         },
         {
-            'attacker_msg': "You hold the metal pipe cocked over your {hit_location}, ready to bring its full, crushing weight down.",
+            'attacker_msg': "You hold the metal pipe cocked over your shoulder, ready to bring its full, crushing weight down.",
             'victim_msg': "{attacker_name} holds the metal pipe cocked over their shoulder, ready to bring its full, crushing weight down.",
             'observer_msg': "{attacker_name} holds the metal pipe cocked over their shoulder, ready to bring its full, crushing weight down."
         },
@@ -233,9 +233,9 @@ MESSAGES = {
             'observer_msg': "A quick jab with the end of the metal pipe strikes {target_name}'s {hit_location} with a sharp, bone-breaking crack."
         },
         {
-            'attacker_msg': "The metal pipe thuds heavily as it connects with {target_name}'s {hit_location}, driving the air from their lungs and cracking {hit_location}.",
-            'victim_msg': "The metal pipe thuds heavily as it connects with your {hit_location}, driving the air from your {hit_location} and cracking {hit_location}.",
-            'observer_msg': "The metal pipe thuds heavily as it connects with {target_name}'s {hit_location}, driving the air from their lungs and cracking {hit_location}."
+            'attacker_msg': "The metal pipe thuds heavily as it connects with {target_name}'s {hit_location}, driving the air from their lungs and cracking the {hit_location}.",
+            'victim_msg': "The metal pipe thuds heavily as it connects with your {hit_location}, driving the air from your {hit_location} and cracking the {hit_location}.",
+            'observer_msg': "The metal pipe thuds heavily as it connects with {target_name}'s {hit_location}, driving the air from their lungs and cracking the {hit_location}."
         },
         {
             'attacker_msg': "Your pipe finds purchase, delivering a crushing blow to {target_name}'s {hit_location}, dropping them instantly.",

@@ -6,7 +6,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} unsheathes their katana with a whispering hiss, the blade singing a promise of blood as they step into a fluid stance."
         },
         {
-            'attacker_msg': "With a flick of your {hit_location} and a dead stare, you bring the katana to bear, the edge glinting like a curse in motion.",
+            'attacker_msg': "With a flick of your wrist and a dead stare, you bring the katana to bear, the edge glinting like a curse in motion.",
             'victim_msg': "With a flick of the wrist and a dead stare, {attacker_name} brings the katana to bear, the edge glinting like a curse in motion.",
             'observer_msg': "With a flick of the wrist and a dead stare, {attacker_name} brings the katana to bear, the edge glinting like a curse in motion."
         },
@@ -26,7 +26,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes narrow. The katana glides free of its scabbard, whispering through the air like it remembers old deaths."
         },
         {
-            'attacker_msg': "As if summoned from a dream, the katana materializes in your {hit_location}, cutting a line between now and what comes next.",
+            'attacker_msg': "As if summoned from a dream, the katana materializes in your hand, cutting a line between now and what comes next.",
             'victim_msg': "As if summoned from a dream, the katana materializes in {attacker_name}'s hand, cutting a line between now and what comes next.",
             'observer_msg': "As if summoned from a dream, the katana materializes in {attacker_name}'s hand, cutting a line between now and what comes next."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s shadow lengthens as the katana carves the air—something old and beautiful and wrong waking up."
         },
         {
-            'attacker_msg': "No emotion crosses your {hit_location}. Only the katana moves, beckoning death like an old friend.",
+            'attacker_msg': "No emotion crosses your face. Only the katana moves, beckoning death like an old friend.",
             'victim_msg': "No emotion crosses {attacker_name}'s face. Only the katana moves, beckoning death like an old friend.",
             'observer_msg': "No emotion crosses {attacker_name}'s face. Only the katana moves, beckoning death like an old friend."
         },
@@ -188,9 +188,9 @@ MESSAGES = {
             'observer_msg': "Steel sings, and {target_name} answers in a gasp as {attacker_name}'s blade bites deep into their {hit_location}."
         },
         {
-            'attacker_msg': "One step, one motion, and {target_name} is marked from {hit_location} to hip in a stroke older than remorse.",
-            'victim_msg': "One step, one motion, and you are marked from {hit_location} to hip in a stroke older than remorse.",
-            'observer_msg': "One step, one motion, and {target_name} is marked from {hit_location} to hip in a stroke older than remorse."
+            'attacker_msg': "One step, one motion, and {target_name} is marked from shoulder to hip in a stroke older than remorse.",
+            'victim_msg': "One step, one motion, and you are marked from shoulder to hip in a stroke older than remorse.",
+            'observer_msg': "One step, one motion, and {target_name} is marked from shoulder to hip in a stroke older than remorse."
         },
         {
             'attacker_msg': "You glide past, and {target_name} realizes only too late the pain blooming across their {hit_location}.",

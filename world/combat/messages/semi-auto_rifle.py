@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air is tense as {attacker_name} prepares to fire the semi-automatic rifle, anticipating the sharp *CRACK* and the immediate cycling of the action."
         },
         {
-            'attacker_msg': "Your {hit_location} is a mask of concentration, finger ready to make multiple, deliberate pulls on the semi-automatic rifle's trigger.",
+            'attacker_msg': "Your face is a mask of concentration, finger ready to make multiple, deliberate pulls on the semi-automatic rifle's trigger.",
             'victim_msg': "{attacker_name}'s face is a mask of concentration, finger ready to make multiple, deliberate pulls on the semi-automatic rifle's trigger.",
             'observer_msg': "{attacker_name}'s face is a mask of concentration, finger ready to make multiple, deliberate pulls on the semi-automatic rifle's trigger."
         },

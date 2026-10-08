@@ -243,9 +243,9 @@ MESSAGES = {
             'observer_msg': "{target_name} staggers under the devastating weight of {attacker_name}'s streetlight strike."
         },
         {
-            'attacker_msg': "The lamp {hit_location} explodes in a shower of glass as it hits {target_name}.",
-            'victim_msg': "The lamp {hit_location} explodes in a shower of glass as it hits you.",
-            'observer_msg': "The lamp {hit_location} explodes in a shower of glass as it hits {target_name}."
+            'attacker_msg': "The lamp head explodes in a shower of glass as it hits {target_name}.",
+            'victim_msg': "The lamp head explodes in a shower of glass as it hits you.",
+            'observer_msg': "The lamp head explodes in a shower of glass as it hits {target_name}."
         },
         {
             'attacker_msg': "Your streetlight blow crumples {target_name} like an accordion.",
@@ -254,7 +254,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "The streetlight's weight drives {target_name} to their knees.",
-            'victim_msg': "The streetlight's weight drives you to your {hit_location}s.",
+            'victim_msg': "The streetlight's weight drives you to your knees.",
             'observer_msg': "The streetlight's weight drives {target_name} to their knees."
         },
         {

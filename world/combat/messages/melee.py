@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} shifts their weight, then explodes into motion, {item} aimed at {target_name}."
         },
         {
-            'attacker_msg': "A grim expression settles on your {hit_location} as you engage {target_name} with {item}.",
+            'attacker_msg': "A grim expression settles on your face as you engage {target_name} with {item}.",
             'victim_msg': "A grim expression settles on {attacker_name}'s face as they engage you with {item}.",
             'observer_msg': "A grim expression settles on {attacker_name}'s face as they engage {target_name} with {item}."
         },
@@ -213,9 +213,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s relentless assault pays off as {item} strikes {target_name}."
         },
         {
-            'attacker_msg': "{target_name} stumbles {hit_location}, rocked by the force of {item}.",
-            'victim_msg': "You stumble {hit_location}, rocked by the force of {item}.",
-            'observer_msg': "{target_name} stumbles {hit_location}, rocked by the force of {item}."
+            'attacker_msg': "{target_name} stumbles back, rocked by the force of {item}.",
+            'victim_msg': "You stumble back, rocked by the force of {item}.",
+            'observer_msg': "{target_name} stumbles back, rocked by the force of {item}."
         },
         {
             'attacker_msg': "A sharp crack rings out as {item} impacts {target_name}.",

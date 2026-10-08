@@ -56,7 +56,7 @@ MESSAGES = {
             'observer_msg': "The nightstick extends with a click and a hiss. {attacker_name} doesn't smile. They don't need to."
         },
         {
-            'attacker_msg': "The nightstick rests against your {hit_location}, a calm before a storm made of plastic and pain.",
+            'attacker_msg': "The nightstick rests against your forearm, a calm before a storm made of plastic and pain.",
             'victim_msg': "The nightstick rests against {attacker_name}'s forearm, a calm before a storm made of plastic and pain.",
             'observer_msg': "The nightstick rests against {attacker_name}'s forearm, a calm before a storm made of plastic and pain."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "The nightstick spins once before locking into place. {attacker_name} doesn't look down — only forward."
         },
         {
-            'attacker_msg': "The polymer baton spins once in your {hit_location}. You catch it without looking.",
+            'attacker_msg': "The polymer baton spins once in your hand. You catch it without looking.",
             'victim_msg': "The polymer baton spins once in {attacker_name}'s hand. They catch it without looking.",
             'observer_msg': "The polymer baton spins once in {attacker_name}'s hand. They catch it without looking."
         },
@@ -76,7 +76,7 @@ MESSAGES = {
             'observer_msg': "The weapon extends with the practiced precision of someone who's done this before — and enjoyed it."
         },
         {
-            'attacker_msg': "The weapon is deceptively plain. In your {hit_location}, it becomes doctrine.",
+            'attacker_msg': "The weapon is deceptively plain. In your hand, it becomes doctrine.",
             'victim_msg': "The weapon is deceptively plain. In {attacker_name}'s hand, it becomes doctrine.",
             'observer_msg': "The weapon is deceptively plain. In {attacker_name}'s hand, it becomes doctrine."
         },
@@ -111,7 +111,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the nightstick like a judge holds a gavel. The verdict is violence."
         },
         {
-            'attacker_msg': "You roll your {hit_location} once, letting the stick spin into a ready grip. Control. Tension. Command.",
+            'attacker_msg': "You roll your wrist once, letting the stick spin into a ready grip. Control. Tension. Command.",
             'victim_msg': "{attacker_name} rolls their wrist once, letting the stick spin into a ready grip. Control. Tension. Command.",
             'observer_msg': "{attacker_name} rolls their wrist once, letting the stick spin into a ready grip. Control. Tension. Command."
         },
@@ -141,7 +141,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} spins the nightstick in a slow circle, testing weight, distance, control — all dialed in."
         },
         {
-            'attacker_msg': "You tap the nightstick against your {hit_location}. Each knock feels like a countdown.",
+            'attacker_msg': "You tap the nightstick against your leg. Each knock feels like a countdown.",
             'victim_msg': "{attacker_name} taps the nightstick against their leg. Each knock feels like a countdown.",
             'observer_msg': "{attacker_name} taps the nightstick against their leg. Each knock feels like a countdown."
         },
@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "A sideways smash connects with {target_name}'s {hit_location}. They shriek and drop."
         },
         {
-            'attacker_msg': "A sweeping blow claps into the {hit_location} of {target_name}'s {hit_location}. The crack is dull, final.",
-            'victim_msg': "A sweeping blow claps into the {hit_location} of your {hit_location}. The crack is dull, final.",
-            'observer_msg': "A sweeping blow claps into the {hit_location} of {target_name}'s {hit_location}. The crack is dull, final."
+            'attacker_msg': "A sweeping blow claps into the side of {target_name}'s {hit_location}. The crack is dull, final.",
+            'victim_msg': "A sweeping blow claps into the side of your {hit_location}. The crack is dull, final.",
+            'observer_msg': "A sweeping blow claps into the side of {target_name}'s {hit_location}. The crack is dull, final."
         },
         {
             'attacker_msg': "A two-handed strike lands in {target_name}'s {hit_location}. They double over, teeth clenching on nothing.",
@@ -193,19 +193,19 @@ MESSAGES = {
             'observer_msg': "A two-handed strike lands in {target_name}'s {hit_location}. They double over, teeth clenching on nothing."
         },
         {
-            'attacker_msg': "One precise blow to {target_name}'s {hit_location}. The bone bends. It might not come {hit_location}.",
-            'victim_msg': "One precise blow to your {hit_location}. The bone bends. It might not come {hit_location}.",
-            'observer_msg': "One precise blow to {target_name}'s {hit_location}. The bone bends. It might not come {hit_location}."
+            'attacker_msg': "One precise blow to {target_name}'s {hit_location}. The bone bends. It might not come back.",
+            'victim_msg': "One precise blow to your {hit_location}. The bone bends. It might not come back.",
+            'observer_msg': "One precise blow to {target_name}'s {hit_location}. The bone bends. It might not come back."
         },
         {
-            'attacker_msg': "One swift arc claps the {hit_location} of {target_name}'s {hit_location}. Bone groans. Blood follows.",
-            'victim_msg': "One swift arc claps the {hit_location} of your {hit_location}. Bone groans. Blood follows.",
-            'observer_msg': "One swift arc claps the {hit_location} of {target_name}'s {hit_location}. Bone groans. Blood follows."
+            'attacker_msg': "One swift arc claps the side of {target_name}'s {hit_location}. Bone groans. Blood follows.",
+            'victim_msg': "One swift arc claps the side of your {hit_location}. Bone groans. Blood follows.",
+            'observer_msg': "One swift arc claps the side of {target_name}'s {hit_location}. Bone groans. Blood follows."
         },
         {
-            'attacker_msg': "The baton rakes down {target_name}'s {hit_location}. They {hit_location} up, trailing {blood} and curses.",
-            'victim_msg': "The baton rakes down your {hit_location}. You {hit_location} up, trailing {blood} and curses.",
-            'observer_msg': "The baton rakes down {target_name}'s {hit_location}. They {hit_location} up, trailing {blood} and curses."
+            'attacker_msg': "The baton rakes down {target_name}'s {hit_location}. They back up, trailing {blood} and curses.",
+            'victim_msg': "The baton rakes down your {hit_location}. You back up, trailing {blood} and curses.",
+            'observer_msg': "The baton rakes down {target_name}'s {hit_location}. They back up, trailing {blood} and curses."
         },
         {
             'attacker_msg': "The baton slams into {target_name}'s {hit_location}. The echo is felt more than heard.",
@@ -223,9 +223,9 @@ MESSAGES = {
             'observer_msg': "The baton thuds against {target_name}'s {hit_location}. Nerves twitch. The whole limb drops."
         },
         {
-            'attacker_msg': "The baton wraps around {target_name}'s {hit_location}. They drop, one {hit_location} refusing orders.",
-            'victim_msg': "The baton wraps around your {hit_location}. You drop, one {hit_location} refusing orders.",
-            'observer_msg': "The baton wraps around {target_name}'s {hit_location}. They drop, one {hit_location} refusing orders."
+            'attacker_msg': "The baton wraps around {target_name}'s {hit_location}. They drop, one leg refusing orders.",
+            'victim_msg': "The baton wraps around your {hit_location}. You drop, one leg refusing orders.",
+            'observer_msg': "The baton wraps around {target_name}'s {hit_location}. They drop, one leg refusing orders."
         },
         {
             'attacker_msg': "The nightstick bounces off {target_name}'s {hit_location}. A numb {hit_location} follows.",
@@ -268,14 +268,14 @@ MESSAGES = {
             'observer_msg': "The weapon lands behind {target_name}'s {hit_location} blade. They stumble forward with a howl."
         },
         {
-            'attacker_msg': "You crash the stick into the {hit_location} of {target_name}'s {hit_location}. They topple like bad scaffolding.",
-            'victim_msg': "{attacker_name} crashes the stick into the {hit_location} of your {hit_location}. You topple like bad scaffolding.",
-            'observer_msg': "{attacker_name} crashes the stick into the {hit_location} of {target_name}'s {hit_location}. They topple like bad scaffolding."
+            'attacker_msg': "You crash the stick into the back of {target_name}'s {hit_location}. They topple like bad scaffolding.",
+            'victim_msg': "{attacker_name} crashes the stick into the back of your {hit_location}. You topple like bad scaffolding.",
+            'observer_msg': "{attacker_name} crashes the stick into the back of {target_name}'s {hit_location}. They topple like bad scaffolding."
         },
         {
-            'attacker_msg': "You drive the baton into {target_name}'s {hit_location}. The breath leaves their lungs — and doesn't come {hit_location} quickly.",
-            'victim_msg': "{attacker_name} drives the baton into your {hit_location}. The breath leaves your {hit_location} — and doesn't come {hit_location} quickly.",
-            'observer_msg': "{attacker_name} drives the baton into {target_name}'s {hit_location}. The breath leaves their lungs — and doesn't come {hit_location} quickly."
+            'attacker_msg': "You drive the baton into {target_name}'s {hit_location}. The breath leaves their lungs — and doesn't come back quickly.",
+            'victim_msg': "{attacker_name} drives the baton into your {hit_location}. The breath leaves your {hit_location} — and doesn't come back quickly.",
+            'observer_msg': "{attacker_name} drives the baton into {target_name}'s {hit_location}. The breath leaves their lungs — and doesn't come back quickly."
         },
         {
             'attacker_msg': "You drive the nightstick into {target_name}'s {hit_location}. The sound is thick. The effect immediate.",

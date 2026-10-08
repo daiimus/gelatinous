@@ -126,12 +126,12 @@ MESSAGES = {
             "observer_msg": "{attacker_name} lifts their axe with effort and purpose. No swing will be wasted."
         },
         {
-            "attacker_msg": "You pull your battle axe from your {hit_location} with a grunt. It's less a weapon, more a reckoning.",
+            "attacker_msg": "You pull your battle axe from your back with a grunt. It's less a weapon, more a reckoning.",
             "victim_msg": "{attacker_name} pulls their battle axe from their back with a grunt. It's less a weapon, more a reckoning.",
             "observer_msg": "{attacker_name} pulls their battle axe from their back with a grunt. It's less a weapon, more a reckoning."
         },
         {
-            "attacker_msg": "You rest your axe against your {hit_location}. It’s not rest. It’s warning.",
+            "attacker_msg": "You rest your axe against your shoulder. It’s not rest. It’s warning.",
             "victim_msg": "{attacker_name} rests their axe against their shoulder. It’s not rest. It’s warning.",
             "observer_msg": "{attacker_name} rests their axe against their shoulder. It’s not rest. It’s warning."
         },
@@ -184,8 +184,8 @@ MESSAGES = {
         },
         {
             "attacker_msg": "Your sideways strike caves {target_name}'s {hit_location}. The scream is long — and last.",
-            "victim_msg": "{attacker_name}'s {hit_location}ways strike caves your {hit_location}. Your scream is long — and last.",
-            "observer_msg": "{attacker_name}'s {hit_location}ways strike caves {target_name}'s {hit_location}. The scream is long — and last."
+            "victim_msg": "{attacker_name}'s sideways strike caves your {hit_location}. Your scream is long — and last.",
+            "observer_msg": "{attacker_name}'s sideways strike caves {target_name}'s {hit_location}. The scream is long — and last."
         },
         {
             "attacker_msg": "Your one heavy blow cracks {target_name}'s {hit_location}. They twitch and fall without dignity.",
@@ -273,14 +273,14 @@ MESSAGES = {
             "observer_msg": "The haft of {attacker_name}'s axe jabs into {target_name}'s {hit_location}, then the blade follows. It’s brutal punctuation."
         },
         {
-            "attacker_msg": "The {hit_location} of your blade clips {target_name}'s {hit_location}. They reel, {blood} staining their breath.",
-            "victim_msg": "The {hit_location} of {attacker_name}'s blade clips your {hit_location}. You reel, {blood} staining your breath.",
-            "observer_msg": "The {hit_location} of {attacker_name}'s blade clips {target_name}'s {hit_location}. They reel, {blood} staining their breath."
+            "attacker_msg": "The side of your blade clips {target_name}'s {hit_location}. They reel, {blood} staining their breath.",
+            "victim_msg": "The side of {attacker_name}'s blade clips your {hit_location}. You reel, {blood} staining your breath.",
+            "observer_msg": "The side of {attacker_name}'s blade clips {target_name}'s {hit_location}. They reel, {blood} staining their breath."
         },
         {
-            "attacker_msg": "You drive the {hit_location} of your axe into {target_name}'s {hit_location}. Bone cracks, skin parts.",
-            "victim_msg": "{attacker_name} drives the {hit_location} of their axe into your {hit_location}. Bone cracks, skin parts.",
-            "observer_msg": "{attacker_name} drives the {hit_location} of their axe into {target_name}'s {hit_location}. Bone cracks, skin parts."
+            "attacker_msg": "You drive the head of your axe into {target_name}'s {hit_location}. Bone cracks, skin parts.",
+            "victim_msg": "{attacker_name} drives the head of their axe into your {hit_location}. Bone cracks, skin parts.",
+            "observer_msg": "{attacker_name} drives the head of their axe into {target_name}'s {hit_location}. Bone cracks, skin parts."
         },
         {
             "attacker_msg": "You hook the blade of your axe into {target_name}'s {hit_location} and yank. The result is... messy.",

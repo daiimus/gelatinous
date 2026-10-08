@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air is tense as {attacker_name} prepares to fire the pump-action shotgun, anticipating the powerful *BOOM* and the immediate, forceful cycle of the action."
         },
         {
-            'attacker_msg': "Your {hit_location} is determined, finger ready on the trigger of the pump-action shotgun, poised to send a cloud of buckshot or a heavy slug.",
+            'attacker_msg': "Your face is determined, finger ready on the trigger of the pump-action shotgun, poised to send a cloud of buckshot or a heavy slug.",
             'victim_msg': "{attacker_name}'s face is determined, finger ready on the trigger of the pump-action shotgun, poised to send a cloud of buckshot or a heavy slug.",
             'observer_msg': "{attacker_name}'s face is determined, finger ready on the trigger of the pump-action shotgun, poised to send a cloud of buckshot or a heavy slug."
         },
@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s well-aimed shot with the pump-action shotgun leaves a wide, bleeding pattern of wounds on {target_name}. The action is cycled with a smooth, powerful *SHUCK-CHUNK*."
         },
         {
-            'attacker_msg': "A direct hit! The pump-action shotgun's blast smashes into {target_name}'s {hit_location}, driving them {hit_location}. You cycle the pump without hesitation, another shell ready.",
-            'victim_msg': "A direct hit! The pump-action shotgun's blast smashes into your {hit_location}, driving you {hit_location}. {attacker_name} cycles the pump without hesitation, another shell ready.",
-            'observer_msg': "A direct hit! The pump-action shotgun's blast smashes into {target_name}'s {hit_location}, driving them {hit_location}. {attacker_name} cycles the pump without hesitation, another shell ready."
+            'attacker_msg': "A direct hit! The pump-action shotgun's blast smashes into {target_name}'s {hit_location}, driving them back. You cycle the pump without hesitation, another shell ready.",
+            'victim_msg': "A direct hit! The pump-action shotgun's blast smashes into your {hit_location}, driving you back. {attacker_name} cycles the pump without hesitation, another shell ready.",
+            'observer_msg': "A direct hit! The pump-action shotgun's blast smashes into {target_name}'s {hit_location}, driving them back. {attacker_name} cycles the pump without hesitation, another shell ready."
         },
         {
             'attacker_msg': "The pump-action shotgun's projectile cloud punches into {target_name}, its impact marked by multiple sprays of blood. A spent shell is ejected as you work the pump.",
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s pump-action shotgun to blast a pattern into a wall. {attacker_name} cycles the pump, unflinching, ready to fire again."
         },
         {
-            'attacker_msg': "The pump-action shotgun jumps in your {hit_location} as you miss. You cycle the pump, chambering a fresh, potent shell, correcting your stance.",
+            'attacker_msg': "The pump-action shotgun jumps in your shoulder as you miss. You cycle the pump, chambering a fresh, potent shell, correcting your stance.",
             'victim_msg': "The pump-action shotgun jumps in {attacker_name}'s shoulder as they miss. {attacker_name} cycles the pump, chambering a fresh, potent shell, correcting their stance.",
             'observer_msg': "The pump-action shotgun jumps in {attacker_name}'s shoulder as they miss. {attacker_name} cycles the pump, chambering a fresh, potent shell, correcting their stance."
         },

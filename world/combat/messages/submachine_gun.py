@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air crackles with anticipation as {attacker_name} prepares to unleash the submachine gun's rapid fire, a storm of lead imminent."
         },
         {
-            'attacker_msg': "Your {hit_location} is set in concentration, ready to manage the submachine gun's climb during automatic fire.",
+            'attacker_msg': "Your face is set in concentration, ready to manage the submachine gun's climb during automatic fire.",
             'victim_msg': "{attacker_name}'s face is set in concentration, ready to manage the submachine gun's climb during automatic fire.",
             'observer_msg': "{attacker_name}'s face is set in concentration, ready to manage the submachine gun's climb during automatic fire."
         },
@@ -136,7 +136,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} seems to focus, preparing to either carefully control the submachine gun's bursts or just hold the trigger down."
         },
         {
-            'attacker_msg': "Silence is broken by the subtle *thunk* of the submachine gun's stock settling against your {hit_location}.",
+            'attacker_msg': "Silence is broken by the subtle *thunk* of the submachine gun's stock settling against your shoulder.",
             'victim_msg': "Silence is broken by the subtle *thunk* of the submachine gun's stock settling against {attacker_name}'s shoulder.",
             'observer_msg': "Silence is broken by the subtle *thunk* of the submachine gun's stock settling against {attacker_name}'s shoulder."
         },
@@ -223,9 +223,9 @@ MESSAGES = {
             'observer_msg': "The fast-moving stream of lead from {attacker_name}'s submachine gun tears into {target_name}'s flesh, causing immediate, sharp, and repeated pain."
         },
         {
-            'attacker_msg': "Your submachine gun bullets slam into {target_name}, the rapid impacts knocking them {hit_location} a step, a torrent of casings spinning away.",
-            'victim_msg': "{attacker_name}'s submachine gun bullets slam into you, the rapid impacts knocking you {hit_location} a step, a torrent of casings spinning away.",
-            'observer_msg': "{attacker_name}'s submachine gun bullets slam into {target_name}, the rapid impacts knocking them {hit_location} a step, a torrent of casings spinning away."
+            'attacker_msg': "Your submachine gun bullets slam into {target_name}, the rapid impacts knocking them back a step, a torrent of casings spinning away.",
+            'victim_msg': "{attacker_name}'s submachine gun bullets slam into you, the rapid impacts knocking you back a step, a torrent of casings spinning away.",
+            'observer_msg': "{attacker_name}'s submachine gun bullets slam into {target_name}, the rapid impacts knocking them back a step, a torrent of casings spinning away."
         },
         {
             'attacker_msg': "A burst from the submachine gun hits {target_name}'s {hit_location}, mangling it with multiple impacts and making them drop whatever they held, the bolt cycling furiously.",
@@ -238,9 +238,9 @@ MESSAGES = {
             'observer_msg': "The submachine gun's bullets churn through {target_name}'s {hit_location}, each impact a hammer blow as the weapon spits fire continuously."
         },
         {
-            'attacker_msg': "Your submachine gun fires in rapid succession, the bullets finding {target_name}'s {hit_location} and {hit_location}, tearing flesh with mechanical precision.",
-            'victim_msg': "{attacker_name}'s submachine gun fires in rapid succession, the bullets finding your {hit_location} and {hit_location}, tearing flesh with mechanical precision.",
-            'observer_msg': "{attacker_name}'s submachine gun fires in rapid succession, the bullets finding {target_name}'s {hit_location} and {hit_location}, tearing flesh with mechanical precision."
+            'attacker_msg': "Your submachine gun fires in rapid succession, the bullets finding {target_name}'s {hit_location} and arm, tearing flesh with mechanical precision.",
+            'victim_msg': "{attacker_name}'s submachine gun fires in rapid succession, the bullets finding your {hit_location} and arm, tearing flesh with mechanical precision.",
+            'observer_msg': "{attacker_name}'s submachine gun fires in rapid succession, the bullets finding {target_name}'s {hit_location} and arm, tearing flesh with mechanical precision."
         },
         {
             'attacker_msg': "The submachine gun unleashes a devastating burst, multiple rounds punching into {target_name}'s {hit_location}, blood spraying with each impact.",
@@ -258,7 +258,7 @@ MESSAGES = {
             'observer_msg': "The submachine gun chatters violently, its burst raking across {target_name}'s {hit_location}, each bullet a separate agony."
         },
         {
-            'attacker_msg': "A sustained burst from your submachine gun tears into {target_name}, the weapon bucking in your {hit_location}s as bullet after bullet finds its mark.",
+            'attacker_msg': "A sustained burst from your submachine gun tears into {target_name}, the weapon bucking in your hands as bullet after bullet finds its mark.",
             'victim_msg': "A sustained burst from {attacker_name}'s submachine gun tears into you, the weapon bucking in their hands as bullet after bullet finds its mark.",
             'observer_msg': "A sustained burst from {attacker_name}'s submachine gun tears into {target_name}, the weapon bucking in their hands as bullet after bullet finds its mark."
         },

@@ -213,9 +213,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s powerful strike opens a horrific wound on {target_name}'s {hit_location}, blood erupting."
         },
         {
-            "attacker_msg": "A resounding clang as your claymore smashes against {target_name}'s {hit_location}or, buckling it and breaking bones beneath.",
-            "victim_msg": "A resounding clang as {attacker_name}'s claymore smashes against your {hit_location}or, buckling it and breaking bones beneath.",
-            "observer_msg": "A resounding clang as {attacker_name}'s claymore smashes against {target_name}'s {hit_location}or, buckling it and breaking bones beneath."
+            "attacker_msg": "A resounding clang as your claymore smashes against {target_name}'s armor, buckling it and breaking bones beneath.",
+            "victim_msg": "A resounding clang as {attacker_name}'s claymore smashes against your armor, buckling it and breaking bones beneath.",
+            "observer_msg": "A resounding clang as {attacker_name}'s claymore smashes against {target_name}'s armor, buckling it and breaking bones beneath."
         },
         {
             "attacker_msg": "The keen, heavy blade of the claymore leaves a wide, bloody chasm along {target_name}'s body.",

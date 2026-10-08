@@ -66,7 +66,7 @@ MESSAGES = {
             "observer_msg": "The torch clicks, flares, and steadies into a whispering cone of heat. {attacker_name} steps forward without a word."
         },
         {
-            "attacker_msg": "The torch ignites with a bark of flame. Your {hit_location} is steady, your expression unreadable.",
+            "attacker_msg": "The torch ignites with a bark of flame. Your hand is steady, your expression unreadable.",
             "victim_msg": "The torch ignites with a bark of flame. {attacker_name}'s hand is steady, their expression unreadable.",
             "observer_msg": "The torch ignites with a bark of flame. {attacker_name}'s hand is steady, their expression unreadable."
         },
@@ -168,9 +168,9 @@ MESSAGES = {
             "observer_msg": "A direct blast to the {hit_location} leaves {target_name} hopping, swearing, and leaving a trail of scorched boot rubber."
         },
         {
-            "attacker_msg": "A jet of flame catches {target_name} across the {hit_location} of the {hit_location}. Their hands shoot up, but too late — the damage is done.",
-            "victim_msg": "A jet of flame catches you across the {hit_location} of the {hit_location}. Your hands shoot up, but too late — the damage is done.",
-            "observer_msg": "A jet of flame catches {target_name} across the {hit_location} of the {hit_location}. Their hands shoot up, but too late — the damage is done."
+            "attacker_msg": "A jet of flame catches {target_name} across the side of the {hit_location}. Their hands shoot up, but too late — the damage is done.",
+            "victim_msg": "A jet of flame catches you across the side of the {hit_location}. Your hands shoot up, but too late — the damage is done.",
+            "observer_msg": "A jet of flame catches {target_name} across the side of the {hit_location}. Their hands shoot up, but too late — the damage is done."
         },
         {
             "attacker_msg": "A short jet of fire sears {target_name}'s {hit_location}. They stumble, dropping into a crouch and slapping at their own {hit_location}.",
@@ -193,9 +193,9 @@ MESSAGES = {
             "observer_msg": "Fire licks up {target_name}'s {hit_location}, blistering skin instantly. They paw at the wound like it’ll matter."
         },
         {
-            "attacker_msg": "Fire wraps around {target_name}'s {hit_location}, blistering with surgical cruelty. They howl and stagger {hit_location}, steaming.",
-            "victim_msg": "Fire wraps around your {hit_location}, blistering with surgical cruelty. You howl and stagger {hit_location}, steaming.",
-            "observer_msg": "Fire wraps around {target_name}'s {hit_location}, blistering with surgical cruelty. They howl and stagger {hit_location}, steaming."
+            "attacker_msg": "Fire wraps around {target_name}'s {hit_location}, blistering with surgical cruelty. They howl and stagger back, steaming.",
+            "victim_msg": "Fire wraps around your {hit_location}, blistering with surgical cruelty. You howl and stagger back, steaming.",
+            "observer_msg": "Fire wraps around {target_name}'s {hit_location}, blistering with surgical cruelty. They howl and stagger back, steaming."
         },
         {
             "attacker_msg": "The blowtorch finds skin beneath {target_name}'s torn shirt. The result is instant, horrific, and {blood}.",
@@ -248,9 +248,9 @@ MESSAGES = {
             "observer_msg": "The torch hisses as it sears through {target_name}'s jacket and flesh. Their reaction is primal, their body unsure what to protect."
         },
         {
-            "attacker_msg": "The torch hits the {hit_location} of {target_name}'s {hit_location}. They shriek, skin curling away from bone like burnt paper.",
-            "victim_msg": "The torch hits the {hit_location} of your {hit_location}. You shriek, skin curling away from bone like burnt paper.",
-            "observer_msg": "The torch hits the {hit_location} of {target_name}'s {hit_location}. They shriek, skin curling away from bone like burnt paper."
+            "attacker_msg": "The torch hits the back of {target_name}'s {hit_location}. They shriek, skin curling away from bone like burnt paper.",
+            "victim_msg": "The torch hits the back of your {hit_location}. You shriek, skin curling away from bone like burnt paper.",
+            "observer_msg": "The torch hits the back of {target_name}'s {hit_location}. They shriek, skin curling away from bone like burnt paper."
         },
         {
             "attacker_msg": "The torch sweeps low, catching {target_name}'s {hit_location}. The hair sizzles. The scream sounds like betrayal.",
@@ -278,9 +278,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} lashes with the torch, catching the edge of {target_name}'s {hit_location}. Fabric chars. Flesh follows."
         },
         {
-            "attacker_msg": "You plant a {hit_location} on {target_name} and guide the flame to their {hit_location}. They twist and scream, trying to escape the slow ruin.",
-            "victim_msg": "{attacker_name} plants a {hit_location} on you and guides the flame to your {hit_location}. You twist and scream, trying to escape the slow ruin.",
-            "observer_msg": "{attacker_name} plants a {hit_location} on {target_name} and guides the flame to their {hit_location}. They twist and scream, trying to escape the slow ruin."
+            "attacker_msg": "You plant a hand on {target_name} and guide the flame to their {hit_location}. They twist and scream, trying to escape the slow ruin.",
+            "victim_msg": "{attacker_name} plants a hand on you and guides the flame to your {hit_location}. You twist and scream, trying to escape the slow ruin.",
+            "observer_msg": "{attacker_name} plants a hand on {target_name} and guides the flame to their {hit_location}. They twist and scream, trying to escape the slow ruin."
         },
         {
             "attacker_msg": "You press the flame near {target_name}'s {hit_location}. The skin blackens, and the smell makes everyone recoil.",

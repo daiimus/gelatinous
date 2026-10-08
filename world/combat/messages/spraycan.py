@@ -62,7 +62,7 @@ MESSAGES = {
             "observer_msg": "Corporate branding on the can seems to mock the coming violence as {attacker_name} prepares to strike {target_name}."
         },
         {
-            "attacker_msg": "You weigh the spray can in your {hit_location}, imagining the satisfying crunch it will make against {target_name}'s {hit_location}.",
+            "attacker_msg": "You weigh the spray can in your hand, imagining the satisfying crunch it will make against {target_name}'s {hit_location}.",
             "victim_msg": "{attacker_name} weighs a spray can in their hand, their expression suggesting unpleasant thoughts about you.",
             "observer_msg": "{attacker_name} weighs the spray can in their hand, their expression suggesting unpleasant thoughts about {target_name}."
         },
@@ -386,14 +386,14 @@ MESSAGES = {
             "observer_msg": "The spray can's edge tears a gash across {target_name}'s {hit_location}, paint mixing with blood."
         },
         {
-            "attacker_msg": "You drive your {hit_location} up while bringing the canister down, crushing {target_name}'s fingers between them.",
-            "victim_msg": "{attacker_name} drives their {hit_location} up while bringing the canister down, crushing your fingers between them.",
-            "observer_msg": "{attacker_name} drives their {hit_location} up while bringing the canister down, crushing {target_name}'s fingers between them."
+            "attacker_msg": "You drive your knee up while bringing the canister down, crushing {target_name}'s fingers between them.",
+            "victim_msg": "{attacker_name} drives their knee up while bringing the canister down, crushing your fingers between them.",
+            "observer_msg": "{attacker_name} drives their knee up while bringing the canister down, crushing {target_name}'s fingers between them."
         },
         {
-            "attacker_msg": "The pressurized weapon hisses as you rake it across {target_name}'s {hit_location}s.",
-            "victim_msg": "A pressurized weapon hisses as {attacker_name} rakes it across your {hit_location}s.",
-            "observer_msg": "The pressurized weapon hisses as {attacker_name} rakes it across {target_name}'s {hit_location}s."
+            "attacker_msg": "The pressurized weapon hisses as you rake it across {target_name}'s shins.",
+            "victim_msg": "A pressurized weapon hisses as {attacker_name} rakes it across your shins.",
+            "observer_msg": "The pressurized weapon hisses as {attacker_name} rakes it across {target_name}'s shins."
         },
         {
             "attacker_msg": "Industrial solvents burn through {target_name}'s clothing as you spray their {hit_location}.",
@@ -446,9 +446,9 @@ MESSAGES = {
             "observer_msg": "Chemical warfare on a personal scale as {attacker_name} coats {target_name} in burning propellant."
         },
         {
-            "attacker_msg": "You smash the spray can against {target_name}'s {hit_location}cap, the sharp crack audible over their scream.",
-            "victim_msg": "{attacker_name} smashes a spray can against your {hit_location}cap, the sharp crack audible as pain explodes.",
-            "observer_msg": "{attacker_name} smashes the spray can against {target_name}'s {hit_location}cap, the sharp crack audible over their scream."
+            "attacker_msg": "You smash the spray can against {target_name}'s kneecap, the sharp crack audible over their scream.",
+            "victim_msg": "{attacker_name} smashes a spray can against your kneecap, the sharp crack audible as pain explodes.",
+            "observer_msg": "{attacker_name} smashes the spray can against {target_name}'s kneecap, the sharp crack audible over their scream."
         }
     ],
     "kill": [

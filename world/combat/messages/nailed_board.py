@@ -46,7 +46,7 @@ MESSAGES = {
             'observer_msg': "The board creaks. The nails click. {attacker_name} smiles faintly. This is going to get messy."
         },
         {
-            'attacker_msg': "The board leans against your {hit_location}. You tap it gently, like coaxing it to remember how it kills.",
+            'attacker_msg': "The board leans against your shoulder. You tap it gently, like coaxing it to remember how it kills.",
             'victim_msg': "The board leans against {attacker_name}'s shoulder. They tap it gently, like coaxing it to remember how it kills.",
             'observer_msg': "The board leans against {attacker_name}'s shoulder. They tap it gently, like coaxing it to remember how it kills."
         },
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} jabs the plank forward like a spear. It lands in {target_name}'s {hit_location} and leaves a new hole on the way out."
         },
         {
-            'attacker_msg': "You jam the board into {target_name}'s {hit_location} and twist. Nails dig in, tangle in cloth, and come {hit_location} {blood}.",
-            'victim_msg': "{attacker_name} jams the board into your {hit_location} and twists. Nails dig in, tangle in cloth, and come {hit_location} {blood}.",
-            'observer_msg': "{attacker_name} jams the board into {target_name}'s {hit_location} and twists. Nails dig in, tangle in cloth, and come {hit_location} {blood}."
+            'attacker_msg': "You jam the board into {target_name}'s {hit_location} and twist. Nails dig in, tangle in cloth, and come back {blood}.",
+            'victim_msg': "{attacker_name} jams the board into your {hit_location} and twists. Nails dig in, tangle in cloth, and come back {blood}.",
+            'observer_msg': "{attacker_name} jams the board into {target_name}'s {hit_location} and twists. Nails dig in, tangle in cloth, and come back {blood}."
         },
         {
             'attacker_msg': "You plant your feet and slam the board forward. It hits {target_name}'s {hit_location}, bends inward, and breaks something important.",

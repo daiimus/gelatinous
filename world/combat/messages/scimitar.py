@@ -11,7 +11,7 @@ MESSAGES = {
             'observer_msg': "With a flourish, {attacker_name} brings the scimitar to a flowing guard, its arc a deadly promise."
         },
         {
-            'attacker_msg': "You test the balance of the scimitar, the curved steel feeling light and swift in your {hit_location}.",
+            'attacker_msg': "You test the balance of the scimitar, the curved steel feeling light and swift in your hand.",
             'victim_msg': "{attacker_name} tests the balance of the scimitar, the curved steel feeling light and swift in their hand.",
             'observer_msg': "{attacker_name} tests the balance of the scimitar, the curved steel feeling light and swift in their hand."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes are like desert stars, sighting along the elegant curve of the scimitar."
         },
         {
-            'attacker_msg': "The scimitar feels like a living thing in your {hit_location}, a blade born for swift, decisive cuts.",
+            'attacker_msg': "The scimitar feels like a living thing in your hand, a blade born for swift, decisive cuts.",
             'victim_msg': "The scimitar feels like a living thing in {attacker_name}'s hand, a blade born for swift, decisive cuts.",
             'observer_msg': "The scimitar feels like a living thing in {attacker_name}'s hand, a blade born for swift, decisive cuts."
         },
@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s follow-up slash with the scimitar catches {target_name} as they try to evade."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} sends the scimitar's tip into {target_name}'s exposed {hit_location} with a slicing motion.",
-            'victim_msg': "A flick of {attacker_name}'s {hit_location} sends the scimitar's tip into your exposed {hit_location} with a slicing motion.",
-            'observer_msg': "A flick of {attacker_name}'s {hit_location} sends the scimitar's tip into {target_name}'s exposed {hit_location} with a slicing motion."
+            'attacker_msg': "A flick of your wrist sends the scimitar's tip into {target_name}'s exposed {hit_location} with a slicing motion.",
+            'victim_msg': "A flick of {attacker_name}'s wrist sends the scimitar's tip into your exposed {hit_location} with a slicing motion.",
+            'observer_msg': "A flick of {attacker_name}'s wrist sends the scimitar's tip into {target_name}'s exposed {hit_location} with a slicing motion."
         },
         {
             'attacker_msg': "The scimitar sings its deadly song as it connects with {target_name}, drawing a spray of blood.",
@@ -253,9 +253,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} presses the advantage, the scimitar a continuous, flowing threat that finally lands on {target_name}."
         },
         {
-            'attacker_msg': "The scimitar's edge meets flesh with a sickening slice, and {target_name} stumbles {hit_location} in agony.",
-            'victim_msg': "The scimitar's edge meets flesh with a sickening slice, and you stumble {hit_location} in agony.",
-            'observer_msg': "The scimitar's edge meets flesh with a sickening slice, and {target_name} stumbles {hit_location} in agony."
+            'attacker_msg': "The scimitar's edge meets flesh with a sickening slice, and {target_name} stumbles back in agony.",
+            'victim_msg': "The scimitar's edge meets flesh with a sickening slice, and you stumble back in agony.",
+            'observer_msg': "The scimitar's edge meets flesh with a sickening slice, and {target_name} stumbles back in agony."
         },
         {
             'attacker_msg': "Your slash is perfectly aimed, the scimitar's curve striking {target_name} with precision.",
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s blade slides past {target_name}'s clumsy defense, leaving a deep, stinging reminder."
         },
         {
-            'attacker_msg': "A swift slash with the scimitar forces {target_name} {hit_location}, a new, bleeding arc marking their retreat.",
-            'victim_msg': "A swift slash with the scimitar forces you {hit_location}, a new, bleeding arc marking your retreat.",
-            'observer_msg': "A swift slash with the scimitar forces {target_name} {hit_location}, a new, bleeding arc marking their retreat."
+            'attacker_msg': "A swift slash with the scimitar forces {target_name} back, a new, bleeding arc marking their retreat.",
+            'victim_msg': "A swift slash with the scimitar forces you back, a new, bleeding arc marking your retreat.",
+            'observer_msg': "A swift slash with the scimitar forces {target_name} back, a new, bleeding arc marking their retreat."
         },
         {
             'attacker_msg': "The tip of your scimitar darts like a striking cobra, gashing {target_name}'s {hit_location}.",

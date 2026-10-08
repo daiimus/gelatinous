@@ -223,7 +223,7 @@ MESSAGES = {
             "observer_msg": "Locked tight, {attacker_name} drives a knee into {target_name}'s {hit_location}."
         },
         {
-            "attacker_msg": "You grind your {hit_location} across {target_name}'s {hit_location}.",
+            "attacker_msg": "You grind your forearm across {target_name}'s {hit_location}.",
             "victim_msg": "{attacker_name} grinds their forearm across your {hit_location}!",
             "observer_msg": "{attacker_name} grinds their forearm across {target_name}'s {hit_location}."
         },
@@ -308,7 +308,7 @@ MESSAGES = {
             "observer_msg": "{target_name} groans as {attacker_name} applies a painful submission hold."
         },
         {
-            "attacker_msg": "You drive your {hit_location} repeatedly into {target_name}'s {hit_location}.",
+            "attacker_msg": "You drive your shoulder repeatedly into {target_name}'s {hit_location}.",
             "victim_msg": "{attacker_name} drives their shoulder repeatedly into your {hit_location}!",
             "observer_msg": "{attacker_name} drives their shoulder repeatedly into {target_name}'s {hit_location}."
         },

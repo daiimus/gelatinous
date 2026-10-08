@@ -164,9 +164,9 @@ MESSAGES = {
             'observer_msg': "A backhanded swipe slices across {target_name}'s {hit_location}. Blood arcs into the air."
         },
         {
-            'attacker_msg': "A brutal slash cuts the {hit_location} of the {hit_location}. {target_name} falls, claw marks trailing.",
-            'victim_msg': "A brutal slash cuts the {hit_location} of your {hit_location}. You fall, claw marks trailing.",
-            'observer_msg': "A brutal slash cuts the {hit_location} of {target_name}'s {hit_location}. They fall, claw marks trailing."
+            'attacker_msg': "A brutal slash cuts the back of the {hit_location}. {target_name} falls, claw marks trailing.",
+            'victim_msg': "A brutal slash cuts the back of your {hit_location}. You fall, claw marks trailing.",
+            'observer_msg': "A brutal slash cuts the back of {target_name}'s {hit_location}. They fall, claw marks trailing."
         },
         {
             'attacker_msg': "A double-handed rake leaves {target_name} staggering — open, bleeding, slower now.",

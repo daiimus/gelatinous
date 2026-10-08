@@ -153,29 +153,29 @@ MESSAGES = {
     ],
     "hit": [
         {
-            'attacker_msg': "An ear-splitting, continuous *BRRRRRRRRRRRAP* from your machine pistol, and a wild, wide spray of bullets tears into {target_name}'s {hit_location} and {hit_location}, casings flying like a metallic hailstorm.",
-            'victim_msg': "An ear-splitting, continuous *BRRRRRRRRRRRAP* from {attacker_name}'s machine pistol, and a wild, wide spray of bullets tears into your {hit_location} and {hit_location}, casings flying like a metallic hailstorm.",
-            'observer_msg': "An ear-splitting, continuous *BRRRRRRRRRRRAP* from {attacker_name}'s machine pistol, and a wild, wide spray of bullets tears into {target_name}'s {hit_location} and {hit_location}, casings flying like a metallic hailstorm."
+            'attacker_msg': "An ear-splitting, continuous *BRRRRRRRRRRRAP* from your machine pistol, and a wild, wide spray of bullets tears into {target_name}'s {hit_location} and torso, casings flying like a metallic hailstorm.",
+            'victim_msg': "An ear-splitting, continuous *BRRRRRRRRRRRAP* from {attacker_name}'s machine pistol, and a wild, wide spray of bullets tears into your {hit_location} and torso, casings flying like a metallic hailstorm.",
+            'observer_msg': "An ear-splitting, continuous *BRRRRRRRRRRRAP* from {attacker_name}'s machine pistol, and a wild, wide spray of bullets tears into {target_name}'s {hit_location} and torso, casings flying like a metallic hailstorm."
         },
         {
-            'attacker_msg': "The machine pistol screams like a banshee, and a torrent of tiny pistol-caliber slugs rips into {target_name}'s {hit_location} and {hit_location}, making them shriek and spin as the bolt cycles at an impossible, blurring rate.",
-            'victim_msg': "The machine pistol screams like a banshee, and a torrent of tiny pistol-caliber slugs rips into your {hit_location} and {hit_location}, making you shriek and spin as the bolt cycles at an impossible, blurring rate.",
-            'observer_msg': "The machine pistol screams like a banshee, and a torrent of tiny pistol-caliber slugs rips into {target_name}'s {hit_location} and {hit_location}, making them shriek and spin as the bolt cycles at an impossible, blurring rate."
+            'attacker_msg': "The machine pistol screams like a banshee, and a torrent of tiny pistol-caliber slugs rips into {target_name}'s {hit_location} and side, making them shriek and spin as the bolt cycles at an impossible, blurring rate.",
+            'victim_msg': "The machine pistol screams like a banshee, and a torrent of tiny pistol-caliber slugs rips into your {hit_location} and side, making you shriek and spin as the bolt cycles at an impossible, blurring rate.",
+            'observer_msg': "The machine pistol screams like a banshee, and a torrent of tiny pistol-caliber slugs rips into {target_name}'s {hit_location} and side, making them shriek and spin as the bolt cycles at an impossible, blurring rate."
         },
         {
-            'attacker_msg': "Your uncontrolled, bucking burst from the machine pistol stitches haphazardly across {target_name}'s {hit_location}, {hit_location}, and {hit_location}, the multiple impacts throwing them violently, spent brass showering the area in a dense cloud.",
-            'victim_msg': "{attacker_name}'s uncontrolled, bucking burst from the machine pistol stitches haphazardly across your {hit_location}, {hit_location}, and {hit_location}, the multiple impacts throwing you violently, spent brass showering the area in a dense cloud.",
-            'observer_msg': "{attacker_name}'s uncontrolled, bucking burst from the machine pistol stitches haphazardly across {target_name}'s {hit_location}, {hit_location}, and {hit_location}, the multiple impacts throwing them violently, spent brass showering the area in a dense cloud."
+            'attacker_msg': "Your uncontrolled, bucking burst from the machine pistol stitches haphazardly across {target_name}'s shoulder, chest, and stomach, the multiple impacts throwing them violently, spent brass showering the area in a dense cloud.",
+            'victim_msg': "{attacker_name}'s uncontrolled, bucking burst from the machine pistol stitches haphazardly across your shoulder, chest, and stomach, the multiple impacts throwing you violently, spent brass showering the area in a dense cloud.",
+            'observer_msg': "{attacker_name}'s uncontrolled, bucking burst from the machine pistol stitches haphazardly across {target_name}'s shoulder, chest, and stomach, the multiple impacts throwing them violently, spent brass showering the area in a dense cloud."
         },
         {
-            'attacker_msg': "A deafening, continuous hail of lead from your machine pistol slams into {target_name}'s {hit_location} and {hit_location}, the rapid, brutal impacts punching through clothing with a sound like a giant zipper being torn open.",
-            'victim_msg': "A deafening, continuous hail of lead from {attacker_name}'s machine pistol slams into your {hit_location} and {hit_location}, the rapid, brutal impacts punching through clothing with a sound like a giant zipper being torn open.",
-            'observer_msg': "A deafening, continuous hail of lead from {attacker_name}'s machine pistol slams into {target_name}'s {hit_location} and {hit_location}, the rapid, brutal impacts punching through clothing with a sound like a giant zipper being torn open."
+            'attacker_msg': "A deafening, continuous hail of lead from your machine pistol slams into {target_name}'s {hit_location} and back, the rapid, brutal impacts punching through clothing with a sound like a giant zipper being torn open.",
+            'victim_msg': "A deafening, continuous hail of lead from {attacker_name}'s machine pistol slams into your {hit_location} and back, the rapid, brutal impacts punching through clothing with a sound like a giant zipper being torn open.",
+            'observer_msg': "A deafening, continuous hail of lead from {attacker_name}'s machine pistol slams into {target_name}'s {hit_location} and back, the rapid, brutal impacts punching through clothing with a sound like a giant zipper being torn open."
         },
         {
-            'attacker_msg': "The machine pistol's wild, bucking, and climbing spray connects, dozens of bullets striking {target_name}'s {hit_location}, {hit_location}, and even {hit_location}, the sheer volume of fire staggering them as you are thrown completely off balance by the recoil.",
-            'victim_msg': "The machine pistol's wild, bucking, and climbing spray connects, dozens of bullets striking your {hit_location}, {hit_location}, and even {hit_location}, the sheer volume of fire staggering you as {attacker_name} is thrown completely off balance by the recoil.",
-            'observer_msg': "The machine pistol's wild, bucking, and climbing spray connects, dozens of bullets striking {target_name}'s {hit_location}, {hit_location}, and even {hit_location}, the sheer volume of fire staggering them as {attacker_name} is thrown completely off balance by the recoil."
+            'attacker_msg': "The machine pistol's wild, bucking, and climbing spray connects, dozens of bullets striking {target_name}'s thigh, torso, and even head, the sheer volume of fire staggering them as you are thrown completely off balance by the recoil.",
+            'victim_msg': "The machine pistol's wild, bucking, and climbing spray connects, dozens of bullets striking your thigh, torso, and even head, the sheer volume of fire staggering you as {attacker_name} is thrown completely off balance by the recoil.",
+            'observer_msg': "The machine pistol's wild, bucking, and climbing spray connects, dozens of bullets striking {target_name}'s thigh, torso, and even head, the sheer volume of fire staggering them as {attacker_name} is thrown completely off balance by the recoil."
         },
         {
             'attacker_msg': "Your 'spray and pray' with the machine pistol somehow connects, leaving a ragged, bloody line of closely-packed holes in {target_name}, a continuous, unbroken stream of casings ejecting in a golden arc.",
@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "The machine pistol's projectiles chew into {target_name} like a swarm of angry, metal-toothed piranhas, their impacts marked by multiple sprays of blood and a continuous, blurry, almost invisible glint of ejected shells."
         },
         {
-            'attacker_msg': "Your machine pistol fires a long, uncontrolled, climbing burst, and {target_name} is struck hard and repeatedly from {hit_location} to {hit_location}, the bullets doing their grim, shredding work as the weapon bucks and climbs uncontrollably.",
-            'victim_msg': "{attacker_name}'s machine pistol fires a long, uncontrolled, climbing burst, and you are struck hard and repeatedly from {hit_location} to {hit_location}, the bullets doing their grim, shredding work as the weapon bucks and climbs uncontrollably.",
-            'observer_msg': "{attacker_name}'s machine pistol fires a long, uncontrolled, climbing burst, and {target_name} is struck hard and repeatedly from {hit_location} to {hit_location}, the bullets doing their grim, shredding work as the weapon bucks and climbs uncontrollably."
+            'attacker_msg': "Your machine pistol fires a long, uncontrolled, climbing burst, and {target_name} is struck hard and repeatedly from hip to head, the bullets doing their grim, shredding work as the weapon bucks and climbs uncontrollably.",
+            'victim_msg': "{attacker_name}'s machine pistol fires a long, uncontrolled, climbing burst, and you are struck hard and repeatedly from hip to head, the bullets doing their grim, shredding work as the weapon bucks and climbs uncontrollably.",
+            'observer_msg': "{attacker_name}'s machine pistol fires a long, uncontrolled, climbing burst, and {target_name} is struck hard and repeatedly from hip to head, the bullets doing their grim, shredding work as the weapon bucks and climbs uncontrollably."
         },
         {
             'attacker_msg': "With a deafening, high-pitched, continuous *ZIIIIIIIIIIIIIP*, a stream of bullets from your machine pistol hits {target_name}'s {hit_location}, turning it into a bloody ruin.",
@@ -203,14 +203,14 @@ MESSAGES = {
             'observer_msg': "With a deafening, high-pitched, continuous *ZIIIIIIIIIIIIIP*, a stream of bullets from {attacker_name}'s machine pistol hits {target_name}'s {hit_location}, turning it into a bloody ruin."
         },
         {
-            'attacker_msg': "The machine pistol scores a painful, overwhelming series of hits, bullets tearing through muscle and sinew in {target_name}'s {hit_location} and {hit_location} like angry, hyperactive bees, hot casings landing everywhere in a veritable deluge.",
-            'victim_msg': "The machine pistol scores a painful, overwhelming series of hits, bullets tearing through muscle and sinew in your {hit_location} and {hit_location} like angry, hyperactive bees, hot casings landing everywhere in a veritable deluge.",
-            'observer_msg': "The machine pistol scores a painful, overwhelming series of hits, bullets tearing through muscle and sinew in {target_name}'s {hit_location} and {hit_location} like angry, hyperactive bees, hot casings landing everywhere in a veritable deluge."
+            'attacker_msg': "The machine pistol scores a painful, overwhelming series of hits, bullets tearing through muscle and sinew in {target_name}'s {hit_location} and shoulder like angry, hyperactive bees, hot casings landing everywhere in a veritable deluge.",
+            'victim_msg': "The machine pistol scores a painful, overwhelming series of hits, bullets tearing through muscle and sinew in your {hit_location} and shoulder like angry, hyperactive bees, hot casings landing everywhere in a veritable deluge.",
+            'observer_msg': "The machine pistol scores a painful, overwhelming series of hits, bullets tearing through muscle and sinew in {target_name}'s {hit_location} and shoulder like angry, hyperactive bees, hot casings landing everywhere in a veritable deluge."
         },
         {
-            'attacker_msg': "Your wild, hip-fired burst from the machine pistol strikes {target_name}'s {hit_location}, {hit_location}, and {hit_location}, the multiple impacts jarring them as the weapon continues its insane, chattering rate of fire.",
-            'victim_msg': "{attacker_name}'s wild, hip-fired burst from the machine pistol strikes your {hit_location}, {hit_location}, and {hit_location}, the multiple impacts jarring you as the weapon continues its insane, chattering rate of fire.",
-            'observer_msg': "{attacker_name}'s wild, hip-fired burst from the machine pistol strikes {target_name}'s {hit_location}, {hit_location}, and {hit_location}, the multiple impacts jarring them as the weapon continues its insane, chattering rate of fire."
+            'attacker_msg': "Your wild, hip-fired burst from the machine pistol strikes {target_name}'s hip, leg, and foot, the multiple impacts jarring them as the weapon continues its insane, chattering rate of fire.",
+            'victim_msg': "{attacker_name}'s wild, hip-fired burst from the machine pistol strikes your hip, leg, and foot, the multiple impacts jarring you as the weapon continues its insane, chattering rate of fire.",
+            'observer_msg': "{attacker_name}'s wild, hip-fired burst from the machine pistol strikes {target_name}'s hip, leg, and foot, the multiple impacts jarring them as the weapon continues its insane, chattering rate of fire."
         },
         {
             'attacker_msg': "A sharp, continuous, high-pitched shriek from the weapon and multiple gouts of blood erupt as the machine pistol's bullets find their mark all over {target_name}'s body, you struggling just to keep it pointed vaguely downrange.",
@@ -223,9 +223,9 @@ MESSAGES = {
             'observer_msg': "The incredibly fast-moving, dense stream of lead from {attacker_name}'s machine pistol tears into {target_name}'s flesh, causing immediate, sharp, overwhelming, and continuous repeated pain."
         },
         {
-            'attacker_msg': "Your machine pistol bullets slam into {target_name} with the force of a runaway jackhammer, the rapid, hammering impacts knocking them {hit_location} violently, a torrent of casings spinning away in a chaotic, glittering blur.",
-            'victim_msg': "{attacker_name}'s machine pistol bullets slam into you with the force of a runaway jackhammer, the rapid, hammering impacts knocking you {hit_location} violently, a torrent of casings spinning away in a chaotic, glittering blur.",
-            'observer_msg': "{attacker_name}'s machine pistol bullets slam into {target_name} with the force of a runaway jackhammer, the rapid, hammering impacts knocking them {hit_location} violently, a torrent of casings spinning away in a chaotic, glittering blur."
+            'attacker_msg': "Your machine pistol bullets slam into {target_name} with the force of a runaway jackhammer, the rapid, hammering impacts knocking them back violently, a torrent of casings spinning away in a chaotic, glittering blur.",
+            'victim_msg': "{attacker_name}'s machine pistol bullets slam into you with the force of a runaway jackhammer, the rapid, hammering impacts knocking you back violently, a torrent of casings spinning away in a chaotic, glittering blur.",
+            'observer_msg': "{attacker_name}'s machine pistol bullets slam into {target_name} with the force of a runaway jackhammer, the rapid, hammering impacts knocking them back violently, a torrent of casings spinning away in a chaotic, glittering blur."
         },
         {
             'attacker_msg': "A burst from the machine pistol hits {target_name}'s {hit_location} at close range, mangling it with dozens of tiny, explosive impacts and making them drop whatever they held, the bolt cycling at blinding, terrifying speed.",
@@ -238,9 +238,9 @@ MESSAGES = {
             'observer_msg': "The machine pistol's bullets make solid, overwhelming contact with {target_name}'s {hit_location}, the shockwave of dozens of impacts visible as {attacker_name} simply holds the trigger down until the magazine is empty."
         },
         {
-            'attacker_msg': "Your machine pistol projectiles find their mark through sheer volume, delivering a series of painful, debilitating wounds all over {target_name}'s {hit_location} and {hit_location}, brass glinting brightly on the ground like a pile of freshly minted coins.",
-            'victim_msg': "{attacker_name}'s machine pistol projectiles find their mark through sheer volume, delivering a series of painful, debilitating wounds all over your {hit_location} and {hit_location}, brass glinting brightly on the ground like a pile of freshly minted coins.",
-            'observer_msg': "{attacker_name}'s machine pistol projectiles find their mark through sheer volume, delivering a series of painful, debilitating wounds all over {target_name}'s {hit_location} and {hit_location}, brass glinting brightly on the ground like a pile of freshly minted coins."
+            'attacker_msg': "Your machine pistol projectiles find their mark through sheer volume, delivering a series of painful, debilitating wounds all over {target_name}'s {hit_location} and torso, brass glinting brightly on the ground like a pile of freshly minted coins.",
+            'victim_msg': "{attacker_name}'s machine pistol projectiles find their mark through sheer volume, delivering a series of painful, debilitating wounds all over your {hit_location} and torso, brass glinting brightly on the ground like a pile of freshly minted coins.",
+            'observer_msg': "{attacker_name}'s machine pistol projectiles find their mark through sheer volume, delivering a series of painful, debilitating wounds all over {target_name}'s {hit_location} and torso, brass glinting brightly on the ground like a pile of freshly minted coins."
         },
         {
             'attacker_msg': "Even a short, uncontrolled, accidental burst from the machine pistol tears multiple nasty, ragged, closely-spaced furrows in {target_name}'s skin, the shots echoing as one continuous, deafening roar.",
@@ -253,19 +253,19 @@ MESSAGES = {
             'observer_msg': "{attacker_name} fires the machine pistol on full auto, the entire magazine emptying in a terrifying couple of seconds, many bullets streaking to {target_name} and striking with brutal, rapid, overwhelming force, casings ejecting in a solid, unbroken stream."
         },
         {
-            'attacker_msg': "The machine pistol's sharp, screaming, continuous report is followed by {target_name}'s choked cries as dozens of bullets embed themselves deeply and randomly, the bolt already locked {hit_location} on an empty chamber.",
-            'victim_msg': "The machine pistol's sharp, screaming, continuous report is followed by your choked cries as dozens of bullets embed themselves deeply and randomly, the bolt already locked {hit_location} on an empty chamber.",
-            'observer_msg': "The machine pistol's sharp, screaming, continuous report is followed by {target_name}'s choked cries as dozens of bullets embed themselves deeply and randomly, the bolt already locked {hit_location} on an empty chamber."
+            'attacker_msg': "The machine pistol's sharp, screaming, continuous report is followed by {target_name}'s choked cries as dozens of bullets embed themselves deeply and randomly, the bolt already locked back on an empty chamber.",
+            'victim_msg': "The machine pistol's sharp, screaming, continuous report is followed by your choked cries as dozens of bullets embed themselves deeply and randomly, the bolt already locked back on an empty chamber.",
+            'observer_msg': "The machine pistol's sharp, screaming, continuous report is followed by {target_name}'s choked cries as dozens of bullets embed themselves deeply and randomly, the bolt already locked back on an empty chamber."
         },
         {
-            'attacker_msg': "Your burst is wild, uncontrolled, but brutally effective at this range, the machine pistol's bullets striking {target_name} squarely in the {hit_location}, {hit_location}, and {hit_location}, a quick, fumbled reload already being attempted.",
-            'victim_msg': "{attacker_name}'s burst is wild, uncontrolled, but brutally effective at this range, the machine pistol's bullets striking you squarely in the {hit_location}, {hit_location}, and {hit_location}, a quick, fumbled reload already being attempted.",
-            'observer_msg': "{attacker_name}'s burst is wild, uncontrolled, but brutally effective at this range, the machine pistol's bullets striking {target_name} squarely in the {hit_location}, {hit_location}, and {hit_location}, a quick, fumbled reload already being attempted."
+            'attacker_msg': "Your burst is wild, uncontrolled, but brutally effective at this range, the machine pistol's bullets striking {target_name} squarely in the gut, chest, and neck, a quick, fumbled reload already being attempted.",
+            'victim_msg': "{attacker_name}'s burst is wild, uncontrolled, but brutally effective at this range, the machine pistol's bullets striking you squarely in the gut, chest, and neck, a quick, fumbled reload already being attempted.",
+            'observer_msg': "{attacker_name}'s burst is wild, uncontrolled, but brutally effective at this range, the machine pistol's bullets striking {target_name} squarely in the gut, chest, and neck, a quick, fumbled reload already being attempted."
         },
         {
-            'attacker_msg': "A close-range deluge from your machine pistol tears multiple horrific, closely-packed, and instantly bleeding wounds all over {target_name}'s {hit_location} and {hit_location}.",
-            'victim_msg': "A close-range deluge from {attacker_name}'s machine pistol tears multiple horrific, closely-packed, and instantly bleeding wounds all over your {hit_location} and {hit_location}.",
-            'observer_msg': "A close-range deluge from {attacker_name}'s machine pistol tears multiple horrific, closely-packed, and instantly bleeding wounds all over {target_name}'s {hit_location} and {hit_location}."
+            'attacker_msg': "A close-range deluge from your machine pistol tears multiple horrific, closely-packed, and instantly bleeding wounds all over {target_name}'s {hit_location} and back.",
+            'victim_msg': "A close-range deluge from {attacker_name}'s machine pistol tears multiple horrific, closely-packed, and instantly bleeding wounds all over your {hit_location} and back.",
+            'observer_msg': "A close-range deluge from {attacker_name}'s machine pistol tears multiple horrific, closely-packed, and instantly bleeding wounds all over {target_name}'s {hit_location} and back."
         },
         {
             'attacker_msg': "The machine pistol proves brutally effective by sheer, overwhelming volume as you land a devastating, unavoidable spray on {target_name}, the weapon bucking and climbing wildly in your grip like a live thing.",
@@ -283,9 +283,9 @@ MESSAGES = {
             'observer_msg': "A painful series of incredibly rapid thuds like a miniature, out-of-control jackhammer as bullets from {attacker_name}'s machine pistol strike {target_name}'s {hit_location}, likely shattering them into splinters, the shots a continuous, high-pitched, deafening roar."
         },
         {
-            'attacker_msg': "Projectiles from your machine pistol hit {target_name}'s {hit_location} and {hit_location}, shredding the area with multiple sickening cracks and tearing sounds, a veritable fountain of hot casings ejected.",
-            'victim_msg': "Projectiles from {attacker_name}'s machine pistol hit your {hit_location} and {hit_location}, shredding the area with multiple sickening cracks and tearing sounds, a veritable fountain of hot casings ejected.",
-            'observer_msg': "Projectiles from {attacker_name}'s machine pistol hit {target_name}'s {hit_location} and {hit_location}, shredding the area with multiple sickening cracks and tearing sounds, a veritable fountain of hot casings ejected."
+            'attacker_msg': "Projectiles from your machine pistol hit {target_name}'s {hit_location} and neck, shredding the area with multiple sickening cracks and tearing sounds, a veritable fountain of hot casings ejected.",
+            'victim_msg': "Projectiles from {attacker_name}'s machine pistol hit your {hit_location} and neck, shredding the area with multiple sickening cracks and tearing sounds, a veritable fountain of hot casings ejected.",
+            'observer_msg': "Projectiles from {attacker_name}'s machine pistol hit {target_name}'s {hit_location} and neck, shredding the area with multiple sickening cracks and tearing sounds, a veritable fountain of hot casings ejected."
         },
         {
             'attacker_msg': "Your machine pistol delivers another brutal, penetrating, and completely chaotic spray to {target_name}'s {hit_location} and limbs, the shots coming in an uncontrollable, deadly, and wide pattern.",

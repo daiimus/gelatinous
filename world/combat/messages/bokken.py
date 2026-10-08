@@ -228,9 +228,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}’s follow-through strike with the bokken catches {target_name} off-balance and in pain."
         },
         {
-            "attacker_msg": "A flick of your {hit_location} sends the bokken's tip into {target_name}’s {hit_location} with a sharp crack.",
-            "victim_msg": "A flick of {attacker_name}’s {hit_location} sends the bokken's tip into your {hit_location} with a sharp crack.",
-            "observer_msg": "A flick of {attacker_name}’s {hit_location} sends the bokken's tip into {target_name}’s {hit_location} with a sharp crack."
+            "attacker_msg": "A flick of your wrist sends the bokken's tip into {target_name}’s {hit_location} with a sharp crack.",
+            "victim_msg": "A flick of {attacker_name}’s wrist sends the bokken's tip into your {hit_location} with a sharp crack.",
+            "observer_msg": "A flick of {attacker_name}’s wrist sends the bokken's tip into {target_name}’s {hit_location} with a sharp crack."
         },
         {
             "attacker_msg": "The bokken thuds heavily as it connects with {target_name}, driving the air from their lungs.",

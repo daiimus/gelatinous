@@ -36,7 +36,7 @@ MESSAGES = {
             'observer_msg': "The blade is chipped and stained, notched by time. {attacker_name} lifts it like a relic handed down from ruin."
         },
         {
-            'attacker_msg': "The blade isn't sharp — it's *willing*. You hoist it onto your {hit_location} like it's part of your soul and burden both.",
+            'attacker_msg': "The blade isn't sharp — it's *willing*. You hoist it onto your shoulder like it's part of your soul and burden both.",
             'victim_msg': "The blade isn't sharp — it's *willing*. {attacker_name} hoists it onto their shoulder like it's part of their soul and burden both.",
             'observer_msg': "The blade isn't sharp — it's *willing*. {attacker_name} hoists it onto their shoulder like it's part of their soul and burden both."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The fire axe isn't elegant, and neither is {attacker_name}. They don't try to intimidate. They just *prepare*."
         },
         {
-            'attacker_msg': "The fire axe rests on your {hit_location}. The silence stretches thin. Everyone knows what comes next.",
+            'attacker_msg': "The fire axe rests on your shoulder. The silence stretches thin. Everyone knows what comes next.",
             'victim_msg': "The fire axe rests on {attacker_name}'s shoulder. The silence stretches thin. Everyone knows what comes next.",
             'observer_msg': "The fire axe rests on {attacker_name}'s shoulder. The silence stretches thin. Everyone knows what comes next."
         },
@@ -131,12 +131,12 @@ MESSAGES = {
             'observer_msg': "{attacker_name} rests the blade against their collarbone, eyes locked on {target_name}. The message is clear. The warning, over."
         },
         {
-            'attacker_msg': "You roll your {hit_location}, loosening joints with casual cruelty. The fire axe dangles from one hand, heavy and inevitable.",
+            'attacker_msg': "You roll your neck, loosening joints with casual cruelty. The fire axe dangles from one hand, heavy and inevitable.",
             'victim_msg': "{attacker_name} rolls their neck, loosening joints with casual cruelty. The fire axe dangles from one hand, heavy and inevitable.",
             'observer_msg': "{attacker_name} rolls their neck, loosening joints with casual cruelty. The fire axe dangles from one hand, heavy and inevitable."
         },
         {
-            'attacker_msg': "You roll your {hit_location} once, twice. The axe swings low, then high. It's not practice. It's prelude.",
+            'attacker_msg': "You roll your shoulder once, twice. The axe swings low, then high. It's not practice. It's prelude.",
             'victim_msg': "{attacker_name} rolls their shoulder once, twice. The axe swings low, then high. It's not practice. It's prelude.",
             'observer_msg': "{attacker_name} rolls their shoulder once, twice. The axe swings low, then high. It's not practice. It's prelude."
         },
@@ -153,9 +153,9 @@ MESSAGES = {
     ],
     'hit': [
         {
-            'attacker_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. {target_name} drops to one {hit_location}, disbelief painted in {blood}.",
-            'victim_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. You drop to one {hit_location}, disbelief painted in {blood}.",
-            'observer_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. {target_name} drops to one {hit_location}, disbelief painted in {blood}."
+            'attacker_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. {target_name} drops to one knee, disbelief painted in {blood}.",
+            'victim_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. You drop to one knee, disbelief painted in {blood}.",
+            'observer_msg': "A cleave to the {hit_location} severs not just flesh, but mobility. {target_name} drops to one knee, disbelief painted in {blood}."
         },
         {
             'attacker_msg': "A downward cleave crashes through {target_name}'s {hit_location} and stays. You let go. The axe holds itself now.",

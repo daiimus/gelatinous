@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes are sharp and unwavering, sighting down the curved length of the kukri towards {target_name}."
         },
         {
-            'attacker_msg': "The kukri feels like an extension of your {hit_location}, a tool of devastating efficiency and storied lethality.",
+            'attacker_msg': "The kukri feels like an extension of your arm, a tool of devastating efficiency and storied lethality.",
             'victim_msg': "The kukri feels like an extension of {attacker_name}'s arm, a tool of devastating efficiency and storied lethality.",
             'observer_msg': "The kukri feels like an extension of {attacker_name}'s arm, a tool of devastating efficiency and storied lethality."
         },
@@ -86,7 +86,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the kukri in a traditional Gurkha grip, ready to bring its full, devastating force to bear."
         },
         {
-            'attacker_msg': "The smooth, often horn or hardwood hilt of the kukri fits your {hit_location} perfectly, a familiar, dangerous weight.",
+            'attacker_msg': "The smooth, often horn or hardwood hilt of the kukri fits your hand perfectly, a familiar, dangerous weight.",
             'victim_msg': "The smooth, often horn or hardwood hilt of the kukri fits {attacker_name}'s hand perfectly, a familiar, dangerous weight.",
             'observer_msg': "The smooth, often horn or hardwood hilt of the kukri fits {attacker_name}'s hand perfectly, a familiar, dangerous weight."
         },
@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s follow-through strike with the kukri catches {target_name} off-balance, inflicting another grievous wound."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} sends the kukri's point into {target_name}'s {hit_location} with a sharp crack, disabling it.",
-            'victim_msg': "A flick of {attacker_name}'s {hit_location} sends the kukri's point into your {hit_location} with a sharp crack, disabling it.",
-            'observer_msg': "A flick of {attacker_name}'s {hit_location} sends the kukri's point into {target_name}'s {hit_location} with a sharp crack, disabling it."
+            'attacker_msg': "A flick of your wrist sends the kukri's point into {target_name}'s {hit_location} with a sharp crack, disabling it.",
+            'victim_msg': "A flick of {attacker_name}'s wrist sends the kukri's point into your {hit_location} with a sharp crack, disabling it.",
+            'observer_msg': "A flick of {attacker_name}'s wrist sends the kukri's point into {target_name}'s {hit_location} with a sharp crack, disabling it."
         },
         {
             'attacker_msg': "The kukri thuds heavily as it connects with {target_name}, driving the air from their lungs and leaving a horrific injury.",

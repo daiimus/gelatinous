@@ -86,7 +86,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the gladius in a forward-canted guard, ready to punch through defenses."
         },
         {
-            'attacker_msg': "The heavy, spherical pommel of the gladius is a solid counterweight in your {hit_location}.",
+            'attacker_msg': "The heavy, spherical pommel of the gladius is a solid counterweight in your hand.",
             'victim_msg': "The heavy, spherical pommel of the gladius is a solid counterweight in {attacker_name}'s hand.",
             'observer_msg': "The heavy, spherical pommel of the gladius is a solid counterweight in {attacker_name}'s hand."
         },
@@ -106,7 +106,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} yanks the gladius free, the sound a harsh rasp of steel on leather."
         },
         {
-            'attacker_msg': "The gladius is a soldier's weapon in your {hit_location}, built for effectiveness, not show.",
+            'attacker_msg': "The gladius is a soldier's weapon in your hand, built for effectiveness, not show.",
             'victim_msg': "The gladius is a soldier's weapon in {attacker_name}'s hand, built for effectiveness, not show.",
             'observer_msg': "The gladius is a soldier's weapon in {attacker_name}'s hand, built for effectiveness, not show."
         },
@@ -198,9 +198,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s blade whistles in a short arc before striking {target_name}'s exposed {hit_location}."
         },
         {
-            'attacker_msg': "With a grunt of exertion, you drive the gladius against {target_name}, forcing them {hit_location} with raw power.",
-            'victim_msg': "With a grunt of exertion, {attacker_name} drives the gladius against you, forcing you {hit_location} with raw power.",
-            'observer_msg': "With a grunt of exertion, {attacker_name} drives the gladius against {target_name}, forcing them {hit_location} with raw power."
+            'attacker_msg': "With a grunt of exertion, you drive the gladius against {target_name}, forcing them back with raw power.",
+            'victim_msg': "With a grunt of exertion, {attacker_name} drives the gladius against you, forcing you back with raw power.",
+            'observer_msg': "With a grunt of exertion, {attacker_name} drives the gladius against {target_name}, forcing them back with raw power."
         },
         {
             'attacker_msg': "The gladius scores a brutal hit on {target_name}'s shield {hit_location}, the impact numbing.",
@@ -213,9 +213,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s precise thrust opens a ragged wound on {target_name}'s {hit_location}."
         },
         {
-            'attacker_msg': "A resounding thwack as your gladius smashes against {target_name}'s {hit_location}or, denting it inward.",
-            'victim_msg': "A resounding thwack as {attacker_name}'s gladius smashes against your {hit_location}or, denting it inward.",
-            'observer_msg': "A resounding thwack as {attacker_name}'s gladius smashes against {target_name}'s {hit_location}or, denting it inward."
+            'attacker_msg': "A resounding thwack as your gladius smashes against {target_name}'s armor, denting it inward.",
+            'victim_msg': "A resounding thwack as {attacker_name}'s gladius smashes against your armor, denting it inward.",
+            'observer_msg': "A resounding thwack as {attacker_name}'s gladius smashes against {target_name}'s armor, denting it inward."
         },
         {
             'attacker_msg': "The keen blade of the gladius leaves a wide, bloody trail along {target_name}'s {hit_location}.",
@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s follow-through chop with the gladius catches {target_name} with brutal force."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} sends the gladius's point into {target_name}'s exposed {hit_location}.",
-            'victim_msg': "A flick of {attacker_name}'s {hit_location} sends the gladius's point into your exposed {hit_location}.",
-            'observer_msg': "A flick of {attacker_name}'s {hit_location} sends the gladius's point into {target_name}'s exposed {hit_location}."
+            'attacker_msg': "A flick of your wrist sends the gladius's point into {target_name}'s exposed {hit_location}.",
+            'victim_msg': "A flick of {attacker_name}'s wrist sends the gladius's point into your exposed {hit_location}.",
+            'observer_msg': "A flick of {attacker_name}'s wrist sends the gladius's point into {target_name}'s exposed {hit_location}."
         },
         {
             'attacker_msg': "The gladius sings its grim song as it connects with {target_name}, tearing flesh.",

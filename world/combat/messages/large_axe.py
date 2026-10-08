@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "The axe crashes into {target_name}'s {hit_location}. The scream barely escapes."
         },
         {
-            'attacker_msg': "The axe lands mid-spine. {target_name}'s {hit_location}s give out without argument.",
+            'attacker_msg': "The axe lands mid-spine. {target_name}'s legs give out without argument.",
             'victim_msg': "The axe lands mid-spine. Your legs give out without argument.",
-            'observer_msg': "The axe lands mid-spine. {target_name}'s {hit_location}s give out without argument."
+            'observer_msg': "The axe lands mid-spine. {target_name}'s legs give out without argument."
         },
         {
             'attacker_msg': "The axe punches into the {hit_location}. {target_name} folds around it, blood-first.",
@@ -258,9 +258,9 @@ MESSAGES = {
             'observer_msg': "The edge cleaves open {target_name}'s {hit_location}. {target_name} spins and stumbles out of instinct."
         },
         {
-            'attacker_msg': "The edge slices from {hit_location} to {hit_location}. {target_name} shrieks and stumbles.",
-            'victim_msg': "The edge slices from your {hit_location} to {hit_location}. You shriek and stumble.",
-            'observer_msg': "The edge slices from {target_name}'s {hit_location} to {hit_location}. {target_name} shrieks and stumbles."
+            'attacker_msg': "The edge slices from {target_name}'s {hit_location} to chest. {target_name} shrieks and stumbles.",
+            'victim_msg': "The edge slices from your {hit_location} to chest. You shriek and stumble.",
+            'observer_msg': "The edge slices from {target_name}'s {hit_location} to chest. {target_name} shrieks and stumbles."
         },
         {
             'attacker_msg': "The flat of the blade smashes the {hit_location}. Blood follows a heartbeat later.",
@@ -273,9 +273,9 @@ MESSAGES = {
             'observer_msg': "The haft strikes {target_name}'s {hit_location}. Teeth fly like punctuation."
         },
         {
-            'attacker_msg': "The {hit_location} of the axe strikes square in the {hit_location}. Breath exits, fast and final.",
-            'victim_msg': "The {hit_location} of the axe strikes square in your {hit_location}. Breath exits, fast and final.",
-            'observer_msg': "The {hit_location} of the axe strikes square in {target_name}'s {hit_location}. Breath exits, fast and final."
+            'attacker_msg': "The head of the axe strikes square in the {hit_location}. Breath exits, fast and final.",
+            'victim_msg': "The head of the axe strikes square in your {hit_location}. Breath exits, fast and final.",
+            'observer_msg': "The head of the axe strikes square in {target_name}'s {hit_location}. Breath exits, fast and final."
         },
         {
             'attacker_msg': "You bring the blade into the {hit_location}. {Blood} mists the air.",

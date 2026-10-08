@@ -1,7 +1,7 @@
 MESSAGES = {
     "initiate": [
         {
-            "attacker_msg": "A flick of your {hit_location} brings your baton to full length. It doesn’t make a sound — but the tension it draws does.",
+            "attacker_msg": "A flick of your wrist brings your baton to full length. It doesn’t make a sound — but the tension it draws does.",
             "victim_msg": "A flick of {attacker_name}'s wrist brings their baton to full length. It doesn’t make a sound — but the tension it draws does.",
             "observer_msg": "A flick of {attacker_name}'s wrist brings their baton to full length. It doesn’t make a sound — but the tension it draws does."
         },
@@ -11,7 +11,7 @@ MESSAGES = {
             "observer_msg": "A slow grip, a fast pull — and the baton extends with purpose. {attacker_name} doesn't grin. But the corners of their eyes tighten."
         },
         {
-            "attacker_msg": "A small smile creeps across your {hit_location} as you draw the baton. There’s no fear in that gesture — only confidence.",
+            "attacker_msg": "A small smile creeps across your face as you draw the baton. There’s no fear in that gesture — only confidence.",
             "victim_msg": "A small smile creeps across {attacker_name}'s face as they draw the baton. There’s no fear in that gesture — only confidence.",
             "observer_msg": "A small smile creeps across {attacker_name}'s face as they draw the baton. There’s no fear in that gesture — only confidence."
         },
@@ -91,7 +91,7 @@ MESSAGES = {
             "observer_msg": "With a half-step forward, {attacker_name} clicks the baton open and lowers their center of gravity. The dance is starting."
         },
         {
-            "attacker_msg": "With a practiced gesture, you twirl the baton once and bring it to rest across your {hit_location}. The intent is clear — this won’t be subtle.",
+            "attacker_msg": "With a practiced gesture, you twirl the baton once and bring it to rest across your shoulder. The intent is clear — this won’t be subtle.",
             "victim_msg": "With a practiced gesture, {attacker_name} twirls the baton once and brings it to rest across their shoulder. The intent is clear — this won’t be subtle.",
             "observer_msg": "With a practiced gesture, {attacker_name} twirls the baton once and brings it to rest across their shoulder. The intent is clear — this won’t be subtle."
         },
@@ -111,22 +111,22 @@ MESSAGES = {
             "observer_msg": "{attacker_name} draws the baton with a slow, deliberate motion. It unfolds with a metallic click, and suddenly the conversation has changed."
         },
         {
-            "attacker_msg": "You draw the baton with a swift flick of your {hit_location}. It extends with a satisfying snap, like punctuation at the end of a threat.",
+            "attacker_msg": "You draw the baton with a swift flick of your wrist. It extends with a satisfying snap, like punctuation at the end of a threat.",
             "victim_msg": "{attacker_name} draws the baton with a swift flick of their wrist. It extends with a satisfying snap, like punctuation at the end of a threat.",
             "observer_msg": "{attacker_name} draws the baton with a swift flick of their wrist. It extends with a satisfying snap, like punctuation at the end of a threat."
         },
         {
-            "attacker_msg": "You flex your {hit_location}. The baton answers with a stiff metallic growl. It’s awake now.",
+            "attacker_msg": "You flex your wrist. The baton answers with a stiff metallic growl. It’s awake now.",
             "victim_msg": "{attacker_name} flexes their wrist. The baton answers with a stiff metallic growl. It’s awake now.",
             "observer_msg": "{attacker_name} flexes their wrist. The baton answers with a stiff metallic growl. It’s awake now."
         },
         {
-            "attacker_msg": "You flick your {hit_location} and the baton springs open, sleek and dark. It hums with stored violence.",
+            "attacker_msg": "You flick your wrist and the baton springs open, sleek and dark. It hums with stored violence.",
             "victim_msg": "{attacker_name} flicks their wrist and the baton springs open, sleek and dark. It hums with stored violence.",
             "observer_msg": "{attacker_name} flicks their wrist and the baton springs open, sleek and dark. It hums with stored violence."
         },
         {
-            "attacker_msg": "You give the baton a lazy twirl before resting it against your {hit_location}. Your expression doesn’t change — the weapon speaks for you.",
+            "attacker_msg": "You give the baton a lazy twirl before resting it against your shoulder. Your expression doesn’t change — the weapon speaks for you.",
             "victim_msg": "{attacker_name} gives the baton a lazy twirl before resting it against their shoulder. Their expression doesn’t change — the weapon speaks for them.",
             "observer_msg": "{attacker_name} gives the baton a lazy twirl before resting it against their shoulder. Their expression doesn’t change — the weapon speaks for them."
         },
@@ -136,7 +136,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} pulls the baton from a loop at their side, extends it with a flick, and tests its balance like they’ve done this before. Many times."
         },
         {
-            "attacker_msg": "You roll your {hit_location}, testing the baton’s weight. It's not for show — it’s to remember how it feels before blood touches it.",
+            "attacker_msg": "You roll your wrist, testing the baton’s weight. It's not for show — it’s to remember how it feels before blood touches it.",
             "victim_msg": "{attacker_name} rolls their wrist, testing the baton’s weight. It's not for show — it’s to remember how it feels before blood touches it.",
             "observer_msg": "{attacker_name} rolls their wrist, testing the baton’s weight. It's not for show — it’s to remember how it feels before blood touches it."
         },
@@ -158,19 +158,19 @@ MESSAGES = {
             "observer_msg": "A low strike by {attacker_name} to {target_name}'s {hit_location} drops them instantly. They don’t scream — they gasp like a deflated tire."
         },
         {
-            "attacker_msg": "A quick step in, a twist of your {hit_location}s, and you crack the baton against {target_name}'s {hit_location}. Bone protests.",
+            "attacker_msg": "A quick step in, a twist of your hips, and you crack the baton against {target_name}'s {hit_location}. Bone protests.",
             "victim_msg": "A quick step in, a twist of their hips, and {attacker_name} cracks the baton against your {hit_location}. Bone protests.",
-            "observer_msg": "A quick step in, a twist of {attacker_name}'s {hit_location}s, and they crack the baton against {target_name}'s {hit_location}. Bone protests."
+            "observer_msg": "A quick step in, a twist of {attacker_name}'s hips, and they crack the baton against {target_name}'s {hit_location}. Bone protests."
         },
         {
-            "attacker_msg": "Your quick upward thrust catches {target_name} under the chin. Their {hit_location} snaps {hit_location}. Their knees buckle.",
-            "victim_msg": "A quick upward thrust from {attacker_name} catches you under the chin. Your {hit_location} snaps {hit_location}. Your knees buckle.",
-            "observer_msg": "A quick upward thrust from {attacker_name} catches {target_name} under the chin. Their {hit_location} snaps {hit_location}. Their knees buckle."
+            "attacker_msg": "Your quick upward thrust catches {target_name} under the chin. Their {hit_location} snaps back. Their knees buckle.",
+            "victim_msg": "A quick upward thrust from {attacker_name} catches you under the chin. Your {hit_location} snaps back. Your knees buckle.",
+            "observer_msg": "A quick upward thrust from {attacker_name} catches {target_name} under the chin. Their {hit_location} snaps back. Their knees buckle."
         },
         {
-            "attacker_msg": "Your rising blow from below the {hit_location} knocks {target_name}'s {hit_location} {hit_location}. Blood arcs. Silence follows.",
-            "victim_msg": "A rising blow from {attacker_name} from below your {hit_location} knocks your {hit_location} {hit_location}. Blood arcs. Silence follows.",
-            "observer_msg": "A rising blow from {attacker_name} from below the {hit_location} knocks {target_name}'s {hit_location} {hit_location}. Blood arcs. Silence follows."
+            "attacker_msg": "Your rising blow from below the {hit_location} knocks {target_name}'s {hit_location} back. Blood arcs. Silence follows.",
+            "victim_msg": "A rising blow from {attacker_name} from below your {hit_location} knocks your {hit_location} back. Blood arcs. Silence follows.",
+            "observer_msg": "A rising blow from {attacker_name} from below the {hit_location} knocks {target_name}'s {hit_location} back. Blood arcs. Silence follows."
         },
         {
             "attacker_msg": "Your sharp blow to the {hit_location} drops {target_name} like a felled pillar. Their limbs spasm. Their grip on reality loosens.",
@@ -188,9 +188,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s baton hits with the sound of a gavel — decisive, cold, irreversible. {target_name} collapses as if judged."
         },
         {
-            "attacker_msg": "It’s a short jab from your baton, right to the {hit_location} — but it lands like a truck. {target_name} doubles over and doesn’t get {hit_location} up.",
-            "victim_msg": "It’s a short jab from {attacker_name}'s baton, right to your {hit_location} — but it lands like a truck. You double over and don’t get {hit_location} up.",
-            "observer_msg": "It’s a short jab from {attacker_name}'s baton, right to {target_name}'s {hit_location} — but it lands like a truck. {target_name} doubles over and doesn’t get {hit_location} up."
+            "attacker_msg": "It’s a short jab from your baton, right to the {hit_location} — but it lands like a truck. {target_name} doubles over and doesn’t get back up.",
+            "victim_msg": "It’s a short jab from {attacker_name}'s baton, right to your {hit_location} — but it lands like a truck. You double over and don’t get back up.",
+            "observer_msg": "It’s a short jab from {attacker_name}'s baton, right to {target_name}'s {hit_location} — but it lands like a truck. {target_name} doubles over and doesn’t get back up."
         },
         {
             "attacker_msg": "It’s not flashy — it’s efficient. You deliver a brutal jab to {target_name}'s {hit_location}. They stumble, stunned and sagging.",
@@ -203,9 +203,9 @@ MESSAGES = {
             "observer_msg": "One blow from {attacker_name}'s baton to {target_name}'s {hit_location} — and then another to the {hit_location}. {target_name} screams. The baton makes its argument clearly."
         },
         {
-            "attacker_msg": "One step inside {target_name}'s guard, one twist of your {hit_location}, and your baton slams into their {hit_location}. A spray of spit follows.",
-            "victim_msg": "One step inside your guard, one twist of {attacker_name}'s {hit_location}, and their baton slams into your {hit_location}. A spray of spit follows.",
-            "observer_msg": "One step inside {target_name}'s guard, one twist of {attacker_name}'s {hit_location}, and their baton slams into {target_name}'s {hit_location}. A spray of spit follows."
+            "attacker_msg": "One step inside {target_name}'s guard, one twist of your hip, and your baton slams into their {hit_location}. A spray of spit follows.",
+            "victim_msg": "One step inside your guard, one twist of {attacker_name}'s hip, and their baton slams into your {hit_location}. A spray of spit follows.",
+            "observer_msg": "One step inside {target_name}'s guard, one twist of {attacker_name}'s hip, and their baton slams into {target_name}'s {hit_location}. A spray of spit follows."
         },
         {
             "attacker_msg": "One strike from your baton, low and mean, crashes into {target_name}'s {hit_location}. They drop with a shout, clutching at pain they can’t stop.",
@@ -238,9 +238,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s baton lashes across {target_name}'s {hit_location}, bone buckling under the force. They drop whatever they were holding and half their will to fight."
         },
         {
-            "attacker_msg": "Your baton slams into the {hit_location} of {target_name}'s {hit_location}, snapping their {hit_location} with a wet crunch. They fall mid-step, face-first into failure.",
-            "victim_msg": "{attacker_name}'s baton slams into the {hit_location} of your {hit_location}, snapping your {hit_location} with a wet crunch. You fall mid-step, face-first into failure.",
-            "observer_msg": "{attacker_name}'s baton slams into the {hit_location} of {target_name}'s {hit_location}, snapping their {hit_location} with a wet crunch. They fall mid-step, face-first into failure."
+            "attacker_msg": "Your baton slams into the side of {target_name}'s {hit_location}, snapping their {hit_location} with a wet crunch. They fall mid-step, face-first into failure.",
+            "victim_msg": "{attacker_name}'s baton slams into the side of your {hit_location}, snapping your {hit_location} with a wet crunch. You fall mid-step, face-first into failure.",
+            "observer_msg": "{attacker_name}'s baton slams into the side of {target_name}'s {hit_location}, snapping their {hit_location} with a wet crunch. They fall mid-step, face-first into failure."
         },
         {
             "attacker_msg": "Your baton slams into {target_name}'s {hit_location} with the efficiency of habit. Each crack feels personal.",
@@ -258,9 +258,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s baton snaps across {target_name}'s {hit_location} with a whip-crack that silences the room. They wheeze and fold, breath stolen."
         },
         {
-            "attacker_msg": "Your baton whistles through the air before finding the {hit_location} of {target_name}'s {hit_location}. A tooth skips across the floor like a pebble.",
-            "victim_msg": "{attacker_name}'s baton whistles through the air before finding the {hit_location} of your {hit_location}. A tooth skips across the floor like a pebble.",
-            "observer_msg": "{attacker_name}'s baton whistles through the air before finding the {hit_location} of {target_name}'s {hit_location}. A tooth skips across the floor like a pebble."
+            "attacker_msg": "Your baton whistles through the air before finding the side of {target_name}'s {hit_location}. A tooth skips across the floor like a pebble.",
+            "victim_msg": "{attacker_name}'s baton whistles through the air before finding the side of your {hit_location}. A tooth skips across the floor like a pebble.",
+            "observer_msg": "{attacker_name}'s baton whistles through the air before finding the side of {target_name}'s {hit_location}. A tooth skips across the floor like a pebble."
         },
         {
             "attacker_msg": "There’s no wind-up, just impact — your baton slams into {target_name}'s {hit_location} with a crunch that bends posture and resolve.",
@@ -288,9 +288,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} jabs their baton into {target_name}'s {hit_location}, a precision hit that leaves them clawing at nothing. Their eyes say everything their voice can’t."
         },
         {
-            "attacker_msg": "You plant your {hit_location} and spin, the baton trailing like a tail of vengeance. It strikes {target_name} behind the ear. Hard.",
-            "victim_msg": "{attacker_name} plants their {hit_location} and spins, the baton trailing like a tail of vengeance. It strikes you behind the ear. Hard.",
-            "observer_msg": "{attacker_name} plants their {hit_location} and spins, the baton trailing like a tail of vengeance. It strikes {target_name} behind the ear. Hard."
+            "attacker_msg": "You plant your foot and spin, the baton trailing like a tail of vengeance. It strikes {target_name} behind the ear. Hard.",
+            "victim_msg": "{attacker_name} plants their foot and spins, the baton trailing like a tail of vengeance. It strikes you behind the ear. Hard.",
+            "observer_msg": "{attacker_name} plants their foot and spins, the baton trailing like a tail of vengeance. It strikes {target_name} behind the ear. Hard."
         },
         {
             "attacker_msg": "You use the baton like a punctuation mark, striking {target_name} mid-sentence. Words become blood.",
@@ -557,7 +557,7 @@ MESSAGES = {
             "observer_msg": "The end comes not with drama, but with a single, sickening thud from {attacker_name}'s baton. {attacker_name} doesn't gloat. They just breathe, as {target_name} falls."
         },
         {
-            "attacker_msg": "The killing blow from your baton is quiet, surgical. A twist of your {hit_location}, a final jab to the base of {target_name}'s {hit_location}. They never see it coming.",
+            "attacker_msg": "The killing blow from your baton is quiet, surgical. A twist of your wrist, a final jab to the base of {target_name}'s {hit_location}. They never see it coming.",
             "victim_msg": "The killing blow from {attacker_name}'s baton is quiet, surgical. A twist of their wrist, a final jab to the base of your {hit_location}. You never see it coming.",
             "observer_msg": "The killing blow from {attacker_name}'s baton is quiet, surgical. A twist of their wrist, a final jab to the base of {target_name}'s {hit_location}. They never see it coming."
         },

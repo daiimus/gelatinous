@@ -81,7 +81,7 @@ MESSAGES = {
             'observer_msg': "The shield snaps into place with a clatter. The noise makes people flinch. So does {attacker_name}."
         },
         {
-            'attacker_msg': "The small shield thuds against your {hit_location}. You smile. This one's personal.",
+            'attacker_msg': "The small shield thuds against your forearm. You smile. This one's personal.",
             'victim_msg': "The small shield thuds against {attacker_name}'s forearm. They smile. This one's personal.",
             'observer_msg': "The small shield thuds against {attacker_name}'s forearm. They smile. This one's personal."
         },
@@ -101,12 +101,12 @@ MESSAGES = {
             'observer_msg': "{attacker_name} draws the shield like a duelist preparing for the final round."
         },
         {
-            'attacker_msg': "You draw the small shield across your {hit_location} and lock stance. It doesn't need to be big — just brutal.",
+            'attacker_msg': "You draw the small shield across your chest and lock stance. It doesn't need to be big — just brutal.",
             'victim_msg': "{attacker_name} draws the small shield across their chest and locks stance. It doesn't need to be big — just brutal.",
             'observer_msg': "{attacker_name} draws the small shield across their chest and locks stance. It doesn't need to be big — just brutal."
         },
         {
-            'attacker_msg': "You flick the shield into place with a snap of your {hit_location}. The metal responds like it's been waiting.",
+            'attacker_msg': "You flick the shield into place with a snap of your wrist. The metal responds like it's been waiting.",
             'victim_msg': "{attacker_name} flicks the shield into place with a snap of their wrist. The metal responds like it's been waiting.",
             'observer_msg': "{attacker_name} flicks the shield into place with a snap of their wrist. The metal responds like it's been waiting."
         },
@@ -213,9 +213,9 @@ MESSAGES = {
             'observer_msg': "One quick jab to the {hit_location}. {target_name} stumbles like they forgot how bones work."
         },
         {
-            'attacker_msg': "One slam into the {hit_location} of the {hit_location} and {target_name} loses direction — and teeth.",
-            'victim_msg': "One slam into the {hit_location} of your {hit_location} and you lose direction — and teeth.",
-            'observer_msg': "One slam into the {hit_location} of the {hit_location} and {target_name} loses direction — and teeth."
+            'attacker_msg': "One slam into the side of the {hit_location} and {target_name} loses direction — and teeth.",
+            'victim_msg': "One slam into the side of your {hit_location} and you lose direction — and teeth.",
+            'observer_msg': "One slam into the side of the {hit_location} and {target_name} loses direction — and teeth."
         },
         {
             'attacker_msg': "The buckler cracks into {target_name}'s {hit_location}. Eyes cross. Knees follow.",
@@ -283,9 +283,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slams the shield into {target_name}'s {hit_location}. It snaps with a wet crack."
         },
         {
-            'attacker_msg': "You swing hard across {target_name}'s {hit_location}. They drop to one {hit_location}, dazed.",
-            'victim_msg': "{attacker_name} swings hard across your {hit_location}. You drop to one {hit_location}, dazed.",
-            'observer_msg': "{attacker_name} swings hard across {target_name}'s {hit_location}. They drop to one {hit_location}, dazed."
+            'attacker_msg': "You swing hard across {target_name}'s {hit_location}. They drop to one knee, dazed.",
+            'victim_msg': "{attacker_name} swings hard across your {hit_location}. You drop to one knee, dazed.",
+            'observer_msg': "{attacker_name} swings hard across {target_name}'s {hit_location}. They drop to one knee, dazed."
         },
         {
             'attacker_msg': "You swing the shield edge-first into {target_name}'s {hit_location}. They arch and scream.",

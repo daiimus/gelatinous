@@ -6,7 +6,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} whips out the cutlass, its broad, slightly curved blade glinting wickedly."
         },
         {
-            "attacker_msg": "With a flourish and a grin, you bring the cutlass to a ready guard, its basket hilt protecting your {hit_location}.",
+            "attacker_msg": "With a flourish and a grin, you bring the cutlass to a ready guard, its basket hilt protecting your hand.",
             "victim_msg": "With a flourish and a grin, {attacker_name} brings the cutlass to a ready guard, its basket hilt protecting their hand.",
             "observer_msg": "With a flourish and a grin, {attacker_name} brings the cutlass to a ready guard, its basket hilt protecting their hand."
         },
@@ -16,7 +16,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} tests the weight of the cutlass, the sturdy blade feeling eager in their grip."
         },
         {
-            "attacker_msg": "The cutlass flashes in your {hit_location}, a short, brutal promise of a close and bloody fight.",
+            "attacker_msg": "The cutlass flashes in your hand, a short, brutal promise of a close and bloody fight.",
             "victim_msg": "The cutlass flashes in {attacker_name}'s hand, a short, brutal promise of a close and bloody fight.",
             "observer_msg": "The cutlass flashes in {attacker_name}'s hand, a short, brutal promise of a close and bloody fight."
         },
@@ -86,7 +86,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} holds the cutlass in a forward-canted guard, ready to punch through defenses or hook a limb."
         },
         {
-            "attacker_msg": "The heavy, protective basket hilt of the cutlass is a solid counterweight in your {hit_location}.",
+            "attacker_msg": "The heavy, protective basket hilt of the cutlass is a solid counterweight in your hand.",
             "victim_msg": "The heavy, protective basket hilt of the cutlass is a solid counterweight in {attacker_name}'s hand.",
             "observer_msg": "The heavy, protective basket hilt of the cutlass is a solid counterweight in {attacker_name}'s hand."
         },
@@ -106,7 +106,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} yanks the cutlass free, the sound a harsh rasp of steel on leather, eager for action."
         },
         {
-            "attacker_msg": "The cutlass is a sailor's weapon in your {hit_location}, built for effectiveness in chaotic fights, not dueling finesse.",
+            "attacker_msg": "The cutlass is a sailor's weapon in your hand, built for effectiveness in chaotic fights, not dueling finesse.",
             "victim_msg": "The cutlass is a sailor's weapon in {attacker_name}'s hand, built for effectiveness in chaotic fights, not dueling finesse.",
             "observer_msg": "The cutlass is a sailor's weapon in {attacker_name}'s hand, built for effectiveness in chaotic fights, not dueling finesse."
         },
@@ -198,9 +198,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s blade whistles in a short arc before striking {target_name}'s exposed {hit_location} with a brutal crack."
         },
         {
-            "attacker_msg": "With a grunt of exertion, you drive the cutlass against {target_name}, forcing them {hit_location} with raw, brawling power.",
-            "victim_msg": "With a grunt of exertion, {attacker_name} drives the cutlass against you, forcing you {hit_location} with raw, brawling power.",
-            "observer_msg": "With a grunt of exertion, {attacker_name} drives the cutlass against {target_name}, forcing them {hit_location} with raw, brawling power."
+            "attacker_msg": "With a grunt of exertion, you drive the cutlass against {target_name}, forcing them back with raw, brawling power.",
+            "victim_msg": "With a grunt of exertion, {attacker_name} drives the cutlass against you, forcing you back with raw, brawling power.",
+            "observer_msg": "With a grunt of exertion, {attacker_name} drives the cutlass against {target_name}, forcing them back with raw, brawling power."
         },
         {
             "attacker_msg": "The cutlass scores a brutal hit on {target_name}'s shield {hit_location}, the impact numbing and nearly severing.",
@@ -213,9 +213,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s precise chop opens a ragged wound on {target_name}'s {hit_location}, blood welling quickly."
         },
         {
-            "attacker_msg": "A resounding thwack as your cutlass smashes against {target_name}'s {hit_location}or, denting it inward and breaking bone.",
-            "victim_msg": "A resounding thwack as {attacker_name}'s cutlass smashes against your {hit_location}or, denting it inward and breaking bone.",
-            "observer_msg": "A resounding thwack as {attacker_name}'s cutlass smashes against {target_name}'s {hit_location}or, denting it inward and breaking bone."
+            "attacker_msg": "A resounding thwack as your cutlass smashes against {target_name}'s armor, denting it inward and breaking bone.",
+            "victim_msg": "A resounding thwack as {attacker_name}'s cutlass smashes against your armor, denting it inward and breaking bone.",
+            "observer_msg": "A resounding thwack as {attacker_name}'s cutlass smashes against {target_name}'s armor, denting it inward and breaking bone."
         },
         {
             "attacker_msg": "The keen blade of the cutlass leaves a wide, bloody trail along {target_name}'s {hit_location}, a pirate's mark.",
@@ -228,9 +228,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s follow-through chop with the cutlass catches {target_name} with brutal force, sending them reeling."
         },
         {
-            "attacker_msg": "A flick of your {hit_location} sends the cutlass's point into {target_name}'s exposed {hit_location}, eliciting a scream.",
-            "victim_msg": "A flick of {attacker_name}'s {hit_location} sends the cutlass's point into your exposed {hit_location}, eliciting a scream.",
-            "observer_msg": "A flick of {attacker_name}'s {hit_location} sends the cutlass's point into {target_name}'s exposed {hit_location}, eliciting a scream."
+            "attacker_msg": "A flick of your wrist sends the cutlass's point into {target_name}'s exposed {hit_location}, eliciting a scream.",
+            "victim_msg": "A flick of {attacker_name}'s wrist sends the cutlass's point into your exposed {hit_location}, eliciting a scream.",
+            "observer_msg": "A flick of {attacker_name}'s wrist sends the cutlass's point into {target_name}'s exposed {hit_location}, eliciting a scream."
         },
         {
             "attacker_msg": "The cutlass sings its grim song as it connects with {target_name}, tearing flesh with its heavy edge.",
@@ -238,9 +238,9 @@ MESSAGES = {
             "observer_msg": "The cutlass sings its grim song as it connects with {target_name}, tearing flesh with its heavy edge."
         },
         {
-            "attacker_msg": "Your blade finds purchase, carving a horrific wound into {target_name}'s {hit_location}, dropping them to a {hit_location}.",
-            "victim_msg": "{attacker_name}'s blade finds purchase, carving a horrific wound into your {hit_location}, dropping you to a {hit_location}.",
-            "observer_msg": "{attacker_name}'s blade finds purchase, carving a horrific wound into {target_name}'s {hit_location}, dropping them to a {hit_location}."
+            "attacker_msg": "Your blade finds purchase, carving a horrific wound into {target_name}'s {hit_location}, dropping them to a knee.",
+            "victim_msg": "{attacker_name}'s blade finds purchase, carving a horrific wound into your {hit_location}, dropping you to a knee.",
+            "observer_msg": "{attacker_name}'s blade finds purchase, carving a horrific wound into {target_name}'s {hit_location}, dropping them to a knee."
         },
         {
             "attacker_msg": "A glancing blow from the cutlass still manages to rip through armor and draw significant blood from {target_name}.",
@@ -253,9 +253,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} presses the attack relentlessly, the cutlass a continuous, brutal assault that finally lands on {target_name}."
         },
         {
-            "attacker_msg": "The cutlass's edge meets flesh with a wet tearing sound, and {target_name} screams, stumbling {hit_location}.",
-            "victim_msg": "The cutlass's edge meets flesh with a wet tearing sound, and you scream, stumbling {hit_location}.",
-            "observer_msg": "The cutlass's edge meets flesh with a wet tearing sound, and {target_name} screams, stumbling {hit_location}."
+            "attacker_msg": "The cutlass's edge meets flesh with a wet tearing sound, and {target_name} screams, stumbling back.",
+            "victim_msg": "The cutlass's edge meets flesh with a wet tearing sound, and you scream, stumbling back.",
+            "observer_msg": "The cutlass's edge meets flesh with a wet tearing sound, and {target_name} screams, stumbling back."
         },
         {
             "attacker_msg": "Your chop is brutally effective, the cutlass's weight striking {target_name} with devastating force.",
@@ -467,7 +467,7 @@ MESSAGES = {
             "observer_msg": "A savage chop from the cutlass, and {target_name} falls, lifeblood gushing onto the deck."
         },
         {
-            "attacker_msg": "With a final, merciless slash, your cutlass silences {target_name} permanently, a wicked grin on your {hit_location}.",
+            "attacker_msg": "With a final, merciless slash, your cutlass silences {target_name} permanently, a wicked grin on your face.",
             "victim_msg": "With a final, merciless slash, {attacker_name}'s cutlass silences you permanently, a wicked grin on their face.",
             "observer_msg": "With a final, merciless slash, {attacker_name}'s cutlass silences {target_name} permanently, a wicked grin on their face."
         },

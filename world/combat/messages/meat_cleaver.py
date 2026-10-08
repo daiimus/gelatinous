@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the cleaver like a judge's gavel—sentence about to be passed."
         },
         {
-            'attacker_msg': "You let the cleaver rest on your {hit_location}, casual as a butcher at closing time.",
+            'attacker_msg': "You let the cleaver rest on your shoulder, casual as a butcher at closing time.",
             'victim_msg': "{attacker_name} lets the cleaver rest on their shoulder, casual as a butcher at closing time.",
             'observer_msg': "{attacker_name} lets the cleaver rest on their shoulder, casual as a butcher at closing time."
         },
@@ -136,7 +136,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} holds the cleaver like a brush, ready to paint in {blood}."
         },
         {
-            'attacker_msg': "You let the cleaver rest on your {hit_location}, eyes never leaving {target_name}.",
+            'attacker_msg': "You let the cleaver rest on your shoulder, eyes never leaving {target_name}.",
             'victim_msg': "{attacker_name} lets the cleaver rest on their shoulder, eyes never leaving you.",
             'observer_msg': "{attacker_name} lets the cleaver rest on their shoulder, eyes never leaving {target_name}."
         },
@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} draws the blade across {target_name}'s knuckles, bone crunching under the edge."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} opens {target_name}'s eyebrow. Blood blinds one eye.",
-            'victim_msg': "A flick of {attacker_name}'s {hit_location} opens your eyebrow. Blood blinds one eye.",
-            'observer_msg': "A flick of the {hit_location} opens {target_name}'s eyebrow. Blood blinds one eye."
+            'attacker_msg': "A flick of your wrist opens {target_name}'s eyebrow. Blood blinds one eye.",
+            'victim_msg': "A flick of {attacker_name}'s wrist opens your eyebrow. Blood blinds one eye.",
+            'observer_msg': "A flick of the wrist opens {target_name}'s eyebrow. Blood blinds one eye."
         },
         {
             'attacker_msg': "The blade punctures {target_name}'s {hit_location}, twisting before you pull it free.",
@@ -193,13 +193,13 @@ MESSAGES = {
             'observer_msg': "The blade punctures {target_name}'s {hit_location}, twisting before it's pulled free."
         },
         {
-            'attacker_msg': "You slash the {hit_location} of {target_name}'s {hit_location}, their weapon clattering to the floor.",
-            'victim_msg': "{attacker_name} slashes the {hit_location} of your {hit_location}, your weapon clattering to the floor.",
-            'observer_msg': "{attacker_name} slashes the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor."
+            'attacker_msg': "You slash the back of {target_name}'s {hit_location}, their weapon clattering to the floor.",
+            'victim_msg': "{attacker_name} slashes the back of your {hit_location}, your weapon clattering to the floor.",
+            'observer_msg': "{attacker_name} slashes the back of {target_name}'s {hit_location}, weapon clattering to the floor."
         },
         {
             'attacker_msg': "A heavy cut across the {hit_location} leaves {target_name} clutching at their guts.",
-            'victim_msg': "A heavy cut across the {hit_location} leaves you clutching at your {hit_location}s.",
+            'victim_msg': "A heavy cut across the {hit_location} leaves you clutching at your guts.",
             'observer_msg': "A heavy cut across the {hit_location} leaves {target_name} clutching at their guts."
         },
         {
@@ -268,9 +268,9 @@ MESSAGES = {
             'observer_msg': "The blade bites into {target_name}'s {hit_location}. The joint gives way."
         },
         {
-            'attacker_msg': "A slice across the {hit_location} of the {hit_location} leaves {target_name} howling.",
-            'victim_msg': "A slice across the {hit_location} of the {hit_location} leaves you howling.",
-            'observer_msg': "A slice across the {hit_location} of the {hit_location} leaves {target_name} howling."
+            'attacker_msg': "A slice across the back of the {hit_location} leaves {target_name} howling.",
+            'victim_msg': "A slice across the back of the {hit_location} leaves you howling.",
+            'observer_msg': "A slice across the back of the {hit_location} leaves {target_name} howling."
         },
         {
             'attacker_msg': "You bury the cleaver in {target_name}'s {hit_location}, twisting for emphasis.",
@@ -293,9 +293,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} carves a spiral up {target_name}'s {hit_location}. The pattern is deliberate."
         },
         {
-            'attacker_msg': "The blade slips between {hit_location}, blood welling with every breath.",
-            'victim_msg': "The blade slips between {hit_location}, blood welling with every breath.",
-            'observer_msg': "The blade slips between {hit_location}, blood welling with every breath."
+            'attacker_msg': "The blade slips between ribs, blood welling with every breath.",
+            'victim_msg': "The blade slips between ribs, blood welling with every breath.",
+            'observer_msg': "The blade slips between ribs, blood welling with every breath."
         },
         {
             'attacker_msg': "A quick slash opens {target_name}'s {hit_location}, teeth showing through the wound.",
@@ -340,7 +340,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} hacks at {target_name}, but the blade glances off armor."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} misses, the blade slicing only air.",
+            'attacker_msg': "A flick of your wrist misses, the blade slicing only air.",
             'victim_msg': "A flick of {attacker_name}'s wrist misses, the blade slicing only air.",
             'observer_msg': "A flick of the wrist misses, the blade slicing only air."
         },
@@ -445,7 +445,7 @@ MESSAGES = {
             'observer_msg': "The blade glances off a boot, doing nothing."
         },
         {
-            'attacker_msg': "A flick of your {hit_location} misses, the blade humming in the air.",
+            'attacker_msg': "A flick of your wrist misses, the blade humming in the air.",
             'victim_msg': "A flick of {attacker_name}'s wrist misses, the blade humming in the air.",
             'observer_msg': "A flick of the wrist misses, the blade humming in the air."
         },

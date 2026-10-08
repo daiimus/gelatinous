@@ -86,7 +86,7 @@ MESSAGES = {
             'observer_msg': "This isn't a combat knife — it's a tool turned legend. {attacker_name} grips the machete with both hands."
         },
         {
-            'attacker_msg': "With a flick, you free the machete from your {hit_location}. It's heavy, brutal, perfect.",
+            'attacker_msg': "With a flick, you free the machete from your back. It's heavy, brutal, perfect.",
             'victim_msg': "With a flick, {attacker_name} frees the machete from their back. It's heavy, brutal, perfect.",
             'observer_msg': "With a flick, {attacker_name} frees the machete from their back. It's heavy, brutal, perfect."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} grips the machete in both hands. The weight settles like a sentence passed."
         },
         {
-            'attacker_msg': "You pull the machete from behind your {hit_location} like a secret you've been waiting to tell.",
+            'attacker_msg': "You pull the machete from behind your back like a secret you've been waiting to tell.",
             'victim_msg': "{attacker_name} pulls the machete from behind their back like a secret they've been waiting to tell.",
             'observer_msg': "{attacker_name} pulls the machete from behind their back like a secret they've been waiting to tell."
         },
@@ -126,7 +126,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} pulls the machete from its sheath with a long metallic rasp. Everyone hears it."
         },
         {
-            'attacker_msg': "You rest the flat of the machete against your {hit_location}. The edge points forward, already deciding the outcome.",
+            'attacker_msg': "You rest the flat of the machete against your shoulder. The edge points forward, already deciding the outcome.",
             'victim_msg': "{attacker_name} rests the flat of the machete against their shoulder. The edge points forward, already deciding the outcome.",
             'observer_msg': "{attacker_name} rests the flat of the machete against their shoulder. The edge points forward, already deciding the outcome."
         },
@@ -208,7 +208,7 @@ MESSAGES = {
             'observer_msg': "One upward swing slices {target_name}'s {hit_location} open. The machete speaks in viscera."
         },
         {
-            'attacker_msg': "Steel crashes against {hit_location}. {target_name} shrieks and drops like bricks.",
+            'attacker_msg': "Steel crashes against the {hit_location}. {target_name} shrieks and drops like bricks.",
             'victim_msg': "Steel crashes against your {hit_location}. You shriek and drop like bricks.",
             'observer_msg': "Steel crashes against {target_name}'s {hit_location}. {target_name} shrieks and drops like bricks."
         },
@@ -298,7 +298,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} slashes across {target_name}'s {hit_location}. The shirt darkens fast."
         },
         {
-            'attacker_msg': "You slash downward, opening a jagged wound from {hit_location} to chest.",
+            'attacker_msg': "You slash downward, opening a jagged wound from {target_name}'s {hit_location} to chest.",
             'victim_msg': "{attacker_name} slashes downward, opening a jagged wound from your {hit_location} to chest.",
             'observer_msg': "{attacker_name} slashes downward, opening a jagged wound from {target_name}'s {hit_location} to chest."
         }

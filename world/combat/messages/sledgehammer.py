@@ -86,7 +86,7 @@ MESSAGES = {
             'observer_msg': "The weapon hangs heavy in {attacker_name}'s grip. The silence stretches to meet it."
         },
         {
-            'attacker_msg': "The weight rests against your {hit_location}. It's not heavy. It's familiar.",
+            'attacker_msg': "The weight rests against your shoulder. It's not heavy. It's familiar.",
             'victim_msg': "The weight rests against {attacker_name}'s shoulder. It's not heavy. It's familiar.",
             'observer_msg': "The weight rests against {attacker_name}'s shoulder. It's not heavy. It's familiar."
         },
@@ -136,7 +136,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} plants both feet and leans into the grip. This is happening."
         },
         {
-            'attacker_msg': "You roll your {hit_location}, then the hammer — both promise pain.",
+            'attacker_msg': "You roll your neck, then the hammer — both promise pain.",
             'victim_msg': "{attacker_name} rolls their neck, then the hammer — both promise pain.",
             'observer_msg': "{attacker_name} rolls their neck, then the hammer — both promise pain."
         },
@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "A short arc blasts into {target_name}'s {hit_location}. They go down in a clatter of limbs."
         },
         {
-            'attacker_msg': "A sideways swing folds them at the {hit_location}. They groan like a dying engine.",
-            'victim_msg': "A sideways swing folds you at the {hit_location}. You groan like a dying engine.",
-            'observer_msg': "A sideways swing folds {target_name} at the {hit_location}. They groan like a dying engine."
+            'attacker_msg': "A sideways swing folds them at the waist. They groan like a dying engine.",
+            'victim_msg': "A sideways swing folds you at the waist. You groan like a dying engine.",
+            'observer_msg': "A sideways swing folds {target_name} at the waist. They groan like a dying engine."
         },
         {
             'attacker_msg': "A sweeping blow crashes into their {hit_location}. They collapse mid-step.",

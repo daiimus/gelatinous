@@ -6,7 +6,7 @@ MESSAGES = {
             "observer_msg": "A flash of steel. That's all {attacker_name} offers before stepping forward, knife low and ready."
         },
         {
-            "attacker_msg": "A flick of your {hit_location} brings the blade into view. You step closer with intent stitched into your stride.",
+            "attacker_msg": "A flick of your wrist brings the blade into view. You step closer with intent stitched into your stride.",
             "victim_msg": "A flick of the wrist, and the blade appears. {attacker_name} steps closer with intent stitched into their stride.",
             "observer_msg": "A flick of the wrist, and the blade appears. {attacker_name} steps closer with intent stitched into their stride."
         },
@@ -31,7 +31,7 @@ MESSAGES = {
             "observer_msg": "A small weapon for a personal job. {attacker_name} grips it like they're writing a final sentence."
         },
         {
-            "attacker_msg": "It's not big. It's not loud. But in your {hit_location}, the knife becomes a conclusion.",
+            "attacker_msg": "It's not big. It's not loud. But in your hand, the knife becomes a conclusion.",
             "victim_msg": "It's not big. It's not loud. But in {attacker_name}'s hand, the knife becomes a conclusion.",
             "observer_msg": "It's not big. It's not loud. But in {attacker_name}'s hand, the knife becomes a conclusion."
         },
@@ -41,7 +41,7 @@ MESSAGES = {
             "observer_msg": "No speech. Just steel. {attacker_name} draws the knife with the calm of someone already decided."
         },
         {
-            "attacker_msg": "Steel meets your {hit_location}. The connection is instinctive. You already know how this ends.",
+            "attacker_msg": "Steel meets your hand. The connection is instinctive. You already know how this ends.",
             "victim_msg": "Steel meets hand. The connection is instinctive. {attacker_name} already knows how this ends.",
             "observer_msg": "Steel meets hand. The connection is instinctive. {attacker_name} already knows how this ends."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             "observer_msg": "{attacker_name} draws the knife from their boot with a smooth, silent motion. It's not showy — it's certain."
         },
         {
-            "attacker_msg": "You draw the knife so smoothly it's like it was always in your {hit_location}, just waiting to be noticed.",
+            "attacker_msg": "You draw the knife so smoothly it's like it was always in your hand, just waiting to be noticed.",
             "victim_msg": "{attacker_name} draws the knife so smoothly it's like it was always in hand, just waiting to be noticed.",
             "observer_msg": "{attacker_name} draws the knife so smoothly it's like it was always in hand, just waiting to be noticed."
         },
@@ -250,7 +250,7 @@ MESSAGES = {
             "observer_msg": "A fast jab misses. The wind it leaves behind still rattles nerves."
         },
         {
-            "attacker_msg": "A flick of your {hit_location} sends the knife off-course. It whistles past their neck like a warning.",
+            "attacker_msg": "A flick of your wrist sends the knife off-course. It whistles past their neck like a warning.",
             "victim_msg": "A flick of the wrist sends the knife off-course. It whistles past your {hit_location} like a warning.",
             "observer_msg": "A flick of the wrist sends the knife off-course. It whistles past the neck like a warning."
         },
@@ -392,7 +392,7 @@ MESSAGES = {
             "observer_msg": "A deep stab to the heart. It's not theatrical. Just final."
         },
         {
-            "attacker_msg": "A flash of steel. A jerk of your {hit_location}. {target_name} drops before they know what happened.",
+            "attacker_msg": "A flash of steel. A jerk of your wrist. {target_name} drops before they know what happened.",
             "victim_msg": "A flash of steel. A jerk of the wrist. You drop before you know what happened.",
             "observer_msg": "A flash of steel. A jerk of the wrist. {target_name} drops before they know what happened."
         },

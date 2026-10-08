@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s eyes are hard and practical, sighting along the brutal edge of the falchion."
         },
         {
-            'attacker_msg': "The falchion feels like a butcher's tool in your {hit_location}, perfectly designed for its grim task.",
+            'attacker_msg': "The falchion feels like a butcher's tool in your hand, perfectly designed for its grim task.",
             'victim_msg': "The falchion feels like a butcher's tool in {attacker_name}'s hand, perfectly designed for its grim task.",
             'observer_msg': "The falchion feels like a butcher's tool in {attacker_name}'s hand, perfectly designed for its grim task."
         },
@@ -106,7 +106,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} yanks the falchion free, the sound a coarse scrape of steel on leather."
         },
         {
-            'attacker_msg': "The falchion is a common soldier's weapon in your {hit_location}, built for brutal effectiveness.",
+            'attacker_msg': "The falchion is a common soldier's weapon in your hand, built for brutal effectiveness.",
             'victim_msg': "The falchion is a common soldier's weapon in {attacker_name}'s hand, built for brutal effectiveness.",
             'observer_msg': "The falchion is a common soldier's weapon in {attacker_name}'s hand, built for brutal effectiveness."
         },
@@ -136,7 +136,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} seems to lean into the weight of the falchion, ready to unleash its full force."
         },
         {
-            'attacker_msg': "The silence is broken by the thud of you stamping your {hit_location}, falchion held ready.",
+            'attacker_msg': "The silence is broken by the thud of you stamping your foot, falchion held ready.",
             'victim_msg': "The silence is broken by the thud of {attacker_name} stamping their foot, falchion held ready.",
             'observer_msg': "The silence is broken by the thud of {attacker_name} stamping their foot, falchion held ready."
         },
@@ -213,9 +213,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s savage chop opens a wide, bleeding wound on {target_name}'s {hit_location}."
         },
         {
-            'attacker_msg': "A resounding thwack as your falchion smashes against {target_name}'s {hit_location}or, denting it and breaking bones.",
-            'victim_msg': "A resounding thwack as {attacker_name}'s falchion smashes against your {hit_location}or, denting it and breaking bones.",
-            'observer_msg': "A resounding thwack as {attacker_name}'s falchion smashes against {target_name}'s {hit_location}or, denting it and breaking bones."
+            'attacker_msg': "A resounding thwack as your falchion smashes against {target_name}'s armor, denting it and breaking bones.",
+            'victim_msg': "A resounding thwack as {attacker_name}'s falchion smashes against your armor, denting it and breaking bones.",
+            'observer_msg': "A resounding thwack as {attacker_name}'s falchion smashes against {target_name}'s armor, denting it and breaking bones."
         },
         {
             'attacker_msg': "The keen, heavy blade of the falchion leaves a wide, bloody trail along {target_name}'s {hit_location}.",

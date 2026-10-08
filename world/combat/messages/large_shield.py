@@ -293,9 +293,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} shoves the shield into {target_name}'s {hit_location}. {target_name} gasps like the wind was evicted."
         },
         {
-            'attacker_msg': "You swing the shield like a door unhinged. It slams into {hit_location} and intent alike.",
-            'victim_msg': "{attacker_name} swings the shield like a door unhinged. It slams into {hit_location} and intent alike.",
-            'observer_msg': "{attacker_name} swings the shield like a door unhinged. It slams into {hit_location} and intent alike."
+            'attacker_msg': "You swing the shield like a door unhinged. It slams into the {hit_location} and intent alike.",
+            'victim_msg': "{attacker_name} swings the shield like a door unhinged. It slams into the {hit_location} and intent alike.",
+            'observer_msg': "{attacker_name} swings the shield like a door unhinged. It slams into the {hit_location} and intent alike."
         },
         {
             'attacker_msg': "You use the shield like a hammer, smashing {target_name}'s {hit_location} sideways.",

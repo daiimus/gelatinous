@@ -26,7 +26,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} cocks the hammer or action of the flare gun, its simple mechanism ready to launch a burning projectile."
         },
         {
-            'attacker_msg': "The flare gun, often plastic or rugged metal, feels chunky and purposeful in your {hit_location}.",
+            'attacker_msg': "The flare gun, often plastic or rugged metal, feels chunky and purposeful in your hand.",
             'victim_msg': "The flare gun, often plastic or rugged metal, feels chunky and purposeful in {attacker_name}'s hand.",
             'observer_msg': "The flare gun, often plastic or rugged metal, feels chunky and purposeful in {attacker_name}'s hand."
         },
@@ -61,7 +61,7 @@ MESSAGES = {
             'observer_msg': "The air seems to still as {attacker_name} prepares to fire the flare gun, anticipating the sudden eruption of light and sound."
         },
         {
-            'attacker_msg': "Your {hit_location} is set in concentration, finger tightening on the flare gun's trigger.",
+            'attacker_msg': "Your face is set in concentration, finger tightening on the flare gun's trigger.",
             'victim_msg': "{attacker_name}'s face is set in concentration, finger tightening on the flare gun's trigger.",
             'observer_msg': "{attacker_name}'s face is set in concentration, finger tightening on the flare gun's trigger."
         },
@@ -168,9 +168,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s flare gun shot hits {target_name}'s {hit_location}, the flare burning fiercely and setting clothes alight, causing screams of agony."
         },
         {
-            'attacker_msg': "Sparks and burning magnesium fly as the flare from your gun strikes {target_name}, who stumbles {hit_location}, beating at the flames.",
-            'victim_msg': "Sparks and burning magnesium fly as the flare from {attacker_name}'s gun strikes you, and you stumble {hit_location}, beating at the flames.",
-            'observer_msg': "Sparks and burning magnesium fly as the flare from {attacker_name}'s gun strikes {target_name}, who stumbles {hit_location}, beating at the flames."
+            'attacker_msg': "Sparks and burning magnesium fly as the flare from your gun strikes {target_name}, who stumbles back, beating at the flames.",
+            'victim_msg': "Sparks and burning magnesium fly as the flare from {attacker_name}'s gun strikes you, and you stumble back, beating at the flames.",
+            'observer_msg': "Sparks and burning magnesium fly as the flare from {attacker_name}'s gun strikes {target_name}, who stumbles back, beating at the flames."
         },
         {
             'attacker_msg': "The burning projectile from the flare gun embeds itself shallowly in {target_name}'s {hit_location}, the intense heat searing flesh and bone.",
@@ -223,9 +223,9 @@ MESSAGES = {
             'observer_msg': "The unyielding chemical fire from {attacker_name}'s flare projectile sears {target_name}'s flesh on impact, the smell of burning filling the air."
         },
         {
-            'attacker_msg': "Your flare slams into {target_name}, the impact knocking them {hit_location} as the flare's payload ignites, burning them severely.",
-            'victim_msg': "{attacker_name}'s flare slams into you, the impact knocking you {hit_location} as the flare's payload ignites, burning you severely.",
-            'observer_msg': "{attacker_name}'s flare slams into {target_name}, the impact knocking them {hit_location} as the flare's payload ignites, burning them severely."
+            'attacker_msg': "Your flare slams into {target_name}, the impact knocking them back as the flare's payload ignites, burning them severely.",
+            'victim_msg': "{attacker_name}'s flare slams into you, the impact knocking you back as the flare's payload ignites, burning you severely.",
+            'observer_msg': "{attacker_name}'s flare slams into {target_name}, the impact knocking them back as the flare's payload ignites, burning them severely."
         },
         {
             'attacker_msg': "A desperate shot from the flare gun hits {target_name}'s {hit_location}, which is instantly wreathed in searing, chemical flames.",
@@ -365,7 +365,7 @@ MESSAGES = {
             'observer_msg': "A quick sidestep from {target_name} leaves {attacker_name}'s flare gun to launch its payload into an empty doorway."
         },
         {
-            'attacker_msg': "The flare gun bucks in your {hit_location} as you miss, the recoil throwing off your aim for a follow-up (if you had one).",
+            'attacker_msg': "The flare gun bucks in your hand as you miss, the recoil throwing off your aim for a follow-up (if you had one).",
             'victim_msg': "The flare gun bucks in {attacker_name}'s hand as they miss, the recoil throwing off their aim for a follow-up (if they had one).",
             'observer_msg': "The flare gun bucks in {attacker_name}'s hand as they miss, the recoil throwing off their aim for a follow-up (if they had one)."
         },

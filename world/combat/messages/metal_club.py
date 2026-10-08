@@ -51,7 +51,7 @@ MESSAGES = {
             'observer_msg': "The club rotates once before locking into a ready grip. {attacker_name} doesn't pose — they prepare."
         },
         {
-            'attacker_msg': "The club's handle fits like a memory in your {hit_location}. Bad ones. Repeatable ones.",
+            'attacker_msg': "The club's handle fits like a memory in your hand. Bad ones. Repeatable ones.",
             'victim_msg': "The club's handle fits like a memory in {attacker_name}'s hand. Bad ones. Repeatable ones.",
             'observer_msg': "The club's handle fits like a memory in {attacker_name}'s hand. Bad ones. Repeatable ones."
         },
@@ -116,7 +116,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} hoists the club like it's not the first time. The dents say it's not the last either."
         },
         {
-            'attacker_msg': "You pull the club free from your {hit_location}. Gravity does the rest.",
+            'attacker_msg': "You pull the club free from your back. Gravity does the rest.",
             'victim_msg': "{attacker_name} pulls the club free from their back. Gravity does the rest.",
             'observer_msg': "{attacker_name} pulls the club free from their back. Gravity does the rest."
         },
@@ -131,7 +131,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} raises the club with deliberate ease. They've been waiting for this moment."
         },
         {
-            'attacker_msg': "You roll the club in your {hit_location} like it's a coin flip that only ends one way.",
+            'attacker_msg': "You roll the club in your hand like it's a coin flip that only ends one way.",
             'victim_msg': "{attacker_name} rolls the club in their hand like it's a coin flip that only ends one way.",
             'observer_msg': "{attacker_name} rolls the club in their hand like it's a coin flip that only ends one way."
         },
@@ -178,9 +178,9 @@ MESSAGES = {
             'observer_msg': "A quick step and a brutal swing lands across {target_name}'s {hit_location}. They scream and collapse like scaffolding."
         },
         {
-            'attacker_msg': "A {hit_location} swing crashes into {target_name}'s {hit_location}. It's not broken — it's ruined.",
-            'victim_msg': "A {hit_location} swing crashes into your {hit_location}. It's not broken — it's ruined.",
-            'observer_msg': "A {hit_location} swing crashes into {target_name}'s {hit_location}. It's not broken — it's ruined."
+            'attacker_msg': "A side swing crashes into {target_name}'s {hit_location}. It's not broken — it's ruined.",
+            'victim_msg': "A side swing crashes into your {hit_location}. It's not broken — it's ruined.",
+            'observer_msg': "A side swing crashes into {target_name}'s {hit_location}. It's not broken — it's ruined."
         },
         {
             'attacker_msg': "A sudden backhand with the club rings off {target_name}'s {hit_location}. Teeth clatter to the floor.",
@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "The club slams into {target_name}'s {hit_location}. They drop as if the gravity was suddenly personal."
         },
         {
-            'attacker_msg': "The club smashes into {target_name}'s {hit_location}. They scream as their stance gives way, {hit_location} folding wrong.",
-            'victim_msg': "The club smashes into your {hit_location}. You scream as your stance gives way, {hit_location} folding wrong.",
-            'observer_msg': "The club smashes into {target_name}'s {hit_location}. They scream as their stance gives way, {hit_location} folding wrong."
+            'attacker_msg': "The club smashes into {target_name}'s {hit_location}. They scream as their stance gives way, leg folding wrong.",
+            'victim_msg': "The club smashes into your {hit_location}. You scream as your stance gives way, leg folding wrong.",
+            'observer_msg': "The club smashes into {target_name}'s {hit_location}. They scream as their stance gives way, leg folding wrong."
         },
         {
             'attacker_msg': "The club smashes through {target_name}'s grip. Their weapon clatters uselessly away.",
@@ -263,9 +263,9 @@ MESSAGES = {
             'observer_msg': "The metal rod catches the {hit_location} mid-guard. Bones snap. The defense is over."
         },
         {
-            'attacker_msg': "The rod drives into the {hit_location}, and {target_name} folds awkwardly, {hit_location} clutching bone that's no longer whole.",
-            'victim_msg': "The rod drives into the {hit_location}, and you fold awkwardly, {hit_location} clutching bone that's no longer whole.",
-            'observer_msg': "The rod drives into the {hit_location}, and {target_name} folds awkwardly, {hit_location} clutching bone that's no longer whole."
+            'attacker_msg': "The rod drives into the {hit_location}, and {target_name} folds awkwardly, hand clutching bone that's no longer whole.",
+            'victim_msg': "The rod drives into the {hit_location}, and you fold awkwardly, hand clutching bone that's no longer whole.",
+            'observer_msg': "The rod drives into the {hit_location}, and {target_name} folds awkwardly, hand clutching bone that's no longer whole."
         },
         {
             'attacker_msg': "You bring the club down on the {hit_location}. The crack is sharp. So is the cry.",
@@ -278,14 +278,14 @@ MESSAGES = {
             'observer_msg': "{attacker_name} brings the metal down hard on the {hit_location}. Bone gives. So does the will to fight."
         },
         {
-            'attacker_msg': "You drive the club into the {hit_location} of the {hit_location}. {target_name} falls like a shelf giving out.",
-            'victim_msg': "{attacker_name} drives the club into the {hit_location} of the {hit_location}. You fall like a shelf giving out.",
-            'observer_msg': "{attacker_name} drives the club into the {hit_location} of the {hit_location}. {target_name} falls like a shelf giving out."
+            'attacker_msg': "You drive the club into the side of the {hit_location}. {target_name} falls like a shelf giving out.",
+            'victim_msg': "{attacker_name} drives the club into the side of the {hit_location}. You fall like a shelf giving out.",
+            'observer_msg': "{attacker_name} drives the club into the side of the {hit_location}. {target_name} falls like a shelf giving out."
         },
         {
-            'attacker_msg': "You hook the end under the chin. {target_name}'s {hit_location} whips {hit_location}, and the {hit_location}s follow.",
-            'victim_msg': "{attacker_name} hooks the end under the chin. Your {hit_location} whips {hit_location}, and the {hit_location}s follow.",
-            'observer_msg': "{attacker_name} hooks the end under the chin. {target_name}'s {hit_location} whips {hit_location}, and the {hit_location}s follow."
+            'attacker_msg': "You hook the end under the chin. {target_name}'s {hit_location} whips back, and the knees follow.",
+            'victim_msg': "{attacker_name} hooks the end under the chin. Your {hit_location} whips back, and the knees follow.",
+            'observer_msg': "{attacker_name} hooks the end under the chin. {target_name}'s {hit_location} whips back, and the knees follow."
         },
         {
             'attacker_msg': "You jab the club into the {hit_location}. Once. Twice. The third time knocks something loose.",

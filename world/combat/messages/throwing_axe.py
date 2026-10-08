@@ -11,7 +11,7 @@ MESSAGES = {
             'observer_msg': "The throwing axe gleams wickedly as {attacker_name} grips the handle, eyes fixed on {target_name}."
         },
         {
-            'attacker_msg': "You test the balance of your throwing axe, then cock your {hit_location} back toward {target_name}.",
+            'attacker_msg': "You test the balance of your throwing axe, then cock your arm back toward {target_name}.",
             'victim_msg': "{attacker_name} tests the balance of their throwing axe, then cocks their arm back toward you.",
             'observer_msg': "{attacker_name} tests the balance of their throwing axe, then cocks their arm back toward {target_name}."
         },
@@ -41,7 +41,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} grips the axe handle firmly, muscles tensing as they prepare to hurl it at {target_name}."
         },
         {
-            'attacker_msg': "The throwing axe feels heavy in your {hit_location} as you line up your shot on {target_name}.",
+            'attacker_msg': "The throwing axe feels heavy in your hand as you line up your shot on {target_name}.",
             'victim_msg': "The throwing axe feels heavy in {attacker_name}'s hand as they line up their shot on you.",
             'observer_msg': "The throwing axe feels heavy in {attacker_name}'s hand as they line up their shot on {target_name}."
         },
@@ -68,9 +68,9 @@ MESSAGES = {
             'observer_msg': "Perfect rotation! The throwing axe embeds itself in {target_name}, the weight driving the blade deep."
         },
         {
-            'attacker_msg': "The axe {hit_location} gleams as it spins through the air, finding its mark in {target_name} with devastating impact.",
-            'victim_msg': "The axe {hit_location} gleams as it spins through the air, finding its mark in you with devastating impact.",
-            'observer_msg': "The axe {hit_location} gleams as it spins through the air, finding its mark in {target_name} with devastating impact."
+            'attacker_msg': "The axe head gleams as it spins through the air, finding its mark in {target_name} with devastating impact.",
+            'victim_msg': "The axe head gleams as it spins through the air, finding its mark in you with devastating impact.",
+            'observer_msg': "The axe head gleams as it spins through the air, finding its mark in {target_name} with devastating impact."
         },
         {
             'attacker_msg': "{target_name} staggers as the throwing axe buries itself in their flesh, the heavy blade doing terrible damage.",

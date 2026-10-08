@@ -6,7 +6,7 @@ MESSAGES = {
             'observer_msg': "A guttural sound fills the room as {attacker_name} turns over their saw. It doesn't want to start — it *needs* to."
         },
         {
-            'attacker_msg': "A single rev makes the air vibrate. You tilt your {hit_location}, like you're listening for the exact moment fear begins.",
+            'attacker_msg': "A single rev makes the air vibrate. You tilt your head, like you're listening for the exact moment fear begins.",
             'victim_msg': "A single rev makes the air vibrate. {attacker_name} tilts their head, like they're listening for the exact moment fear begins.",
             'observer_msg': "A single rev makes the air vibrate. {attacker_name} tilts their head, like they're listening for the exact moment fear begins."
         },
@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "A spray of {blood} arcs into the air as {attacker_name} drives the saw into {target_name}'s {hit_location}. The sound is wet, grinding — unforgettable."
         },
         {
-            'attacker_msg': "A vertical plunge opens {target_name} from {hit_location} to {hit_location}. The wound screams even if they don't.",
-            'victim_msg': "A vertical plunge opens you from {hit_location} to {hit_location}. The wound screams even if you don't.",
-            'observer_msg': "A vertical plunge opens {target_name} from {hit_location} to {hit_location}. The wound screams even if they don't."
+            'attacker_msg': "A vertical plunge opens {target_name} from clavicle to sternum. The wound screams even if they don't.",
+            'victim_msg': "A vertical plunge opens you from clavicle to sternum. The wound screams even if you don't.",
+            'observer_msg': "A vertical plunge opens {target_name} from clavicle to sternum. The wound screams even if they don't."
         },
         {
             'attacker_msg': "Chainsaw teeth rake across {target_name}'s {hit_location}, dragging sparks and fluids in equal measure. The roar drowns out the agony.",
@@ -248,9 +248,9 @@ MESSAGES = {
             'observer_msg': "It connects with {target_name}'s {hit_location} and vibrates like a tuning fork. Their scream dies mid-breath."
         },
         {
-            'attacker_msg': "It doesn't go in clean. It *grinds*, catching on {hit_location}, dragging. {target_name} bucks like their body wants to flee itself.",
-            'victim_msg': "It doesn't go in clean. It *grinds*, catching on {hit_location}, dragging. You buck like your body wants to flee itself.",
-            'observer_msg': "It doesn't go in clean. It *grinds*, catching on {hit_location}, dragging. {target_name} bucks like their body wants to flee itself."
+            'attacker_msg': "It doesn't go in clean. It *grinds*, catching on the {hit_location}, dragging. {target_name} bucks like their body wants to flee itself.",
+            'victim_msg': "It doesn't go in clean. It *grinds*, catching on the {hit_location}, dragging. You buck like your body wants to flee itself.",
+            'observer_msg': "It doesn't go in clean. It *grinds*, catching on the {hit_location}, dragging. {target_name} bucks like their body wants to flee itself."
         },
         {
             'attacker_msg': "It hits and stays there, teeth chewing deeper. {target_name}'s resistance falters, buckling under the brutal thrum.",
@@ -263,14 +263,14 @@ MESSAGES = {
             'observer_msg': "It hits at an angle. Not clean. Not kind. The saw chews and {target_name} shrieks, dancing with death they didn't invite."
         },
         {
-            'attacker_msg': "One {hit_location} of {target_name} caves in under the churning chain. Their body doesn't break — it *melts* around the motion.",
-            'victim_msg': "One {hit_location} of you caves in under the churning chain. Your body doesn't break — it *melts* around the motion.",
-            'observer_msg': "One {hit_location} of {target_name} caves in under the churning chain. Their body doesn't break — it *melts* around the motion."
+            'attacker_msg': "One side of {target_name} caves in under the churning chain. Their body doesn't break — it *melts* around the motion.",
+            'victim_msg': "One side of you caves in under the churning chain. Your body doesn't break — it *melts* around the motion.",
+            'observer_msg': "One side of {target_name} caves in under the churning chain. Their body doesn't break — it *melts* around the motion."
         },
         {
-            'attacker_msg': "One slash, from {hit_location} to {hit_location}. {target_name} collapses mid-turn, blood trailing behind them like punctuation.",
-            'victim_msg': "One slash, from {hit_location} to {hit_location}. You collapse mid-turn, blood trailing behind you like punctuation.",
-            'observer_msg': "One slash, from {hit_location} to {hit_location}. {target_name} collapses mid-turn, blood trailing behind them like punctuation."
+            'attacker_msg': "One slash, from shoulder to hip. {target_name} collapses mid-turn, blood trailing behind them like punctuation.",
+            'victim_msg': "One slash, from shoulder to hip. You collapse mid-turn, blood trailing behind you like punctuation.",
+            'observer_msg': "One slash, from shoulder to hip. {target_name} collapses mid-turn, blood trailing behind them like punctuation."
         },
         {
             'attacker_msg': "Steel roars against bone. {target_name} crumples, twitching, as the saw finishes its sentence.",

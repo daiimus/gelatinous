@@ -1,7 +1,7 @@
 MESSAGES = {
     "initiate": [
         {
-            'attacker_msg': "You draw back your {hit_location}, throwing knife glinting as you take aim at {target_name}.",
+            'attacker_msg': "You draw back your arm, throwing knife glinting as you take aim at {target_name}.",
             'victim_msg': "{attacker_name} draws back their arm, throwing knife glinting as they take aim at you.",
             'observer_msg': "{attacker_name} draws back their arm, throwing knife glinting as they take aim at {target_name}."
         },
@@ -26,12 +26,12 @@ MESSAGES = {
             'observer_msg': "Steel flashes as {attacker_name} prepares to hurl their throwing knife at {target_name}."
         },
         {
-            'attacker_msg': "You draw your {hit_location} back, throwing knife poised like a deadly dart aimed at {target_name}.",
+            'attacker_msg': "You draw your arm back, throwing knife poised like a deadly dart aimed at {target_name}.",
             'victim_msg': "{attacker_name} draws their arm back, throwing knife poised like a deadly dart aimed at you.",
             'observer_msg': "{attacker_name} draws their arm back, throwing knife poised like a deadly dart aimed at {target_name}."
         },
         {
-            'attacker_msg': "The throwing knife spins once in your {hit_location} before you cock your {hit_location} back toward {target_name}.",
+            'attacker_msg': "The throwing knife spins once in your hand before you cock your arm back toward {target_name}.",
             'victim_msg': "The throwing knife spins once in {attacker_name}'s hand before they cock their arm back toward you.",
             'observer_msg': "The throwing knife spins once in {attacker_name}'s hand before they cock their arm back toward {target_name}."
         },

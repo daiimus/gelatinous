@@ -26,7 +26,7 @@ MESSAGES = {
             'observer_msg': "It's bent from past impacts. So is {attacker_name}."
         },
         {
-            'attacker_msg': "It's not balanced, not clean, but it fits your {hit_location} like a promise.",
+            'attacker_msg': "It's not balanced, not clean, but it fits your hand like a promise.",
             'victim_msg': "It's not balanced, not clean, but it fits {attacker_name}'s hand like a promise.",
             'observer_msg': "It's not balanced, not clean, but it fits {attacker_name}'s hand like a promise."
         },
@@ -66,7 +66,7 @@ MESSAGES = {
             'observer_msg': "The iron swings in a lazy arc before {attacker_name} catches it with purpose."
         },
         {
-            'attacker_msg': "The metal tool knocks against your {hit_location} once. Ritual complete.",
+            'attacker_msg': "The metal tool knocks against your knee once. Ritual complete.",
             'victim_msg': "The metal tool knocks against {attacker_name}'s knee once. Ritual complete.",
             'observer_msg': "The metal tool knocks against {attacker_name}'s knee once. Ritual complete."
         },
@@ -223,19 +223,19 @@ MESSAGES = {
             'observer_msg': "The hook end cuts {target_name}'s {hit_location}. {Blood} splits wide. They stagger."
         },
         {
-            'attacker_msg': "The iron clips the {hit_location} of the {hit_location}. Blood joins the noise.",
-            'victim_msg': "The iron clips the {hit_location} of your {hit_location}. Blood joins the noise.",
-            'observer_msg': "The iron clips the {hit_location} of {target_name}'s {hit_location}. Blood joins the noise."
+            'attacker_msg': "The iron clips the side of the {hit_location}. Blood joins the noise.",
+            'victim_msg': "The iron clips the side of your {hit_location}. Blood joins the noise.",
+            'observer_msg': "The iron clips the side of {target_name}'s {hit_location}. Blood joins the noise."
         },
         {
-            'attacker_msg': "The iron crashes into the {hit_location} of the {hit_location}. {target_name} folds inward, screaming.",
-            'victim_msg': "The iron crashes into the {hit_location} of your {hit_location}. You fold inward, screaming.",
-            'observer_msg': "The iron crashes into the {hit_location} of {target_name}'s {hit_location}. They fold inward, screaming."
+            'attacker_msg': "The iron crashes into the back of the {hit_location}. {target_name} folds inward, screaming.",
+            'victim_msg': "The iron crashes into the back of your {hit_location}. You fold inward, screaming.",
+            'observer_msg': "The iron crashes into the back of {target_name}'s {hit_location}. They fold inward, screaming."
         },
         {
-            'attacker_msg': "The steel strikes the {hit_location} of the {hit_location}. Vision dims before the scream.",
-            'victim_msg': "The steel strikes the {hit_location} of your {hit_location}. Your vision dims before your scream.",
-            'observer_msg': "The steel strikes the {hit_location} of {target_name}'s {hit_location}. Their vision dims before their scream."
+            'attacker_msg': "The steel strikes the side of the {hit_location}. Vision dims before the scream.",
+            'victim_msg': "The steel strikes the side of your {hit_location}. Your vision dims before your scream.",
+            'observer_msg': "The steel strikes the side of {target_name}'s {hit_location}. Their vision dims before their scream."
         },
         {
             'attacker_msg': "The tire iron hammers into {target_name}'s {hit_location}. They drop before the sound finishes.",
@@ -320,7 +320,7 @@ MESSAGES = {
             'observer_msg': "A heavy arc cuts through smoke. No flesh meets metal."
         },
         {
-            'attacker_msg': "A jab misses and thuds into a wall. The vibration crawls up your {hit_location}.",
+            'attacker_msg': "A jab misses and thuds into a wall. The vibration crawls up your arm.",
             'victim_msg': "A jab misses and thuds into a wall. The vibration crawls up {attacker_name}'s arm.",
             'observer_msg': "A jab misses and thuds into a wall. The vibration crawls up {attacker_name}'s arm."
         },
