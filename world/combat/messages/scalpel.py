@@ -219,7 +219,7 @@ MESSAGES = {
         },
         {
             'attacker_msg': "A precise cut opens {target_name}'s Achilles tendon.",
-            'victim_msg': "Your Achilles tendon parts under the surgical blade, dropping you to one {hit_location}.",
+            'victim_msg': "Your Achilles tendon parts under the surgical blade, dropping you to one knee.",
             'observer_msg': "The scalpel severs {target_name}'s Achilles tendon with one precise cut."
         },
         {
