@@ -2931,7 +2931,8 @@ def detach_items_to_appendage(character, appendage, containers):
     * A **wielded** weapon in *any* hand whose container is in the
       severed chain (via :data:`world.combat.constants.SEVER_HAND_BY_CONTAINER`)
       **drops to the ground** at the character's current location
-      (PR-H0, #307). Severance loosens the dead hand's grip; the weapon
+      (PR-H0, #307), unless it is integrated hardware, which only the
+      hardware carry moves (#3697). Severance loosens the dead hand's grip; the weapon
       lands separately from the severed limb. Uses
       :func:`commands.combat.jump.drop_to_room` so the weapon lands the
       way a player ``drop`` lands it -- proximity set, and if the room is
@@ -3098,6 +3099,14 @@ def detach_items_to_appendage(character, appendage, containers):
                 if store.get(key):
                     held = store[key]
                     store[key] = None
+                    if getattr(getattr(held, "db", None), "integrated", False):
+                        # Integrated hardware never falls (#3697): the slot
+                        # lets go here and ``carry_hardware_to_appendage``
+                        # settles the object, onto the limb when its host
+                        # organ went with the cut, folded back inside the
+                        # arm when the host stays on the body. Not in
+                        # ``dropped``: nothing clattered.
+                        break
                     dropped.append(held)
                     if drop_room is not None:
                         # Deferred import — ``commands.combat.jump``

@@ -60,10 +60,13 @@ the weapon the active weapon.
    This is the item that will eventually want it — revisit when
    ammo lands.
 7. **Severance carries the hardware.**  A severed gun arm takes the
-   shotgun with it — deployed (it's in the hand, the existing
-   `detach_items_to_appendage` already does this) or retracted
-   (folded into the arm; the severance hook moves the linked item
-   onto the appendage).  Recoverable by harvest from the appendage,
+   shotgun with it — deployed (it's in the hand; the cut leaves
+   integrated hardware where it lies, never on the floor, and the
+   severance hook moves it onto the appendage, #3697) or retracted
+   (folded into the arm; the same hook moves the linked item onto the
+   appendage). A HAND cut off a surviving gun arm instead folds the
+   deployed gun back inside the arm (`location=None`, `deployed`
+   False), so the next toggle is a deploy.  Recoverable by harvest from the appendage,
    not by looting (locks hold).
 8. **Theming stays in prose** (ANATOMY_AUGMENTS §4): claws, nailz,
    cyber-teeth, biotech variants are item data over the same
@@ -237,7 +240,8 @@ as a hand until you `/shotgun`.
 * Gates: severed arm can't toggle; the ability vanishes with the
   organ.
 * Severance: deployed and retracted both end with the hardware on
-  the appendage.
+  the appendage; a hand-only cut folds a surviving arm's gun back
+  inside the arm (#3697).
 * Multi-container: already-has gate across arm+hand; longdesc keys
   restored over a stump; chain severance intact.
 * Precedence (Phase 3): active claws beat a held knife; deactivated
