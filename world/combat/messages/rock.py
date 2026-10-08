@@ -194,9 +194,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s desperate lunge with the rock leaves a nasty, bruising, and bleeding wound on {target_name}."
         },
         {
-            'attacker_msg': "A quick, powerful blow, and the rock cracks against {target_name}'s {hit_location}, drawing a choked cry and breaking ribs.",
-            'victim_msg': "A quick, powerful blow, and the rock cracks against your {hit_location}, drawing a choked cry and breaking ribs.",
-            'observer_msg': "A quick, powerful blow, and the rock cracks against {target_name}'s {hit_location}, drawing a choked cry and breaking ribs."
+            'attacker_msg': "A quick, powerful blow, and the rock cracks against {target_name}'s {hit_location}, drawing a choked cry and breaking the {hit_location}.",
+            'victim_msg': "A quick, powerful blow, and the rock cracks against your {hit_location}, drawing a choked cry and breaking the {hit_location}.",
+            'observer_msg': "A quick, powerful blow, and the rock cracks against {target_name}'s {hit_location}, drawing a choked cry and breaking the {hit_location}."
         },
         {
             'attacker_msg': "The rock's unyielding surface smashes through {target_name}'s defenses and into flesh with brutal efficiency.",
@@ -244,9 +244,9 @@ MESSAGES = {
             'observer_msg': "A desperate block by {target_name} is met with the full force of the rock, shattering their {hit_location}."
         },
         {
-            'attacker_msg': "The rock makes solid contact with {target_name}'s {hit_location}, the blunt force knocking the wind out of them and cracking ribs.",
-            'victim_msg': "The rock makes solid contact with your {hit_location}, the blunt force knocking the wind out of you and cracking ribs.",
-            'observer_msg': "The rock makes solid contact with {target_name}'s {hit_location}, the blunt force knocking the wind out of them and cracking ribs."
+            'attacker_msg': "The rock makes solid contact with {target_name}'s {hit_location}, the blunt force knocking the wind out of them and cracking the {hit_location}.",
+            'victim_msg': "The rock makes solid contact with your {hit_location}, the blunt force knocking the wind out of you and cracking the {hit_location}.",
+            'observer_msg': "The rock makes solid contact with {target_name}'s {hit_location}, the blunt force knocking the wind out of them and cracking the {hit_location}."
         },
         {
             'attacker_msg': "Your rock finds purchase, delivering a painful, debilitating blow to {target_name}'s {hit_location}.",

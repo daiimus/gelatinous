@@ -248,9 +248,9 @@ MESSAGES = {
             'observer_msg': "It connects with {target_name}'s {hit_location} and vibrates like a tuning fork. Their scream dies mid-breath."
         },
         {
-            'attacker_msg': "It doesn't go in clean. It *grinds*, catching on ribs, dragging. {target_name} bucks like their body wants to flee itself.",
-            'victim_msg': "It doesn't go in clean. It *grinds*, catching on ribs, dragging. You buck like your body wants to flee itself.",
-            'observer_msg': "It doesn't go in clean. It *grinds*, catching on ribs, dragging. {target_name} bucks like their body wants to flee itself."
+            'attacker_msg': "It doesn't go in clean. It *grinds*, catching on the {hit_location}, dragging. {target_name} bucks like their body wants to flee itself.",
+            'victim_msg': "It doesn't go in clean. It *grinds*, catching on the {hit_location}, dragging. You buck like your body wants to flee itself.",
+            'observer_msg': "It doesn't go in clean. It *grinds*, catching on the {hit_location}, dragging. {target_name} bucks like their body wants to flee itself."
         },
         {
             'attacker_msg': "It hits and stays there, teeth chewing deeper. {target_name}'s resistance falters, buckling under the brutal thrum.",

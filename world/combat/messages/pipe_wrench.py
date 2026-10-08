@@ -188,9 +188,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} brings the tool down on {target_name}'s {hit_location}, leaving a dent in muscle and morale."
         },
         {
-            'attacker_msg': "A heavy backhand sends {target_name} spinning, blood trailing from a newly split cheek.",
-            'victim_msg': "A heavy backhand sends you spinning, blood trailing from a newly split cheek.",
-            'observer_msg': "A heavy backhand sends {target_name} spinning, blood trailing from a newly split cheek."
+            'attacker_msg': "A heavy backhand sends {target_name} spinning, blood trailing from a newly split {hit_location}.",
+            'victim_msg': "A heavy backhand sends you spinning, blood trailing from a newly split {hit_location}.",
+            'observer_msg': "A heavy backhand sends {target_name} spinning, blood trailing from a newly split {hit_location}."
         },
         {
             'attacker_msg': "The wrench smashes into {target_name}'s {hit_location} mid-block, fingers breaking like glass under boots.",
@@ -198,9 +198,9 @@ MESSAGES = {
             'observer_msg': "The wrench smashes into {target_name}'s {hit_location} mid-block, fingers breaking like glass under boots."
         },
         {
-            'attacker_msg': "Steel collides with spine. {target_name} stumbles forward, limbs twitching.",
-            'victim_msg': "Steel collides with spine. You stumble forward, limbs twitching.",
-            'observer_msg': "Steel collides with spine. {target_name} stumbles forward, limbs twitching."
+            'attacker_msg': "Steel collides with the {hit_location}. {target_name} stumbles forward, limbs twitching.",
+            'victim_msg': "Steel collides with the {hit_location}. You stumble forward, limbs twitching.",
+            'observer_msg': "Steel collides with the {hit_location}. {target_name} stumbles forward, limbs twitching."
         },
         {
             'attacker_msg': "You plant the wrench into {target_name}'s {hit_location}. The joint bends once—then no more.",

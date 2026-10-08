@@ -223,9 +223,9 @@ MESSAGES = {
             "observer_msg": "The edge rips into {target_name}'s {hit_location}. They stagger, leaking. {attacker_name} watches."
         },
         {
-            "attacker_msg": "You plunge the broken {hit_location} into {target_name}'s upper {hit_location}. Their scream cuts off halfway.",
-            "victim_msg": "{attacker_name} plunges the broken {hit_location} into your upper {hit_location}. Your scream cuts off halfway.",
-            "observer_msg": "{attacker_name} plunges the broken {hit_location} into {target_name}'s upper {hit_location}. Their scream cuts off halfway."
+            "attacker_msg": "You plunge the broken neck into {target_name}'s upper {hit_location}. Their scream cuts off halfway.",
+            "victim_msg": "{attacker_name} plunges the broken neck into your upper {hit_location}. Your scream cuts off halfway.",
+            "observer_msg": "{attacker_name} plunges the broken neck into {target_name}'s upper {hit_location}. Their scream cuts off halfway."
         },
         {
             "attacker_msg": "A quick slash along the {hit_location} leaves {blood} lines and a ruined sleeve on {target_name}.",

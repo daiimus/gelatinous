@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s desperate lunge with the phonebook leaves a nasty, throbbing bruise on {target_name}."
         },
         {
-            'attacker_msg': "A quick, powerful blow, and the phonebook cracks against {target_name}'s {hit_location}, drawing a choked cry and likely bruising ribs.",
-            'victim_msg': "A quick, powerful blow, and the phonebook cracks against your {hit_location}, drawing a choked cry and likely bruising ribs.",
-            'observer_msg': "A quick, powerful blow, and the phonebook cracks against {target_name}'s {hit_location}, drawing a choked cry and likely bruising ribs."
+            'attacker_msg': "A quick, powerful blow, and the phonebook cracks against {target_name}'s {hit_location}, drawing a choked cry and likely bruising the {hit_location}.",
+            'victim_msg': "A quick, powerful blow, and the phonebook cracks against your {hit_location}, drawing a choked cry and likely bruising the {hit_location}.",
+            'observer_msg': "A quick, powerful blow, and the phonebook cracks against {target_name}'s {hit_location}, drawing a choked cry and likely bruising the {hit_location}."
         },
         {
             'attacker_msg': "The phonebook's unyielding surface smashes through {target_name}'s defenses and into flesh with surprising efficiency.",
