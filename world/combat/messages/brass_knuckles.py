@@ -243,9 +243,9 @@ MESSAGES = {
             "observer_msg": "The blow from {attacker_name} isn't clean — it scrapes, digs, *sticks*. When they pull back from {target_name}'s {hit_location}, there's a smear of blood across the brass like a signature. {target_name} stumbles, and the floor suddenly feels too far away to trust."
         },
         {
-            "attacker_msg": "Your brass slams into the {hit_location} of {target_name}'s {hit_location} with blunt finality. They reel like they forgot how legs work.",
+            "attacker_msg": "Your brass slams into the side of {target_name}'s {hit_location} with blunt finality. They reel like they forgot how legs work.",
             "victim_msg": "The brass from {attacker_name} slams into the side of your {hit_location} with blunt finality. You reel like you forgot how legs work.",
-            "observer_msg": "The brass from {attacker_name} slams into the {hit_location} of {target_name}'s {hit_location} with blunt finality. They reel like they forgot how legs work."
+            "observer_msg": "The brass from {attacker_name} slams into the side of {target_name}'s {hit_location} with blunt finality. They reel like they forgot how legs work."
         },
         {
             "attacker_msg": "Your fist collides with {target_name}'s {hit_location} like a hammer. Their feet stay still. Everything else lurches.",

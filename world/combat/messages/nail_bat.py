@@ -233,9 +233,9 @@ MESSAGES = {
             'observer_msg': "The arc of the bat ends in {target_name}'s {hit_location}. Nails don't just break the skin—they take it."
         },
         {
-            'attacker_msg': "The bat connects with the {hit_location} of {target_name}'s {hit_location}, sending teeth skittering across the floor.",
+            'attacker_msg': "The bat connects with the side of {target_name}'s {hit_location}, sending teeth skittering across the floor.",
             'victim_msg': "The bat connects with the side of your {hit_location}, sending teeth skittering across the floor.",
-            'observer_msg': "The bat connects with the {hit_location} of {target_name}'s {hit_location}, sending teeth skittering across the floor."
+            'observer_msg': "The bat connects with the side of {target_name}'s {hit_location}, sending teeth skittering across the floor."
         },
         {
             'attacker_msg': "You catch {target_name} mid-dodge, bat slamming into their {hit_location} with a sickening crack.",

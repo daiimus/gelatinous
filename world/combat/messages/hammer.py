@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "The thick end slams into {target_name}'s {hit_location}, doubling them over."
         },
         {
-            'attacker_msg': "You jab the cue into the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor.",
+            'attacker_msg': "You jab the cue into the back of {target_name}'s {hit_location}, weapon clattering to the floor.",
             'victim_msg': "{attacker_name} jabs the cue into the back of your {hit_location}, weapon clattering to the floor.",
-            'observer_msg': "{attacker_name} jabs the cue into the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor."
+            'observer_msg': "{attacker_name} jabs the cue into the back of {target_name}'s {hit_location}, weapon clattering to the floor."
         },
         {
             'attacker_msg': "A heavy swing across the {hit_location} leaves {target_name} clutching at their guts.",

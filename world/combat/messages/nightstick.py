@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "A sideways smash connects with {target_name}'s {hit_location}. They shriek and drop."
         },
         {
-            'attacker_msg': "A sweeping blow claps into the {hit_location} of {target_name}'s {hit_location}. The crack is dull, final.",
+            'attacker_msg': "A sweeping blow claps into the side of {target_name}'s {hit_location}. The crack is dull, final.",
             'victim_msg': "A sweeping blow claps into the side of your {hit_location}. The crack is dull, final.",
-            'observer_msg': "A sweeping blow claps into the {hit_location} of {target_name}'s {hit_location}. The crack is dull, final."
+            'observer_msg': "A sweeping blow claps into the side of {target_name}'s {hit_location}. The crack is dull, final."
         },
         {
             'attacker_msg': "A two-handed strike lands in {target_name}'s {hit_location}. They double over, teeth clenching on nothing.",
@@ -198,9 +198,9 @@ MESSAGES = {
             'observer_msg': "One precise blow to {target_name}'s {hit_location}. The bone bends. It might not come back."
         },
         {
-            'attacker_msg': "One swift arc claps the {hit_location} of {target_name}'s {hit_location}. Bone groans. Blood follows.",
+            'attacker_msg': "One swift arc claps the side of {target_name}'s {hit_location}. Bone groans. Blood follows.",
             'victim_msg': "One swift arc claps the side of your {hit_location}. Bone groans. Blood follows.",
-            'observer_msg': "One swift arc claps the {hit_location} of {target_name}'s {hit_location}. Bone groans. Blood follows."
+            'observer_msg': "One swift arc claps the side of {target_name}'s {hit_location}. Bone groans. Blood follows."
         },
         {
             'attacker_msg': "The baton rakes down {target_name}'s {hit_location}. They back up, trailing {blood} and curses.",
@@ -268,9 +268,9 @@ MESSAGES = {
             'observer_msg': "The weapon lands behind {target_name}'s {hit_location} blade. They stumble forward with a howl."
         },
         {
-            'attacker_msg': "You crash the stick into the {hit_location} of {target_name}'s {hit_location}. They topple like bad scaffolding.",
+            'attacker_msg': "You crash the stick into the back of {target_name}'s {hit_location}. They topple like bad scaffolding.",
             'victim_msg': "{attacker_name} crashes the stick into the back of your {hit_location}. You topple like bad scaffolding.",
-            'observer_msg': "{attacker_name} crashes the stick into the {hit_location} of {target_name}'s {hit_location}. They topple like bad scaffolding."
+            'observer_msg': "{attacker_name} crashes the stick into the back of {target_name}'s {hit_location}. They topple like bad scaffolding."
         },
         {
             'attacker_msg': "You drive the baton into {target_name}'s {hit_location}. The breath leaves their lungs — and doesn't come back quickly.",

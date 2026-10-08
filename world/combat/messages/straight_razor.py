@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "The blade punctures {target_name}'s {hit_location}, twisting before {attacker_name} pulls it free."
         },
         {
-            'attacker_msg': "You slice the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor.",
+            'attacker_msg': "You slice the back of {target_name}'s {hit_location}, weapon clattering to the floor.",
             'victim_msg': "{attacker_name} slices the back of your {hit_location}, weapon clattering to the floor.",
-            'observer_msg': "{attacker_name} slices the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor."
+            'observer_msg': "{attacker_name} slices the back of {target_name}'s {hit_location}, weapon clattering to the floor."
         },
         {
             'attacker_msg': "A shallow cut across the {hit_location} leaves {target_name} clutching at their guts.",

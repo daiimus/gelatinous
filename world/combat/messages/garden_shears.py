@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "The pointed tips of the heavy shears puncture {target_name}'s {hit_location}, {attacker_name} using their full weight to drive them in."
         },
         {
-            'attacker_msg': "You make a sweeping slice with the long shears, striking the {hit_location} of {target_name}'s {hit_location}, forcing them to drop their weapon.",
+            'attacker_msg': "You make a sweeping slice with the long shears, striking the back of {target_name}'s {hit_location}, forcing them to drop their weapon.",
             'victim_msg': "{attacker_name} makes a sweeping slice with the long shears, striking the back of your {hit_location}, forcing you to drop your weapon.",
-            'observer_msg': "{attacker_name} makes a sweeping slice with the long shears, striking the {hit_location} of {target_name}'s {hit_location}, forcing them to drop their weapon."
+            'observer_msg': "{attacker_name} makes a sweeping slice with the long shears, striking the back of {target_name}'s {hit_location}, forcing them to drop their weapon."
         },
         {
             'attacker_msg': "A shallow, powerful cut across the {hit_location} with the heavy shears leaves {target_name} gasping and clutching their middle.",

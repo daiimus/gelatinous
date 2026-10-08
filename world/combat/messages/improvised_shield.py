@@ -208,9 +208,9 @@ MESSAGES = {
             'observer_msg': "The edge of the shield cuts the cheekbone. Skin splits. {target_name} cries out."
         },
         {
-            'attacker_msg': "The edge of the shield slams into the {hit_location} of {target_name}'s {hit_location}. Blood blooms. So does confusion.",
+            'attacker_msg': "The edge of the shield slams into the side of {target_name}'s {hit_location}. Blood blooms. So does confusion.",
             'victim_msg': "The edge of the shield slams into the side of your {hit_location}. Blood blooms. So does confusion.",
-            'observer_msg': "The edge of the shield slams into the {hit_location} of {target_name}'s {hit_location}. Blood blooms. So does confusion."
+            'observer_msg': "The edge of the shield slams into the side of {target_name}'s {hit_location}. Blood blooms. So does confusion."
         },
         {
             'attacker_msg': "The edge slams into {target_name}'s {hit_location}. Eyes roll back. Knees follow.",

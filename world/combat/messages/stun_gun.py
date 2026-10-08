@@ -175,7 +175,7 @@ MESSAGES = {
         {
             'attacker_msg': "A tight jab to the side of the {hit_location}. Lights out. Muscles fail.",
             'victim_msg': "A tight jab to the side of your {hit_location}. Lights out. Muscles fail.",
-            'observer_msg': "A tight jab to the {hit_location} of {target_name}'s {hit_location}. Lights out. Muscles fail."
+            'observer_msg': "A tight jab to the side of {target_name}'s {hit_location}. Lights out. Muscles fail."
         },
         {
             'attacker_msg': "A tight press to the base of the skull ends coordination. {target_name} folds.",

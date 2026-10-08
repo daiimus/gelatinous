@@ -263,9 +263,9 @@ MESSAGES = {
             'observer_msg': "The weapon lashes across {target_name}'s {hit_location}. Their {hit_location} arches in unwilling reaction."
         },
         {
-            'attacker_msg': "The weapon strikes the {hit_location} of {target_name}'s ribcage. The sound is wet and wooden.",
+            'attacker_msg': "The weapon strikes the side of {target_name}'s ribcage. The sound is wet and wooden.",
             'victim_msg': "The weapon strikes the side of your ribcage. The sound is wet and wooden.",
-            'observer_msg': "The weapon strikes the {hit_location} of {target_name}'s ribcage. The sound is wet and wooden."
+            'observer_msg': "The weapon strikes the side of {target_name}'s ribcage. The sound is wet and wooden."
         },
         {
             'attacker_msg': "You land a sharp blow to {target_name}'s {hit_location}. They hop back, cursing through gritted teeth.",
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} lashes the nunchaku across {target_name}'s {hit_location}. A line of {blood} blossoms under cloth."
         },
         {
-            'attacker_msg': "You pivot and deliver a strike to the {hit_location} of {target_name}'s {hit_location}. They fold inward.",
+            'attacker_msg': "You pivot and deliver a strike to the back of {target_name}'s {hit_location}. They fold inward.",
             'victim_msg': "{attacker_name} pivots and delivers a strike to the back of your {hit_location}. You fold inward.",
-            'observer_msg': "{attacker_name} pivots and delivers a strike to the {hit_location} of {target_name}'s {hit_location}. They fold inward."
+            'observer_msg': "{attacker_name} pivots and delivers a strike to the back of {target_name}'s {hit_location}. They fold inward."
         },
         {
             'attacker_msg': "You spin into a strike that lands on {target_name}'s {hit_location}. The sound is flat and final.",

@@ -225,17 +225,17 @@ MESSAGES = {
         {
             'attacker_msg': "The iron clips the side of the {hit_location}. Blood joins the noise.",
             'victim_msg': "The iron clips the side of your {hit_location}. Blood joins the noise.",
-            'observer_msg': "The iron clips the {hit_location} of {target_name}'s {hit_location}. Blood joins the noise."
+            'observer_msg': "The iron clips the side of {target_name}'s {hit_location}. Blood joins the noise."
         },
         {
             'attacker_msg': "The iron crashes into the back of the {hit_location}. {target_name} folds inward, screaming.",
             'victim_msg': "The iron crashes into the back of your {hit_location}. You fold inward, screaming.",
-            'observer_msg': "The iron crashes into the {hit_location} of {target_name}'s {hit_location}. They fold inward, screaming."
+            'observer_msg': "The iron crashes into the back of {target_name}'s {hit_location}. They fold inward, screaming."
         },
         {
             'attacker_msg': "The steel strikes the side of the {hit_location}. Vision dims before the scream.",
             'victim_msg': "The steel strikes the side of your {hit_location}. Your vision dims before your scream.",
-            'observer_msg': "The steel strikes the {hit_location} of {target_name}'s {hit_location}. Their vision dims before their scream."
+            'observer_msg': "The steel strikes the side of {target_name}'s {hit_location}. Their vision dims before their scream."
         },
         {
             'attacker_msg': "The tire iron hammers into {target_name}'s {hit_location}. They drop before the sound finishes.",

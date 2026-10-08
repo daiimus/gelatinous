@@ -163,7 +163,7 @@ MESSAGES = {
             'observer_msg': "A downward hack lands at {target_name}'s collar. The bone beneath says goodbye."
         },
         {
-            'attacker_msg': "A downward strike lands square on the {hit_location}. Something cracks and won't heal right.",
+            'attacker_msg': "A downward strike lands square on the collarbone. Something cracks and won't heal right.",
             'victim_msg': "A downward strike lands square on your {hit_location}. Something cracks and won't heal right.",
             'observer_msg': "A downward strike lands square on {target_name}'s {hit_location}. Something cracks and won't heal right."
         },
@@ -245,7 +245,7 @@ MESSAGES = {
         {
             'attacker_msg': "The axe splits open the back of the {hit_location}. They drop everything — including composure.",
             'victim_msg': "The axe splits open the back of your {hit_location}. You drop everything — including composure.",
-            'observer_msg': "The axe splits open the {hit_location} of {target_name}'s {hit_location}. They drop everything — including composure."
+            'observer_msg': "The axe splits open the back of {target_name}'s {hit_location}. They drop everything — including composure."
         },
         {
             'attacker_msg': "The blade hacks into the {hit_location}. They stumble as blood fans out.",

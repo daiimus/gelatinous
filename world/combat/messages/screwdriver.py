@@ -193,9 +193,9 @@ MESSAGES = {
             "observer_msg": "The shaft punctures {target_name}'s {hit_location}, twisting before it's pulled free."
         },
         {
-            "attacker_msg": "You stab the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor.",
+            "attacker_msg": "You stab the back of {target_name}'s {hit_location}, weapon clattering to the floor.",
             "victim_msg": "{attacker_name} stabs the back of your {hit_location}, weapon clattering to the floor.",
-            "observer_msg": "{attacker_name} stabs the {hit_location} of {target_name}'s {hit_location}, weapon clattering to the floor."
+            "observer_msg": "{attacker_name} stabs the back of {target_name}'s {hit_location}, weapon clattering to the floor."
         },
         {
             "attacker_msg": "A shallow cut across the {hit_location} leaves {target_name} clutching at their guts.",

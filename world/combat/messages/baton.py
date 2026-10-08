@@ -238,9 +238,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s baton lashes across {target_name}'s {hit_location}, bone buckling under the force. They drop whatever they were holding and half their will to fight."
         },
         {
-            "attacker_msg": "Your baton slams into the {hit_location} of {target_name}'s {hit_location}, snapping their {hit_location} with a wet crunch. They fall mid-step, face-first into failure.",
+            "attacker_msg": "Your baton slams into the side of {target_name}'s {hit_location}, snapping their {hit_location} with a wet crunch. They fall mid-step, face-first into failure.",
             "victim_msg": "{attacker_name}'s baton slams into the side of your {hit_location}, snapping your {hit_location} with a wet crunch. You fall mid-step, face-first into failure.",
-            "observer_msg": "{attacker_name}'s baton slams into the {hit_location} of {target_name}'s {hit_location}, snapping their {hit_location} with a wet crunch. They fall mid-step, face-first into failure."
+            "observer_msg": "{attacker_name}'s baton slams into the side of {target_name}'s {hit_location}, snapping their {hit_location} with a wet crunch. They fall mid-step, face-first into failure."
         },
         {
             "attacker_msg": "Your baton slams into {target_name}'s {hit_location} with the efficiency of habit. Each crack feels personal.",
@@ -258,9 +258,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s baton snaps across {target_name}'s {hit_location} with a whip-crack that silences the room. They wheeze and fold, breath stolen."
         },
         {
-            "attacker_msg": "Your baton whistles through the air before finding the {hit_location} of {target_name}'s {hit_location}. A tooth skips across the floor like a pebble.",
+            "attacker_msg": "Your baton whistles through the air before finding the side of {target_name}'s {hit_location}. A tooth skips across the floor like a pebble.",
             "victim_msg": "{attacker_name}'s baton whistles through the air before finding the side of your {hit_location}. A tooth skips across the floor like a pebble.",
-            "observer_msg": "{attacker_name}'s baton whistles through the air before finding the {hit_location} of {target_name}'s {hit_location}. A tooth skips across the floor like a pebble."
+            "observer_msg": "{attacker_name}'s baton whistles through the air before finding the side of {target_name}'s {hit_location}. A tooth skips across the floor like a pebble."
         },
         {
             "attacker_msg": "There’s no wind-up, just impact — your baton slams into {target_name}'s {hit_location} with a crunch that bends posture and resolve.",

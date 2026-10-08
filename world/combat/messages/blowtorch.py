@@ -248,9 +248,9 @@ MESSAGES = {
             "observer_msg": "The torch hisses as it sears through {target_name}'s jacket and flesh. Their reaction is primal, their body unsure what to protect."
         },
         {
-            "attacker_msg": "The torch hits the {hit_location} of {target_name}'s {hit_location}. They shriek, skin curling away from bone like burnt paper.",
+            "attacker_msg": "The torch hits the back of {target_name}'s {hit_location}. They shriek, skin curling away from bone like burnt paper.",
             "victim_msg": "The torch hits the back of your {hit_location}. You shriek, skin curling away from bone like burnt paper.",
-            "observer_msg": "The torch hits the {hit_location} of {target_name}'s {hit_location}. They shriek, skin curling away from bone like burnt paper."
+            "observer_msg": "The torch hits the back of {target_name}'s {hit_location}. They shriek, skin curling away from bone like burnt paper."
         },
         {
             "attacker_msg": "The torch sweeps low, catching {target_name}'s {hit_location}. The hair sizzles. The scream sounds like betrayal.",
