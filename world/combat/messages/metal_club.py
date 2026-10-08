@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "The club slams into {target_name}'s {hit_location}. They drop as if the gravity was suddenly personal."
         },
         {
-            'attacker_msg': "The club smashes into {target_name}'s {hit_location}. They scream as their stance gives way, {hit_location} folding wrong.",
-            'victim_msg': "The club smashes into your {hit_location}. You scream as your stance gives way, {hit_location} folding wrong.",
-            'observer_msg': "The club smashes into {target_name}'s {hit_location}. They scream as their stance gives way, {hit_location} folding wrong."
+            'attacker_msg': "The club smashes into {target_name}'s {hit_location}. They scream as their stance gives way, leg folding wrong.",
+            'victim_msg': "The club smashes into your {hit_location}. You scream as your stance gives way, leg folding wrong.",
+            'observer_msg': "The club smashes into {target_name}'s {hit_location}. They scream as their stance gives way, leg folding wrong."
         },
         {
             'attacker_msg': "The club smashes through {target_name}'s grip. Their weapon clatters uselessly away.",
@@ -263,9 +263,9 @@ MESSAGES = {
             'observer_msg': "The metal rod catches the {hit_location} mid-guard. Bones snap. The defense is over."
         },
         {
-            'attacker_msg': "The rod drives into the {hit_location}, and {target_name} folds awkwardly, {hit_location} clutching bone that's no longer whole.",
-            'victim_msg': "The rod drives into the {hit_location}, and you fold awkwardly, {hit_location} clutching bone that's no longer whole.",
-            'observer_msg': "The rod drives into the {hit_location}, and {target_name} folds awkwardly, {hit_location} clutching bone that's no longer whole."
+            'attacker_msg': "The rod drives into the {hit_location}, and {target_name} folds awkwardly, hand clutching bone that's no longer whole.",
+            'victim_msg': "The rod drives into the {hit_location}, and you fold awkwardly, hand clutching bone that's no longer whole.",
+            'observer_msg': "The rod drives into the {hit_location}, and {target_name} folds awkwardly, hand clutching bone that's no longer whole."
         },
         {
             'attacker_msg': "You bring the club down on the {hit_location}. The crack is sharp. So is the cry.",

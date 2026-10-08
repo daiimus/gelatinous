@@ -293,9 +293,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} carves a spiral up {target_name}'s {hit_location}. The pattern is deliberate."
         },
         {
-            'attacker_msg': "The blade slips between {hit_location}, blood welling with every breath.",
-            'victim_msg': "The blade slips between {hit_location}, blood welling with every breath.",
-            'observer_msg': "The blade slips between {hit_location}, blood welling with every breath."
+            'attacker_msg': "The blade slips between ribs, blood welling with every breath.",
+            'victim_msg': "The blade slips between ribs, blood welling with every breath.",
+            'observer_msg': "The blade slips between ribs, blood welling with every breath."
         },
         {
             'attacker_msg': "A quick slash opens {target_name}'s {hit_location}, teeth showing through the wound.",

@@ -178,9 +178,9 @@ MESSAGES = {
             'observer_msg': "A slash across the {hit_location} draws a bright line of {blood}. {target_name} flinches too late."
         },
         {
-            'attacker_msg': "A slash lands across the top of the {hit_location}. {target_name} yells and jerks {hit_location}, leaving blood behind.",
-            'victim_msg': "A slash lands across the top of your {hit_location}. You yell and jerk {hit_location}, leaving blood behind.",
-            'observer_msg': "A slash lands across the top of the {hit_location}. {target_name} yells and jerks {hit_location}, leaving blood behind."
+            'attacker_msg': "A slash lands across the top of the {hit_location}. {target_name} yells and jerks back, leaving blood behind.",
+            'victim_msg': "A slash lands across the top of your {hit_location}. You yell and jerk back, leaving blood behind.",
+            'observer_msg': "A slash lands across the top of the {hit_location}. {target_name} yells and jerks back, leaving blood behind."
         },
         {
             'attacker_msg': "A stab to the {hit_location}, shallow but sharp. {target_name} reels from the shock.",
@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "The blade flashes in a downward arc, slicing open the {hit_location}. {target_name} staggers, already slick."
         },
         {
-            'attacker_msg': "The blade slips into {target_name}'s {hit_location}, quick and mean. {target_name} gasps, {hit_location} going to the wound.",
-            'victim_msg': "The blade slips into your {hit_location}, quick and mean. You gasp, {hit_location} going to the wound.",
-            'observer_msg': "The blade slips into {target_name}'s {hit_location}, quick and mean. {target_name} gasps, {hit_location} going to the wound."
+            'attacker_msg': "The blade slips into {target_name}'s {hit_location}, quick and mean. {target_name} gasps, hand going to the wound.",
+            'victim_msg': "The blade slips into your {hit_location}, quick and mean. You gasp, hand going to the wound.",
+            'observer_msg': "The blade slips into {target_name}'s {hit_location}, quick and mean. {target_name} gasps, hand going to the wound."
         },
         {
             'attacker_msg': "The blade slides under the {hit_location} and finds the soft space there. {target_name} whimpers, eyes wide.",
@@ -248,9 +248,9 @@ MESSAGES = {
             'observer_msg': "The knife finds flesh at the crook of the {hit_location}. {target_name} staggers, clutching the wound."
         },
         {
-            'attacker_msg': "The knife punctures shallow, but the shock is deep. {target_name} stumbles backward, {hit_location} pressed to the wound.",
-            'victim_msg': "The knife punctures shallow, but the shock is deep. You stumble backward, {hit_location} pressed to the wound.",
-            'observer_msg': "The knife punctures shallow, but the shock is deep. {target_name} stumbles backward, {hit_location} pressed to the wound."
+            'attacker_msg': "The knife punctures shallow, but the shock is deep. {target_name} stumbles backward, hand pressed to the wound.",
+            'victim_msg': "The knife punctures shallow, but the shock is deep. You stumble backward, hand pressed to the wound.",
+            'observer_msg': "The knife punctures shallow, but the shock is deep. {target_name} stumbles backward, hand pressed to the wound."
         },
         {
             'attacker_msg': "The knife slashes across the {hit_location}, opening skin in a swift arc. {target_name} yelps and recoils.",
@@ -258,9 +258,9 @@ MESSAGES = {
             'observer_msg': "The knife slashes across the {hit_location}, opening skin in a swift arc. {target_name} yelps and recoils."
         },
         {
-            'attacker_msg': "The knife slips between {hit_location} — not deep enough to kill, but more than enough to hurt. {target_name} gasps.",
+            'attacker_msg': "The knife slips between ribs — not deep enough to kill, but more than enough to hurt. {target_name} gasps.",
             'victim_msg': "The knife slips between your {hit_location} — not deep enough to kill, but more than enough to hurt. You gasp.",
-            'observer_msg': "The knife slips between {hit_location} — not deep enough to kill, but more than enough to hurt. {target_name} gasps."
+            'observer_msg': "The knife slips between ribs — not deep enough to kill, but more than enough to hurt. {target_name} gasps."
         },
         {
             'attacker_msg': "The stab is quick and close, aimed at the {hit_location} blade. {target_name} cries out and stumbles.",

@@ -213,9 +213,9 @@ MESSAGES = {
             'observer_msg': "Leather lashes the {hit_location}. The welt raises like a brand."
         },
         {
-            'attacker_msg': "Leather snakes around the {hit_location}. {target_name} yanks {hit_location}, too late.",
-            'victim_msg': "Leather snakes around your {hit_location}. You yank {hit_location}, too late.",
-            'observer_msg': "Leather snakes around the {hit_location}. {target_name} yanks {hit_location}, too late."
+            'attacker_msg': "Leather snakes around the {hit_location}. {target_name} yanks back, too late.",
+            'victim_msg': "Leather snakes around your {hit_location}. You yank back, too late.",
+            'observer_msg': "Leather snakes around the {hit_location}. {target_name} yanks back, too late."
         },
         {
             'attacker_msg': "The lash coils around {target_name}'s {hit_location} for half a breath. That's all it needs.",

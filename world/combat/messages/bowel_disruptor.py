@@ -210,8 +210,8 @@ MESSAGES = {
     "hit": [
         {
             "attacker_msg": "A sickly green beam lances from your {item_name}! {target_name} doubles over with a wet, explosive gurgle and a strained expression that speaks of cosmic betrayal. The weapon's energy visibly churns their midsection.",
-            "victim_msg": "A wave of nauseating, churning energy from {attacker_name}'s {item_name} washes over you! Your insides are staging a violent, messy coup, and you fight {hit_location} a rising tide of... everything. A strangled gasp escapes your lips.",
-            "observer_msg": "{target_name} suddenly clutches their {hit_location}, {hit_location} contorting in a mask of pure, unadulterated agony as a foul, squelching symphony erupts from their direction after {attacker_name}'s {item_name} fires. The smell alone could stun a moose, and it spreads rapidly.",
+            "victim_msg": "A wave of nauseating, churning energy from {attacker_name}'s {item_name} washes over you! Your insides are staging a violent, messy coup, and you fight back a rising tide of... everything. A strangled gasp escapes your lips.",
+            "observer_msg": "{target_name} suddenly clutches their {hit_location}, face contorting in a mask of pure, unadulterated agony as a foul, squelching symphony erupts from their direction after {attacker_name}'s {item_name} fires. The smell alone could stun a moose, and it spreads rapidly.",
         },
         {
             "attacker_msg": "Bullseye! The {item_name}'s beam hits {target_name} square in the guts. Their {hit_location} turns a fascinating shade of puce, then grey, then a sort of horrified beige. A silent testament to internal devastation.",
@@ -271,7 +271,7 @@ MESSAGES = {
         {
             "attacker_msg": "The {item_name}'s beam turns {target_name}'s intestines into a high-pressure hose of pure, unadulterated filth. You might need an umbrella. Or a hazmat suit.",
             "victim_msg": "You are a fountain. A geyser. A human sprinkler system of things that should never, ever see the light of day. The pain is secondary to the sheer, overwhelming horror of it all. Your body is a broken dam.",
-            "observer_msg": "{target_name} is... projecting. Violently. After being hit by {attacker_name}'s {item_name}. You take several large steps {hit_location}. And maybe upwind. The sheer volume is astounding.",
+            "observer_msg": "{target_name} is... projecting. Violently. After being hit by {attacker_name}'s {item_name}. You take several large steps back. And maybe upwind. The sheer volume is astounding.",
         },
         {
             "attacker_msg": "{target_name} stumbles, a low, wet moan escaping their lips. The Disruptor has clearly hit the 'existential dread' nerve cluster in their colon. Their {hit_location} is a mask of agony.",
@@ -374,7 +374,7 @@ MESSAGES = {
             "observer_msg": "A strange shimmer marks the point of impact on {target_name} before the inevitable, messy eruption. The {item_name} doesn't just work; it announces its work with grotesque fanfare.",
         },
         {
-            "attacker_msg": "{target_name} is engulfed in a sudden, very personal brown mist. The sounds that follow are not for the faint of heart. Or {hit_location}.",
+            "attacker_msg": "{target_name} is engulfed in a sudden, very personal brown mist. The sounds that follow are not for the faint of heart. Or stomach.",
             "victim_msg": "A hot, foul mist envelops you as your body betrays you in the most comprehensive way imaginable. You are drowning in your own filth, the stench overwhelming your senses.",
             "observer_msg": "A cloud of... something... erupts from {target_name} upon being hit by the {item_name}. The sounds accompanying it are a symphony of digestive horror.",
         },
@@ -384,7 +384,7 @@ MESSAGES = {
             "observer_msg": "{target_name} is hit and collapses instantly, the lower half of their body erupting in a truly apocalyptic fashion. The {item_name} is not a subtle weapon. It is a weapon of mass... evacuation.",
         },
         {
-            "attacker_msg": "{target_name} makes a sound like a dying walrus trying to gargle concrete mix. The {item_name} has clearly scrambled their insides into a chunky, regrettable salsa. Their eyes roll {hit_location}.",
+            "attacker_msg": "{target_name} makes a sound like a dying walrus trying to gargle concrete mix. The {item_name} has clearly scrambled their insides into a chunky, regrettable salsa. Their eyes roll back.",
             "victim_msg": "Your vision tunnels. The sounds you're making are inhuman. Your body is a runaway train of filth and agony, and it's derailing. Spectacularly. You feel a strange detachment as the pain peaks.",
             "observer_msg": "The sounds emanating from {target_name} are genuinely distressing. And very, very wet. They're clearly in the throes of a catastrophic internal event, courtesy of {attacker_name}'s infernal device.",
         },

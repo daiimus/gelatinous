@@ -253,9 +253,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} presses the advantage, the scimitar a continuous, flowing threat that finally lands on {target_name}."
         },
         {
-            'attacker_msg': "The scimitar's edge meets flesh with a sickening slice, and {target_name} stumbles {hit_location} in agony.",
-            'victim_msg': "The scimitar's edge meets flesh with a sickening slice, and you stumble {hit_location} in agony.",
-            'observer_msg': "The scimitar's edge meets flesh with a sickening slice, and {target_name} stumbles {hit_location} in agony."
+            'attacker_msg': "The scimitar's edge meets flesh with a sickening slice, and {target_name} stumbles back in agony.",
+            'victim_msg': "The scimitar's edge meets flesh with a sickening slice, and you stumble back in agony.",
+            'observer_msg': "The scimitar's edge meets flesh with a sickening slice, and {target_name} stumbles back in agony."
         },
         {
             'attacker_msg': "Your slash is perfectly aimed, the scimitar's curve striking {target_name} with precision.",
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s blade slides past {target_name}'s clumsy defense, leaving a deep, stinging reminder."
         },
         {
-            'attacker_msg': "A swift slash with the scimitar forces {target_name} {hit_location}, a new, bleeding arc marking their retreat.",
-            'victim_msg': "A swift slash with the scimitar forces you {hit_location}, a new, bleeding arc marking your retreat.",
-            'observer_msg': "A swift slash with the scimitar forces {target_name} {hit_location}, a new, bleeding arc marking their retreat."
+            'attacker_msg': "A swift slash with the scimitar forces {target_name} back, a new, bleeding arc marking their retreat.",
+            'victim_msg': "A swift slash with the scimitar forces you back, a new, bleeding arc marking your retreat.",
+            'observer_msg': "A swift slash with the scimitar forces {target_name} back, a new, bleeding arc marking their retreat."
         },
         {
             'attacker_msg': "The tip of your scimitar darts like a striking cobra, gashing {target_name}'s {hit_location}.",

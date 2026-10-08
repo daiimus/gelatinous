@@ -343,9 +343,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s fist drives into {target_name}'s solar plexus. The sound is dry and wrong. Breathing becomes optional for them."
         },
         {
-            "attacker_msg": "Your follow-through is textbook — {hit_location} firm, {hit_location} tight. Your brass hums with impact. {target_name} slumps against the blow like it explained something to them.",
-            "victim_msg": "{attacker_name}'s follow-through is textbook — {hit_location} firm, {hit_location} tight. The brass hums with impact. You slump against the blow like it explained something to you.",
-            "observer_msg": "{attacker_name}'s follow-through is textbook — {hit_location} firm, {hit_location} tight. The brass hums with impact. {target_name} slumps against the blow like it explained something to them."
+            "attacker_msg": "Your follow-through is textbook — wrist firm, elbow tight. Your brass hums with impact. {target_name} slumps against the blow like it explained something to them.",
+            "victim_msg": "{attacker_name}'s follow-through is textbook — wrist firm, elbow tight. The brass hums with impact. You slump against the blow like it explained something to you.",
+            "observer_msg": "{attacker_name}'s follow-through is textbook — wrist firm, elbow tight. The brass hums with impact. {target_name} slumps against the blow like it explained something to them."
         },
         {
             "attacker_msg": "Your punch lands flush with {target_name}'s {hit_location}. There’s no drama — just consequence and a spray of blood.",

@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "A two-handed strike lands in {target_name}'s {hit_location}. They double over, teeth clenching on nothing."
         },
         {
-            'attacker_msg': "One precise blow to {target_name}'s {hit_location}. The bone bends. It might not come {hit_location}.",
-            'victim_msg': "One precise blow to your {hit_location}. The bone bends. It might not come {hit_location}.",
-            'observer_msg': "One precise blow to {target_name}'s {hit_location}. The bone bends. It might not come {hit_location}."
+            'attacker_msg': "One precise blow to {target_name}'s {hit_location}. The bone bends. It might not come back.",
+            'victim_msg': "One precise blow to your {hit_location}. The bone bends. It might not come back.",
+            'observer_msg': "One precise blow to {target_name}'s {hit_location}. The bone bends. It might not come back."
         },
         {
             'attacker_msg': "One swift arc claps the {hit_location} of {target_name}'s {hit_location}. Bone groans. Blood follows.",
@@ -203,9 +203,9 @@ MESSAGES = {
             'observer_msg': "One swift arc claps the {hit_location} of {target_name}'s {hit_location}. Bone groans. Blood follows."
         },
         {
-            'attacker_msg': "The baton rakes down {target_name}'s {hit_location}. They {hit_location} up, trailing {blood} and curses.",
-            'victim_msg': "The baton rakes down your {hit_location}. You {hit_location} up, trailing {blood} and curses.",
-            'observer_msg': "The baton rakes down {target_name}'s {hit_location}. They {hit_location} up, trailing {blood} and curses."
+            'attacker_msg': "The baton rakes down {target_name}'s {hit_location}. They back up, trailing {blood} and curses.",
+            'victim_msg': "The baton rakes down your {hit_location}. You back up, trailing {blood} and curses.",
+            'observer_msg': "The baton rakes down {target_name}'s {hit_location}. They back up, trailing {blood} and curses."
         },
         {
             'attacker_msg': "The baton slams into {target_name}'s {hit_location}. The echo is felt more than heard.",
@@ -273,9 +273,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} crashes the stick into the {hit_location} of {target_name}'s {hit_location}. They topple like bad scaffolding."
         },
         {
-            'attacker_msg': "You drive the baton into {target_name}'s {hit_location}. The breath leaves their lungs — and doesn't come {hit_location} quickly.",
-            'victim_msg': "{attacker_name} drives the baton into your {hit_location}. The breath leaves your {hit_location} — and doesn't come {hit_location} quickly.",
-            'observer_msg': "{attacker_name} drives the baton into {target_name}'s {hit_location}. The breath leaves their lungs — and doesn't come {hit_location} quickly."
+            'attacker_msg': "You drive the baton into {target_name}'s {hit_location}. The breath leaves their lungs — and doesn't come back quickly.",
+            'victim_msg': "{attacker_name} drives the baton into your {hit_location}. The breath leaves your {hit_location} — and doesn't come back quickly.",
+            'observer_msg': "{attacker_name} drives the baton into {target_name}'s {hit_location}. The breath leaves their lungs — and doesn't come back quickly."
         },
         {
             'attacker_msg': "You drive the nightstick into {target_name}'s {hit_location}. The sound is thick. The effect immediate.",

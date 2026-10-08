@@ -153,7 +153,7 @@ MESSAGES = {
     ],
     "hit": [
         {
-            'attacker_msg': "You twist the shiv between {hit_location} like you're winding a music box. {target_name}'s breath hitches in quarter-notes.",
+            'attacker_msg': "You twist the shiv between ribs like you're winding a music box. {target_name}'s breath hitches in quarter-notes.",
             'victim_msg': "{attacker_name} twists the shiv between your {hit_location} like they're winding a music box. Your breath hitches in quarter-notes.",
             'observer_msg': "{attacker_name} twists the shiv between {target_name}'s {hit_location} like they're winding a music box. {target_name}'s breath hitches in quarter-notes."
         },
@@ -178,9 +178,9 @@ MESSAGES = {
             'observer_msg': "The shiv kisses {target_name}'s {hit_location} with rust and intent. Blood blooms around the entry like ink in water."
         },
         {
-            'attacker_msg': "Slick. Quick. The blade finds its mark between {target_name}'s fourth and fifth {hit_location}, and their exhale becomes a question they can't finish asking.",
-            'victim_msg': "Slick. Quick. The blade finds its mark between your fourth and fifth {hit_location}, and your exhale becomes a question you can't finish asking.",
-            'observer_msg': "Slick. Quick. The blade finds its mark between {target_name}'s fourth and fifth {hit_location}, and their exhale becomes a question they can't finish asking."
+            'attacker_msg': "Slick. Quick. The blade finds its mark between {target_name}'s fourth and fifth ribs, and their exhale becomes a question they can't finish asking.",
+            'victim_msg': "Slick. Quick. The blade finds its mark between your fourth and fifth ribs, and your exhale becomes a question you can't finish asking.",
+            'observer_msg': "Slick. Quick. The blade finds its mark between {target_name}'s fourth and fifth ribs, and their exhale becomes a question they can't finish asking."
         },
         {
             'attacker_msg': "You don't stab—you *punctuate*. The shiv slides home with a wet sigh, and {target_name}'s eyes go wide like they're reading the punchline to a joke they don't get.",
@@ -263,14 +263,14 @@ MESSAGES = {
             'observer_msg': "The blade punches through {target_name}'s {hit_location} with a sound like breaking kindling. {target_name} stumbles, clutching at air that suddenly feels too thin to breathe."
         },
         {
-            'attacker_msg': "The shiv parts flesh like a curtain being drawn {hit_location}. Behind it, {target_name} sees darkness deeper than they knew existed. You help them step inside.",
-            'victim_msg': "The shiv parts flesh like a curtain being drawn {hit_location}. Behind it, you see darkness deeper than you knew existed. {attacker_name} helps you step inside.",
-            'observer_msg': "The shiv parts flesh like a curtain being drawn {hit_location}. Behind it, {target_name} sees darkness deeper than they knew existed. {attacker_name} helps them step inside."
+            'attacker_msg': "The shiv parts flesh like a curtain being drawn back. Behind it, {target_name} sees darkness deeper than they knew existed. You help them step inside.",
+            'victim_msg': "The shiv parts flesh like a curtain being drawn back. Behind it, you see darkness deeper than you knew existed. {attacker_name} helps you step inside.",
+            'observer_msg': "The shiv parts flesh like a curtain being drawn back. Behind it, {target_name} sees darkness deeper than they knew existed. {attacker_name} helps them step inside."
         },
         {
-            'attacker_msg': "Your thrust is precise, clinical. The blade finds the space between {target_name}'s third and fourth {hit_location} like it was always meant to be there. Their expression shifts from confusion to understanding to acceptance in three heartbeats.",
-            'victim_msg': "{attacker_name}'s thrust is precise, clinical. The blade finds the space between your third and fourth {hit_location} like it was always meant to be there. Your expression shifts from confusion to understanding to acceptance in three heartbeats.",
-            'observer_msg': "{attacker_name}'s thrust is precise, clinical. The blade finds the space between {target_name}'s third and fourth {hit_location} like it was always meant to be there. {target_name}'s expression shifts from confusion to understanding to acceptance in three heartbeats."
+            'attacker_msg': "Your thrust is precise, clinical. The blade finds the space between {target_name}'s third and fourth ribs like it was always meant to be there. Their expression shifts from confusion to understanding to acceptance in three heartbeats.",
+            'victim_msg': "{attacker_name}'s thrust is precise, clinical. The blade finds the space between your third and fourth ribs like it was always meant to be there. Your expression shifts from confusion to understanding to acceptance in three heartbeats.",
+            'observer_msg': "{attacker_name}'s thrust is precise, clinical. The blade finds the space between {target_name}'s third and fourth ribs like it was always meant to be there. {target_name}'s expression shifts from confusion to understanding to acceptance in three heartbeats."
         },
         {
             'attacker_msg': "The shiv disappears into {target_name}'s {hit_location} with a sound like tearing silk. You feel the hilt grow warm in your palm as their body heat transfers through the steel.",

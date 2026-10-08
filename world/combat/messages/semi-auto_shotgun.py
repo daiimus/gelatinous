@@ -168,9 +168,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s controlled pair from the semi-automatic shotgun hits {target_name}'s {hit_location}, the one-two punch staggering them. Spent shells are flung out as the action cycles automatically."
         },
         {
-            'attacker_msg': "A quick volley of lead from your semi-automatic shotgun peppers {target_name}'s {hit_location}, the impacts almost simultaneous. The shotgun's bolt slams {hit_location} and forth, ejecting brass.",
-            'victim_msg': "A quick volley of lead from {attacker_name}'s semi-automatic shotgun peppers your {hit_location}, the impacts almost simultaneous. The shotgun's bolt slams {hit_location} and forth, ejecting brass.",
-            'observer_msg': "A quick volley of lead from {attacker_name}'s semi-automatic shotgun peppers {target_name}'s {hit_location}, the impacts almost simultaneous. The shotgun's bolt slams {hit_location} and forth, ejecting brass."
+            'attacker_msg': "A quick volley of lead from your semi-automatic shotgun peppers {target_name}'s {hit_location}, the impacts almost simultaneous. The shotgun's bolt slams back and forth, ejecting brass.",
+            'victim_msg': "A quick volley of lead from {attacker_name}'s semi-automatic shotgun peppers your {hit_location}, the impacts almost simultaneous. The shotgun's bolt slams back and forth, ejecting brass.",
+            'observer_msg': "A quick volley of lead from {attacker_name}'s semi-automatic shotgun peppers {target_name}'s {hit_location}, the impacts almost simultaneous. The shotgun's bolt slams back and forth, ejecting brass."
         },
         {
             'attacker_msg': "The semi-automatic shotgun's blasts strike {target_name}'s {hit_location} in rapid succession, the concentrated fire devastating. The shotgun ejects shells, ready for more without pause.",

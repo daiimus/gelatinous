@@ -203,9 +203,9 @@ MESSAGES = {
             'observer_msg': "It lands hard — not fast. The edge crunches bone and everything behind it. {target_name}'s cry is short-lived, smothered in {blood}."
         },
         {
-            'attacker_msg': "It's not the edge but the weight that ruins {target_name}. They're struck flat, breath gone, {hit_location} shattered.",
-            'victim_msg': "It's not the edge but the weight that ruins you. You're struck flat, breath gone, {hit_location} shattered.",
-            'observer_msg': "It's not the edge but the weight that ruins {target_name}. They're struck flat, breath gone, {hit_location} shattered."
+            'attacker_msg': "It's not the edge but the weight that ruins {target_name}. They're struck flat, breath gone, ribs shattered.",
+            'victim_msg': "It's not the edge but the weight that ruins you. You're struck flat, breath gone, ribs shattered.",
+            'observer_msg': "It's not the edge but the weight that ruins {target_name}. They're struck flat, breath gone, ribs shattered."
         },
         {
             'attacker_msg': "Steel bites deep, lodging into flesh before you yank it free of the {hit_location}. {target_name} falls, clutching what's left.",

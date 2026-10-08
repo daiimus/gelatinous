@@ -238,9 +238,9 @@ MESSAGES = {
             "observer_msg": "The chain loops briefly around {target_name}'s {hit_location} before snapping away. It leaves behind silence and panic."
         },
         {
-            "attacker_msg": "The chain slashes across {target_name}'s {hit_location}, wrapping tight before you yank it {hit_location}. Skin peels with it.",
-            "victim_msg": "The chain slashes across your {hit_location}, wrapping tight before {attacker_name} yanks it {hit_location}. Skin peels with it.",
-            "observer_msg": "The chain slashes across {target_name}'s {hit_location}, wrapping tight before {attacker_name} yanks it {hit_location}. Skin peels with it."
+            "attacker_msg": "The chain slashes across {target_name}'s {hit_location}, wrapping tight before you yank it back. Skin peels with it.",
+            "victim_msg": "The chain slashes across your {hit_location}, wrapping tight before {attacker_name} yanks it back. Skin peels with it.",
+            "observer_msg": "The chain slashes across {target_name}'s {hit_location}, wrapping tight before {attacker_name} yanks it back. Skin peels with it."
         },
         {
             "attacker_msg": "The chain smacks into {target_name}'s {hit_location}, wrapping briefly and dragging them sideways.",

@@ -258,9 +258,9 @@ MESSAGES = {
             'observer_msg': "The edge cleaves open {target_name}'s {hit_location}. {target_name} spins and stumbles out of instinct."
         },
         {
-            'attacker_msg': "The edge slices from {hit_location} to {hit_location}. {target_name} shrieks and stumbles.",
-            'victim_msg': "The edge slices from your {hit_location} to {hit_location}. You shriek and stumble.",
-            'observer_msg': "The edge slices from {target_name}'s {hit_location} to {hit_location}. {target_name} shrieks and stumbles."
+            'attacker_msg': "The edge slices from neck to chest. {target_name} shrieks and stumbles.",
+            'victim_msg': "The edge slices from your {hit_location} to chest. You shriek and stumble.",
+            'observer_msg': "The edge slices from {target_name}'s {hit_location} to chest. {target_name} shrieks and stumbles."
         },
         {
             'attacker_msg': "The flat of the blade smashes the {hit_location}. Blood follows a heartbeat later.",

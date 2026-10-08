@@ -198,9 +198,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s blade whistles in a short arc before striking {target_name}'s exposed {hit_location} with a brutal crack."
         },
         {
-            "attacker_msg": "With a grunt of exertion, you drive the cutlass against {target_name}, forcing them {hit_location} with raw, brawling power.",
-            "victim_msg": "With a grunt of exertion, {attacker_name} drives the cutlass against you, forcing you {hit_location} with raw, brawling power.",
-            "observer_msg": "With a grunt of exertion, {attacker_name} drives the cutlass against {target_name}, forcing them {hit_location} with raw, brawling power."
+            "attacker_msg": "With a grunt of exertion, you drive the cutlass against {target_name}, forcing them back with raw, brawling power.",
+            "victim_msg": "With a grunt of exertion, {attacker_name} drives the cutlass against you, forcing you back with raw, brawling power.",
+            "observer_msg": "With a grunt of exertion, {attacker_name} drives the cutlass against {target_name}, forcing them back with raw, brawling power."
         },
         {
             "attacker_msg": "The cutlass scores a brutal hit on {target_name}'s shield {hit_location}, the impact numbing and nearly severing.",
@@ -253,9 +253,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} presses the attack relentlessly, the cutlass a continuous, brutal assault that finally lands on {target_name}."
         },
         {
-            "attacker_msg": "The cutlass's edge meets flesh with a wet tearing sound, and {target_name} screams, stumbling {hit_location}.",
-            "victim_msg": "The cutlass's edge meets flesh with a wet tearing sound, and you scream, stumbling {hit_location}.",
-            "observer_msg": "The cutlass's edge meets flesh with a wet tearing sound, and {target_name} screams, stumbling {hit_location}."
+            "attacker_msg": "The cutlass's edge meets flesh with a wet tearing sound, and {target_name} screams, stumbling back.",
+            "victim_msg": "The cutlass's edge meets flesh with a wet tearing sound, and you scream, stumbling back.",
+            "observer_msg": "The cutlass's edge meets flesh with a wet tearing sound, and {target_name} screams, stumbling back."
         },
         {
             "attacker_msg": "Your chop is brutally effective, the cutlass's weight striking {target_name} with devastating force.",

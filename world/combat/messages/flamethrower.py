@@ -283,9 +283,9 @@ MESSAGES = {
             'observer_msg': "A painful, roaring gout of flame from {attacker_name}'s flamethrower strikes {target_name}'s {hit_location}, the fire burning through clothing and flesh in an instant. Their screams are cut short by the searing heat."
         },
         {
-            'attacker_msg': "The fiery stream from your flamethrower hits {target_name}'s {hit_location}, and the flames rapidly spread upwards, engulfing their {hit_location} and {hit_location}. The sight is horrifying.",
-            'victim_msg': "The fiery stream from {attacker_name}'s flamethrower hits your {hit_location}, and the flames rapidly spread upwards, engulfing your {hit_location} and {hit_location}. The sight is horrifying.",
-            'observer_msg': "The fiery stream from {attacker_name}'s flamethrower hits {target_name}'s {hit_location}, and the flames rapidly spread upwards, engulfing their {hit_location} and {hit_location}. The sight is horrifying."
+            'attacker_msg': "The fiery stream from your flamethrower hits {target_name}'s {hit_location}, and the flames rapidly spread upwards, engulfing their {hit_location} and torso. The sight is horrifying.",
+            'victim_msg': "The fiery stream from {attacker_name}'s flamethrower hits your {hit_location}, and the flames rapidly spread upwards, engulfing your {hit_location} and torso. The sight is horrifying.",
+            'observer_msg': "The fiery stream from {attacker_name}'s flamethrower hits {target_name}'s {hit_location}, and the flames rapidly spread upwards, engulfing their {hit_location} and torso. The sight is horrifying."
         },
         {
             'attacker_msg': "Your flamethrower delivers another wave of burning agony to {target_name}'s {hit_location}, the flames greedily consuming them. Their form slumps, still burning fiercely.",

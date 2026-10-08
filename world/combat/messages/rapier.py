@@ -289,9 +289,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s blade slides past {target_name}'s clumsy defense, leaving a stinging reminder."
         },
         {
-            'attacker_msg': "A swift lunge with the rapier forces {target_name} {hit_location}, a new wound marking their retreat.",
-            'victim_msg': "A swift lunge with the rapier forces you {hit_location}, a new wound marking your retreat.",
-            'observer_msg': "A swift lunge with the rapier forces {target_name} {hit_location}, a new wound marking their retreat."
+            'attacker_msg': "A swift lunge with the rapier forces {target_name} back, a new wound marking their retreat.",
+            'victim_msg': "A swift lunge with the rapier forces you back, a new wound marking your retreat.",
+            'observer_msg': "A swift lunge with the rapier forces {target_name} back, a new wound marking their retreat."
         },
         {
             'attacker_msg': "The tip of your rapier darts like a wasp, stinging {target_name}'s {hit_location}.",

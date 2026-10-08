@@ -233,9 +233,9 @@ MESSAGES = {
             'observer_msg': "A quick jab with the end of the metal pipe strikes {target_name}'s {hit_location} with a sharp, bone-breaking crack."
         },
         {
-            'attacker_msg': "The metal pipe thuds heavily as it connects with {target_name}'s {hit_location}, driving the air from their lungs and cracking {hit_location}.",
-            'victim_msg': "The metal pipe thuds heavily as it connects with your {hit_location}, driving the air from your {hit_location} and cracking {hit_location}.",
-            'observer_msg': "The metal pipe thuds heavily as it connects with {target_name}'s {hit_location}, driving the air from their lungs and cracking {hit_location}."
+            'attacker_msg': "The metal pipe thuds heavily as it connects with {target_name}'s {hit_location}, driving the air from their lungs and cracking ribs.",
+            'victim_msg': "The metal pipe thuds heavily as it connects with your {hit_location}, driving the air from your {hit_location} and cracking ribs.",
+            'observer_msg': "The metal pipe thuds heavily as it connects with {target_name}'s {hit_location}, driving the air from their lungs and cracking ribs."
         },
         {
             'attacker_msg': "Your pipe finds purchase, delivering a crushing blow to {target_name}'s {hit_location}, dropping them instantly.",

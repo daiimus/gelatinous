@@ -198,9 +198,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s blade whistles through the air before striking {target_name}'s exposed {hit_location}."
         },
         {
-            'attacker_msg': "With a grunt of effort, you drive the long sword against {target_name}, forcing them {hit_location}.",
-            'victim_msg': "With a grunt of effort, {attacker_name} drives the long sword against you, forcing you {hit_location}.",
-            'observer_msg': "With a grunt of effort, {attacker_name} drives the long sword against {target_name}, forcing them {hit_location}."
+            'attacker_msg': "With a grunt of effort, you drive the long sword against {target_name}, forcing them back.",
+            'victim_msg': "With a grunt of effort, {attacker_name} drives the long sword against you, forcing you back.",
+            'observer_msg': "With a grunt of effort, {attacker_name} drives the long sword against {target_name}, forcing them back."
         },
         {
             'attacker_msg': "The long sword scores a hit on {target_name}'s sword {hit_location}, weakening their grip.",

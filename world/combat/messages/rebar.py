@@ -249,9 +249,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} brings the bar down on {target_name}'s {hit_location}. Bones explode beneath boot leather."
         },
         {
-            'attacker_msg': "The tip of the bar jabs under {target_name}'s chin, snapping their {hit_location} {hit_location} violently.",
-            'victim_msg': "The tip of the bar jabs under your chin, snapping your {hit_location} {hit_location} violently.",
-            'observer_msg': "The tip of the bar jabs under {target_name}'s chin, snapping their {hit_location} {hit_location} violently."
+            'attacker_msg': "The tip of the bar jabs under {target_name}'s chin, snapping their {hit_location} back violently.",
+            'victim_msg': "The tip of the bar jabs under your chin, snapping your {hit_location} back violently.",
+            'observer_msg': "The tip of the bar jabs under {target_name}'s chin, snapping their {hit_location} back violently."
         },
         {
             'attacker_msg': "A thrust to the {hit_location} sends {target_name} stumbling, eyes wide and watery.",

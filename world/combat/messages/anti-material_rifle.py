@@ -153,9 +153,9 @@ MESSAGES = {
     ],
     "hit": [
         {
-            "attacker_msg": "A cataclysmic *KRA-THOOM* as your anti-material rifle fires, the massive bullet striking {target_name}'s {hit_location}, which simply explodes into {blood} mist and bone fragments. You are violently shoved {hit_location} by the recoil, working the heavy bolt, *CLUNK-CLANK*, ejecting a smoking, oversized casing.",
-            "victim_msg": "A cataclysmic *KRA-THOOM* as {attacker_name}'s anti-material rifle fires, the massive bullet striking your {hit_location}, which simply explodes into {blood} mist and bone fragments! {attacker_name} is violently shoved {hit_location} by the recoil, working the heavy bolt, *CLUNK-CLANK*, ejecting a smoking, oversized casing. You take {damage} damage.",
-            "observer_msg": "A cataclysmic *KRA-THOOM* as {attacker_name}'s anti-material rifle fires, the massive bullet striking {target_name}'s {hit_location}, which simply explodes into {blood} mist and bone fragments. {attacker_name} is violently shoved {hit_location} by the recoil, working the heavy bolt, *CLUNK-CLANK*, ejecting a smoking, oversized casing."
+            "attacker_msg": "A cataclysmic *KRA-THOOM* as your anti-material rifle fires, the massive bullet striking {target_name}'s {hit_location}, which simply explodes into {blood} mist and bone fragments. You are violently shoved back by the recoil, working the heavy bolt, *CLUNK-CLANK*, ejecting a smoking, oversized casing.",
+            "victim_msg": "A cataclysmic *KRA-THOOM* as {attacker_name}'s anti-material rifle fires, the massive bullet striking your {hit_location}, which simply explodes into {blood} mist and bone fragments! {attacker_name} is violently shoved back by the recoil, working the heavy bolt, *CLUNK-CLANK*, ejecting a smoking, oversized casing. You take {damage} damage.",
+            "observer_msg": "A cataclysmic *KRA-THOOM* as {attacker_name}'s anti-material rifle fires, the massive bullet striking {target_name}'s {hit_location}, which simply explodes into {blood} mist and bone fragments. {attacker_name} is violently shoved back by the recoil, working the heavy bolt, *CLUNK-CLANK*, ejecting a smoking, oversized casing."
         },
         {
             "attacker_msg": "Your anti-material rifle roars like a cannon, and a .50 caliber or larger slug tears a devastating, gaping hole completely through {target_name}'s {hit_location} and whatever was behind it, sending them cartwheeling. You fight the muzzle climb, cycling the action for another earth-shattering shot.",
@@ -193,9 +193,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}’s anti-material rifle’s projectile punches into {target_name} with unimaginable force, its impact marked by a shocking, explosive spray of blood and tissue that paints the landscape. A single, massive spent casing is ejected as {attacker_name} reloads."
         },
         {
-            "attacker_msg": "Your anti-material rifle fires with a thunderous, ground-shaking report, and {target_name} is struck with overwhelming, obliterating power, their form visibly disintegrating. The bolt handle is lifted and drawn {hit_location} with effort, then slammed forward.",
-            "victim_msg": "{attacker_name}’s anti-material rifle fires with a thunderous, ground-shaking report, and you are struck with overwhelming, obliterating power, your form visibly disintegrating! The bolt handle is lifted and drawn {hit_location} with effort, then slammed forward.",
-            "observer_msg": "{attacker_name}’s anti-material rifle fires with a thunderous, ground-shaking report, and {target_name} is struck with overwhelming, obliterating power, their form visibly disintegrating. The bolt handle is lifted and drawn {hit_location} with effort, then slammed forward."
+            "attacker_msg": "Your anti-material rifle fires with a thunderous, ground-shaking report, and {target_name} is struck with overwhelming, obliterating power, their form visibly disintegrating. The bolt handle is lifted and drawn back with effort, then slammed forward.",
+            "victim_msg": "{attacker_name}’s anti-material rifle fires with a thunderous, ground-shaking report, and you are struck with overwhelming, obliterating power, your form visibly disintegrating! The bolt handle is lifted and drawn back with effort, then slammed forward.",
+            "observer_msg": "{attacker_name}’s anti-material rifle fires with a thunderous, ground-shaking report, and {target_name} is struck with overwhelming, obliterating power, their form visibly disintegrating. The bolt handle is lifted and drawn back with effort, then slammed forward."
         },
         {
             "attacker_msg": "With a deafening, concussive crack, the bullet from your anti-material rifle hits {target_name}'s {hit_location}; their midsection simply vanishes in a {blood} cloud. You cycle the bolt methodically, the ground still vibrating.",
@@ -228,9 +228,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}’s anti-material rifle bullet slams into {target_name}, the sheer kinetic energy lifting them off their feet and tearing them apart mid-air. Another enormous round is chambered with a solid, ominous sound."
         },
         {
-            "attacker_msg": "A shot from your anti-material rifle hits {target_name}'s {hit_location}; the {hit_location}, {hit_location}, and {hit_location} are obliterated in an instant spray of bone and blood. You cycle the bolt, unflinching at the carnage.",
-            "victim_msg": "A shot from {attacker_name}'s anti-material rifle hits your {hit_location}; your {hit_location}, {hit_location}, and {hit_location} are obliterated in an instant spray of bone and blood! {attacker_name} cycles the bolt, unflinching at the carnage.",
-            "observer_msg": "A shot from {attacker_name}'s anti-material rifle hits {target_name}'s {hit_location}; the {hit_location}, {hit_location}, and {hit_location} are obliterated in an instant spray of bone and blood. {attacker_name} cycles the bolt, unflinching at the carnage."
+            "attacker_msg": "A shot from your anti-material rifle hits {target_name}'s {hit_location}; the {hit_location}, wrist, and forearm are obliterated in an instant spray of bone and blood. You cycle the bolt, unflinching at the carnage.",
+            "victim_msg": "A shot from {attacker_name}'s anti-material rifle hits your {hit_location}; your {hit_location}, wrist, and forearm are obliterated in an instant spray of bone and blood! {attacker_name} cycles the bolt, unflinching at the carnage.",
+            "observer_msg": "A shot from {attacker_name}'s anti-material rifle hits {target_name}'s {hit_location}; the {hit_location}, wrist, and forearm are obliterated in an instant spray of bone and blood. {attacker_name} cycles the bolt, unflinching at the carnage."
         },
         {
             "attacker_msg": "Your anti-material rifle's bullet makes solid, catastrophic contact with {target_name}'s {hit_location}, the shockwave of impact visibly rippling through them before they explode. You work the bolt, chambering a fresh, devastating round.",

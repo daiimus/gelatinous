@@ -151,9 +151,9 @@ MESSAGES = {
             'observer_msg': "Heat shimmers off {attacker_name}'s barrel. {target_name}'s hand goes to a {hit_location} that isn't all there."
         },
         {
-            'attacker_msg': "The report caroms down the block. Somewhere under it, {target_name} hits the ground {hit_location}-first.",
-            'victim_msg': "The report caroms down the block and takes your legs with it — you go down {hit_location}-first.",
-            'observer_msg': "{attacker_name}'s report caroms down the block. Under it, {target_name} goes down {hit_location}-first."
+            'attacker_msg': "The report caroms down the block. Somewhere under it, {target_name} hits the ground face-first.",
+            'victim_msg': "The report caroms down the block and takes your legs with it — you go down face-first.",
+            'observer_msg': "{attacker_name}'s report caroms down the block. Under it, {target_name} goes down face-first."
         },
         {
             'attacker_msg': "You log the hit the same instant you make it: {target_name}, {hit_location}, effect confirmed.",

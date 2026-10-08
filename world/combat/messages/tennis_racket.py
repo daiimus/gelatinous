@@ -203,9 +203,9 @@ MESSAGES = {
             "observer_msg": "The tennis racket's edge strikes {target_name} like a blade, the frame cutting deeper than expected."
         },
         {
-            "attacker_msg": "A devastating approach shot with your tennis racket connects with {target_name}'s {hit_location}, snapping their {hit_location} {hit_location}.",
+            "attacker_msg": "A devastating approach shot with your tennis racket connects with {target_name}'s {hit_location}, snapping their {hit_location} back.",
             "victim_msg": "A devastating approach shot from {attacker_name}'s tennis racket connects with your {hit_location}, snapping your {hit_location} back!",
-            "observer_msg": "A devastating approach shot from the tennis racket connects with {target_name}'s {hit_location}, snapping their {hit_location} {hit_location}."
+            "observer_msg": "A devastating approach shot from the tennis racket connects with {target_name}'s {hit_location}, snapping their {hit_location} back."
         },
         {
             "attacker_msg": "Your tennis racket hums through the air before connecting with {target_name}'s {hit_location}, toppling them.",

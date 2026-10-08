@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s well-aimed shot with the lever-action rifle leaves a deep, profusely bleeding wound in {target_name}. The lever is cycled with a smooth, almost casual motion, another round sliding smoothly home."
         },
         {
-            'attacker_msg': "A direct hit! The lever-action rifle's bullet smashes into {target_name}'s {hit_location}, driving them {hit_location} a step with a visible shockwave. You work the lever without hesitation, preparing for an immediate follow-up.",
-            'victim_msg': "A direct hit! The lever-action rifle's bullet smashes into your {hit_location}, driving you {hit_location} a step with a visible shockwave. {attacker_name} works the lever without hesitation, preparing for an immediate follow-up.",
-            'observer_msg': "A direct hit! The lever-action rifle's bullet smashes into {target_name}'s {hit_location}, driving them {hit_location} a step with a visible shockwave. {attacker_name} works the lever without hesitation, preparing for an immediate follow-up."
+            'attacker_msg': "A direct hit! The lever-action rifle's bullet smashes into {target_name}'s {hit_location}, driving them back a step with a visible shockwave. You work the lever without hesitation, preparing for an immediate follow-up.",
+            'victim_msg': "A direct hit! The lever-action rifle's bullet smashes into your {hit_location}, driving you back a step with a visible shockwave. {attacker_name} works the lever without hesitation, preparing for an immediate follow-up.",
+            'observer_msg': "A direct hit! The lever-action rifle's bullet smashes into {target_name}'s {hit_location}, driving them back a step with a visible shockwave. {attacker_name} works the lever without hesitation, preparing for an immediate follow-up."
         },
         {
             'attacker_msg': "The lever-action rifle's projectile punches into {target_name} with considerable, undeniable force, its impact marked by a sudden spray of blood and a choked gasp. A single spent casing is ejected cleanly as you work the lever.",
@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "The lever-action rifle's projectile punches into {target_name} with considerable, undeniable force, its impact marked by a sudden spray of blood and a choked gasp. A single spent casing is ejected cleanly as {attacker_name} works the lever."
         },
         {
-            'attacker_msg': "Your lever-action rifle fires with a loud, sharp report, and {target_name} is struck hard, stumbling. The lever is worked with a practiced, efficient flick of the {hit_location}, ejecting and loading in one smooth movement.",
-            'victim_msg': "{attacker_name}'s lever-action rifle fires with a loud, sharp report, and you are struck hard, stumbling. The lever is worked with a practiced, efficient flick of the {hit_location}, ejecting and loading in one smooth movement.",
-            'observer_msg': "{attacker_name}'s lever-action rifle fires with a loud, sharp report, and {target_name} is struck hard, stumbling. The lever is worked with a practiced, efficient flick of the {hit_location}, ejecting and loading in one smooth movement."
+            'attacker_msg': "Your lever-action rifle fires with a loud, sharp report, and {target_name} is struck hard, stumbling. The lever is worked with a practiced, efficient flick of the wrist, ejecting and loading in one smooth movement.",
+            'victim_msg': "{attacker_name}'s lever-action rifle fires with a loud, sharp report, and you are struck hard, stumbling. The lever is worked with a practiced, efficient flick of the wrist, ejecting and loading in one smooth movement.",
+            'observer_msg': "{attacker_name}'s lever-action rifle fires with a loud, sharp report, and {target_name} is struck hard, stumbling. The lever is worked with a practiced, efficient flick of the wrist, ejecting and loading in one smooth movement."
         },
         {
             'attacker_msg': "With a loud, echoing crack, the bullet from your lever-action rifle hits {target_name}'s {hit_location}, the wound grievous and instantly debilitating. You cycle the lever methodically, eyes never leaving {target_name}.",

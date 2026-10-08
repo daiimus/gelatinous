@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s heavy machine gun bullets slam into {target_name}, the sheer kinetic energy lifting them off their feet and tearing them apart mid-air with multiple, successive impacts. More enormous rounds are chambered with solid, ominous sounds."
         },
         {
-            'attacker_msg': "A burst from the heavy machine gun hits {target_name}'s {hit_location}; the {hit_location}, {hit_location}, and {hit_location} are obliterated in an instant spray of bone and blood as multiple rounds connect. You continue the burst, unflinching at the carnage.",
-            'victim_msg': "A burst from the heavy machine gun hits your {hit_location}; the {hit_location}, {hit_location}, and {hit_location} are obliterated in an instant spray of bone and blood as multiple rounds connect. {attacker_name} continues the burst, unflinching at the carnage.",
-            'observer_msg': "A burst from the heavy machine gun hits {target_name}'s {hit_location}; the {hit_location}, {hit_location}, and {hit_location} are obliterated in an instant spray of bone and blood as multiple rounds connect. {attacker_name} continues the burst, unflinching at the carnage."
+            'attacker_msg': "A burst from the heavy machine gun hits {target_name}'s {hit_location}; the {hit_location}, wrist, and forearm are obliterated in an instant spray of bone and blood as multiple rounds connect. You continue the burst, unflinching at the carnage.",
+            'victim_msg': "A burst from the heavy machine gun hits your {hit_location}; the {hit_location}, wrist, and forearm are obliterated in an instant spray of bone and blood as multiple rounds connect. {attacker_name} continues the burst, unflinching at the carnage.",
+            'observer_msg': "A burst from the heavy machine gun hits {target_name}'s {hit_location}; the {hit_location}, wrist, and forearm are obliterated in an instant spray of bone and blood as multiple rounds connect. {attacker_name} continues the burst, unflinching at the carnage."
         },
         {
             'attacker_msg': "The heavy machine gun's bullets make solid, catastrophic contact with {target_name}'s {hit_location}, the shockwave of impacts visibly rippling through them before they explode under the sustained fire. You work the trigger, chambering fresh, devastating rounds.",

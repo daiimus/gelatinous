@@ -183,9 +183,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}’s well-aimed shot with the break-action shotgun leaves a wide, bleeding pattern of wounds on {target_name}. The action is broken, reloaded, and closed with a solid *clack*."
         },
         {
-            "attacker_msg": "A direct hit! Your break-action shotgun's blast smashes into {target_name}'s {hit_location}, driving them {hit_location} with overwhelming force. You reload swiftly, the smell of burnt powder thick in the air.",
-            "victim_msg": "A direct hit! {attacker_name}'s break-action shotgun's blast smashes into your {hit_location}, driving you {hit_location} with overwhelming force. {attacker_name} reloads swiftly, the smell of burnt powder thick in the air.",
-            "observer_msg": "A direct hit! {attacker_name}'s break-action shotgun's blast smashes into {target_name}'s {hit_location}, driving them {hit_location} with overwhelming force. {attacker_name} reloads swiftly, the smell of burnt powder thick in the air."
+            "attacker_msg": "A direct hit! Your break-action shotgun's blast smashes into {target_name}'s {hit_location}, driving them back with overwhelming force. You reload swiftly, the smell of burnt powder thick in the air.",
+            "victim_msg": "A direct hit! {attacker_name}'s break-action shotgun's blast smashes into your {hit_location}, driving you back with overwhelming force. {attacker_name} reloads swiftly, the smell of burnt powder thick in the air.",
+            "observer_msg": "A direct hit! {attacker_name}'s break-action shotgun's blast smashes into {target_name}'s {hit_location}, driving them back with overwhelming force. {attacker_name} reloads swiftly, the smell of burnt powder thick in the air."
         },
         {
             "attacker_msg": "Your break-action shotgun’s projectile cloud punches into {target_name} with considerable force, its impact marked by multiple, simultaneous sprays of blood. You flick out spent shells as you reload.",

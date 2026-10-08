@@ -193,14 +193,14 @@ MESSAGES = {
             'observer_msg': "A sweeping arc connects with {target_name}'s {hit_location}. They drop with a shout."
         },
         {
-            'attacker_msg': "A vertical slam smashes into {target_name}'s {hit_location}. Something pops. It's not coming {hit_location} right.",
-            'victim_msg': "A vertical slam smashes into your {hit_location}. Something pops. It's not coming {hit_location} right.",
-            'observer_msg': "A vertical slam smashes into {target_name}'s {hit_location}. Something pops. It's not coming {hit_location} right."
+            'attacker_msg': "A vertical slam smashes into {target_name}'s {hit_location}. Something pops. It's not coming back right.",
+            'victim_msg': "A vertical slam smashes into your {hit_location}. Something pops. It's not coming back right.",
+            'observer_msg': "A vertical slam smashes into {target_name}'s {hit_location}. Something pops. It's not coming back right."
         },
         {
-            'attacker_msg': "A whip-fast strike hits {target_name}'s {hit_location}. They cry out and stagger {hit_location}, clutching raw nerve.",
-            'victim_msg': "A whip-fast strike hits your {hit_location}. You cry out and stagger {hit_location}, clutching raw nerve.",
-            'observer_msg': "A whip-fast strike hits {target_name}'s {hit_location}. They cry out and stagger {hit_location}, clutching raw nerve."
+            'attacker_msg': "A whip-fast strike hits {target_name}'s {hit_location}. They cry out and stagger back, clutching raw nerve.",
+            'victim_msg': "A whip-fast strike hits your {hit_location}. You cry out and stagger back, clutching raw nerve.",
+            'observer_msg': "A whip-fast strike hits {target_name}'s {hit_location}. They cry out and stagger back, clutching raw nerve."
         },
         {
             'attacker_msg': "One stick crashes into {target_name}'s {hit_location}, the other follows with sick rhythm.",
@@ -268,9 +268,9 @@ MESSAGES = {
             'observer_msg': "The weapon strikes the {hit_location} of {target_name}'s ribcage. The sound is wet and wooden."
         },
         {
-            'attacker_msg': "You land a sharp blow to {target_name}'s {hit_location}. They hop {hit_location}, cursing through gritted teeth.",
-            'victim_msg': "{attacker_name} lands a sharp blow to your {hit_location}. You hop {hit_location}, cursing through gritted teeth.",
-            'observer_msg': "{attacker_name} lands a sharp blow to {target_name}'s {hit_location}. They hop {hit_location}, cursing through gritted teeth."
+            'attacker_msg': "You land a sharp blow to {target_name}'s {hit_location}. They hop back, cursing through gritted teeth.",
+            'victim_msg': "{attacker_name} lands a sharp blow to your {hit_location}. You hop back, cursing through gritted teeth.",
+            'observer_msg': "{attacker_name} lands a sharp blow to {target_name}'s {hit_location}. They hop back, cursing through gritted teeth."
         },
         {
             'attacker_msg': "You lash the nunchaku across {target_name}'s {hit_location}. A line of {blood} blossoms under cloth.",

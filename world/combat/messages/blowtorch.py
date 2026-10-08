@@ -193,9 +193,9 @@ MESSAGES = {
             "observer_msg": "Fire licks up {target_name}'s {hit_location}, blistering skin instantly. They paw at the wound like it’ll matter."
         },
         {
-            "attacker_msg": "Fire wraps around {target_name}'s {hit_location}, blistering with surgical cruelty. They howl and stagger {hit_location}, steaming.",
-            "victim_msg": "Fire wraps around your {hit_location}, blistering with surgical cruelty. You howl and stagger {hit_location}, steaming.",
-            "observer_msg": "Fire wraps around {target_name}'s {hit_location}, blistering with surgical cruelty. They howl and stagger {hit_location}, steaming."
+            "attacker_msg": "Fire wraps around {target_name}'s {hit_location}, blistering with surgical cruelty. They howl and stagger back, steaming.",
+            "victim_msg": "Fire wraps around your {hit_location}, blistering with surgical cruelty. You howl and stagger back, steaming.",
+            "observer_msg": "Fire wraps around {target_name}'s {hit_location}, blistering with surgical cruelty. They howl and stagger back, steaming."
         },
         {
             "attacker_msg": "The blowtorch finds skin beneath {target_name}'s torn shirt. The result is instant, horrific, and {blood}.",
@@ -278,9 +278,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} lashes with the torch, catching the edge of {target_name}'s {hit_location}. Fabric chars. Flesh follows."
         },
         {
-            "attacker_msg": "You plant a {hit_location} on {target_name} and guide the flame to their {hit_location}. They twist and scream, trying to escape the slow ruin.",
-            "victim_msg": "{attacker_name} plants a {hit_location} on you and guides the flame to your {hit_location}. You twist and scream, trying to escape the slow ruin.",
-            "observer_msg": "{attacker_name} plants a {hit_location} on {target_name} and guides the flame to their {hit_location}. They twist and scream, trying to escape the slow ruin."
+            "attacker_msg": "You plant a hand on {target_name} and guide the flame to their {hit_location}. They twist and scream, trying to escape the slow ruin.",
+            "victim_msg": "{attacker_name} plants a hand on you and guides the flame to your {hit_location}. You twist and scream, trying to escape the slow ruin.",
+            "observer_msg": "{attacker_name} plants a hand on {target_name} and guides the flame to their {hit_location}. They twist and scream, trying to escape the slow ruin."
         },
         {
             "attacker_msg": "You press the flame near {target_name}'s {hit_location}. The skin blackens, and the smell makes everyone recoil.",

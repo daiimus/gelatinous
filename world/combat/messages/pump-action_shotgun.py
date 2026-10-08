@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s well-aimed shot with the pump-action shotgun leaves a wide, bleeding pattern of wounds on {target_name}. The action is cycled with a smooth, powerful *SHUCK-CHUNK*."
         },
         {
-            'attacker_msg': "A direct hit! The pump-action shotgun's blast smashes into {target_name}'s {hit_location}, driving them {hit_location}. You cycle the pump without hesitation, another shell ready.",
-            'victim_msg': "A direct hit! The pump-action shotgun's blast smashes into your {hit_location}, driving you {hit_location}. {attacker_name} cycles the pump without hesitation, another shell ready.",
-            'observer_msg': "A direct hit! The pump-action shotgun's blast smashes into {target_name}'s {hit_location}, driving them {hit_location}. {attacker_name} cycles the pump without hesitation, another shell ready."
+            'attacker_msg': "A direct hit! The pump-action shotgun's blast smashes into {target_name}'s {hit_location}, driving them back. You cycle the pump without hesitation, another shell ready.",
+            'victim_msg': "A direct hit! The pump-action shotgun's blast smashes into your {hit_location}, driving you back. {attacker_name} cycles the pump without hesitation, another shell ready.",
+            'observer_msg': "A direct hit! The pump-action shotgun's blast smashes into {target_name}'s {hit_location}, driving them back. {attacker_name} cycles the pump without hesitation, another shell ready."
         },
         {
             'attacker_msg': "The pump-action shotgun's projectile cloud punches into {target_name}, its impact marked by multiple sprays of blood. A spent shell is ejected as you work the pump.",

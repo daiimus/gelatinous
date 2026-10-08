@@ -238,9 +238,9 @@ MESSAGES = {
             "observer_msg": "The brick punches into {target_name}'s {hit_location}. Bones fracture. Control flees."
         },
         {
-            "attacker_msg": "The brick slams into {target_name}'s {hit_location}. They stagger {hit_location}, gasping, fingers clawing at nothing.",
-            "victim_msg": "The brick slams into your {hit_location}. You stagger {hit_location}, gasping, fingers clawing at nothing.",
-            "observer_msg": "The brick slams into {target_name}'s {hit_location}. They stagger {hit_location}, gasping, fingers clawing at nothing."
+            "attacker_msg": "The brick slams into {target_name}'s {hit_location}. They stagger back, gasping, fingers clawing at nothing.",
+            "victim_msg": "The brick slams into your {hit_location}. You stagger back, gasping, fingers clawing at nothing.",
+            "observer_msg": "The brick slams into {target_name}'s {hit_location}. They stagger back, gasping, fingers clawing at nothing."
         },
         {
             "attacker_msg": "The brick slams into {target_name}'s {hit_location} with a sickening crack. Blood flies in a {blood} arc as they stumble.",

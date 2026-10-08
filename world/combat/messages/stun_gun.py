@@ -273,9 +273,9 @@ MESSAGES = {
             'observer_msg': "The voltage runs down {target_name}'s {hit_location}. They stumble, then topple sideways."
         },
         {
-            'attacker_msg': "Two prongs meet flesh at the {hit_location}. {target_name}'s eyes roll {hit_location}.",
-            'victim_msg': "Two prongs meet flesh at your {hit_location}. Your eyes roll {hit_location}.",
-            'observer_msg': "Two prongs meet flesh at the {hit_location}. {target_name}'s eyes roll {hit_location}."
+            'attacker_msg': "Two prongs meet flesh at the {hit_location}. {target_name}'s eyes roll back.",
+            'victim_msg': "Two prongs meet flesh at your {hit_location}. Your eyes roll back.",
+            'observer_msg': "Two prongs meet flesh at the {hit_location}. {target_name}'s eyes roll back."
         },
         {
             'attacker_msg': "Voltage arcs through the {hit_location} blade. {target_name} seizes, then goes limp.",

@@ -208,9 +208,9 @@ MESSAGES = {
             "observer_msg": "One clean strike to the {hit_location}. Something snaps. Something important."
         },
         {
-            "attacker_msg": "The bar cracks against the {hit_location}. Something inside shifts and doesn't go {hit_location}.",
-            "victim_msg": "The bar cracks against the {hit_location}. Something inside shifts and doesn't go {hit_location}.",
-            "observer_msg": "The bar cracks against the {hit_location}. Something inside shifts and doesn't go {hit_location}."
+            "attacker_msg": "The bar cracks against the {hit_location}. Something inside shifts and doesn't go back.",
+            "victim_msg": "The bar cracks against the {hit_location}. Something inside shifts and doesn't go back.",
+            "observer_msg": "The bar cracks against the {hit_location}. Something inside shifts and doesn't go back."
         },
         {
             "attacker_msg": "The bar crashes down on {target_name}'s {hit_location}. Bones crunch. The limb goes limp.",

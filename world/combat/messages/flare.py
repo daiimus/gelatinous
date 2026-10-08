@@ -193,9 +193,9 @@ MESSAGES = {
             'observer_msg': "The flare's intense heat washes over {target_name} as {attacker_name} manages to make contact, causing immediate, blistering pain."
         },
         {
-            'attacker_msg': "Your flare makes a glancing hit, but the heat is enough to make {target_name} cry out and stumble {hit_location}.",
-            'victim_msg': "{attacker_name}'s flare makes a glancing hit, but the heat is enough to make you cry out and stumble {hit_location}.",
-            'observer_msg': "{attacker_name}'s flare makes a glancing hit, but the heat is enough to make {target_name} cry out and stumble {hit_location}."
+            'attacker_msg': "Your flare makes a glancing hit, but the heat is enough to make {target_name} cry out and stumble back.",
+            'victim_msg': "{attacker_name}'s flare makes a glancing hit, but the heat is enough to make you cry out and stumble back.",
+            'observer_msg': "{attacker_name}'s flare makes a glancing hit, but the heat is enough to make {target_name} cry out and stumble back."
         },
         {
             'attacker_msg': "With a savage push, you hold the flare against {target_name}, who thrashes wildly, trying to escape the searing burn.",
@@ -233,9 +233,9 @@ MESSAGES = {
             'observer_msg': "A desperate block by {target_name} is met with the burning end of the flare, scorching their {hit_location}."
         },
         {
-            'attacker_msg': "The flare makes solid contact with {target_name}'s {hit_location}, the intense heat causing them to gasp and fall {hit_location}.",
-            'victim_msg': "The flare makes solid contact with your {hit_location}, the intense heat causing you to gasp and fall {hit_location}.",
-            'observer_msg': "The flare makes solid contact with {target_name}'s {hit_location}, the intense heat causing them to gasp and fall {hit_location}."
+            'attacker_msg': "The flare makes solid contact with {target_name}'s {hit_location}, the intense heat causing them to gasp and fall back.",
+            'victim_msg': "The flare makes solid contact with your {hit_location}, the intense heat causing you to gasp and fall back.",
+            'observer_msg': "The flare makes solid contact with {target_name}'s {hit_location}, the intense heat causing them to gasp and fall back."
         },
         {
             'attacker_msg': "Your flare finds purchase, delivering a painful, debilitating burn to {target_name}'s {hit_location}.",

@@ -158,9 +158,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} hooks {target_name} with brutal force, dragging them off balance as pain blossoms along their {hit_location}."
         },
         {
-            "attacker_msg": "You yank the catchpole free with a sickening crack, tearing flesh as {target_name} staggers {hit_location}.",
-            "victim_msg": "{attacker_name} yanks the catchpole free with a sickening crack, tearing flesh as you stagger {hit_location}.",
-            "observer_msg": "{attacker_name} yanks the catchpole free with a sickening crack, tearing flesh as {target_name} staggers {hit_location}."
+            "attacker_msg": "You yank the catchpole free with a sickening crack, tearing flesh as {target_name} staggers back.",
+            "victim_msg": "{attacker_name} yanks the catchpole free with a sickening crack, tearing flesh as you stagger back.",
+            "observer_msg": "{attacker_name} yanks the catchpole free with a sickening crack, tearing flesh as {target_name} staggers back."
         },
         {
             "attacker_msg": "You jerk the catchpole violently, the barbed hook hacking through muscle and sending {target_name} crashing to the ground.",

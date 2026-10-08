@@ -213,9 +213,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s relentless assault pays off as {item} strikes {target_name}."
         },
         {
-            'attacker_msg': "{target_name} stumbles {hit_location}, rocked by the force of {item}.",
-            'victim_msg': "You stumble {hit_location}, rocked by the force of {item}.",
-            'observer_msg': "{target_name} stumbles {hit_location}, rocked by the force of {item}."
+            'attacker_msg': "{target_name} stumbles back, rocked by the force of {item}.",
+            'victim_msg': "You stumble back, rocked by the force of {item}.",
+            'observer_msg': "{target_name} stumbles back, rocked by the force of {item}."
         },
         {
             'attacker_msg': "A sharp crack rings out as {item} impacts {target_name}.",

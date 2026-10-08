@@ -22,7 +22,18 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BANK_DIR = os.path.join(HERE, "combat", "messages")
 SELF = re.compile(r"\b[Yy]our \{hit_location\}(?![A-Za-z])")
 ATTACKERS_PART = re.compile(r"\{attacker_name\}['’]s \{hit_location\}")
-GLUED = re.compile(r"[A-Za-z]\{hit_location\}|\{hit_location\}[a-z]")
+GLUED = re.compile(r"[A-Za-z]\{hit_location\}|\{hit_location\}[a-z]|\{hit_location\}-[a-z]")
+# The conversion also tokenized the adverb "back" ("they stagger back") and
+# list items ("the hand, wrist, and forearm"); the ancestor words were
+# restored (#3710). These seats can never be the target's struck part.
+ADVERB_SEAT = re.compile(r"\b(stagger|staggers|staggering|stumble|stumbles|stumbling|drawn|snap|snaps|whip|whips|jerk|jerks|yank|yanks|roll|rolls|slam|slams|lurch|lurches|reel|reels|them|you|it|come|comes|coming|go|goes|get|gets|fall|falls|thrown|knocked|forced|driven|pushed|sent) \{hit_location\}(?=[ .,;!—-]|$)")
+# The issue's own heuristic (an attacker token whose victim sibling says the
+# word plainly) is a victim-side gap, not this issue; its survivors are named
+# so a new one fails and a fix must strike its entry.
+SURVIVORS = {
+    "bowel_disruptor/hit/31", "bowel_disruptor/hit/35", "bowel_disruptor/hit/38", "bowel_disruptor/miss/37",
+    "robot_riot_gun/miss/11", "robot_riot_gun/kill/8", "scalpel/hit/2", "scalpel/kill/12", "spraycan/initiate/12",
+}
 
 
 def _banks():
@@ -39,9 +50,9 @@ def _banks():
 def _entries():
     for bank, messages in _banks():
         for phase, entries in messages.items():
-            for entry in entries or ():
+            for index, entry in enumerate(entries or ()):
                 if isinstance(entry, dict):
-                    yield bank, phase, entry
+                    yield bank, phase, index, entry
 
 
 class TheTokenIsAlwaysTheTargets(TestCase):
@@ -50,24 +61,27 @@ class TheTokenIsAlwaysTheTargets(TestCase):
         self.assertGreater(len(list(_banks())), 80)
 
     def test_no_attacker_line_spends_the_token_on_the_attacker(self):
-        slips = [(b, p, e["attacker_msg"]) for b, p, e in _entries() if SELF.search(e.get("attacker_msg", ""))]
+        slips = [(b, p, e["attacker_msg"]) for b, p, _, e in _entries() if SELF.search(e.get("attacker_msg", ""))]
         self.assertEqual(slips, [], f"{len(slips)} attacker self lines: {slips[:5]}")
 
     def test_no_victim_or_observer_line_spends_the_token_on_the_attacker(self):
-        slips = [(b, p, role, e[role]) for b, p, e in _entries() for role in ("victim_msg", "observer_msg")
+        slips = [(b, p, role, e[role]) for b, p, _, e in _entries() for role in ("victim_msg", "observer_msg")
                  if ATTACKERS_PART.search(e.get(role, ""))]
         self.assertEqual(slips, [], f"{len(slips)} attacker-part lines: {slips[:5]}")
 
     def test_no_token_is_glued_to_letters(self):
-        slips = [(b, p, role, e[role]) for b, p, e in _entries() for role in ("attacker_msg", "victim_msg", "observer_msg")
+        slips = [(b, p, role, e[role]) for b, p, _, e in _entries() for role in ("attacker_msg", "victim_msg", "observer_msg")
                  if GLUED.search(e.get(role, ""))]
         self.assertEqual(slips, [], f"{len(slips)} glued tokens: {slips[:5]}")
 
-    def test_a_token_in_an_attacker_line_is_echoed_to_the_victim(self):
-        # The issue's own heuristic, kept as a census rather than a bar: a
-        # legitimate target token whose victim sibling says the word plainly
-        # is a victim-side gap, not this issue. Pinned at its count on
-        # 2026-10-08 (10, down from 252) so the number can only fall.
-        count = sum(1 for _, _, e in _entries()
-                    if "{hit_location}" in e.get("attacker_msg", "") and "{hit_location}" not in e.get("victim_msg", ""))
-        self.assertLessEqual(count, 10, count)
+    def test_no_token_sits_in_an_adverb_seat(self):
+        slips = [(b, p, role, e[role]) for b, p, _, e in _entries() for role in ("attacker_msg", "victim_msg", "observer_msg")
+                 if ADVERB_SEAT.search(e.get(role, ""))]
+        self.assertEqual(slips, [], f"{len(slips)} adverb seats: {slips[:5]}")
+
+    def test_the_heuristic_survivors_are_exactly_the_named_nine(self):
+        # Down from 252 on 2026-10-08; a new one fails here, a fix strikes
+        # its entry from SURVIVORS.
+        found = {f"{b}/{p}/{i}" for b, p, i, e in _entries()
+                 if "{hit_location}" in e.get("attacker_msg", "") and "{hit_location}" not in e.get("victim_msg", "")}
+        self.assertEqual(found, SURVIVORS, {"new": sorted(found - SURVIVORS), "fixed": sorted(SURVIVORS - found)})

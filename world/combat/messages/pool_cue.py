@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} draws the shaft across {target_name}'s knuckles, skin splitting under the blow."
         },
         {
-            'attacker_msg': "A flick of the {hit_location} cracks the cue against {target_name}'s eyebrow. Blood blinds one eye.",
-            'victim_msg': "A flick of the {hit_location} cracks the cue against your eyebrow. Blood blinds one eye.",
-            'observer_msg': "A flick of the {hit_location} cracks the cue against {target_name}'s eyebrow. Blood blinds one eye."
+            'attacker_msg': "A flick of the wrist cracks the cue against {target_name}'s eyebrow. Blood blinds one eye.",
+            'victim_msg': "A flick of the wrist cracks the cue against your eyebrow. Blood blinds one eye.",
+            'observer_msg': "A flick of the wrist cracks the cue against {target_name}'s eyebrow. Blood blinds one eye."
         },
         {
             'attacker_msg': "The thick end slams into {target_name}'s {hit_location}, doubling them over.",
@@ -203,9 +203,9 @@ MESSAGES = {
             'observer_msg': "A heavy swing across the {hit_location} leaves {target_name} clutching at their guts."
         },
         {
-            'attacker_msg': "The cue slips under {target_name}'s chin, snapping their {hit_location} {hit_location}.",
-            'victim_msg': "The cue slips under your chin, snapping your {hit_location} {hit_location}.",
-            'observer_msg': "The cue slips under {target_name}'s chin, snapping their {hit_location} {hit_location}."
+            'attacker_msg': "The cue slips under {target_name}'s chin, snapping their {hit_location} back.",
+            'victim_msg': "The cue slips under your chin, snapping your {hit_location} back.",
+            'observer_msg': "The cue slips under {target_name}'s chin, snapping their {hit_location} back."
         },
         {
             'attacker_msg': "You carve a line down {target_name}'s {hit_location} as they try to run.",

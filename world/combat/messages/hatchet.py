@@ -258,9 +258,9 @@ MESSAGES = {
             'observer_msg': "The hatchet hooks the {hit_location} of the {hit_location}. It doesn't go deep, but it goes enough."
         },
         {
-            'attacker_msg': "The hatchet lands low, carving into {hit_location}. {target_name} drops with a howl.",
-            'victim_msg': "The hatchet lands low, carving into {hit_location}. You drop with a howl.",
-            'observer_msg': "The hatchet lands low, carving into {hit_location}. {target_name} drops with a howl."
+            'attacker_msg': "The hatchet lands low, carving into shin. {target_name} drops with a howl.",
+            'victim_msg': "The hatchet lands low, carving into shin. You drop with a howl.",
+            'observer_msg': "The hatchet lands low, carving into shin. {target_name} drops with a howl."
         },
         {
             'attacker_msg': "The hatchet slams into the upper {hit_location}, biting deep. {target_name} gasps — and doesn't finish the sound.",
@@ -268,9 +268,9 @@ MESSAGES = {
             'observer_msg': "The hatchet slams into the upper {hit_location}, biting deep. {target_name} gasps — and doesn't finish the sound."
         },
         {
-            'attacker_msg': "The weapon slashes across the upper {hit_location}, severing layers that won't grow {hit_location} right.",
-            'victim_msg': "The weapon slashes across the upper {hit_location}, severing layers that won't grow {hit_location} right.",
-            'observer_msg': "The weapon slashes across the upper {hit_location}, severing layers that won't grow {hit_location} right."
+            'attacker_msg': "The weapon slashes across the upper {hit_location}, severing layers that won't grow back right.",
+            'victim_msg': "The weapon slashes across the upper {hit_location}, severing layers that won't grow back right.",
+            'observer_msg': "The weapon slashes across the upper {hit_location}, severing layers that won't grow back right."
         },
         {
             'attacker_msg': "The weapon tears into {target_name}'s upper {hit_location}. The scream sounds like betrayal.",
@@ -278,9 +278,9 @@ MESSAGES = {
             'observer_msg': "The weapon tears into {target_name}'s upper {hit_location}. The scream sounds like betrayal."
         },
         {
-            'attacker_msg': "You bury the hatchet in {target_name}'s {hit_location}. Their scream says they know it's not coming {hit_location} out clean.",
-            'victim_msg': "{attacker_name} buries the hatchet in your {hit_location}. Your scream says you know it's not coming {hit_location} out clean.",
-            'observer_msg': "{attacker_name} buries the hatchet in {target_name}'s {hit_location}. Their scream says they know it's not coming {hit_location} out clean."
+            'attacker_msg': "You bury the hatchet in {target_name}'s {hit_location}. Their scream says they know it's not coming back out clean.",
+            'victim_msg': "{attacker_name} buries the hatchet in your {hit_location}. Your scream says you know it's not coming back out clean.",
+            'observer_msg': "{attacker_name} buries the hatchet in {target_name}'s {hit_location}. Their scream says they know it's not coming back out clean."
         },
         {
             'attacker_msg': "You carve a shallow wound down {target_name}'s {hit_location}. It bleeds fast, wide, and angry.",
@@ -288,9 +288,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} carves a shallow wound down {target_name}'s {hit_location}. It bleeds fast, wide, and angry."
         },
         {
-            'attacker_msg': "You drive the hatchet downward, catching {hit_location}. The crack is crisp, final.",
-            'victim_msg': "{attacker_name} drives the hatchet downward, catching {hit_location}. The crack is crisp, final.",
-            'observer_msg': "{attacker_name} drives the hatchet downward, catching {hit_location}. The crack is crisp, final."
+            'attacker_msg': "You drive the hatchet downward, catching collarbone. The crack is crisp, final.",
+            'victim_msg': "{attacker_name} drives the hatchet downward, catching collarbone. The crack is crisp, final.",
+            'observer_msg': "{attacker_name} drives the hatchet downward, catching collarbone. The crack is crisp, final."
         },
         {
             'attacker_msg': "You hack into the {hit_location}. {target_name} buckles with a howl.",

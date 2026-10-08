@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "A spray of {blood} arcs into the air as {attacker_name} drives the saw into {target_name}'s {hit_location}. The sound is wet, grinding — unforgettable."
         },
         {
-            'attacker_msg': "A vertical plunge opens {target_name} from {hit_location} to {hit_location}. The wound screams even if they don't.",
-            'victim_msg': "A vertical plunge opens you from {hit_location} to {hit_location}. The wound screams even if you don't.",
-            'observer_msg': "A vertical plunge opens {target_name} from {hit_location} to {hit_location}. The wound screams even if they don't."
+            'attacker_msg': "A vertical plunge opens {target_name} from clavicle to sternum. The wound screams even if they don't.",
+            'victim_msg': "A vertical plunge opens you from clavicle to sternum. The wound screams even if you don't.",
+            'observer_msg': "A vertical plunge opens {target_name} from clavicle to sternum. The wound screams even if they don't."
         },
         {
             'attacker_msg': "Chainsaw teeth rake across {target_name}'s {hit_location}, dragging sparks and fluids in equal measure. The roar drowns out the agony.",
@@ -248,9 +248,9 @@ MESSAGES = {
             'observer_msg': "It connects with {target_name}'s {hit_location} and vibrates like a tuning fork. Their scream dies mid-breath."
         },
         {
-            'attacker_msg': "It doesn't go in clean. It *grinds*, catching on {hit_location}, dragging. {target_name} bucks like their body wants to flee itself.",
-            'victim_msg': "It doesn't go in clean. It *grinds*, catching on {hit_location}, dragging. You buck like your body wants to flee itself.",
-            'observer_msg': "It doesn't go in clean. It *grinds*, catching on {hit_location}, dragging. {target_name} bucks like their body wants to flee itself."
+            'attacker_msg': "It doesn't go in clean. It *grinds*, catching on ribs, dragging. {target_name} bucks like their body wants to flee itself.",
+            'victim_msg': "It doesn't go in clean. It *grinds*, catching on ribs, dragging. You buck like your body wants to flee itself.",
+            'observer_msg': "It doesn't go in clean. It *grinds*, catching on ribs, dragging. {target_name} bucks like their body wants to flee itself."
         },
         {
             'attacker_msg': "It hits and stays there, teeth chewing deeper. {target_name}'s resistance falters, buckling under the brutal thrum.",
@@ -268,9 +268,9 @@ MESSAGES = {
             'observer_msg': "One {hit_location} of {target_name} caves in under the churning chain. Their body doesn't break — it *melts* around the motion."
         },
         {
-            'attacker_msg': "One slash, from {hit_location} to {hit_location}. {target_name} collapses mid-turn, blood trailing behind them like punctuation.",
-            'victim_msg': "One slash, from {hit_location} to {hit_location}. You collapse mid-turn, blood trailing behind you like punctuation.",
-            'observer_msg': "One slash, from {hit_location} to {hit_location}. {target_name} collapses mid-turn, blood trailing behind them like punctuation."
+            'attacker_msg': "One slash, from shoulder to hip. {target_name} collapses mid-turn, blood trailing behind them like punctuation.",
+            'victim_msg': "One slash, from shoulder to hip. You collapse mid-turn, blood trailing behind you like punctuation.",
+            'observer_msg': "One slash, from shoulder to hip. {target_name} collapses mid-turn, blood trailing behind them like punctuation."
         },
         {
             'attacker_msg': "Steel roars against bone. {target_name} crumples, twitching, as the saw finishes its sentence.",
@@ -358,9 +358,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} doesn't hesitate. The chainsaw carves into flesh like a drunk god drawing new commandments."
         },
         {
-            'attacker_msg': "You drag the saw upward through {target_name}, {hit_location} sparking on the teeth. It smells like burned meat.",
-            'victim_msg': "{attacker_name} drags the saw upward through you, {hit_location} sparking on the teeth. It smells like burned meat.",
-            'observer_msg': "{attacker_name} drags the saw upward through {target_name}, {hit_location} sparking on the teeth. It smells like burned meat."
+            'attacker_msg': "You drag the saw upward through {target_name}, spine sparking on the teeth. It smells like burned meat.",
+            'victim_msg': "{attacker_name} drags the saw upward through you, spine sparking on the teeth. It smells like burned meat.",
+            'observer_msg': "{attacker_name} drags the saw upward through {target_name}, spine sparking on the teeth. It smells like burned meat."
         },
         {
             'attacker_msg': "You follow through as the saw tears down the centerline. The damage isn't a wound — it's a statement.",
@@ -398,9 +398,9 @@ MESSAGES = {
             'observer_msg': "{target_name} tries to dodge, but the edge catches them across the {hit_location}. Their scream is guttural. The smell is copper and smoke."
         },
         {
-            'attacker_msg': "{target_name} turns too late. Your saw greets them with a full-throated growl and a mouthful of {hit_location}.",
-            'victim_msg': "You turn too late. The saw greets you with a full-throated growl and a mouthful of {hit_location}.",
-            'observer_msg': "{target_name} turns too late. The saw greets them with a full-throated growl and a mouthful of {hit_location}."
+            'attacker_msg': "{target_name} turns too late. Your saw greets them with a full-throated growl and a mouthful of shoulder.",
+            'victim_msg': "You turn too late. The saw greets you with a full-throated growl and a mouthful of shoulder.",
+            'observer_msg': "{target_name} turns too late. The saw greets them with a full-throated growl and a mouthful of shoulder."
         },
         {
             'attacker_msg': "{target_name}'s scream is swallowed whole by the motor. Their body jerks as the chain digs, sputters, and *eats*.",

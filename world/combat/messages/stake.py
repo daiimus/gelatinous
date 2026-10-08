@@ -183,9 +183,9 @@ MESSAGES = {
             'observer_msg': "A quick jab to the {hit_location}. The crack is small. The pain isn't."
         },
         {
-            'attacker_msg': "A savage jab punctures cloth and flesh. {target_name} doubles over, {hit_location} clutching {blood}.",
-            'victim_msg': "A savage jab punctures cloth and flesh. You double over, {hit_location} clutching {blood}.",
-            'observer_msg': "A savage jab punctures cloth and flesh. {target_name} doubles over, {hit_location} clutching {blood}."
+            'attacker_msg': "A savage jab punctures cloth and flesh. {target_name} doubles over, hand clutching {blood}.",
+            'victim_msg': "A savage jab punctures cloth and flesh. You double over, hand clutching {blood}.",
+            'observer_msg': "A savage jab punctures cloth and flesh. {target_name} doubles over, hand clutching {blood}."
         },
         {
             'attacker_msg': "A strike to the {hit_location} gouges flesh. {target_name}'s eye wells up — with blood, not tears.",
@@ -218,9 +218,9 @@ MESSAGES = {
             'observer_msg': "The point scrapes across the {hit_location}, leaving a ragged {blood} ribbon."
         },
         {
-            'attacker_msg': "The point sinks into the soft space between collar and {hit_location}. {target_name} spasms, then drops.",
-            'victim_msg': "The point sinks into the soft space between collar and {hit_location}. You spasm, then drop.",
-            'observer_msg': "The point sinks into the soft space between collar and {hit_location}. {target_name} spasms, then drops."
+            'attacker_msg': "The point sinks into the soft space between collar and chest. {target_name} spasms, then drops.",
+            'victim_msg': "The point sinks into the soft space between collar and chest. You spasm, then drop.",
+            'observer_msg': "The point sinks into the soft space between collar and chest. {target_name} spasms, then drops."
         },
         {
             'attacker_msg': "The shaft is short, but your drive isn't. {target_name} feels all of it.",
@@ -248,9 +248,9 @@ MESSAGES = {
             'observer_msg': "The stake hooks into the soft flesh under the {hit_location}. {target_name} writhes, trying to escape."
         },
         {
-            'attacker_msg': "The tip finds the gap between {hit_location}. {target_name} gasps and clutches their {hit_location}.",
+            'attacker_msg': "The tip finds the gap between ribs. {target_name} gasps and clutches their {hit_location}.",
             'victim_msg': "The tip finds the gap between your {hit_location}. You gasp and clutch your {hit_location}.",
-            'observer_msg': "The tip finds the gap between {hit_location}. {target_name} gasps and clutches their {hit_location}."
+            'observer_msg': "The tip finds the gap between ribs. {target_name} gasps and clutches their {hit_location}."
         },
         {
             'attacker_msg': "The tip punches through the {hit_location} of the {hit_location}. {target_name} shrieks and jerks away.",

@@ -163,7 +163,7 @@ MESSAGES = {
             'observer_msg': "A downward hack lands at {target_name}'s collar. The bone beneath says goodbye."
         },
         {
-            'attacker_msg': "A downward strike lands square on the {hit_location}. Something cracks and won't heal right.",
+            'attacker_msg': "A downward strike lands square on the collarbone. Something cracks and won't heal right.",
             'victim_msg': "A downward strike lands square on your {hit_location}. Something cracks and won't heal right.",
             'observer_msg': "A downward strike lands square on {target_name}'s {hit_location}. Something cracks and won't heal right."
         },
@@ -263,7 +263,7 @@ MESSAGES = {
             'observer_msg': "The blade stabs into {target_name}'s {hit_location}. They gag on what doesn't matter anymore."
         },
         {
-            'attacker_msg': "The edge cuts from chin to {hit_location}. Blood pours from both ends.",
+            'attacker_msg': "The edge cuts from chin to clavicle. Blood pours from both ends.",
             'victim_msg': "The edge cuts from your chin to {hit_location}. Blood pours from both ends.",
             'observer_msg': "The edge cuts from {target_name}'s chin to {hit_location}. Blood pours from both ends."
         },

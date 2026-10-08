@@ -223,9 +223,9 @@ MESSAGES = {
             'observer_msg': "The unyielding lead from {attacker_name}'s revolver tears into {target_name}'s flesh, causing immediate, severe pain."
         },
         {
-            'attacker_msg': "Your revolver bullet slams into {target_name}, the impact knocking them {hit_location} a step.",
-            'victim_msg': "{attacker_name}'s revolver bullet slams into you, the impact knocking you {hit_location} a step.",
-            'observer_msg': "{attacker_name}'s revolver bullet slams into {target_name}, the impact knocking them {hit_location} a step."
+            'attacker_msg': "Your revolver bullet slams into {target_name}, the impact knocking them back a step.",
+            'victim_msg': "{attacker_name}'s revolver bullet slams into you, the impact knocking you back a step.",
+            'observer_msg': "{attacker_name}'s revolver bullet slams into {target_name}, the impact knocking them back a step."
         },
         {
             'attacker_msg': "A shot from the revolver hits {target_name}'s {hit_location}, mangling it and making them drop whatever they held.",

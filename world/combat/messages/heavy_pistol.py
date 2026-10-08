@@ -183,9 +183,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}’s accurate shot with the pistol leaves a horrific, fist-sized, bleeding cavity in {target_name}, another large, smoking casing flipping through the air."
         },
         {
-            "attacker_msg": "A direct hit! Your pistol's bullet smashes into {target_name}'s {hit_location} with the force of a speeding truck, a geyser of blood and bone fragments erupting as the heavy slide slams {hit_location}.",
+            "attacker_msg": "A direct hit! Your pistol's bullet smashes into {target_name}'s {hit_location} with the force of a speeding truck, a geyser of blood and bone fragments erupting as the heavy slide slams back.",
             "victim_msg": "A direct hit! {attacker_name}'s pistol's bullet smashes into your {hit_location} with the force of a speeding truck, a geyser of blood and bone fragments erupting as the heavy slide slams back!",
-            "observer_msg": "A direct hit! {attacker_name}'s pistol's bullet smashes into {target_name}'s {hit_location} with the force of a speeding truck, a geyser of blood and bone fragments erupting as the heavy slide slams {hit_location}."
+            "observer_msg": "A direct hit! {attacker_name}'s pistol's bullet smashes into {target_name}'s {hit_location} with the force of a speeding truck, a geyser of blood and bone fragments erupting as the heavy slide slams back."
         },
         {
             "attacker_msg": "Your pistol’s projectile punches into {target_name} with incredible, bone-jarring force, its impact marked by a shocking spray of gore and the glint of a massive ejected shell.",
@@ -208,9 +208,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s pistol scores a devastating hit, the bullet tearing through {target_name}'s {hit_location}, nearly severing it from the sheer kinetic energy, a hot, large casing landing with a heavy *clink* nearby."
         },
         {
-            "attacker_msg": "Your well-aimed shot from the pistol strikes {target_name}'s {hit_location}, the bone exploding into countless fragments as the slide locks {hit_location} on an empty magazine with a loud *CLACK*.",
-            "victim_msg": "{attacker_name}’s well-aimed shot from the pistol strikes your {hit_location}, the bone exploding into countless fragments as the slide locks {hit_location} on an empty magazine with a loud *CLACK*!",
-            "observer_msg": "{attacker_name}’s well-aimed shot from the pistol strikes {target_name}'s {hit_location}, the bone exploding into countless fragments as the slide locks {hit_location} on an empty magazine with a loud *CLACK*."
+            "attacker_msg": "Your well-aimed shot from the pistol strikes {target_name}'s {hit_location}, the bone exploding into countless fragments as the slide locks back on an empty magazine with a loud *CLACK*.",
+            "victim_msg": "{attacker_name}’s well-aimed shot from the pistol strikes your {hit_location}, the bone exploding into countless fragments as the slide locks back on an empty magazine with a loud *CLACK*!",
+            "observer_msg": "{attacker_name}’s well-aimed shot from the pistol strikes {target_name}'s {hit_location}, the bone exploding into countless fragments as the slide locks back on an empty magazine with a loud *CLACK*."
         },
         {
             "attacker_msg": "A thunderous crack and a horrific spray of blood and viscera as your pistol's bullet finds its mark on {target_name} with brutal, final effect, you slowly reacquiring due to the recoil.",

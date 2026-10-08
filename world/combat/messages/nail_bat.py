@@ -188,9 +188,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name} spins once and lands a two-handed strike to {target_name}'s {hit_location}, folding them in half."
         },
         {
-            'attacker_msg': "The nails hook into {target_name}'s {hit_location}—you yank {hit_location}, tearing flesh with a wet pop.",
-            'victim_msg': "The nails hook into your {hit_location}—{attacker_name} yanks {hit_location}, tearing flesh with a wet pop.",
-            'observer_msg': "The nails hook into {target_name}'s {hit_location}—{attacker_name} yanks {hit_location}, tearing flesh with a wet pop."
+            'attacker_msg': "The nails hook into {target_name}'s {hit_location}—you yank back, tearing flesh with a wet pop.",
+            'victim_msg': "The nails hook into your {hit_location}—{attacker_name} yanks back, tearing flesh with a wet pop.",
+            'observer_msg': "The nails hook into {target_name}'s {hit_location}—{attacker_name} yanks back, tearing flesh with a wet pop."
         },
         {
             'attacker_msg': "A brutal overhead slam hits {target_name} between the collarbones, and they crumple like trash.",

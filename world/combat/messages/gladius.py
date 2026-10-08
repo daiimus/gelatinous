@@ -198,9 +198,9 @@ MESSAGES = {
             'observer_msg': "{attacker_name}'s blade whistles in a short arc before striking {target_name}'s exposed {hit_location}."
         },
         {
-            'attacker_msg': "With a grunt of exertion, you drive the gladius against {target_name}, forcing them {hit_location} with raw power.",
-            'victim_msg': "With a grunt of exertion, {attacker_name} drives the gladius against you, forcing you {hit_location} with raw power.",
-            'observer_msg': "With a grunt of exertion, {attacker_name} drives the gladius against {target_name}, forcing them {hit_location} with raw power."
+            'attacker_msg': "With a grunt of exertion, you drive the gladius against {target_name}, forcing them back with raw power.",
+            'victim_msg': "With a grunt of exertion, {attacker_name} drives the gladius against you, forcing you back with raw power.",
+            'observer_msg': "With a grunt of exertion, {attacker_name} drives the gladius against {target_name}, forcing them back with raw power."
         },
         {
             'attacker_msg': "The gladius scores a brutal hit on {target_name}'s shield {hit_location}, the impact numbing.",

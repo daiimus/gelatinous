@@ -158,7 +158,7 @@ MESSAGES = {
             'observer_msg': "{attacker_name} drags the razor across {target_name}'s {hit_location}, opening a thin, ugly line."
         },
         {
-            'attacker_msg': "The blade slips between {hit_location}, leaving {target_name} gasping and bleeding.",
+            'attacker_msg': "The blade slips between ribs, leaving {target_name} gasping and bleeding.",
             'victim_msg': "The blade slips between your {hit_location}, leaving you gasping and bleeding.",
             'observer_msg': "The blade slips between {target_name}'s {hit_location}, leaving them gasping and bleeding."
         },

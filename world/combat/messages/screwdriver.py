@@ -183,9 +183,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} draws the tip across {target_name}'s knuckles, skin splitting under the pressure."
         },
         {
-            "attacker_msg": "A flick of the {hit_location} opens {target_name}'s eyebrow. Blood blinds one eye.",
-            "victim_msg": "A flick of the {hit_location} opens your eyebrow. Blood blinds one eye.",
-            "observer_msg": "A flick of the {hit_location} opens {target_name}'s eyebrow. Blood blinds one eye."
+            "attacker_msg": "A flick of the wrist opens {target_name}'s eyebrow. Blood blinds one eye.",
+            "victim_msg": "A flick of the wrist opens your eyebrow. Blood blinds one eye.",
+            "observer_msg": "A flick of the wrist opens {target_name}'s eyebrow. Blood blinds one eye."
         },
         {
             "attacker_msg": "The shaft punctures {target_name}'s {hit_location}, twisting before it's pulled free.",
@@ -293,9 +293,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name} carves a spiral up {target_name}'s {hit_location}. The pattern is deliberate."
         },
         {
-            "attacker_msg": "The tip slips between {hit_location}, blood welling with every breath.",
-            "victim_msg": "The tip slips between {hit_location}, blood welling with every breath.",
-            "observer_msg": "The tip slips between {hit_location}, blood welling with every breath."
+            "attacker_msg": "The tip slips between ribs, blood welling with every breath.",
+            "victim_msg": "The tip slips between ribs, blood welling with every breath.",
+            "observer_msg": "The tip slips between ribs, blood welling with every breath."
         },
         {
             "attacker_msg": "A quick slash opens {target_name}'s {hit_location}, teeth showing through the wound.",

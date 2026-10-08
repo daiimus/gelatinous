@@ -228,9 +228,9 @@ MESSAGES = {
             'observer_msg': "The metal lip digs into {target_name}'s {hit_location}. Their howl is feral."
         },
         {
-            'attacker_msg': "The shaft thuds into the {hit_location}. They {hit_location} up too fast, too far.",
-            'victim_msg': "The shaft thuds into your {hit_location}. You {hit_location} up too fast, too far.",
-            'observer_msg': "The shaft thuds into {target_name}'s {hit_location}. They {hit_location} up too fast, too far."
+            'attacker_msg': "The shaft thuds into the {hit_location}. They back up too fast, too far.",
+            'victim_msg': "The shaft thuds into your {hit_location}. You back up too fast, too far.",
+            'observer_msg': "The shaft thuds into {target_name}'s {hit_location}. They back up too fast, too far."
         },
         {
             'attacker_msg': "The shovel clips their {hit_location}. They stumble forward into your follow-up.",
@@ -253,9 +253,9 @@ MESSAGES = {
             'observer_msg': "The shovel smacks into {target_name}'s {hit_location} with a crunch. They double over, choking."
         },
         {
-            'attacker_msg': "The tip of the blade pierces the {hit_location}. They jerk {hit_location}, yelling.",
-            'victim_msg': "The tip of the blade pierces your {hit_location}. You jerk {hit_location}, yelling.",
-            'observer_msg': "The tip of the blade pierces {target_name}'s {hit_location}. They jerk {hit_location}, yelling."
+            'attacker_msg': "The tip of the blade pierces the {hit_location}. They jerk back, yelling.",
+            'victim_msg': "The tip of the blade pierces your {hit_location}. You jerk back, yelling.",
+            'observer_msg': "The tip of the blade pierces {target_name}'s {hit_location}. They jerk back, yelling."
         },
         {
             'attacker_msg': "The tool catches them square in the {hit_location}. They fold, then fall.",

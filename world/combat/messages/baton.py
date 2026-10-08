@@ -163,14 +163,14 @@ MESSAGES = {
             "observer_msg": "A quick step in, a twist of {attacker_name}'s hips, and they crack the baton against {target_name}'s {hit_location}. Bone protests."
         },
         {
-            "attacker_msg": "Your quick upward thrust catches {target_name} under the chin. Their {hit_location} snaps {hit_location}. Their knees buckle.",
-            "victim_msg": "A quick upward thrust from {attacker_name} catches you under the chin. Your {hit_location} snaps {hit_location}. Your knees buckle.",
-            "observer_msg": "A quick upward thrust from {attacker_name} catches {target_name} under the chin. Their {hit_location} snaps {hit_location}. Their knees buckle."
+            "attacker_msg": "Your quick upward thrust catches {target_name} under the chin. Their {hit_location} snaps back. Their knees buckle.",
+            "victim_msg": "A quick upward thrust from {attacker_name} catches you under the chin. Your {hit_location} snaps back. Your knees buckle.",
+            "observer_msg": "A quick upward thrust from {attacker_name} catches {target_name} under the chin. Their {hit_location} snaps back. Their knees buckle."
         },
         {
-            "attacker_msg": "Your rising blow from below the {hit_location} knocks {target_name}'s {hit_location} {hit_location}. Blood arcs. Silence follows.",
-            "victim_msg": "A rising blow from {attacker_name} from below your {hit_location} knocks your {hit_location} {hit_location}. Blood arcs. Silence follows.",
-            "observer_msg": "A rising blow from {attacker_name} from below the {hit_location} knocks {target_name}'s {hit_location} {hit_location}. Blood arcs. Silence follows."
+            "attacker_msg": "Your rising blow from below the {hit_location} knocks {target_name}'s {hit_location} back. Blood arcs. Silence follows.",
+            "victim_msg": "A rising blow from {attacker_name} from below your {hit_location} knocks your {hit_location} back. Blood arcs. Silence follows.",
+            "observer_msg": "A rising blow from {attacker_name} from below the {hit_location} knocks {target_name}'s {hit_location} back. Blood arcs. Silence follows."
         },
         {
             "attacker_msg": "Your sharp blow to the {hit_location} drops {target_name} like a felled pillar. Their limbs spasm. Their grip on reality loosens.",
@@ -188,9 +188,9 @@ MESSAGES = {
             "observer_msg": "{attacker_name}'s baton hits with the sound of a gavel — decisive, cold, irreversible. {target_name} collapses as if judged."
         },
         {
-            "attacker_msg": "It’s a short jab from your baton, right to the {hit_location} — but it lands like a truck. {target_name} doubles over and doesn’t get {hit_location} up.",
-            "victim_msg": "It’s a short jab from {attacker_name}'s baton, right to your {hit_location} — but it lands like a truck. You double over and don’t get {hit_location} up.",
-            "observer_msg": "It’s a short jab from {attacker_name}'s baton, right to {target_name}'s {hit_location} — but it lands like a truck. {target_name} doubles over and doesn’t get {hit_location} up."
+            "attacker_msg": "It’s a short jab from your baton, right to the {hit_location} — but it lands like a truck. {target_name} doubles over and doesn’t get back up.",
+            "victim_msg": "It’s a short jab from {attacker_name}'s baton, right to your {hit_location} — but it lands like a truck. You double over and don’t get back up.",
+            "observer_msg": "It’s a short jab from {attacker_name}'s baton, right to {target_name}'s {hit_location} — but it lands like a truck. {target_name} doubles over and doesn’t get back up."
         },
         {
             "attacker_msg": "It’s not flashy — it’s efficient. You deliver a brutal jab to {target_name}'s {hit_location}. They stumble, stunned and sagging.",

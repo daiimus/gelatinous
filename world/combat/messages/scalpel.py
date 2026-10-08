@@ -168,7 +168,7 @@ MESSAGES = {
             'observer_msg': "The blade disappears into {target_name}'s {hit_location} with clinical precision."
         },
         {
-            'attacker_msg': "A quick flick opens {target_name}'s {hit_location} from {hit_location} to {hit_location}.",
+            'attacker_msg': "A quick flick opens {target_name}'s {hit_location} from end to end.",
             'victim_msg': "Your {hit_location} opens in a long, precise line under {attacker_name}'s blade.",
             'observer_msg': "A single motion of the scalpel opens {target_name}'s {hit_location} like a zipper."
         },
@@ -283,7 +283,7 @@ MESSAGES = {
             'observer_msg': "The blade traces an artistic spiral into {target_name}'s {hit_location} with disturbing precision."
         },
         {
-            'attacker_msg': "The blade slips between {hit_location}, blood welling with every breath.",
+            'attacker_msg': "The blade slips between ribs, blood welling with every breath.",
             'victim_msg': "Each breath pushes blood from the wound as the scalpel finds space between your {hit_location}.",
             'observer_msg': "Blood wells from between {target_name}'s {hit_location} with each labored breath."
         },
