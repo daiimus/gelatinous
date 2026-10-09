@@ -410,9 +410,18 @@ def stamp_fixtures():
             continue                     # only a saved fixture can be referenced
         for slot in (post.db.post_slots or {}).values():
             keeper = slot.get("keeper") if hasattr(slot, "get") else None
-            if keeper is not None and keeper.pk and getattr(keeper.db, "soul_fixture", None) is None:
-                keeper.db.soul_fixture = post
-                stamped.append(keeper)
+            if keeper is None or not keeper.pk:
+                continue
+            # Only where NO row exists. A read of None also comes from a
+            # row holding a dead reference (the fixture just died, which
+            # is what `release_the_orphaned` must see) and from a row
+            # written None by a release; neither may be overwritten from
+            # a stale slot on another post.
+            attrs = getattr(keeper, "attributes", None)
+            if attrs is not None and attrs.has("soul_fixture"):
+                continue
+            keeper.db.soul_fixture = post
+            stamped.append(keeper)
     return stamped
 
 

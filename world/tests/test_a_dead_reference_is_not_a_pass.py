@@ -162,6 +162,26 @@ class TheSweepReleasesASoulEmployedAtNothing(EvenniaTest):
             posts.sweep(1000.0)
         self.assertIsNone(self.soul.db.soul_post)
 
+    def test_the_sweep_itself_stamps_a_pre_stamp_keeper(self):
+        self._claim(with_register=False)
+        self.soul.attributes.remove("soul_fixture")
+        with mock.patch("world.director.security._in_combat", return_value=False):
+            posts.sweep(1000.0)
+        self.assertEqual(self.soul.db.soul_fixture, self.post)
+
+    def test_a_dead_fixture_row_is_not_overwritten_from_a_stale_slot(self):
+        # The keeper's fixture dies while another live post's slot still
+        # names them: the stamp must leave the dead row for the release.
+        self._claim(with_register=False)
+        other = create_object("typeclasses.items.Item", key="other counter", location=self.room1)
+        posts.register_post(other, role="clerk", schedule="day", policy="successor", delay=0)
+        other.db.post_slots = {"day": {"keeper": self.soul, "vacant_since": None}}
+        self.post.delete()
+        with mock.patch("world.director.security._in_combat", return_value=False):
+            posts.sweep(1000.0)
+        self.assertIsNone(self.soul.db.soul_post)
+        self.assertIsNone(self.soul.db.soul_fixture)
+
     def test_a_room_posted_unit_with_no_fixture_is_left_alone(self):
         # Security robots and the courier are posted at a room, not a slot.
         unit = create_object("typeclasses.characters.Character", key="Sentry", location=self.room1)
