@@ -68,8 +68,10 @@ class EmailAuthenticationBackend(ModelBackend):
         ip = from_request(request) or ""
         key = bucket(ip)
         if key and LOGIN_THROTTLE.check(key):
-            logger.log_sec(f"Authentication Denied (Throttled): {username} "
-                           f"(IP: {ip}) [web].")
+            # No per-hit log line while throttled, as Evennia's own door:
+            # the Throttle logs its own activation once, and a cheap
+            # refusal that writes attacker-supplied text on every hit is a
+            # log-flooding lever.
             return None
         from typeclasses.accounts import Account
         if ip and Account.is_banned(ip=ip):
@@ -91,9 +93,6 @@ class EmailAuthenticationBackend(ModelBackend):
             self._burn_a_hash(password)
             self._refuse(username, ip, key, "ambiguous email")
             return None
-        if Account.is_banned(username=account.username):
-            self._refuse(username, ip, key, "Banned")
-            return None
         if not account.check_password(password):
             self._refuse(username, ip, key, "bad password")
             return None
@@ -103,6 +102,14 @@ class EmailAuthenticationBackend(ModelBackend):
         # not merely a matter of surviving sessions (#2751).
         if not self.user_can_authenticate(account):
             self._refuse(username, ip, key, "inactive")
+            return None
+        # A NAME ban is decided only with the password proven: the email
+        # maps to a private account name, and refusing before the hash
+        # would answer in ~1 ms where every other refusal costs ~450 ms,
+        # the timing channel #2750 closed. The IP ban above needs no
+        # account and runs first.
+        if Account.is_banned(username=account.username):
+            self._refuse(username, ip, key, "Banned")
             return None
         logger.log_sec(f"Authentication Success: {account} (IP: {ip}) [web].")
 
@@ -114,7 +121,10 @@ class EmailAuthenticationBackend(ModelBackend):
         """One refusal: logged with its reason, counted against the shared
         throttle. The form's message stays generic (Django's own), so the
         reason reaches only the log (#2750)."""
-        logger.log_sec(f"Authentication Failure ({reason}): {email} "
+        # `!r` and the cap: the form field is attacker text that can carry
+        # a line break, and a raw newline in the security log is a forged
+        # entry.
+        logger.log_sec(f"Authentication Failure ({reason}): {str(email)[:254]!r} "
                        f"(IP: {ip}) [web].")
         if key:
             LOGIN_THROTTLE.update(key, "Too many authentication failures.")

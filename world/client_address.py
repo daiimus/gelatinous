@@ -35,5 +35,8 @@ def bucket(address) -> str:
     except ValueError:
         return text
     if parsed.version == 6:
+        mapped = parsed.ipv4_mapped
+        if mapped is not None:          # ::ffff:203.0.113.9 is an IPv4 client
+            return str(mapped)
         return str(ipaddress.ip_network((parsed, 64), strict=False))
     return text

@@ -11,6 +11,7 @@ from unittest import mock
 from django.conf import settings
 from django.test import TestCase
 from evennia.accounts.models import AccountDB
+from evennia.server.models import ServerConfig
 
 from web.utils.auth_backends import EmailAuthenticationBackend
 from world.client_address import bucket
@@ -56,6 +57,9 @@ class TestIPv6IsBucketedByItsSlash64(TestCase):
     def test_ipv4_is_exact(self):
         self.assertEqual(bucket("203.0.113.9"), "203.0.113.9")
 
+    def test_an_ipv4_mapped_ipv6_address_is_its_ipv4(self):
+        self.assertEqual(bucket("::ffff:203.0.113.9"), "203.0.113.9")
+
     def test_ipv6_rotating_inside_the_prefix_shares_a_bucket(self):
         a = bucket("2001:db8:1234:5678::1")
         b = bucket("2001:db8:1234:5678:ffff:ffff:ffff:fffe")
@@ -71,14 +75,63 @@ class TestIPv6IsBucketedByItsSlash64(TestCase):
 
 
 class TestTheWebDoorHonoursBans(_Door):
-    def test_a_banned_name_is_refused_with_the_right_password(self):
-        with mock.patch("typeclasses.accounts.Account.is_banned", return_value=True):
-            self.assertIsNone(self.attempt("203.0.113.60", "right-one"))
+    def setUp(self):
+        super().setUp()
+        self.addCleanup(ServerConfig.objects.conf, "server_bans", delete=True)
 
-    def test_a_banned_name_is_logged_and_counted(self):
-        with mock.patch("typeclasses.accounts.Account.is_banned", return_value=True), \
+    def test_a_real_name_ban_on_a_mixed_case_username_is_refused(self):
+        # Evennia's `ban` stores the name lowercased; the account's username
+        # is mixed-case; Evennia's own is_banned lowercases both.
+        self.account.username = "WebDoor"; self.account.save()
+        ServerConfig.objects.conf("server_bans", value=[("webdoor", "", "", "now", "test")])
+        self.assertIsNone(self.attempt("203.0.113.60", "right-one"))
+
+    def test_a_name_ban_is_decided_only_with_the_password(self):
+        # the wrong password must not learn that the name is banned: it is
+        # refused the ordinary way (a hash is spent, the generic None)
+        self.account.username = "WebDoor"; self.account.save()
+        ServerConfig.objects.conf("server_bans", value=[("webdoor", "", "", "now", "test")])
+        with mock.patch("web.utils.auth_backends.logger.log_sec") as sec:
+            self.assertIsNone(self.attempt("203.0.113.62", "wrong-one"))
+        logged = " ".join(str(c.args[0]) for c in sec.call_args_list)
+        self.assertIn("bad password", logged)
+        self.assertNotIn("Banned", logged)
+
+    def test_an_ip_ban_is_refused_before_any_lookup(self):
+        with mock.patch("typeclasses.accounts.Account.is_banned", side_effect=lambda **kw: "ip" in kw), \
+                mock.patch("web.utils.auth_backends.AccountDB.objects.get") as lookup, \
                 mock.patch("web.utils.auth_backends.logger.log_sec") as sec, \
                 mock.patch("web.utils.auth_backends.LOGIN_THROTTLE.update") as upd:
-            self.attempt("203.0.113.61", "right-one")
+            self.assertIsNone(self.attempt("203.0.113.61", "right-one"))
+        self.assertFalse(lookup.called)
         self.assertIn("Banned", " ".join(str(c.args[0]) for c in sec.call_args_list))
         self.assertTrue(upd.called)
+
+
+class TestTheDoorsShareOneLockout(_Door):
+    def test_failures_at_the_game_door_lock_the_web_door(self):
+        from commands.unloggedin_email import CmdEmailConnect
+        limit = int(settings.LOGIN_THROTTLE_LIMIT)
+        for _ in range(limit):
+            cmd = CmdEmailConnect(); cmd.caller = mock.MagicMock(); cmd.caller.address = "203.0.113.70"
+            cmd.arglist = ["nobody@example.com", "wrong"]; cmd.func()
+        self.assertIsNone(self.attempt("203.0.113.70", "right-one"))
+        self.assertIsNotNone(self.attempt("203.0.113.71", "right-one"))
+
+
+class TestTheSecurityLogCannotBeForged(_Door):
+    def test_a_line_break_in_the_email_is_escaped(self):
+        with mock.patch("web.utils.auth_backends.logger.log_sec") as sec:
+            self.backend.authenticate(_request("203.0.113.80"),
+                                      username="x\n2026-01-01 Authentication Success: admin", password="wrong")
+        for c in sec.call_args_list:
+            self.assertNotIn("\n", str(c.args[0]))
+        self.assertIn("\\n", " ".join(str(c.args[0]) for c in sec.call_args_list))
+
+    def test_a_throttled_hit_writes_no_line(self):
+        limit = int(settings.LOGIN_THROTTLE_LIMIT)
+        for _ in range(limit):
+            self.attempt("203.0.113.81")
+        with mock.patch("web.utils.auth_backends.logger.log_sec") as sec:
+            self.attempt("203.0.113.81")
+        self.assertFalse(sec.called)

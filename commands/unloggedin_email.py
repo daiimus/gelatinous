@@ -67,8 +67,8 @@ class CmdEmailConnect(MuxCommand):
                 "Too many login failures. Please wait a while and try "
                 "again."
             )
-            logger.log_sec(f"Authentication Denied (Throttled): {email} "
-                           f"(IP: {ip}).")
+            logger.log_sec(f"Authentication Denied (Throttled): "
+                           f"{email[:254]!r} (IP: {ip}).")
             return
 
         # An IP ban is refused BEFORE any credential work, logged and
@@ -103,10 +103,6 @@ class CmdEmailConnect(MuxCommand):
             self._deny(session, email, ip, "unknown email")
             return
 
-        if Account.is_banned(username=account.username):
-            self._banned(session, email, ip, key)
-            return
-
         if not account.check_password(password):
             self._deny(session, email, ip, "bad password", account=account)
             return
@@ -120,6 +116,16 @@ class CmdEmailConnect(MuxCommand):
             self._deny(session, email, ip, "inactive", account=account)
             return
 
+        # A NAME ban is decided only now, with the password proven: the
+        # email maps to a private account name, so refusing before the
+        # password would tell anyone with an email list which addresses
+        # are registered and banned (the message channel the generic
+        # refusal exists to close, #2750). The IP ban above needs no
+        # account and is checked first, as Evennia's own door does.
+        if Account.is_banned(username=account.username):
+            self._banned(session, email, ip, key)
+            return
+
         # Login successful
         logger.log_sec(f"Authentication Success: {account} (IP: {ip}).")
         session.sessionhandler.login(session, account)
@@ -127,7 +133,7 @@ class CmdEmailConnect(MuxCommand):
     def _banned(self, session, email, ip, key):
         """A banned address or name: refused, logged, and counted against
         the throttle, exactly as Evennia's own door does."""
-        logger.log_sec(f"Authentication Denied (Banned): {email} (IP: {ip}).")
+        logger.log_sec(f"Authentication Denied (Banned): {email[:254]!r} (IP: {ip}).")
         if key:
             LOGIN_THROTTLE.update(key, "Too many sightings of banned artifact.")
         session.msg("|rYou have been banned and cannot continue.|n")
@@ -142,7 +148,7 @@ class CmdEmailConnect(MuxCommand):
         goes, because that reader is already trusted (#2557).
         """
         logger.log_sec(
-            f"Authentication Failure ({reason}): {email} (IP: {ip}).")
+            f"Authentication Failure ({reason}): {email[:254]!r} (IP: {ip}).")
         key = bucket(ip)
         if key:
             LOGIN_THROTTLE.update(key, "Too many authentication failures.")
