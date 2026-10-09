@@ -9,12 +9,12 @@
 > in another, six lines apart. Four further claims were checked against
 > the code and were stale:
 >
-> * **The watcher does NOT live in `world/npcs/posts.py`.** That module is
->   a 64-line retired stub; its own docstring explains that it once carried
->   a second post watcher which disagreed with `world/souls/posts.py` about
->   which fixture owned a post, so both acted and the bodies it rebuilt
->   were never ensouled (#2132). There is one registry now, and the sweep
->   rides the SOULS heartbeat.
+> * **The watcher does NOT live in `world/npcs/posts.py`.** That module was
+>   a 64-line retired stub, deleted 2026-10-09 (#3424); its docstring
+>   recorded that it once carried a second post watcher which disagreed
+>   with `world/souls/posts.py` about which fixture owned a post, so both
+>   acted and the bodies it rebuilt were never ensouled (#2132). There is
+>   one registry now, and the sweep rides the SOULS heartbeat.
 > * **Re-sleeve restores but does NOT consume.** `_try_resleave` reads
 >   `post_memory_snapshots[shift]` and never clears it. "Restores-and-
 >   consumes" describes an intent, not the code.

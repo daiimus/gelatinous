@@ -10,7 +10,6 @@ successor construction.
 from evennia.utils.test_resources import BaseEvenniaTest
 
 
-
 class TestSuccessorBuild(BaseEvenniaTest):
     """A real successor: new person, same trade."""
 
