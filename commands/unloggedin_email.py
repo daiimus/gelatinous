@@ -38,7 +38,13 @@ class CmdEmailConnect(MuxCommand):
             
         email = arglist[0].lower().strip()
         password = arglist[1]
-        ip = address[0] if address else ""
+        # `session.address` is the HOST STRING Evennia's portal resolved
+        # (telnet, websocket and ssh all hand init_session a str). It was
+        # indexed `[0]` here, so the throttle and the security log keyed
+        # on the first CHARACTER of the address: five failures from any
+        # 1xx address locked out every 1xx player, and an IP ban could
+        # never match (#3732). Evennia's own doors pass the whole string.
+        ip = str(address) if address else ""
 
         # THE THROTTLE, and the security log (#2557).
         #
@@ -101,7 +107,7 @@ class CmdEmailConnect(MuxCommand):
         bans = ServerConfig.objects.conf("server_bans")
         if bans and (
             any(tup[0] == account.username for tup in bans)
-            or any(tup[2].match(address[0]) for tup in bans if tup[2])
+            or any(tup[2].match(ip) for tup in bans if tup[2])
         ):
             session.msg("|rYou have been banned and cannot continue.|n")
             session.execute_cmd("quit")

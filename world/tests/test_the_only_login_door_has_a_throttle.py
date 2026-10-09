@@ -36,7 +36,10 @@ from commands.unloggedin_email import CmdEmailConnect
 def _attempt(ip="203.0.113.9", email="nobody@example.com", pw="wrong"):
     cmd = CmdEmailConnect()
     cmd.caller = MagicMock()
-    cmd.caller.address = (ip, 1234)
+    # the shape production hands the command: Evennia's portal resolves a
+    # session's address to the host STRING. A tuple here hid #3732, where
+    # `address[0]` keyed the throttle on the first character.
+    cmd.caller.address = ip
     cmd.arglist = [email, pw]
     cmd.func()
     return " ".join(str(c.args[0]) for c in cmd.caller.msg.call_args_list
@@ -103,3 +106,23 @@ class TestTheOnlyLoginDoorHasAThrottle(TestCase):
         cmd.arglist = ["nobody@example.com", "wrong"]
         cmd.func()
         cmd.caller.msg.assert_called()
+
+
+class TestTheKeyIsTheWholeAddress(TestCase):
+    """#3732: `address[0]` of a string is one character. Two addresses that
+    share a first digit must not share a throttle bucket, and the
+    security log must name the whole address."""
+
+    def test_a_neighbours_failures_do_not_lock_you_out(self):
+        limit = int(settings.LOGIN_THROTTLE_LIMIT)
+        for _ in range(limit + 1):
+            _attempt(ip="198.51.100.77")
+        out = _attempt(ip="198.51.100.78")
+        self.assertNotIn("Too many login failures", out)
+
+    def test_the_log_names_the_address_not_a_digit(self):
+        with patch("commands.unloggedin_email.logger.log_sec") as sec:
+            _attempt(ip="198.51.100.79")
+        logged = " ".join(str(c.args[0]) for c in sec.call_args_list if c.args)
+        self.assertIn("IP: 198.51.100.79", logged)
+        self.assertNotIn("IP: 1)", logged)
