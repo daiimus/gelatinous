@@ -21,9 +21,9 @@ drek (Developer):  locks.check(c, "perm(Builder)")  = False
                    c.check_permstring("Builder")    = True
 ```
 
-The `@murder` rank-protection block is built entirely on this, so it was
-unreachable — the guard that stops a lower-ranked staffer killing a
-higher-ranked one never fired.
+The `@murder` rank-protection block (a legacy test command, removed with
+#3383) was built entirely on this, so it was unreachable — the guard that
+stopped a lower-ranked staffer killing a higher-ranked one never fired.
 
 `check_permstring` is the form this codebase already uses correctly in
 `_identity_targeting.py`, `CmdCharacter.py` and `world/emote.py`, and it
@@ -137,8 +137,9 @@ class TestNoDeadGuardSurvives(EvenniaTest):
         self.assertEqual(offenders, [])
 
     def test_the_rank_guards_are_still_there(self):
-        """Converted, not deleted — @murder's rank protection must
-        still exist, now that it can actually run."""
+        """Converted, not deleted — the admin module's rank guards must
+        still exist, now that they can actually run. (The @murder block
+        that first carried them went with #3383; the others remain.)"""
         body = self._source("commands/CmdAdmin.py")
         for rank in ("Builder", "Admin", "Developer"):
             self.assertIn(f'check_permstring("{rank}")', body)

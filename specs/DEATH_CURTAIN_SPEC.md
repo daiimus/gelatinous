@@ -78,14 +78,14 @@ def at_death(self):
     show_death_curtain(self)
 ```
 
-### Testing with Various Messages
+### Testing
 
-```
-testdeathcurtain
-testdeathcurtain You feel your strength ebbing away...
-testdeathcurtain The darkness consumes you
-testdeathcurtain A red haze blurs your vision as the world slips away...
-```
+The curtain is exercised by dying. The legacy `@testdeathcurtain` command
+(and `@testdeath` / `@murder`) were removed 2026-10-09 (#3383): the
+"animation test" ran the real completion pipeline on the living builder,
+attaching a death-progression script and narrating a death and a false
+revival to the room. Owner: *"That is a legacy command for...testing. We
+may not need it at all."*
 
 ## Implementation Details
 
@@ -260,10 +260,10 @@ The death curtain now integrates with the medical system for informed death mess
    - **Qualification 2026-09-12:** "always" holds only on the death path,
      where `at_death` calls `show_death_curtain(self)` with no message and
      the default is substituted (`curtain_of_death.py:249-251`). Any caller
-     that passes a `message` overrides it — including the custom-message form
-     documented in this spec's own *Usage* section and
-     `@testdeathcurtain <message>` (`commands/CmdAdmin.py:768-776`), whose
-     text is animated uncoloured.
+     that passes a `message` overrides it, and the text is animated
+     uncoloured; since #3383 removed `@testdeathcurtain <message>`, no caller
+     in the tree passes one (the attack path and `at_death` both call
+     `show_death_curtain(target)` bare).
 3. **Final Notification**: "Nick Kramer has died." for observers
 
 ### Visual Improvements

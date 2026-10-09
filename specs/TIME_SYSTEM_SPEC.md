@@ -210,7 +210,7 @@ TIME_IGNORE_DOWNTIMES = True   # Maintain continuity during downtime
 > `world.gametime.colony_hour()` (`world/weather/time_system.py:62-67`),
 > and that is the seam weather, the director's on-air line
 > (`world/director/broadcasts.py:54-55`) and the `@weather` staff readout
-> (`commands/CmdAdmin.py:812-813`) all read. The comment there records the
+> (`commands/CmdAdmin.py:552-553`) all read. The comment there records the
 > bug this closed — the old `time.localtime()` was the CONTAINER's clock,
 > so "night" ran eight hours away from the colony's own night.
 >

@@ -1367,7 +1367,7 @@ if is_identity_match(caller, victim, name):
 
 #### Admin commands
 
-Staff commands that need cross-room reach (`describe`, `@heal`, `@testdeath`, etc.) follow a **dual-path** convention: try `identity_match_characters` against the caller's room first (so disguised neighbors resolve via identity, not real key), then fall back to `evennia.search_object(query)` filtered to characters for global key matching. `commands._identity_targeting.resolve_admin_target(caller, query)` provides this pattern.
+Staff commands that need cross-room reach (`describe`, `@heal`, `@testunconscious`, etc.) follow a **dual-path** convention: try `identity_match_characters` against the caller's room first (so disguised neighbors resolve via identity, not real key), then fall back to `evennia.search_object(query)` filtered to characters for global key matching. `commands._identity_targeting.resolve_admin_target(caller, query)` provides this pattern.
 
 Item targets (inventory, weapons, room objects) are out of scope for this rule — items do not participate in the identity system, so `caller.search(name, candidates=inventory)` and `caller.search(name, location=caller)` remain correct for item lookups.
 
