@@ -242,7 +242,7 @@ def resolve_admin_target(caller, query: str) -> Optional[object]:
 
     Phase 2: global key search via :func:`evennia.search_object`,
     filtered to Character instances.  Provides cross-room reach for
-    staff tooling (``@heal``, ``describe``, ``@testunconscious``, etc.).
+    staff tooling (``@heal``, ``describe``, ``@resetmedical``, etc.).
 
     Args:
         caller: The staff character issuing the command.

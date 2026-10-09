@@ -456,31 +456,3 @@ def node_exit(caller, raw_string, **kwargs):
 # ---------------------------------------------------------------------------
 # Builder tool — spawn catalog ingredients (no supplier economy yet, §3)
 # ---------------------------------------------------------------------------
-class CmdSpawnIngredient(Command):
-    """
-    Spawn a bar ingredient from the catalog (builder testing tool).
-
-    Usage:
-        @ingredient <key>
-        @ingredient            — list the catalog keys
-
-    The ingredient lands in your inventory; ``put`` it on a bar, then
-    ``use`` the bar to mix.
-    """
-
-    key = "@ingredient"
-    locks = "cmd:perm(Builder)"
-    help_category = "Building"
-
-    def func(self):
-        from world.bar import INGREDIENT_CATALOG, make_ingredient
-
-        key = self.args.strip().lower().replace(" ", "_").replace("-", "_")
-        if not key or key not in INGREDIENT_CATALOG:
-            self.caller.msg(
-                "Usage: @ingredient <key>\n  "
-                + ", ".join(sorted(INGREDIENT_CATALOG))
-            )
-            return
-        ing = make_ingredient(key, location=self.caller)
-        self.caller.msg(f"Spawned {ing.key} into your inventory.")

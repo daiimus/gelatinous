@@ -1367,7 +1367,7 @@ if is_identity_match(caller, victim, name):
 
 #### Admin commands
 
-Staff commands that need cross-room reach (`describe`, `@heal`, `@testunconscious`, etc.) follow a **dual-path** convention: try `identity_match_characters` against the caller's room first (so disguised neighbors resolve via identity, not real key), then fall back to `evennia.search_object(query)` filtered to characters for global key matching. `commands._identity_targeting.resolve_admin_target(caller, query)` provides this pattern.
+Staff commands that need cross-room reach (`describe`, `@heal`, `@resetmedical`, etc.) follow a **dual-path** convention: try `identity_match_characters` against the caller's room first (so disguised neighbors resolve via identity, not real key), then fall back to `evennia.search_object(query)` filtered to characters for global key matching. `commands._identity_targeting.resolve_admin_target(caller, query)` provides this pattern.
 
 Item targets (inventory, weapons, room objects) are out of scope for this rule — items do not participate in the identity system, so `caller.search(name, candidates=inventory)` and `caller.search(name, location=caller)` remain correct for item lookups.
 
@@ -2938,14 +2938,14 @@ context for what a keyword is.
 
 ## Migration Strategy
 
-Existing characters need identity attributes backfilled. Use the existing `@fixchar` command pattern:
+Existing characters need identity attributes backfilled. Use a one-off staff command in the `@fixchar` pattern (that command itself was removed 2026-10-09, #3728):
 
 1. Generate `sleeve_uid` for all existing characters (unique per character)
 2. Set default `height` = `"average"`, `build` = `"average"` (or derive from existing descriptive data if possible)
 3. Set default `hair_color` and `hair_style` = `None` (forces players to set via `describe keyword` or `@hair`)
 4. Set default `sdesc_keyword` based on existing `sex` attribute (`"man"` for male, `"woman"` for female, `"person"` for ambiguous)
 5. Initialize empty `recognition_memory` (Character AttributeProperty; defaults to `{}` automatically)
-6. Staff can run `@fixchar/all` to batch-process
+6. Staff can run the backfill command with an `all` form to batch-process
 
 Players should be prompted to customize their sdesc on next login if defaults were applied.
 
@@ -2981,7 +2981,7 @@ Per-phase detail below.
 - Grammar engine (articles, possessive, objective, self-perception)
 - Chargen updates
 - Flash clone `sleeve_uid` inheritance
-- `@fixchar` migration
+- identity backfill migration (one-off staff command)
 - Staff identity overlay (permission-based stopgap)
 
 ### Phase 2 — Consistency

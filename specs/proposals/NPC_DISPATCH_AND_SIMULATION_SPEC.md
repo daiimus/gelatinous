@@ -64,7 +64,7 @@
 > **Shipped (`world/director/`):** the dispatch core (#853): `travel_to`
 > (pathfinder-driven movement via real exit commands), `WorldEvent` +
 > `find_responders` (by `db.role`, nearest-by-travel) + `dispatch`
-> (severity-scaled) + `@dispatch`. The **assignment lifecycle** (#863): en
+> (severity-scaled) + `@dispatch` (the debug window; removed 2026-10-09, #3728). The **assignment lifecycle** (#863): en
 > route → on-scene (role-keyed `ARRIVAL_HANDLERS`) → linger → return-to-post;
 > committed responders skip other incidents (the finite pool is real);
 > `@dispatch/status`. **Crime slice 1** (#867): `build_bolo`/`match_bolo` —

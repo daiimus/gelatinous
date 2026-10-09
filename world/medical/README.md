@@ -81,12 +81,12 @@ Character dies if:
 
 ## Commands
 
-- `medical [target]` -- Check medical status
+(`damagetest`, `healtest`, `@medaudit` were development and migration tools, removed 2026-10-09, #3728.)
+
+- `medical [target]` (`diagnose`, `medstat`, `health`, `ht`) -- Check medical status; kept by owner ruling, narrative rendering is the open design
+
 - `medinfo [organs|conditions|capacities]` -- Detailed medical information
-- `damagetest <amount> [location] [injury_type]` -- Test damage application
-- `healtest [condition|all]` -- Test healing (development command)
 - `@resetmedical [character|confirm all]` -- Reset character medical states (admin)
-- `@medaudit` -- Comprehensive medical system diagnostics (admin)
 
 ## Integration Points
 

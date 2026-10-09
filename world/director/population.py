@@ -396,7 +396,7 @@ def maintain_security_complement() -> Any | None:
 # Civilian population
 # ---------------------------------------------------------------------------
 # Secbots have had a respawn loop since the security slice shipped; civilians
-# never did. They were spawned by hand (`@civilians/populate`) and every one
+# never did. They were spawned by hand (the since-removed `@civilians/populate`) and every one
 # that died stayed dead, so the streets drained monotonically and the only
 # cure was a builder remembering to top them up.
 #

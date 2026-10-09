@@ -184,14 +184,6 @@ class TestEveryCrimeRollsSomebody(TestCase):
         self.assertEqual(CRIME_SEVERITY["murder"], 3)
 
 
-class TestDispatchWiring(TestCase):
-    def test_dispatch_command_registered(self):
-        from commands.default_cmdsets import CharacterCmdSet
-        cs = CharacterCmdSet()
-        cs.at_cmdset_creation()
-        self.assertIn("@dispatch", [c.key for c in cs.commands])
-
-
 class TestDispatcherAck(TestCase):
     """The dispatcher's voice: deterministic template acks on 911MHz via
     the base's REAL console — no console = no voice (the physical gate)."""

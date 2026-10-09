@@ -97,10 +97,3 @@ class TestPathfind(TestCase):
         self.assertIsNone(find_path(A, D, max_steps=2))
         self.assertEqual(find_path(A, D, max_steps=3), [A, B, C, D])
 
-
-class TestPathWiring(TestCase):
-    def test_path_command_registered(self):
-        from commands.default_cmdsets import CharacterCmdSet
-        cs = CharacterCmdSet()
-        cs.at_cmdset_creation()
-        self.assertIn("@path", [c.key for c in cs.commands])

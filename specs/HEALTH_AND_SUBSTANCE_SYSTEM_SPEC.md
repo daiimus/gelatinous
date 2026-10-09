@@ -118,7 +118,7 @@ hardpoint module, flesh implant).  Full design:
 **Medical Tools & Consumption Complete:**
 - 7 medical item prototypes using Evennia's attribute-based system
 - Natural language consumption commands (`inject`, `apply`, `bandage`, `eat`, `drink`, `inhale`, `smoke`)
-- Medical inventory management commands (`medlist`, `mediteminfo`, `refillmed`)
+- Medical inventory readouts (`medlist`, `mediteminfo`, `refillmed`) — removed 2026-10-09, #3728: they duplicated `inventory` and an item look, and `refillmed` was a testing tool
 - Skill-based treatment success using G.R.I.M. stats (Intellect-based medical skill)
 - Smart consumption system preventing resource waste through need-based analysis
 
@@ -484,20 +484,17 @@ class DeathProgressionScript(DefaultScript):
 **Enhanced Medical Commands:**
 - `medinfo [target] [organs|conditions|capacities|summary]` - Comprehensive medical diagnostics
 - `@resetmedical <character>` - Reset medical states after system updates
-- `@medaudit [details]` - Audit medical system health across all characters
+- `@medaudit [details]` - removed 2026-10-09, #3728; it audited the 2025-09 organ-structure migration, whose old form no longer exists
 
 ### 🔧 MEDICAL SYSTEM MIGRATION TOOLS
 **Administrative Commands (Builder+):**
 - `@resetmedical confirm all` - Mass reset all character medical states
 - `@resetmedical <character>` - Reset individual character medical state
-- `@medaudit` - Quick overview of medical system health across game
-- `@medaudit details` - Detailed character-by-character medical state analysis
+- `@medaudit` / `@medaudit details` - removed 2026-10-09, #3728 (the 2025-09 migration it audited is complete)
 
 **Migration Workflow:**
-1. `@medaudit` - Assess current medical state distribution
-2. `@resetmedical confirm all` - Clean slate migration (recommended)
-3. Characters automatically receive current medical structure on next access
-4. `@medaudit` - Verify successful migration to new structure
+1. `@resetmedical confirm all` - Clean slate migration (recommended)
+2. Characters automatically receive current medical structure on next access
 
 **Use Cases:**
 - Medical system updates (new organs, changed mechanics)
@@ -1719,12 +1716,12 @@ character.db.medical_state = {
 ```
 
 #### Implemented Commands
-- ✅ `medical [target]` - Check medical status with detailed health indicators
+- ✅ `medical [target]` (aliases `diagnose`, `medstat`, `health`, `ht`) - Check medical status. **KEPT by owner ruling 2026-10-09 (#3728): "Medical IS player facing but incomplete... We'll want a way to represent injuries to a player narratively and not with numbers which the current iteration does."** The numeric readout is the current iteration; the narrative rendering is the open design.
 - ✅ `medinfo [organs|conditions|capacities]` - Detailed medical information system
-- ✅ `damagetest <amount> [location] [injury_type]` - Test anatomical damage application
+- ❌ `damagetest <amount> [location] [injury_type]` - removed 2026-10-09, #3728 (development test command)
 - ✅ `healtest [condition|all]` - Test healing mechanisms (development command)
 - ✅ `@resetmedical [character|confirm all]` - Reset character medical states (admin)
-- ✅ `@medaudit` - Comprehensive medical system diagnostics (admin)
+- ❌ `@medaudit` - removed 2026-10-09, #3728
 
 ### Phase 2: Medical Tools & Consumption Method Commands - ✅ COMPLETED
 - ✅ **Medical item classes**: Full item management system with usage tracking
@@ -1744,7 +1741,7 @@ character.db.medical_state = {
 - ✅ `inhale <item>` - Inhalation of gases, vapors, oxygen, anesthetic substances
 - ✅ `smoke <item>` - Smoking medicinal herbs, cigarettes, dried medicines
 - ✅ `drink <item>` - Liquid consumption system
-- ✅ `medlist` - List medical items in inventory with status
+- ❌ `medlist` - removed 2026-10-09, #3728
 - ✅ `inhale/smoke` - **COMPLETE** (Phase 2.5 - Consumption System Complete)
 
 #### Medical Item Integration

@@ -3,8 +3,8 @@
 `apply_unconscious_state` swaps in `UnconsciousCmdSet` via `add_default`,
 which is PERSISTENT -- it survives a reload and a reconnect. Only
 `remove_unconscious_state` puts `CharacterCmdSet` back, and it had three
-call sites: `@heal`, `@testunconscious` (both Builder-locked) and the
-death transition.
+call sites: `@heal`, `@testunconscious` (both Builder-locked; the latter
+removed 2026-10-09, #3728) and the death transition.
 
 The natural-recovery branch of the medical tick was not one of them. It
 cleared `ndb.unconsciousness_processed` and `override_place` and stopped.
@@ -61,7 +61,7 @@ class _BlackoutCase(EvenniaTest):
     def go_under(self):
         """`apply_unconscious_state` no-ops unless the character really
         is unconscious, and again for staff -- `force_test` is the flag
-        `@testunconscious` uses to drive it directly."""
+        the old `@testunconscious` used to drive it directly."""
         self.char.apply_unconscious_state(force_test=True)
         self.char.ndb.unconsciousness_processed = True
 
