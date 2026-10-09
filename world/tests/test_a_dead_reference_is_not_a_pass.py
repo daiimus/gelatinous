@@ -78,10 +78,12 @@ class TheSleepAndWorkStepsFaultWithoutAHomeOrPost(EvenniaTest):
         return jobs.step_job(self.soul)
 
     def test_no_home_faults_the_sleep_step(self):
+        self.soul.ndb.soul_sleeping = True                 # the cube went while asleep
         self.assertFalse(self._step("sleep"))
         self.assertIsNone(self.soul.db.soul_job)
         self.assertIn("no home at sleep step", self.soul.db.soul_faults[-1][1])
         self.assertFalse(any("settles in" in s for s in self.said))
+        self.assertFalse(self.soul.ndb.soul_sleeping)      # the next night settles in again
 
     def test_control_at_home_the_soul_settles_in(self):
         self.soul.db.soul_home = self.room1
@@ -136,8 +138,38 @@ class TheSweepReleasesASoulEmployedAtNothing(EvenniaTest):
     def test_a_treasury_post_is_not_mistaken_for_a_dead_venue(self):
         self._claim(with_register=False)
         self.assertIsNone(self.soul.db.soul_venue)
+        self.assertEqual(self.soul.db.soul_fixture, self.post)
         self.assertEqual(posts.release_the_orphaned(), [])
         self.assertEqual(self.soul.db.soul_post, self.room1)
+
+    def test_a_deleted_treasury_fixture_releases_its_keeper_too(self):
+        # No till, so soul_venue was never written; the fixture itself is
+        # the reference that dies (the round-1 review's gap).
+        self._claim(with_register=False)
+        self.post.delete()
+        self.assertEqual(posts.release_the_orphaned(), [self.soul])
+        self.assertIsNone(self.soul.db.soul_post)
+        self.assertIsNone(self.soul.db.soul_fixture)
+
+    def test_a_keeper_from_before_the_stamp_is_stamped_by_the_sweep_then_released(self):
+        self._claim(with_register=False)
+        self.soul.attributes.remove("soul_fixture")       # a claim made before #3563
+        self.assertEqual(posts.stamp_fixtures(), [self.soul])
+        self.assertEqual(self.soul.db.soul_fixture, self.post)
+        self.assertEqual(posts.stamp_fixtures(), [])        # once
+        self.post.delete()
+        with mock.patch("world.director.security._in_combat", return_value=False):
+            posts.sweep(1000.0)
+        self.assertIsNone(self.soul.db.soul_post)
+
+    def test_a_room_posted_unit_with_no_fixture_is_left_alone(self):
+        # Security robots and the courier are posted at a room, not a slot.
+        unit = create_object("typeclasses.characters.Character", key="Sentry", location=self.room1)
+        unit.db.is_npc = True
+        unit.db.species = "robot"
+        engine.ensoul(unit, role="security", post=self.room1)
+        self.assertEqual(posts.release_the_orphaned(), [])
+        self.assertEqual(unit.db.soul_post, self.room1)
 
     def test_a_deleted_post_room_releases_too(self):
         annex = create_object("typeclasses.rooms.Room", key="Annex")

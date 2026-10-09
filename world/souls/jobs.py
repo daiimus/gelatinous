@@ -797,11 +797,10 @@ def step_job(soul):
         # cube, so the soul settled in for the night in the street and
         # earned "a night behind my own door" (#3564).
         home = soul.db.soul_home
-        if not (home and home.pk):
-            fault(soul, "no home at sleep step")
-            return False
-        if soul.location != home:
-            fault(soul, "not home at sleep step")
+        if not (home and home.pk) or soul.location != home:
+            soul.ndb.soul_sleeping = False     # the next night poses settling in again
+            fault(soul, "no home at sleep step" if not (home and home.pk)
+                  else "not home at sleep step")
             return False
         if not soul.ndb.soul_sleeping:
             soul.ndb.soul_sleeping = True

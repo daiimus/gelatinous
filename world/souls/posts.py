@@ -393,8 +393,25 @@ def release_from_post(soul):
     141 did for the displaced."""
     soul.db.soul_post = None
     soul.db.soul_venue = None
+    soul.db.soul_fixture = None
     soul.db.soul_wage_rate = 0.0
     soul.db.soul_role = str(soul.db.role or "resident")
+
+
+def stamp_fixtures():
+    """Every slot keeper carries its fixture (`soul_fixture`). Claims made
+    before #3563 wrote none, so the sweep writes it for them here, once,
+    from the slots that still name them; a keeper whose fixture is gone
+    has no slot left to be stamped from, and the row it already carries
+    is what `release_the_orphaned` reads."""
+    stamped = []
+    for post in get_posts():
+        for slot in (post.db.post_slots or {}).values():
+            keeper = slot.get("keeper") if isinstance(slot, dict) or hasattr(slot, "get") else None
+            if keeper is not None and keeper.pk and getattr(keeper.db, "soul_fixture", None) is None:
+                keeper.db.soul_fixture = post
+                stamped.append(keeper)
+    return stamped
 
 
 def release_the_orphaned():
@@ -403,10 +420,10 @@ def release_the_orphaned():
     this is the mirror, a dead POST cleared from its keeper, without
     which the soul is never a candidate again and never counts as
     unemployed. Evennia reads a dead reference back as None, which is
-    also what a treasury post's `soul_venue` and an unemployed soul's
-    `soul_post` legitimately hold, so the Attribute ROW decides
-    (`_was_assigned`): a packed dead reference is "assigned, and gone".
-    Returns the souls released."""
+    also what a treasury post's `soul_venue`, a room-posted unit's
+    `soul_fixture` and an unemployed soul's `soul_post` legitimately
+    hold, so the Attribute ROW decides (`_was_assigned`): a packed dead
+    reference is "assigned, and gone". Returns the souls released."""
     from world.souls import engine
     released = []
     for soul in engine.get_souls():
@@ -414,9 +431,10 @@ def release_the_orphaned():
             continue
         post = soul.db.soul_post
         post_gone = post is None and _was_assigned(soul, "soul_post")
-        venue_gone = (post is not None and soul.db.soul_venue is None
-                      and _was_assigned(soul, "soul_venue"))
-        if post_gone or venue_gone:
+        gone_with_it = (post is not None
+                        and ((soul.db.soul_fixture is None and _was_assigned(soul, "soul_fixture"))
+                             or (soul.db.soul_venue is None and _was_assigned(soul, "soul_venue"))))
+        if post_gone or gone_with_it:
             release_from_post(soul)
             released.append(soul)
     return released
@@ -430,6 +448,7 @@ def sweep(now=None):
     from world.director.security import _in_combat
 
     now = now if now is not None else time.time()
+    stamp_fixtures()
     release_the_orphaned()
     for post in get_posts():
         slots = dict(post.db.post_slots or {})
@@ -886,6 +905,7 @@ def _install_keeper(npc, post, room, shift):
                   post=room, schedule=shift,
                   wage_rate=float(post.db.post_wage_rate or 0.02),
                   venue=post if post.db.register is not None else None)
+    npc.db.soul_fixture = post            # dies with the fixture (#3563)
     slots = dict(post.db.post_slots or {})
     slots[shift] = {"keeper": npc, "vacant_since": None}
     post.db.post_slots = slots
@@ -982,6 +1002,9 @@ def do_claim(soul, post, shift="day"):
     # only a real till pays wages from itself; till-less fixtures are
     # treasury posts
     soul.db.soul_venue = post if post.db.register is not None else None
+    # the FIXTURE itself, till or not: the one reference that dies with
+    # it, so the sweep can tell a deleted post from a treasury one (#3563)
+    soul.db.soul_fixture = post
     slots = dict(post.db.post_slots or {})
     slots[shift] = {"keeper": soul, "vacant_since": None}
     post.db.post_slots = slots
