@@ -455,8 +455,12 @@ class Room(ObjectParent, DefaultRoom):
         content_parts = []
         for priority, obj, is_flying in integrated_objects:
             if is_flying:
-                # Use flying-specific description with teal item name
-                content = f"A |c{obj.key}|n is flying through the air."
+                # Use flying-specific description with teal item name.
+                # A visual read like the rest of the integrate layer, which
+                # this branch bypasses (#3479).
+                from world.perception import can_perceive_sense
+                content = (f"A |c{obj.key}|n is flying through the air."
+                           if can_perceive_sense(looker, "visual") else "")
             else:
                 # Use regular integration content
                 content = self.get_object_integration_content(obj, looker)
@@ -564,9 +568,25 @@ class Room(ObjectParent, DefaultRoom):
         from world.stealth import (
             SUSPICIOUS, get_awareness, is_hidden_from, passive_check,
         )
+        from world.perception import can_perceive_sense
 
         characters = []
         sensed_presence = False
+
+        # SIGHT (#3479): who stands here is a visual read, like the room
+        # description and the doorway glance. A blind looker gets the
+        # crowd line (the crowd system gates itself by sense) and nothing
+        # about anyone, hidden or not. The passive stealth roll still runs
+        # for them: the searcher's stat is Resonance, "the sense that
+        # someone's there" (stealth spec §3.1), and the arrival glance in
+        # Character.at_post_move rolls it for blind eyes too, so the
+        # awareness it writes lands as it would on arrival. The cue it can
+        # earn is withheld from them: a character standing in the open
+        # gives blind eyes nothing, so a cue from a hidden one would make
+        # hiding the worse concealment. Whether a blind character should
+        # sense anyone's presence at all is an open design question, not
+        # answered here.
+        sighted = can_perceive_sense(looker, "visual")
 
         for obj in self.contents:
             if obj.is_typeclass("typeclasses.characters.Character") and obj != looker:
@@ -579,10 +599,12 @@ class Room(ObjectParent, DefaultRoom):
                 # them off the roster; Suspicious earns the cue line.
                 if getattr(obj.db, "hidden", False) is True:
                     passive_check(looker, obj)
-                    if is_hidden_from(obj, looker):
+                    if sighted and is_hidden_from(obj, looker):
                         if get_awareness(looker, obj) >= SUSPICIOUS:
                             sensed_presence = True
                         continue
+                if not sighted:
+                    continue
                 characters.append(obj)
 
         # Get crowd contributions (appears before character listings)
@@ -740,7 +762,14 @@ class Room(ObjectParent, DefaultRoom):
         """
         import random
         from collections import defaultdict
-        
+        from world.perception import can_perceive_sense
+
+        # SIGHT (#3479): "You see a crate and a lamp." is a visual read; the
+        # void line in `get_display_desc` has already told a blind looker
+        # what they cannot do.
+        if not can_perceive_sense(looker, "visual"):
+            return ""
+
         # Collect objects and group by display name
         item_counts = defaultdict(int)
         

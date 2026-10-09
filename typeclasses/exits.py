@@ -522,17 +522,34 @@ class Exit(DefaultExit):
         
         # Build description components
         description_parts = []
-        
-        # Start with custom description if set (priority over atmospheric defaults)
-        custom_desc = self.db.desc
-        if custom_desc:
-            description_parts.append(custom_desc.strip())
-        
-        # Generate atmospheric description based on exit analysis
-        atmospheric_desc = self._get_atmospheric_description(looker)
-        if atmospheric_desc:
-            description_parts.append(atmospheric_desc)
-        
+
+        # SIGHT (#3382): the authored desc and every atmospheric line are
+        # sight prose (the edge and the sky, the streetlight and the
+        # shadow, the "Through the steady rain" framing). The character
+        # half of this method has been gated since #2793; this is the
+        # other half, on the same predicate the room description uses. A
+        # blind looker is told the KIND of exit the exits footer or the
+        # refused walk already names to them ("There is an edge to the
+        # north."), so the voices never disagree, and otherwise gets the
+        # bare fallback. The
+        # weather reaches them through the room's own line, which splits
+        # by sense.
+        from world.perception import can_perceive_sense
+        if can_perceive_sense(looker, "visual"):
+            # Start with custom description if set (priority over atmospheric defaults)
+            custom_desc = self.db.desc
+            if custom_desc:
+                description_parts.append(custom_desc.strip())
+
+            # Generate atmospheric description based on exit analysis
+            atmospheric_desc = self._get_atmospheric_description(looker)
+            if atmospheric_desc:
+                description_parts.append(atmospheric_desc)
+        else:
+            known = self._kind_known_without_sight()
+            if known:
+                description_parts.append(known)
+
         # Combine descriptions
         if not description_parts:
             # Fallback to prevent empty description
@@ -639,25 +656,12 @@ class Exit(DefaultExit):
         Returns:
             str: Street context description or empty string
         """
-        destination = self.destination
-        if not destination:
+        street_exit_count = self._street_exit_count()
+        if street_exit_count is None or not self.destination.exits:
+            # not a street, or a street with nothing leading on: no shape
+            # to describe, the directional prose takes over (as before)
             return ""
-            
-        # Check if destination is a street-type room
-        dest_type = getattr(destination, 'type', None)
-        if dest_type != 'street':
-            return ""
-            
-        # Analyze destination exit count to determine street type
-        dest_exits = destination.exits
-        if not dest_exits:
-            return ""
-            
-        # Count street exits to determine intersection type
-        street_exit_count = sum(1 for e in dest_exits 
-                              if e.destination and hasattr(e.destination, 'type') 
-                              and e.destination.type == 'street')
-        
+
         direction = self.key.lower()
         
         # Get weather context for enhanced descriptions
@@ -679,6 +683,50 @@ class Exit(DefaultExit):
         else:
             return base_desc
             
+    def _street_exit_count(self):
+        """How many street exits the destination street has (0 for a
+        street with none), or None when the destination is not a street.
+        The exits footer counts the same way (`Room.format_exit_groups`),
+        so a street it calls a dead-end is one here too."""
+        destination = self.destination
+        if not destination:
+            return None
+        if getattr(destination, 'type', None) != 'street':
+            return None
+        return sum(1 for e in (destination.exits or [])
+                   if e.destination and hasattr(e.destination, 'type')
+                   and e.destination.type == 'street')
+
+    def _kind_known_without_sight(self):
+        """The one thing a blind looker is told about an exit: its kind, in
+        the terms the exits footer or the refused walk already use for
+        them (#3382). The footer says "There is an edge to the north." and
+        the walk refuses with "it's an edge!", so `look north` must not
+        call it a passageway. Edge, gap, open air (the footer skips sky
+        exits; the refused walk and the sighted look both name the air)
+        and the street's shape are facts a character knows without eyes;
+        everything else is "" and the caller falls back."""
+        is_edge = self.db.is_edge
+        is_gap = self.db.is_gap
+        if is_edge and is_gap:
+            return "A gap at the edge of the floor."
+        if is_edge:
+            return "An edge where the floor ends."
+        if is_gap:
+            return "A gap in the floor."
+        destination = self.destination
+        if destination and getattr(destination, 'is_sky_room', False):
+            return "An opening into open air."
+        street_exit_count = self._street_exit_count()
+        if street_exit_count is None:
+            return ""
+        direction = self.key.lower()
+        if street_exit_count <= 1:
+            return f"The street {direction}ward comes to a dead end."
+        if street_exit_count == 2:
+            return f"The street continues {direction}ward."
+        return f"The street {direction}ward meets an intersection."
+
     def _get_weather_context(self):
         """
         Get weather context for exit descriptions.
