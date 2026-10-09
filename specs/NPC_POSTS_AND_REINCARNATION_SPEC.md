@@ -185,9 +185,9 @@ makes them *administrative*:
   > `typeclasses/shopkeeper.py`, `typeclasses/bar.py`,
   > `world/souls/actions.py` and `world/bar.tender_at`; it reads the STORED
   > row, so a deleted keeper still counts as assigned, #3573),
-  > `keeper_on_duty`'s last-resort fallback,
-  > `world/npcs/posts.snapshot_keeper_memory`, and `sweep`'s one-time
-  > adoption of a pre-slots post all still read `post_keeper`. Ask the slots
+  > `keeper_on_duty`'s last-resort fallback and `sweep`'s one-time
+  > adoption of a pre-slots post still read `post_keeper` (the thin
+  > death-side writer that also read it went with #3424). Ask the slots
   > first.
 - **The post persists through death.** The cart keeps its stock, till, and
   prices while unstaffed — commerce pauses, property remains. (Deterministic
@@ -296,12 +296,11 @@ the NPC object and die with it. The policy decides what should survive:
   > promises — thoughts, opinions, and the people known by face and by
   > voice, as well as dossiers and episodic memory — because it shares
   > `world/imprint.py` with the player's flash clone and so cannot drift
-  > from it. The singular `db.post_memory_snapshot` is still written for
-  > a post with no slots (`snapshot_imprint`, when the deceased matches
-  > only the legacy mirror) and by `world/npcs/posts.snapshot_keeper_memory`
-  > from the NPC-deletion branch, as GM-readable archaeology; **since
-  > #3667 nothing restores from it** (it carries no `sleeve_uid`,
-  > `blueprint_key` or `dbref`, so it can never be matched to a policy).
+  > from it. The singular `db.post_memory_snapshot` is **no longer
+  > written** (2026-10-09, #3424): nothing had read it since #3672, and its
+  > two writers (`snapshot_imprint`'s legacy branch and
+  > `world/npcs/posts.snapshot_keeper_memory`, both removed) disagreed on
+  > shape. Two live fixtures still carry an inert copy from 2026-08-20.
 - **A return restores it** — continuity of self is what the person's own
   sleeve policy pays for (#3667; the post-level `resleave` label is gone).
   An archived body is restored from its OWN `db.imprint`; the per-shift
@@ -324,9 +323,11 @@ the NPC object and die with it. The policy decides what should survive:
   > resurrection. (All of that is the void model; as built since #3667 the
   > policy record is consumed by the return, taken before the body is
   > built and put back if the build fails. The snapshot is not cleared.)
-- **`successor` discards it** — the empty book is the point. The snapshot is
-  retained on the post (GM-readable archaeology: what the old butcher knew)
-  but never loaded into the new keeper.
+- **`successor` discards it** — the empty book is the point. The per-shift
+  record stays on the post but is never loaded into the new keeper. (The
+  "GM-readable archaeology" copy this line once promised was never given a
+  reader and was removed under #3424; `examine` on the fixture shows the
+  per-shift record, which is the same knowledge.)
 - **`none`** — the snapshot is the NPC's estate; nothing consumes it.
 
 ## 3 · The sleeve fiction (why this is coherent, not gamey)

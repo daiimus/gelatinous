@@ -169,9 +169,10 @@ reads back as `None`. `imprint.capture` gains `blueprint_key` and `dbref`
 | PC, telnet respawn | `create_flash_clone` | inside the function, take before `account.create_character`, verify after the full build | the `[4]` option is display only |
 | PC, web respawn | same function | same | the POST reads `account.db.last_character` raw and skips `respawn_candidate()`; enforcement lives in the function, and the POST catches the refusal |
 
-**The legacy `post_memory_snapshot`** (written by `snapshot_keeper_memory`,
-`world/npcs/posts.py:28-62`, with no `sleeve_uid`, `blueprint_key` or
-`dbref`) is never a payout source; the fallback at `posts.py:660` goes.
+**The legacy `post_memory_snapshot`** (once written by `snapshot_keeper_memory`
+with no `sleeve_uid`, `blueprint_key` or `dbref`) is never a payout source; the
+fallback at `posts.py:660` goes. (Both of its writers were removed 2026-10-09,
+#3424; the key is no longer written at all.)
 
 **The sweep's owned branch** (`posts.py:446-459`) gets three outcomes:
 *resleeve* (a policy the dead keeper can redeem), *successor* (no policy, a

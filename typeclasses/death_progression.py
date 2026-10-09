@@ -535,10 +535,11 @@ class DeathProgressionScript(DefaultScript):
         This separates the dead character object from the corpse object for investigation.
         """
         try:
-            # 0. The imprint: a post-holder's memories become the post's
-            # property before the body is deleted (the per-shift snapshot
-            # is taken always; a return restores the person's own imprint
-            # when their sleeve policy pays, #3667).
+            # 0. The post's per-shift record of a slot keeper. A return of an
+            # archived body restores that body's OWN imprint (below); this
+            # copy serves only the blueprint rebuild of a body that
+            # predates archiving, and only when the keeper's own sleeve
+            # policy pays (#3667). One writer since #3424.
             try:
                 from world.souls.posts import snapshot_imprint
                 snapshot_imprint(character)
@@ -1028,15 +1029,10 @@ class DeathProgressionScript(DefaultScript):
                     f"DEATH_NPC_ARCHIVE: {getattr(character, 'key', '?')} is "
                     f"Essential Personnel — archiving to Limbo")
             elif character.db.is_npc is True:
-                # §P3 (NPC_POSTS_AND_REINCARNATION): if this NPC kept a
-                # registered post, snapshot their dossiers/memories onto it
-                # BEFORE the object (and everything on it) is deleted — GM
-                # archaeology; a return restores the imprint, not this.
-                try:
-                    from world.npcs.posts import snapshot_keeper_memory
-                    snapshot_keeper_memory(character)
-                except Exception:  # noqa: BLE001 — never block a death
-                    pass
+                # A generated resident: nothing restores them, so nothing
+                # more is kept (their per-shift record, if they held a
+                # slot, was written above). The second, thinner copy that
+                # used to land here was write-only and went with #3424.
                 splattercast = get_splattercast()
                 splattercast.msg(f"DEATH_NPC_CLEANUP: deleting dead NPC {getattr(character, 'key', '?')}")
                 character.delete()

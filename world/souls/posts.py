@@ -938,12 +938,15 @@ def _imprint_of(character, now):
 
 
 def snapshot_imprint(character) -> bool:
-    """At death, a slot-keeper's memories become the post's property
-    (reincarnation spec §2), keyed by their shift (the record names the
-    keeper's blueprint and body, so a rebuild restores only its own): episodic memories,
-    dossiers, thoughts, and the people they knew by face and by voice,
-    copied onto the fixture BEFORE the corpse machinery deletes the
-    body — kept whether or not anyone ever pays to restore them."""
+    """At death, a slot keeper's imprint is copied onto the post, keyed by
+    their shift: the same record `world/imprint.capture` takes for the
+    body itself (it names the keeper's blueprint and body, so a rebuild
+    restores only its own). A return of an ARCHIVED body restores the
+    body's own imprint; this copy serves the blueprint rebuild of a body
+    that predates archiving, and only when the keeper's own sleeve policy
+    pays (#3667). It is kept whether or not anyone ever pays. The singular
+    `post_memory_snapshot` is no longer written: nothing has read it since
+    #3672, and its two writers disagreed on shape (#3424)."""
     import time as _time
 
     for post in get_posts():
@@ -953,10 +956,6 @@ def snapshot_imprint(character) -> bool:
             snaps = dict(post.db.post_memory_snapshots or {})
             snaps[shift] = _imprint_of(character, _time.time())
             post.db.post_memory_snapshots = snaps
-            return True
-        if post.db.post_keeper == character:     # legacy fallback
-            post.db.post_memory_snapshot = _imprint_of(
-                character, _time.time())
             return True
     return False
 
