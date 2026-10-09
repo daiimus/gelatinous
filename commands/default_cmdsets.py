@@ -35,7 +35,7 @@ from commands.CmdPatrol import CmdPatrol
 from commands.CmdCivilians import CmdCivilians
 from commands.bar_menu import CmdSpawnIngredient
 from commands.CmdBug import CmdBug
-from commands.CmdAdmin import CmdHeal, CmdPeace, CmdTestDeathCurtain, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestDeath, CmdTestUnconscious
+from commands.CmdAdmin import CmdHeal, CmdPeace, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestUnconscious
 from commands.CmdFixCharacterOwnership import CmdFixCharacterOwnership
 from commands.CmdInsure import CmdInsure
 from commands.CmdSoul import CmdSoul
@@ -180,7 +180,6 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdSpawnIngredient())
         self.add(CmdAdmin.CmdHeal())
         self.add(CmdAdmin.CmdPeace())
-        self.add(CmdAdmin.CmdTestDeathCurtain())
         self.add(CmdAdmin.CmdKeywords())
         self.add(CmdWeather())
         
@@ -369,7 +368,6 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdUnpin())
         
         # Add medical state testing commands (using real medical system)
-        self.add(CmdTestDeath())
         self.add(CmdTestUnconscious())
         
         # Add consumption method commands

@@ -1,7 +1,7 @@
 """
 Tests for admin command identity targeting (PR δ).
 
-Verifies that staff commands ``@heal``, ``@testdeath``,
+Verifies that staff commands ``@heal``,
 ``@testunconscious``, ``@resetmedical``, ``describe`` (set & clear),
 and ``@skintone`` route character-target resolution through
 ``commands._identity_targeting.resolve_admin_target``.
@@ -68,38 +68,6 @@ class TestCmdHealIdentity(TestCase):
         cmd.caller.location.contents = []  # empty -> no targets msg
         cmd.func()
         mock_resolve.assert_not_called()
-
-
-# ===================================================================
-# CmdTestDeath — same admin pattern
-# ===================================================================
-
-
-class TestCmdTestDeathIdentity(TestCase):
-    def _make_cmd(self, args="man"):
-        from commands.CmdAdmin import CmdTestDeath
-
-        cmd = CmdTestDeath()
-        cmd.args = args
-        cmd.caller = MagicMock()
-        return cmd
-
-    @patch("commands.CmdAdmin.resolve_admin_target")
-    def test_testdeath_uses_admin_helper(self, mock_resolve):
-        target = MagicMock(spec=["key"])  # no is_dead → short-circuit
-        target.key = "Jorge"
-        mock_resolve.return_value = target
-        cmd = self._make_cmd(args="man")
-        cmd.func()
-        mock_resolve.assert_called_with(cmd.caller, "man")
-
-    @patch("commands.CmdAdmin.resolve_admin_target")
-    def test_testdeath_not_found_messages_caller(self, mock_resolve):
-        mock_resolve.return_value = None
-        cmd = self._make_cmd(args="ghost")
-        cmd.func()
-        msg_calls = [c.args[0] for c in cmd.caller.msg.call_args_list]
-        self.assertTrue(any("ghost" in m for m in msg_calls))
 
 
 # ===================================================================
