@@ -528,9 +528,10 @@ class Exit(DefaultExit):
         # shadow, the "Through the steady rain" framing). The character
         # half of this method has been gated since #2793; this is the
         # other half, on the same predicate the room description uses. A
-        # blind looker is told the KIND of exit the exits footer already
-        # names to them ("There is an edge to the north."), so the two
-        # never disagree, and otherwise gets the bare fallback. The
+        # blind looker is told the KIND of exit the exits footer or the
+        # refused walk already names to them ("There is an edge to the
+        # north."), so the voices never disagree, and otherwise gets the
+        # bare fallback. The
         # weather reaches them through the room's own line, which splits
         # by sense.
         from world.perception import can_perceive_sense
@@ -656,7 +657,9 @@ class Exit(DefaultExit):
             str: Street context description or empty string
         """
         street_exit_count = self._street_exit_count()
-        if street_exit_count is None:
+        if street_exit_count is None or not self.destination.exits:
+            # not a street, or a street with nothing leading on: no shape
+            # to describe, the directional prose takes over (as before)
             return ""
 
         direction = self.key.lower()
@@ -681,30 +684,28 @@ class Exit(DefaultExit):
             return base_desc
             
     def _street_exit_count(self):
-        """How many street exits the destination street has, or None when
-        the destination is not a street (or has no exits to count). One
-        count feeds both the sighted street prose and the blind kind line,
-        so the two can never classify the same street differently."""
+        """How many street exits the destination street has (0 for a
+        street with none), or None when the destination is not a street.
+        The exits footer counts the same way (`Room.format_exit_groups`),
+        so a street it calls a dead-end is one here too."""
         destination = self.destination
         if not destination:
             return None
         if getattr(destination, 'type', None) != 'street':
             return None
-        dest_exits = destination.exits
-        if not dest_exits:
-            return None
-        return sum(1 for e in dest_exits
+        return sum(1 for e in (destination.exits or [])
                    if e.destination and hasattr(e.destination, 'type')
                    and e.destination.type == 'street')
 
     def _kind_known_without_sight(self):
         """The one thing a blind looker is told about an exit: its kind, in
-        the terms the exits footer already uses for them (#3382). The
-        footer says "There is an edge to the north." and the walk refuses
-        with "it's an edge!", so `look north` must not call it a
-        passageway. Edge, gap, open air and the street's shape are facts a
-        character knows without eyes; everything else is "" and the caller
-        falls back."""
+        the terms the exits footer or the refused walk already use for
+        them (#3382). The footer says "There is an edge to the north." and
+        the walk refuses with "it's an edge!", so `look north` must not
+        call it a passageway. Edge, gap, open air (the footer skips sky
+        exits; the refused walk and the sighted look both name the air)
+        and the street's shape are facts a character knows without eyes;
+        everything else is "" and the caller falls back."""
         is_edge = self.db.is_edge
         is_gap = self.db.is_gap
         if is_edge and is_gap:

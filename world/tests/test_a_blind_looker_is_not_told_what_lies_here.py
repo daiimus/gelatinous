@@ -8,10 +8,12 @@ crate.") and who was standing here, and `look <direction>` still described
 streetlight, shadow and the precarious edge. Both are visual reads and now
 honour the same predicate. The exits line stays: a blind character can be
 told an exit exists, as the #2793 test already records, and `look <dir>`
-tells them the same KIND the footer does (an edge, a gap, open air, the
-street's shape) so the two never disagree. The passive stealth roll is a
-Resonance sense, not a glance, and still runs for blind eyes; all it can
-give them is the prickling-sense cue.
+tells them the same KIND the footer or the refused walk does (an edge, a
+gap, open air, the street's shape) so the voices never disagree. The
+passive stealth roll is a Resonance sense, not a glance, and still runs
+for blind eyes; its awareness lands, but it names nobody and shows no cue:
+a character in the open gives blind eyes nothing, so a cue from a hidden
+one would make hiding the worse concealment.
 """
 from unittest import mock
 
@@ -86,33 +88,39 @@ class TheBlindLookerInTheRoom(_Scene):
         self.assertEqual(self.room1.get_display_things(self.looker), "")
         self.assertEqual(self.room1.get_display_characters(self.looker), "")
 
-    def test_the_passive_roll_still_runs_for_blind_eyes(self):
+    def test_the_passive_roll_still_runs_for_blind_eyes_and_says_nothing(self):
         # Resonance is "the sense that someone's there" (stealth spec §3.1);
-        # the arrival glance rolls it for blind eyes, and so does the look
+        # the arrival glance rolls it for blind eyes, and so does the look.
+        # Unaware: no name, no cue.
         self.blind(self.looker)
         self.bystander.db.hidden = True
         with mock.patch("world.stealth.passive_check", return_value=0) as roll:
-            self.room1.get_display_characters(self.looker)
+            out = self.room1.get_display_characters(self.looker)
         roll.assert_called_once_with(self.looker, self.bystander)
+        self.assertEqual(out, "")
 
-    def test_a_suspicious_blind_looker_gets_the_cue_and_no_name(self):
-        self.blind(self.looker)
+    def test_the_sighted_controls_for_the_cue(self):
         self.bystander.db.hidden = True
         set_awareness(self.looker, self.bystander, SUSPICIOUS)
         with mock.patch("world.stealth.passive_check", return_value=SUSPICIOUS):
             out = self.room1.get_display_characters(self.looker)
         self.assertIn("not alone", out.lower())
         self.assertNotIn("orrin", out.lower())
-
-    def test_even_an_alert_blind_looker_names_nobody(self):
-        # fully made, and still unseen: the cue is the ceiling without eyes
-        self.blind(self.looker)
-        self.bystander.db.hidden = True
         set_awareness(self.looker, self.bystander, ALERT)
         with mock.patch("world.stealth.passive_check", return_value=ALERT):
             out = self.room1.get_display_characters(self.looker)
-        self.assertIn("not alone", out.lower())
-        self.assertNotIn("orrin", out.lower())
+        self.assertIn("Orrin", out)
+
+    def test_hiding_is_never_the_worse_concealment_against_blind_eyes(self):
+        # in the open: nothing. Hidden, at Suspicious or even fully made:
+        # still nothing. A cue here would make `hide` give you away.
+        self.blind(self.looker)
+        self.assertEqual(self.room1.get_display_characters(self.looker), "")
+        self.bystander.db.hidden = True
+        for level in (SUSPICIOUS, ALERT):
+            set_awareness(self.looker, self.bystander, level)
+            with mock.patch("world.stealth.passive_check", return_value=level):
+                self.assertEqual(self.room1.get_display_characters(self.looker), "")
 
     def test_a_flying_object_is_not_announced_to_the_blind(self):
         from world.combat.constants import NDB_FLYING_OBJECTS
@@ -146,12 +154,20 @@ class TheBlindLookerAtTheDoor(_Scene):
         self.assertEqual(self.door_desc(), "An edge where the floor ends.")
 
     def test_the_gap_and_the_open_air_are_named_too(self):
-        self.blind(self.looker)
         self.door.db.is_gap = True
+        self.assertIn("treacherous gap", self.door_desc())
+        self.blind(self.looker)
         self.assertEqual(self.door_desc(), "A gap in the floor.")
         self.door.db.is_gap = False
         self.beyond.is_sky_room = True
         self.assertEqual(self.door_desc(), "An opening into open air.")
+
+    def test_a_street_with_nothing_leading_on_is_a_dead_end_to_both_voices(self):
+        # the footer counts the exitless street as a dead-end; the look agrees
+        self.beyond.type = "street"
+        self.blind(self.looker)
+        self.assertIn("There is a dead-end to the north", self.room())
+        self.assertEqual(self.door_desc(), "The street northward comes to a dead end.")
 
     def test_the_street_is_not_described_to_the_blind(self):
         from world.weather import weather_system

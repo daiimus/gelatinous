@@ -398,10 +398,13 @@ Ambient messages appear at random intervals (every 2-5 minutes) to players in a 
     (`Exit.get_display_desc`, #3382) and the closed door (`DoorExit.return_appearance`, #3382).
     Two things are told to a blind looker on purpose: the **exits footer** (a character can know a
     room's exits by other means; the #2793 test records the choice) and, from `look <dir>`, the
-    **kind** of exit the footer already named (an edge, a gap, open air, the street's shape), so
-    the footer, the look and the refused walk never disagree about one exit. The **prickling-sense
-    cue** also reaches a blind looker: the passive stealth roll is Resonance, "the sense that
-    someone's there" (stealth spec §3.1), and still runs for them; naming is what sight gates.
+    **kind** of exit the footer or the refused walk already names (an edge, a gap, open air, the
+    street's shape, with the street counted the way the footer counts it), so the footer, the look
+    and the refused walk never disagree about one exit. The passive stealth roll still runs for a
+    blind looker (Resonance, "the sense that someone's there", stealth spec §3.1, as on arrival)
+    but neither names anyone nor shows the prickling-sense cue to them: a character standing in the
+    open gives blind eyes nothing, so a cue from a hidden one would make hiding the worse
+    concealment. **OPEN:** whether a blind character should sense anyone's presence at all.
     Not covered by this bullet, and not by the fixes: `look <object>`, `look <character>`,
     `examine` and `search` render through their own paths.
     Measured 2026-09-11, before those fixes, three of the five layers honoured it and two did not;

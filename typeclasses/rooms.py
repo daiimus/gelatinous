@@ -575,12 +575,17 @@ class Room(ObjectParent, DefaultRoom):
 
         # SIGHT (#3479): who stands here is a visual read, like the room
         # description and the doorway glance. A blind looker gets the
-        # crowd line (the crowd system gates itself by sense) and nobody
-        # named. The passive stealth roll still runs for them: the
-        # searcher's stat is Resonance, "the sense that someone's there"
-        # (stealth spec §3.1), and the arrival glance in
-        # Character.at_post_move rolls it for blind eyes too. The most it
-        # can give a blind looker is the prickling-sense cue.
+        # crowd line (the crowd system gates itself by sense) and nothing
+        # about anyone, hidden or not. The passive stealth roll still runs
+        # for them: the searcher's stat is Resonance, "the sense that
+        # someone's there" (stealth spec §3.1), and the arrival glance in
+        # Character.at_post_move rolls it for blind eyes too, so the
+        # awareness it writes lands as it would on arrival. The cue it can
+        # earn is withheld from them: a character standing in the open
+        # gives blind eyes nothing, so a cue from a hidden one would make
+        # hiding the worse concealment. Whether a blind character should
+        # sense anyone's presence at all is an open design question, not
+        # answered here.
         sighted = can_perceive_sense(looker, "visual")
 
         for obj in self.contents:
@@ -594,11 +599,7 @@ class Room(ObjectParent, DefaultRoom):
                 # them off the roster; Suspicious earns the cue line.
                 if getattr(obj.db, "hidden", False) is True:
                     passive_check(looker, obj)
-                    if not sighted:
-                        if get_awareness(looker, obj) >= SUSPICIOUS:
-                            sensed_presence = True
-                        continue
-                    if is_hidden_from(obj, looker):
+                    if sighted and is_hidden_from(obj, looker):
                         if get_awareness(looker, obj) >= SUSPICIOUS:
                             sensed_presence = True
                         continue
