@@ -189,15 +189,16 @@ class TurnstileAccountCreateView(EvenniaAccountCreateView):
 
         The site is fronted by the Cloudflare tunnel, which sets
         `CF-Connecting-IP` to the address it actually spoke to; a client
-        cannot forge that through the tunnel. `X-Forwarded-For` is NOT
-        consulted: every proxy on the way appends to it, so its leftmost
-        element is whatever the client chose to send (#3398).
+        cannot forge that through the tunnel. Nothing else is trusted:
+        `X-Forwarded-For` is the client's own claim (every proxy on the
+        way appends to it), and Evennia's webserver rewrites
+        `REMOTE_ADDR` from that same leftmost element whenever the peer
+        is an upstream proxy, so the socket address is no better. With no
+        Cloudflare header the caller sends no `remoteip` at all, which
+        Cloudflare allows (#3398).
 
         Returns:
-            str | None: Client IP address, or None when nothing
-            trustworthy is known
+            str | None: the address Cloudflare saw, or None
         """
-        meta = self.request.META
-        return (meta.get('HTTP_CF_CONNECTING_IP') or meta.get('REMOTE_ADDR')
-                or None)
+        return self.request.META.get('HTTP_CF_CONNECTING_IP') or None
 

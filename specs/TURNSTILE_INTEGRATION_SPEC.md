@@ -8,7 +8,7 @@
 > **⚠ 2026-09-12 — #2747 (closed 2026-09-05) restructured the on-switch; the body of this guide predates it and still describes the two-switch design.** There is now ONE answer to "is the CAPTCHA on?": `turnstile_config()` (`web/website/views/accounts.py:22-50`) returns `(site_key, secret_key, enabled)` and **`enabled` requires BOTH keys** (`:50`). Consequences the sections below do not reflect:
 > - A half-configured deployment (one key only) is **off**, not half-on, and logs `"Turnstile is half-configured: … The CAPTCHA is NOT protecting registration. Set both or neither."` naming the missing key (`accounts.py:44-49`).
 > - The widget div *and* the script tag are gated on `turnstile_enabled`, not on the site key (`web/templates/website/registration/register.html:50` and `:83`) — so a missing **secret** key also makes the widget vanish.
-> - `verify_turnstile()` with no secret now **fails closed** (`accounts.py:136-147`); it used to `return True`. Network / JSON / timeout failures fail closed too (`:167-173`).
+> - `verify_turnstile()` with no secret now **fails closed** (`accounts.py:136-147`); it used to `return True`. Network / JSON / timeout failures fail closed too (`:178-184`).
 > - Pinned by `world/tests/test_registration_captcha.py` (9 tests across `TestOneDecision`, `TestAHalfConfiguredDeploymentSaysSo`, `TestVerificationFailsClosed`).
 > - Issue #1513 still carries the superseded wording "empty keys cause `views/accounts.py:62-63` to skip verification **and return True**" — the `return True` is gone; only the skip remains.
 >
@@ -150,7 +150,7 @@ Use these for development/testing without creating a Cloudflare account.
 
 - Token validation requires secret key (never exposed to client)
 - Token is single-use (can't be reused)
-- IP address included in verification — read from `CF-Connecting-IP`, which the Cloudflare tunnel sets and a client cannot forge through it, with `REMOTE_ADDR` as the fallback; `X-Forwarded-For` is never read (its leftmost element is the client's own claim). Fixed 2026-10-09 (#3398); before that `get_client_ip()` took the leftmost `X-Forwarded-For` element. `remoteip` is optional to Cloudflare and can only make verification stricter, never looser, so it was never a security control. A refused verification now logs Cloudflare's `error-codes`, so a genuine "CAPTCHA verification failed" can be diagnosed from the server log; the Turnstile dashboard shows aggregate outcomes only.
+- IP address included in verification — only the address Cloudflare saw (`CF-Connecting-IP`, set by the tunnel and unforgeable through it); with no such header the payload carries no `remoteip` at all, which Cloudflare allows. Neither `X-Forwarded-For` (the client's own claim; proxies append) nor `REMOTE_ADDR` is trusted: Evennia's webserver rewrites `REMOTE_ADDR` from that same leftmost claim behind an upstream proxy. Fixed 2026-10-09 (#3398); before that `get_client_ip()` took the leftmost `X-Forwarded-For` element. `remoteip` is optional and can only make verification stricter, never looser, so it was never a security control. A refused verification now logs Cloudflare's `error-codes`, so a genuine "CAPTCHA verification failed" can be diagnosed from the server log; the Turnstile dashboard shows aggregate outcomes only.
 - Verification happens server-side (can't be bypassed client-side)
 
 ## Customization

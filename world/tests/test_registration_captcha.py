@@ -91,9 +91,9 @@ class TestVerificationFailsClosed(TestCase):
 
 class TestTheClientAddressIsTheOneCloudflareSaw(TestCase):
     """`remoteip` is read from `CF-Connecting-IP`, which the tunnel sets and
-    a client cannot forge through it, with the socket address as the
-    fallback. `X-Forwarded-For` is never read: proxies append to it, so
-    its leftmost element is the client's own claim (#3398)."""
+    a client cannot forge through it, and from nothing else: `X-Forwarded-For`
+    is the client's own claim, and Evennia's webserver copies that same
+    leftmost claim into `REMOTE_ADDR` behind an upstream proxy (#3398)."""
 
     def _view(self, **meta):
         from web.website.views.accounts import TurnstileAccountCreateView
@@ -107,9 +107,11 @@ class TestTheClientAddressIsTheOneCloudflareSaw(TestCase):
                           REMOTE_ADDR="172.16.0.2")
         self.assertEqual(view.get_client_ip(), "203.0.113.7")
 
-    def test_a_forged_forwarded_for_is_ignored(self):
-        view = self._view(HTTP_X_FORWARDED_FOR="1.2.3.4", REMOTE_ADDR="172.16.0.2")
-        self.assertEqual(view.get_client_ip(), "172.16.0.2")
+    def test_without_cloudflare_nothing_is_trusted(self):
+        # REMOTE_ADDR may itself be the forged leftmost claim, rewritten by
+        # Evennia's webserver; so neither header yields an address
+        view = self._view(HTTP_X_FORWARDED_FOR="1.2.3.4", REMOTE_ADDR="1.2.3.4")
+        self.assertIsNone(view.get_client_ip())
 
     def test_nothing_known_is_none_not_a_blank(self):
         self.assertIsNone(self._view().get_client_ip())
