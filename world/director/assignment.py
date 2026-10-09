@@ -253,6 +253,8 @@ def assign(npc: Any, event: Any) -> bool:
     # death, and a wrecked unit's soul stayed asleep permanently, even
     # after repair (#2255).
     if _has_soul(npc):
+        from world.souls import jobs
+        jobs.release_recovery(npc)       # the call overwrites a recovery; let go (#3562)
         npc.db.soul_job = {
             "goal": "respond", "band": 0, "at": 0, "steps": [
                 {"do": "travel", "room": event.location.id},

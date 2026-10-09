@@ -385,13 +385,52 @@ def _eligible_candidates(room):
     return [s for _, _, s in out]
 
 
+def release_from_post(soul):
+    """Unemploy *soul*: the soul-side reverse of `do_claim`. The post
+    keeps its own slot bookkeeping (the sweep stamps a slot dark when
+    its keeper is gone); this is the keeper's side when the POST is what
+    went (#3563). The role falls back to the body's civic role, as build
+    141 did for the displaced."""
+    soul.db.soul_post = None
+    soul.db.soul_venue = None
+    soul.db.soul_wage_rate = 0.0
+    soul.db.soul_role = str(soul.db.role or "resident")
+
+
+def release_the_orphaned():
+    """Souls employed at nothing (#3563): the post fixture or post room
+    they claimed was deleted. The sweep clears a dead KEEPER from a slot;
+    this is the mirror, a dead POST cleared from its keeper, without
+    which the soul is never a candidate again and never counts as
+    unemployed. Evennia reads a dead reference back as None, which is
+    also what a treasury post's `soul_venue` and an unemployed soul's
+    `soul_post` legitimately hold, so the Attribute ROW decides
+    (`_was_assigned`): a packed dead reference is "assigned, and gone".
+    Returns the souls released."""
+    from world.souls import engine
+    released = []
+    for soul in engine.get_souls():
+        if not soul.pk:
+            continue
+        post = soul.db.soul_post
+        post_gone = post is None and _was_assigned(soul, "soul_post")
+        venue_gone = (post is not None and soul.db.soul_venue is None
+                      and _was_assigned(soul, "soul_venue"))
+        if post_gone or venue_gone:
+            release_from_post(soul)
+            released.append(soul)
+    return released
+
+
 def sweep(now=None):
     """One vacancy pass over every SLOT of every post: stamp the newly
     dark, fill the grace-elapsed. One succession per sweep, never over
-    a live fight."""
+    a live fight. Before the posts, the keepers: a soul whose post died
+    is released (#3563), so it is a candidate again below."""
     from world.director.security import _in_combat
 
     now = now if now is not None else time.time()
+    release_the_orphaned()
     for post in get_posts():
         slots = dict(post.db.post_slots or {})
         if not slots and post.db.post_keeper is not None:
