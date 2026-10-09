@@ -87,3 +87,70 @@ class TestVerificationFailsClosed(TestCase):
         from web.website.views.accounts import TurnstileAccountCreateView
         view = TurnstileAccountCreateView()
         self.assertFalse(view.verify_turnstile("any-token"))
+
+
+class TestTheClientAddressIsTheOneCloudflareSaw(TestCase):
+    """`remoteip` is read from `CF-Connecting-IP`, which the tunnel sets and
+    a client cannot forge through it, and from nothing else: `X-Forwarded-For`
+    is the client's own claim, and Evennia's webserver copies that same
+    leftmost claim into `REMOTE_ADDR` behind an upstream proxy (#3398)."""
+
+    def _view(self, **meta):
+        from web.website.views.accounts import TurnstileAccountCreateView
+        view = TurnstileAccountCreateView()
+        view.request = mock.Mock(META=meta)
+        return view
+
+    def test_cloudflares_header_wins(self):
+        view = self._view(HTTP_CF_CONNECTING_IP="203.0.113.7",
+                          HTTP_X_FORWARDED_FOR="10.0.0.1, 203.0.113.7",
+                          REMOTE_ADDR="172.16.0.2")
+        self.assertEqual(view.get_client_ip(), "203.0.113.7")
+
+    def test_without_cloudflare_nothing_is_trusted(self):
+        # REMOTE_ADDR may itself be the forged leftmost claim, rewritten by
+        # Evennia's webserver; so neither header yields an address
+        view = self._view(HTTP_X_FORWARDED_FOR="1.2.3.4", REMOTE_ADDR="1.2.3.4")
+        self.assertIsNone(view.get_client_ip())
+
+    def test_nothing_known_is_none_not_a_blank(self):
+        self.assertIsNone(self._view().get_client_ip())
+
+
+class TestARefusalSaysWhy(TestCase):
+    """A failed siteverify logs Cloudflare's error-codes; a pass is quiet."""
+
+    @override_settings(TURNSTILE_SITE_KEY="1x00000000000000000000AA",
+                       TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA")
+    def _verify(self, body):
+        from web.website.views.accounts import TurnstileAccountCreateView
+        view = TurnstileAccountCreateView()
+        view.request = mock.Mock(META={"HTTP_CF_CONNECTING_IP": "203.0.113.7"})
+        reply = mock.Mock(); reply.json.return_value = body
+        with mock.patch("web.website.views.accounts.requests.post", return_value=reply) as post, \
+                mock.patch("web.website.views.accounts.logger.warning") as warn:
+            ok = view.verify_turnstile("tok")
+        return ok, post, warn
+
+    def test_a_refusal_logs_the_codes_and_fails(self):
+        ok, post, warn = self._verify({"success": False, "error-codes": ["invalid-input-response"]})
+        self.assertFalse(ok)
+        self.assertTrue(warn.called)
+        self.assertIn("invalid-input-response", str(warn.call_args))
+
+    def test_a_pass_is_quiet_and_sends_the_trusted_address(self):
+        ok, post, warn = self._verify({"success": True})
+        self.assertTrue(ok)
+        self.assertFalse(warn.called)
+        self.assertEqual(post.call_args.kwargs["data"]["remoteip"], "203.0.113.7")
+
+    def test_no_address_means_no_remoteip_field(self):
+        from web.website.views.accounts import TurnstileAccountCreateView
+        view = TurnstileAccountCreateView()
+        view.request = mock.Mock(META={})
+        reply = mock.Mock(); reply.json.return_value = {"success": True}
+        with override_settings(TURNSTILE_SITE_KEY="1x00000000000000000000AA",
+                               TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"), \
+                mock.patch("web.website.views.accounts.requests.post", return_value=reply) as post:
+            self.assertTrue(view.verify_turnstile("tok"))
+        self.assertNotIn("remoteip", post.call_args.kwargs["data"])

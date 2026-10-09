@@ -149,20 +149,31 @@ class TurnstileAccountCreateView(EvenniaAccountCreateView):
         # Cloudflare Turnstile verification endpoint
         verify_url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
         
-        # Prepare verification data
+        # Prepare verification data. `remoteip` is optional to Cloudflare
+        # and can only make the check stricter, never looser; it is sent
+        # when we have a trustworthy address (#3398).
         data = {
             'secret': secret_key,
             'response': token,
-            'remoteip': self.get_client_ip(),  # Optional but recommended
         }
+        client_ip = self.get_client_ip()
+        if client_ip:
+            data['remoteip'] = client_ip
         
         try:
             # Send verification request to Cloudflare
             response = requests.post(verify_url, data=data, timeout=10)
             result = response.json()
             
-            # Check if verification was successful
-            return result.get('success', False)
+            # Check if verification was successful. A refusal carries
+            # Cloudflare's reasons; without them a "CAPTCHA verification
+            # failed" at registration could not be diagnosed from our
+            # side at all (#3398).
+            if result.get('success', False):
+                return True
+            logger.warning("Turnstile verification refused: error-codes=%s",
+                           result.get('error-codes') or [])
+            return False
             
         except Exception as e:
             # Deliberate fail-closed guard: ANY failure verifying the
@@ -175,14 +186,19 @@ class TurnstileAccountCreateView(EvenniaAccountCreateView):
     def get_client_ip(self):
         """
         Get the client's IP address from the request.
-        
+
+        The site is fronted by the Cloudflare tunnel, which sets
+        `CF-Connecting-IP` to the address it actually spoke to; a client
+        cannot forge that through the tunnel. Nothing else is trusted:
+        `X-Forwarded-For` is the client's own claim (every proxy on the
+        way appends to it), and Evennia's webserver rewrites
+        `REMOTE_ADDR` from that same leftmost element whenever the peer
+        is an upstream proxy, so the socket address is no better. With no
+        Cloudflare header the caller sends no `remoteip` at all, which
+        Cloudflare allows (#3398).
+
         Returns:
-            str: Client IP address
+            str | None: the address Cloudflare saw, or None
         """
-        x_forwarded_for = self.request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0].strip()
-        else:
-            ip = self.request.META.get('REMOTE_ADDR')
-        return ip
+        return self.request.META.get('HTTP_CF_CONNECTING_IP') or None
 
