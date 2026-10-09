@@ -2,32 +2,12 @@
 
 The sweep this module once tested is retired — there is one post
 registry now (world/souls/posts.py), and its coverage lives in
-test_souls_posts.py. What remains here is the imprint the
-death path still calls, and successor construction.
+test_souls_posts.py. Its death-side snapshot (`snapshot_keeper_memory`)
+went too (#3424): write-only since #3672. What remains here is
+successor construction.
 """
 
-
-from unittest import TestCase
-from unittest.mock import MagicMock, patch
-
-from django.test import override_settings
 from evennia.utils.test_resources import BaseEvenniaTest
-
-import world.npcs.posts as postsmod
-
-
-def _fixture(keeper=None, vacant_since=None, room=None):
-    f = MagicMock()
-    f.location = room or MagicMock()
-    f.db.post_keeper = keeper
-    f.db.post_vacant_since = vacant_since
-    f.db.post_active_desc = None
-    f.db.integration_desc = "active line"
-    return f
-
-
-POST = {"fixture": "#999", "policy": "successor", "delay_hours": 24,
-        "vacant_desc": "shuttered line"}
 
 
 class TestSuccessorBuild(BaseEvenniaTest):
@@ -54,34 +34,3 @@ class TestSuccessorBuild(BaseEvenniaTest):
                              "working the cook-pot behind the food cart.")
         finally:
             npc.delete()
-
-
-class TestMemoryAcrossDeath(TestCase):
-    """§P3: the death-side snapshot. GM archaeology now: a return restores
-    the person's own imprint, and only when their policy pays (#3667)."""
-
-    def _dying_keeper(self, is_keeper=True):
-        npc = MagicMock()
-        npc.key = "Ottilie Krug"
-        npc.db.llm_dossiers = {"uid1": {"names": ["the ratcatcher"]}}
-        npc.db.llm_memories = [{"text": "clean kills, always"}]
-        fixture = MagicMock()
-        fixture.db.post_keeper = npc if is_keeper else MagicMock()
-        fixture.db.post_memory_snapshot = None
-        return npc, fixture
-
-    def test_snapshot_taken_for_keeper(self):
-        npc, fixture = self._dying_keeper()
-        with patch.object(postsmod, "_resolve", return_value=fixture):
-            postsmod.snapshot_keeper_memory(npc)
-        snap = fixture.db.post_memory_snapshot
-        self.assertEqual(snap["keeper"], "Ottilie Krug")
-        self.assertEqual(snap["dossiers"], {"uid1": {"names": ["the ratcatcher"]}})
-        self.assertEqual(snap["memories"], [{"text": "clean kills, always"}])
-
-    def test_non_keeper_death_no_snapshot(self):
-        npc, fixture = self._dying_keeper(is_keeper=False)
-        with patch.object(postsmod, "_resolve", return_value=fixture):
-            postsmod.snapshot_keeper_memory(npc)
-        self.assertIsNone(fixture.db.post_memory_snapshot)
-
