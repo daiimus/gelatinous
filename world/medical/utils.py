@@ -1465,55 +1465,6 @@ def apply_medical_effects(item, user, target, **kwargs):
     return result_msg
 
 
-def get_medical_item_info(item, viewer):
-    """
-    Get formatted information about a medical item.
-    
-    Returns a string with detailed medical item information.
-    """
-    if not is_medical_item(item):
-        return f"{item.get_display_name(viewer)} is not a medical item."
-    
-    info = [
-        f"|w{item.get_display_name(viewer).upper()}|n",
-        "=" * 50
-    ]
-    
-    # Basic info
-    medical_type = get_medical_type(item)
-    info.append(f"Type: {medical_type.replace('_', ' ').title()}")
-    info.append(f"Description: {item.db.desc or 'No description.'}")
-    
-    # Usage info
-    uses_left = item.attributes.get("uses_left", "∞")
-    max_uses = item.attributes.get("max_uses", "∞")
-    info.append(f"Uses remaining: {uses_left}/{max_uses}")
-    
-    # Requirements
-    stat_req = get_stat_requirement(item)
-    if stat_req > 0:
-        info.append(f"Intellect requirement: {stat_req}")
-    else:
-        info.append("No skill requirements")
-        
-    # Effectiveness
-    effectiveness = item.attributes.get("effectiveness", {})
-    if effectiveness:
-        info.append("Effectiveness ratings:")
-        for condition, rating in effectiveness.items():
-            info.append(f"  {condition.replace('_', ' ').title()}: {rating}/10")
-            
-    # Special properties
-    if not can_be_used(item):
-        info.append("|rThis item is empty or used up.|n")
-        
-    application_time = item.attributes.get("application_time", 1)
-    if application_time > 1:
-        info.append(f"Application time: {application_time} rounds")
-        
-    return "\n".join(info)
-
-
 def get_medical_status_description(medical_state):
     """
     Get a descriptive medical status based on character's medical state.

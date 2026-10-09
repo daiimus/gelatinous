@@ -10,8 +10,9 @@ role-flavored **ambient beat** on every waypoint arrival (the seed of
 the §6 deterministic vocabulary).
 
 Everything is tagged ``("civilian", "director")`` so the population can
-be listed, updated, and **purged on the fly** (`@civilians`) while the
-layer is being refined — refinement is the point right now.
+be listed, updated, and purged by tag while the layer is being refined.
+(The `@civilians` builder command that did this by hand was removed
+2026-10-09, #3728; the heartbeat population loop owns the census now.)
 """
 
 from __future__ import annotations
@@ -486,7 +487,7 @@ def spawn_civilian(role: str, anchor: Any, *, drift: bool = True) -> Any | None:
         return None
     # ``drift=False`` (@spawnmob): the same PERSON -- identity, voice,
     # persona, wardrobe, stock -- but not a director civilian: no
-    # ``civilian:director`` tag (so `@civilians purge` cannot catch it and
+    # ``civilian:director`` tag (so a tag-based civilian purge cannot catch it and
     # the director never drifts it) and no haunts. The caller owns its
     # feet from here (a pinned soul, in practice).
     from random import randint as _randint

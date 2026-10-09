@@ -29,7 +29,7 @@
   **make a known recipe**. `clear` resets the load.
 - **Two-layer ingredients** (§3) — substance contributions (doses → effects)
   *plus* a cocktail role + spirit type. ~44-ingredient seeded catalog
-  (`@ingredient <key>` spawns them for testing, pending the supplier economy).
+  (the use-bar menu restocks them; the `@ingredient` testing stand-in was removed 2026-10-09, #3728).
 - **Cocktail recognition** — a hidden 20-template library recognized at mix time
   by loose role-match (roles present, ratios/garnishes ignored), with
   spirit-swap spins (*Mezcal Negroni*) and same-skeleton families (rum
@@ -542,8 +542,8 @@ jerky**, **ration crackers**. Optional for v1; cheap to add.
 **v1 — ✅ SHIPPED (2026-06-21/22):**
 - ✅ `BarCounter` object + the four pillars + role gating (owner + staff + Builder+).
 - ✅ Ingredients as real items with contribution profiles (+ cocktail identity).
-      Supplier-NPC vendors **deferred** — a seeded catalog + `@ingredient` spawn
-      tool stands in for now.
+      Supplier-NPC vendors **deferred** — a seeded catalog stands in for now;
+      the `@ingredient` spawn stand-in was removed 2026-10-09, #3728.
 - ✅ Free-mix → additive-capped drinks → consumption pipeline.
 - ✅ Save/name/brand recipes; menu. **Pricing** present (zeroed by request);
       **register** deferred.

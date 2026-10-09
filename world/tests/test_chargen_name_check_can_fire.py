@@ -26,12 +26,8 @@ returns to the name prompt.
 the DB while fixing: the same 13 carry no `medical_type` either — they
 are cyberware, `is_medical_item` without being something you spend).
 
-`medlist` rendered them with a bare `    Type: ` and nothing after it,
-because `get_medical_type` returns `""`. And `refillmed` defaulted the
-pair to 0/1 and happily **invented** a use counter on a surgical
-implant — after which the display read `1/∞ uses`, because the `!= "∞"`
-gate that suppresses the uses line only holds while *both* attributes
-are absent.
+The second half of this file, the #2568 implant readout regression, left
+with `medlist` and `refillmed` under #3728 (2026-10-09).
 """
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaCommandTest
@@ -76,56 +72,3 @@ class TestTheNameCheckCanFire(EvenniaCommandTest):
         """Legacy keys with no numeral are still matched exactly."""
         self.existing("Jon Smith")
         self.assertFalse(validate_name("Jon Smith")[0])
-
-
-class TestAnImplantIsNotAConsumable(EvenniaCommandTest):
-    def implant(self, key="a cybernetic jaw"):
-        item = create_object("typeclasses.items.Item", key=key,
-                             location=self.char1)
-        item.tags.add("medical_item", category="item_type")
-        return item
-
-    def consumable(self, key="a bandage"):
-        item = create_object("typeclasses.items.Item", key=key,
-                             location=self.char1)
-        item.tags.add("medical_item", category="item_type")
-        item.attributes.add("medical_type", "wound_care")
-        item.attributes.add("uses_left", 1)
-        item.attributes.add("max_uses", 3)
-        return item
-
-    def medlist(self):
-        from commands.CmdMedicalItems import CmdListMedItems
-        return self.call(CmdListMedItems(), "", caller=self.char1)
-
-    def refill(self, name):
-        from commands.CmdMedicalItems import CmdRefillMedItem
-        return self.call(CmdRefillMedItem(), name, caller=self.char1)
-
-    def test_the_type_line_is_not_blank(self):
-        self.implant()
-        out = self.medlist()
-        self.assertNotIn("Type: \n", out)
-        self.assertIn("Implant", out)
-
-    def test_a_real_consumable_still_names_its_type(self):
-        self.consumable()
-        self.assertIn("Wound Care", self.medlist())
-
-    def test_refilling_an_implant_is_refused(self):
-        item = self.implant()
-        out = self.refill("jaw")
-        self.assertIn("isn't something you refill", out)
-        self.assertIsNone(item.attributes.get("uses_left"))
-
-    def test_and_the_display_stays_clean_afterwards(self):
-        """The compounding half: inventing `uses_left` made `medlist`
-        read "1/∞ uses", because the gate needs BOTH absent."""
-        self.implant()
-        self.refill("jaw")
-        self.assertNotIn("∞", self.medlist())
-
-    def test_a_real_consumable_still_refills(self):
-        item = self.consumable()
-        self.refill("bandage")
-        self.assertEqual(item.attributes.get("uses_left"), 3)

@@ -27,7 +27,7 @@ at crime time and drops it in the event payload, where the responder
 reads it directly. **The identity never travels through any channel.**
 (**Stale 2026-09-11:** three producers now — `crime.py` twice, with
 `via="machine"` and `via="witness"`; `calls.py::describe_suspect`, which
-builds the same shape with `via="radio"`; and `commands/CmdDispatch.py`,
+builds the same shape with `via="radio"`; and, until removed 2026-10-09, #3728, `commands/CmdDispatch.py`,
 which passes no channel and so takes the `"witness"` default.)
 It teleports from the crime into the robot's sensor loop — no witness
 statement, no radio call, no relay.
@@ -93,7 +93,9 @@ nobody, so the owner ruling holds; the stated rule no longer does.
    truth `is_the_right_person` checks against. And `via` is keyword-only
    with a fail-safe default of `"witness"`, not required: an undeclared
    producer gets the no-uid channel rather than an error.
-   `commands/CmdDispatch.py` is the one caller relying on that default.)
+   `commands/CmdDispatch.py` was the one caller relying on that default; it was
+   removed 2026-10-09, #3728, so today no caller relies on it: both `build_bolo`
+   calls in `world/director/crime.py` pass `via=` explicitly.)
 2. **`match_bolo` refuses `high` unless `via == "machine"`.** A uid
    arriving by any other route is a bug or a forgery, and should be
    treated as one.

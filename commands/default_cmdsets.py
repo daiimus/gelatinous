@@ -23,20 +23,14 @@ from commands import CmdAdmin
 from commands import CmdClothing
 from commands import CmdMedical
 from commands import CmdConsumption
-from commands import CmdMedicalItems
 from commands import CmdSmoke
 from commands.CmdSpawnMob import CmdSpawnMob
 from commands.CmdBuildTools import (CmdAirFill, CmdBuildingAudit,
                                     CmdRoomProfile)
 from commands.CmdCoordSeed import CmdCoordSeed
-from commands.CmdPath import CmdPath
-from commands.CmdDispatch import CmdDispatch
 from commands.CmdPatrol import CmdPatrol
-from commands.CmdCivilians import CmdCivilians
-from commands.bar_menu import CmdSpawnIngredient
 from commands.CmdBug import CmdBug
-from commands.CmdAdmin import CmdHeal, CmdPeace, CmdWeather, CmdResetMedical, CmdMedicalAudit, CmdTestUnconscious
-from commands.CmdFixCharacterOwnership import CmdFixCharacterOwnership
+from commands.CmdAdmin import CmdHeal, CmdPeace, CmdWeather, CmdResetMedical
 from commands.CmdInsure import CmdInsure
 from commands.CmdSoul import CmdSoul
 from commands.CmdPin import CmdPin, CmdUnpin
@@ -173,19 +167,12 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdRoomProfile())
         self.add(CmdBuildingAudit())
         self.add(CmdAirFill())
-        self.add(CmdPath())
-        self.add(CmdDispatch())
         self.add(CmdPatrol())
-        self.add(CmdCivilians())
-        self.add(CmdSpawnIngredient())
         self.add(CmdAdmin.CmdHeal())
         self.add(CmdAdmin.CmdPeace())
         self.add(CmdAdmin.CmdKeywords())
         self.add(CmdWeather())
         
-        # Add character ownership fix command
-        self.add(CmdFixCharacterOwnership())
-
         # Standing sleeve policy for staff and play testing (#3667)
         self.add(CmdInsure())
         
@@ -355,20 +342,15 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         
         # Add medical system commands
         self.add(CmdMedical.CmdMedical())
-        self.add(CmdMedical.CmdDamageTest())
         self.add(CmdMedical.CmdMedicalInfo())
         
         # Add medical administration commands
         self.add(CmdResetMedical())
-        self.add(CmdMedicalAudit())
 
         # Souls engine diagnostic (NPC_NEEDS_AND_GOALS_SPEC §8)
         self.add(CmdSoul())
         self.add(CmdPin())
         self.add(CmdUnpin())
-        
-        # Add medical state testing commands (using real medical system)
-        self.add(CmdTestUnconscious())
         
         # Add consumption method commands
         self.add(CmdConsumption.CmdInject())
@@ -383,11 +365,6 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         # commands.CmdSmoke (added above).  The medical herb-smoking
         # surface can be reintegrated via the new command's brand /
         # item-tag system if/when herb items are built.
-        
-        # Add medical item management commands
-        self.add(CmdMedicalItems.CmdListMedItems())
-        self.add(CmdMedicalItems.CmdMedItemInfo())
-        self.add(CmdMedicalItems.CmdRefillMedItem())
         
         # Add shop commands
         self.add(CmdBuy())

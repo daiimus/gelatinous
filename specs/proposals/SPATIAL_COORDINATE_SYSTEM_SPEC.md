@@ -13,7 +13,7 @@
 > #1005 = `(0,0,0)`, **0 geometry contradictions** (only Limbo + debug rooms
 > off-grid). `world/spatial` exposes `get_xyz`/`room.xyz`, `distance`,
 > `rooms_within`, `bearing`, the A\* `find_path`/`find_path_exits`/`path_length`/
-> `is_reachable`, and the `@coordseed` / `@path` builder commands.
+> `is_reachable`, and the `@coordseed` builder command (`@path`, the route inspector, was removed 2026-10-09, #3728).
 >
 > **[Stale as of 2026-09-12 — the two figures above were true at Phase 1 ship
 > (2026-06-27) and are not true now.]** Re-measured read-only against the live
@@ -364,7 +364,7 @@ Designed-for now so we don't paint into a corner; implemented later.
 | Phase | Scope | Unblocks |
 |---|---|---|
 | **1 — Substrate** | ✅ **SHIPPED** (#847): `room.db.xyz` + `.xyz` property + `distance`/`rooms_within`/`bearing` + `@coordseed` (world seeded, 0 contradictions) + warp-exit tag. (Storage is `db.xyz`, not tags — see §10.) **[Stale as of 2026-09-12: the live grid reports **11** geometry contradictions, not 0 (#3245, open) — see the note under the header's "Live" block. Also, the "see §10" pointer does not resolve: §10 carries no storage note; the `db.xyz`-vs-tags deviation is annotated in §3 instead.]** | Ranged systems; everything downstream |
-| **2 — Pathfinder** | ✅ **SHIPPED** (#851): A\* over the exit graph w/ coordinate heuristic (`world/spatial/pathfind.py`); `@path` inspector | NPC dispatch ✅; auto-walk |
+| **2 — Pathfinder** | ✅ **SHIPPED** (#851): A\* over the exit graph w/ coordinate heuristic (`world/spatial/pathfind.py`); `@path` (removed 2026-10-09, #3728) inspector | NPC dispatch ✅; auto-walk |
 | **3 — Verticality** | Generalize jump/sky-room gravity onto Z; `passable`/floor flags | Vertical content; falling |
 | **— Parallel —** | Vehicle combat + radar (consume Phase 1 distance/bearing) | — |
 | **Reserved** | Destruction/repair · procedural mines · GPS/quiverbloom minimap | Pie-in-the-sky roadmap |

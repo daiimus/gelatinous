@@ -71,11 +71,9 @@ gelatinous/
 │   ├── CmdCommunication.py            # Identity-aware say, whisper, emote, dot-pose
 │   ├── CmdConsumption.py          # Eating and drinking
 │   ├── CmdExplosives.py           # Grenade and explosive commands
-│   ├── CmdFixCharacterOwnership.py # Admin character ownership repair
 │   ├── CmdGraffiti.py             # Environmental writing
 │   ├── CmdInventory.py            # Wield, get, drop, give, wrest, frisk
 │   ├── CmdMedical.py              # Medical status and treatment commands
-│   ├── CmdMedicalItems.py         # Medical item management
 │   ├── CmdSpawnMob.py             # NPC spawning (builder+)
 │   ├── CmdThrow.py                # Projectile throwing
 │   ├── default_cmdsets.py         # Command set definitions

@@ -8,10 +8,14 @@ status checking, and basic medical actions.
 from evennia import Command
 from evennia.utils.evtable import EvTable
 
-from world.medical.constants import BODY_CAPACITIES
 from world.medical.utils import get_medical_status_summary
 
 
+# Kept by owner ruling, 2026-10-09 (#3728): "Medical IS player facing but
+# incomplete. We should keep the medical/health command and add ht as an
+# alias. We'll want a way to represent injuries to a player narratively
+# and not with numbers which the current iteration does." The numeric
+# readout below is the current iteration, not the design.
 class CmdMedical(Command):
     """
     Check your medical status or diagnose others.
@@ -20,6 +24,8 @@ class CmdMedical(Command):
         medical
         medical <character>
         medical me
+        health
+        ht
         diagnose <character>
     
     Shows detailed information about medical conditions, organ health,
@@ -28,7 +34,7 @@ class CmdMedical(Command):
     """
     
     key = "medical"
-    aliases = ["diagnose", "medstat", "health"]
+    aliases = ["diagnose", "medstat", "health", "ht"]
     help_category = "Medical"
     
     def func(self):
@@ -64,100 +70,6 @@ class CmdMedical(Command):
             caller.msg(f"|cYour Medical Status:|n\n{status}")
         else:
             caller.msg(f"|c{target.get_display_name(caller)}'s Medical Status:|n\n{status}")
-
-
-class CmdDamageTest(Command):
-    """
-    Test command for applying anatomical damage.
-    
-    Usage:
-        damagetest <amount> [location] [injury_type]
-    
-    Examples:
-        damagetest 10
-        damagetest 15 chest cut
-        damagetest 8 left_arm blunt
-    
-    This command is for testing the medical system during development.
-    """
-    
-    key = "damagetest"
-    help_category = "Medical"
-    locks = "cmd:perm(Builder)"
-    
-    def func(self):
-        """Execute the damage test command."""
-        caller = self.caller
-        
-        if not self.args:
-            caller.msg("Usage: damagetest <amount> [location] [injury_type]")
-            return
-            
-        args = self.args.strip().split()
-        
-        try:
-            damage_amount = int(args[0])
-        except (ValueError, IndexError):
-            caller.msg("Please provide a valid damage amount.")
-            return
-            
-        location = args[1] if len(args) > 1 else "chest"
-        injury_type = args[2] if len(args) > 2 else "generic"
-        
-        # Apply damage and check result - take_damage returns (died, actual_damage)
-        target_died, actual_damage = caller.take_damage(damage_amount, location, injury_type)
-        
-        # Show damage message with armor info if applicable
-        if actual_damage < damage_amount:
-            armor_absorbed = damage_amount - actual_damage
-            caller.msg(f"|rYou take {damage_amount} {injury_type} damage to your {location}!|n")
-            caller.msg(f"|gArmor absorbed {armor_absorbed} damage - {actual_damage} damage applied.|n")
-        else:
-            caller.msg(f"|rYou take {damage_amount} {injury_type} damage to your {location}!|n")
-        
-        # Show medical status after damage
-        medical_state = caller.medical_state  # Use property that loads from db
-        if medical_state:
-            # `to_dict()` emits organs / conditions / blood_level /
-            # pain_level / consciousness.  There has never been a
-            # `wounds` key, so the old `.get('wounds', {})` summed to 0
-            # and this line could never print (#2535).  Conditions are
-            # what damage actually generates -- bleeding, pain -- and
-            # damagetest surfaces them nowhere else; organ damage is
-            # enumerated separately just below.
-            conditions = getattr(medical_state, "conditions", None) or []
-            if conditions:
-                tally = {}
-                for condition in conditions:
-                    name = str(getattr(condition, "type", "unknown"))
-                    tally[name] = tally.get(name, 0) + 1
-                summary = ", ".join(f"{name} x{count}"
-                                    for name, count in sorted(tally.items()))
-                caller.msg(f"|yYou now have {len(conditions)} active "
-                           f"condition(s): {summary}.|n")
-            
-            # Show organ damage - organs are now Organ objects, not dicts
-            from world.anatomy import get_organ_display_name
-            species = getattr(getattr(caller, "db", None), "species", None)
-            damaged_organs = []
-            for organ_name, organ in medical_state.organs.items():
-                if organ.current_hp < organ.max_hp:
-                    damage_taken = organ.max_hp - organ.current_hp
-                    damaged_organs.append(
-                        f"{get_organ_display_name(organ_name, species)} ({damage_taken} damage)")
-            
-            if damaged_organs:
-                caller.msg("|yDamaged organs:|n")
-                for organ_info in damaged_organs:
-                    caller.msg(f"  - {organ_info}")
-        
-        # Check for critical status - death and unconsciousness are handled by medical system
-        # but we show explicit test feedback here
-        if target_died:
-            # Death progression script will handle actual death messages
-            caller.msg("|R[TEST] Death triggered - medical death progression active.|n")
-        elif caller.is_unconscious():
-            caller.msg("|Y[TEST] Unconsciousness triggered.|n")
 
 
 class CmdMedicalInfo(Command):
@@ -397,21 +309,3 @@ class CmdMedicalInfo(Command):
             
         target_name = "Your" if target == caller else f"{target.get_display_name(caller)}'s"
         caller.msg(f"|c{target_name} Body Capacities:|n\n{table}")
-
-
-# Add commands to default command set
-from evennia import default_cmds
-
-class MedicalCmdSet(default_cmds.CharacterCmdSet):
-    """
-    Command set containing medical system commands.
-    """
-    
-    key = "MedicalCmdSet"
-    
-    def at_cmdset_creation(self):
-        """Populate the cmdset."""
-        super().at_cmdset_creation()
-        self.add(CmdMedical())
-        self.add(CmdDamageTest())
-        self.add(CmdMedicalInfo())
