@@ -17,7 +17,10 @@ from world.director.intel import (
 
 
 def _bot():
-    return SimpleNamespace(db=SimpleNamespace(role="security"))
+    # at its base: the sync rule (#2795, #3566) only uplinks a bot standing
+    # at a post that still exists
+    base = SimpleNamespace(pk=1)
+    return SimpleNamespace(db=SimpleNamespace(role="security", post=base), location=base)
 
 
 class TestIntel(TestCase):

@@ -153,7 +153,14 @@ def recover_casualty(soul: Any, casualty: Any) -> bool:
     """
     if not _is_unit(soul) or not _is_unit(casualty):
         return False
-    if casualty is soul or soul.db.soul_recovering:
+    if casualty is soul:
+        return False
+    # The stamp is a raw id. Tested for truthiness it never let go of a
+    # casualty that had since been deleted, and the unit never recovered
+    # anyone again (#3562); resolved, a dead id holds nothing.
+    from world.souls.actions import _obj_by_id
+    held = soul.db.soul_recovering
+    if held and _obj_by_id(held) is not None:
         return False
     # somebody already has it
     #

@@ -83,8 +83,13 @@ def sync_bot_intel(bot: Any) -> int:
     # in none — and `_done` is wired as the walk-home FAILURE callback too
     # (#2761), so a unit that never arrived reached this and uplinked
     # anyway, emoting that it had docked (#2795).
+    # The guard fails CLOSED (#3566): a bot whose base room was deleted
+    # reads `post` as None, and "I cannot find my post" is not "I am at
+    # my post". It keeps its sightings and never uplinks; the dispatch
+    # return point (`assignment.py`) is the place that re-homes a unit.
     post = getattr(getattr(bot, "db", None), "post", None)
-    if post is not None and getattr(bot, "location", None) != post:
+    if post is None or not getattr(post, "pk", None) \
+            or getattr(bot, "location", None) != post:
         return 0
     record = dict(get_wanted_record())
     for uid, sighting in local.items():

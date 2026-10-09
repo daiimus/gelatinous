@@ -589,6 +589,7 @@ def think(soul, hour):
             if job.get("goal") == "duty":
                 economy.pay_wage(soul)   # leaving the post still pays out
                 _release_placement(soul)
+            jobs.release_recovery(soul)  # a preempted recovery lets go (#3562)
             soul.db.soul_job = None
         else:
             jobs.step_job(soul)

@@ -50,11 +50,17 @@ def note_fault(soul, msg, goal=None):
     soul.db.soul_faults = log[-FAULT_KEEP:]
 
 
+def release_recovery(soul):
+    """A job that ends without delivering lets go of its casualty, or the
+    unit can never take another errand (#2282). Called from every drop:
+    a fault, a delivery, a preemption, a dispatch overwrite (#3562)."""
+    db = getattr(soul, "db", None)
+    if getattr(db, "soul_recovering", None) is not None:
+        db.soul_recovering = None
+
+
 def fault(soul, msg):
-    # a faulted recovery must release its claim, or the unit can never
-    # take another errand (#2282)
-    if soul.db.soul_recovering:
-        soul.db.soul_recovering = None
+    release_recovery(soul)
     note_fault(soul, msg)
     # COOL THE GOAL DOWN. A plan that cannot be MADE already cooled
     # (engine.think), but a job that dies mid-flight did not — so a soul
@@ -786,9 +792,15 @@ def step_job(soul):
         return True
 
     if do == "sleep":
+        # A home that no longer resolves is a FAULT, not a free pass: the
+        # old `if home and ...` skipped the location check for a deleted
+        # cube, so the soul settled in for the night in the street and
+        # earned "a night behind my own door" (#3564).
         home = soul.db.soul_home
-        if home and soul.location != home:
-            fault(soul, "not home at sleep step")
+        if not (home and home.pk) or soul.location != home:
+            soul.ndb.soul_sleeping = False     # the next night poses settling in again
+            fault(soul, "no home at sleep step" if not (home and home.pk)
+                  else "not home at sleep step")
             return False
         if not soul.ndb.soul_sleeping:
             soul.ndb.soul_sleeping = True
@@ -941,7 +953,7 @@ def step_job(soul):
                 # racking behaviour takes it from here.
                 _cmd(soul, f"xmit Unit {getattr(soul, 'id', 0) or 0} — "
                            f"{here}. Unit {uid} recovered.")
-        soul.db.soul_recovering = None
+        release_recovery(soul)
         soul.db.soul_job = None
         return False
 
@@ -1155,7 +1167,10 @@ def step_job(soul):
 
     if do == "work":
         post = soul.db.soul_post
-        if post and soul.location != post:
+        if not (post and post.pk):             # the post room is gone (#3564)
+            fault(soul, "no post at work step")
+            return False
+        if soul.location != post:
             fault(soul, "not at post at work step")
             return False
         # holding the post IS the work; wages accrue per heartbeat in the
