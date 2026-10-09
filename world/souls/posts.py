@@ -406,8 +406,10 @@ def stamp_fixtures():
     is what `release_the_orphaned` reads."""
     stamped = []
     for post in get_posts():
+        if not getattr(post, "pk", None):
+            continue                     # only a saved fixture can be referenced
         for slot in (post.db.post_slots or {}).values():
-            keeper = slot.get("keeper") if isinstance(slot, dict) or hasattr(slot, "get") else None
+            keeper = slot.get("keeper") if hasattr(slot, "get") else None
             if keeper is not None and keeper.pk and getattr(keeper.db, "soul_fixture", None) is None:
                 keeper.db.soul_fixture = post
                 stamped.append(keeper)
