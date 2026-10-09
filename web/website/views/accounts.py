@@ -200,5 +200,6 @@ class TurnstileAccountCreateView(EvenniaAccountCreateView):
         Returns:
             str | None: the address Cloudflare saw, or None
         """
-        return self.request.META.get('HTTP_CF_CONNECTING_IP') or None
+        from world.client_address import from_request
+        return from_request(self.request)
 

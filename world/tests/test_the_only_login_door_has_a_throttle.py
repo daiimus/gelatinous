@@ -26,6 +26,8 @@ already trusted.
 """
 
 from unittest import TestCase
+
+from django.test import TestCase as DjangoTestCase
 from unittest.mock import MagicMock, patch
 
 from django.conf import settings
@@ -126,3 +128,46 @@ class TestTheKeyIsTheWholeAddress(TestCase):
         logged = " ".join(str(c.args[0]) for c in sec.call_args_list if c.args)
         self.assertIn("IP: 198.51.100.79", logged)
         self.assertNotIn("IP: 1)", logged)
+
+
+class TestIPv6AndBansAtTheGameDoor(TestCase):
+    """The game door keys IPv6 by /64 like the web door (#3734), and refuses
+    a banned address before any credential work (#3736)."""
+
+    def test_rotating_inside_a_slash64_does_not_dodge_the_throttle(self):
+        limit = int(settings.LOGIN_THROTTLE_LIMIT)
+        for n in range(limit):
+            _attempt(ip=f"2001:db8:aaaa:bbbb::{n + 1}")
+        out = _attempt(ip="2001:db8:aaaa:bbbb:ffff::9")
+        self.assertIn("Too many login failures", out)
+
+    def test_a_banned_address_is_refused_before_the_password_and_logged(self):
+        with patch("typeclasses.accounts.Account.is_banned", return_value=True), \
+                patch("commands.unloggedin_email.logger.log_sec") as sec, \
+                patch("commands.unloggedin_email.AccountDB.objects.filter") as lookup:
+            out = _attempt(ip="198.51.100.90")
+        self.assertIn("banned", out.lower())
+        self.assertFalse(lookup.called, "the ban must be decided before any account lookup")
+        self.assertIn("Banned", " ".join(str(c.args[0]) for c in sec.call_args_list))
+
+
+class TestANameBanIsDecidedWithThePassword(DjangoTestCase):
+    """The email maps to a private name; the banned message must reach only
+    the password holder, or any email list enumerates banned accounts."""
+
+    def setUp(self):
+        from evennia.accounts.models import AccountDB
+        from evennia.server.models import ServerConfig
+        self.account = AccountDB.objects.create_user(
+            username="DoorBan", email="doorban@example.com", password="right-one")
+        ServerConfig.objects.conf("server_bans", value=[("doorban", "", "", "now", "test")])
+        self.addCleanup(ServerConfig.objects.conf, "server_bans", delete=True)
+
+    def test_the_wrong_password_gets_the_generic_refusal(self):
+        out = _attempt(ip="198.51.100.95", email="doorban@example.com", pw="wrong-one")
+        self.assertIn("Invalid email or password", out)
+        self.assertNotIn("banned", out.lower())
+
+    def test_the_right_password_is_told_of_the_ban(self):
+        out = _attempt(ip="198.51.100.96", email="doorban@example.com", pw="right-one")
+        self.assertIn("banned", out.lower())

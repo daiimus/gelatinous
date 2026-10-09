@@ -7,9 +7,10 @@ from django.conf import settings
 from evennia.accounts.accounts import LOGIN_THROTTLE
 from evennia.accounts.models import AccountDB
 from evennia.utils import logger
+
+from world.client_address import bucket
 from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils import class_from_module, utils
-from evennia.server.models import ServerConfig
 
 
 class CmdEmailConnect(MuxCommand):
@@ -45,6 +46,7 @@ class CmdEmailConnect(MuxCommand):
         # 1xx address locked out every 1xx player, and an IP ban could
         # never match (#3732). Evennia's own doors pass the whole string.
         ip = str(address) if address else ""
+        key = bucket(ip)   # IPv4 exact, IPv6 by /64; the same key the web door uses (#3734)
 
         # THE THROTTLE, and the security log (#2557).
         #
@@ -60,13 +62,24 @@ class CmdEmailConnect(MuxCommand):
         # is the same object the web door and the guest door already
         # share, so a bad actor cannot dodge a lockout by switching
         # doors.
-        if ip and LOGIN_THROTTLE.check(ip):
+        if key and LOGIN_THROTTLE.check(key):
             session.msg(
                 "Too many login failures. Please wait a while and try "
                 "again."
             )
-            logger.log_sec(f"Authentication Denied (Throttled): {email} "
-                           f"(IP: {ip}).")
+            logger.log_sec(f"Authentication Denied (Throttled): "
+                           f"{email[:254]!r} (IP: {ip}).")
+            return
+
+        # An IP ban is refused BEFORE any credential work, logged and
+        # counted, as Evennia's own door does; it used to be checked
+        # after the password hash, unlogged, so a banned address could
+        # grind hashes forever and only learn of the ban on a correct
+        # password (#3736). `is_banned` is Evennia's own check, which
+        # also lowercases names so a mixed-case username can be banned.
+        from typeclasses.accounts import Account
+        if ip and Account.is_banned(ip=ip):
+            self._banned(session, email, ip, key)
             return
 
         # Look up account by email and verify password.
@@ -103,19 +116,28 @@ class CmdEmailConnect(MuxCommand):
             self._deny(session, email, ip, "inactive", account=account)
             return
 
-        # Check IP and/or name bans
-        bans = ServerConfig.objects.conf("server_bans")
-        if bans and (
-            any(tup[0] == account.username for tup in bans)
-            or any(tup[2].match(ip) for tup in bans if tup[2])
-        ):
-            session.msg("|rYou have been banned and cannot continue.|n")
-            session.execute_cmd("quit")
+        # A NAME ban is decided only now, with the password proven: the
+        # email maps to a private account name, so refusing before the
+        # password would tell anyone with an email list which addresses
+        # are registered and banned (the message channel the generic
+        # refusal exists to close, #2750). The IP ban above needs no
+        # account and is checked first, as Evennia's own door does.
+        if Account.is_banned(username=account.username):
+            self._banned(session, email, ip, key)
             return
 
         # Login successful
         logger.log_sec(f"Authentication Success: {account} (IP: {ip}).")
         session.sessionhandler.login(session, account)
+
+    def _banned(self, session, email, ip, key):
+        """A banned address or name: refused, logged, and counted against
+        the throttle, exactly as Evennia's own door does."""
+        logger.log_sec(f"Authentication Denied (Banned): {email[:254]!r} (IP: {ip}).")
+        if key:
+            LOGIN_THROTTLE.update(key, "Too many sightings of banned artifact.")
+        session.msg("|rYou have been banned and cannot continue.|n")
+        session.execute_cmd("quit")
 
     def _deny(self, session, email, ip, reason, account=None):
         """One refusal: same message, logged, and counted.
@@ -126,9 +148,10 @@ class CmdEmailConnect(MuxCommand):
         goes, because that reader is already trusted (#2557).
         """
         logger.log_sec(
-            f"Authentication Failure ({reason}): {email} (IP: {ip}).")
-        if ip:
-            LOGIN_THROTTLE.update(ip, "Too many authentication failures.")
+            f"Authentication Failure ({reason}): {email[:254]!r} (IP: {ip}).")
+        key = bucket(ip)
+        if key:
+            LOGIN_THROTTLE.update(key, "Too many authentication failures.")
         if account is not None:
             # The framework's post-failure hook, which this door never
             # reached. An account that wants to notice its own failed
