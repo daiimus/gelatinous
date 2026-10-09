@@ -126,3 +126,24 @@ class TestTheKeyIsTheWholeAddress(TestCase):
         logged = " ".join(str(c.args[0]) for c in sec.call_args_list if c.args)
         self.assertIn("IP: 198.51.100.79", logged)
         self.assertNotIn("IP: 1)", logged)
+
+
+class TestIPv6AndBansAtTheGameDoor(TestCase):
+    """The game door keys IPv6 by /64 like the web door (#3734), and refuses
+    a banned address before any credential work (#3736)."""
+
+    def test_rotating_inside_a_slash64_does_not_dodge_the_throttle(self):
+        limit = int(settings.LOGIN_THROTTLE_LIMIT)
+        for n in range(limit):
+            _attempt(ip=f"2001:db8:aaaa:bbbb::{n + 1}")
+        out = _attempt(ip="2001:db8:aaaa:bbbb:ffff::9")
+        self.assertIn("Too many login failures", out)
+
+    def test_a_banned_address_is_refused_before_the_password_and_logged(self):
+        with patch("typeclasses.accounts.Account.is_banned", return_value=True), \
+                patch("commands.unloggedin_email.logger.log_sec") as sec, \
+                patch("commands.unloggedin_email.AccountDB.objects.filter") as lookup:
+            out = _attempt(ip="198.51.100.90")
+        self.assertIn("banned", out.lower())
+        self.assertFalse(lookup.called, "the ban must be decided before any account lookup")
+        self.assertIn("Banned", " ".join(str(c.args[0]) for c in sec.call_args_list))

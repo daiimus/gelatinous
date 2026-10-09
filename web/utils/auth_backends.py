@@ -6,7 +6,11 @@ instead of their username, matching the telnet email-based login system.
 """
 
 from django.contrib.auth.backends import ModelBackend
+from evennia.accounts.accounts import LOGIN_THROTTLE
 from evennia.accounts.models import AccountDB
+from evennia.utils import logger
+
+from world.client_address import bucket, from_request
 
 
 class EmailAuthenticationBackend(ModelBackend):
@@ -55,7 +59,22 @@ class EmailAuthenticationBackend(ModelBackend):
         """
         if username is None or password is None:
             return None
-
+        # THE THROTTLE AND THE BANS, the same ones the game's `connect`
+        # door applies, keyed the same way (#3734). Django's LoginView has
+        # no lockout of its own and Evennia's web package adds none, so
+        # until now this form took unlimited guesses after the game door
+        # had locked an attacker out, and a banned account could still
+        # sign in here (and on through the forum's SSO).
+        ip = from_request(request) or ""
+        key = bucket(ip)
+        if key and LOGIN_THROTTLE.check(key):
+            logger.log_sec(f"Authentication Denied (Throttled): {username} "
+                           f"(IP: {ip}) [web].")
+            return None
+        from typeclasses.accounts import Account
+        if ip and Account.is_banned(ip=ip):
+            self._refuse(username, ip, key, "Banned")
+            return None
         try:
             # Try to find account by email (case-insensitive)
             account = AccountDB.objects.get(email__iexact=username)
@@ -64,25 +83,41 @@ class EmailAuthenticationBackend(ModelBackend):
             # or the response time answers the question the generic
             # error message refuses to (#2750).
             self._burn_a_hash(password)
+            self._refuse(username, ip, key, "unknown email")
             return None
         except AccountDB.MultipleObjectsReturned:
             # Shouldn't happen, but it is still a failure that must not
             # return faster than a real one.
             self._burn_a_hash(password)
+            self._refuse(username, ip, key, "ambiguous email")
             return None
-
+        if Account.is_banned(username=account.username):
+            self._refuse(username, ip, key, "Banned")
+            return None
         if not account.check_password(password):
+            self._refuse(username, ip, key, "bad password")
             return None
         # `user_can_authenticate` is `is_active`. ModelBackend applies it
         # after the password check and this override dropped it, so
         # deactivating an account did not stop it logging IN either —
         # not merely a matter of surviving sessions (#2751).
         if not self.user_can_authenticate(account):
+            self._refuse(username, ip, key, "inactive")
             return None
+        logger.log_sec(f"Authentication Success: {account} (IP: {ip}) [web].")
 
         # Set backend attribute required by Django
         account.backend = "web.utils.auth_backends.EmailAuthenticationBackend"
         return account
+
+    def _refuse(self, email, ip, key, reason):
+        """One refusal: logged with its reason, counted against the shared
+        throttle. The form's message stays generic (Django's own), so the
+        reason reaches only the log (#2750)."""
+        logger.log_sec(f"Authentication Failure ({reason}): {email} "
+                       f"(IP: {ip}) [web].")
+        if key:
+            LOGIN_THROTTLE.update(key, "Too many authentication failures.")
 
     def get_user(self, user_id):
         """
