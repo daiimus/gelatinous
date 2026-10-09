@@ -455,8 +455,12 @@ class Room(ObjectParent, DefaultRoom):
         content_parts = []
         for priority, obj, is_flying in integrated_objects:
             if is_flying:
-                # Use flying-specific description with teal item name
-                content = f"A |c{obj.key}|n is flying through the air."
+                # Use flying-specific description with teal item name.
+                # A visual read like the rest of the integrate layer, which
+                # this branch bypasses (#3479).
+                from world.perception import can_perceive_sense
+                content = (f"A |c{obj.key}|n is flying through the air."
+                           if can_perceive_sense(looker, "visual") else "")
             else:
                 # Use regular integration content
                 content = self.get_object_integration_content(obj, looker)
@@ -571,14 +575,15 @@ class Room(ObjectParent, DefaultRoom):
 
         # SIGHT (#3479): who stands here is a visual read, like the room
         # description and the doorway glance. A blind looker gets the
-        # crowd line (the crowd system gates itself by sense) and nothing
-        # named; the passive stealth check is a glance too, so it does not
-        # run for eyes that cannot see.
+        # crowd line (the crowd system gates itself by sense) and nobody
+        # named. The passive stealth roll still runs for them: the
+        # searcher's stat is Resonance, "the sense that someone's there"
+        # (stealth spec §3.1), and the arrival glance in
+        # Character.at_post_move rolls it for blind eyes too. The most it
+        # can give a blind looker is the prickling-sense cue.
         sighted = can_perceive_sense(looker, "visual")
 
         for obj in self.contents:
-            if not sighted:
-                break
             if obj.is_typeclass("typeclasses.characters.Character") and obj != looker:
                 if not obj.access(looker, "view"):
                     continue
@@ -589,10 +594,16 @@ class Room(ObjectParent, DefaultRoom):
                 # them off the roster; Suspicious earns the cue line.
                 if getattr(obj.db, "hidden", False) is True:
                     passive_check(looker, obj)
+                    if not sighted:
+                        if get_awareness(looker, obj) >= SUSPICIOUS:
+                            sensed_presence = True
+                        continue
                     if is_hidden_from(obj, looker):
                         if get_awareness(looker, obj) >= SUSPICIOUS:
                             sensed_presence = True
                         continue
+                if not sighted:
+                    continue
                 characters.append(obj)
 
         # Get crowd contributions (appears before character listings)

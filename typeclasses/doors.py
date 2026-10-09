@@ -142,6 +142,14 @@ class DoorExit(Exit):
     def return_appearance(self, looker, **kwargs):
         if self.is_open():
             return super().return_appearance(looker, **kwargs)
+        # SIGHT (#3382): the closed door is the second door onto
+        # `look <dir>`; it never reaches Exit.get_display_desc and its
+        # gate. A blind looker knows a door by hand, and whether it gives,
+        # and nothing of its paint or the reader's amber idle.
+        from world.perception import can_perceive_sense
+        if not can_perceive_sense(looker, "visual"):
+            return ("A door. It is sealed." if self.db.door_locked is True
+                    else "A door. It is closed.")
         desc = self.db.desc or "A solid door, built to be on the wrong side of."
         if self.db.door_locked is True:
             state = ("It is sealed; a biometric reader sits flush in the "
