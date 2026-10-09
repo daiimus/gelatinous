@@ -564,11 +564,21 @@ class Room(ObjectParent, DefaultRoom):
         from world.stealth import (
             SUSPICIOUS, get_awareness, is_hidden_from, passive_check,
         )
+        from world.perception import can_perceive_sense
 
         characters = []
         sensed_presence = False
 
+        # SIGHT (#3479): who stands here is a visual read, like the room
+        # description and the doorway glance. A blind looker gets the
+        # crowd line (the crowd system gates itself by sense) and nothing
+        # named; the passive stealth check is a glance too, so it does not
+        # run for eyes that cannot see.
+        sighted = can_perceive_sense(looker, "visual")
+
         for obj in self.contents:
+            if not sighted:
+                break
             if obj.is_typeclass("typeclasses.characters.Character") and obj != looker:
                 if not obj.access(looker, "view"):
                     continue
@@ -740,7 +750,14 @@ class Room(ObjectParent, DefaultRoom):
         """
         import random
         from collections import defaultdict
-        
+        from world.perception import can_perceive_sense
+
+        # SIGHT (#3479): "You see a crate and a lamp." is a visual read; the
+        # void line in `get_display_desc` has already told a blind looker
+        # what they cannot do.
+        if not can_perceive_sense(looker, "visual"):
+            return ""
+
         # Collect objects and group by display name
         item_counts = defaultdict(int)
         

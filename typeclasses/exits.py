@@ -568,6 +568,16 @@ class Exit(DefaultExit):
         Returns:
             str: Atmospheric description or empty string
         """
+        # SIGHT (#3382): every line this method can return is sight prose,
+        # the edge and the sky, the streetlight and the shadow, and the
+        # "Through the steady rain" framing of the street. The character
+        # half of the exit has been gated since #2793; this is the other
+        # half. A blind looker falls back to "A passageway leading
+        # elsewhere." in `get_display_desc`, and hears the weather in the
+        # room's own line, which splits by sense.
+        from world.perception import can_perceive_sense
+        if not can_perceive_sense(looker, "visual"):
+            return ""
         # Check for edge/gap exits first (specialized descriptions)
         is_edge = self.db.is_edge
         is_gap = self.db.is_gap

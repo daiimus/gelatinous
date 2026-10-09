@@ -389,10 +389,14 @@ Ambient messages appear at random intervals (every 2-5 minutes) to players in a 
 - **Artful Combination**: Room can be described three ways, then combined non-redundantly
 - **Graceful Degradation**: Categories with no content simply don't display
 - **Medical Condition Support**: By design - players with sensory limitations see reduced content
-  - **INTENT, NOT YET A GUARANTEE — measured 2026-09-11.** Three of the five render layers
-    honour it, all landed by #591: room description (`typeclasses/rooms.py:63-103`), weather
+  - **A GUARANTEE since 2026-10-08.** Measured 2026-09-11, three of the five render layers
+    honoured it, all landed by #591: room description (`typeclasses/rooms.py:63-103`), weather
     (`world/weather/weather_system.py:70-84`) and crowd (`world/crowd/crowd_system.py:208-213`).
-    Two do not, and both are **defects against this bullet, not exceptions to it**:
+    The two that did not were fixed: @integrate content by #3373, the exit's atmospheric half by
+    #3382; and #3479 gated the room's object list and its character placements on the same
+    predicate. The exits footer is shown to a blind looker on purpose: a character can know a
+    room's exits by other means (the #2793 test records the choice). The record of the two
+    defects, kept for the history of the bullet:
     - **@integrate object content** (`typeclasses/rooms.py:462-478`, "for now, use all available
       senses", falling back to the single-blob `integration_desc` at `:497`) — so a blind looker
       is told "The walls have been daubed with colorful graffiti" (`typeclasses/objects.py:360`)
