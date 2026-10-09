@@ -408,9 +408,14 @@ def stamp_fixtures():
     for post in get_posts():
         if not getattr(post, "pk", None):
             continue                     # only a saved fixture can be referenced
-        for slot in (post.db.post_slots or {}).values():
+        for shift, slot in (post.db.post_slots or {}).items():
             keeper = slot.get("keeper") if hasattr(slot, "get") else None
             if keeper is None or not keeper.pk:
+                continue
+            # the slot the keeper actually works: a dark slot on another
+            # post may still name them (a build's leftover), and that is
+            # not where they are employed
+            if keeper.db.soul_post != _post_room(post) or keeper.db.soul_schedule != shift:
                 continue
             # Only where NO row exists. A read of None also comes from a
             # row holding a dead reference (the fixture just died, which

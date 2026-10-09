@@ -182,6 +182,24 @@ class TheSweepReleasesASoulEmployedAtNothing(EvenniaTest):
         self.assertIsNone(self.soul.db.soul_post)
         self.assertIsNone(self.soul.db.soul_fixture)
 
+    def test_a_released_souls_none_row_is_not_restamped_from_a_stale_slot(self):
+        self._claim(with_register=False)
+        other = create_object("typeclasses.items.Item", key="other counter", location=self.room2)
+        posts.register_post(other, role="clerk", schedule="day", policy="successor", delay=0)
+        other.db.post_slots = {"day": {"keeper": self.soul, "vacant_since": None}}
+        posts.release_from_post(self.soul)                 # the row now holds None
+        self.assertEqual(posts.stamp_fixtures(), [])
+        self.assertIsNone(self.soul.db.soul_fixture)
+
+    def test_the_stamp_takes_only_the_slot_the_keeper_works(self):
+        self._claim(with_register=False)                   # works self.post, day, room1
+        self.soul.attributes.remove("soul_fixture")
+        stale = create_object("typeclasses.items.Item", key="stale counter", location=self.room2)
+        posts.register_post(stale, role="clerk", schedule="day", policy="successor", delay=0)
+        stale.db.post_slots = {"day": {"keeper": self.soul, "vacant_since": None}}
+        posts.stamp_fixtures()
+        self.assertEqual(self.soul.db.soul_fixture, self.post)
+
     def test_a_room_posted_unit_with_no_fixture_is_left_alone(self):
         # Security robots and the courier are posted at a room, not a slot.
         unit = create_object("typeclasses.characters.Character", key="Sentry", location=self.room1)
