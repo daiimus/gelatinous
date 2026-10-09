@@ -21,9 +21,10 @@ drek (Developer):  locks.check(c, "perm(Builder)")  = False
                    c.check_permstring("Builder")    = True
 ```
 
-The `@murder` and `@knockout` rank-protection blocks (legacy test commands,
-removed with #3383 and #3728) were built entirely on this, so it was unreachable — the guard that
-stopped a lower-ranked staffer killing a higher-ranked one never fired.
+The `@murder` and `@knockout` rank-protection blocks (legacy test
+commands, removed with #3383 and #3728) were built entirely on this, so
+they were unreachable: the guards that stopped a lower-ranked staffer
+acting on a higher-ranked one never fired.
 
 `check_permstring` is the form this codebase already uses correctly in
 `_identity_targeting.py`, `CmdCharacter.py` and `world/emote.py`, and it

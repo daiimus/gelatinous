@@ -542,8 +542,8 @@ jerky**, **ration crackers**. Optional for v1; cheap to add.
 **v1 — ✅ SHIPPED (2026-06-21/22):**
 - ✅ `BarCounter` object + the four pillars + role gating (owner + staff + Builder+).
 - ✅ Ingredients as real items with contribution profiles (+ cocktail identity).
-      Supplier-NPC vendors **deferred** — a seeded catalog (its `@ingredient` spawn stand-in removed 2026-10-09, #3728)
-      tool stands in for now.
+      Supplier-NPC vendors **deferred** — a seeded catalog stands in for now;
+      the `@ingredient` spawn stand-in was removed 2026-10-09, #3728.
 - ✅ Free-mix → additive-capped drinks → consumption pipeline.
 - ✅ Save/name/brand recipes; menu. **Pricing** present (zeroed by request);
       **register** deferred.

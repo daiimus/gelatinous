@@ -16,11 +16,9 @@ Game commands organized by functionality. Each module implements one or more Eve
 | `CmdCommunication.py` | Identity-aware say, whisper, emote, and dot-pose commands |
 | `CmdConsumption.py` | Eating and drinking |
 | `CmdExplosives.py` | Grenade and explosive device commands |
-| `CmdFixCharacterOwnership.py` | Admin tool for repairing character ownership |
 | `CmdGraffiti.py` | Spray-painting and environmental writing |
 | `CmdInventory.py` | Inventory management: wield, get, drop, give, wrest, frisk |
 | `CmdMedical.py` | Medical status and diagnostic commands |
-| `CmdMedicalItems.py` | Medical item usage and management |
 | `CmdSpawnMob.py` | NPC spawning with randomized stats (builder+) |
 | `CmdThrow.py` | Cross-room projectile throwing |
 | `default_cmdsets.py` | Command set definitions (which commands are available where) |

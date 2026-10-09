@@ -25,7 +25,7 @@ so the line never printed, no matter how much damage was applied. It
 reads as working code, which is why it survived.
 
 The replacement counts conditions, which is what damage actually
-generates and what damagetest surfaces nowhere else; organ damage is
+generates and what damagetest (since removed) surfaced nowhere else; organ damage is
 already enumerated in the block directly beneath it, so counting organs
 there would only restate it.
 """

@@ -4,9 +4,9 @@
 is actively PUPPETED, so every logged-out player character in the game
 reads as ownerless by that field. Filtering on it to mean "this is not
 a player's body" is wrong, it is quiet, and it is destructive: this
-codebase has already lost player characters that way, and it has a
-one-time repair command (`@fixchar`) that exists because ownership was
-recorded three different ways over the project's life.
+codebase has already lost player characters that way, and it had a
+one-time repair command (`@fixchar`, removed 2026-10-09, #3728) because ownership
+was recorded three different ways over the project's life.
 
 So there are three signals, and a body is a player's if ANY of them
 says so:
@@ -16,7 +16,7 @@ says so:
    and the only one that survives logout. 56 characters are claimed
    this way in a colony where 23 accounts exist.
 3. the ``puppet:`` lock naming an account id — how LEGACY characters
-   were bound before `account.create_character()`, per `@fixchar`.
+   were bound before `account.create_character()`, per the old `@fixchar`.
 
 Ask :func:`is_player_owned` before deleting, archiving, re-typing or
 mass-editing any Character. It is cheap, and the failure it prevents is

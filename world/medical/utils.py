@@ -1464,6 +1464,7 @@ def apply_medical_effects(item, user, target, **kwargs):
     
     return result_msg
 
+
 def get_medical_status_description(medical_state):
     """
     Get a descriptive medical status based on character's medical state.

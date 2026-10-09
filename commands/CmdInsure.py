@@ -5,9 +5,9 @@ perpetually insured. Usable for play testing, staff, etc." A standing
 policy is the same record the lobby terminal files, flagged `perpetual`:
 a return takes it like any other and then re-issues it in the new body's
 name, so the holder never has to buy again. It bypasses the
-players-in-the-loop rule on purpose, which is why the lock is Admin, the
-same as the one other command that changes a player character's standing
-(`@fixchar`).
+players-in-the-loop rule on purpose, which is why the lock is Admin; it
+is the one command that changes a player character's standing since
+`@fixchar` was removed 2026-10-09, #3728.
 """
 from evennia import default_cmds
 

@@ -118,7 +118,7 @@ hardpoint module, flesh implant).  Full design:
 **Medical Tools & Consumption Complete:**
 - 7 medical item prototypes using Evennia's attribute-based system
 - Natural language consumption commands (`inject`, `apply`, `bandage`, `eat`, `drink`, `inhale`, `smoke`)
-- Medical inventory readouts (`medlist`, `mediteminfo`, `refillmed`) — removed 2026-10-09, #3728: they duplicated `inventory` and an item look, and `refillmed` was a testing tool
+- Medical inventory readouts (`medlist`, `mediteminfo`, `refillmed`) — removed 2026-10-09, #3728 by owner ruling (no tests, no callers, checklist-only spec presence; `refillmed` was a testing tool). **GAP:** remaining uses of a medical item are now shown only by the post-use message; `inventory` and an item look do not render them
 - Skill-based treatment success using G.R.I.M. stats (Intellect-based medical skill)
 - Smart consumption system preventing resource waste through need-based analysis
 
@@ -1719,7 +1719,7 @@ character.db.medical_state = {
 - ✅ `medical [target]` (aliases `diagnose`, `medstat`, `health`, `ht`) - Check medical status. **KEPT by owner ruling 2026-10-09 (#3728): "Medical IS player facing but incomplete... We'll want a way to represent injuries to a player narratively and not with numbers which the current iteration does."** The numeric readout is the current iteration; the narrative rendering is the open design.
 - ✅ `medinfo [organs|conditions|capacities]` - Detailed medical information system
 - ❌ `damagetest <amount> [location] [injury_type]` - removed 2026-10-09, #3728 (development test command)
-- ✅ `healtest [condition|all]` - Test healing mechanisms (development command)
+- ❌ `healtest [condition|all]` - removed 2025-09-06 (da93b58a), folded into `@heal`
 - ✅ `@resetmedical [character|confirm all]` - Reset character medical states (admin)
 - ❌ `@medaudit` - removed 2026-10-09, #3728
 

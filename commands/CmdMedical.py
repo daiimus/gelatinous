@@ -7,10 +7,15 @@ status checking, and basic medical actions.
 
 from evennia import Command
 from evennia.utils.evtable import EvTable
+
 from world.medical.utils import get_medical_status_summary
 
 
-
+# Kept by owner ruling, 2026-10-09 (#3728): "Medical IS player facing but
+# incomplete. We should keep the medical/health command and add ht as an
+# alias. We'll want a way to represent injuries to a player narratively
+# and not with numbers which the current iteration does." The numeric
+# readout below is the current iteration, not the design.
 class CmdMedical(Command):
     """
     Check your medical status or diagnose others.
@@ -19,17 +24,13 @@ class CmdMedical(Command):
         medical
         medical <character>
         medical me
+        health
+        ht
         diagnose <character>
     
     Shows detailed information about medical conditions, organ health,
     and vital signs. Can be used on yourself or others (if you have
     medical training).
-    
-    Owner, 2026-10-09 (#3728): "Medical IS player facing but incomplete. We
-    should keep the medical/health command and add ht as an alias. We'll
-    want a way to represent injuries to a player narratively and not with
-    numbers which the current iteration does." The numbers below are the
-    current iteration, not the design.
     """
     
     key = "medical"
@@ -308,6 +309,3 @@ class CmdMedicalInfo(Command):
             
         target_name = "Your" if target == caller else f"{target.get_display_name(caller)}'s"
         caller.msg(f"|c{target_name} Body Capacities:|n\n{table}")
-
-
-# Add commands to default command set

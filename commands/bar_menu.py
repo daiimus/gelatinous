@@ -17,7 +17,6 @@ State rides ``caller.ndb._bar_menu`` and is cleared on exit.
 
 from collections import defaultdict
 
-from evennia.commands.command import Command
 from evennia.utils.evmenu import EvMenu
 
 from world.grammar import with_article
@@ -451,8 +450,3 @@ def _process_pick(caller, raw_string, **kwargs):
 
 def node_exit(caller, raw_string, **kwargs):
     return f"{MUTED}You step back from the bar.|n", None
-
-
-# ---------------------------------------------------------------------------
-# Builder tool — spawn catalog ingredients (no supplier economy yet, §3)
-# ---------------------------------------------------------------------------

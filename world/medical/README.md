@@ -81,7 +81,7 @@ Character dies if:
 
 ## Commands
 
-(`damagetest`, `healtest`, `@medaudit` were development and migration tools, removed 2026-10-09, #3728.)
+(`damagetest` and `@medaudit` were development and migration tools, removed 2026-10-09, #3728; `healtest` went earlier, 2025-09-06, folded into `@heal`.)
 
 - `medical [target]` (`diagnose`, `medstat`, `health`, `ht`) -- Check medical status; kept by owner ruling, narrative rendering is the open design
 

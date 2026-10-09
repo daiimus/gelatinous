@@ -4,7 +4,7 @@
 logged-out player character reads as ownerless by it. Using it as the
 "is this a player's body?" test is wrong, quiet, and destructive — this
 project has already lost player characters that way, and `@fixchar`
-exists because ownership has been recorded three different ways over
+existed (until #3728) because ownership has been recorded three different ways over
 the codebase's life.
 """
 
@@ -47,7 +47,7 @@ class TestOwnershipSignals(BaseEvenniaTest):
 
     def test_a_legacy_puppet_lock_is_owned(self):
         """How characters were bound before `create_character()` — the
-        reason `@fixchar` exists.
+        reason `@fixchar` existed.
 
         Asserts the FAMILY rather than the exact label. Since #2683 the
         signal resolves its token to a real account and reports

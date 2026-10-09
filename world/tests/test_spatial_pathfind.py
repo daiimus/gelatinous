@@ -96,4 +96,3 @@ class TestPathfind(TestCase):
         _link(A, B, "east"); _link(B, C, "east"); _link(C, D, "east")
         self.assertIsNone(find_path(A, D, max_steps=2))
         self.assertEqual(find_path(A, D, max_steps=3), [A, B, C, D])
-
