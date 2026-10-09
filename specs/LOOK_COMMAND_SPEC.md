@@ -48,7 +48,7 @@ The enhanced look command system assembles rich, dynamic environmental descripti
     game writes: the aim/showdown system (`characters.py:2487`,
     `commands/combat/core_actions.py:697`), unconsciousness and death (`characters.py:428`,
     `:783`, `:875`, `:1061`), the stealth "lurking" tell (`typeclasses/rooms.py:573-575`) and
-    admin cleanup (`commands/CmdAdmin.py:196`, `:399`, `:630`). It is the top of the render
+    admin cleanup (`commands/CmdAdmin.py:193`, `:405`; two sites since #3383 removed `@testdeath`, 2026-10-09). It is the top of the render
     hierarchy, not a player-settable field. The hierarchy bullet below is correct.
 - **Hierarchy **Example Implementation:**
 
@@ -198,8 +198,8 @@ The street continues to the west (w) and east (e).
 > authoring principles and says nothing about length-by-intensity. `WEATHER_INTENSITY`
 > has **no message-length consumer anywhere**: its only readers are the crowd
 > weather-modifier key pinning (`world/crowd/crowd_system.py:52`), the `@weather` admin
-> listing (`commands/CmdAdmin.py:838-845`), `get_weather_intensity()`
-> (`world/weather/weather_system.py:183`, read only by `CmdAdmin.py:808`) and two tests.
+> listing (`commands/CmdAdmin.py:578-585`), `get_weather_intensity()`
+> (`world/weather/weather_system.py:183`, read only by `CmdAdmin.py:548`) and two tests.
 > The stale claim is repeated at §8 "Intensity-Based Messages", §4 "Intensity Scaling",
 > "Intensity-Based Scaling", and the Integration Points summary. The type-to-tier
 > groupings themselves are still correct.

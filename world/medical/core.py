@@ -822,7 +822,7 @@ class MedicalState:
 
     def full_heal(self):
         """Complete medical restoration of PRESENT anatomy (#526
-        review — the @heal/@revive backend).
+        review — the @heal backend).
 
         The anatomy-truth standard applies: severed tombstones are
         absence records, not injuries — healing does not regrow

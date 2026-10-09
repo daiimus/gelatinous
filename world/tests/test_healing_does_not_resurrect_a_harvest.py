@@ -3,7 +3,7 @@
 `MedicalState.full_heal`'s own docstring promises it "never regrows a
 severed limb or resurrects a harvested-out module (which would
 duplicate its ability)", and `CmdAdmin` carries the same assertion at
-both call sites. The code skipped only `wound_stage == "severed"`.
+its `@heal` call site (the second, `@testdeath`, went with #3383). The code skipped only `wound_stage == "severed"`.
 
 But `severed` is written into the death-time SNAPSHOT branch, which
 corpses have and living characters do not. On a LIVING target
@@ -12,7 +12,7 @@ corpses have and living characters do not. On a LIVING target
 the restore.
 
 A ripper cuts a shotgun module out of someone; the module is in the
-ripper's hands. Staff then `@heal` or revive that character and the
+ripper's hands. Staff then `@heal` that character and the
 module is back at full HP inside them, `/shotgun` works again, and the
 extracted item still exists in the world. The ability is duplicated —
 and `db.removed_organs` still lists the name, so the resurrected organ

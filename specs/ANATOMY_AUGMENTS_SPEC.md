@@ -312,7 +312,7 @@ with cyberware implanted in it still bleeds.  See
 
 ### 3.9 · Heal & reset
 
-`MedicalState.full_heal()` (the `@heal` / revive backend) restores
+`MedicalState.full_heal()` (the `@heal` backend) restores
 **present anatomy only** — tombstones are absence records, not
 injuries, so healing never regrows a severed limb or resurrects a
 harvested-out module (which would duplicate its ability).  It
