@@ -39,7 +39,7 @@ below is delivered. (Header corrected 2026-06-14 — was stale "Draft".)
 > ("does not dynamically detect or report the actual browser window dimensions
 > to the server") reads as a live statement and is false: the client measures
 > and reports on connect (`web/static/webclient/js/gel.js:183`) and on every
-> debounced resize (`gel.js:489-502`). Items 1-3 below were the real
+> debounced resize (`gel.js:509-522`). Items 1-3 below were the real
 > motivation and were fixed; item 4 was never accurate as written — see the
 > note on it.
 
@@ -97,7 +97,7 @@ The Evennia webclient currently defaults to a fixed screen width of 78 character
 >   a phone's screen by up to a cell. There is still no font-change *event*;
 >   a font change takes effect at the next resize or send.
 > - **"Protocol → `client_options` inputfunc"** is right only at the far end.
->   The wire format is GMCP `Client.Options` (`gel.js:486`), translated to the
+>   The wire format is GMCP `Client.Options` (`gel.js:506`), translated to the
 >   inputfunc by `server/conf/gmcp_websocket.py:168-170`.
 
 ### User Impact
@@ -379,23 +379,25 @@ graph TD
 > | Spec says | Code does |
 > |---|---|
 > | `measureCharacterDimensions()` | inlined in `measureScreen()` — `gel.js:455` |
-> | `calculateScreenSize()` | same function, `gel.js:455-481` |
-> | `sendDimensionsToServer()` | `sendScreenSize()` — `gel.js:483-487` |
-> | `debounce(func, wait)` helper | inline `resizeTimer` — `gel.js:489-495` |
-> | probe text `"M"` | `"MMMMMMMMMM"` ÷ 10 — `gel.js:464, 468` (better; still not what is written) |
-> | probe font refreshed each call | probe built once, `if (!probeEl)` — `gel.js:457`; **never refreshed** |
-> | container `$(".content[types*='main']")` → `.content` → `#messagewindow` | `#output` — `gel.js:474`; no jQuery, no `.content`, no `#messagewindow` in this client |
-> | padding read from CSS | hardcoded `- 20` / `- 16` — `gel.js:474-475` (matches `#output { padding: 8px 10px }` at `webclient.css:136` only; `webclient.css:315-317` makes it `6px 8px` under 600px) |
-> | clamp 20-500 / 10-200 | `Math.max(40, …)` / `Math.max(10, …)`, no ceiling — `gel.js:477-478` |
-> | fallback 78 × 24 | fallback char cell 8px × 16px — `gel.js:471-472` |
-> | `Evennia.msg("client_options", …)` | `sendGMCP("Client.Options", size)` — `gel.js:486`, a TEXT frame (`gel.js:237-241`) → `server/conf/gmcp_websocket.py:168-170` |
+> | `calculateScreenSize()` | same function, `gel.js:455-500` |
+> | `sendDimensionsToServer()` | `sendScreenSize()` — `gel.js:503-507` |
+> | `debounce(func, wait)` helper | inline `resizeTimer` — `gel.js:509-515` |
+> | probe text `"M"` | `"MMMMMMMMMM"` ÷ 10, measured fractionally with `getBoundingClientRect()` — `gel.js:467, 480-481` (better; still not what is written) |
+> | probe font refreshed each call | **yes, since #3396 (2026-10-10):** the probe is built once (`gel.js:463`) but re-fonted from the pane's computed style on every call (`gel.js:462, 470-472`) |
+> | container `$(".content[types*='main']")` → `.content` → `#messagewindow` | `#output` — `gel.js:491`; no jQuery, no `.content`, no `#messagewindow` in this client |
+> | padding read from CSS | **yes, since #3397 (2026-10-10):** the four computed paddings of `#output` are subtracted on every call — `gel.js:491-496` (the desktop literals `- 20` / `- 16` used to understate a phone's screen, where `webclient.css:315-317` pads `6px 8px`) |
+> | clamp 20-500 / 10-200 | `Math.max(40, …)` / `Math.max(10, …)`, no ceiling — `gel.js:497-498` |
+> | fallback 78 × 24 | fallback char cell 8px × 16px — `gel.js:484-485` |
+> | `Evennia.msg("client_options", …)` | `sendGMCP("Client.Options", size)` — `gel.js:506`, a TEXT frame (`gel.js:237-241`) → `server/conf/gmcp_websocket.py:168-170` |
 > | debounce 500 ms | `RESIZE_DEBOUNCE_MS = 250` — `gel.js:29` |
 > | `Evennia.emitter.on("connection_open")` + `postInit` | `ws.onopen` → `sendScreenSize()` — `gel.js:183` |
 > | `console.log` / `console.warn` diagnostics | none — `gel.js` contains zero `console.` calls |
 >
-> Two of these rows are defects rather than harmless renames: the un-refreshed
-> probe and the hardcoded padding both go wrong at the same
-> `@media (max-width: 600px)` breakpoint, in the same direction.
+> Two of these rows were defects rather than harmless renames, and are fixed
+> (#3396, #3397, 2026-10-10): the probe is re-fonted on every call and the
+> padding is the stylesheet's. The fix also measures the cell fractionally,
+> because whole-pixel `offsetWidth` under-measured a 13px cell by enough to
+> report a phone one column and one row too wide once the padding was exact.
 
 #### 1. Character Dimension Measurement
 
@@ -749,8 +751,8 @@ window.plugin_handler.add("screensize", screensize_plugin);
 >   messages pane instead, or read it back server-side as Test 5 describes.
 >   Test 4 additionally needs a font picker this client does not have; the only
 >   font change available is crossing the 600px breakpoint
->   (`webclient.css:305-307`), which is exactly the case `measureScreen()`
->   fails to notice.
+>   (`webclient.css:305-307`), which `measureScreen()` re-measures on the
+>   next resize since #3396.
 > - **Test 5 is the sound one** and still works unchanged:
 >   `session.get_client_size()` (`evennia/server/serversession.py:230-241`)
 >   reads exactly the flags this path writes. Run it inside the game container,
@@ -998,7 +1000,7 @@ Options Dialog:
 
 > **Re-audited 2026-09-12 — already delivered, by a better route.** `gel.js`
 > binds its resize handler to `window.visualViewport` when the API is present
-> and falls back to `window` only otherwise (`gel.js:497-502`), and a
+> and falls back to `window` only otherwise (`gel.js:518-522`), and a
 > visualViewport resize fires on rotation *and* on virtual-keyboard show/hide —
 > covering the `orientationchange` listener sketched below plus the
 > "virtual keyboard" mitigation listed under §Risk 5. Rotation across the
@@ -1177,8 +1179,8 @@ Evennia supports multiple windows per session (though webclient currently only u
 > at `--font-size: 14px` / `--line-height: 1.4`, and the only variation is the
 > single `@media (max-width: 600px)` step to 13px (`webclient.css:305-307`).
 > There is no 0.4em-2.0em range and no user-selectable family, so the one
-> font change this client can actually experience is the breakpoint — which is
-> precisely the one `measureScreen()` fails to notice (`gel.js:457`).
+> font change this client can actually experience is the breakpoint — which
+> `measureScreen()` re-measures on the next resize since #3396 (`gel.js:462`).
 
 **Font Size Scaling:**
 ```
