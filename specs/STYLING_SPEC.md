@@ -47,8 +47,19 @@ overrides Bootstrap and Evennia defaults.
 > / `--terminal-green-dim`; rename to `--terminal-success` /
 > `--terminal-success-dim` before reuse (see the palette note below).
 >
-> **Unfiled code defect: the duplication is the thing to fix, not this
-> document.**
+> **Fixed 2026-10-10 (#3356):** the stale second copy (master `:662-1184`,
+> 523 lines: the body/container pair and the 21 sections NAVBAR through PRINT
+> STYLES) is deleted. Every section banner, every `@keyframes` and every rule
+> now appears once, pinned by
+> `world/tests/test_the_website_stylesheet_defines_its_theme_once.py`. The
+> softened danger/warning glows, the `opacity: 0.15` scanline and the 0.95
+> flicker this document states are now what the file declares. Two things it
+> does not settle, both OPEN for the owner: the surviving `.table-hover` rule
+> tints rows jade (`rgba(95, 211, 141, 0.08)`), which the colour rule below
+> forbids and the Tables bullet contradicts (`--terminal-bg-light`); no repo or
+> Evennia template uses `.table-hover` today, so nothing renders it either way.
+> And the heavier scanline the stale copy produced is gone; whether it had
+> become the look to keep is #3285's question.
 
 > **Source of truth:** the live `custom.css` is canonical. This spec describes
 > what that file implements; if they disagree, the CSS wins and this document
