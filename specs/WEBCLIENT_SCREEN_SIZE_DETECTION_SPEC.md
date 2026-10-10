@@ -3,7 +3,7 @@
 > **Status:** ✅ **SHIPPED** — verified against code 2026-08-02. Issue #304 was stale and is closed.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
-> - The file paths here are wrong: the spec says the plugin lives at `web/static/webclient/js/plugins/screensize.js`. **That path does not exist** — this repo replaced Evennia's GoldenLayout client with a bespoke one and the logic is in `js/gel.js:455-501`.
+> - The file paths here are wrong: the spec says the plugin lives at `web/static/webclient/js/plugins/screensize.js`. **That path does not exist** — this repo replaced Evennia's GoldenLayout client with a bespoke one and the logic is in `js/gel.js:455-521`.
 > - "Phase 3: GoldenLayout Integration" is moot — there is no GoldenLayout in this webclient.
 
 ## Document Information
@@ -379,13 +379,13 @@ graph TD
 > | Spec says | Code does |
 > |---|---|
 > | `measureCharacterDimensions()` | inlined in `measureScreen()` — `gel.js:455` |
-> | `calculateScreenSize()` | same function, `gel.js:455-500` |
+> | `calculateScreenSize()` | same function, `gel.js:455-501` |
 > | `sendDimensionsToServer()` | `sendScreenSize()` — `gel.js:503-507` |
 > | `debounce(func, wait)` helper | inline `resizeTimer` — `gel.js:509-515` |
 > | probe text `"M"` | `"MMMMMMMMMM"` ÷ 10, measured fractionally with `getBoundingClientRect()` — `gel.js:467, 480-481` (better; still not what is written) |
 > | probe font refreshed each call | **yes, since #3396 (2026-10-10):** the probe is built once (`gel.js:463`) but re-fonted from the pane's computed style on every call (`gel.js:462, 470-472`) |
 > | container `$(".content[types*='main']")` → `.content` → `#messagewindow` | `#output` — `gel.js:491`; no jQuery, no `.content`, no `#messagewindow` in this client |
-> | padding read from CSS | **yes, since #3397 (2026-10-10):** the four computed paddings of `#output` are subtracted on every call — `gel.js:491-496` (the desktop literals `- 20` / `- 16` used to understate a phone's screen, where `webclient.css:315-317` pads `6px 8px`) |
+> | padding read from CSS | **yes, since #3397 (2026-10-10):** the four computed paddings of `#output` are subtracted on every call — `gel.js:491-495` (the desktop literals `- 20` / `- 16` used to understate a phone's screen, where `webclient.css:315-317` pads `6px 8px`) |
 > | clamp 20-500 / 10-200 | `Math.max(40, …)` / `Math.max(10, …)`, no ceiling — `gel.js:497-498` |
 > | fallback 78 × 24 | fallback char cell 8px × 16px — `gel.js:484-485` |
 > | `Evennia.msg("client_options", …)` | `sendGMCP("Client.Options", size)` — `gel.js:506`, a TEXT frame (`gel.js:237-241`) → `server/conf/gmcp_websocket.py:168-170` |
