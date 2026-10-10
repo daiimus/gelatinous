@@ -323,6 +323,10 @@ BUG_REPORT_DAILY_LIMIT = 30
 ######################################################################
 # Settings given in secret_settings.py override those in this file.
 ######################################################################
+# The default database is ALWAYS a test database under `evennia test`, whatever
+# the test style (#3738). See server/conf/test_runner.py.
+TEST_RUNNER = "server.conf.test_runner.GelatinousTestSuiteRunner"
+
 try:
     from server.conf.secret_settings import *
 except ImportError:
