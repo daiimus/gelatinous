@@ -22,19 +22,31 @@ def _measure_screen_source():
     return src[start:end]
 
 
-class TestTheProbeFollowsTheFont(TestCase):
-    def test_the_font_is_read_outside_the_create_once_branch(self):
-        body = _measure_screen_source()
-        # the three style assignments sit after the `if (!probeEl) {...}` block
-        after_create = body[body.index("document.body.appendChild(probeEl)"):]
-        for prop in ("fontFamily", "fontSize", "lineHeight"):
-            self.assertIn(f"probeEl.style.{prop} = font.{prop}", after_create)
+def _create_branch_and_rest(body):
+    """Split at the brace that CLOSES the `if (!probeEl) {...}` block, so an
+    assignment smuggled into the branch after appendChild counts as frozen."""
+    start = body.index("if (!probeEl)")
+    close = body.index("}", body.index("document.body.appendChild(probeEl)"))
+    return body[start:close], body[close:]
 
-    def test_the_font_is_not_frozen_into_the_create_branch(self):
+
+class TestTheProbeFollowsTheFont(TestCase):
+    def test_the_font_is_set_on_every_call_after_the_branch(self):
+        _, rest = _create_branch_and_rest(_measure_screen_source())
+        for prop in ("fontFamily", "fontSize", "lineHeight"):
+            self.assertIn(f"probeEl.style.{prop} = font.{prop}", rest)
+
+    def test_nothing_about_the_font_lives_in_the_create_branch(self):
+        create, _ = _create_branch_and_rest(_measure_screen_source())
+        self.assertNotIn("font", create.lower())
+
+
+class TestTheCellIsMeasuredFractionally(TestCase):
+    def test_the_rect_is_used_not_the_whole_pixel_offsets(self):
         body = _measure_screen_source()
-        create = body[body.index("if (!probeEl)"):body.index("document.body.appendChild(probeEl)")]
-        self.assertNotIn("font-family:", create)
-        self.assertNotIn("font-size:", create)
+        self.assertIn("probeEl.getBoundingClientRect()", body)
+        self.assertNotIn("probeEl.offsetWidth", body)
+        self.assertNotIn("probeEl.offsetHeight", body)
 
 
 class TestThePaddingIsTheStylesheets(TestCase):

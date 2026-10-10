@@ -471,8 +471,15 @@
         probeEl.style.fontSize = font.fontSize;
         probeEl.style.lineHeight = font.lineHeight;
 
-        var charWidth = probeEl.offsetWidth / 10;
-        var charHeight = probeEl.offsetHeight || 16;
+        // Fractional, not offsetWidth/offsetHeight: those are whole
+        // pixels, so a 13px SF Mono cell (8.036px) read as 8.0 and a
+        // 18.2px line as 18, and a phone was told one column and one
+        // row more than fit. The desktop padding literals used to hide
+        // that by over-subtracting; with the real padding in use the
+        // measurement has to be honest too.
+        var rect = probeEl.getBoundingClientRect();
+        var charWidth = rect.width / 10;
+        var charHeight = rect.height || 16;
 
         if (charWidth <= 0) charWidth = 8;
         if (charHeight <= 0) charHeight = 16;
