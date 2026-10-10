@@ -453,17 +453,23 @@
     // ----------------------------------------------------------------
 
     function measureScreen() {
-        // Create a hidden probe element to measure character cell size
+        // A hidden probe measures one character cell. Its font is read
+        // from the output pane on EVERY call, not just the first: the
+        // pane's font-size changes at the 600px breakpoint, so a probe
+        // frozen at first use reported a width ~7% off after a phone
+        // rotated or a window narrowed, until the page was reloaded
+        // (#3396; the spec's design always had the refresh branch).
+        var font = getComputedStyle(elOutputInner);
         if (!probeEl) {
             probeEl = document.createElement("span");
             probeEl.style.cssText =
-                "position:absolute;visibility:hidden;white-space:pre;" +
-                "font-family:" + getComputedStyle(elOutputInner).fontFamily + ";" +
-                "font-size:" + getComputedStyle(elOutputInner).fontSize + ";" +
-                "line-height:" + getComputedStyle(elOutputInner).lineHeight + ";";
+                "position:absolute;visibility:hidden;white-space:pre;";
             probeEl.textContent = "MMMMMMMMMM";  // 10 chars
             document.body.appendChild(probeEl);
         }
+        probeEl.style.fontFamily = font.fontFamily;
+        probeEl.style.fontSize = font.fontSize;
+        probeEl.style.lineHeight = font.lineHeight;
 
         var charWidth = probeEl.offsetWidth / 10;
         var charHeight = probeEl.offsetHeight || 16;
@@ -471,8 +477,15 @@
         if (charWidth <= 0) charWidth = 8;
         if (charHeight <= 0) charHeight = 16;
 
-        var outputWidth = elOutput.clientWidth - 20;  // subtract padding
-        var outputHeight = elOutput.clientHeight - 16;
+        // clientWidth/Height include the pane's padding; subtract the
+        // padding the stylesheet actually applies at this width, not the
+        // desktop literals it used to assume (#3397: the phone rule pads
+        // less, so the old 20/16 understated the screen by up to a cell).
+        var pad = getComputedStyle(elOutput);
+        var outputWidth = elOutput.clientWidth
+            - (parseFloat(pad.paddingLeft) || 0) - (parseFloat(pad.paddingRight) || 0);
+        var outputHeight = elOutput.clientHeight
+            - (parseFloat(pad.paddingTop) || 0) - (parseFloat(pad.paddingBottom) || 0);
 
         var cols = Math.max(40, Math.floor(outputWidth / charWidth));
         var rows = Math.max(10, Math.floor(outputHeight / charHeight));

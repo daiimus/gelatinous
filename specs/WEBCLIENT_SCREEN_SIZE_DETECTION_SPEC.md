@@ -86,12 +86,16 @@ The Evennia webclient currently defaults to a fixed screen width of 78 character
 > - **"Static (24 lines)"** — Evennia 6.1.0 ships `CLIENT_DEFAULT_HEIGHT = 45`
 >   (`evennia/settings_default.py:835`) and this repo does not override it.
 >   `CLIENT_DEFAULT_WIDTH = 78` (line 833) is correct.
-> - **"Font Changes → ✅ Detects & updates"** did not ship. `gel.js` has no
->   font-change hook of any kind, and its measuring probe is built once
->   (`gel.js:457`, `if (!probeEl)`) and never re-reads the font — so the
->   `@media (max-width: 600px)` drop from 14px to 13px
->   (`web/static/webclient/css/webclient.css:305-307`) leaves the reported size
->   stale until reload. That is a code defect, not a licence to tick §Phase 2.
+> - **"Font Changes → ✅ Detects & updates"** did not ship as an event hook, and
+>   until 2026-10-10 the measuring probe was built once (`if (!probeEl)`) and
+>   never re-read the font, so the `@media (max-width: 600px)` drop from 14px
+>   to 13px (`web/static/webclient/css/webclient.css:305-307`) left the
+>   reported size stale until reload. **Fixed by #3396:** `measureScreen()`
+>   now reads the pane's font on every call, so every resize re-measures the
+>   cell. In the same change (#3397) the usable area subtracts the pane's
+>   computed padding instead of the desktop literals 20/16, which understated
+>   a phone's screen by up to a cell. There is still no font-change *event*;
+>   a font change takes effect at the next resize or send.
 > - **"Protocol → `client_options` inputfunc"** is right only at the far end.
 >   The wire format is GMCP `Client.Options` (`gel.js:486`), translated to the
 >   inputfunc by `server/conf/gmcp_websocket.py:168-170`.
@@ -997,11 +1001,11 @@ Options Dialog:
 > and falls back to `window` only otherwise (`gel.js:497-502`), and a
 > visualViewport resize fires on rotation *and* on virtual-keyboard show/hide —
 > covering the `orientationchange` listener sketched below plus the
-> "virtual keyboard" mitigation listed under §Risk 5. What rotation does *not*
-> do correctly is re-measure the character cell, because crossing the 600px
-> breakpoint changes the font while the probe keeps the old one
-> (`gel.js:457`) — so the open work here is the stale probe, not the event
-> hook.
+> "virtual keyboard" mitigation listed under §Risk 5. Rotation across the
+> 600px breakpoint used to keep the old cell size, because the probe kept the
+> font it was built with; since #3396 (2026-10-10) the probe is re-fonted on
+> every measurement, so rotation re-measures correctly. No event hook was
+> added and none is needed for that.
 
 **Description:** Detect mobile device orientation changes.
 
