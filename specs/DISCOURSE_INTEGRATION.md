@@ -115,6 +115,26 @@ sso overrides email = true           # Trust Django email
 sso overrides name = true            # Use Django display name
 ```
 
+> **Re-checked against the installed forum (Discourse 2026.8.0) on 2026-10-10 (#3743):**
+> the four `sso overrides ...` names above no longer exist in Discourse. Rows written
+> under them on 2025-10-18 are dead; only `discourse_connect_overrides_avatar` is in
+> force, and the email, name and username overrides are **off** (`auth_overrides_*`
+> at their defaults). That is safe today because a game account's email is set once,
+> at registration, unique in any letter case, and never changeable: a forum
+> account's address is therefore held by exactly one live game account, and that
+> uniqueness, not email verification, is what keeps forum sign-on safe (verification
+> is off by owner decision). Two rules follow:
+>
+> - **If the game ever gains an email-change path, turn `auth_overrides_email` on
+>   with it**, or a freed address can be registered by someone else and matched to
+>   the old forum account.
+> - **Deleting a game account must also retire its forum account**, for the same
+>   reason (one orphan was deleted on 2026-10-10). Role sync is #3744.
+>
+> The forum's developer-address list (`DISCOURSE_DEVELOPER_EMAILS`, compose file in
+> the infra repo) names the two root game accounts; it promotes a matching user to
+> admin on login, so it must never name an address no live game account holds.
+
 ### 2.3 Disable Local Logins (Recommended)
 
 ```
