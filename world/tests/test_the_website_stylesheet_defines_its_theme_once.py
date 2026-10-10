@@ -93,6 +93,7 @@ class TestEachSectionIsDefinedOnce(TestCase):
     def test_no_section_banner_repeats(self):
         src = _source()
         names = _banners(src)
+        self.assertGreater(len(names), 20, "banner regex no longer matches the file")
         self.assertEqual(len(names), len(BANNER_LINE.findall(src)), "a banner line the banner regex does not read")
         self.assertEqual(_repeated(names), [], "section banners defined more than once")
 
