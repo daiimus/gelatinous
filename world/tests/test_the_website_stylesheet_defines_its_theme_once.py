@@ -4,11 +4,12 @@
 the Atlas copy, then a stale pre-Atlas copy of the same sections, body rule
 included. Because the stale copy came last it won every cascade tie the
 first copy had not settled with `!important`: pure red and yellow button
-glows, a scanline twice as heavy as the spec states, a faster flicker, and a
-body background that beat the print block. No CSS harness exists in this
-repository, so this pins the file at source level, the way the webclient
-pin does: every section banner once, every `@keyframes` once, no rule
-repeated verbatim in the same context, and the stale copy's own values gone.
+glows, a scanline twice as heavy as the spec states, a faster flicker. No
+CSS harness exists in this repository, so this pins the file at source
+level, the way the webclient pin does: every section banner once (and the
+banner check must account for every banner line, so a new banner style
+cannot slip past it), every `@keyframes` once, no rule repeated verbatim in
+the same context, and the stale copy's own values gone.
 """
 import re
 from collections import Counter
@@ -17,11 +18,14 @@ from unittest import TestCase
 
 CSS = Path(__file__).resolve().parents[2] / "web" / "static" / "website" / "css" / "custom.css"
 
-# Both banner styles the file uses: `/* ===== NAME ===== */` on one line, and
-# `/* ====...` followed by an upper-case title on the next line.
+# The three banner styles the file uses: `/* ===== NAME ===== */` on one
+# line; `/* ===== NAME =====` opening a prose comment; and `/* ====...`
+# followed by an upper-case title on the next line. Every line that opens
+# with `/* =` is a banner, and the test checks the two counts agree.
+BANNER_LINE = re.compile(r"^/\* =", re.M)
 BANNER = re.compile(
-    r"^/\* =+ (?P<inline>[A-Z][A-Z0-9 &()/'-]+?) =+ \*/\s*$"
-    r"|^/\* =+\s*\n[ \t]+(?P<titled>[A-Z][A-Z0-9 &()/'-]+?)\s*$",
+    r"^/\* =+ (?P<inline>[A-Z][^\n=]*?) =+(?: \*/)?\s*$"
+    r"|^/\* =+\s*\n[ \t]+(?P<titled>[A-Z][^\n]*?)\s*$",
     re.M,
 )
 KEYFRAMES = re.compile(r"@keyframes\s+([\w-]+)")
@@ -87,8 +91,9 @@ def _repeated(items):
 
 class TestEachSectionIsDefinedOnce(TestCase):
     def test_no_section_banner_repeats(self):
-        names = _banners(_source())
-        self.assertGreater(len(names), 20, "banner regex no longer matches the file")
+        src = _source()
+        names = _banners(src)
+        self.assertEqual(len(names), len(BANNER_LINE.findall(src)), "a banner line the banner regex does not read")
         self.assertEqual(_repeated(names), [], "section banners defined more than once")
 
     def test_no_keyframes_block_repeats(self):
