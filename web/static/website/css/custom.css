@@ -658,17 +658,6 @@ textarea:focus {
     }
 }
 
-
-body {
-    background-color: var(--terminal-bg-dark) !important;
-    color: var(--terminal-text);
-}
-
-.main-content,
-.container {
-    background-color: transparent;
-}
-
 /* ================================================================
    ADDITIONS (2026-07-29)
 
