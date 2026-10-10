@@ -47,8 +47,13 @@ overrides Bootstrap and Evennia defaults.
 > / `--terminal-green-dim`; rename to `--terminal-success` /
 > `--terminal-success-dim` before reuse (see the palette note below).
 >
-> **Unfiled code defect: the duplication is the thing to fix, not this
-> document.**
+> **Fixed 2026-10-10 (#3356):** the stale second copy (`:672-1184`, 513
+> lines) is deleted; every section banner now appears once, pinned by
+> `world/tests/test_the_website_stylesheet_defines_its_theme_once.py`. The
+> values this document states (jade table hover, softened danger/warning
+> glows, `opacity: 0.15` scanline, 0.95 flicker, 0.2s card animation) are
+> now what renders. The heavier scanline the stale copy produced is gone with
+> it; whether it had become the look to keep is still #3285's open question.
 
 > **Source of truth:** the live `custom.css` is canonical. This spec describes
 > what that file implements; if they disagree, the CSS wins and this document
