@@ -524,7 +524,10 @@ class TestLeakSweep(TestCase):
         awareness: a leftover ALERT must not buffer the arrival or
         schedule a greeting. Once the sneak is over (the command
         re-issues the notice to whoever kept track), the same ALERT
-        record counts."""
+        record counts. A DEPARTURE mid-sneak is the one production
+        delivers (the source-room contest ran before the move, so that
+        awareness is fresh): an ALERT watcher still buffers it, and a
+        departure never schedules a reaction."""
         import typeclasses.llm_npc as llmnpc
         from typeclasses.llm_npc import LLMNpcMixin
         npc = _char()
@@ -545,9 +548,12 @@ class TestLeakSweep(TestCase):
             notice(hidden, entered=True)
             self.assertEqual(seen, [])
             d.assert_not_called()
+            notice(hidden, entered=False)          # leaving, mid-sneak
+            self.assertEqual(seen, ["a shape leaves."])
+            d.assert_not_called()
             hidden.ndb.sneaking = None             # contest has run
             notice(hidden, entered=True)
-        self.assertEqual(seen, ["a shape arrives."])
+        self.assertEqual(seen, ["a shape leaves.", "a shape arrives."])
         d.assert_called_once()
 
 
