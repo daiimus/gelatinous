@@ -203,6 +203,14 @@ class CmdSneak(Command):
             observer.msg(
                 f"You catch {caller.get_display_name(observer)} slipping in."
             )
+            # An LLM brain ignores the room's arrival notice while a body
+            # is mid-sneak (awareness is stale until this contest runs)
+            # and the cue above is plain text its hook never reads. The
+            # contest has decided now: the observers who kept track get
+            # the arrival, the ones who lost it get nothing (#2589).
+            notice = getattr(observer, "notice_presence_change", None)
+            if callable(notice):
+                notice(caller, True)
 
 
 class CmdSearch(Command):

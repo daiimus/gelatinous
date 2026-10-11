@@ -737,6 +737,25 @@ class LLMNpcMixin:
         Departures and other NPCs' comings/goings are observe-only."""
         if not self.db.llm_driven or mover is self:
             return
+        # The presence gate (STEALTH_AND_DETECTION_SPEC §7), the same one
+        # `_present_others` passes. The room's own broadcast tells the
+        # unaware nothing about a hidden mover (announce_move_from /
+        # announce_move_to); this is a second enumeration of "who just
+        # arrived", and without the gate the NPC buffered an arrival it
+        # never perceived and could greet the sneaker aloud, in front of
+        # everyone (#2589).
+        from world.perception import can_perceive
+        if not can_perceive(self, mover):
+            return
+        # Mid-sneak, the arrival is not decided yet: CmdSneak moves the
+        # body first and runs the fresh contest in the new room after,
+        # resetting every loser to Unaware. An awareness record read HERE
+        # is the stale one, so a leftover ALERT would buffer an arrival
+        # the contest is about to take away and schedule a greeting at a
+        # sneaker nobody caught. The command re-issues this notice to the
+        # observers who kept track once the contest has run (#2589).
+        if entered and getattr(getattr(mover, "ndb", None), "sneaking", None) is True:
+            return
         try:
             name = mover.get_display_name(self)
         except Exception:  # noqa: BLE001

@@ -158,3 +158,49 @@ class TestARefusedSneakCostsNothing(_StealthCase):
         self.blocked_exit()
         self.call(CmdSneak(), "north", caller=self.char1)
         self.assertTrue(self.char1.db.hidden)
+
+
+class TestASneakTellsTheBrainsThatCaughtIt(_StealthCase):
+    """#2589 review: the room announces an arrival BEFORE the sneak's
+    fresh contest in the new room, so an LLM brain is told with stale
+    awareness and ignores it (`notice_presence_change` returns early
+    while the mover is mid-sneak). After the contest, CmdSneak re-issues
+    the notice to the observers who kept track, and to nobody else.
+
+    `notice_presence_change` is duck-typed on the observer, so a
+    recorder on char2 stands in for an LLM brain. The recorder notes
+    whether the mover was still mid-sneak when each call came in."""
+
+    def setUp(self):
+        super().setUp()
+        self.char2.location = self.room2
+        create_object("typeclasses.exits.Exit", key="north",
+                      location=self.room1, destination=self.room2)
+        self.calls = []
+        char1 = self.char1
+
+        def notice(mover, entered):
+            self.calls.append((mover, entered, bool(char1.ndb.sneaking)))
+        self.char2.notice_presence_change = notice
+
+    def after_contest(self):
+        return [c for c in self.calls if not c[2]]
+
+    def test_a_watcher_who_kept_track_is_told_after_the_contest(self):
+        with mock.patch("world.stealth.contest", return_value=1):
+            self.call(CmdSneak(), "north", caller=self.char1)
+        self.assertEqual(get_awareness(self.char2, self.char1), ALERT)
+        self.assertEqual(self.after_contest(), [(self.char1, True, False)])
+
+    def test_a_watcher_who_lost_you_is_told_nothing(self):
+        with mock.patch("world.stealth.contest", return_value=0):
+            self.call(CmdSneak(), "north", caller=self.char1)
+        self.assertEqual(get_awareness(self.char2, self.char1), UNAWARE)
+        self.assertEqual(self.after_contest(), [])
+
+    def test_the_room_s_own_notice_came_mid_sneak(self):
+        """The control for the brain's early return: the room's hook
+        fires while the mover is still mid-sneak."""
+        with mock.patch("world.stealth.contest", return_value=0):
+            self.call(CmdSneak(), "north", caller=self.char1)
+        self.assertIn((self.char1, True, True), self.calls)
