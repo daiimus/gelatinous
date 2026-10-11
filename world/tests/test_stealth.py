@@ -486,7 +486,45 @@ class TestLeakSweep(TestCase):
         broadcast already says nothing (announce_move_to); this is the
         second enumeration of 'who just arrived' and passes the same
         choke (spec §7). Control: once the NPC is ALERT to them, the
-        same call buffers the arrival and schedules the reaction."""
+        same call buffers "a shape arrives." and schedules the reaction.
+        A departure follows the same gate and never schedules one."""
+        import typeclasses.llm_npc as llmnpc
+        from typeclasses.llm_npc import LLMNpcMixin
+        npc = _char()
+        npc.db.llm_driven = True
+        hidden = self._hidden_char()
+        hidden.ndb.sneaking = None
+        hidden.get_display_name = lambda looker=None: "a shape"
+        room = _room(npc, hidden)
+        npc.location = hidden.location = room
+        seen = []
+        npc._observe_action = lambda who, line: seen.append(line)
+        npc._is_npc_speaker = lambda who: False
+        notice = LLMNpcMixin.notice_presence_change.__get__(npc)
+        with _uid_for(None), \
+                patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as d:
+            notice(hidden, entered=True)
+            notice(hidden, entered=False)
+            self.assertEqual(seen, [])
+            d.assert_not_called()
+            set_awareness(npc, hidden, ALERT)
+            notice(hidden, entered=True)
+            self.assertEqual(seen, ["a shape arrives."])
+            d.assert_called_once()
+            self.assertEqual(d.call_args.args[4], "arrival")
+            notice(hidden, entered=False)
+        self.assertEqual(seen, ["a shape arrives.", "a shape leaves."])
+        d.assert_called_once()
+
+    def test_llm_presence_change_waits_for_the_sneak_contest(self):
+        """#2589 review: CmdSneak moves the body BEFORE the fresh contest
+        in the new room, and that contest resets every loser to Unaware.
+        So the room's arrival notice arrives mid-sneak with STALE
+        awareness: a leftover ALERT must not buffer the arrival or
+        schedule a greeting. Once the sneak is over (the command
+        re-issues the notice to whoever kept track), the same ALERT
+        record counts."""
         import typeclasses.llm_npc as llmnpc
         from typeclasses.llm_npc import LLMNpcMixin
         npc = _char()
@@ -502,14 +540,15 @@ class TestLeakSweep(TestCase):
         with _uid_for(None), \
                 patch.object(llmnpc, "llm_enabled", return_value=True), \
                 patch.object(llmnpc, "delay") as d:
+            set_awareness(npc, hidden, ALERT)      # stale: from before
+            hidden.ndb.sneaking = True             # the move is mid-sneak
             notice(hidden, entered=True)
             self.assertEqual(seen, [])
             d.assert_not_called()
-            set_awareness(npc, hidden, ALERT)
+            hidden.ndb.sneaking = None             # contest has run
             notice(hidden, entered=True)
         self.assertEqual(seen, ["a shape arrives."])
         d.assert_called_once()
-        self.assertEqual(d.call_args.args[4], "arrival")
 
 
 class TestCrowdBonus(TestCase):
