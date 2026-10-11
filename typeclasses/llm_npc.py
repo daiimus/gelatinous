@@ -737,6 +737,15 @@ class LLMNpcMixin:
         Departures and other NPCs' comings/goings are observe-only."""
         if not self.db.llm_driven or mover is self:
             return
+        # The presence gate (STEALTH_AND_DETECTION_SPEC §7), the same one
+        # `_present_others` passes. The room's own broadcast already tells
+        # the unaware nothing about a hidden mover (announce_move_to); this
+        # is a second enumeration of "who just arrived", and without the
+        # gate the NPC buffered an arrival it never perceived and could
+        # greet the sneaker aloud, in front of everyone (#2589).
+        from world.perception import can_perceive
+        if not can_perceive(self, mover):
+            return
         try:
             name = mover.get_display_name(self)
         except Exception:  # noqa: BLE001

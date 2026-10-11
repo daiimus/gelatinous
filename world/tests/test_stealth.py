@@ -480,6 +480,37 @@ class TestLeakSweep(TestCase):
             set_awareness(npc, hidden, ALERT)
             self.assertEqual(present(), ["a shape"])
 
+    def test_llm_presence_change_ignores_hidden_arrival(self):
+        """#2589: a hidden mover's arrival must not enter an unaware NPC's
+        buffer or schedule an arrival reaction. The deterministic
+        broadcast already says nothing (announce_move_to); this is the
+        second enumeration of 'who just arrived' and passes the same
+        choke (spec §7). Control: once the NPC is ALERT to them, the
+        same call buffers the arrival and schedules the reaction."""
+        import typeclasses.llm_npc as llmnpc
+        from typeclasses.llm_npc import LLMNpcMixin
+        npc = _char()
+        npc.db.llm_driven = True
+        hidden = self._hidden_char()
+        hidden.get_display_name = lambda looker=None: "a shape"
+        room = _room(npc, hidden)
+        npc.location = hidden.location = room
+        seen = []
+        npc._observe_action = lambda who, line: seen.append(line)
+        npc._is_npc_speaker = lambda who: False
+        notice = LLMNpcMixin.notice_presence_change.__get__(npc)
+        with _uid_for(None), \
+                patch.object(llmnpc, "llm_enabled", return_value=True), \
+                patch.object(llmnpc, "delay") as d:
+            notice(hidden, entered=True)
+            self.assertEqual(seen, [])
+            d.assert_not_called()
+            set_awareness(npc, hidden, ALERT)
+            notice(hidden, entered=True)
+        self.assertEqual(seen, ["a shape arrives."])
+        d.assert_called_once()
+        self.assertEqual(d.call_args.args[4], "arrival")
+
 
 class TestCrowdBonus(TestCase):
     """Blending in is real: crowd density is a hider bonus at every tier."""
