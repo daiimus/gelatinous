@@ -87,7 +87,7 @@ HELP_ENTRY_DICTS = [
 
                 A scratched field chrono, its face reading {time}.
 
-                you see -> A scratched field chrono, its face reading 19:32.
+                renders as -> A scratched field chrono, its face reading 19:32.
 
             Two attributes let timepieces disagree, which is the point of
             owning more than one:
