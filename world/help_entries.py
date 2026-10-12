@@ -107,11 +107,21 @@ HELP_ENTRY_DICTS = [
                 {Their} bright brown {eyes} {accent} {their} skin.
 
                 both present -> Their bright brown eyes accent their skin.
-                one present  -> Their bright brown eye accents their skin.
+                one present  -> Their bright brown left eye accents their skin.
 
-            The recognised part nouns are the symmetric pairs: eye, ear, arm,
-            hand, thigh, shin, foot. A single braced word that is |wnot|n one of
-            these is treated as a verb and conjugated to match.
+            When only one of a pair remains, the singular names its side:
+            |w{eyes}|n becomes "left eye" or "right eye", and |w{an eye}|n
+            becomes "a left eye".
+
+            The recognised body nouns are the paired parts - eye, ear, arm,
+            hand, thigh, shin, foot - and the rest of the body vocabulary:
+            limbs and joints (leg, shoulder, hip, knee, elbow, wrist, ankle,
+            calf, forearm, thumb, finger, toe), face and head (lip, nostril,
+            eyebrow, eyelash, cheek, dimple, jaw, tooth), torso and rear (rib,
+            collarbone, knuckle, nail, breast, tit, nipple, ass, buttock) and
+            skin (scar, freckle). Other species carry their own words. A
+            single braced word that is |wnot|n a body noun is treated as a
+            verb and conjugated to match.
 
             |wArticles:|n brace |w{an eye}|n (or |w{a hand}|n) to let the
             article appear only in the singular form and drop in the plural.

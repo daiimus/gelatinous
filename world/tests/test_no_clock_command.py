@@ -14,12 +14,16 @@ from unittest import TestCase
 
 from evennia.utils.test_resources import EvenniaCommandTest
 
-from commands.default_cmdsets import CharacterCmdSet
+from commands.default_cmdsets import (
+    CharacterCmdSet,
+    DeathCmdSet,
+    UnconsciousCmdSet,
+)
 from world import help_entries
 
 
-def _keys():
-    cs = CharacterCmdSet()
+def _keys(cmdset_class=CharacterCmdSet):
+    cs = cmdset_class()
     cs.at_cmdset_creation()
     keys = set()
     for cmd in cs.commands:
@@ -76,3 +80,77 @@ class TestTheRendererReallyDoesConjugate(EvenniaCommandTest):
             "chest", "A typo like {thier} scar runs deep.", self.char1)
         self.assertNotIn("{", out)
         self.assertIn("thiers", out)
+
+
+class TestNothingTellsYouTheHourWhileOutCold(TestCase):
+    """#2819 removed `@time` from the awake set and left it in the
+    lockout set, so a knocked-out character could still read the
+    real-world clock (#2691). The lockout sets replace the awake set
+    entirely, so each one has to honour the premise on its own.
+    """
+
+    def test_no_time_command_while_unconscious(self):
+        keys = _keys(UnconsciousCmdSet)
+        for name in ("time", "@time", "uptime", "@uptime"):
+            self.assertNotIn(name, keys,
+                             f"'{name}' is reachable while unconscious")
+
+    def test_no_time_command_while_dead(self):
+        keys = _keys(DeathCmdSet)
+        for name in ("time", "@time", "uptime", "@uptime"):
+            self.assertNotIn(name, keys, f"'{name}' is reachable while dead")
+
+    def test_the_lockout_sets_keep_their_out_of_character_commands(self):
+        for cmdset_class in (UnconsciousCmdSet, DeathCmdSet):
+            keys = _keys(cmdset_class)
+            for name in ("help", "who", "quit"):
+                self.assertIn(name, keys, f"{cmdset_class.__name__} lost {name}")
+
+
+class TestTheHelpListsWhatTheRendererFlexes(TestCase):
+    """The number section listed seven nouns and called every other
+    braced word a verb; the human vocabulary is 38 nouns (#2691). The
+    help has to name every word the renderer treats as a body noun, and
+    its worked example has to show the side the renderer adds.
+    """
+
+    def _tokens_entry(self):
+        for entry in help_entries.HELP_ENTRY_DICTS:
+            if entry.get("key") == "tokens":
+                return entry["text"]
+        self.fail("the 'tokens' help entry is gone")
+
+    def test_every_human_body_noun_is_in_the_help(self):
+        import re
+        from world.anatomy.species import (
+            get_species_longdesc_flex_nouns,
+            get_species_pair_keys,
+        )
+        nouns = set(get_species_longdesc_flex_nouns("human"))
+        nouns |= {left.split("_", 1)[1]
+                  for left, _right in get_species_pair_keys("human").values()}
+        text = self._tokens_entry()
+        missing = sorted(n for n in nouns
+                         if not re.search(rf"\b{re.escape(n)}\b", text))
+        self.assertEqual(missing, [],
+                         f"help tokens does not list these body nouns: {missing}")
+
+    def test_the_one_present_example_names_the_side(self):
+        self.assertIn("left eye accents", self._tokens_entry())
+
+
+class TestTheRendererNamesTheSideAndKnowsTheWiderVocabulary(EvenniaCommandTest):
+    """The two behaviours the help now describes, asserted against the
+    real renderer."""
+
+    def test_a_lone_pair_part_names_its_side(self):
+        out = self.char1._process_description_variables(
+            "{Their} bright brown {eyes} {accent} {their} skin.",
+            self.char1, number="singular", side="left")
+        self.assertIn("left eye accents", out)
+
+    def test_body_nouns_beyond_the_pairs_flex_as_nouns(self):
+        out = self.char1._process_description_variables(
+            "{Their} {shoulder} and {leg} and {scar}.", self.char1,
+            number="plural")
+        self.assertIn("shoulders and legs and scars", out)

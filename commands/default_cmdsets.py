@@ -87,10 +87,11 @@ class UnconsciousCmdSet(CmdSet):
         Add only commands that unconscious characters should be able to use.
         Unconscious = no perception, no movement, no actions.
         """
-        # Essential OOC commands only
+        # Essential OOC commands only. No stock @time here either: it
+        # prints the real-world clock, and `help tokens` promises that
+        # nothing does (#2819 removed it awake, #2691 while out cold).
         self.add(default_cmds.CmdHelp())      # Always allow help
         self.add(default_cmds.CmdWho())       # OOC player information
-        self.add(default_cmds.CmdTime())      # OOC time information
         
         # System commands
         self.add(default_cmds.CmdQuit())      # Can always quit
