@@ -635,3 +635,27 @@ class TestFlexVerb(TestCase):
     def test_leading_capital_preserved(self) -> None:
         self.assertEqual(flex_verb("Accents", "plural"), "Accent")
         self.assertEqual(flex_verb("Are", "singular"), "Is")
+
+
+
+class TestSingularizeKeepsWordsThatAreAlreadySingular(TestCase):
+    """inflect turns "ass" into "as" (#2691). A singular is accepted only
+    if it pluralizes back to the input."""
+
+    def test_a_singular_ending_in_s_is_left_alone(self):
+        from world.grammar import singularize_noun
+        self.assertEqual(singularize_noun("ass"), "ass")
+        self.assertEqual(singularize_noun("Ass"), "Ass")
+
+    def test_real_plurals_still_singularize(self):
+        from world.grammar import singularize_noun
+        for plural, singular in (("asses", "ass"), ("feet", "foot"),
+                                 ("teeth", "tooth"), ("calves", "calf"),
+                                 ("eyelashes", "eyelash"), ("Eyes", "Eye")):
+            self.assertEqual(singularize_noun(plural), singular)
+
+    def test_flex_noun_round_trips_the_awkward_word(self):
+        from world.grammar import flex_noun
+        self.assertEqual(flex_noun("ass", "plural"), "asses")
+        self.assertEqual(flex_noun("ass", "singular"), "ass")
+        self.assertEqual(flex_noun("an ass", "singular"), "an ass")

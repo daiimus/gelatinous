@@ -34,7 +34,7 @@ HELP_ENTRY_DICTS = [
 
             Tokens are words wrapped in |w{braces}|n inside a description. When
             the description is shown, each token is replaced with the right word
-            for the viewer and the situation. Any text that is |wnot|n in braces
+            for the character and the situation. Any text that is |wnot|n in braces
             is shown exactly as written, so you only need tokens where something
             must change.
 
@@ -45,25 +45,24 @@ HELP_ENTRY_DICTS = [
 
             ## pronouns
 
-            Pronoun tokens adapt to your character's gender and to whoever is
-            looking. Use the lowercase form mid-sentence and the capitalized
-            form at the start of a sentence.
+            Pronoun tokens adapt to your character's gender. Use the lowercase
+            form mid-sentence and the capitalized form at the start of a
+            sentence.
 
-                |w{they}|n / |w{They}|n         - subject  (he, she, they, you)
-                |w{them}|n / |w{Them}|n         - object   (him, her, them, you)
-                |w{their}|n / |w{Their}|n       - possessive (his, her, their, your)
+                |w{they}|n / |w{They}|n         - subject  (he, she, they)
+                |w{them}|n / |w{Them}|n         - object   (him, her, them)
+                |w{their}|n / |w{Their}|n       - possessive (his, her, their)
                 |w{theirs}|n / |w{Theirs}|n     - possessive absolute
                 |w{themself}|n / |w{themselves}|n - reflexive
 
-            A viewer looking at someone else sees third-person pronouns matching
-            that character's gender; the character themself sees "you/your".
+            Everyone reads the same third-person form, including you when you
+            look at yourself: these tokens never switch to "you/your".
 
             Example:
 
                 A long scar runs down {their} cheek.
 
-                others see -> A long scar runs down her cheek.
-                you see    -> A long scar runs down your cheek.
+                renders as -> A long scar runs down her cheek.
 
             ## time
 
@@ -87,7 +86,7 @@ HELP_ENTRY_DICTS = [
 
                 A scratched field chrono, its face reading {time}.
 
-                you see -> A scratched field chrono, its face reading 19:32.
+                renders as -> A scratched field chrono, its face reading 19:32.
 
             Two attributes let timepieces disagree, which is the point of
             owning more than one:
@@ -107,11 +106,21 @@ HELP_ENTRY_DICTS = [
                 {Their} bright brown {eyes} {accent} {their} skin.
 
                 both present -> Their bright brown eyes accent their skin.
-                one present  -> Their bright brown eye accents their skin.
+                one present  -> Their bright brown left eye accents their skin.
 
-            The recognised part nouns are the symmetric pairs: eye, ear, arm,
-            hand, thigh, shin, foot. A single braced word that is |wnot|n one of
-            these is treated as a verb and conjugated to match.
+            When only one of a pair remains, the singular names its side:
+            |w{eyes}|n becomes "left eye" or "right eye", and |w{an eye}|n
+            becomes "a left eye".
+
+            The recognised body nouns are the paired parts - eye, ear, arm,
+            hand, thigh, shin, foot - and the rest of the body vocabulary:
+            limbs, hands and feet (leg, shoulder, hip, knee, elbow, wrist,
+            ankle, calf, forearm, thumb, finger, knuckle, nail, toe), face and
+            head (lip, nostril, eyebrow, eyelash, cheek, dimple, jaw, tooth),
+            torso and rear (rib, collarbone, breast, tit, nipple, ass, buttock)
+            and skin (scar, freckle). Other species carry their own words. A
+            single braced word that is |wnot|n a body noun is treated as a
+            verb and conjugated to match.
 
             |wArticles:|n brace |w{an eye}|n (or |w{a hand}|n) to let the
             article appear only in the singular form and drop in the plural.
@@ -127,7 +136,7 @@ HELP_ENTRY_DICTS = [
 
             Braces are entirely optional. A description with no tokens is shown
             verbatim, exactly as you typed it. Use tokens only where the wording
-            must change for the viewer (pronouns) or for missing body parts
+            must change with gender (pronouns) or with missing body parts
             (number). |wCheck your spelling inside braces.|n A braced word the
             resolver does not know is treated as a verb and conjugated, so the
             typo |w{thier}|n renders as |wthiers|n rather than staying on screen

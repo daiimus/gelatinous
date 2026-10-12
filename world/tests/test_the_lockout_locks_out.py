@@ -26,7 +26,7 @@ actions"* three times between them, and two trailing comments repeat it;
 the flags implemented *"no exits"* only.
 
 The lockout cmdsets contain nothing but OOC and perm-locked staff
-commands — help, who, time, quit, py, reload, and the `@heal` /
+commands — help, who, quit, py, reload, and the `@heal` /
 `@resetmedical` recovery pair kept deliberately so staff can heal
 themselves out of a state. None of that comes from an object, so
 declining object cmdsets costs the lockout nothing.

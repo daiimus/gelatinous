@@ -127,19 +127,29 @@ cases emerge.
 
 ```python
 def pluralize_noun(noun: str) -> str:
-    """Singular → plural ("hand" → "hands", "foot" → "feet")."""
+    """Singular → plural ("hand" → "hands", "foot" → "feet").
+
+    Returns the input unchanged when it is already plural ("boots").
+    """
 
 def singularize_noun(noun: str) -> str:
     """Plural → singular ("eyes" → "eye", "feet" → "foot").
 
-    Returns the input unchanged when it is already singular (``inflect``
-    reports ``False``). First-letter capitalization is preserved.
+    Returns the input unchanged when it is already singular. First-letter
+    capitalization is preserved.
     """
 ```
 
-Both wrap the `inflect` singleton and preserve leading capitalization. Note
-`inflect.plural_noun` mangles an already-plural input (`"eyes"` → `"eyess"`),
-so number-flexing first normalizes to the singular base.
+Both wrap the `inflect` singleton and preserve leading capitalization. They
+share one test for "already plural": `inflect.singular_noun` is asked in
+lowercase, and its candidate counts only if `inflect.plural` turns it back
+into the word. `inflect` reports `False` for most singulars but also chops
+words that merely end in -s — "ass" → "as", and "as" pluralizes to "a" — so
+before the round trip (#2691) `pluralize_noun` left "ass" alone as a plural
+and `singularize_noun` turned it into "as", which missed the longdesc
+vocabulary and was conjugated as a verb. Note `inflect.plural_noun` mangles
+an already-plural input (`"eyes"` → `"eyess"`), so number-flexing first
+normalizes to the singular base.
 
 ---
 

@@ -31,7 +31,9 @@
 > (`world/emote.py:940-953`). For `look`, the rule is now explicitly
 > third-person-for-everyone (`LONGDESC_SYSTEM_SPEC.md:343`); the one surviving
 > contradiction (the `help tokens` entry at `world/help_entries.py:58-66`) is
-> open as #2691.
+> open as #2691. Corrected 2026-10-12 (#2691): the entry now states that every
+> viewer, yourself included, reads the third-person form, so no contradiction
+> survives.
 
 > **STATUS: SUPERSEDED / HISTORICAL.** The `$pron()`/FuncParser design proposed here was not implemented. Perspective-aware pronouns shipped via the grammar engine and `{their}`/`{they}` brace tokens instead. See `GRAMMAR_ENGINE_SPEC.md` and `LONGDESC_SYSTEM_SPEC.md` for the actual implementation. Retained for historical design context.
 
@@ -493,7 +495,9 @@ wear_msg = "$You() $conj(put) on a black hoodie that clings to $pron(your) frame
   > Second-person perspective DID ship, but only for emotes and poses
   > (`world/emote.py:940-953`). The `help tokens` entry
   > (`world/help_entries.py:58-66`) still promises the behaviour described here;
-  > that is open as #2691 (needs-decision).
+  > that is open as #2691 (needs-decision). Corrected 2026-10-12 (#2691): the
+  > entry no longer promises it; `look` is third person for every viewer,
+  > yourself included.
 - [ ] Observer examination shows correct third person pronouns ("he/she/they", "his/her/their")
 - [ ] Clothing descriptions dynamically adapt to viewer perspective
 - [ ] Longdesc descriptions work seamlessly with pronoun system

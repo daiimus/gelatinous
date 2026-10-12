@@ -279,6 +279,25 @@ def conjugate_second_person(verb: str) -> str:
     return _match_leading_case(base, verb)
 
 
+def _true_singular(noun: str):
+    """Return the singular of a plural *noun*, or ``None`` if it is already
+    singular.
+
+    ``inflect.singular_noun`` returns False for most singulars, but it also
+    chops some words that merely end in -s: "ass" became "as", so a listed
+    body noun missed the longdesc vocabulary and was conjugated as a verb,
+    and ``pluralize_noun`` took "ass" for a plural and left it alone
+    (#2691). A candidate singular is accepted only if pluralizing it gives
+    the word back. The engine is asked in lowercase because it answers
+    differently for "Ass" than for "ass"; callers restore the case.
+    """
+    lowered = noun.lower()
+    candidate = _engine.singular_noun(lowered)
+    if not candidate or _engine.plural(candidate) != lowered:
+        return None
+    return candidate
+
+
 def pluralize_noun(noun: str) -> str:
     """Return the plural form of a singular noun.
 
@@ -296,11 +315,12 @@ def pluralize_noun(noun: str) -> str:
     if not noun:
         return noun
 
-    # Already plural? ``singular_noun`` is truthy only for plurals, and
-    # without this "boots" became "bootss" and "glasses" "glassess"
-    # (#2207). The pluralia-tantum list caught trousers and scissors and
-    # nothing else.
-    if _engine.singular_noun(noun):
+    # Already plural? Without this "boots" became "bootss" and "glasses"
+    # "glassess" (#2207); the pluralia-tantum list caught trousers and
+    # scissors and nothing else. The round trip, not a bare
+    # ``singular_noun``, because the engine also "singularizes" words that
+    # merely end in -s, and so took "ass" for a plural (#2691).
+    if _true_singular(noun) is not None:
         return noun
 
     plural = _engine.plural_noun(noun)
@@ -330,9 +350,8 @@ def singularize_noun(noun: str) -> str:
     if not noun:
         return noun
 
-    singular = _engine.singular_noun(noun)
-    # ``singular_noun`` returns False when the input is already singular.
-    if not singular:
+    singular = _true_singular(noun)
+    if singular is None:
         return noun
 
     if noun[0].isupper():
