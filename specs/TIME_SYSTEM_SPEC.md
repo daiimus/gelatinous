@@ -223,13 +223,12 @@ TIME_IGNORE_DOWNTIMES = True   # Maintain continuity during downtime
 > absence. Verify instead with `@weather` (staff), an authored `{time}`
 > token on an object, or `world.gametime.format_now()` from `@py`.
 >
-> One residue survives, and it is a **code** defect rather than a licence to
-> restore the bullet above: `UnconsciousCmdSet` still adds `CmdTime`
-> explicitly (`commands/default_cmdsets.py:97`), and that set becomes a downed
-> non-Builder's entire default cmdset (`typeclasses/characters.py:871-872`),
-> so a knocked-out player can still read the real-world date. Tracked on
-> #2691; the guarding test builds only `CharacterCmdSet`, so it does not see
-> it.
+> The last residue went with #2691 (2026-10-12): `UnconsciousCmdSet` no
+> longer adds `CmdTime` (it had, and that set becomes a downed non-Builder's
+> entire default cmdset, so a knocked-out player could read the real-world
+> date). `DeathCmdSet` never had it. `test_no_clock_command.py` now builds
+> all three sets, awake, unconscious and dead, and asserts that none of them
+> carries a time or uptime command.
 
 ### Implementation Steps
 1. **Edit Configuration**: Add/modify settings in `server/conf/settings.py`:

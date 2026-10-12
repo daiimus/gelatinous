@@ -676,13 +676,13 @@ class CmdDescribe(Command):
         describe eyes "{Their} bright brown {eyes} {accent} {their} skin."
 
         both eyes  -> Their bright brown eyes accent their skin.
-        one eye    -> Their bright brown eye accents their skin.
+        one eye    -> Their bright brown left eye accents their skin.
 
     Brace the body-part noun ({eye} or {an eye} to control the article) and
     any verb that must agree with it ({accent}, {are}). Pronoun tokens
-    ({their}, {they}, {them}, ...) adapt to your gender and the viewer. Plain,
-    unbraced prose always renders verbatim. See |whelp tokens|n for the full
-    reference.
+    ({their}, {they}, {them}, ...) follow your gender and read the same to
+    every viewer, yourself included. Plain, unbraced prose always renders
+    verbatim. See |whelp tokens|n for the full reference.
 
     Usage:
         describe                                - Open the interactive editor
@@ -1538,7 +1538,7 @@ def _node_describe_short(caller, raw_string, **kwargs):
     text += (
         "\n|WType your main description \u2014 the first thing others see when"
         "\nthey look at you. Use {their}/{they} for pronoun tokens that"
-        "\nadapt to the viewer; plain prose renders verbatim."
+        "\nfollow your gender; plain prose renders verbatim."
         "\n\nType clear to remove it, or back to return unchanged.|n"
     )
 

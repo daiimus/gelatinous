@@ -22,6 +22,13 @@ from commands.default_cmdsets import (
 from world import help_entries
 
 
+def _tokens_text(testcase):
+    for entry in help_entries.HELP_ENTRY_DICTS:
+        if entry.get("key") == "tokens":
+            return entry["text"]
+    testcase.fail("the 'tokens' help entry is gone")
+
+
 def _keys(cmdset_class=CharacterCmdSet):
     cs = cmdset_class()
     cs.at_cmdset_creation()
@@ -56,10 +63,7 @@ class TestTheHelpDoesNotPromiseWhatTheRendererDoesNot(TestCase):
     """
 
     def _tokens_entry(self):
-        for entry in help_entries.HELP_ENTRY_DICTS:
-            if entry.get("key") == "tokens":
-                return entry["text"]
-        self.fail("the 'tokens' help entry is gone")
+        return _tokens_text(self)
 
     def test_it_does_not_promise_surviving_braces(self):
         text = self._tokens_entry()
@@ -107,50 +111,85 @@ class TestNothingTellsYouTheHourWhileOutCold(TestCase):
                 self.assertIn(name, keys, f"{cmdset_class.__name__} lost {name}")
 
 
-class TestTheHelpListsWhatTheRendererFlexes(TestCase):
-    """The number section listed seven nouns and called every other
-    braced word a verb; the human vocabulary is 38 nouns (#2691). The
-    help has to name every word the renderer treats as a body noun, and
-    its worked example has to show the side the renderer adds.
+def _human_body_nouns():
+    from world.anatomy.species import (
+        get_species_longdesc_flex_nouns,
+        get_species_pair_keys,
+    )
+    nouns = set(get_species_longdesc_flex_nouns("human"))
+    nouns |= {left.split("_", 1)[1]
+              for left, _right in get_species_pair_keys("human").values()}
+    return nouns
+
+
+class TestTheHelpDescribesTheRendererWeHave(TestCase):
+    """#2691. The pronoun section promised a second-person self-view
+    ("you see -> ... your cheek") that no player-visible path renders:
+    every production caller forces third person, as the longdesc spec
+    requires. The number section listed seven nouns and called every
+    other braced word a verb; the human vocabulary is 38 nouns. The
+    worked example omitted the side the renderer adds to a lone pair
+    part. `help describe` repeated two of the three.
     """
 
-    def _tokens_entry(self):
-        for entry in help_entries.HELP_ENTRY_DICTS:
-            if entry.get("key") == "tokens":
-                return entry["text"]
-        self.fail("the 'tokens' help entry is gone")
+    def test_no_second_person_self_view_is_promised(self):
+        text = _tokens_text(self)
+        for phrase in ("your cheek", "you see", 'sees "you'):
+            self.assertNotIn(phrase, text)
+        self.assertIn("third-person", text)
 
-    def test_every_human_body_noun_is_in_the_help(self):
+    def test_the_one_present_example_names_the_side(self):
+        self.assertIn("left eye accents", _tokens_text(self))
+
+    def test_the_vocabulary_paragraph_lists_every_human_body_noun(self):
         import re
-        from world.anatomy.species import (
-            get_species_longdesc_flex_nouns,
-            get_species_pair_keys,
-        )
-        nouns = set(get_species_longdesc_flex_nouns("human"))
-        nouns |= {left.split("_", 1)[1]
-                  for left, _right in get_species_pair_keys("human").values()}
-        text = self._tokens_entry()
-        missing = sorted(n for n in nouns
-                         if not re.search(rf"\b{re.escape(n)}\b", text))
+        text = _tokens_text(self)
+        start = text.index("The recognised body nouns are")
+        end = text.index("Other species carry")
+        paragraph = text[start:end]
+        missing = sorted(n for n in _human_body_nouns()
+                         if not re.search(rf"\b{re.escape(n)}\b", paragraph))
         self.assertEqual(missing, [],
                          f"help tokens does not list these body nouns: {missing}")
 
-    def test_the_one_present_example_names_the_side(self):
-        self.assertIn("left eye accents", self._tokens_entry())
+    def test_help_describe_agrees(self):
+        from commands.CmdCharacter import CmdDescribe
+        doc = CmdDescribe.__doc__
+        self.assertIn("left eye accents", doc)
+        self.assertNotIn("the viewer", doc)
 
 
-class TestTheRendererNamesTheSideAndKnowsTheWiderVocabulary(EvenniaCommandTest):
-    """The two behaviours the help now describes, asserted against the
-    real renderer."""
+class TestTheRendererDoesWhatTheHelpNowSays(EvenniaCommandTest):
+    """Asserted through `_render_body_longdesc`, the per-location path
+    `look` takes (third person, side from the location, singular)."""
 
     def test_a_lone_pair_part_names_its_side(self):
-        out = self.char1._process_description_variables(
-            "{Their} bright brown {eyes} {accent} {their} skin.",
-            self.char1, number="singular", side="left")
+        out = self.char1._render_body_longdesc(
+            "left_eye", "{Their} bright brown {eyes} {accent} {their} skin.",
+            self.char1)
         self.assertIn("left eye accents", out)
+        self.assertNotIn("your", out.lower())
+
+    def test_a_self_look_stays_third_person(self):
+        out = self.char1._render_body_longdesc(
+            "face", "A long scar runs down {their} cheek.", self.char1)
+        self.assertNotIn("your", out)
+        self.assertRegex(out, r"runs down (his|her|their) cheek")
+
+    def test_every_listed_body_noun_is_treated_as_a_noun(self):
+        """A verb would gain an -s in the singular ("asses"); a noun stays
+        itself. `{ass}` failed this before #2691 because inflect
+        singularized it to "as"."""
+        wrong = {}
+        for noun in sorted(_human_body_nouns()):
+            out = self.char1._render_body_longdesc(
+                "chest", "{" + noun + "}", self.char1)
+            if out != noun:
+                wrong[noun] = out
+        self.assertEqual(wrong, {})
 
     def test_body_nouns_beyond_the_pairs_flex_as_nouns(self):
         out = self.char1._process_description_variables(
-            "{Their} {shoulder} and {leg} and {scar}.", self.char1,
-            number="plural")
-        self.assertIn("shoulders and legs and scars", out)
+            "{Their} {shoulder} and {leg} and {scar} and {ass}.", self.char1,
+            force_third_person=True, number="plural")
+        self.assertIn("shoulders and legs and scars and asses", out)

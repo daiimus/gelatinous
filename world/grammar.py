@@ -334,6 +334,14 @@ def singularize_noun(noun: str) -> str:
     # ``singular_noun`` returns False when the input is already singular.
     if not singular:
         return noun
+    # It also "singularizes" some words that ARE singular and merely end
+    # in -s: "ass" becomes "as", which dropped a listed body noun into
+    # the verb branch of the longdesc renderer (#2691). A singular is
+    # accepted only if pluralizing it gives the input back; otherwise the
+    # input was already singular. Every real plural in the body
+    # vocabulary round-trips (feet/foot, calves/calf, asses/ass).
+    if _engine.plural(singular).lower() != noun.lower():
+        return noun
 
     if noun[0].isupper():
         return singular[0].upper() + singular[1:]
