@@ -315,10 +315,11 @@ def pluralize_noun(noun: str) -> str:
     if not noun:
         return noun
 
-    # Already plural? ``singular_noun`` is truthy only for plurals, and
-    # without this "boots" became "bootss" and "glasses" "glassess"
-    # (#2207). The pluralia-tantum list caught trousers and scissors and
-    # nothing else.
+    # Already plural? Without this "boots" became "bootss" and "glasses"
+    # "glassess" (#2207); the pluralia-tantum list caught trousers and
+    # scissors and nothing else. The round trip, not a bare
+    # ``singular_noun``, because the engine also "singularizes" words that
+    # merely end in -s, and so took "ass" for a plural (#2691).
     if _true_singular(noun) is not None:
         return noun
 

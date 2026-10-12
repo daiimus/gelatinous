@@ -141,16 +141,23 @@ class TestTheHelpDescribesTheRendererWeHave(TestCase):
     def test_the_one_present_example_names_the_side(self):
         self.assertIn("left eye accents", _tokens_text(self))
 
-    def test_the_vocabulary_paragraph_lists_every_human_body_noun(self):
+    def test_the_vocabulary_paragraph_is_the_vocabulary(self):
+        """Both directions: a noun the renderer knows must be listed, and
+        a word the help lists must be one the renderer knows."""
         import re
         text = _tokens_text(self)
         start = text.index("The recognised body nouns are")
         end = text.index("Other species carry")
         paragraph = text[start:end]
-        missing = sorted(n for n in _human_body_nouns()
-                         if not re.search(rf"\b{re.escape(n)}\b", paragraph))
-        self.assertEqual(missing, [],
-                         f"help tokens does not list these body nouns: {missing}")
+        pairs = paragraph.split(" - ")[1]
+        groups = re.findall(r"\(([^)]*)\)", paragraph)
+        listed = {word.strip() for chunk in [pairs, *groups]
+                  for word in chunk.split(",")}
+        vocabulary = _human_body_nouns()
+        self.assertEqual(sorted(vocabulary - listed), [],
+                         "help tokens does not list these body nouns")
+        self.assertEqual(sorted(listed - vocabulary), [],
+                         "help tokens lists words the renderer treats as verbs")
 
     def test_help_describe_agrees(self):
         from commands.CmdCharacter import CmdDescribe
@@ -160,8 +167,10 @@ class TestTheHelpDescribesTheRendererWeHave(TestCase):
 
 
 class TestTheRendererDoesWhatTheHelpNowSays(EvenniaCommandTest):
-    """Asserted through `_render_body_longdesc`, the per-location path
-    `look` takes (third person, side from the location, singular)."""
+    """Asserted through the two paths `look` takes: `_render_body_longdesc`
+    for a single location (third person, side from the location,
+    singular) and `_build_paired_longdesc_collapse` for a matched pair
+    (plural)."""
 
     def test_a_lone_pair_part_names_its_side(self):
         out = self.char1._render_body_longdesc(
@@ -189,7 +198,10 @@ class TestTheRendererDoesWhatTheHelpNowSays(EvenniaCommandTest):
         self.assertEqual(wrong, {})
 
     def test_body_nouns_beyond_the_pairs_flex_as_nouns(self):
-        out = self.char1._process_description_variables(
-            "{Their} {shoulder} and {leg} and {scar} and {ass}.", self.char1,
-            force_third_person=True, number="plural")
-        self.assertIn("shoulders and legs and scars and asses", out)
+        """Plural comes only from the pair collapse, so that is the path
+        asked: identical prose on both eyes renders once, at plural."""
+        text = "{Their} {shoulder} and {leg} and {scar} and {ass}."
+        collapse_map, _skip = self.char1._build_paired_longdesc_collapse(
+            self.char1, {"left_eye": text, "right_eye": text}, {})
+        self.assertIn("shoulders and legs and scars and asses",
+                      collapse_map["left_eye"])

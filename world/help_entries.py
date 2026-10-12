@@ -56,8 +56,7 @@ HELP_ENTRY_DICTS = [
                 |w{themself}|n / |w{themselves}|n - reflexive
 
             Everyone reads the same third-person form, including you when you
-            look at yourself: descriptions never switch to "you/your", so a
-            self-look reads exactly the way the room reads it.
+            look at yourself: these tokens never switch to "you/your".
 
             Example:
 
