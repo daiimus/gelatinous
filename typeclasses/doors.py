@@ -140,10 +140,11 @@ class DoorExit(Exit):
 
     # ------------------------------------------------------------------
     # appearance — a closed door blocks sight (§2.1: sight through a
-    # closed door is NONE; the exit pipeline otherwise composes the
-    # far room's view, people included, straight through sealed steel).
-    # The room's own glance at its exits asks `blocks_sight()` for the
-    # same answer (#3750).
+    # closed door is NONE). Without this short-circuit the exit pipeline
+    # would still compose the far room's prose through sealed steel; its
+    # people half already stays out, because `Exit.get_display_desc`
+    # asks `blocks_sight()`, as does the room's own glance at its exits
+    # (#3750).
     # ------------------------------------------------------------------
 
     def return_appearance(self, looker, **kwargs):

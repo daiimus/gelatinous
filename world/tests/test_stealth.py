@@ -434,11 +434,34 @@ class TestLeakSweep(TestCase):
         # ALERT assertion failed. The test stopped exercising the gate
         # the moment production started reading a different attribute.
         room._visible_exits = lambda looker: [exit_obj]
+        # The walker also asks each exit `blocks_sight()` since #3750. A
+        # bare MagicMock answers with a truthy MagicMock, which would skip
+        # the only exit and make the hidden assertion vacuous again.
+        exit_obj.blocks_sight.return_value = False
         sightings = Room.get_adjacent_character_sightings.__get__(room)
         with _uid_for(None):
             self.assertEqual(sightings(looker), "")
             set_awareness(looker, hidden, ALERT)
             self.assertIn("lone figure", sightings(looker))
+
+    def test_adjacent_sightings_stop_at_an_exit_that_blocks_sight(self):
+        """#3750: a shut door is in plain sight and the room beyond it
+        is not, hidden or no. Same fixture, exit told to block."""
+        from typeclasses.rooms import Room
+        looker = _char()
+        seen = _char()
+        adjacent = _room(seen)
+        exit_obj = MagicMock()
+        exit_obj.destination = adjacent
+        exit_obj.key = "north"
+        exit_obj.blocks_sight.return_value = False
+        room = MagicMock()
+        room._visible_exits = lambda looker: [exit_obj]
+        sightings = Room.get_adjacent_character_sightings.__get__(room)
+        with _uid_for(None):
+            self.assertIn("lone figure", sightings(looker))   # control
+            exit_obj.blocks_sight.return_value = True
+            self.assertEqual(sightings(looker), "")
 
     def test_identity_targeting_refuses_hidden(self):
         from commands._identity_targeting import resolve_character_target
