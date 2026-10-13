@@ -100,6 +100,18 @@ def is_free(cube):
     return not _live_grants(door)
 
 
+def residence_status(cube):
+    """What the unit's door says about its tenancy when someone looks at
+    it from the corridor (#3508): "Occupied." for a live resident,
+    "Vacant." when the cube can be claimed, "Being vacated." while a
+    mover's relocation window holds it off the market. Asking is the
+    touch that prunes a dead tenancy (`_prune_dead_tenancy`), so a cube
+    whose tenant was deleted reads Vacant the moment anyone looks."""
+    if _prune_dead_tenancy(cube) is not None:
+        return "Occupied."
+    return "Vacant." if is_free(cube) else "Being vacated."
+
+
 def residence_of(char):
     """The char's current permanent residence, or None."""
     cube = getattr(getattr(char, "db", None), "residence", None)

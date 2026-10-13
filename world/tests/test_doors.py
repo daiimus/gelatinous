@@ -112,7 +112,12 @@ class TestClosedDoorBlocksSight(TestCase):
     def _door(self, closed=True, locked=False, desc=None):
         door = _door_base = _door_factory(closed=closed, locked=locked)
         door.db.desc = desc
-        _bind(door, dmod.DoorExit, "return_appearance")
+        # return_appearance composes the door text and, for a residence's
+        # registered door, the tenancy word (#3508); this door is nobody's
+        # home, so the far room registers no door.
+        door.destination.db.cube_door = None
+        _bind(door, dmod.DoorExit,
+              "return_appearance", "_door_appearance", "_residence_status")
         return door
 
     def test_closed_door_shows_the_door_not_the_room(self):

@@ -304,6 +304,13 @@ this game has had its balance pass.
 - **Directional Defaults**: Noir-aesthetic atmospheric descriptions based on cardinal directions
 - **Character Display Integration**: Shows other characters in current room following standard patterns
 - **Aiming Restrictions**: Blocks exit examination when character is aiming (maintains combat focus)
+- **Residence doors (2026-10-13, #3508)**: looking at a unit's corridor-side door, the one the
+  rental build registered as `cube.db.cube_door`, ends with the tenancy word: `Occupied.` for a
+  live resident, `Vacant.` when the unit can be claimed, `Being vacated.` while a mover's
+  48-hour relocation window holds it off the market (`world.rental.residence_status`,
+  `DoorExit._residence_status`). Open or closed, sighted lookers only; the unit's own door
+  leading out says nothing. The look is the touch that prunes a dead tenancy, so a unit whose
+  tenant was deleted reads Vacant the moment anyone looks at its door.
 - **Custom Description Support**: Maintains existing @desc functionality as priority override
 - **Fallback System**: Graceful degradation with atmospheric fallbacks for edge cases
 
