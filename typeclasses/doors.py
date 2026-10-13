@@ -148,6 +148,32 @@ class DoorExit(Exit):
     # ------------------------------------------------------------------
 
     def return_appearance(self, looker, **kwargs):
+        text = self._door_appearance(looker, **kwargs)
+        status = self._residence_status(looker)
+        return f"{text} {status}" if status else text
+
+    def _residence_status(self, looker):
+        """The tenancy word on a residence's corridor-side door (#3508):
+        "Occupied.", "Vacant." or "Being vacated.", from
+        `world.rental.residence_status`. Only the door the rental build
+        registered on the unit (`cube.db.cube_door`) carries it, so the
+        unit's own door leading out says nothing, and it is a visual
+        read like the rest of the door. Looking is the touch that
+        prunes a dead tenancy, so a unit whose tenant was deleted reads
+        Vacant the moment anyone looks at its door."""
+        cube = self.destination
+        if cube is None:
+            return ""
+        from world.rental import cube_door, residence_status
+        registered = cube_door(cube)
+        if registered is None or registered != self:
+            return ""
+        from world.perception import can_perceive_sense
+        if not can_perceive_sense(looker, "visual"):
+            return ""
+        return residence_status(cube)
+
+    def _door_appearance(self, looker, **kwargs):
         if self.is_open():
             return super().return_appearance(looker, **kwargs)
         # SIGHT (#3382): the closed door is the second door onto
