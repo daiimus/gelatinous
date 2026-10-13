@@ -278,6 +278,13 @@ this game has had its balance pass.
     must pass `can_perceive(looker, obj)`, the stealth presence gate (`:673-677`, stealth
     spec §7 — no leak through the doorway glance). The "encourages interaction and chase
     scenes" intent survives; "no complex visibility logic" does not.
+  - **Fourth gate, 2026-10-12 (#3750): door state.** The walker skips any exit whose
+    `blocks_sight()` is true: a closed `DoorExit` (a broken one hangs open), a landing's
+    elevator door while the car is elsewhere, the car's `out` while it moves. Before this
+    the corridor outside a sealed door still said "You see a lone figure to the south."
+    while `look south` showed only the door. `Exit.blocks_sight()` is the one predicate;
+    the exit look's far-room people (`Exit.get_display_desc`) ask it too. Secret exits (2)
+    and hidden people (3) remain their own gates.
 - **Natural Language**: "You see a lone figure to the south" (1 character) or "You see a group of people standing to the east" (2+ characters)  
 - **Integration**: Appears after local characters as part of character display section
 - **Performance Optimized**: Lightweight scanning of adjacent room contents on look command

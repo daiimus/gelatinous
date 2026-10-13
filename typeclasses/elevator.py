@@ -445,6 +445,10 @@ class ElevatorDoorExit(Exit):
         if "in" not in self.aliases.all():
             self.aliases.add("in")
 
+    def blocks_sight(self):
+        """Shut doors: the car is not here (#3750)."""
+        return not car_docked(self.destination, self.location)
+
     def at_traverse(self, traversing_object, target_location):
         if not car_docked(self.destination, self.location):
             traversing_object.msg(DOORS_SHUT_MSG)
@@ -461,6 +465,12 @@ class ElevatorCarExit(Exit):
         super().at_object_creation()
         if "o" not in self.aliases.all():
             self.aliases.add("o")
+
+    def blocks_sight(self):
+        """Between floors there is nothing to see out of (#3750)."""
+        car = self.location
+        moving = getattr(getattr(car, "db", None), "moving", False)
+        return bool(moving) or self.destination is None
 
     def at_traverse(self, traversing_object, target_location):
         car = self.location
