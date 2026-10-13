@@ -55,6 +55,21 @@ class Exit(DefaultExit):
         if alias and alias not in self.aliases.all():
             self.aliases.add(alias)
 
+    def blocks_sight(self):
+        """Does this exit stop a looker from seeing into the far room?
+
+        THE predicate for sight through an exit (#3750). The room's
+        adjacent glance ("You see a lone figure to the south.") and the
+        far-room people in `get_display_desc` both ask it, so the
+        corridor and `look <direction>` cannot disagree about one door.
+        An ordinary exit never blocks. A `DoorExit` answers from its
+        state (a broken door hangs open); the elevator's doors from
+        docking. Secret exits and hidden people are OTHER gates: the
+        `view` lock (`Room._visible_exits`) and the stealth presence
+        gate (`world.perception.can_perceive`).
+        """
+        return False
+
     def at_object_delete(self):
         """A trap rigged to this door comes down with the door (#3560).
 
@@ -557,8 +572,12 @@ class Exit(DefaultExit):
         
         base_description = " ".join(description_parts)
         
-        # Add character display from current room (following standard appearance patterns)
-        character_display = self._get_exit_character_display(looker)
+        # The far room's people, unless this exit blocks sight (#3750): a
+        # landing's elevator door with the car elsewhere keeps the car's
+        # riders to itself, as `DoorExit.return_appearance` already keeps
+        # a closed door's room.
+        character_display = ("" if self.blocks_sight()
+                             else self._get_exit_character_display(looker))
         
         # Combine all components
         full_description = base_description

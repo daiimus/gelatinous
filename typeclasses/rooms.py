@@ -730,7 +730,12 @@ class Room(ObjectParent, DefaultRoom):
             destination = exit_obj.destination
             if not destination:
                 continue
-                
+            # A shut door is in plain sight and the room beyond it is not
+            # (#3750). Same predicate `look <direction>` uses, so the
+            # corridor and the door cannot disagree.
+            if exit_obj.blocks_sight():
+                continue
+
             # Count visible characters (excluding looker); the presence
             # gate keeps hidden characters out of adjacent sightings
             # (stealth spec §7 — no leak through the doorway glance)

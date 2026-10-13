@@ -101,6 +101,11 @@ class DoorExit(Exit):
     def is_open(self):
         return self.db.door_broken is True or self.db.door_closed is not True
 
+    def blocks_sight(self):
+        """§2.1: sight through a closed door is NONE; a broken door hangs
+        open. The room's adjacent glance asks this (#3750)."""
+        return not self.is_open()
+
     def is_locked_for(self, char):
         """Locked against *char* specifically (grant file consulted)."""
         if self.db.door_broken is True or self.db.door_locked is not True:
@@ -136,7 +141,9 @@ class DoorExit(Exit):
     # ------------------------------------------------------------------
     # appearance — a closed door blocks sight (§2.1: sight through a
     # closed door is NONE; the exit pipeline otherwise composes the
-    # far room's view, people included, straight through sealed steel)
+    # far room's view, people included, straight through sealed steel).
+    # The room's own glance at its exits asks `blocks_sight()` for the
+    # same answer (#3750).
     # ------------------------------------------------------------------
 
     def return_appearance(self, looker, **kwargs):
