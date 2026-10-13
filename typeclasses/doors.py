@@ -149,6 +149,11 @@ class DoorExit(Exit):
 
     def return_appearance(self, looker, **kwargs):
         text = self._door_appearance(looker, **kwargs)
+        if not text:
+            # A refused look (an aiming looker at an open door has already
+            # been told "You cannot see any further.") carries no word
+            # and is no touch on the tenancy.
+            return text
         status = self._residence_status(looker)
         return f"{text} {status}" if status else text
 

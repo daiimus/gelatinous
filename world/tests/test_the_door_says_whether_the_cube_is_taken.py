@@ -98,6 +98,33 @@ class TestOnlyTheRegisteredDoorSpeaks(_UnitCase):
         self.assertEqual(self.status_words(
             self.inside.return_appearance(self.char1) or ""), [])
 
+    def test_a_second_door_into_the_unit_says_nothing(self):
+        """The registration check itself: another door INTO the cube,
+        not the one the build registered, stays silent."""
+        hatch = create_object("typeclasses.doors.DoorExit", key="north",
+                              location=self.room2, destination=self.cube)
+        self.assertIsNotNone(rental.cube_door(self.cube))
+        self.assertNotEqual(rental.cube_door(self.cube), hatch)
+        self.assertEqual(self.status_words(
+            hatch.return_appearance(self.char1) or ""), [])
+        self.assertEqual(self.status_words(self.look_door()), ["Vacant."])
+
+    def test_a_refused_look_while_aiming_carries_no_word(self):
+        """An aiming looker at an OPEN door is refused by the exit look
+        ("You cannot see any further.") and gets nothing else; the
+        refusal is not a touch on the tenancy either."""
+        rental.claim(self.tenant, self.cube)
+        self.tenant.delete()
+        self.door.db.door_closed = False
+        self.char1.ndb.aiming_direction = "west"
+        try:
+            self.assertEqual(self.look_door(), "")
+            self.assertIsNotNone(self.cube.db.resident_sleeve)   # not pruned
+        finally:
+            self.char1.ndb.aiming_direction = None
+        self.assertEqual(self.status_words(self.look_door()), ["Vacant."])
+        self.assertIsNone(self.cube.db.resident_sleeve)            # pruned now
+
     def test_an_ordinary_door_says_nothing(self):
         plain = create_object("typeclasses.doors.DoorExit", key="south",
                               location=self.aisle, destination=self.room2)
