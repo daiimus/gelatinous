@@ -298,10 +298,14 @@ this game has had its balance pass.
     inside. `sky`, `farm`, `hull`, `garden` and `agridome` are not listed pending the owner's
     ruling. No room was retyped for this: the Brackett and Halcyon units stay untyped. Two
     rooms are never glanced from or into (review of #3753): a sky cell, which shows no exits
-    and so names no directions either (a faller is alone in every air cell), and the room the
-    looker stands in, since the aim view renders the far room and its exit back would
-    otherwise report the shooter's own company ("You see a lone figure to the south.", the
-    friend beside you).
+    and so names no directions either (a faller passing a populated roof would otherwise read
+    "You see a lone figure to the east." in every cell; a drag-fall pair already did), and the
+    room the looker stands in, since the aim view renders the far room and its exit back
+    reported the shooter's own company ("You see a lone figure to the south.", the friend
+    beside you) whenever the far room was occupied, and with the glance rendering alone would
+    have done so for an empty one too. The far room's own glance into its other neighbours
+    does render in the aim view, like the rest of that room; until #3753 it did so only when
+    someone stood in the far room.
   - **Sixth gate, 2026-10-17 (#3753): the far crowd.** Owner: "I think open air should be a
     combination of room types and crowd size.", then "1." on: room type says the far room is
     open air, its crowd size says what you can make out. Heavy or packed
@@ -311,11 +315,15 @@ this game has had its balance pass.
     crowds to the north and south." -- and thinner, the lone-figure / group sentences as
     before. The level counts hidden bodies like any other (#2497), so a hider can tip a far
     street from moderate to heavy and switch the crowd sentence on; that is the density the
-    hider blends into, and `look <direction>` already reads the same level for its own crowd
-    wording, so the glance opens no new channel (round-3 review). Live census 2026-10-17,
-    taken with the people then present (each body adds 0.5, so any open-air room with a base
-    above 0 reads heavy once enough gather): 48 streets and 9 markets reached heavy at the
-    shift-change peaks, no other open-air room did, and at night none.
+    hider blends into. `look <direction>` reads the same level for its crowd wording only when
+    someone visible stands beyond, so with nobody visible there the crowd sentence is the one
+    line from next door that shows the density moved; it names no one, and anyone standing in
+    that street reads the same tier from its own crowd line (round-4 review). Live census
+    2026-10-17,
+    taken with the people then present and under clear skies (each body adds 0.5, so any
+    open-air room with a base above 0 reads heavy once enough gather; rain and worse pull
+    every level down): 48 streets and 9 markets reached heavy at the shift-change peaks, no
+    other open-air room did, and at night none.
   - **Renders alone since #3753.** `get_display_characters` ran the glance below its
     empty-room return (2025-08-15, older than the glance itself), so a looker with nobody
     else in the room was never told who stood beyond the open doorway. The glance now runs

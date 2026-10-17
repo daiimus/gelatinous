@@ -20,10 +20,12 @@ exit of our own, typed `street`, because the harness already links room1
 and char2 is parked in room2 so the looker is alone. The crowd level reads
 the colony clock and the weather, so the crowd tests pin both.
 
-Rendering alone reached two places the glance never had (round-3 review):
-every air cell of a fall, and the aim view, whose far room has an exit
-back to the shooter's own company. A sky cell is not glanced from and the
-looker's own room is never glanced into.
+Rendering alone widened two places the glance already reached (round-3
+review): every air cell of a fall, where only a drag-fall pair had company
+to trigger it, and the aim view, whose far room has an exit back to the
+shooter's own company and reported it whenever the far room was occupied.
+A sky cell is now never glanced from, and the looker's own room is never
+glanced into.
 """
 import inspect
 from contextlib import contextmanager
@@ -351,11 +353,13 @@ class TestAHeavyCrowdHidesTheFigures(_Alone):
 
 
 class TestTwoRoomsAreNeverGlancedFromOrInto(_Alone):
-    """Round-3 review of #3753: rendering alone reached two places the
-    glance never had. A faller is alone in every air cell, and a sky cell
-    shows no exits, so it names no directions either. And the aim view
-    renders the far room from over there, whose exit back would count the
-    shooter's own company."""
+    """Round-3 review of #3753: rendering alone widened two places the
+    glance already reached. A faller passes populated roofs, and a sky
+    cell shows no exits, so it should name no directions either (before,
+    only a drag-fall pair had the company to trigger it there). And the
+    aim view renders the far room from over there, whose exit back counted
+    the shooter's own company whenever the far room was occupied, and
+    would have for an empty one too."""
 
     def test_a_sky_cell_is_not_glanced_from(self):
         self.assertIn(LONE, self.look())                       # control
@@ -389,13 +393,26 @@ class TestTwoRoomsAreNeverGlancedFromOrInto(_Alone):
         self.assertEqual(
             self.beyond.get_adjacent_character_sightings(self.neighbour),
             "You see a group of people standing to the south.")
-        self.neighbour.location = self.room2          # now the street is empty
-        self.char1.ndb.aiming_direction = "north"
-        try:
-            aimed = self.room1.return_appearance(self.char1) or ""
-        finally:
-            self.char1.ndb.aiming_direction = None
+
+        def aimed_look():
+            self.char1.ndb.aiming_direction = "north"
+            try:
+                return self.room1.return_appearance(self.char1) or ""
+            finally:
+                self.char1.ndb.aiming_direction = None
+
+        # the occupied street: master already reported the company here
+        aimed = aimed_look()
         self.assertIn(self.beyond.key, aimed)          # it is the far room
+        # the roster capitalises the sentence: "A neighbour is standing here."
+        self.assertIn(self.neighbour.get_display_name(self.char1).lower(),
+                      aimed.lower())
+        self.assertNotIn("lone figure", aimed)
+        self.assertNotIn("group of people", aimed)
+        # the empty street: the case rendering alone added
+        self.neighbour.location = self.room2
+        aimed = aimed_look()
+        self.assertIn(self.beyond.key, aimed)
         self.assertNotIn("lone figure", aimed)
         self.assertNotIn("group of people", aimed)
 

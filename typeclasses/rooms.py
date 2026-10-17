@@ -716,7 +716,7 @@ class Room(ObjectParent, DefaultRoom):
         does that).
 
         A sightline, so it looks only into open ground (#3753). The gates,
-        in the order they were added: the looker must see
+        in the order the walk asks them: the looker must see
         (`can_perceive_sense`, #2793); view-locked exits stay out
         (`_visible_exits`, #2588); an exit that blocks sight -- a shut
         door, a lift door with the car elsewhere -- is skipped (#3750);
@@ -729,8 +729,9 @@ class Room(ObjectParent, DefaultRoom):
         only the crowd and nobody in it (`crowd_system.crowd_hides_figures`,
         #3753); hidden people are not counted as figures (`can_perceive`,
         stealth spec §7), though they thicken the far crowd as they do
-        everywhere (#2497, bodies not logins; `look <direction>` reads the
-        same level for its crowd wording). Two rooms are never glanced
+        everywhere (#2497, bodies not logins): with nobody visible beyond,
+        the crowd sentence is the one line from here that reads that
+        density, and it names no one. Two rooms are never glanced
         from or into: a sky cell shows no
         exits, so it names no directions either, and the room the looker
         stands in is skipped, since the aim view renders the far room and
@@ -755,10 +756,12 @@ class Room(ObjectParent, DefaultRoom):
         if not can_perceive_sense(looker, "visual"):
             return ""
         # A sky cell shows no exits (`get_custom_exit_display`), so it
-        # names no directions either. A faller or leaper is alone in the
-        # air, and with the glance now rendering alone (#3753) every cell
-        # of a fall would otherwise add "You see a lone figure to the
-        # down." to its arrival look.
+        # names no directions either. Its `down` leads into another sky
+        # cell until the last one, and the type gate below refuses those;
+        # what this stops is the roof beside the column, and the one just
+        # left, read as "You see a lone figure to the east." in every cell
+        # of a fall now that the glance renders alone (#3753). A drag-fall
+        # pair already saw those lines on master.
         if self.is_sky_room:
             return ""
 
@@ -803,8 +806,10 @@ class Room(ObjectParent, DefaultRoom):
                 continue
 
             # Count visible characters (excluding looker); the presence
-            # gate keeps hidden characters out of adjacent sightings
-            # (stealth spec §7 — no leak through the doorway glance)
+            # gate keeps hidden characters out of the figure count
+            # (stealth spec §7 — no leak through the doorway glance). The
+            # crowd gate above read a density that counts them, as the
+            # far room's own crowd line and `look <direction>` do (#2497).
             from world.perception import can_perceive
             char_count = 0
             for obj in destination.contents:
@@ -982,12 +987,12 @@ class Room(ObjectParent, DefaultRoom):
         "You see" prefix, which the neighbour glance shares with the
         things line, and on an identity match, since the things line's
         wording for more than fifty of a kind is drawn at random and a
-        second render need not repeat it. The three sections are rendered
-        a second time here, as they always were, and only their line
-        counts are used; those can differ from the first render only
-        across a clock tick between the two (the colony hour moving the
-        crowd level, a passive stealth cooldown lapsing), and then one
-        blank line lands a line off for that one look.
+        second render need not repeat it. Things and characters were
+        always rendered a second time here; the footer joined them in
+        #3753. Only their line counts are used, and those can differ from
+        the first render only across a clock tick between the two (the
+        colony hour moving the crowd level, a passive stealth cooldown
+        lapsing); for that one look the blank lines then land a line off.
 
         Args:
             appearance (str): The formatted appearance string from the template
