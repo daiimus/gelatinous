@@ -20,6 +20,14 @@ with sense_descs:           527      <- every one loses the break
 sampled 400 of those: raw desc == rendered desc in   0
 ```
 
+Since #3753 `format_appearance` matches no text at all: it places the
+break by position, counting the footer, characters and things lines from
+the end of the render. So the tests below render through
+`return_appearance`, which carries the name line the position math needs.
+A bare two-line string handed to the formatter can never reach the
+description rule, and the round-3 review of #3753 caught these tests
+passing on the things-line blank instead.
+
 ## #2588 — the one secret door was named in prose
 
 `_visible_exits` is this file's single secret-door gate, and its
@@ -48,6 +56,13 @@ class TestTheBreakFollowsTheRenderedDesc(EvenniaTest):
     def rendered(self):
         return (self.room1.get_display_desc(self.char1) or "").strip()
 
+    def lines_after_the_desc(self):
+        """What `look` prints under the description line."""
+        lines = (self.room1.return_appearance(self.char1) or "").split("\n")
+        at = next(i for i, line in enumerate(lines)
+                  if line.startswith(self.rendered()))
+        return lines[at + 1:]
+
     def test_a_plain_room_renders_its_raw_desc(self):
         self.assertEqual(self.rendered(), "A narrow service corridor.")
 
@@ -62,26 +77,27 @@ class TestTheBreakFollowsTheRenderedDesc(EvenniaTest):
 
     def test_format_appearance_breaks_after_a_layered_desc(self):
         self.room1.db.sense_descs = {"auditory": "Pipes tick somewhere."}
-        desc = self.rendered()
-        appearance = f"{desc}\nYou see a crate here."
-        out = self.room1.format_appearance(appearance, self.char1)
-        self.assertIn("\n\n", out, "no paragraph break after the description")
+        below = self.lines_after_the_desc()
+        self.assertEqual(below[0], "", "no paragraph break after the description")
+        self.assertTrue(below[1].startswith("You see"), below[1])
 
     def test_and_still_breaks_for_a_plain_room(self):
-        appearance = "A narrow service corridor.\nYou see a crate here."
-        out = self.room1.format_appearance(appearance, self.char1)
-        self.assertIn("\n\n", out)
+        below = self.lines_after_the_desc()
+        self.assertEqual(below[0], "")
+        self.assertTrue(below[1].startswith("You see"), below[1])
 
     def test_no_break_when_nothing_follows(self):
         """The break exists to separate the desc from what comes after;
-        with nothing after it, there is nothing to separate."""
+        with nothing after it but the exits, there is nothing to separate."""
         self.room1.db.sense_descs = {"auditory": "Pipes tick somewhere."}
         for obj in list(self.room1.contents):
-            if obj not in (self.room1,):
+            if obj is not self.char1 and not obj.destination:
                 obj.location = self.room2
-        desc = self.rendered()
-        out = self.room1.format_appearance(desc, self.char1)
-        self.assertNotIn("\n\n", out)
+        self.assertEqual(self.room1.get_display_things(self.char1), "")
+        below = self.lines_after_the_desc()
+        self.assertTrue(below, "the exits line is missing")
+        self.assertNotEqual(below[0], "", "a blank line with nothing to separate")
+        self.assertNotIn("", below)
 
 
 class TestTheSecretDoorStaysSecret(EvenniaTest):
@@ -115,10 +131,11 @@ class TestTheSecretDoorStaysSecret(EvenniaTest):
         self.hatch.locks.add("view:false()")
         self.assertNotIn("hatch", self.sightings())
 
-    def test_the_direction_is_not_named_either(self):
-        self.hatch.locks.add("view:false()")
+    def test_the_glance_names_the_direction_and_never_the_room(self):
+        """Why the view lock is the whole secret: the glance speaks by exit
+        key, and the far room's name is never part of it."""
+        self.assertIn("to the hatch", self.sightings())
         self.assertNotIn("back alley", self.sightings())
-        self.assertNotIn("hatch", self.sightings())
 
     def test_it_goes_through_the_one_gate(self):
         """Both renderers must ask the same question."""

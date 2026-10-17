@@ -1005,13 +1005,16 @@ def room_type_is_unpeopled(room_type):
     return str(room_type or "").lower() in UNPEOPLED_ROOM_TYPES
 
 
-#: Room types that are open ground. The neighbour glance in
+#: Room types the neighbour glance may look into. The glance in
 #: `Room.get_adjacent_character_sightings` is a sightline: it looks into
 #: these and into nothing else (#3753). Owner, 2026-10-15: "Streets, sure.
-#: Cubes? Not so much." Any other word, and an untyped room, is an
-#: interior whatever its door is doing. `sky`, `farm`, `hull`, `garden`
+#: Cubes? Not so much." Open ground, with one word that takes in more:
+#: 'market' covers the open-air Shipbreaker yard and the covered galleries
+#: (`MarketRoom`, stall rows under a roof or a hull) alike, open to the eye
+#: if not to the sky. Any other word, and an untyped room, is treated as
+#: an interior whatever its door is doing. `sky`, `farm`, `hull`, `garden`
 #: and `agridome` are left out pending the owner's ruling (#3753). A new
-#: outdoor type is glanced into only once it is listed here.
+#: type is glanced into only once it is listed here.
 OPEN_AIR_ROOM_TYPES = {
     'street', 'alley', 'market', 'bridge', 'rooftop', 'courtyard',
     'balcony', 'fire escape',
@@ -1025,8 +1028,8 @@ FIGURES_LOST_IN_CROWD = {'heavy', 'packed'}
 
 
 def room_type_is_open_air(room_type):
-    """True when a room of this type is open ground the neighbour glance
-    may look into (#3753)."""
+    """True when the neighbour glance may look into a room of this type
+    (#3753): `OPEN_AIR_ROOM_TYPES`, case-insensitively."""
     return str(room_type or "").lower() in OPEN_AIR_ROOM_TYPES
 
 

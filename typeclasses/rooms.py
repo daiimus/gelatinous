@@ -716,16 +716,25 @@ class Room(ObjectParent, DefaultRoom):
         does that).
 
         A sightline, so it looks only into open ground (#3753). The gates,
-        each its own issue: the looker must see (`can_perceive_sense`,
-        #2793); view-locked exits stay out (`_visible_exits`, #2588); an
-        exit that blocks sight -- a shut door, a lift door with the car
-        elsewhere -- is skipped (#3750); the far room's `type` must be
-        open air (`room_type_is_open_air`: street, alley, market, bridge,
-        rooftop, courtyard, balcony, fire escape), so an interior is never
-        glanced into whatever its door is doing; a far room whose crowd is
-        heavy or packed shows only the crowd and nobody in it
-        (`crowd_system.crowd_hides_figures`); hidden people are not
-        counted (`can_perceive`, stealth spec §7).
+        in the order they were added: the looker must see
+        (`can_perceive_sense`, #2793); view-locked exits stay out
+        (`_visible_exits`, #2588); an exit that blocks sight -- a shut
+        door, a lift door with the car elsewhere -- is skipped (#3750);
+        the far room's `type` must be on the crowd layer's open-air list
+        (`room_type_is_open_air`: street, alley, market, bridge, rooftop,
+        courtyard, balcony, fire escape; 'market' takes in the covered
+        galleries, open to the eye if not to the sky), so any other room,
+        an untyped one included, is never glanced into whatever its door
+        is doing (#3753); a far room whose crowd is heavy or packed shows
+        only the crowd and nobody in it (`crowd_system.crowd_hides_figures`,
+        #3753); hidden people are not counted as figures (`can_perceive`,
+        stealth spec §7), though they thicken the far crowd as they do
+        everywhere (#2497, bodies not logins; `look <direction>` reads the
+        same level for its crowd wording). Two rooms are never glanced
+        from or into: a sky cell shows no
+        exits, so it names no directions either, and the room the looker
+        stands in is skipped, since the aim view renders the far room and
+        its exit back would report the shooter's own company.
 
         Args:
             looker: Character looking at the room
@@ -745,7 +754,14 @@ class Room(ObjectParent, DefaultRoom):
         from world.perception import can_perceive_sense
         if not can_perceive_sense(looker, "visual"):
             return ""
-        
+        # A sky cell shows no exits (`get_custom_exit_display`), so it
+        # names no directions either. A faller or leaper is alone in the
+        # air, and with the glance now rendering alone (#3753) every cell
+        # of a fall would otherwise add "You see a lone figure to the
+        # down." to its arrival look.
+        if self.is_sky_room:
+            return ""
+
         # `_visible_exits(looker)`, not raw `self.exits` (#2588). That is
         # this file's single secret-door gate, and its docstring states
         # the guarantee: a `view:false()` exit "stays out of the exit
@@ -756,6 +772,13 @@ class Room(ObjectParent, DefaultRoom):
         for exit_obj in self._visible_exits(looker):
             destination = exit_obj.destination
             if not destination:
+                continue
+            # Never into the room the looker stands in. Looking down a
+            # barrel renders the aimed room from over there, and its exit
+            # back here would otherwise count the shooter's own company:
+            # aiming north into an empty street read "You see a lone figure
+            # to the south.", the friend standing beside you.
+            if destination == looker.location:
                 continue
             # A shut door is in plain sight and the room beyond it is not
             # (#3750). Same predicate `look <direction>` uses, so the
@@ -959,7 +982,12 @@ class Room(ObjectParent, DefaultRoom):
         "You see" prefix, which the neighbour glance shares with the
         things line, and on an identity match, since the things line's
         wording for more than fifty of a kind is drawn at random and a
-        second render need not repeat it.
+        second render need not repeat it. The three sections are rendered
+        a second time here, as they always were, and only their line
+        counts are used; those can differ from the first render only
+        across a clock tick between the two (the colony hour moving the
+        crowd level, a passive stealth cooldown lapsing), and then one
+        blank line lands a line off for that one look.
 
         Args:
             appearance (str): The formatted appearance string from the template

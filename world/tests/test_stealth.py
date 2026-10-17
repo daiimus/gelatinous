@@ -431,6 +431,9 @@ class TestLeakSweep(TestCase):
         adjacent.crowd_base_level = 0
         exit_obj.key = "north"
         room = MagicMock()
+        # A sky cell is never glanced from (review of #3753), and a bare
+        # MagicMock `is_sky_room` is truthy.
+        room.is_sky_room = False
         room.exits = [exit_obj]
         # Production walks `_visible_exits(looker)`, not `.exits`, since
         # the secret-door gate landed (#2588). A bare MagicMock ITERATES
@@ -466,6 +469,7 @@ class TestLeakSweep(TestCase):
         exit_obj.key = "north"
         exit_obj.blocks_sight.return_value = False
         room = MagicMock()
+        room.is_sky_room = False          # a sky cell is never glanced from
         room._visible_exits = lambda looker: [exit_obj]
         sightings = Room.get_adjacent_character_sightings.__get__(room)
         with _uid_for(None):

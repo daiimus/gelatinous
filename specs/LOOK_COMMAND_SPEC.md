@@ -290,23 +290,42 @@ this game has had its balance pass.
     (street, alley, market, bridge, rooftop, courtyard, balcony, fire escape;
     `room_type_is_open_air`). Owner: "Streets, sure. Cubes? Not so much." / "I think it makes
     more sense for us to have room types...which I think we already do. It's a very standard
-    mud design." An interior -- a rented unit, a tenement hall, the constabulary -- is never
-    glanced into, open door or not, and an untyped room counts as an interior. `look <door>`
-    through an open door is its own renderer and still shows who is inside. `sky`, `farm`,
-    `hull`, `garden` and `agridome` are not listed pending the owner's ruling. No room was
-    retyped for this: the Brackett and Halcyon units stay untyped.
+    mud design." One word takes in more than open ground: `market` covers the open-air
+    Shipbreaker yard and the covered galleries (`MarketRoom`, `outside=False`) alike, open to
+    the eye if not to the sky. Any other type -- a rented unit, a tenement hall, the
+    constabulary -- is never glanced into, open door or not, and an untyped room is treated
+    the same. `look <door>` through an open door is its own renderer and still shows who is
+    inside. `sky`, `farm`, `hull`, `garden` and `agridome` are not listed pending the owner's
+    ruling. No room was retyped for this: the Brackett and Halcyon units stay untyped. Two
+    rooms are never glanced from or into (review of #3753): a sky cell, which shows no exits
+    and so names no directions either (a faller is alone in every air cell), and the room the
+    looker stands in, since the aim view renders the far room and its exit back would
+    otherwise report the shooter's own company ("You see a lone figure to the south.", the
+    friend beside you).
   - **Sixth gate, 2026-10-17 (#3753): the far crowd.** Owner: "I think open air should be a
     combination of room types and crowd size.", then "1." on: room type says the far room is
     open air, its crowd size says what you can make out. Heavy or packed
     (`crowd_system.crowd_hides_figures`: the level the room's own crowd line reads, and silent
-    where a builder wrote base 0) the glance reports the crowd and no figures -- "You see a
-    crowd to the west." / "You see crowds to the north and south." -- and thinner, the
-    lone-figure / group sentences as before. Live census 2026-10-17: 48 streets and 9 markets
-    reach heavy at the shift-change peaks; no other open-air room does.
+    at base 0 -- the default, and the builder's off switch -- however many stand there) the
+    glance reports the crowd and no figures -- "You see a crowd to the west." / "You see
+    crowds to the north and south." -- and thinner, the lone-figure / group sentences as
+    before. The level counts hidden bodies like any other (#2497), so a hider can tip a far
+    street from moderate to heavy and switch the crowd sentence on; that is the density the
+    hider blends into, and `look <direction>` already reads the same level for its own crowd
+    wording, so the glance opens no new channel (round-3 review). Live census 2026-10-17,
+    taken with the people then present (each body adds 0.5, so any open-air room with a base
+    above 0 reads heavy once enough gather): 48 streets and 9 markets reached heavy at the
+    shift-change peaks, no other open-air room did, and at night none.
   - **Renders alone since #3753.** `get_display_characters` ran the glance below its
     empty-room return (2025-08-15, older than the glance itself), so a looker with nobody
     else in the room was never told who stood beyond the open doorway. The glance now runs
-    before that return and joins the crowd line and the suspicion cue.
+    before that return and joins the crowd line and the suspicion cue. Alone, those three
+    share one paragraph as they always did with company; until #3753 the crowd line and the
+    cue stood on two lines for a looker alone. `format_appearance` now places its blank lines
+    by position (footer, characters, things counted from the end of the render) instead of
+    matching text, so a description authored over several lines gets its blank line too, and
+    an undescribed room with nothing on the floor and nobody shown runs its exits directly
+    under "You see nothing special." (the old prefix match padded that line as a things line).
 - **Natural Language**: "You see a lone figure to the south" (1 character), "You see a group of people standing to the east" (2+ characters), or "You see a crowd to the west" (heavy or packed over there, whoever is in it)  
 - **Integration**: Appears after local characters as part of character display section
 - **Performance Optimized**: Lightweight scanning of adjacent room contents on look command

@@ -19,6 +19,11 @@ exit of our own, typed `street`, because the harness already links room1
 -> room2 by "out"; that exit is view-locked so it stays out of the prose,
 and char2 is parked in room2 so the looker is alone. The crowd level reads
 the colony clock and the weather, so the crowd tests pin both.
+
+Rendering alone reached two places the glance never had (round-3 review):
+every air cell of a fall, and the aim view, whose far room has an exit
+back to the shooter's own company. A sky cell is not glanced from and the
+looker's own room is never glanced into.
 """
 import inspect
 from contextlib import contextmanager
@@ -288,9 +293,10 @@ class TestAHeavyCrowdHidesTheFigures(_Alone):
         with pinned_clock():
             self.assertIn(CROWD, self.look())
 
-    def test_a_builders_zero_means_no_crowd_whatever_the_bodies(self):
-        """The room's own crowd line is silent at base 0 however many
-        stand there; so is the glance's crowd, which then counts them."""
+    def test_base_zero_means_no_crowd_whatever_the_bodies(self):
+        """Base 0 is the default and the builder's off switch. The room's
+        own crowd line is silent at 0 however many stand there; so is the
+        glance's crowd, which then counts them."""
         self.assertEqual(self.beyond.crowd_base_level, 0)
         for n in range(5):
             extra = create.create_object("typeclasses.characters.Character",
@@ -344,6 +350,56 @@ class TestAHeavyCrowdHidesTheFigures(_Alone):
         self.assertEqual(hidden, {3, 4})
 
 
+class TestTwoRoomsAreNeverGlancedFromOrInto(_Alone):
+    """Round-3 review of #3753: rendering alone reached two places the
+    glance never had. A faller is alone in every air cell, and a sky cell
+    shows no exits, so it names no directions either. And the aim view
+    renders the far room from over there, whose exit back would count the
+    shooter's own company."""
+
+    def test_a_sky_cell_is_not_glanced_from(self):
+        self.assertIn(LONE, self.look())                       # control
+        self.room1.is_sky_room = True
+        self.assertNotIn("lone figure", self.look())
+        self.assertEqual(
+            self.room1.get_adjacent_character_sightings(self.char1), "")
+
+    def test_the_room_you_stand_in_is_never_glanced_into(self):
+        create.create_object("typeclasses.exits.Exit", key="south",
+                             location=self.beyond, destination=self.room1)
+        self.room1.db.type = "street"        # open air, so only the rule stops it
+        self.char2.location = self.room1              # the looker's company
+        # control: from over there, someone in the street sees them both
+        self.assertEqual(
+            self.beyond.get_adjacent_character_sightings(self.neighbour),
+            "You see a group of people standing to the south.")
+        # the looker who stands here is not shown their own room
+        self.assertEqual(
+            self.beyond.get_adjacent_character_sightings(self.char1), "")
+
+    def test_the_aim_view_does_not_report_your_own_company(self):
+        """`look` while aiming renders the aimed room; aiming north into an
+        empty street read "You see a lone figure to the south." -- the
+        friend standing beside the shooter."""
+        create.create_object("typeclasses.exits.Exit", key="south",
+                             location=self.beyond, destination=self.room1)
+        self.room1.db.type = "street"        # open air, so only the rule stops it
+        self.char2.location = self.room1
+        # control: from the street, someone standing there sees them both
+        self.assertEqual(
+            self.beyond.get_adjacent_character_sightings(self.neighbour),
+            "You see a group of people standing to the south.")
+        self.neighbour.location = self.room2          # now the street is empty
+        self.char1.ndb.aiming_direction = "north"
+        try:
+            aimed = self.room1.return_appearance(self.char1) or ""
+        finally:
+            self.char1.ndb.aiming_direction = None
+        self.assertIn(self.beyond.key, aimed)          # it is the far room
+        self.assertNotIn("lone figure", aimed)
+        self.assertNotIn("group of people", aimed)
+
+
 class TestThePredicate(TestCase):
 
     def test_the_open_air_words(self):
@@ -387,7 +443,10 @@ class TestTheFormatterPlacesBlankLinesByPosition(_Alone):
             out = self.look()
         self.assertEqual(out[:out.index(LONE)].count("\n\n"), 1)
 
-    def test_the_formatter_matches_no_text(self):
+    def test_the_old_text_matches_are_gone(self):
+        """A revert guard for the three spellings master and round 2 used;
+        the property itself, blank lines by position, is what the two
+        tests above check."""
         from typeclasses.rooms import Room
         src = inspect.getsource(Room.format_appearance)
         self.assertNotIn('startswith("You see")', src)

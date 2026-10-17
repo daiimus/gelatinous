@@ -177,8 +177,9 @@ class CrowdSystem:
         """
         True when *room* is so crowded that nobody in it can be picked out
         from the next room over (#3753): its crowd is heavy or packed by
-        the same level its own crowd line reads, and, as for that line, a
-        builder's explicit base 0 means no crowd at all.
+        the same level its own crowd line reads, and, as for that line,
+        base 0 -- the default, and the builder's off switch -- means no
+        crowd at all, however many stand there.
         `Room.get_adjacent_character_sightings` asks it after the open-air
         gate; the room's own line is `get_crowd_contributions`.
 
