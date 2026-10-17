@@ -1005,6 +1005,16 @@ def room_type_is_unpeopled(room_type):
     return str(room_type or "").lower() in UNPEOPLED_ROOM_TYPES
 
 
+def room_type_is_residential(room_type):
+    """True when this room type is somebody's home -- a rented cube or
+    flat (#3753). The neighbour glance in
+    `Room.get_adjacent_character_sightings` asks it before reporting who
+    stands beyond an exit: a street is glanced into, a home is not. Same
+    set the 'residential' crowd profile draws on, so the two layers
+    cannot disagree about what a home is."""
+    return str(room_type or "").lower() in RESIDENTIAL_ROOM_TYPES
+
+
 #: Room types that are volumes of air. Transit for jumps and falls; no
 #: crowd of any density, at any hour.
 SKY_ROOM_TYPES = {'sky', 'air'}

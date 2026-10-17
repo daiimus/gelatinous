@@ -212,7 +212,12 @@ never canon. NPC-run factions remain the only factions.
 - Access is **biometric grants** — no keys, codes, or cards; forgery is
   the attack surface. Unit doors get the spring-latch autolock.
 - Rentable units carry `residence_building` + `residence_origin` at
-  build time — `memory`'s dossier depends on them.
+  build time — `memory`'s dossier depends on them — and their building's
+  room `type` (`cube hotel` / `tenement`), which the crowd layer and the
+  neighbour glance read (#3753). `world.rental.register_residence(cube,
+  door, building, origin)` writes all of them; a build that sets
+  `cube_door` by hand leaves the unit untyped, as 169 units were until
+  the 2026-10-16 backfill.
 - B&E is a PvE mechanic: player-rented rooms are not burglary targets.
 
 **The exit graph** (owner-set 2026-08-05): coordinates are truth,

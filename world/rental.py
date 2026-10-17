@@ -112,6 +112,86 @@ def residence_status(cube):
     return "Vacant." if is_free(cube) else "Being vacated."
 
 
+def residence_type_from_corridor(cube):
+    """The `type` word a unit inherits from its building: the type of the
+    room its front door opens from (the aisle or landing), when that is a
+    residential type. None when the unit has no registered door or that
+    room is not residential."""
+    from world.crowd.crowd_messages import room_type_is_residential
+    door = cube_door(cube)
+    hall = getattr(door, "location", None) if door is not None else None
+    hall_type = getattr(getattr(hall, "db", None), "type", None)
+    return hall_type if room_type_is_residential(hall_type) else None
+
+
+def stamp_residence_type(cube):
+    """Give an untyped unit its building's residential `type` (#3753).
+
+    Returns the word written, or None when the unit already carried a
+    type or none could be inferred. Never overwrites: the Queen's cubes
+    were built as `cube hotel` and stay so.
+    """
+    if getattr(cube.db, "type", None):
+        return None
+    inferred = residence_type_from_corridor(cube)
+    if inferred is None:
+        return None
+    cube.db.type = inferred
+    return inferred
+
+
+def register_residence(cube, door, building, origin=None):
+    """THE way a build makes a room a rentable unit (#3753): the aisle-side
+    `DoorExit` into it, the building it belongs to, the street it is
+    registered from, and the room `type` of its building, so the crowd
+    layer and the neighbour glance know it for a home. `cube_door` and
+    `residence_building` are written together, as `_is_private_residence`
+    in the civilian director relies on; the type is filled only when the
+    unit has none. Returns the cube."""
+    cube.db.cube_door = door
+    cube.db.residence_building = building
+    if origin is not None:
+        cube.db.residence_origin = origin
+    stamp_residence_type(cube)
+    return cube
+
+
+def backfill_residence_types(apply=False):
+    """One-off for #3753: type every registered unit that has no `type`,
+    from its building's corridors. Dry by default; ``apply=True`` writes.
+
+    Returns a report: ``units`` seen, ``typed`` already carrying a type,
+    ``stamped`` {building: {type: n}} written (or, dry, that would be),
+    ``skipped`` [(key, reason)] for units no type could be inferred for.
+    """
+    from collections import defaultdict
+
+    from evennia.objects.models import ObjectDB
+
+    stamped = defaultdict(lambda: defaultdict(int))
+    report = {"apply": bool(apply), "units": 0, "typed": 0, "skipped": []}
+    seen = set()
+    for obj in ObjectDB.objects.filter(db_attributes__db_key="cube_door"):
+        if obj.pk in seen or cube_door(obj) is None:
+            continue
+        seen.add(obj.pk)
+        report["units"] += 1
+        if getattr(obj.db, "type", None):
+            report["typed"] += 1
+            continue
+        inferred = residence_type_from_corridor(obj)
+        if inferred is None:
+            report["skipped"].append(
+                (obj.key, "the room its door opens from has no residential type"))
+            continue
+        building = str(getattr(obj.db, "residence_building", None) or "?")
+        stamped[building][inferred] += 1
+        if apply:
+            obj.db.type = inferred
+    report["stamped"] = {b: dict(t) for b, t in stamped.items()}
+    return report
+
+
 def residence_of(char):
     """The char's current permanent residence, or None."""
     cube = getattr(getattr(char, "db", None), "residence", None)

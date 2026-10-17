@@ -62,12 +62,11 @@ class TestTheOpenDoorStillShowsTheNeighbour(_DoorCase):
         self.assertIn("lone figure to the south", self.room_glance())
 
     def test_the_room_look_carries_it(self):
-        # The characters section renders the glance only when someone
-        # else visible stands with the looker: `get_display_characters`
-        # returns early with the crowd line otherwise (rooms.py, `if not
-        # characters`). The harness puts char2 in room1, which is what
-        # lets this assertion see the section at all. Whether the glance
-        # should render in an empty room is an open ruling (#3750).
+        # With company: the harness puts char2 in room1. Until #3753 the
+        # characters section rendered the glance ONLY then (it returned
+        # early for an empty room); the alone case now lives in
+        # test_the_glance_works_alone_and_skips_homes.py, and this stays
+        # as the with-company control.
         self.assertEqual(self.char2.location, self.room1)
         self.assertIn("lone figure to the south", self.room_look())
 

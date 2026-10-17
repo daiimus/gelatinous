@@ -285,6 +285,20 @@ this game has had its balance pass.
     while `look south` showed only the door. `Exit.blocks_sight()` is the one predicate;
     the exit look's far-room people (`Exit.get_display_desc`) ask it too. Secret exits (2)
     and hidden people (3) remain their own gates.
+  - **Fifth gate, 2026-10-16 (#3753): room type.** The walker skips a destination whose
+    `type` is residential (`world.crowd.crowd_messages.room_type_is_residential`, the crowd
+    layer's own `cube hotel` / `tenement` set). Owner: "Streets, sure. Cubes? Not so much." /
+    "I think it makes more sense for us to have room types...which I think we already do.
+    It's a very standard mud design." A rented unit with its door standing open is not
+    reported from the landing; `look <door>` through that open door still shows who is
+    inside. The rule reads the room glanced INTO, so a building's own corridors, typed
+    residential by their builds, are not glanced into either. Units are typed by
+    `world.rental.register_residence` / `backfill_residence_types` (169 Brackett and Halcyon
+    units carried no type before the 2026-10-16 backfill).
+  - **Renders alone since #3753.** `get_display_characters` ran the glance below its
+    empty-room return (2025-08-15, older than the glance itself), so a looker with nobody
+    else in the room was never told who stood beyond the open doorway. The glance now runs
+    before that return and joins the crowd line and the suspicion cue.
 - **Natural Language**: "You see a lone figure to the south" (1 character) or "You see a group of people standing to the east" (2+ characters)  
 - **Integration**: Appears after local characters as part of character display section
 - **Performance Optimized**: Lightweight scanning of adjacent room contents on look command

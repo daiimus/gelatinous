@@ -10,6 +10,7 @@ from evennia.typeclasses.attributes import AttributeProperty
 from world.combat.constants import NDB_FLYING_OBJECTS
 from world.weather import weather_system
 from world.crowd import crowd_system
+from world.crowd.crowd_messages import room_type_is_residential
 
 from .objects import ObjectParent
 
@@ -613,9 +614,20 @@ class Room(ObjectParent, DefaultRoom):
         cue = ("You get the prickling sense that you are not alone here."
                if sensed_presence else "")
 
+        # The neighbour glance runs BEFORE the empty-room return (#3753).
+        # That return is older than the glance (2025-08-15 vs 2025-08-21)
+        # and the glance was appended beneath it, so a looker alone in a
+        # room -- the one case "encourages interaction and chase scenes"
+        # was written for -- was never told who stood beyond the open
+        # doorway. Placement, not design. The glance gates itself (sight,
+        # secret exits, hidden people, shut doors, homes), so nothing is
+        # shown here to anyone it already refused.
+        adjacent_sightings = self.get_adjacent_character_sightings(looker)
+
         if not characters:
-            # No characters, but might still have crowd/suspicion messages
-            parts = [p for p in (crowd_msg, cue) if p]
+            # Nobody else stands here; the crowd line, the glance beyond
+            # the exits and the suspicion cue may still speak.
+            parts = [p for p in (crowd_msg, adjacent_sightings, cue) if p]
             return "\n".join(parts) if parts else ""
         
         # Group characters by their placement description
@@ -679,9 +691,6 @@ class Room(ObjectParent, DefaultRoom):
         
         character_display = " ".join(descriptions) if descriptions else ""
         
-        # Get adjacent character sightings (simple approach - no complex visibility logic)
-        adjacent_sightings = self.get_adjacent_character_sightings(looker)
-        
         # Combine crowd, local characters, and adjacent sightings
         all_displays = []
         if crowd_msg:
@@ -734,6 +743,15 @@ class Room(ObjectParent, DefaultRoom):
             # (#3750). Same predicate `look <direction>` uses, so the
             # corridor and the door cannot disagree.
             if exit_obj.blocks_sight():
+                continue
+            # Somebody's home is not glanced into (#3753). Owner, 2026-10-15:
+            # "Streets, sure. Cubes? Not so much." The room's `type` word
+            # decides, by the crowd layer's own residential set (cube
+            # hotel, tenement), so a street, alley or market beyond an
+            # open door still reports its people and a rented unit with
+            # its door standing open does not. `look <door>` through that
+            # open door still shows who is inside: the door is open.
+            if room_type_is_residential(getattr(destination, "type", None)):
                 continue
 
             # Count visible characters (excluding looker); the presence
