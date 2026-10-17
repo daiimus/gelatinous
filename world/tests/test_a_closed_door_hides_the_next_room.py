@@ -6,9 +6,13 @@ with no thought for door state, while `look north` at the same door
 said only that it was closed. Played on live: in the Constabulary Secure
 Corridor with Tuck present, closing the north door to Dispatch, `look`
 still reported Kiro beyond it. (A shell call of the glance method is not
-that evidence: the room's characters section returns early when nobody
-else visible stands with the looker, so the glance renders only with
-company.) Both renderers now ask one predicate, `Exit.blocks_sight()`:
+that evidence. Until #3753 the room's characters section also returned
+early when nobody else visible stood with the looker, so the glance
+rendered only with company; it now renders alone too, and since #3753 it
+is a sightline that looks only into open ground, so the room beyond the
+door here is typed open air. Both are covered in
+test_the_glance_is_a_sightline_into_open_air.py.) Both
+renderers now ask one predicate, `Exit.blocks_sight()`:
 an ordinary exit never blocks, a `DoorExit` answers from `is_open()` (a
 broken door hangs open), the elevator's doors from docking.
 
@@ -30,7 +34,11 @@ class _DoorCase(EvenniaTest):
         # A THIRD room reachable only through the door: the harness links
         # room1 -> room2 by an ordinary exit, which would report the
         # neighbour whatever the door did.
-        self.beyond = create_object("typeclasses.rooms.Room", key="a flat")
+        self.beyond = create_object("typeclasses.rooms.Room", key="a yard")
+        # Open ground: since #3753 the glance is a sightline and looks
+        # into nothing else, so a flat behind the door would prove only
+        # that. A courtyard behind a gate keeps the door the variable.
+        self.beyond.db.type = "courtyard"
         self.door = create_object("typeclasses.doors.DoorExit", key="south",
                                   location=self.room1, destination=self.beyond)
         self.neighbour = create_object("typeclasses.characters.Character",
@@ -62,12 +70,11 @@ class TestTheOpenDoorStillShowsTheNeighbour(_DoorCase):
         self.assertIn("lone figure to the south", self.room_glance())
 
     def test_the_room_look_carries_it(self):
-        # The characters section renders the glance only when someone
-        # else visible stands with the looker: `get_display_characters`
-        # returns early with the crowd line otherwise (rooms.py, `if not
-        # characters`). The harness puts char2 in room1, which is what
-        # lets this assertion see the section at all. Whether the glance
-        # should render in an empty room is an open ruling (#3750).
+        # With company: the harness puts char2 in room1. Until #3753 the
+        # characters section rendered the glance ONLY then (it returned
+        # early for an empty room); the alone case now lives in
+        # test_the_glance_is_a_sightline_into_open_air.py, and this stays
+        # as the with-company control.
         self.assertEqual(self.char2.location, self.room1)
         self.assertIn("lone figure to the south", self.room_look())
 
@@ -118,11 +125,18 @@ class TestShutElevatorDoorsHideTheCar(EvenniaTest):
     exit look must keep the riders to themselves. A real `ElevatorCar`
     (the fixture of test_the_car_refuses_an_undocked_entry): it docks at
     room1 by `db.current_floor`, so the predicate's argument order is
-    under test, not mocked around."""
+    under test, not mocked around.
+
+    Since #3753 the glance is a sightline into open ground, and a lift car
+    is an interior: from the landing it is never glanced into, shut or
+    open, so the shut-door proof for the glance runs the other way, from
+    inside the car onto a rooftop landing. The door look is not gated by
+    room type and still carries the rider through the open doors."""
 
     def setUp(self):
         super().setUp()
         self.char1.location = self.room1
+        self.room1.db.type = "rooftop"
         self.car = create_object("typeclasses.elevator.ElevatorCar",
                                  key="a lift car")
         self.car.db.floors = [[self.room1, "1"], [self.room2, "2"]]
@@ -146,23 +160,23 @@ class TestShutElevatorDoorsHideTheCar(EvenniaTest):
         self.assertTrue(car_docked(self.car, self.room1))
         self.assertFalse(car_docked(self.room1, self.car))   # order matters
 
-    def test_the_car_docked_here_shows_the_rider(self):
+    def test_the_car_docked_here_shows_the_rider_through_the_doors(self):
         self.assertFalse(self.doors.blocks_sight())
-        self.assertIn("lone figure", self.glance())
         self.assertIn(self.rider_name(),
                       self.doors.return_appearance(self.char1) or "")
+        # The landing's glance does not look into a lift car (#3753): the
+        # car is an interior, open doors or not.
+        self.assertEqual(self.glance(), "")
 
     def test_the_car_at_another_floor_blocks_sight(self):
         self.car.db.current_floor = 1
         self.assertTrue(self.doors.blocks_sight())
-        self.assertEqual(self.glance(), "")
         self.assertNotIn(self.rider_name(),
                          self.doors.return_appearance(self.char1) or "")
 
     def test_the_car_in_motion_blocks_sight(self):
         self.car.db.moving = True
         self.assertTrue(self.doors.blocks_sight())
-        self.assertEqual(self.glance(), "")
 
     def test_the_moving_car_sees_nothing_out(self):
         out = self.car._out_exit() or create_object(
@@ -170,7 +184,8 @@ class TestShutElevatorDoorsHideTheCar(EvenniaTest):
             location=self.car, destination=self.room1)
         out.destination = self.room1
         self.assertFalse(out.blocks_sight())
-        # control: docked and still, the rider sees the landing's people
+        # control: docked and still, the rider sees the people on the
+        # rooftop landing (open ground, so the glance looks there, #3753)
         self.assertTrue(self.car.get_adjacent_character_sightings(self.rider))
         self.car.db.moving = True
         self.assertTrue(out.blocks_sight())
