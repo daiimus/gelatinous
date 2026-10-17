@@ -78,6 +78,31 @@ class TestTheGlanceRendersWhenAlone(_Alone):
         self.assertNotIn("lone figure", self.look())
         self.assertNotIn("group of people", self.look())
 
+    def test_alone_the_glance_lays_out_as_it_does_with_company(self):
+        """The formatter padded any line starting "You see" as a things
+        line, so alone the glance became its own paragraph (review of
+        #3753). Now it sits directly above the exits either way."""
+        alone = self.look()
+        self.assertNotIn("\n\n", alone[alone.index(LONE):])
+        self.char2.location = self.room1
+        together = self.look()
+        self.assertNotIn("\n\n", together[together.index(LONE):])
+
+    def test_the_things_line_keeps_its_blank_line(self):
+        things = self.room1.get_display_things(self.char1)
+        self.assertTrue(things.startswith("You see"), things)
+        out = self.look()
+        self.assertIn(things + "\n\n", out)
+        self.assertIn(LONE, out)
+
+    def test_alone_with_a_crowd_the_glance_follows_the_crowd_line(self):
+        self.room1.crowd_base_level = 2
+        people = self.room1.get_display_characters(self.char1) or ""
+        self.assertIn(LONE, people)
+        self.assertGreater(people.index(LONE), 0, people)
+        self.assertNotIn("\n", people)
+        self.assertNotIn("\n\n", self.look()[self.look().index(LONE):])
+
     def test_the_glance_sits_before_the_empty_room_return(self):
         """The fault was placement; pin the order so it cannot drift back."""
         from typeclasses.rooms import Room
@@ -207,10 +232,35 @@ class TestABuildStampsTheType(EvenniaTest):
         rental.register_residence(self.unit, self.door, "The Halcyon")
         self.assertEqual(self.unit.db.residence_origin, "Kaspar Street")
 
-    def test_a_corridor_that_is_not_residential_stamps_nothing(self):
+    def test_a_corridor_that_is_not_residential_stamps_nothing_and_says_so(self):
         self.hall.db.type = "street"
-        rental.register_residence(self.unit, self.door, "Somewhere")
+        stamped = rental.register_residence(self.unit, self.door, "Somewhere")
+        self.assertIsNone(stamped)
         self.assertIsNone(self.unit.db.type)
+
+    def test_an_explicit_room_type_covers_a_hall_typed_otherwise(self):
+        self.hall.db.type = "corridor"
+        stamped = rental.register_residence(self.unit, self.door, "New Block",
+                                            room_type="tenement")
+        self.assertEqual(stamped, "tenement")
+        self.assertEqual(self.unit.db.type, "tenement")
+
+    def test_an_explicit_room_type_never_overwrites(self):
+        self.unit.db.type = "cube hotel"
+        stamped = rental.register_residence(self.unit, self.door, "Queen of Cups",
+                                            room_type="tenement")
+        self.assertIsNone(stamped)
+        self.assertEqual(self.unit.db.type, "cube hotel")
+
+    def test_a_terminal_lists_the_unit_once(self):
+        board = create.create_object("typeclasses.terminals.RentalTerminal",
+                                     key="rental terminal", location=self.hall)
+        rental.register_residence(self.unit, self.door, "The Brackett Arms",
+                                  terminal=board)
+        rental.register_residence(self.unit, self.door, "The Brackett Arms",
+                                  terminal=board)
+        self.assertEqual(list(board.db.cubes), [self.unit])
+        self.assertTrue(rental.is_free(self.unit))
 
     def test_the_stamped_unit_is_a_home_to_the_glance(self):
         rental.register_residence(self.unit, self.door, "The Brackett Arms")

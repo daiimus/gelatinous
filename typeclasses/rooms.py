@@ -625,10 +625,13 @@ class Room(ObjectParent, DefaultRoom):
         adjacent_sightings = self.get_adjacent_character_sightings(looker)
 
         if not characters:
-            # Nobody else stands here; the crowd line, the glance beyond
-            # the exits and the suspicion cue may still speak.
+            # Nobody VISIBLE stands here (a hidden one may, and a blind
+            # looker sees no one): the crowd line, the glance beyond the
+            # exits and the suspicion cue may still speak. One paragraph,
+            # as with company below, so the same sentences lay out the
+            # same way whether or not someone else is in the room (#3753).
             parts = [p for p in (crowd_msg, adjacent_sightings, cue) if p]
-            return "\n".join(parts) if parts else ""
+            return " ".join(parts) if parts else ""
         
         # Group characters by their placement description
         placement_groups = {}
@@ -706,13 +709,22 @@ class Room(ObjectParent, DefaultRoom):
     
     def get_adjacent_character_sightings(self, looker):
         """
-        Simple adjacent room character detection.
-        No complex visibility logic - just scan adjacent rooms and report characters.
-        Encourages interaction and chase scenes.
-        
+        Who stands in the neighbouring rooms, by direction: "You see a lone
+        figure to the north." / "You see a group of people standing to the
+        east." Written to encourage interaction and chase scenes; it names
+        no one (`look <direction>` does that).
+
+        Five gates, each its own issue: the looker must see
+        (`can_perceive_sense`, #2793); view-locked exits stay out
+        (`_visible_exits`, #2588); an exit that blocks sight -- a shut
+        door, a lift door with the car elsewhere -- is skipped (#3750); a
+        destination typed residential is somebody's home and is not
+        glanced into (#3753); hidden people are not counted
+        (`can_perceive`, stealth spec §7).
+
         Args:
             looker: Character looking at the room
-            
+
         Returns:
             str: Description of characters visible in adjacent rooms
         """
@@ -956,8 +968,13 @@ class Room(ObjectParent, DefaultRoom):
             if desc and line.strip() == desc.strip() and (things or characters):
                 result.append("")
             
-            # Add spacing after any line that starts with "You see" (our things pattern)
-            elif line.strip().startswith("You see"):
+            # Add spacing after the things line itself. This matched any
+            # line starting "You see", which the neighbour glance ("You see
+            # a lone figure to the north.") also does once it heads the
+            # characters section for a looker alone (#3753): the glance
+            # was padded like a things line and laid out differently alone
+            # than with company.
+            elif things and line.strip() == things.strip():
                 result.append("")
         
         final = '\n'.join(result)

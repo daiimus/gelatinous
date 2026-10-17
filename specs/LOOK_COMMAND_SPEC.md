@@ -293,8 +293,11 @@ this game has had its balance pass.
     reported from the landing; `look <door>` through that open door still shows who is
     inside. The rule reads the room glanced INTO, so a building's own corridors, typed
     residential by their builds, are not glanced into either. Units are typed by
-    `world.rental.register_residence` / `backfill_residence_types` (169 Brackett and Halcyon
-    units carried no type before the 2026-10-16 backfill).
+    `world.rental.register_residence` at build time; `backfill_residence_types` is the one-off
+    for the 169 Brackett and Halcyon units built without a type (its run is dated on #3753).
+    Note that the exits footer (`get_custom_exit_display`) also groups exits by destination
+    type, so typing a unit changes the landing's footer from "There are exits to the 2A (e)..."
+    to "The tenement continues to the 2A (e)...", as the Queen's aisles already read.
   - **Renders alone since #3753.** `get_display_characters` ran the glance below its
     empty-room return (2025-08-15, older than the glance itself), so a looker with nobody
     else in the room was never told who stood beyond the open doorway. The glance now runs

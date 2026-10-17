@@ -124,36 +124,52 @@ def residence_type_from_corridor(cube):
     return hall_type if room_type_is_residential(hall_type) else None
 
 
-def stamp_residence_type(cube):
-    """Give an untyped unit its building's residential `type` (#3753).
-
-    Returns the word written, or None when the unit already carried a
-    type or none could be inferred. Never overwrites: the Queen's cubes
-    were built as `cube hotel` and stay so.
-    """
+def stamp_residence_type(cube, room_type=None):
+    """Give an untyped unit a residential `type` (#3753): *room_type* when
+    the build names one, else the type of the room its front door opens
+    from. Returns the word written, or None when the unit already carried
+    a type or none could be inferred. Never overwrites: the Queen's cubes
+    were built as `cube hotel` and stay so."""
     if getattr(cube.db, "type", None):
         return None
-    inferred = residence_type_from_corridor(cube)
+    inferred = room_type or residence_type_from_corridor(cube)
     if inferred is None:
         return None
     cube.db.type = inferred
     return inferred
 
 
-def register_residence(cube, door, building, origin=None):
-    """THE way a build makes a room a rentable unit (#3753): the aisle-side
-    `DoorExit` into it, the building it belongs to, the street it is
-    registered from, and the room `type` of its building, so the crowd
-    layer and the neighbour glance know it for a home. `cube_door` and
-    `residence_building` are written together, as `_is_private_residence`
-    in the civilian director relies on; the type is filled only when the
-    unit has none. Returns the cube."""
+def register_residence(cube, door, building, origin=None, room_type=None,
+                       terminal=None):
+    """Register *cube* as a rentable unit (#3753) in one call, so a build
+    cannot stamp half of it:
+
+    - ``cube_door`` (the aisle-side `DoorExit` into it) and
+      ``residence_building``; the civilian director's
+      `_is_private_residence` reads either one;
+    - ``residence_origin`` when given (the `memory` dossier prints it);
+    - the room ``type``, filled only when the unit has none: *room_type*
+      if given, else inherited from the room the door opens from when
+      that room is residential. A hall typed anything else (a stock
+      `CorridorRoom` is "corridor") infers nothing, so pass *room_type*
+      there; the return value says what was stamped;
+    - the unit on *terminal*'s board (``db.cubes``) when a terminal is
+      given. A unit is rentable only through a board that lists it.
+
+    Returns the type word stamped, or None.
+    """
     cube.db.cube_door = door
     cube.db.residence_building = building
     if origin is not None:
         cube.db.residence_origin = origin
-    stamp_residence_type(cube)
-    return cube
+    stamped = stamp_residence_type(cube, room_type=room_type)
+    if terminal is not None:
+        cubes = [c for c in (terminal.db.cubes or [])
+                 if c is not None and getattr(c, "pk", None)]
+        if cube not in cubes:
+            cubes.append(cube)
+        terminal.db.cubes = cubes
+    return stamped
 
 
 def backfill_residence_types(apply=False):

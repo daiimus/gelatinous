@@ -6,9 +6,11 @@ with no thought for door state, while `look north` at the same door
 said only that it was closed. Played on live: in the Constabulary Secure
 Corridor with Tuck present, closing the north door to Dispatch, `look`
 still reported Kiro beyond it. (A shell call of the glance method is not
-that evidence: the room's characters section returns early when nobody
-else visible stands with the looker, so the glance renders only with
-company.) Both renderers now ask one predicate, `Exit.blocks_sight()`:
+that evidence. Until #3753 the room's characters section also returned
+early when nobody else visible stood with the looker, so the glance
+rendered only with company; it now renders alone too, and that case is
+covered in test_the_glance_works_alone_and_skips_homes.py.) Both
+renderers now ask one predicate, `Exit.blocks_sight()`:
 an ordinary exit never blocks, a `DoorExit` answers from `is_open()` (a
 broken door hangs open), the elevator's doors from docking.
 
