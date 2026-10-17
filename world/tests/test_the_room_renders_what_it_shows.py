@@ -93,7 +93,10 @@ class TestTheSecretDoorStaysSecret(EvenniaTest):
         # by an ordinary "out" exit, so the watcher was visible through
         # that instead and the assertion was about the wrong door.
         self.beyond = create_object("typeclasses.rooms.Room",
-                                    key="a crawlspace")
+                                    key="a back alley")
+        # Open ground, so the open-exit control is glanced into at all
+        # (#3753: the glance is a sightline into open-air room types).
+        self.beyond.db.type = "alley"
         self.hatch = create_object("typeclasses.exits.Exit", key="hatch",
                                    location=self.room1,
                                    destination=self.beyond)
@@ -114,7 +117,7 @@ class TestTheSecretDoorStaysSecret(EvenniaTest):
 
     def test_the_direction_is_not_named_either(self):
         self.hatch.locks.add("view:false()")
-        self.assertNotIn("crawlspace", self.sightings())
+        self.assertNotIn("back alley", self.sightings())
         self.assertNotIn("hatch", self.sightings())
 
     def test_it_goes_through_the_one_gate(self):

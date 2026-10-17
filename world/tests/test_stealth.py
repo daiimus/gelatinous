@@ -424,6 +424,11 @@ class TestLeakSweep(TestCase):
         adjacent = _room(hidden)
         exit_obj = MagicMock()
         exit_obj.destination = adjacent
+        # The walker is a sightline since #3753: it looks only into open
+        # ground and asks the far room's crowd. A MagicMock `type` is not
+        # a word in the open-air set, and a MagicMock base level is not 0.
+        adjacent.type = "street"
+        adjacent.crowd_base_level = 0
         exit_obj.key = "north"
         room = MagicMock()
         room.exits = [exit_obj]
@@ -453,6 +458,11 @@ class TestLeakSweep(TestCase):
         adjacent = _room(seen)
         exit_obj = MagicMock()
         exit_obj.destination = adjacent
+        # The walker is a sightline since #3753: it looks only into open
+        # ground and asks the far room's crowd. A MagicMock `type` is not
+        # a word in the open-air set, and a MagicMock base level is not 0.
+        adjacent.type = "street"
+        adjacent.crowd_base_level = 0
         exit_obj.key = "north"
         exit_obj.blocks_sight.return_value = False
         room = MagicMock()

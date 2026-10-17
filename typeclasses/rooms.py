@@ -10,7 +10,7 @@ from evennia.typeclasses.attributes import AttributeProperty
 from world.combat.constants import NDB_FLYING_OBJECTS
 from world.weather import weather_system
 from world.crowd import crowd_system
-from world.crowd.crowd_messages import room_type_is_residential
+from world.crowd.crowd_messages import room_type_is_open_air
 
 from .objects import ObjectParent
 
@@ -620,8 +620,8 @@ class Room(ObjectParent, DefaultRoom):
         # room -- the one case "encourages interaction and chase scenes"
         # was written for -- was never told who stood beyond the open
         # doorway. Placement, not design. The glance gates itself (sight,
-        # secret exits, hidden people, shut doors, homes), so nothing is
-        # shown here to anyone it already refused.
+        # secret exits, shut doors, the far room's type and crowd, hidden
+        # people), so nothing is shown here to anyone it already refused.
         adjacent_sightings = self.get_adjacent_character_sightings(looker)
 
         if not characters:
@@ -711,16 +711,21 @@ class Room(ObjectParent, DefaultRoom):
         """
         Who stands in the neighbouring rooms, by direction: "You see a lone
         figure to the north." / "You see a group of people standing to the
-        east." Written to encourage interaction and chase scenes; it names
-        no one (`look <direction>` does that).
+        east." / "You see a crowd to the west." Written to encourage
+        interaction and chase scenes; it names no one (`look <direction>`
+        does that).
 
-        Five gates, each its own issue: the looker must see
-        (`can_perceive_sense`, #2793); view-locked exits stay out
-        (`_visible_exits`, #2588); an exit that blocks sight -- a shut
-        door, a lift door with the car elsewhere -- is skipped (#3750); a
-        destination typed residential is somebody's home and is not
-        glanced into (#3753); hidden people are not counted
-        (`can_perceive`, stealth spec §7).
+        A sightline, so it looks only into open ground (#3753). The gates,
+        each its own issue: the looker must see (`can_perceive_sense`,
+        #2793); view-locked exits stay out (`_visible_exits`, #2588); an
+        exit that blocks sight -- a shut door, a lift door with the car
+        elsewhere -- is skipped (#3750); the far room's `type` must be
+        open air (`room_type_is_open_air`: street, alley, market, bridge,
+        rooftop, courtyard, balcony, fire escape), so an interior is never
+        glanced into whatever its door is doing; a far room whose crowd is
+        heavy or packed shows only the crowd and nobody in it
+        (`crowd_system.crowd_hides_figures`); hidden people are not
+        counted (`can_perceive`, stealth spec §7).
 
         Args:
             looker: Character looking at the room
@@ -729,6 +734,7 @@ class Room(ObjectParent, DefaultRoom):
             str: Description of characters visible in adjacent rooms
         """
         sightings = []
+        crowded = []
         # SIGHT, not just stealth (#2793).  `can_perceive` below is the
         # presence gate -- "is that target concealed from this looker" --
         # and its own docstring says so.  It never asked "can this looker
@@ -756,14 +762,21 @@ class Room(ObjectParent, DefaultRoom):
             # corridor and the door cannot disagree.
             if exit_obj.blocks_sight():
                 continue
-            # Somebody's home is not glanced into (#3753). Owner, 2026-10-15:
-            # "Streets, sure. Cubes? Not so much." The room's `type` word
-            # decides, by the crowd layer's own residential set (cube
-            # hotel, tenement), so a street, alley or market beyond an
-            # open door still reports its people and a rented unit with
-            # its door standing open does not. `look <door>` through that
-            # open door still shows who is inside: the door is open.
-            if room_type_is_residential(getattr(destination, "type", None)):
+            # A sightline, so only into open ground (#3753). Owner,
+            # 2026-10-15: "Streets, sure. Cubes? Not so much." The far
+            # room's `type` word decides, by the crowd layer's open-air
+            # set; an interior -- a rented unit, a tenement hall, the
+            # constabulary, an untyped room -- is never glanced into,
+            # open door or not. `look <door>` through that open door is
+            # its own renderer and still shows who is inside.
+            if not room_type_is_open_air(getattr(destination, "type", None)):
+                continue
+            # Heavy or packed, the far room's crowd is all you make out
+            # (#3753; owner, 2026-10-17: room type says it is open air,
+            # its crowd size says what you can pick out). Those directions
+            # share one sentence, added after the walk.
+            if crowd_system.crowd_hides_figures(destination):
+                crowded.append(exit_obj.key)
                 continue
 
             # Count visible characters (excluding looker); the presence
@@ -784,7 +797,14 @@ class Room(ObjectParent, DefaultRoom):
                     sightings.append(f"You see a lone figure to the {direction}.")
                 else:
                     sightings.append(f"You see a group of people standing to the {direction}.")
-        
+
+        if crowded:
+            if len(crowded) == 1:
+                sightings.append(f"You see a crowd to the {crowded[0]}.")
+            else:
+                sightings.append(
+                    "You see crowds to the "
+                    f"{self.format_direction_list(crowded)}.")
         return " ".join(sightings)
     
     def get_display_things(self, looker, **kwargs):
@@ -925,66 +945,58 @@ class Room(ObjectParent, DefaultRoom):
     
     def format_appearance(self, appearance, looker, **kwargs):
         """
-        Final formatting step for room appearance.
-        
-        Simple approach: just add spacing after lines that start with "You see"
-        since that's our consistent things pattern.
-        
+        Final formatting step for room appearance: the paragraph breaks.
+
+        Evennia fills `appearance_template` (name, desc, things,
+        characters, footer; one render each) and hands over the string.
+        Two blank lines are added: after the description when a things
+        line or a characters paragraph follows it, and after the things
+        line. Which lines those are is decided BY POSITION, not by
+        matching text (#3753): counting from the end, the footer is the
+        last block, the characters paragraph the one above it and the
+        things line the one above that, each present exactly when its
+        renderer has something to say. Matching text failed twice: on the
+        "You see" prefix, which the neighbour glance shares with the
+        things line, and on an identity match, since the things line's
+        wording for more than fifty of a kind is drawn at random and a
+        second render need not repeat it.
+
         Args:
             appearance (str): The formatted appearance string from the template
             looker: Character looking at the room
-            
+
         Returns:
             str: Final formatted appearance with proper spacing
         """
-        # Get components to determine what sections exist
-        things = self.get_display_things(looker, **kwargs)
-        characters = self.get_display_characters(looker, **kwargs)
-        # The RENDERED description, not the raw attribute (#2586).
-        #
-        # The `{desc}` slot in `appearance_template` is filled by
-        # `get_display_desc(looker)`, which since the five-senses work
-        # returns the visual layer joined with each authored auditory /
-        # olfactory / tactile / atmospheric layer. Matching a rendered
-        # line against `db.desc` therefore failed for every room that
-        # has any sense layer at all, and the blank line after the
-        # description was silently dropped.
-        try:
-            desc = self.get_display_desc(looker, **kwargs) or ""
-        except Exception:  # noqa: BLE001 — formatting never breaks a look
-            desc = self.db.desc or ""
-        
-        lines = appearance.split('\n')
-        result = []
-        
-        for line in lines:
-            # Skip empty lines from template (these are from empty sections)
-            if not line.strip():
-                continue
-                
-            result.append(line)
-            
-            # Add spacing after description if there's content following
-            if desc and line.strip() == desc.strip() and (things or characters):
-                result.append("")
-            
-            # Add spacing after the things line itself. This matched any
-            # line starting "You see", which the neighbour glance ("You see
-            # a lone figure to the north.") also does once it heads the
-            # characters section for a looker alone (#3753): the glance
-            # was padded like a things line and laid out differently alone
-            # than with company.
-            elif things and line.strip() == things.strip():
-                result.append("")
-        
+        def nonempty(text):
+            return [line for line in (text or "").split('\n') if line.strip()]
+
+        things = nonempty(self.get_display_things(looker, **kwargs))
+        characters = nonempty(self.get_display_characters(looker, **kwargs))
+        footer = nonempty(self.get_display_footer(looker, **kwargs))
+
+        lines = nonempty(appearance)
+        tail = min(len(lines), len(things) + len(characters) + len(footer))
+        head, body = lines[:len(lines) - tail], lines[len(lines) - tail:]
+
+        result = list(head)
+        # Blank after the description (the lines under the name) when a
+        # things line or a characters paragraph follows it.
+        if len(head) > 1 and (things or characters):
+            result.append("")
+        # Blank after the things line itself.
+        if things:
+            result.extend(body[:len(things)])
+            result.append("")
+            body = body[len(things):]
+        result.extend(body)
+
         final = '\n'.join(result)
-        
         # Clean up any triple+ newlines that might have been introduced
         while '\n\n\n' in final:
             final = final.replace('\n\n\n', '\n\n')
-            
         return final
-    
+
     def _visible_exits(self, looker):
         """Exits *looker* may see. A view-locked exit (``view:false()`` —
         the standard secret-door mechanism, e.g. the rooftop hatch) stays

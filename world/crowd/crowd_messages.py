@@ -1005,14 +1005,29 @@ def room_type_is_unpeopled(room_type):
     return str(room_type or "").lower() in UNPEOPLED_ROOM_TYPES
 
 
-def room_type_is_residential(room_type):
-    """True when this room type is somebody's home -- a rented cube or
-    flat (#3753). The neighbour glance in
-    `Room.get_adjacent_character_sightings` asks it before reporting who
-    stands beyond an exit: a street is glanced into, a home is not. Same
-    set the 'residential' crowd profile draws on, so the two layers
-    cannot disagree about what a home is."""
-    return str(room_type or "").lower() in RESIDENTIAL_ROOM_TYPES
+#: Room types that are open ground. The neighbour glance in
+#: `Room.get_adjacent_character_sightings` is a sightline: it looks into
+#: these and into nothing else (#3753). Owner, 2026-10-15: "Streets, sure.
+#: Cubes? Not so much." Any other word, and an untyped room, is an
+#: interior whatever its door is doing. `sky`, `farm`, `hull`, `garden`
+#: and `agridome` are left out pending the owner's ruling (#3753). A new
+#: outdoor type is glanced into only once it is listed here.
+OPEN_AIR_ROOM_TYPES = {
+    'street', 'alley', 'market', 'bridge', 'rooftop', 'courtyard',
+    'balcony', 'fire escape',
+}
+
+#: `CROWD_INTENSITY` names at which nobody in a room can be picked out from
+#: the next room over: the glance reports the crowd itself and no figures
+#: (#3753; owner, 2026-10-17: room type says it is open air, its crowd
+#: size says what you can make out).
+FIGURES_LOST_IN_CROWD = {'heavy', 'packed'}
+
+
+def room_type_is_open_air(room_type):
+    """True when a room of this type is open ground the neighbour glance
+    may look into (#3753)."""
+    return str(room_type or "").lower() in OPEN_AIR_ROOM_TYPES
 
 
 #: Room types that are volumes of air. Transit for jumps and falls; no

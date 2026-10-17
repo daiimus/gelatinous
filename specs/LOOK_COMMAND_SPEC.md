@@ -285,24 +285,29 @@ this game has had its balance pass.
     while `look south` showed only the door. `Exit.blocks_sight()` is the one predicate;
     the exit look's far-room people (`Exit.get_display_desc`) ask it too. Secret exits (2)
     and hidden people (3) remain their own gates.
-  - **Fifth gate, 2026-10-16 (#3753): room type.** The walker skips a destination whose
-    `type` is residential (`world.crowd.crowd_messages.room_type_is_residential`, the crowd
-    layer's own `cube hotel` / `tenement` set). Owner: "Streets, sure. Cubes? Not so much." /
-    "I think it makes more sense for us to have room types...which I think we already do.
-    It's a very standard mud design." A rented unit with its door standing open is not
-    reported from the landing; `look <door>` through that open door still shows who is
-    inside. The rule reads the room glanced INTO, so a building's own corridors, typed
-    residential by their builds, are not glanced into either. Units are typed by
-    `world.rental.register_residence` at build time; `backfill_residence_types` is the one-off
-    for the 169 Brackett and Halcyon units built without a type (its run is dated on #3753).
-    Note that the exits footer (`get_custom_exit_display`) also groups exits by destination
-    type, so typing a unit changes the landing's footer from "There are exits to the 2A (e)..."
-    to "The tenement continues to the 2A (e)...", as the Queen's aisles already read.
+  - **Fifth gate, 2026-10-17 (#3753): a sightline into open ground.** The walker skips a
+    destination whose `type` is not in `world.crowd.crowd_messages.OPEN_AIR_ROOM_TYPES`
+    (street, alley, market, bridge, rooftop, courtyard, balcony, fire escape;
+    `room_type_is_open_air`). Owner: "Streets, sure. Cubes? Not so much." / "I think it makes
+    more sense for us to have room types...which I think we already do. It's a very standard
+    mud design." An interior -- a rented unit, a tenement hall, the constabulary -- is never
+    glanced into, open door or not, and an untyped room counts as an interior. `look <door>`
+    through an open door is its own renderer and still shows who is inside. `sky`, `farm`,
+    `hull`, `garden` and `agridome` are not listed pending the owner's ruling. No room was
+    retyped for this: the Brackett and Halcyon units stay untyped.
+  - **Sixth gate, 2026-10-17 (#3753): the far crowd.** Owner: "I think open air should be a
+    combination of room types and crowd size.", then "1." on: room type says the far room is
+    open air, its crowd size says what you can make out. Heavy or packed
+    (`crowd_system.crowd_hides_figures`: the level the room's own crowd line reads, and silent
+    where a builder wrote base 0) the glance reports the crowd and no figures -- "You see a
+    crowd to the west." / "You see crowds to the north and south." -- and thinner, the
+    lone-figure / group sentences as before. Live census 2026-10-17: 48 streets and 9 markets
+    reach heavy at the shift-change peaks; no other open-air room does.
   - **Renders alone since #3753.** `get_display_characters` ran the glance below its
     empty-room return (2025-08-15, older than the glance itself), so a looker with nobody
     else in the room was never told who stood beyond the open doorway. The glance now runs
     before that return and joins the crowd line and the suspicion cue.
-- **Natural Language**: "You see a lone figure to the south" (1 character) or "You see a group of people standing to the east" (2+ characters)  
+- **Natural Language**: "You see a lone figure to the south" (1 character), "You see a group of people standing to the east" (2+ characters), or "You see a crowd to the west" (heavy or packed over there, whoever is in it)  
 - **Integration**: Appears after local characters as part of character display section
 - **Performance Optimized**: Lightweight scanning of adjacent room contents on look command
 
