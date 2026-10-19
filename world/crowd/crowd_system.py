@@ -173,6 +173,28 @@ class CrowdSystem:
         
         return final_level
     
+    def crowd_hides_figures(self, room):
+        """
+        True when *room* is so crowded that nobody in it can be picked out
+        from the next room over (#3753): its crowd is heavy or packed by
+        the same level its own crowd line reads, and, as for that line,
+        base 0 -- the default, and the builder's off switch -- means no
+        crowd at all, however many stand there.
+        `Room.get_adjacent_character_sightings` asks it after the open-air
+        gate; the room's own line is `get_crowd_contributions`.
+
+        Args:
+            room: Room object glanced into
+
+        Returns:
+            bool: Whether the crowd hides the people in it
+        """
+        if room.crowd_base_level == 0:
+            return False
+        from .crowd_messages import CROWD_INTENSITY, FIGURES_LOST_IN_CROWD
+        intensity = CROWD_INTENSITY.get(self.calculate_crowd_level(room), 'packed')
+        return intensity in FIGURES_LOST_IN_CROWD
+
     def get_crowd_contributions(self, room, looker):
         """
         Get crowd contributions for room atmosphere display.

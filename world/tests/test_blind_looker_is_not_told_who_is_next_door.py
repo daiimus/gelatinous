@@ -25,6 +25,9 @@ class _NeighbourCase(EvenniaTest):
     def setUp(self):
         super().setUp()
         self.beyond = create_object("typeclasses.rooms.Room", key="beyond")
+        # Open ground, so the sighted control is glanced into at all
+        # (#3753: the glance is a sightline into open-air room types).
+        self.beyond.db.type = "street"
         self.door = create_object("typeclasses.exits.Exit", key="north",
                                   location=self.room1, destination=self.beyond)
         self.watcher = create_object("typeclasses.characters.Character",

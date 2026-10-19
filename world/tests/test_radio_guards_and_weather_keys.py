@@ -31,9 +31,11 @@ vocabularies in different packages will drift again; pinning them to
 each other is what stops it.
 
 **Three of the five findings in that issue did not survive checking.**
-§1 (sense-layer spacing) was fixed by #2989 on 2026-09-07 — the current
-`format_appearance` compares against `get_display_desc`, which is
-exactly the repair proposed. §3 ("the 3th floor") already imports
+§1 (sense-layer spacing) was fixed by #2989 on 2026-09-07 —
+`format_appearance` then compared against `get_display_desc`, which was
+exactly the repair proposed (since #3753 it places the break by position
+instead, and the sense layers sit in the head it pads). §3 ("the 3th
+floor") already imports
 `world.grammar.ordinal`. §4 (weather does not persist a reload) is
 real but is a design question, not a defect, and is raised for a
 ruling rather than fixed here.
