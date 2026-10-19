@@ -287,16 +287,18 @@ this game has had its balance pass.
     and hidden people (3) remain their own gates.
   - **Fifth gate, 2026-10-17 (#3753): a sightline into open ground.** The walker skips a
     destination whose `type` is not in `world.crowd.crowd_messages.OPEN_AIR_ROOM_TYPES`
-    (street, alley, market, bridge, rooftop, courtyard, balcony, fire escape;
-    `room_type_is_open_air`). Owner: "Streets, sure. Cubes? Not so much." / "I think it makes
+    (street, alley, market, bridge, rooftop, courtyard, balcony, fire escape, farm, hull,
+    garden, agridome; `room_type_is_open_air`). Owner: "Streets, sure. Cubes? Not so much." / "I think it makes
     more sense for us to have room types...which I think we already do. It's a very standard
     mud design." One word takes in more than open ground: `market` covers the open-air
     Shipbreaker yard and the covered galleries (`MarketRoom`, `outside=False`) alike, open to
     the eye if not to the sky. Any other type -- a rented unit, a tenement hall, the
     constabulary -- is never glanced into, open door or not, and an untyped room is treated
     the same. `look <door>` through an open door is its own renderer and still shows who is
-    inside. `sky`, `farm`, `hull`, `garden` and `agridome` are not listed pending the owner's
-    ruling. No room was retyped for this: the Brackett and Halcyon units stay untyped. Two
+    inside. Farm, hull, garden and agridome joined the list on 2026-10-19 (owner: "I feel like
+    those types should allow 'glance'"); every room of those four types has crowd base 0 on
+    live, so the glance into them always names figures and never a crowd. `sky` is not listed:
+    nobody stands in the air. No room was retyped for this: the Brackett and Halcyon units stay untyped. Two
     rooms are never glanced from or into (review of #3753): a sky cell, which shows no exits
     and so names no directions either (a faller passing a populated roof would otherwise read
     "You see a lone figure to the east." in every cell; a drag-fall pair already did), and the

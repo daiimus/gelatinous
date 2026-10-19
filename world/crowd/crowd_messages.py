@@ -1011,13 +1011,15 @@ def room_type_is_unpeopled(room_type):
 #: Cubes? Not so much." Open ground, with one word that takes in more:
 #: 'market' covers the open-air Shipbreaker yard and the covered galleries
 #: (`MarketRoom`, stall rows under a roof or a hull) alike, open to the eye
-#: if not to the sky. Any other word, and an untyped room, is treated as
-#: an interior whatever its door is doing. `sky`, `farm`, `hull`, `garden`
-#: and `agridome` are left out pending the owner's ruling (#3753). A new
-#: type is glanced into only once it is listed here.
+#: if not to the sky. Owner, 2026-10-19, on farm, hull, garden and
+#: agridome: "I feel like those types should allow 'glance'". Any other
+#: word, and an untyped room, is treated as an interior whatever its door
+#: is doing. `sky` is left out: nobody stands in the air, and a sky cell
+#: shows no exits of its own. A new type is glanced into only once it is
+#: listed here.
 OPEN_AIR_ROOM_TYPES = {
     'street', 'alley', 'market', 'bridge', 'rooftop', 'courtyard',
-    'balcony', 'fire escape',
+    'balcony', 'fire escape', 'farm', 'hull', 'garden', 'agridome',
 }
 
 #: `CROWD_INTENSITY` names at which nobody in a room can be picked out from

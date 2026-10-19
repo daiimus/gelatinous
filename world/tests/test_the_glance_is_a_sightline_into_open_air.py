@@ -11,7 +11,9 @@ reported from the landing. Owner, 2026-10-15: "Streets, sure. Cubes? Not
 so much." Owner, 2026-10-17: "I think open air should be a combination of
 room types and crowd size." and, offered a gate (room type says the far
 room is open air, its crowd size says what you can make out), a report, or
-a definition: "1."
+a definition: "1." Owner, 2026-10-19, asked whether farm, hull, garden
+and agridome should join the open-air list: "I feel like those types
+should allow 'glance'". Sky stays out.
 
 Everything here goes through `return_appearance` (what `look` prints)
 unless the test is about a helper itself. Fixture: a third room beyond an
@@ -220,10 +222,16 @@ class TestOnlyOpenGroundIsGlancedInto(_Alone):
         self.beyond.db.type = "constabulary"
         self.assertNotIn("lone figure", self.look())
 
-    def test_the_unruled_words_are_interiors_for_now(self):
-        for word in ("sky", "farm", "hull", "garden", "agridome"):
+    def test_the_four_outdoor_words_ruled_in_are_glanced_into(self):
+        """Owner, 2026-10-19: "I feel like those types should allow
+        'glance'"."""
+        for word in ("farm", "hull", "garden", "agridome"):
             self.beyond.db.type = word
-            self.assertNotIn("lone figure", self.look(), word)
+            self.assertIn(LONE, self.look(), word)
+
+    def test_a_sky_cell_is_never_glanced_into(self):
+        self.beyond.db.type = "sky"
+        self.assertNotIn("lone figure", self.look())
 
     def test_nor_with_company_in_the_corridor(self):
         self.char2.location = self.room1
@@ -426,15 +434,16 @@ class TestThePredicate(TestCase):
     def test_everything_else_is_an_interior(self):
         for word in ("cube hotel", "tenement", "constabulary", "stairwell",
                      "shaft", "interior", "bar", "shop", "hospital",
-                     "sky", "farm", "hull", "garden", "agridome", "", None):
+                     "sky", "", None):
             self.assertFalse(room_type_is_open_air(word), repr(word))
 
-    def test_the_set_is_the_eight_words_proposed(self):
-        """A change here is a visible decision about what players see;
-        the owner has not ruled on sky, farm, hull, garden or agridome."""
+    def test_the_set_is_the_twelve_words_ruled(self):
+        """A change here is a visible decision about what players see.
+        Eight proposed, then four more on 2026-10-19 (owner: "I feel like
+        those types should allow 'glance'"); sky stays out."""
         self.assertEqual(OPEN_AIR_ROOM_TYPES, {
             "street", "alley", "market", "bridge", "rooftop", "courtyard",
-            "balcony", "fire escape"})
+            "balcony", "fire escape", "farm", "hull", "garden", "agridome"})
 
 
 class TestTheFormatterPlacesBlankLinesByPosition(_Alone):
