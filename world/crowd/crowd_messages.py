@@ -1008,13 +1008,17 @@ def room_type_is_unpeopled(room_type):
 #: Room types the neighbour glance may look into. The glance in
 #: `Room.get_adjacent_character_sightings` is a sightline: it looks into
 #: these and into nothing else (#3753). Owner, 2026-10-15: "Streets, sure.
-#: Cubes? Not so much." Open ground, with one word that takes in more:
-#: 'market' covers the open-air Shipbreaker yard and the covered galleries
-#: (`MarketRoom`, stall rows under a roof or a hull) alike, open to the eye
-#: if not to the sky. Owner, 2026-10-19, on farm, hull, garden and
-#: agridome: "I feel like those types should allow 'glance'". Any other
-#: word, and an untyped room, is treated as an interior whatever its door
-#: is doing. `sky` is left out: nobody stands in the air, and a sky cell
+#: Cubes? Not so much." Owner, 2026-10-19, on farm, hull, garden and
+#: agridome: "I feel like those types should allow 'glance'". The word is
+#: the whole test, so two of them reach past open ground: 'market' covers
+#: the open-air Shipbreaker yard and the covered galleries (`MarketRoom`,
+#: stall rows under a roof or a hull) alike, and 'farm' covers the
+#: Greenhaus towers whole, the open growing platforms and the enclosed
+#: stair cores and ground bays with them (build 055 types all 99 cells
+#: 'farm'), so a figure in a stair core shows from the platform beside it
+#: and from the core above or below. Open to the eye if not to the sky.
+#: Any other word, and an untyped room, is treated as an interior
+#: whatever its door is doing. `sky` is left out: nobody stands in the air, and a sky cell
 #: shows no exits of its own. A new type is glanced into only once it is
 #: listed here.
 OPEN_AIR_ROOM_TYPES = {

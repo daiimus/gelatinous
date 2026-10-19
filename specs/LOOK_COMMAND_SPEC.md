@@ -290,15 +290,23 @@ this game has had its balance pass.
     (street, alley, market, bridge, rooftop, courtyard, balcony, fire escape, farm, hull,
     garden, agridome; `room_type_is_open_air`). Owner: "Streets, sure. Cubes? Not so much." / "I think it makes
     more sense for us to have room types...which I think we already do. It's a very standard
-    mud design." One word takes in more than open ground: `market` covers the open-air
-    Shipbreaker yard and the covered galleries (`MarketRoom`, `outside=False`) alike, open to
-    the eye if not to the sky. Any other type -- a rented unit, a tenement hall, the
+    mud design." The word is the whole test, so two words take in more than open ground:
+    `market` covers the open-air Shipbreaker yard and the covered galleries (`MarketRoom`,
+    `outside=False`) alike, and `farm` covers the Greenhaus towers whole (build 055 types all
+    99 cells `farm`): the open growing platforms and, with them, the 33 stair cores and 6
+    ground bays built `outside=False`, so a figure in a stair core shows from the platform
+    beside it and from the core above or below ("You see a lone figure to the up.", the
+    walker's phrasing for a vertical exit, #3755). Open to the eye if not to the sky. Any
+    other type -- a rented unit, a tenement hall, the
     constabulary -- is never glanced into, open door or not, and an untyped room is treated
     the same. `look <door>` through an open door is its own renderer and still shows who is
     inside. Farm, hull, garden and agridome joined the list on 2026-10-19 (owner: "I feel like
     those types should allow 'glance'"); every room of those four types has crowd base 0 on
-    live, so the glance into them always names figures and never a crowd. `sky` is not listed:
-    nobody stands in the air. No room was retyped for this: the Brackett and Halcyon units stay untyped. Two
+    live, so the glance into them always names figures and never a crowd. In play on
+    2026-10-19: `garden` is the six Greenhaus lawns; no exit leads into any of the nine `hull`
+    rooms, so that word changes nothing yet; the five `agridome` rooms include the Pre-Fab
+    Agridome airlock, where a keeper stands, so Kaspar Street reads "You see a lone figure to
+    the south." `sky` is not listed: nobody stands in the air. No room was retyped for this: the Brackett and Halcyon units stay untyped. Two
     rooms are never glanced from or into (review of #3753): a sky cell, which shows no exits
     and so names no directions either (a faller passing a populated roof would otherwise read
     "You see a lone figure to the east." in every cell; a drag-fall pair already did), and the

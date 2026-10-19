@@ -222,7 +222,7 @@ class TestOnlyOpenGroundIsGlancedInto(_Alone):
         self.beyond.db.type = "constabulary"
         self.assertNotIn("lone figure", self.look())
 
-    def test_the_four_outdoor_words_ruled_in_are_glanced_into(self):
+    def test_the_four_words_ruled_in_are_glanced_into(self):
         """Owner, 2026-10-19: "I feel like those types should allow
         'glance'"."""
         for word in ("farm", "hull", "garden", "agridome"):
