@@ -18,6 +18,19 @@ from .objects import ObjectParent
 #: Irregular plurals for the exit lister's custom room types.
 TYPE_PLURALS = {"constabulary": "constabularies"}
 
+#: Exits keyed with these words are vertical, and English puts no "to the"
+#: in front of them (#3755; owner, 2026-10-23: "Up and down are very common
+#: exit names - so we should probably account for them."). A "continues"
+#: sentence keeps the word ("The fire escape continues up (u) and down
+#: (d)."); a "there is" sentence and the neighbour glance say where the
+#: thing is ("There is a fire escape above (u).", "You see a lone figure
+#: below."). The exit's key decides. An exit named something else that
+#: merely answers to `down` (the Constabulary rooftop hatch, the Boot's
+#: breach, the Brackett fire escape's drop) is a named exit and keeps
+#: "to the", put off with the other named exits by the same ruling ("The
+#: others can be put off for now.").
+VERTICAL_EXITS = {"up": "above", "down": "below"}
+
 
 class Room(ObjectParent, DefaultRoom):
     """
@@ -713,7 +726,9 @@ class Room(ObjectParent, DefaultRoom):
         figure to the north." / "You see a group of people standing to the
         east." / "You see a crowd to the west." Written to encourage
         interaction and chase scenes; it names no one (`look <direction>`
-        does that).
+        does that). An exit keyed `up` or `down` reads "above"/"below"
+        with no "to the", as the exits footer phrases it
+        (`format_exit_phrase`, #3755).
 
         A sightline, so it looks only into rooms typed as open ground
         (#3753). The gates,
@@ -823,19 +838,23 @@ class Room(ObjectParent, DefaultRoom):
                     char_count += 1
             
             if char_count > 0:
-                direction = exit_obj.key
+                # "to the north", or "above"/"below" for a vertical exit
+                # (#3755): the same phrasing the exits footer uses.
+                where = self.format_exit_phrase([(exit_obj.key, None)],
+                                                continues=False)
                 if char_count == 1:
-                    sightings.append(f"You see a lone figure to the {direction}.")
+                    sightings.append(f"You see a lone figure {where}.")
                 else:
-                    sightings.append(f"You see a group of people standing to the {direction}.")
+                    sightings.append(
+                        f"You see a group of people standing {where}.")
 
         if crowded:
+            where = self.format_exit_phrase([(key, None) for key in crowded],
+                                            continues=False)
             if len(crowded) == 1:
-                sightings.append(f"You see a crowd to the {crowded[0]}.")
+                sightings.append(f"You see a crowd {where}.")
             else:
-                sightings.append(
-                    "You see crowds to the "
-                    f"{self.format_direction_list(crowded)}.")
+                sightings.append(f"You see crowds {where}.")
         return " ".join(sightings)
     
     def get_display_things(self, looker, **kwargs):
@@ -1134,8 +1153,6 @@ class Room(ObjectParent, DefaultRoom):
             intersections = []
             
             for direction, alias in exit_groups['streets']:
-                dir_text = self.format_direction_with_alias(direction, alias)
-                
                 # Analyze the destination room's exit count to determine type
                 exit_obj = None
                 for exit in self.exits:
@@ -1150,92 +1167,123 @@ class Room(ObjectParent, DefaultRoom):
                                           and e.destination.type == 'street')
                     
                     if street_exit_count <= 1:
-                        dead_ends.append(dir_text)
+                        dead_ends.append((direction, alias))
                     elif street_exit_count == 2:
-                        continues.append(dir_text)
+                        continues.append((direction, alias))
                     else:
-                        intersections.append(dir_text)
+                        intersections.append((direction, alias))
                 else:
                     # Fallback if we can't analyze destination
-                    continues.append(dir_text)
+                    continues.append((direction, alias))
             
             # Format grouped street descriptions
             if dead_ends:
+                where = self.format_exit_phrase(dead_ends, continues=False)
                 if len(dead_ends) == 1:
-                    descriptions.append(f"There is a dead-end to the {dead_ends[0]}.")
+                    descriptions.append(f"There is a dead-end {where}.")
                 else:
-                    dead_end_desc = self.format_direction_list(dead_ends)
-                    descriptions.append(f"There are dead-ends to the {dead_end_desc}.")
+                    descriptions.append(f"There are dead-ends {where}.")
                     
             if continues:
-                if len(continues) == 1:
-                    descriptions.append(f"The street continues to the {continues[0]}.")
-                else:
-                    continue_desc = self.format_direction_list(continues)
-                    descriptions.append(f"The street continues to the {continue_desc}.")
+                where = self.format_exit_phrase(continues, continues=True)
+                descriptions.append(f"The street continues {where}.")
                     
             if intersections:
+                where = self.format_exit_phrase(intersections, continues=False)
                 if len(intersections) == 1:
-                    descriptions.append(f"There is an intersection to the {intersections[0]}.")
+                    descriptions.append(f"There is an intersection {where}.")
                 else:
-                    intersection_desc = self.format_direction_list(intersections)
-                    descriptions.append(f"There are intersections to the {intersection_desc}.")
+                    descriptions.append(f"There are intersections {where}.")
         
         # Format custom types (grouped by type)
         for dest_type, exits in exit_groups['custom_types'].items():
-            type_dirs = [self.format_direction_with_alias(direction, alias) 
-                        for direction, alias in exits]
             if dest_type and dest_type == self.db.type:
                 # inside a same-type venue the building CONTINUES rather
                 # than re-announcing itself ("there are constabularies to
                 # the north and south" reads like three police stations)
-                type_desc = (type_dirs[0] if len(type_dirs) == 1
-                             else self.format_direction_list(type_dirs))
-                descriptions.append(
-                    f"The {dest_type} continues to the {type_desc}.")
-            elif len(type_dirs) == 1:
+                where = self.format_exit_phrase(exits, continues=True)
+                descriptions.append(f"The {dest_type} continues {where}.")
+            elif len(exits) == 1:
                 # dest_type is data-driven, so the article has to be
                 # agreed rather than hardcoded — "a interior" (#1725).
                 from world.grammar import get_article
                 article = get_article(dest_type)
-                descriptions.append(
-                    f"There is {article} {dest_type} to the {type_dirs[0]}.")
+                where = self.format_exit_phrase(exits, continues=False)
+                descriptions.append(f"There is {article} {dest_type} {where}.")
             else:
-                type_desc = self.format_direction_list(type_dirs)
                 plural = TYPE_PLURALS.get(dest_type, f"{dest_type}s")
-                descriptions.append(f"There are {plural} to the {type_desc}.")
+                where = self.format_exit_phrase(exits, continues=False)
+                descriptions.append(f"There are {plural} {where}.")
         
         # Format edges (grouped)
         if exit_groups['edges']:
-            edge_dirs = [self.format_direction_with_alias(direction, alias) 
-                        for direction, alias in exit_groups['edges']]
-            if len(edge_dirs) == 1:
-                descriptions.append(f"There is an edge to the {edge_dirs[0]}.")
+            where = self.format_exit_phrase(exit_groups['edges'], continues=False)
+            if len(exit_groups['edges']) == 1:
+                descriptions.append(f"There is an edge {where}.")
             else:
-                edge_desc = self.format_direction_list(edge_dirs)
-                descriptions.append(f"There are edges to the {edge_desc}.")
+                descriptions.append(f"There are edges {where}.")
         
         # Format gaps (grouped)
         if exit_groups['gaps']:
-            gap_dirs = [self.format_direction_with_alias(direction, alias) 
-                       for direction, alias in exit_groups['gaps']]
-            if len(gap_dirs) == 1:
-                descriptions.append(f"There is a gap to the {gap_dirs[0]}.")
+            where = self.format_exit_phrase(exit_groups['gaps'], continues=False)
+            if len(exit_groups['gaps']) == 1:
+                descriptions.append(f"There is a gap {where}.")
             else:
-                gap_desc = self.format_direction_list(gap_dirs)
-                descriptions.append(f"There are gaps to the {gap_desc}.")
+                descriptions.append(f"There are gaps {where}.")
         
         # Format fallback exits
         if exit_groups['fallback']:
-            fallback_dirs = [self.format_direction_with_alias(direction, alias) 
-                           for direction, alias in exit_groups['fallback']]
-            if len(fallback_dirs) == 1:
-                descriptions.append(f"There is an exit to the {fallback_dirs[0]}.")
+            where = self.format_exit_phrase(exit_groups['fallback'], continues=False)
+            if len(exit_groups['fallback']) == 1:
+                descriptions.append(f"There is an exit {where}.")
             else:
-                fallback_desc = self.format_direction_list(fallback_dirs)
-                descriptions.append(f"There are exits to the {fallback_desc}.")
+                descriptions.append(f"There are exits {where}.")
         
         return " ".join(descriptions) if descriptions else ""
+
+    def format_exit_phrase(self, exits, continues):
+        """
+        The tail of one exit sentence, for one group of exits (#3755).
+
+        Compass and named exits sit behind one "to the"; up and down
+        (`VERTICAL_EXITS`, by exit key) follow with no preposition, as
+        "up"/"down" in a "continues" sentence and "above"/"below" in a
+        "there is" sentence or the neighbour glance:
+
+            "to the south (s) and north (n), and up (u)"
+            "to the west (w)"
+            "up (u) and down (d)"
+            "above (u)"
+
+        Args:
+            exits (list): (direction, alias) pairs as grouped by
+                `get_custom_exit_display`; alias may be None.
+            continues (bool): True for "The {type} continues ...",
+                False for "There is ..." and the glance.
+
+        Returns:
+            str: the phrase, without the trailing full stop.
+        """
+        compass, vertical = [], []
+        for direction, alias in exits:
+            word = direction.lower()
+            if word in VERTICAL_EXITS:
+                shown = word if continues else VERTICAL_EXITS[word]
+                vertical.append(f"{shown} ({alias})"
+                                if alias and alias != direction else shown)
+            else:
+                compass.append(self.format_direction_with_alias(direction, alias))
+        parts = []
+        if compass:
+            parts.append("to the " + self.format_direction_list(compass))
+        if vertical:
+            parts.append(self.format_direction_list(vertical))
+        if len(parts) == 2:
+            # two exits in all read "to the west (w) and up (u)"; three or
+            # more take the list's own comma before the vertical tail
+            joiner = " and " if len(exits) == 2 else ", and "
+            return parts[0] + joiner + parts[1]
+        return parts[0]
     
     def format_direction_with_alias(self, direction, alias):
         """
