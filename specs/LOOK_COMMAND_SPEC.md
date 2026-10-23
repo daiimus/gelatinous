@@ -130,10 +130,11 @@ The street continues to the west (w) and east (e).
   exit key after "to the", so a vertical exit read "The fire escape continues to the up (u)
   and down (d)." (Brackett fire escape, Halcyon companionways) and, once #3753 let the glance
   into the Greenhaus towers, "You see a lone figure to the up." Owner: "Up and down are very
-  common exit names - so we should probably account for them." `Room.format_exit_phrase`
-  renders every group now: compass and named exits behind one "to the", then exits keyed
-  `up`/`down` (`typeclasses.rooms.VERTICAL_EXITS`) with no preposition, as "up"/"down" in a
-  "continues" sentence and "above"/"below" in a "there is" sentence or the glance:
+  common exit names - so we should probably account for them." Every group now renders
+  through `Room.format_exit_phrases`: compass and named exits behind one "to the", and exits
+  keyed `up`/`down` (`typeclasses.rooms.VERTICAL_EXITS`) as a phrase of their own with no
+  preposition, "up"/"down" in a "continues" sentence and "above"/"below" in a "there is"
+  sentence or the glance:
 
   | sentence | reads |
   |---|---|
