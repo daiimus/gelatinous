@@ -138,14 +138,19 @@ The street continues to the west (w) and east (e).
   | sentence | reads |
   |---|---|
   | continues | The fire escape continues up (u) and down (d). |
-  | continues, mixed | The tenement continues to the south (s) and north (n), and up (u). |
+  | continues, mixed | The tenement continues to the southeast (se). It continues up (u) and down (d). |
   | there is | There is a fire escape above (u). |
   | there are | There are exits above (u) and below (d). |
+  | there is, mixed | There is an exit to the north (n). There are exits above (u) and below (d). |
   | glance | You see a lone figure above. |
   | glance, crowd | You see a crowd below. |
 
-  Two exits in all take a plain "and" ("to the west (w) and up (u)"); three or more keep the
-  list's comma before the vertical tail. The exit's key decides, so `hatch`, `breach` and
+  A group holding both kinds gets two sentences, compass first (`Room.format_exit_phrases`
+  returns one phrase per kind; `continues_sentences` writes "It continues ..." for the
+  second), so the "and" never doubles. The review of PR #3756 found the joined form
+  ("to the southeast (se), and up (u) and down (d)") in 42 live rooms, the 15 Brackett
+  stairwells and 27 Greenhaus stair cores; owner, shown both: "That's fine" to the split.
+  The exit's key decides, so `hatch`, `breach` and
   `drop` (the three live exits that merely answer to `down`) stay named exits. Named exits
   ("to the window", "to the 3B") keep "to the" by the same ruling: "The others can be put
   off for now. I don't take issue with them." Tests:
