@@ -126,6 +126,36 @@ The street continues to the west (w) and east (e).
 
 ### 6. Exit Display Enhancements
 - **Alias Integration**: Shows direction and primary alias: "north (n)"
+- **Up and down are not compass points (#3755, 2026-10-23).** Every footer sentence put the
+  exit key after "to the", so a vertical exit read "The fire escape continues to the up (u)
+  and down (d)." (Brackett fire escape, Halcyon companionways) and, once #3753 let the glance
+  into the Greenhaus towers, "You see a lone figure to the up." Owner: "Up and down are very
+  common exit names - so we should probably account for them." Every group now renders
+  through `Room.format_exit_phrases`: compass and named exits behind one "to the", and exits
+  keyed `up`/`down` (`typeclasses.rooms.VERTICAL_EXITS`) as a phrase of their own with no
+  preposition, "up"/"down" in a "continues" sentence and "above"/"below" in a "there is"
+  sentence or the glance:
+
+  | sentence | reads |
+  |---|---|
+  | continues | The fire escape continues up (u) and down (d). |
+  | continues, mixed | The tenement continues to the southeast (se). It continues up (u) and down (d). |
+  | there is | There is a fire escape above (u). |
+  | there are | There are exits above (u) and below (d). |
+  | there is, mixed | There is an exit to the north (n). There are exits above (u) and below (d). |
+  | glance | You see a lone figure above. |
+  | glance, crowd | You see a crowd below. |
+
+  A group holding both kinds gets two sentences, compass first (`Room.format_exit_phrases`
+  returns one phrase per kind; `continues_sentences` writes "It continues ..." for the
+  second), so the "and" never doubles. The review of PR #3756 found the joined form
+  ("to the southeast (se), and up (u) and down (d)") in 42 live rooms, the 15 Brackett
+  stairwells and 27 Greenhaus stair cores; owner, shown both: "That's fine" to the split.
+  The exit's key decides, so `hatch`, `breach` and
+  `drop` (the three live exits that merely answer to `down`) stay named exits. Named exits
+  ("to the window", "to the 3B") keep "to the" by the same ruling: "The others can be put
+  off for now. I don't take issue with them." Tests:
+  `world/tests/test_up_and_down_are_not_compass_points.py`.
 - **Edge/Gap Support**: Integrates edges and gaps into natural language flow
 - **Fallback Handling**: Generic exit format for unknown destination types
 - **Bug Fixes**: Resolved AliasHandler indexing issues with proper `.all()` method usage
@@ -295,8 +325,8 @@ this game has had its balance pass.
     `outside=False`) alike, and `farm` covers the Greenhaus towers whole (build 055 types all
     99 cells `farm`): the open growing platforms and, with them, the 33 stair cores and 6
     ground bays built `outside=False`, so a figure in a stair core shows from the platform
-    beside it and from the core above or below ("You see a lone figure to the up.", the
-    walker's phrasing for a vertical exit, #3755). Open to the eye if not to the sky. Any
+    beside it and from the core above or below ("You see a lone figure above.", #3755; until
+    2026-10-23 the walker read "to the up"). Open to the eye if not to the sky. Any
     other type -- a rented unit, a tenement hall, the
     constabulary -- is never glanced into, open door or not, and an untyped room is treated
     the same. `look <door>` through an open door is its own renderer and still shows who is
