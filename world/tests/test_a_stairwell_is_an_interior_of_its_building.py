@@ -6,15 +6,19 @@ tenement or farm to stairwell/straiway - right?" / "stairwell should be
 fine." Build 170 retyped the 50 live stair rooms (17 Brackett, 33
 Greenhaus) and renamed the 30 "Stair Core" rooms "Stairway".
 
-What the word has to mean for the retype to change only what the owner
-asked for:
+What the word means, pinned here because the retype rides on it:
 
 - an interior for the glance (`room_type_is_open_air` is False), so the
   Greenhaus stairways stop being glanced into from the platforms;
 - residential for the crowd prose, since the Brackett stairwells were
   `tenement` and their crowd lines must not switch to the street pool;
-- the footer reads the stairs as a building of their own: "The stairwell
-  continues up (u) and down (d). There is a tenement to the southeast (se)."
+- the footer reads the stairs as a building of their own, two sentences
+  in the order the exits were built: "There is a tenement to the
+  southeast (se). The stairwell continues down (d) and up (u)."
+
+Also already true of the word, and so part of the retype: crowd modifier
++0.1 (`crowd_system.room_type_modifiers`), witness role `tenant`
+(`world/director/witness.py`), route cost 1.2 (`world/spatial/pathfind.py`).
 """
 from evennia.utils import create
 from evennia.utils.test_resources import EvenniaTest

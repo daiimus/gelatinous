@@ -21,9 +21,15 @@ Two things, both on rooms that already exist:
    the platforms beside them (#3753, #3755). `outside`, crowd base, skins,
    exits and contents are untouched.
 
-The footer then reads, with no special case: "The stairwell continues
-up (u) and down (d). There is a tenement to the southeast (se)." and
-"There is a stairwell to the west (w)." from a landing.
+The footer then reads, with no special case, two sentences in the order
+the exits were built: "There is a tenement to the southeast (se). The
+stairwell continues down (d) and up (u)." in a Brackett stairwell, "There
+are farms to the north (n) and south (s). The stairwell continues down
+(d) and up (u)." in a Greenhaus stairway, and from the rooms beside them
+"There is a stairwell to the west (w)." / "There is a stairwell to the
+south (s)." where the old same-type "continues" folded the stair in.
+Pathfinding costs the stairs 1.2 instead of 1.0 and a witness there is a
+tenant: both already what `stairwell` meant.
 
 Every room is named by dbref AND checked against the key it had on
 2026-10-24 before anything is written; one mismatch aborts the whole
