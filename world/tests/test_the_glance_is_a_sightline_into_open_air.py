@@ -432,18 +432,20 @@ class TestThePredicate(TestCase):
             self.assertTrue(room_type_is_open_air(word), word)
 
     def test_everything_else_is_an_interior(self):
-        for word in ("cube hotel", "tenement", "constabulary", "stairwell",
+        for word in ("cube hotel", "tenement", "constabulary", "lobby",
                      "shaft", "interior", "bar", "shop", "hospital",
                      "sky", "", None):
             self.assertFalse(room_type_is_open_air(word), repr(word))
 
-    def test_the_set_is_the_twelve_words_ruled(self):
+    def test_the_set_is_the_thirteen_words_ruled(self):
         """A change here is a visible decision about what players see.
-        Eight proposed, then four more on 2026-10-19 (owner: "I feel like
-        those types should allow 'glance'"); sky stays out."""
+        Eight proposed, four more on 2026-10-19, stairwell on 2026-10-24
+        (#3759: the list is the rooms you can see into, not the outdoor
+        ones); sky stays out."""
         self.assertEqual(OPEN_AIR_ROOM_TYPES, {
             "street", "alley", "market", "bridge", "rooftop", "courtyard",
-            "balcony", "fire escape", "farm", "hull", "garden", "agridome"})
+            "balcony", "fire escape", "farm", "hull", "garden", "agridome",
+            "stairwell"})
 
 
 class TestTheFormatterPlacesBlankLinesByPosition(_Alone):

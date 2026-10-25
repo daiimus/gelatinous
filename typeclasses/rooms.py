@@ -733,21 +733,22 @@ class Room(ObjectParent, DefaultRoom):
         with no "to the", as the exits footer phrases it
         (`format_exit_phrases`, #3755).
 
-        A sightline, so it looks only into rooms typed as open ground
-        (#3753). The gates,
+        It looks only into rooms whose type is on the glance list
+        (`OPEN_AIR_ROOM_TYPES`, #3753): the rooms you can see into from
+        next door, so a pursuer sees where someone went and a crowd can
+        hide them. The gates,
         in the order the walk asks them: the looker must see
         (`can_perceive_sense`, #2793); view-locked exits stay out
         (`_visible_exits`, #2588); an exit that blocks sight -- a shut
         door, a lift door with the car elsewhere -- is skipped (#3750);
-        the far room's `type` must be on the crowd layer's open-air list
+        the far room's `type` must be on the crowd layer's glance list
         (`room_type_is_open_air`: street, alley, market, bridge, rooftop,
-        courtyard, balcony, fire escape, farm, hull, garden, agridome; the
-        word is the whole test, so 'market' takes in the covered galleries
-        and 'farm' the Greenhaus ground bays, open to the eye if not to the
-        sky; the Greenhaus stairways are 'stairwell' since build 170, #3757,
-        and so interiors), so any other room, an untyped one
-        included, is never glanced into whatever its door is doing
-        (#3753); a far room whose crowd is heavy or packed shows
+        courtyard, balcony, fire escape, farm, hull, garden, agridome,
+        stairwell; the word is the whole test, so 'market' takes in the
+        covered galleries, 'farm' the Greenhaus ground bays and 'stairwell'
+        the Brackett stairs and Greenhaus stairways, #3759), so any other
+        room, an untyped one included, is never glanced into whatever its
+        door is doing (#3753); a far room whose crowd is heavy or packed shows
         only the crowd and nobody in it (`crowd_system.crowd_hides_figures`,
         #3753); hidden people are not counted as figures (`can_perceive`,
         stealth spec §7), though they thicken the far crowd as they do
