@@ -274,33 +274,20 @@ class Room(ObjectParent, DefaultRoom):
         Also supports aiming system: When looker is aiming in a direction,
         shows the complete appearance of the aimed room instead of current room.
         """
-        # Check if looker is aiming in a direction - if so, show aimed room appearance
-        aiming_direction = getattr(looker.ndb, "aiming_direction", None) if hasattr(looker, 'ndb') else None
-        
-        if aiming_direction:
-            # Find the exit for the aimed direction
-            exit_obj = None
-            for ex in self.exits:
-                current_exit_aliases_lower = [alias.lower() for alias in (ex.aliases.all() if hasattr(ex.aliases, "all") else [])]
-                if ex.key.lower() == aiming_direction.lower() or aiming_direction.lower() in current_exit_aliases_lower:
-                    exit_obj = ex
-                    break
-            
-            # If we found the exit and it has a destination, return that room's appearance.
-            # Over an edge that is the ground the edge drops to, not the air
-            # cell the exit leads into (#3589); a bare column shows the air.
-            if exit_obj and exit_obj.destination:
-                from world.gravity import room_through
-                aimed_room = room_through(exit_obj) or exit_obj.destination
-                # Call the parent's return_appearance directly to avoid aiming recursion
-                base = super(Room, aimed_room).return_appearance(looker, **kwargs)
-                # ...then compose the aimed room's OWN layers onto it (#3374).
-                # Skipping Room in the MRO skipped the only place @integrate
-                # content and weather are assembled, so the one room a
-                # shooter stares into rendered bare: no graffiti, no blood
-                # pools, no weather.
-                compose = getattr(aimed_room, "_compose_room_layers", None)
-                return compose(base, looker) if callable(compose) else base
+        # Aiming: show the aimed room instead of this one. Over an edge
+        # that is the ground the edge drops to, not the air cell the exit
+        # leads into (#3589); a bare column shows the air.
+        aimed_room = self.aimed_room_for(looker)
+        if aimed_room is not None:
+            # Call the parent's return_appearance directly to avoid aiming recursion
+            base = super(Room, aimed_room).return_appearance(looker, **kwargs)
+            # ...then compose the aimed room's OWN layers onto it (#3374).
+            # Skipping Room in the MRO skipped the only place @integrate
+            # content and weather are assembled, so the one room a
+            # shooter stares into rendered bare: no graffiti, no blood
+            # pools, no weather.
+            compose = getattr(aimed_room, "_compose_room_layers", None)
+            return compose(base, looker) if callable(compose) else base
 
         # Normal room appearance (not aiming)
         # Get the base description from the parent class
@@ -346,69 +333,34 @@ class Room(ObjectParent, DefaultRoom):
         
         return appearance
 
-    def search_for_target(self, looker, searchdata, return_candidates_only=False, **kwargs):
+    def aimed_room_for(self, looker):
         """
-        Enhanced search that respects aiming direction for world interpretation.
-        
-        When looker is aiming in a direction, creates a unified search space
-        across both current room and aimed room. This allows ordinal numbers
-        to work correctly across the combined space (e.g., "3rd sword" finds
-        the 3rd sword across both rooms).
-        
-        Args:
-            looker: The character performing the search
-            searchdata: What to search for (string)
-            return_candidates_only: If True, return just the candidate list 
-                                  instead of performing the search
-            **kwargs: Additional search parameters
-            
-        Returns:
-            Search result object(s), None if not found, or candidate list if return_candidates_only=True
+        The room *looker* is aiming into from here, or None.
+
+        Reads `looker.ndb.aiming_direction`, finds the exit it names (by
+        key or alias) and returns the room through it: over an edge that
+        is the ground the edge drops to, not the air cell the exit leads
+        into (`world.gravity.room_through`, #3589), and over a bare column
+        the air cell itself. The aim view (`return_appearance`) and the
+        aimed `look <target>` (`commands.CmdLook`) read the same answer.
+        `attack` and `throw` resolve the exit their own way and are not
+        changed here (#3596).
         """
-        # Check if looker is aiming in a direction
-        aiming_direction = getattr(looker.ndb, "aiming_direction", None) if hasattr(looker, 'ndb') else None
-        
-        if aiming_direction:
-            # Find the exit for the aimed direction (same logic as return_appearance)
-            exit_obj = None
-            for ex in self.exits:
-                current_exit_aliases_lower = [alias.lower() for alias in (ex.aliases.all() if hasattr(ex.aliases, "all") else [])]
-                if ex.key.lower() == aiming_direction.lower() or aiming_direction.lower() in current_exit_aliases_lower:
-                    exit_obj = ex
-                    break
-            
-            # If we found the exit and it has a destination, create unified search space
-            # -- in the room the aim really reaches (#3589).
-            if exit_obj and exit_obj.destination:
+        aiming_direction = getattr(getattr(looker, "ndb", None),
+                                   "aiming_direction", None)
+        if not aiming_direction:
+            return None
+        wanted = aiming_direction.lower()
+        for ex in self.exits:
+            aliases = [a.lower() for a in (ex.aliases.all()
+                                           if hasattr(ex.aliases, "all") else [])]
+            if ex.key.lower() == wanted or wanted in aliases:
+                if not ex.destination:
+                    return None
                 from world.gravity import room_through
-                aimed_room = room_through(exit_obj) or exit_obj.destination
-                
-                # Combine candidates from both rooms for unified ordinal numbering
-                current_candidates = list(self.contents)
-                aimed_candidates = list(aimed_room.contents)
-                combined_candidates = current_candidates + aimed_candidates
-                
-                # Remove the looker from candidates (they shouldn't find themselves)
-                if looker in combined_candidates:
-                    combined_candidates.remove(looker)
-                
-                # Return just candidates if requested
-                if return_candidates_only:
-                    return combined_candidates
-                
-                # Search using combined candidate pool
-                return looker.search(searchdata, candidates=combined_candidates, quiet=True, **kwargs)
-        
-        # Not aiming or invalid aim - use standard room search
-        # Remove the looker from candidates
-        candidates = [obj for obj in self.contents if obj != looker]
-        
-        # Return just candidates if requested
-        if return_candidates_only:
-            return candidates
-            
-        return looker.search(searchdata, candidates=candidates, quiet=True, **kwargs)
-    
+                return room_through(ex) or ex.destination
+        return None
+
     def get_integrated_objects_content(self, looker):
         """
         Get content from all @integrate objects in this room.

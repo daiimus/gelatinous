@@ -1291,10 +1291,21 @@ def return_appearance(self, looker, **kwargs):
     plan or should join the `listen` / `smell` / `feel` ruling (#1510) is an open owner question.
 
 **🎯 Aiming Integration Enhancement:**
-- When aiming in a direction, targeted look commands search both current room AND aimed-at room
-- Unified ordinal numbering across both spaces ("2nd goblin" finds 2nd goblin whether in current or aimed room)
-- Implemented via `Character.get_search_candidates()` override using Evennia's designed hook points
-- Universal system affects ALL commands using `caller.search()`, not just look commands
+- **REPLACED 2026-10-24 (#3596).** `look <target>` while aiming is `commands.CmdLook`: it
+  resolves the target in the aimed room first (`Room.aimed_room_for`, the same seam the aim
+  view reads), a person by description through the identity pipeline, then a thing by name,
+  then falls back to the ordinary reach (your room, your pockets). Ordinals count the aimed
+  room alone. Nothing else widens: `Character.get_search_candidates` no longer adds the
+  aimed room to the default search, so `put`, `scan`, `diagnose`, `tune`, `remember`, `to`,
+  `whisper` and targeted emotes reach this room only while aiming. `attack` and `throw`
+  name the aimed room themselves and did not change. Owner, on the audit: `look
+  <description>` down the barrel works; emotes, `to` and `whisper` across the aim do not.
+  Tests: `world/tests/test_aiming_does_not_widen_every_search.py`,
+  `test_the_aimed_look_reaches_the_ground.py`. The bullets below describe the old scheme.
+- ~~When aiming in a direction, targeted look commands search both current room AND aimed-at room~~
+- ~~Unified ordinal numbering across both spaces ("2nd goblin" finds 2nd goblin whether in current or aimed room)~~
+- ~~Implemented via `Character.get_search_candidates()` override using Evennia's designed hook points~~
+- ~~Universal system affects ALL commands using `caller.search()`, not just look commands~~
   - **NARROWED 2026-09-11.** Read literally this is still true, and the hook works: an
     aiming looker's `caller.search()` draws on both rooms with unified ordinals
     (`Character.get_search_candidates`, `typeclasses/characters.py:691-731`, delegating to

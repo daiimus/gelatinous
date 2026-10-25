@@ -199,11 +199,12 @@ class Dbrefs(_Stash):
 
 
 class AimingKeepsAChosenPool(_Stash):
-    """Aiming widens the DEFAULT search to room + aimed room. It used to
-    swap a pool the command chose for that too (#3637 review), so while
-    aiming, `get x from <tin in hand>` lost the tin, a held detonator
+    """Aiming used to widen the DEFAULT search to room + aimed room, and
+    before #3658 swapped a pool the command chose for that too, so while
+    aiming `get x from <tin in hand>` lost the tin, a held detonator
     could not be found, and `hide knife` could lift a knife off the aimed
-    room's floor."""
+    room's floor. Since #3596 aiming widens nothing: `look` reaches the
+    aimed room on its own (commands.CmdLook)."""
 
     def setUp(self):
         super().setUp()
@@ -223,6 +224,7 @@ class AimingKeepsAChosenPool(_Stash):
         self.assertFalse(self.char2.search("rusty knife", location=self.char2,
                                            quiet=True))
 
-    def test_control_the_default_reach_is_still_widened(self):
-        far = self.thing("distant crate", location=self.north)
-        self.assertEqual(list(self.char2.search("distant crate", quiet=True)), [far])
+    def test_the_default_reach_is_not_widened_either(self):
+        """#3596: a bare search while aiming is this room and your pockets."""
+        self.thing("distant crate", location=self.north)
+        self.assertEqual(list(self.char2.search("distant crate", quiet=True)), [])

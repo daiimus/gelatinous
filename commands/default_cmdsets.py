@@ -18,6 +18,7 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 from evennia import default_cmds, CmdSet
 from evennia.commands.default.general import CmdSetDesc
 from commands import CmdCharacter
+from commands.CmdLook import CmdLook
 from commands import CmdInventory
 from commands import CmdAdmin
 from commands import CmdClothing
@@ -162,6 +163,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         # any commands you add below will overload the default ones.
         #
         # Add individual character commands
+        self.add(CmdLook())          # aimed `look <target>` (#3596)
         self.add(CmdCharacter.CmdStats)
         self.add(CmdSpawnMob())
         self.add(CmdCoordSeed())
