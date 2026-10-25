@@ -4,9 +4,9 @@ Evennia's `look <target>` searches the looker's own reach: their room
 and their inventory. While a character aims down an exit, the room they
 are looking INTO is the one down the barrel, so `look <target>` tries
 that room first: a person there by their description (the identity
-pipeline, `commands._identity_targeting.resolve_character_target`), then
-a thing there by name, and only then the ordinary reach, so a knife in
-your own hand is still `look knife`.
+matcher, `world.search.identity_match_characters`; a Builder may also
+use a real key), then a thing there by name, and only then the ordinary
+reach, so a knife in your own hand is still `look knife`.
 
 This replaces a widening that lived in `Character.get_search_candidates`
 and reached EVERY command's default search while aiming. That widening
@@ -56,20 +56,31 @@ class CmdLook(default_cmds.CmdLook):
 
     def aimed_target(self, caller, aimed):
         """A person, then a thing, in *aimed*; None for neither, False
-        when a multimatch was reported and the look should stop."""
-        from commands._identity_targeting import resolve_character_target
+        when a multimatch was reported and the look should stop.
+
+        People resolve the way `resolve_character_target` resolves them
+        (identity first; a Builder may also name a real key), but the
+        count is read here so one multimatch prints once and ends the
+        look, whichever path found it. The presence gate applies to both
+        pools (`filter_present`, and `get_search_candidates` on the
+        explicit `candidates=`)."""
         from typeclasses.characters import Character
+        from world.combat.constants import PERM_BUILDER
         from world.perception import filter_present
         from world.search import identity_match_characters
 
         query = self.args.strip()
         present = filter_present(caller, list(aimed.contents))
-        if len(identity_match_characters(caller, query, present)) > 1:
-            resolve_character_target(caller, query, candidates=present)
-            return False                    # it printed the list
-        person = resolve_character_target(caller, query, candidates=present)
-        if person is not None:
-            return person
+        people = identity_match_characters(caller, query, present)
+        if not people and caller.check_permstring(PERM_BUILDER):
+            staff_pool = [obj for obj in present if isinstance(obj, Character)]
+            people = list(caller.search(query, candidates=staff_pool,
+                                        quiet=True) or [])
+        if len(people) > 1:
+            caller.msg(f"Multiple targets match '{query}'. Please be more specific.")
+            return False
+        if people:
+            return people[0]
         things = [obj for obj in aimed.contents
                   if not isinstance(obj, Character)
                   and getattr(obj, "destination", None) is None]

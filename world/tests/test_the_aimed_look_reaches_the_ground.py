@@ -160,8 +160,9 @@ class TestTheAimedLookShowsTheGround(_RoofOverAStreet):
 
 
 class TestTheAimedLookReachesTheGround(_RoofOverAStreet):
-    """`look <target>` down the barrel (#3596). char1 is a Developer, so
-    the identity pipeline's builder-by-key fallback names char2 by key."""
+    """`look <target>` down the barrel (#3596). char2 has no height or
+    build, so its sdesc falls back to its key and the identity matcher
+    takes "char2" as a prefix of it (`world.search._match_sdesc`)."""
 
     def look_at(self, args):
         from commands.CmdLook import CmdLook

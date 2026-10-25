@@ -1335,7 +1335,9 @@ def return_appearance(self, looker, **kwargs):
 - Character status affects perception
 - Weapon visibility based on wielded items
 - Proximity system affects character positioning
-- **Universal Aiming Search**: All commands automatically search aimed-at rooms when aiming (look, get, attack, etc.)
+- ~~**Universal Aiming Search**: All commands automatically search aimed-at rooms when aiming (look, get, attack, etc.)~~
+  - **REMOVED 2026-10-24 (#3596).** No command's default search reaches the aimed room any more.
+    `look <target>` resolves there itself (`commands.CmdLook`); `attack` and `throw` always did.
   - **FALSE FOR `attack`, corrected 2026-09-11.** `attack` does not use the
     `get_search_candidates` hook at all. It resolves the aimed exit itself and scopes
     candidates to `target_room.contents` **only** (`commands/combat/core_actions.py:98-120`,

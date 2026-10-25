@@ -38,10 +38,16 @@ class _AimingNorth(EvenniaCommandTest):
                       location=self.room1, destination=self.north)
         self.char2.location = self.room1
         self.char2.ndb.aiming_direction = "north"
-        # a stranger on the street: no height/build yet, so the sdesc falls
-        # back to the key and the identity matcher takes a prefix of it
+        # a stranger on the street with a real short description, so the
+        # only way to name them is the description: by key they are
+        # "Marla Voss", which char2 does not know. (On master this is the
+        # case that failed: the identity pipeline read the looker's own
+        # room, and the widened default search matched keys only.)
         self.hawker = create_object("typeclasses.characters.Character",
-                                    key="hawker", location=self.north)
+                                    key="Marla Voss", location=self.north)
+        self.hawker.height = "tall"
+        self.hawker.build = "lean"
+        self.hawker.sdesc_keyword = "hawker"
         self.hawker.msg = lambda text=None, **kw: None
 
     def thing(self, key, location):
@@ -57,10 +63,21 @@ class TestLookReachesTheAimedRoom(_AimingNorth):
         self.thing("rusty knife", self.north)
         self.assertIn(ITEM_DESC, self.as_player(CmdLook(), "rusty knife"))
 
+    def test_the_premise_the_stranger_has_a_description_not_a_name(self):
+        self.assertIn("hawker", self.hawker.get_sdesc())
+        self.assertNotIn("marla", self.hawker.get_sdesc().lower())
+
     def test_a_person_on_the_street_by_description(self):
         out = self.as_player(CmdLook(), "hawker")
         self.assertNotIn("Could not find", out)
         self.assertIn("hawker", out.lower())
+
+    def test_a_person_on_the_street_by_the_whole_description(self):
+        out = self.as_player(CmdLook(), self.hawker.get_sdesc())
+        self.assertNotIn("Could not find", out)
+
+    def test_not_by_a_real_name_you_were_never_told(self):
+        self.assertIn("Could not find", self.as_player(CmdLook(), "marla"))
 
     def test_your_own_knife_is_still_in_reach(self):
         self.thing("rusty knife", self.char2)
@@ -84,6 +101,15 @@ class TestLookReachesTheAimedRoom(_AimingNorth):
         self.thing("rusty knife", self.north)
         self.assertIn("Could not find", self.as_player(CmdLook(), "rusty knife"))
         self.assertIn("Could not find", self.as_player(CmdLook(), "hawker"))
+
+    def test_two_strangers_alike_print_one_multimatch_and_stop(self):
+        twin = create_object("typeclasses.characters.Character",
+                             key="Odile Brandt", location=self.north)
+        twin.height = "tall"; twin.build = "lean"; twin.sdesc_keyword = "hawker"
+        twin.msg = lambda text=None, **kw: None
+        out = self.as_player(CmdLook(), "hawker")
+        self.assertEqual(out.count("Multiple targets match"), 1)
+        self.assertNotIn("Could not find", out)
 
 
 class TestNothingElseReaches(_AimingNorth):
