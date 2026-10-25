@@ -381,7 +381,7 @@ speaker is alone with it (the PRESENT roster and the arrival notice already did,
 character announces to the room reveals them, in the announcer itself.
 `msg_room_identity` breaks the hide of the referent of each ``acting``
 placeholder (the ``actor`` by default; ``surgeon``, ``physician``, ``buyer``,
-``caller`` where a call names its actor otherwise) before it renders, so the
+``caller``, ``target_char`` where a call names its actor otherwise) before it renders, so the
 emergence beat lands first; announcements that are not acts (collapsing,
 waking, dying, a garment tearing, a part severed, falling, a bleed, the move
 lines a sneak relies on) pass ``acting=()``. `wield` announces nothing and
@@ -389,7 +389,8 @@ reveals on its own. Owner, on the audit of 234 announcements: changing clothes,
 eating or treating yourself, picking up or dropping, aiming ("Aiming is not an
 ambush. It reveals you."), following and throwing all reveal; whisper and sneak
 are the only quiet acts; tailing someone unseen will be its own command,
-`shadow`. Still open in #3659: followers trailing a hidden leader (the leader's
+`shadow`. Search reveals too (owner, 2026-10-25), superseding #2562's quiet searcher.
+Still open in #3659: followers trailing a hidden leader (the leader's
 side), recognition recency, the clinic pod's doctor and the repair bench, a
 stashed item falling.
 
