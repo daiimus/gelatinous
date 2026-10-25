@@ -702,6 +702,7 @@ def take_patient_away(target, reason: str) -> Optional[Any]:
             template = (f"{{surgeon}}'s instruments come away as {{patient}} is "
                         f"hauled out from under them mid-way through {work}.")
         msg_room_identity(
+            acting=("surgeon",),
             location=room,
             template=template,
             char_refs={"surgeon": surgeon, "patient": target},

@@ -27,6 +27,17 @@ from commands.CmdArmor import (
     pull_plate_into_hand,
 )
 
+def _wield_reveals(caller, item):
+    """Drawing a thing into your hand is done in the open (#3769; owner,
+    2026-10-24: throwing and pulling a pin reveal, "as would wielding the
+    grenade"). `wield` announces nothing to the room, so the hide is
+    broken here, once the hand actually holds the item."""
+    hands = getattr(caller, "hands", None) or {}
+    if item in hands.values():
+        from world.stealth import break_stealth
+        break_stealth(caller)
+
+
 class CmdWield(Command):
     """
     Wield an item into one of your hands.
@@ -77,6 +88,7 @@ class CmdWield(Command):
 
             result = caller.wield_item(item, matched_hand)
             caller.msg(result)
+            _wield_reveals(caller, item)
             return
 
         # No hand specified — find the first free one
@@ -84,6 +96,7 @@ class CmdWield(Command):
             if held_item is None:
                 result = caller.wield_item(item, hand_name)
                 caller.msg(result)
+                _wield_reveals(caller, item)
                 return
 
         # All hands are full
@@ -1408,6 +1421,7 @@ class CmdWrest(Command):
         # Per-observer room message — pre-fill item name, let identity resolve characters
         room_template = msg_room.replace("{object}", object_name)
         msg_room_identity(
+            acting=("caller",),
             location=caller.location,
             template=room_template,
             char_refs={"caller": caller, "target": target},
@@ -1433,6 +1447,7 @@ class CmdWrest(Command):
         # Per-observer room message — pre-fill item name, let identity resolve characters
         room_template = msg_room.replace("{object}", object_name)
         msg_room_identity(
+            acting=("caller",),
             location=caller.location,
             template=room_template,
             char_refs={"caller": caller, "target": target},

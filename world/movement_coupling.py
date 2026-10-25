@@ -71,6 +71,7 @@ def sever_follow(follower, silent=False):
         try:
             from world.identity_utils import msg_room_identity
             msg_room_identity(
+                acting=(),
                 location=follower.location,
                 template="{actor} stops following {target}.",
                 char_refs={"actor": follower, "target": leader},

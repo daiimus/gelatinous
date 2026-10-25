@@ -266,6 +266,7 @@ class Item(ObjectParent, DefaultObject):
                        f"the floor.")
             if holder.location:
                 msg_room_identity(
+                    acting=(),
                     location=holder.location,
                     template=f"{{actor}}'s {name} tears along its seams "
                              f"and falls apart.",
@@ -3304,6 +3305,7 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
         if attacker is not None:
             exclude.append(attacker)
         msg_room_identity(
+            acting=(),
             location=room,
             template=msgs["observer_template"],
             char_refs=msgs["observer_char_refs"],
@@ -3316,6 +3318,7 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
 
         part_name = appendage.key
         msg_room_identity(
+            acting=(),
             location=room,
             template=(
                 f"{{actor}}'s {part_name} is severed in a spray of blood "
@@ -3339,6 +3342,7 @@ def apply_sever_to_character(character, container, *, injury_type="cut"):
                 f"clatters to the ground."
             )
             msg_room_identity(
+                acting=(),
                 location=room,
                 template=(
                     f"{{actor}}'s nerveless fingers spill open — "

@@ -302,6 +302,7 @@ class DeathProgressionScript(DefaultScript):
         if character.location:
             from world.identity_utils import msg_room_identity
             msg_room_identity(
+                acting=(),
                 location=character.location,
                 template="|g{actor} responds to medical treatment and returns from the brink of death!|n",
                 char_refs={"actor": character},
@@ -490,6 +491,7 @@ class DeathProgressionScript(DefaultScript):
         if character.location:
             from world.identity_utils import msg_room_identity
             msg_room_identity(
+                acting=(),
                 location=character.location,
                 template="|r{actor}'s form grows utterly still, life's final spark extinguished forever.|n",
                 char_refs={"actor": character},

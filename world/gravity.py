@@ -528,6 +528,7 @@ def _strand(obj, record, cell, reason="no_down") -> None:
             companion.msg("|yThe two of you hang in open air, going nowhere.|n")
     verb = "hangs in the open air" if body else "comes to rest in the open air"
     msg_room_identity(
+        acting=(),
         location=cell,
         template="{actor} " + verb + (", with nothing beneath." if reason == "no_down" else "."),
         char_refs={"actor": obj},
@@ -560,6 +561,7 @@ def _announce(obj, cell, dest, companion) -> None:
     exclude = [o for o in (obj, companion) if o is not None]
     verb_away = "drops away beneath you." if body else "tumbles away beneath you."
     msg_room_identity(
+        acting=(),
         location=cell,
         template="{actor} " + verb_away,
         char_refs={"actor": obj},
@@ -568,6 +570,7 @@ def _announce(obj, cell, dest, companion) -> None:
     if is_sky(dest):
         verb_past = "falls past you, still dropping." if body else "tumbles past you."
         msg_room_identity(
+            acting=(),
             location=dest,
             template="{actor} " + verb_past,
             char_refs={"actor": obj},
@@ -577,6 +580,7 @@ def _announce(obj, cell, dest, companion) -> None:
             seen_toward = DIRECTION_OPPOSITES.get(direction.lower(), direction)
             verb = "falls past the edge" if body else "tumbles past the edge"
             msg_room_identity(
+                acting=(),
                 location=surface,
                 template="{actor} " + f"{verb} to the {seen_toward}.",
                 char_refs={"actor": obj},
@@ -626,6 +630,7 @@ def _land(obj, record, room, companion) -> None:
                 f"You take {dealt} damage!|n")
         template = "{actor} crashes down from above with a bone-jarring impact!"
     msg_room_identity(location=room, template=template,
+                      acting=(),
                       char_refs={"actor": obj}, exclude=[obj])
     _splat(f"GRAVITY_LAND: {obj.key} landed in {room.key} after {cells} cells, "
            f"made:{made} damage:{dealt}")
@@ -660,6 +665,7 @@ def _land_with_bodyshield(obj, victim, room, damage, made, storeys) -> None:
                    f"the crash! You take {v_dmg} damage from being crushed!|n")
         template = "{actor} crashes down from above with {victim} taking the brunt of the impact!"
     msg_room_identity(location=room, template=template,
+                      acting=(),
                       char_refs={"actor": obj, "victim": victim},
                       exclude=[obj, victim])
     victim_alive = not victim.is_dead()
@@ -692,6 +698,7 @@ def _land_item(obj, room, cells) -> None:
     """Things do not take damage; they arrive and are heard arriving."""
     _reset_proximity(obj)
     msg_room_identity(
+        acting=(),
         location=room,
         template="{actor} falls from above and lands with a clatter.",
         char_refs={"actor": obj},

@@ -158,6 +158,7 @@ class CmdBuy(Command):
             shop=container.get_display_name(caller),
         )
         msg_room_identity(
+            acting=("buyer",),
             location=caller.location,
             template=room_template,
             char_refs={"buyer": caller},

@@ -1760,6 +1760,7 @@ class CmdOperate(Command):
         if not diagnose_result.get("from_cache") and caller.location:
             from world.identity_utils import msg_room_identity
             msg_room_identity(
+                acting=("physician",),
                 location=caller.location,
                 template=diagnose_lib.DIAGNOSE_POSE_ROOM,
                 char_refs={"physician": caller},

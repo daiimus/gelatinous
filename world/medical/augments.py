@@ -429,6 +429,7 @@ def _toggle_integrated_weapon(character, organ, name, spec, state, deploy):
                 f"ground."
             )
             msg_room_identity(
+                acting=(),
                 location=character.location,
                 template=(
                     f"{{actor}} drops {held.key} as their "
