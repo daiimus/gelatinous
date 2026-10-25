@@ -102,7 +102,17 @@ def bring_followers(leader, source_location):
     if not followers:
         return
     exit_obj = _exit_to(source_location, destination)
+    from world.perception import can_perceive
     for follower in followers:
+        if leader.db.hidden is True and not can_perceive(follower, leader):
+            # A hidden leader who slips out leaves this follower behind
+            # without a word (#3773). They lost track of the leader in the
+            # hide contest, so they did not see which way the leader went,
+            # and nothing tells them the leader is gone: "The onus is on
+            # them to 'look' and notice someone is gone." A follower who
+            # kept track (ALERT) still trails.
+            sever_follow(follower, silent=True)
+            continue
         if exit_obj is None:
             sever_follow(follower, silent=True)
             follower.msg("You lose them — they're simply gone.")

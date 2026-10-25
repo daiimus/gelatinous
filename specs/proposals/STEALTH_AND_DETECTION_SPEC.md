@@ -390,9 +390,15 @@ eating or treating yourself, picking up or dropping, aiming ("Aiming is not an
 ambush. It reveals you."), following and throwing all reveal; whisper and sneak
 are the only quiet acts; tailing someone unseen will be its own command,
 `shadow`. Search reveals too (owner, 2026-10-25), superseding #2562's quiet searcher.
-Still open in #3659: followers trailing a hidden leader (the leader's
-side), recognition recency, the clinic pod's doctor and the repair bench, a
-stashed item falling.
+Slice four (#3773, 2026-10-25): a hidden leader who sneaks out leaves
+behind every follower who lost track of them, silently; no line to the
+follower, none to the room ("The onus is on them to 'look' and notice someone
+is gone."). A follower who kept track still trails. Walking into a room no
+longer refreshes your recognition memory of anyone you cannot perceive. A
+stashed item that falls through open air lands in plain sight, its hiding
+place forgotten the way a pickup forgets it. A stashed workbench counting
+for repair was ruled moot. Tailing someone unseen is its own enhancement,
+`shadow` (#3772).
 
 **The whisper carve-out (2026-07-03, user-decided):** `whisper` does NOT break
 stealth — it's the creepy channel — and it **rides the say parent** (the

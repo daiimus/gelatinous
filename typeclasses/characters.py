@@ -1791,11 +1791,17 @@ class Character(
         from evennia.utils import logger
 
         from world.identity import bump_recognition_recency, get_apparent_uid
+        from world.perception import can_perceive
 
         for obj in self.location.contents:
             if obj is self:
                 continue
             if not isinstance(obj, Character):
+                continue
+            if not can_perceive(self, obj):
+                # You did not see them, so you did not see them HERE,
+                # NOW (#3773): a hidden person leaves no mark on the
+                # memory of someone walking in.
                 continue
             try:
                 apparent_uid = get_apparent_uid(obj)

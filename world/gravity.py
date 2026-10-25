@@ -695,8 +695,16 @@ def _land_with_bodyshield(obj, victim, room, damage, made, storeys) -> None:
 
 
 def _land_item(obj, room, cells) -> None:
-    """Things do not take damage; they arrive and are heard arriving."""
+    """Things do not take damage; they arrive and are heard arriving.
+
+    A stashed thing that falls lands in plain sight (#3773): the hiding
+    place stayed above, and the clatter below is the thing itself. The
+    same forgetting a pickup does, so nothing re-arms a stash nobody
+    worked for in the landing room.
+    """
     _reset_proximity(obj)
+    from commands.CmdInventory import _clear_stash_state
+    _clear_stash_state(obj)
     msg_room_identity(
         acting=(),
         location=room,
