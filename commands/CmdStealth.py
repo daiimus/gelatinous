@@ -77,6 +77,17 @@ class CmdHide(Command):
             item = item[0]
         if not caller.location:
             return
+        # A trap is in plain sight to anyone in the room with it (#3767;
+        # owner, 2026-10-24: "You shouldn't be able to hide a rigged
+        # grenade or charge."). Live means the pin is out; rigged means
+        # it is wired to an exit.
+        # Strict `is True`, as break_stealth reads db.hidden: a test double
+        # with auto-attributes must not read as a live device.
+        if item.db.is_explosive is True and (item.db.pin_pulled is True
+                                             or item.db.rigged_to_exit is not None):
+            caller.msg(f"{item.get_display_name(caller)} is live. A trap is in "
+                       "plain sight to anyone in the room with it.")
+            return
         from random import randint
 
         # THE SAME GUARDS `drop` OWES (#2561). This used to be a bare

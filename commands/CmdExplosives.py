@@ -998,6 +998,7 @@ class CmdDetonate(Command):
 
         # Pull the pin remotely
         explosive.db.pin_pulled = True
+        explosive.db.hidden = False   # a live charge is in plain sight (#3767)
         fuse_time = armed_fuse(explosive)   # trap => TRAP_FUSE_TIME (#2547)
         setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
 
@@ -1064,6 +1065,7 @@ class CmdDetonate(Command):
 
             # Pull the pin remotely
             explosive.db.pin_pulled = True
+            explosive.db.hidden = False   # a live charge is in plain sight (#3767)
             fuse_time = armed_fuse(explosive)   # same answer as the single door (#3348)
             setattr(explosive.ndb, NDB_COUNTDOWN_REMAINING, fuse_time)
 
