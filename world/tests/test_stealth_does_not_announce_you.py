@@ -1,4 +1,4 @@
-"""A hidden search stays hidden, and a refused sneak costs nothing
+"""A search reveals the searcher (since #3769), and a refused sneak costs nothing
 (#2562, #2563).
 
 ## #2562, superseded by #3769 (owner, 2026-10-25: "Search reveals")
