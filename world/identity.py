@@ -2414,11 +2414,10 @@ def _broadcast_unmask_with_action(
     """Composed unmask broadcast — action emote + reveal suffix per
     observer in a single message.
 
-    Acting reveals (#3769): putting on or taking off the item is the
-    wearer's own act, and this path renders per observer itself instead
-    of through ``msg_room_identity``, so the hide is broken here first
-    (owner, 2026-10-24: changing clothes reveals), with the emergence beat
-    ahead of the line.
+    Acting reveals (#3769): the ACTOR of the framing line is revealed by
+    ``apply_signature_change.__enter__`` before the change, not here, so
+    the emergence beat names the face they wore when they began, and a
+    person being dressed by someone else is not the one revealed.
 
     Used when the UID transition is triggered by a player action
     (wear / remove of a disguise-essential item).  Observers see
@@ -2447,8 +2446,6 @@ def _broadcast_unmask_with_action(
     Memory mutations (lost_contact, auto-link, sdesc refresh) are
     applied here exactly as :func:`_broadcast_unmasking` would.
     """
-    from world.stealth import break_stealth
-    break_stealth(char)
     if old_uid is None or new_uid is None or old_uid == new_uid:
         # No reveal to make. Report that, so the caller can still emit
         # the plain action -- these are ONE message by design, and this
@@ -2664,6 +2661,19 @@ class apply_signature_change:
 
     def __enter__(self) -> "apply_signature_change":
         self._old_uid = get_apparent_uid(self.char)
+        # Acting reveals (#3769; owner, 2026-10-24: changing clothes
+        # reveals). The framing line is an act by its {actor}: the wearer
+        # dressing themselves, or whoever dresses another. The actor's hide
+        # breaks HERE, before the garment moves, so the emergence beat
+        # names the face they had when they began, ahead of the combined
+        # action+reveal line __exit__ sends. The person being dressed is
+        # not acting and keeps their hide (the hit rule and the identity
+        # gate own what is done to them). A system change (an override, a
+        # persona) frames no action and reveals nobody.
+        if self.action_template is not None:
+            actor = (self.action_char_refs or {}).get("actor", self.char)
+            from world.stealth import break_stealth
+            break_stealth(actor)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:

@@ -62,6 +62,10 @@ def sever_follow(follower, silent=False):
     follower.db.following = None
     if silent or not _valid(leader):
         return
+    # The player's own act (#3769): broken before the leader's direct
+    # line, so the leader hears the emergence beat first.
+    from world.stealth import break_stealth
+    break_stealth(follower)
     try:
         follower.msg(f"You stop following {leader.get_display_name(follower)}.")
         leader.msg(f"{follower.get_display_name(leader)} stops following you.")

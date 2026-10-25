@@ -144,14 +144,47 @@ class TestTheVerbsTheOwnerRuledOn(_Hidden):
 
     def test_a_disguise_change_reveals_off_the_announcers_path(self):
         """Wearing or removing a disguise item broadcasts through
-        world.identity, not the announcer; the act still reveals."""
-        from world.identity import _broadcast_unmask_with_action
-        _broadcast_unmask_with_action(
-            self.char2, "uid-a", "uid-b",
-            action_template="{actor} pulls on a mask.",
-            action_char_refs={"actor": self.char2},
-            action_pre_resolved_refs={}, action_exclude=[self.char2])
+        world.identity, not the announcer; the act still reveals, and it
+        reveals on entry, before the garment moves."""
+        from world.identity import apply_signature_change
+        with apply_signature_change(
+                self.char2, source="wear_item",
+                action_template="{actor} pulls on a mask.",
+                action_char_refs={"actor": self.char2},
+                action_pre_resolved_refs={}, action_exclude=[self.char2]):
+            self.assertFalse(self.char2.db.hidden, "revealed before the change")
         self.assertFalse(self.char2.db.hidden)
+
+    def test_dressing_someone_reveals_the_dresser_not_the_dressed(self):
+        from world.identity import apply_signature_change
+        self.char1.db.hidden = True              # the one being dressed hides too
+        with apply_signature_change(
+                self.char1, source="wear_item",
+                action_template="{actor} dresses {target} in a mask.",
+                action_char_refs={"actor": self.char2, "target": self.char1},
+                action_pre_resolved_refs={}, action_exclude=[self.char2, self.char1]):
+            pass
+        self.assertFalse(self.char2.db.hidden, "the dresser acted")
+        self.assertTrue(self.char1.db.hidden, "being dressed is done to you")
+
+    def test_a_system_identity_change_reveals_nobody(self):
+        from world.identity import apply_signature_change
+        with apply_signature_change(self.char2, source="override:height"):
+            pass
+        self.assertTrue(self.char2.db.hidden)
+
+    def test_stop_following_tells_the_leader_after_the_emergence(self):
+        self.char2.db.hidden = False
+        self.as_player(CmdFollow(), self.char1.key)
+        self.char2.db.hidden = True
+        set_awareness(self.char1, self.char2, UNAWARE)
+        heard = []
+        self.char1.msg = lambda text=None, **kw: heard.append(
+            str(text[0] if isinstance(text, tuple) else text))
+        self.as_player(CmdStopFollowing(), "")
+        joined = "\n".join(heard)
+        self.assertLess(joined.index("emerges from concealment"),
+                        joined.index("stops following you"), joined)
 
 
 class TestWhatStaysQuiet(_Hidden):
