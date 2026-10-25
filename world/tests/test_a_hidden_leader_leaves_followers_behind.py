@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 from evennia.utils.test_resources import EvenniaTest
 
-from world.gravity import _land_item
+from world.gravity import _land_item, _strand
 from world.movement_coupling import bring_followers
 from world.perception import can_perceive
 from world.stealth import ALERT, UNAWARE, set_awareness
@@ -168,8 +168,37 @@ class TestArrivingDoesNotRememberTheUnseen(EvenniaTest):
         self.assertIn(self.char2, self.refresh())
 
 
+class TestAHiderSpottedOnArrivalIsMarkedSeen(EvenniaTest):
+    """The recency pass runs after the arrival's glances. Pinned on the
+    path where the arrival look itself does not run (the room refuses
+    view), so only the passive tier in at_post_move can make the spot."""
+
+    def setUp(self):
+        super().setUp()
+        self.char1.location = self.room2
+        self.char2.location = self.room2
+        self.char1.recognition_memory = {"someone": {"name": "Someone"}}
+        self.char2.db.hidden = True
+        set_awareness(self.char1, self.char2, UNAWARE)
+
+    def arrive(self, glance):
+        with patch.object(type(self.room2), "access", return_value=False), \
+                patch("world.stealth.passive_check", glance), \
+                patch("world.identity.bump_recognition_recency") as bump:
+            self.char1.at_post_move(None)
+        return [call.args[1] for call in bump.call_args_list]
+
+    def test_a_spot_on_the_way_in_marks_them_seen(self):
+        def spot(observer, hider):
+            set_awareness(observer, hider, ALERT)
+        self.assertIn(self.char2, self.arrive(spot))
+
+    def test_a_missed_glance_leaves_no_mark(self):
+        self.assertNotIn(self.char2, self.arrive(lambda o, h: None))
+
+
 # --------------------------------------------------------------------------
-# 3. A stashed item landing.
+# 3. A stashed item whose fall ends: landed, or stranded in open air.
 # --------------------------------------------------------------------------
 
 class TestAFallenStashLandsInPlainSight(EvenniaTest):
@@ -205,3 +234,37 @@ class TestAFallenStashLandsInPlainSight(EvenniaTest):
         item, announce = self.land(stashed=False)
         self.assertIsNone(item.db.hidden)
         announce.assert_called_once()
+
+
+class TestAStrandedStashIsInPlainSightToo(EvenniaTest):
+    """`_strand` ends a fall as `_land_item` does and announces the thing
+    to the cell; it forgets the stash the same way."""
+
+    def strand(self, stashed):
+        item = self.obj1
+        if stashed:
+            item.db.hidden = True
+            item.db.stash_roll = 17
+        item.location = self.room2
+        with patch("world.gravity.msg_room_identity") as announce:
+            _strand(item, {}, self.room2, "no_down")
+        return item, announce
+
+    def test_the_stash_flag_is_gone(self):
+        item, _ = self.strand(stashed=True)
+        self.assertIsNone(item.db.hidden)
+        self.assertIsNone(item.db.stash_roll)
+
+    def test_it_is_still_announced(self):
+        _, announce = self.strand(stashed=True)
+        announce.assert_called_once()
+        self.assertIn("comes to rest", announce.call_args.kwargs["template"])
+
+    def test_a_stranded_person_is_not_touched(self):
+        """Only things: a hidden body's concealment is break_stealth's,
+        not gravity's."""
+        self.char2.location = self.room2
+        self.char2.db.hidden = True
+        with patch("world.gravity.msg_room_identity"):
+            _strand(self.char2, {}, self.room2, "no_down")
+        self.assertIs(self.char2.db.hidden, True)

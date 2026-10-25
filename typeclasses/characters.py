@@ -1723,7 +1723,6 @@ class Character(
         # (FURNITURE_AND_POSTURE; silent, the move messages already narrate it).
         if self.db.furniture or (self.db.posture and self.db.posture != "standing"):
             self._clear_posture()
-        self._refresh_recognition_recency()
         # Movement coupling: followers trail through the exit just taken
         # (a follower moves SECOND — we have already arrived). Terminates
         # naturally on chains: only followers still in the source room move.
@@ -1740,6 +1739,10 @@ class Character(
                         and getattr(obj.db, "hidden", False) is True \
                         and hasattr(obj, "get_sdesc"):
                     passive_check(self, obj)
+        # After the glances (the arrival look above, the passive tier just
+        # now): the recency pass only marks people you can perceive
+        # (#3773), so it runs once this arrival has decided who those are.
+        self._refresh_recognition_recency()
 
     def at_pre_move(self, destination, **kwargs):
         """Extends the default: an escort moves FIRST — the escortee is

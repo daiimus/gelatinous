@@ -395,8 +395,10 @@ behind every follower who lost track of them, silently; no line to the
 follower, none to the room ("The onus is on them to 'look' and notice someone
 is gone."). A follower who kept track still trails. Walking into a room no
 longer refreshes your recognition memory of anyone you cannot perceive. A
-stashed item that falls through open air lands in plain sight, its hiding
-place forgotten the way a pickup forgets it. A stashed workbench counting
+stashed item that falls through open air ends its fall in plain sight, landed
+or stranded in a cell with nothing beneath, its hiding place forgotten the way
+a pickup forgets it. The recency pass runs after the arrival's glances, so a
+hider you spot as you walk in is marked seen. A stashed workbench counting
 for repair was ruled moot. Tailing someone unseen is its own enhancement,
 `shadow` (#3772).
 

@@ -515,6 +515,10 @@ def _strand(obj, record, cell, reason="no_down") -> None:
         _release_companion(companion, obj)
     _splat(f"GRAVITY_STRAND: {obj.key} stopped in {cell.key} (#{cell.id}): {reason}")
     body = _is_character(obj)
+    if not body:
+        # A stranded thing is announced to the cell like a landed one, and
+        # is in plain sight the same way (#3773).
+        _forget_stash(obj)
     if body:
         if reason == "no_down":
             obj.msg(
@@ -694,17 +698,18 @@ def _land_with_bodyshield(obj, victim, room, damage, made, storeys) -> None:
            f"made:{made} victim:{v_dmg} grappler:{g_dmg}")
 
 
-def _land_item(obj, room, cells) -> None:
-    """Things do not take damage; they arrive and are heard arriving.
-
-    A stashed thing that falls lands in plain sight (#3773): the hiding
-    place stayed above, and the clatter below is the thing itself. The
-    same forgetting a pickup does, so nothing re-arms a stash nobody
-    worked for in the landing room.
-    """
-    _reset_proximity(obj)
+def _forget_stash(obj) -> None:
+    """A thing whose fall has ended is wherever everyone heard it end
+    (#3773): the hiding place stayed above. The same forgetting a pickup
+    does, so nothing re-arms a stash nobody worked for where it stopped."""
     from commands.CmdInventory import _clear_stash_state
     _clear_stash_state(obj)
+
+
+def _land_item(obj, room, cells) -> None:
+    """Things do not take damage; they arrive and are heard arriving."""
+    _reset_proximity(obj)
+    _forget_stash(obj)
     msg_room_identity(
         acting=(),
         location=room,
