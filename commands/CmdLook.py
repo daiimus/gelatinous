@@ -68,7 +68,9 @@ class CmdLook(default_cmds.CmdLook):
         `get_search_candidates` on the explicit `candidates=`). `me`,
         `self`, `myself` and `here` are never looked for down the
         barrel: they fall through to `Character.search`, which answers
-        them with you and your room."""
+        `me`/`self` with you and `here` with your room (the aim view while
+        aiming), and treats `myself` like any other word in your own
+        reach, as it always has."""
         from typeclasses.characters import Character
         from world.combat.constants import PERM_BUILDER
         from world.perception import filter_present
