@@ -46,8 +46,7 @@ class _Hidden(EvenniaCommandTest):
     def seat(self, key):
         furn = create_object("typeclasses.furniture.Furniture", key=key,
                              location=self.room1)
-        if not furn.db.postures:
-            furn.db.postures = ("sitting", "lying")
+        furn.db.postures = ("sitting", "lying")     # a cot takes both
         return furn
 
 
