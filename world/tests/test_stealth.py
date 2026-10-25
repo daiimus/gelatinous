@@ -442,6 +442,13 @@ class TestLeakSweep(TestCase):
         # ALERT assertion failed. The test stopped exercising the gate
         # the moment production started reading a different attribute.
         room._visible_exits = lambda looker: [exit_obj]
+        # The direction is phrased through the footer's helpers since
+        # #3755 (`format_exit_phrases` and the two it calls); on a bare
+        # MagicMock they return mocks and the one-phrase unpack raises
+        # (#3764). Bind the real ones, as `_visible_exits` is bound.
+        for name in ("format_exit_phrases", "format_direction_with_alias",
+                     "format_direction_list"):
+            setattr(room, name, getattr(Room, name).__get__(room))
         # The walker also asks each exit `blocks_sight()` since #3750. A
         # bare MagicMock answers with a truthy MagicMock, which would skip
         # the only exit and make the hidden assertion vacuous again.
@@ -471,6 +478,9 @@ class TestLeakSweep(TestCase):
         room = MagicMock()
         room.is_sky_room = False          # a sky cell is never glanced from
         room._visible_exits = lambda looker: [exit_obj]
+        for name in ("format_exit_phrases", "format_direction_with_alias",
+                     "format_direction_list"):           # #3764, see above
+            setattr(room, name, getattr(Room, name).__get__(room))
         sightings = Room.get_adjacent_character_sightings.__get__(room)
         with _uid_for(None):
             self.assertIn("lone figure", sightings(looker))   # control
