@@ -14,8 +14,10 @@ touches:
   no floor under it has no ground to show, so the render falls back to
   the air cell (``room_through(...) or exit_obj.destination``): you get
   to see the hole you are aiming into rather than nothing at all.
-* ``Room.search_for_target`` -- the unified aiming search space must be
-  *here plus the street*, so a body standing down there can be named.
+* ``look <target>`` while aiming (``commands.CmdLook``, #3596) -- the
+  target is looked for on the STREET first, so a body standing down
+  there can be named; the air cell the shot passes through is never
+  searched, and nothing else widens (``Room.aimed_room_for``).
 * ``CmdAttack``'s directional attack -- the shot is resolved against the
   street's occupants, and over a bare column it is refused in the
   player's own words rather than firing into nowhere.
@@ -157,31 +159,47 @@ class TestTheAimedLookShowsTheGround(_RoofOverAStreet):
         self.assertNotIn("Test Street", out)
 
 
-class TestTheAimedSearchReachesTheGround(_RoofOverAStreet):
+class TestTheAimedLookReachesTheGround(_RoofOverAStreet):
+    """`look <target>` down the barrel (#3596). char2 has no height or
+    build, so its sdesc falls back to its key and the identity matcher
+    takes "char2" as a prefix of it (`world.search._match_sdesc`)."""
 
-    def candidates(self):
-        return self.roof.search_for_target(self.char1, "char2",
-                                           return_candidates_only=True)
+    def look_at(self, args):
+        from commands.CmdLook import CmdLook
+        cmd = CmdLook()
+        cmd.caller = self.char1
+        cmd.args = args
+        cmd.cmdstring = "look"
+        cmd.raw_string = f"look {args}"
+        cmd.session = None
+        cmd.msg = lambda text=None, **kw: self.said.append(
+            str(text[0] if isinstance(text, tuple) else text))
+        del self.said[:]
+        cmd.func()
+        return "\n".join(self.said)
 
-    def test_a_body_on_the_street_is_in_the_search_space(self):
+    def test_a_body_on_the_street_can_be_looked_at(self):
         self.aim("east")
-        self.assertIn(self.char2, self.candidates(),
-                      "the aiming search space did not reach the ground below")
+        self.assertIn("Char2", self.look_at("char2"),
+                      "the aimed look did not reach the ground below")
 
-    def test_the_air_cell_is_not_the_search_space(self):
+    def test_the_flier_in_the_air_cell_is_not_in_reach(self):
         self.aim("east")
-        self.assertNotIn(self.flier, self.candidates(),
-                         "the search stopped in the air cell the shot passes through")
-
-    def test_the_looker_is_never_their_own_candidate(self):
-        self.aim("east")
-        self.assertNotIn(self.char1, self.candidates())
+        out = self.look_at("flier")
+        self.assertNotIn("Flier", out)
 
     def test_not_aiming_is_this_room_only(self):
         self.aim(None)
-        found = self.candidates()
-        self.assertNotIn(self.char2, found)
-        self.assertNotIn(self.flier, found)
+        out = self.look_at("char2")
+        self.assertNotIn("Char2", out)
+
+    def test_the_room_through_the_edge_is_the_street(self):
+        self.aim("east")
+        self.assertIs(self.roof.aimed_room_for(self.char1), self.street)
+
+    def test_a_bare_column_is_the_air_it_drops_into(self):
+        self.aim("west")
+        self.assertIs(self.roof.aimed_room_for(self.char1), self.void)
 
 
 class TestTheShotReachesTheGround(_RoofOverAStreet):

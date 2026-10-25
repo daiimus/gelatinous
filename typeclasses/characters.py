@@ -731,12 +731,18 @@ class Character(
 
     def get_search_candidates(self, searchdata, **kwargs):
         """
-        The pool a search matches against: aimed-at room contents when
-        aiming, and never anything this character cannot perceive.
+        The pool a search matches against: never anything this character
+        cannot perceive.
 
-        When aiming at a direction, the DEFAULT pool is both the current
-        room and the aimed-at room's contents. A pool the command passed
-        (`candidates=` / `location=`) is kept as given.
+        Aiming does not widen it (#3596). It used to: with
+        `ndb.aiming_direction` set, every lookup that named no pool drew
+        on this room AND the aimed room, so from a parapet `put`, `scan`,
+        `diagnose`, `tune` and `remember` could reach things on the street
+        below (#3589 made that street populated) and relied on each
+        command's own distance check, which none of them had. The
+        commands that mean to reach the aimed room name it themselves:
+        `attack` and `throw` hand its people in as `candidates=`, and
+        `look <target>` resolves against it in `commands.CmdLook`.
 
         THE PRESENCE GATE, applied to the pool BEFORE matching (#3637).
         Evennia calls this for every local search: the default reach, a
@@ -764,38 +770,7 @@ class Character(
         Returns:
             list or None: Objects that can be searched through
         """
-        # Get the default candidates first
         candidates = super().get_search_candidates(searchdata, **kwargs)
-        
-        # Don't interfere with self-lookup or basic character functionality
-        # Only enhance when specifically aiming at a direction, and only the
-        # DEFAULT reach: a pool the command chose (`candidates=`, e.g. the
-        # container `get x from y` searches, or `location=`) is kept as
-        # given. Aiming used to swap those for room + aimed room too (#3637
-        # review).
-        aiming_direction = getattr(self.ndb, 'aiming_direction', None) if hasattr(self, 'ndb') else None
-        
-        if (candidates is not None and 
-            kwargs.get("candidates") is None and
-            kwargs.get("location") is None and
-            aiming_direction and 
-            self.location and
-            hasattr(self.location, 'search_for_target')):  # Make sure the room supports this
-            try:
-                # Use the room's search_for_target method to get unified candidates
-                # This leverages the existing vetted aiming logic
-                unified_candidates = self.location.search_for_target(
-                    self, searchdata, return_candidates_only=True
-                )
-                if unified_candidates:
-                    # Use the unified candidates instead of default ones
-                    # This maintains ordinal support and all existing logic
-                    candidates = unified_candidates
-            except (AttributeError, TypeError):
-                # If anything goes wrong, fall back to default candidates
-                # This ensures we never break normal searching
-                pass
-
         if candidates is None:
             return None
         from world.perception import can_perceive
