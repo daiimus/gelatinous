@@ -982,6 +982,9 @@ NIGHTCLUB_ROOM_TYPES = {'nightclub', 'club'}
 RESIDENTIAL_ROOM_TYPES = {
     'cube hotel',
     'tenement',      # the Brackett Arms and whatever housing follows
+    'stairwell',     # a tenement's stairs are still the tenement (#3757:
+                     # the Brackett stairwells were 'tenement' until
+                     # build 170 typed them; their crowd prose stays put)
 }
 
 #: Enclosed bar/venue room types that draw on the 'interior' crowd pool rather
@@ -1013,10 +1016,12 @@ def room_type_is_unpeopled(room_type):
 #: the whole test, so two of them reach past open ground: 'market' covers
 #: the open-air Shipbreaker yard and the covered galleries (`MarketRoom`,
 #: stall rows under a roof or a hull) alike, and 'farm' covers the
-#: Greenhaus towers whole, the open growing platforms and the enclosed
-#: stair cores and ground bays with them (build 055 types all 99 cells
-#: 'farm'), so a figure in a stair core shows from the platform beside it
-#: and from the core above or below. Open to the eye if not to the sky.
+#: Greenhaus growing platforms and the six enclosed ground bays with
+#: them, so a figure in a ground bay shows from the lawn beside it. Open
+#: to the eye if not to the sky. (Build 055 typed all 99 Greenhaus cells
+#: 'farm', stair column included, so until build 170 retyped the 33 stair
+#: rooms 'stairwell' (#3757) a figure in a stair core showed from the
+#: platform beside it too; a stairwell is an interior.)
 #: Any other word, and an untyped room, is treated as an interior
 #: whatever its door is doing. `sky` is left out: nobody stands in the air, and a sky cell
 #: shows no exits of its own. A new type is glanced into only once it is

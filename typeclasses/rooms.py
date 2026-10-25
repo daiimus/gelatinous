@@ -743,8 +743,9 @@ class Room(ObjectParent, DefaultRoom):
         (`room_type_is_open_air`: street, alley, market, bridge, rooftop,
         courtyard, balcony, fire escape, farm, hull, garden, agridome; the
         word is the whole test, so 'market' takes in the covered galleries
-        and 'farm' the Greenhaus stair cores and ground bays, open to the
-        eye if not to the sky), so any other room, an untyped one
+        and 'farm' the Greenhaus ground bays, open to the eye if not to the
+        sky; the Greenhaus stairways are 'stairwell' since build 170, #3757,
+        and so interiors), so any other room, an untyped one
         included, is never glanced into whatever its door is doing
         (#3753); a far room whose crowd is heavy or packed shows
         only the crowd and nobody in it (`crowd_system.crowd_hides_figures`,
