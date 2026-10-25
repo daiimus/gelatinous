@@ -15,8 +15,9 @@ char2 hides; char1 watches, Unaware.
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaCommandTest
 
-from commands.CmdFollow import CmdFollow
+from commands.CmdFollow import CmdFollow, CmdStopFollowing
 from commands.CmdInventory import CmdDrop, CmdGet, CmdWield
+from commands.CmdStealth import CmdSearch
 from world.identity_utils import msg_room_identity
 from world.perception import can_perceive
 from world.stealth import UNAWARE, set_awareness
@@ -117,8 +118,49 @@ class TestTheVerbsTheOwnerRuledOn(_Hidden):
         self.assertIn("fall in behind", out, out)
         self.assertFalse(self.char2.db.hidden)
 
+    def test_the_leader_hears_the_emergence_before_the_follow(self):
+        heard = []
+        self.char1.msg = lambda text=None, **kw: heard.append(
+            str(text[0] if isinstance(text, tuple) else text))
+        self.as_player(CmdFollow(), self.char1.key)
+        joined = "\n".join(heard)
+        self.assertLess(joined.index("emerges from concealment"),
+                        joined.index("falls in behind you"), joined)
+
+    def test_stop_following_is_the_players_act_and_reveals(self):
+        self.char2.db.hidden = False
+        self.as_player(CmdFollow(), self.char1.key)
+        self.char2.db.hidden = True
+        set_awareness(self.char1, self.char2, UNAWARE)
+        self.as_player(CmdStopFollowing(), "")
+        self.assertFalse(self.char2.db.hidden)
+        self.assertIsNone(self.char2.db.following)
+
+    def test_a_refused_re_wield_does_not(self):
+        knife = self.thing("rusty knife")
+        self.char2.hands = {"left_hand": knife, "right_hand": None}
+        self.as_player(CmdWield(), "knife in left")
+        self.assertTrue(self.char2.db.hidden)
+
+    def test_a_disguise_change_reveals_off_the_announcers_path(self):
+        """Wearing or removing a disguise item broadcasts through
+        world.identity, not the announcer; the act still reveals."""
+        from world.identity import _broadcast_unmask_with_action
+        _broadcast_unmask_with_action(
+            self.char2, "uid-a", "uid-b",
+            action_template="{actor} pulls on a mask.",
+            action_char_refs={"actor": self.char2},
+            action_pre_resolved_refs={}, action_exclude=[self.char2])
+        self.assertFalse(self.char2.db.hidden)
+
 
 class TestWhatStaysQuiet(_Hidden):
+
+    def test_search_from_hiding_stays_quiet(self):
+        """Kept from #2562: a hidden searcher is not announced to those who
+        cannot see them, and the search does not reveal them."""
+        self.as_player(CmdSearch(), "")
+        self.assertTrue(self.char2.db.hidden)
 
     def test_a_move_announcement_is_not_an_act_here(self):
         """Open movement breaks the hide in at_post_move already; a sneak

@@ -2414,6 +2414,12 @@ def _broadcast_unmask_with_action(
     """Composed unmask broadcast — action emote + reveal suffix per
     observer in a single message.
 
+    Acting reveals (#3769): putting on or taking off the item is the
+    wearer's own act, and this path renders per observer itself instead
+    of through ``msg_room_identity``, so the hide is broken here first
+    (owner, 2026-10-24: changing clothes reveals), with the emergence beat
+    ahead of the line.
+
     Used when the UID transition is triggered by a player action
     (wear / remove of a disguise-essential item).  Observers see
     one line that frames the reveal in the context of the action,
@@ -2441,6 +2447,8 @@ def _broadcast_unmask_with_action(
     Memory mutations (lost_contact, auto-link, sdesc refresh) are
     applied here exactly as :func:`_broadcast_unmasking` would.
     """
+    from world.stealth import break_stealth
+    break_stealth(char)
     if old_uid is None or new_uid is None or old_uid == new_uid:
         # No reveal to make. Report that, so the caller can still emit
         # the plain action -- these are ONE message by design, and this

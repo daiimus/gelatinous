@@ -27,13 +27,18 @@ from commands.CmdArmor import (
     pull_plate_into_hand,
 )
 
-def _wield_reveals(caller, item):
+def _held_ids(caller):
+    return {id(v) for v in (getattr(caller, "hands", None) or {}).values() if v}
+
+
+def _wield_reveals(caller, item, held_before):
     """Drawing a thing into your hand is done in the open (#3769; owner,
     2026-10-24: throwing and pulling a pin reveal, "as would wielding the
     grenade"). `wield` announces nothing to the room, so the hide is
-    broken here, once the hand actually holds the item."""
-    hands = getattr(caller, "hands", None) or {}
-    if item in hands.values():
+    broken here, once the hand NEWLY holds the item: a refused re-wield of
+    something already in your other hand changes nothing and reveals
+    nothing."""
+    if id(item) in _held_ids(caller) and id(item) not in held_before:
         from world.stealth import break_stealth
         break_stealth(caller)
 
@@ -86,17 +91,19 @@ class CmdWield(Command):
                 caller.msg(f"You don't have a hand named '{hand}'.")
                 return
 
+            held_before = _held_ids(caller)
             result = caller.wield_item(item, matched_hand)
             caller.msg(result)
-            _wield_reveals(caller, item)
+            _wield_reveals(caller, item, held_before)
             return
 
         # No hand specified — find the first free one
         for hand_name, held_item in hands.items():
             if held_item is None:
+                held_before = _held_ids(caller)
                 result = caller.wield_item(item, hand_name)
                 caller.msg(result)
-                _wield_reveals(caller, item)
+                _wield_reveals(caller, item, held_before)
                 return
 
         # All hands are full

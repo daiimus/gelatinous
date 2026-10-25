@@ -70,8 +70,9 @@ def sever_follow(follower, silent=False):
     if follower.location and follower.location == leader.location:
         try:
             from world.identity_utils import msg_room_identity
+            # The player's own act (`stop following`, or switching leaders);
+            # the system drops pass silent=True and never get here (#3769).
             msg_room_identity(
-                acting=(),
                 location=follower.location,
                 template="{actor} stops following {target}.",
                 char_refs={"actor": follower, "target": leader},

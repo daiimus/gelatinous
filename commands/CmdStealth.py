@@ -277,6 +277,7 @@ class CmdSearch(Command):
         unseen_by = [obj for obj in caller.location.contents
                      if obj is not caller and is_hidden_from(caller, obj)]
         msg_room_identity(
+            acting=(),   # a hidden searcher stays quiet to those who cannot see them (#2562); kept, see #3769
             location=caller.location,
             template="{actor} searches the area carefully.",
             char_refs={"actor": caller},

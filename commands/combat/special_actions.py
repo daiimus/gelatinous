@@ -646,7 +646,11 @@ class CmdAim(Command):
 
             # Send messages - get weapon name for better messaging
             weapon_name = aimed_weapon_name(caller, target)
-            
+            # Aiming reveals (#3769; owner: "Aiming is not an ambush. It
+            # reveals you."). Broken here, before the target's own line, so
+            # the emergence beat reaches them first.
+            from world.stealth import break_stealth
+            break_stealth(caller)
             caller.msg(f"You raise your {weapon_name}, taking careful aim at {get_display_name_safe(target, caller)}.")
             target.msg(f"|r{capitalize_first(get_display_name_safe(caller, target))} is aiming at you! You feel locked in place.|n")
             msg_room_identity(
