@@ -372,9 +372,14 @@ breaks it (`ShopContainer.purchase_item`, so the spoken counter order and the
 `buy` command agree); and `hide` is refused while in combat or while someone
 in the room is aiming at you. Each is one `break_stealth` call at the place
 the action happens, not quiet, so the emergence beat lands before the line
-that names you. Still open in #3659 for their own rulings: followers trailing
-a hidden leader, recognition recency, LLM NPC prompts, stashed objects' prose,
-the aim placement line.
+that names you. Slice two (#3767, 2026-10-24): a live or rigged explosive cannot
+be stashed (`hide <device>` refuses: "A trap is in plain sight to anyone in the
+room with it"), a detonator arming a stashed charge brings it into sight before
+its beep, and an LLM NPC counts only the company it perceives when deciding a
+speaker is alone with it (the PRESENT roster and the arrival notice already did,
+#2589). Still open in #3659 for their own rulings: followers trailing a hidden
+leader, recognition recency, the clinic pod's doctor and the repair bench
+(sitting in the pod already reveals), a stashed item falling.
 
 **The whisper carve-out (2026-07-03, user-decided):** `whisper` does NOT break
 stealth — it's the creepy channel — and it **rides the say parent** (the

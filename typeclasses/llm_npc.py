@@ -410,12 +410,17 @@ class LLMNpcMixin:
                     and self.ndb.llm_engaged_with == self._hist_key(speaker))
 
     def _is_alone_with(self, speaker):
-        """True when no other character shares the room — so the speaker can only
-        be talking to this NPC."""
+        """True when no other character THIS NPC PERCEIVES shares the room — so
+        the speaker can only be talking to this NPC. A hidden bystander the
+        NPC has lost does not count (#3767; owner, 2026-10-24: "If they're
+        hidden, an NPC shouldn't see them."): the same presence gate as the
+        PRESENT roster and the arrival notice."""
         if not self.location:
             return False
+        from world.perception import can_perceive
         return not any(
             o is not self and o is not speaker and isinstance(o, Character)
+            and can_perceive(self, o)
             for o in self.location.contents
         )
 
