@@ -362,7 +362,8 @@ materializes mid-sentence. Trackers who watched you lurk get no redundant line.
 **Acting reveals (2026-10-24, #3763, the first slice of #3659):** hiding lasts
 until you do something visible or something visibly happens to you, and a few
 things cannot be started from hiding at all. Owner, against five played-out
-scenes: sitting or lying down breaks the hide (`_take_posture`); being hit
+scenes: sitting or lying down breaks the hide (already true: the pose
+`_take_posture` issues goes through `CmdDotPose`, which breaks it; now pinned); being hit
 breaks it and a miss does not (`take_damage`, where every hit lands: melee, a
 shot, a thrown object, a blast, a fall); an untargeted throw never lands on a
 person the thrower cannot perceive (`select_random_target_in_room` /

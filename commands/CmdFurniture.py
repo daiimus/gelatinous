@@ -89,14 +89,13 @@ def _take_posture(cmd, posture):
     if caller.db.furniture == furn and caller.db.posture == posture:
         caller.msg(f"You're already {posture} {prep} {name}.")
         return
-    # Taking a seat is done in the open (#3763; owner, 2026-10-24:
-    # "Sitting should break the hide."). Not quiet: the emergence beat
-    # lands before the ".sits on" pose names them.
-    from world.stealth import break_stealth
-    break_stealth(caller)
     caller.db.posture = posture
     caller.db.furniture = furn
     caller.temp_place = f"{posture} {prep} {name}."
+    # The pose below is what reveals a hidden sitter (CmdDotPose calls
+    # break_stealth before it renders): owner ruling, 2026-10-24,
+    # "Sitting should break the hide." (#3763), pinned by
+    # test_acting_reveals_the_hidden; this is the one mechanism.
     caller.execute_cmd(f".{_verb(posture)} {prep} {name}")
 
 

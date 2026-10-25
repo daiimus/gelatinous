@@ -6,12 +6,13 @@ lands on a hidden person; buying breaks it; you cannot hide while in
 combat or while someone is aiming at you.
 
 The engine is `world.stealth.break_stealth`, which speaking already
-calls. The new callers: `_take_posture` (sit/lie), `take_damage` (every
-hit lands there: melee, shot, thrown object, blast, fall),
-`ShopContainer.purchase_item` (the `buy` command and a spoken counter
-order both end there). The throw pickers take the thrower as `seen_by`
-and drop anyone they cannot perceive. `hide` refuses under a combat
-handler or a live aim.
+calls. Sitting and lying already broke the hide through the pose
+`_take_posture` issues (CmdDotPose calls it); those tests are pins. The
+new callers: `take_damage` (every hit lands there: melee, shot, thrown
+object, blast, fall) and `ShopContainer.purchase_item` (the `buy`
+command and a spoken counter order both end there). The throw pickers
+take the thrower as `seen_by` and drop anyone they cannot perceive.
+`hide` refuses under a combat handler or a live aim.
 
 char2 is the hider (no staff permission); char1 watches, Unaware.
 """
@@ -51,6 +52,8 @@ class _Hidden(EvenniaCommandTest):
 
 
 class TestSittingBreaksTheHide(_Hidden):
+    """Pins, not changes: the pose `sit`/`lie` issue broke the hide on
+    master already. The ruling holds whichever way the seat is taken."""
 
     def test_sit(self):
         self.seat("stool")
@@ -89,14 +92,12 @@ class TestAHitBreaksTheHide(_Hidden):
         self.assertIn("emerges from concealment", "\n".join(self.heard))
 
     def test_no_damage_is_no_hit(self):
+        """A miss never reaches take_damage (the attack loop calls it on
+        the hit branch only, world/combat/attack.py); a zero or junk amount
+        that does arrive returns before the hook."""
         self.hide()
         self.char2.take_damage(0, location="chest", injury_type="blunt")
-        self.assertTrue(self.char2.db.hidden)
-
-    def test_the_premise_a_miss_calls_nothing(self):
-        """A miss never reaches take_damage: the attack loop only calls it
-        on a hit (world/combat/attack.py), so nothing here to break."""
-        self.hide()
+        self.char2.take_damage("lots", location="chest", injury_type="blunt")
         self.assertTrue(self.char2.db.hidden)
 
 
