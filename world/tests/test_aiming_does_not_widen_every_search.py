@@ -102,6 +102,30 @@ class TestLookReachesTheAimedRoom(_AimingNorth):
         self.assertIn("Could not find", self.as_player(CmdLook(), "rusty knife"))
         self.assertIn("Could not find", self.as_player(CmdLook(), "hawker"))
 
+    def test_look_me_is_still_you_with_a_mei_ling_down_the_barrel(self):
+        """The magic words are never looked for in the aimed room: an NPC
+        keyed "Mei Ling" with no description has her key for an sdesc,
+        and "me" is a prefix of it."""
+        mei = create_object("typeclasses.characters.Character",
+                            key="Mei Ling", location=self.north)
+        mei.msg = lambda text=None, **kw: None
+        herman = create_object("typeclasses.characters.Character",
+                               key="Herman", location=self.north)
+        herman.msg = lambda text=None, **kw: None
+        for word in ("me", "self"):
+            out = self.as_player(CmdLook(), word)
+            self.assertNotIn("Mei", out, word)
+            self.assertNotIn("Herman", out, word)
+            self.assertNotIn("Multiple targets", out, word)
+            self.assertIn(self.char2.key, out, word)
+        # `here` is your location, and while aiming your location renders
+        # as the aim view: the street, with Mei Ling and Herman standing
+        # in it. One room view, not a look at a person, no multimatch.
+        out = self.as_player(CmdLook(), "here")
+        self.assertTrue(out.startswith("North Street"), out[:40])
+        self.assertNotIn("Multiple targets", out)
+        self.assertEqual(out, self.as_player(CmdLook(), ""))
+
     def test_two_strangers_alike_print_one_multimatch_and_stop(self):
         twin = create_object("typeclasses.characters.Character",
                              key="Odile Brandt", location=self.north)

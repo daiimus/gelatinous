@@ -58,18 +58,25 @@ class CmdLook(default_cmds.CmdLook):
         """A person, then a thing, in *aimed*; None for neither, False
         when a multimatch was reported and the look should stop.
 
-        People resolve the way `resolve_character_target` resolves them
-        (identity first; a Builder may also name a real key), but the
-        count is read here so one multimatch prints once and ends the
-        look, whichever path found it. The presence gate applies to both
-        pools (`filter_present`, and `get_search_candidates` on the
-        explicit `candidates=`)."""
+        People: the identity matcher first (description or a remembered
+        name), and for a Builder with no identity match, Evennia's own
+        key and alias search over the people there (not the substring
+        rule `resolve_character_target` gives staff; `look` has never
+        used that). The count is read here so one multimatch prints once
+        and ends the look, whichever path found it. The presence gate
+        applies to both pools (`filter_present`, and
+        `get_search_candidates` on the explicit `candidates=`). `me`,
+        `self`, `myself` and `here` are never looked for down the
+        barrel: they fall through to `Character.search`, which answers
+        them with you and your room."""
         from typeclasses.characters import Character
         from world.combat.constants import PERM_BUILDER
         from world.perception import filter_present
         from world.search import identity_match_characters
 
         query = self.args.strip()
+        if query.lower() in ("me", "self", "myself", "here"):
+            return None
         present = filter_present(caller, list(aimed.contents))
         people = identity_match_characters(caller, query, present)
         if not people and caller.check_permstring(PERM_BUILDER):
