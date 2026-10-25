@@ -329,7 +329,8 @@ class TestDetermineDestination(TestCase):
             destination, target = cmd.determine_destination()
         self.assertIs(destination, adjacent)
         self.assertIs(target, bystander)
-        mock_pick.assert_called_once_with(adjacent, exclude=caller)
+        mock_pick.assert_called_once_with(adjacent, exclude=caller,
+                                          seen_by=caller)   # #3763
 
     def test_sticky_grenade_prefers_magnetic_target(self):
         caller = make_caller()

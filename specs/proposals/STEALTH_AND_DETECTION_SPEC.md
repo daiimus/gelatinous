@@ -359,6 +359,23 @@ an action (speech, a pose), observers who couldn't see you get
 "…emerges from concealment." *before* the words render — a voice never just
 materializes mid-sentence. Trackers who watched you lurk get no redundant line.
 
+**Acting reveals (2026-10-24, #3763, the first slice of #3659):** hiding lasts
+until you do something visible or something visibly happens to you, and a few
+things cannot be started from hiding at all. Owner, against five played-out
+scenes: sitting or lying down breaks the hide (already true: the pose
+`_take_posture` issues goes through `CmdDotPose`, which breaks it; now pinned); being hit
+breaks it and a miss does not (`take_damage`, where every hit lands: melee, a
+shot, a thrown object, a blast, a fall); an untargeted throw never lands on a
+person the thrower cannot perceive (`select_random_target_in_room` /
+`select_most_magnetic_target_in_room` take the thrower as `seen_by`); buying
+breaks it (`ShopContainer.purchase_item`, so the spoken counter order and the
+`buy` command agree); and `hide` is refused while in combat or while someone
+in the room is aiming at you. Each is one `break_stealth` call at the place
+the action happens, not quiet, so the emergence beat lands before the line
+that names you. Still open in #3659 for their own rulings: followers trailing
+a hidden leader, recognition recency, LLM NPC prompts, stashed objects' prose,
+the aim placement line.
+
 **The whisper carve-out (2026-07-03, user-decided):** `whisper` does NOT break
 stealth — it's the creepy channel — and it **rides the say parent** (the
 shared speech rails, `world/speech.py`): voice flavour/garble apply, the

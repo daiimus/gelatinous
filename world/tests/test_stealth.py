@@ -25,6 +25,10 @@ def _char(motorics=1, resonance=1, hidden=False, room=None):
     c.db.hidden = hidden
     c.db.awareness = None
     c.location = room
+    # `hide` refuses under a combat handler or a live aim (#3763); on a
+    # bare MagicMock both read as present.
+    c.ndb.combat_handler = None
+    c.ndb.aimed_at_by = None
     return c
 
 

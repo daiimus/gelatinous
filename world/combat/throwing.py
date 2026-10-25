@@ -98,8 +98,16 @@ def is_melee_weapon(obj):
 # ===================================================================
 
 
-def select_random_target_in_room(room, exclude=None):
-    """Select random character in room for proximity assignment."""
+def select_random_target_in_room(room, exclude=None, seen_by=None):
+    """Select random character in room for proximity assignment.
+
+    ``seen_by`` is the thrower: a person they cannot perceive (hidden
+    from them, `world.perception.can_perceive`) is never where an
+    untargeted throw lands (#3763; owner, 2026-10-24: "The hidden
+    individual should likely be excluded from possible targets").
+    Without it the pool is everyone present, as for a deflection whose
+    thrower is long gone from the room.
+    """
     if not room:
         return None
 
@@ -111,12 +119,16 @@ def select_random_target_in_room(room, exclude=None):
         obj for obj in room.contents
         if isinstance(obj, Character) and obj != exclude
     ]
+    if seen_by is not None:
+        from world.perception import can_perceive
+        characters = [obj for obj in characters if can_perceive(seen_by, obj)]
     if characters:
         return random.choice(characters)
     return None
 
 
-def select_most_magnetic_target_in_room(room, grenade, exclude=None):
+def select_most_magnetic_target_in_room(room, grenade, exclude=None,
+                                        seen_by=None):
     """
     Select the most magnetic character in room for sticky grenade
     targeting.
@@ -129,6 +141,8 @@ def select_most_magnetic_target_in_room(room, grenade, exclude=None):
         grenade: The sticky grenade being thrown (for magnetic
             strength)
         exclude: Character to skip (typically the thrower)
+        seen_by: The thrower; a person they cannot perceive is never
+            picked (#3763), as in `select_random_target_in_room`.
 
     Returns:
         Character with highest magnetic armor, or None if no valid
@@ -147,6 +161,9 @@ def select_most_magnetic_target_in_room(room, grenade, exclude=None):
         obj for obj in room.contents
         if isinstance(obj, Character) and obj != exclude
     ]
+    if seen_by is not None:
+        from world.perception import can_perceive
+        characters = [obj for obj in characters if can_perceive(seen_by, obj)]
     if not characters:
         return None
 
