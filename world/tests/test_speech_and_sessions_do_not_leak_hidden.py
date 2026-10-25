@@ -37,6 +37,9 @@ checking beat assuming: the speech commands validate arguments before
 `break_stealth` (#2530), the take path calls `_clear_stash_state`
 (#2476), and the `search` broadcast excludes observers who cannot
 perceive the searcher (#2562/#2563). Pinned below so they stay fixed.
+(The search half is superseded, 2026-10-25, #3769: search reveals the
+searcher now and its broadcast excludes nobody but them; see
+test_stealth_does_not_announce_you.)
 """
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaCommandTest

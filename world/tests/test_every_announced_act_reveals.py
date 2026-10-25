@@ -187,13 +187,15 @@ class TestTheVerbsTheOwnerRuledOn(_Hidden):
                         joined.index("stops following you"), joined)
 
 
-class TestWhatStaysQuiet(_Hidden):
-
     def test_search_reveals(self):
         """Owner, 2026-10-25: "Search reveals", superseding #2562's quiet
-        searcher; so it is in the loud list, not this one."""
+        searcher."""
         self.as_player(CmdSearch(), "")
         self.assertFalse(self.char2.db.hidden)
+
+
+class TestWhatStaysQuiet(_Hidden):
+
 
     def test_a_move_announcement_is_not_an_act_here(self):
         """Open movement breaks the hide in at_post_move already; a sneak
