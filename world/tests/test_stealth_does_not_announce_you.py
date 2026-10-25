@@ -1,20 +1,16 @@
-"""A hidden search stays hidden, and a refused sneak costs nothing
+"""A search reveals the searcher (since #3769), and a refused sneak costs nothing
 (#2562, #2563).
 
-## #2562 — the search that announced you to people who can't see you
+## #2562, superseded by #3769 (owner, 2026-10-25: "Search reveals")
 
-`msg_room_identity` does **no** perception filtering. It walks
-`location.contents`, skips the exclude set, and messages everyone else.
-The `search` broadcast excluded only the actor.
-
-So a **hidden** character running `search` announced themselves to the
-very observers who cannot see them — and stayed hidden afterwards, so
-those same observers still could not target, or even list, the person
-they had just been told about.
-
-`is_hidden_from` is the display gate the rest of the codebase uses for
-this question. `CmdCommunication` filters a whisper's bystanders on it,
-because a whisper is a visual event. So is a search.
+#2562 found that a **hidden** character running `search` announced
+themselves to observers who could not see them and stayed hidden, so
+those observers could not target the person they had just been told
+about. Its fix hid the line from them. The 2026-10-24 rulings resolve
+the same contradiction the other way: every act a hidden character
+announces reveals them, so `msg_room_identity` breaks the hide first
+and the whole room, the formerly unaware included, reads the emergence
+beat and then the search. The exclude list is the searcher alone.
 
 ## #2563 — the contest paid for a move that never happened
 
@@ -53,22 +49,10 @@ class _StealthCase(EvenniaCommandTest):
         self.char2.location = self.room1
 
 
-class TestAHiddenSearchIsNotAnnounced(_StealthCase):
-    """Asserted on the EXCLUDE LIST handed to the broadcast, because the
-    end delivery is not observable in this harness.
-
-    `msg_room_identity` has a session gate — it skips observers with no
-    connected session, deliberately (#462: per-observer name resolution
-    is the most expensive render in the game, and messages to
-    session-less objects are discarded by Evennia anyway). Harness
-    characters other than the caller have no session, so a
-    hand-patched `.msg` on them never fires. Two probes tonight failed
-    that way before I read the gate.
-
-    Patched on `world.identity_utils`, not on `commands.CmdStealth` —
-    the import is inside the function, so the module attribute is the
-    one that resolves at call time.
-    """
+class TestASearchRevealsTheSearcher(_StealthCase):
+    """#3769 (owner, 2026-10-25: "Search reveals"). The exclude list is
+    read off the broadcast call because the end delivery is not
+    observable in this harness; the reveal is read off the flag."""
 
     def exclude_list(self):
         with mock.patch("world.identity_utils.msg_room_identity") as say:
@@ -76,33 +60,27 @@ class TestAHiddenSearchIsNotAnnounced(_StealthCase):
         self.assertTrue(say.call_args, "the search never broadcast")
         return list(say.call_args.kwargs.get("exclude") or [])
 
-    def test_an_unaware_observer_is_excluded(self):
+    def test_an_unaware_observer_is_told(self):
         self.char1.db.hidden = True
         set_awareness(self.char2, self.char1, UNAWARE)
-        self.assertIn(self.char2, self.exclude_list())
-
-    def test_an_alert_observer_is_not(self):
-        self.char1.db.hidden = True
-        set_awareness(self.char2, self.char1, ALERT)
-        self.assertNotIn(self.char2, self.exclude_list())
-
-    def test_an_unhidden_searcher_excludes_only_themselves(self):
-        self.char1.db.hidden = False
         self.assertEqual(self.exclude_list(), [self.char1])
 
-    def test_the_searcher_is_always_excluded(self):
+    def test_an_alert_observer_is_told(self):
         self.char1.db.hidden = True
-        self.assertIn(self.char1, self.exclude_list())
+        set_awareness(self.char2, self.char1, ALERT)
+        self.assertEqual(self.exclude_list(), [self.char1])
 
-    def test_the_gate_is_the_shared_one(self):
-        """`is_hidden_from` is what `CmdCommunication` filters a
-        whisper's bystanders on — same question, same answer."""
-        from world.stealth import is_hidden_from
+    def test_a_hidden_searcher_is_revealed(self):
         self.char1.db.hidden = True
         set_awareness(self.char2, self.char1, UNAWARE)
-        self.assertTrue(is_hidden_from(self.char1, self.char2))
-        set_awareness(self.char2, self.char1, ALERT)
-        self.assertFalse(is_hidden_from(self.char1, self.char2))
+        self.call(CmdSearch(), "", caller=self.char1)
+        self.assertFalse(self.char1.db.hidden)
+
+    def test_the_broadcast_is_an_act(self):
+        """Default `acting`, so the announcer does the revealing."""
+        with mock.patch("world.identity_utils.msg_room_identity") as say:
+            self.call(CmdSearch(), "", caller=self.char1)
+        self.assertNotIn("acting", say.call_args.kwargs)
 
     def test_the_search_still_runs(self):
         """Filtering the broadcast must not skip the sweep itself."""

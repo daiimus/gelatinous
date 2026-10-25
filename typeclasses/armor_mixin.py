@@ -313,6 +313,7 @@ class ArmorMixin:
                 if attacker is not None:
                     exclude.append(attacker)
                 msg_room_identity(
+                    acting=(),
                     location=self.location,
                     template=msgs["observer_template"],
                     char_refs=msgs["observer_char_refs"],

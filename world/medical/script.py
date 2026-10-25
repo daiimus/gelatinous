@@ -535,6 +535,7 @@ class MedicalScript(DefaultScript):
             if self.obj.location:
                 from world.identity_utils import msg_room_identity
                 msg_room_identity(
+                    acting=(),
                     location=self.obj.location,
                     template=room_template,
                     char_refs={"actor": self.obj},

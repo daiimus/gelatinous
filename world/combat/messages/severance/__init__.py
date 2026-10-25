@@ -29,6 +29,7 @@ Example::
     attacker.msg(msgs["attacker_msg"])
     target.msg(msgs["victim_msg"])
     msg_room_identity(
+        acting=(),
         location=attacker.location,
         template=msgs["observer_template"],
         char_refs=msgs["observer_char_refs"],

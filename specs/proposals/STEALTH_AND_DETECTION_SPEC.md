@@ -377,9 +377,21 @@ be stashed (`hide <device>` refuses: "A trap is in plain sight to anyone in the
 room with it"), a detonator arming a stashed charge brings it into sight before
 its beep, and an LLM NPC counts only the company it perceives when deciding a
 speaker is alone with it (the PRESENT roster and the arrival notice already did,
-#2589). Still open in #3659 for their own rulings: followers trailing a hidden
-leader, recognition recency, the clinic pod's doctor and the repair bench
-(sitting in the pod already reveals), a stashed item falling.
+#2589). Slice three (#3769, 2026-10-24), the core: every act a hidden
+character announces to the room reveals them, in the announcer itself.
+`msg_room_identity` breaks the hide of the referent of each ``acting``
+placeholder (the ``actor`` by default; ``surgeon``, ``physician``, ``buyer``,
+``caller`` where a call names its actor otherwise) before it renders, so the
+emergence beat lands first; announcements that are not acts (collapsing,
+waking, dying, a garment tearing, a part severed, falling, a bleed, the move
+lines a sneak relies on) pass ``acting=()``. `wield` announces nothing and
+reveals on its own. Owner, on the audit of 234 announcements: changing clothes,
+eating or treating yourself, picking up or dropping, aiming ("Aiming is not an
+ambush. It reveals you."), following and throwing all reveal; whisper and sneak
+are the only quiet acts; tailing someone unseen will be its own command,
+`shadow`. Still open in #3659: followers trailing a hidden leader (the leader's
+side), recognition recency, the clinic pod's doctor and the repair bench, a
+stashed item falling.
 
 **The whisper carve-out (2026-07-03, user-decided):** `whisper` does NOT break
 stealth — it's the creepy channel — and it **rides the say parent** (the

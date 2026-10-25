@@ -112,9 +112,25 @@ def msg_room_identity(
     exclude: list | None = None,
     pre_resolved_refs: dict[str, dict] | None = None,
     addressed_refs: tuple[str, ...] | None = None,
+    acting: tuple[str, ...] = ("actor",),
     **kwargs,
 ) -> None:
     """Send an identity-aware message to all observers in a room.
+
+    ACTING REVEALS (#3769, the core of #3659). A hidden character whose
+    own act is announced here is revealed first (`break_stealth`, not
+    quiet), so observers who had lost them read "... emerges from
+    concealment." before the line that names them. Owner, 2026-10-24:
+    changing clothes, eating, picking up, aiming, following, throwing
+    and wielding all reveal; whisper and sneak are the only quiet acts,
+    and neither comes through here. ``acting`` names the placeholders
+    whose referent is the one acting -- ``("actor",)`` by default, so a
+    template written as ``"{actor} does X"`` needs nothing. A call whose
+    actor is named otherwise passes it (``("surgeon",)``,
+    ``("physician",)``, ``("buyer",)``); an announcement that is not an
+    act -- collapsing, waking, dying, a garment tearing, a part severed,
+    falling, a bleed -- passes ``acting=()`` and leaves the hide to the
+    hit rule (`take_damage`, #3763).
 
     Each observer receives a personalised copy of *template* where
     ``{placeholder}`` tokens are replaced with the referenced
@@ -174,6 +190,14 @@ def msg_room_identity(
     """
     exclude_set = set(exclude) if exclude else set()
     pre_resolved_refs = pre_resolved_refs or {}
+    # Acting reveals (#3769): before anyone reads the line, the hidden
+    # actor steps out of concealment, and the emergence beat lands first.
+    if acting:
+        from world.stealth import break_stealth
+        for name in acting:
+            who = char_refs.get(name)
+            if who is not None:
+                break_stealth(who)
 
     # Who this message is AIMED at, resolved once rather than per observer.
     # `id()` rather than `is` to match the idiom `world/emote.py` uses for

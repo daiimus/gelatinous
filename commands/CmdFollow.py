@@ -69,6 +69,10 @@ class CmdFollow(Command):
         # the person you were following was never told you had left
         # them — you simply stopped arriving behind them, and the only
         # writer of this attribute outside `sever_follow` was here.
+        # Following reveals (#3769), and the leader is told directly below,
+        # so the hide breaks before any line: the emergence beat first.
+        from world.stealth import break_stealth
+        break_stealth(caller)
         if caller.db.following:
             sever_follow(caller)
         caller.db.following = target

@@ -705,6 +705,7 @@ def check_grenade_deflection(grenade, destination, thrower):
         # Failed deflection attempt
         target.msg(f"You attempt to deflect the {grenade.key} with your {melee_weapon.key}, but your reflexes aren't quick enough!")
         msg_room_identity(
+            acting=("target_char",),   # the deflector acts (#3769)
             location=destination,
             template=f"{{target_char}} swings their {melee_weapon.key} at the incoming {grenade.key} but fails to connect!",
             char_refs={"target_char": target},

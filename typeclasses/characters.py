@@ -927,6 +927,7 @@ class Character(
         # Notify area
         if self.location:
             msg_room_identity(
+                acting=(),
                 location=self.location,
                 template="{actor} collapses on the ground in an unconscious heap.",
                 char_refs={"actor": self},
@@ -1010,6 +1011,7 @@ class Character(
         if was_unconscious and not self.is_dead():
             if self.location:
                 msg_room_identity(
+                    acting=(),
                     location=self.location,
                     template="{actor} regains consciousness.",
                     char_refs={"actor": self},
@@ -1094,6 +1096,7 @@ class Character(
         # Notify revival
         if self.location:
             msg_room_identity(
+                acting=(),
                 location=self.location,
                 template="|g{actor} has been revived!|n",
                 char_refs={"actor": self},
@@ -1491,6 +1494,7 @@ class Character(
                 template,
                 {"actor": self},
                 exclude=[self] + self._unaware_of_me(),
+                acting=(),
             )
             if decanting:
                 # Where they stand, before it matters: every character
@@ -1523,6 +1527,7 @@ class Character(
                     "vacant sleeve is quietly gone.",
                     {"actor": self},
                     exclude=[self] + self._unaware_of_me(),
+                    acting=(),
                 )
                 # Stand up before leaving the grid (#2579).
                 #
@@ -1623,6 +1628,7 @@ class Character(
             template,
             {"actor": self},
             exclude=exclude,
+            acting=(),
         )
 
     def announce_move_to(
@@ -1687,6 +1693,7 @@ class Character(
             template,
             {"actor": self},
             exclude=exclude,
+            acting=(),
         )
 
     def at_post_move(self, source_location, **kwargs):

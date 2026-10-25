@@ -62,6 +62,10 @@ def sever_follow(follower, silent=False):
     follower.db.following = None
     if silent or not _valid(leader):
         return
+    # The player's own act (#3769): broken before the leader's direct
+    # line, so the leader hears the emergence beat first.
+    from world.stealth import break_stealth
+    break_stealth(follower)
     try:
         follower.msg(f"You stop following {leader.get_display_name(follower)}.")
         leader.msg(f"{follower.get_display_name(leader)} stops following you.")
@@ -70,6 +74,8 @@ def sever_follow(follower, silent=False):
     if follower.location and follower.location == leader.location:
         try:
             from world.identity_utils import msg_room_identity
+            # The player's own act (`stop following`, or switching leaders);
+            # the system drops pass silent=True and never get here (#3769).
             msg_room_identity(
                 location=follower.location,
                 template="{actor} stops following {target}.",

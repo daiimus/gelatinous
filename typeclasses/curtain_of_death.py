@@ -375,6 +375,7 @@ class DeathCurtain:
                 getattr(self.character, "db", None), "species", None,
             )
             msg_room_identity(
+                acting=(),
                 location=self.location,
                 template=get_death_cause_template(death_cause, species),
                 char_refs={"actor": self.character},
