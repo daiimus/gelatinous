@@ -86,7 +86,9 @@ class TestTheFooterContinues(_Footer):
             "It continues up (u) and down (d).")
 
     def test_mixed_the_greenhaus_shape(self):
-        """A stair core: platforms north and south, the core both ways."""
+        """The Greenhaus stair column as built 055 typed it, `farm` like
+        the platforms north and south of it (build 170 retyped it
+        `stairwell`, #3757; the shape still has to render)."""
         self.room1.db.type = "farm"
         self.hang("north", self.room("farm", "platform north"), "n")
         self.hang("south", self.room("farm", "platform south"), "s")

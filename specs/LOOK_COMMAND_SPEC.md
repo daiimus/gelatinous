@@ -322,11 +322,13 @@ this game has had its balance pass.
     more sense for us to have room types...which I think we already do. It's a very standard
     mud design." The word is the whole test, so two words take in more than open ground:
     `market` covers the open-air Shipbreaker yard and the covered galleries (`MarketRoom`,
-    `outside=False`) alike, and `farm` covers the Greenhaus towers whole (build 055 types all
-    99 cells `farm`): the open growing platforms and, with them, the 33 stair cores and 6
-    ground bays built `outside=False`, so a figure in a stair core shows from the platform
-    beside it and from the core above or below ("You see a lone figure above.", #3755; until
-    2026-10-23 the walker read "to the up"). Open to the eye if not to the sky. Any
+    `outside=False`) alike, and `farm` covers the Greenhaus growing platforms and their 6
+    ground bays (`outside=False`), open to the eye if not to the sky. Until build 170
+    (#3757, 2026-10-24) the 33 Greenhaus stair rooms were `farm` too, so a figure in a
+    stair core showed from the platform beside it and from the core above or below ("You
+    see a lone figure above.", #3755); they are `stairwell` now, an interior, and the glance
+    no longer looks into them. Owner: "Stair core is not a phrase" / "the room type will
+    need to be changed from tenement or farm to stairwell" / "stairwell should be fine." Any
     other type -- a rented unit, a tenement hall, the
     constabulary -- is never glanced into, open door or not, and an untyped room is treated
     the same. `look <door>` through an open door is its own renderer and still shows who is
