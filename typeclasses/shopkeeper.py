@@ -288,6 +288,11 @@ class ShopContainer(DefaultObject):
         # Deduct tokens
         buyer.tokens -= price
         _audit_coin(buyer, price, "purchase", self)
+        # A sale is made in the open (#3763; owner, 2026-10-24: "You have
+        # to come out of hiding if you're buying something."). Here, so
+        # the spoken order at a counter and the `buy` command agree.
+        from world.stealth import break_stealth
+        break_stealth(buyer)
         # ...and credit the shop's till when it keeps one — sale proceeds
         # must not vanish from the economy (the FoodCart lesson, promoted).
         if self.db.register is not None:

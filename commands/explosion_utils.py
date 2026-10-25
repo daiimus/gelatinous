@@ -213,7 +213,8 @@ def check_rigged_grenade(character, exit_obj):
             resolve_weapon_hit, select_most_magnetic_target_in_room,
         )
         sticky_target = select_most_magnetic_target_in_room(
-            character.location, rigged_grenade, exclude=character
+            character.location, rigged_grenade, exclude=character,
+            seen_by=character,
         )
 
         if sticky_target:

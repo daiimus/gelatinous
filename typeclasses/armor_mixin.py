@@ -66,6 +66,15 @@ class ArmorMixin:
         if amount <= 0:
             return (False, 0)
 
+        # Being hit breaks the hide (#3763; owner, 2026-10-24: "If you're
+        # hit - it should break your hiding. If you're not hit - you stay
+        # concealed"). Every hit lands here: melee, a shot, a thrown
+        # object, a blast, a fall. Not quiet, so observers who had lost
+        # the victim read "... emerges from concealment." BEFORE the
+        # damage line names them (blast lines, #3659 §A).
+        from world.stealth import break_stealth
+        break_stealth(self)
+
         # Check for armor before applying damage
         final_damage = self._calculate_armor_damage_reduction(amount, location, injury_type)
 

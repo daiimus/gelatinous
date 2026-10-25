@@ -362,11 +362,12 @@ class CmdThrow(Command):
         obj = getattr(self, "obj_to_throw", None)
         if obj is not None and obj.db.is_sticky:
             target = select_most_magnetic_target_in_room(
-                room, obj, exclude=self.caller
+                room, obj, exclude=self.caller, seen_by=self.caller
             )
             if target:
                 return target
-        return select_random_target_in_room(room, exclude=self.caller)
+        return select_random_target_in_room(room, exclude=self.caller,
+                                            seen_by=self.caller)
 
     def find_target(self):
         """Find target for 'at' syntax throwing."""

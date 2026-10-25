@@ -46,6 +46,19 @@ class CmdHide(Command):
         if caller.db.hidden:
             caller.msg("You're already keeping out of sight.")
             return
+        # Owner, 2026-10-24 (#3763): "You shouldn't be able to hide while
+        # someone is aiming at you or fighting you."
+        from world.combat.constants import (NDB_AIMED_AT_BY, NDB_AIMING_AT,
+                                            NDB_COMBAT_HANDLER)
+        if getattr(caller.ndb, NDB_COMBAT_HANDLER, None):
+            caller.msg("You can't slip out of sight in the middle of a fight.")
+            return
+        aimer = getattr(caller.ndb, NDB_AIMED_AT_BY, None)
+        if (aimer is not None
+                and getattr(aimer, "location", None) == caller.location
+                and getattr(aimer.ndb, NDB_AIMING_AT, None) == caller):
+            caller.msg("You can't slip out of sight with a weapon trained on you.")
+            return
         kept = attempt_hide(caller)
         caller.msg("You slip out of sight.")
         for observer in kept:
