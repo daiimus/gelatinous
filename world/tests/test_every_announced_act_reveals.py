@@ -156,11 +156,11 @@ class TestTheVerbsTheOwnerRuledOn(_Hidden):
 
 class TestWhatStaysQuiet(_Hidden):
 
-    def test_search_from_hiding_stays_quiet(self):
-        """Kept from #2562: a hidden searcher is not announced to those who
-        cannot see them, and the search does not reveal them."""
+    def test_search_reveals(self):
+        """Owner, 2026-10-25: "Search reveals", superseding #2562's quiet
+        searcher; so it is in the loud list, not this one."""
         self.as_player(CmdSearch(), "")
-        self.assertTrue(self.char2.db.hidden)
+        self.assertFalse(self.char2.db.hidden)
 
     def test_a_move_announcement_is_not_an_act_here(self):
         """Open movement breaks the hide in at_post_move already; a sneak

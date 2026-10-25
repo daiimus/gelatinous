@@ -259,29 +259,18 @@ class CmdSearch(Command):
         if not caller.location:
             return
         from world.identity_utils import msg_room_identity
-        from world.stealth import is_hidden_from
 
-        # ONLY PEOPLE WHO CAN PERCEIVE YOU SEE YOU SEARCHING (#2562).
-        # `msg_room_identity` does no perception filtering — it walks
-        # `location.contents`, skips the exclude set, and messages
-        # everyone else. So a HIDDEN character running `search` announced
-        # themselves to the very observers who cannot see them, and
-        # stayed hidden afterwards, so those same observers still could
-        # not target or even list the person they had just been told
-        # about.
-        #
-        # `is_hidden_from` is the display gate the rest of the codebase
-        # uses for exactly this question — `CmdCommunication` filters a
-        # whisper's bystanders on it, because a whisper is a visual
-        # event. So is a search.
-        unseen_by = [obj for obj in caller.location.contents
-                     if obj is not caller and is_hidden_from(caller, obj)]
+        # SEARCHING REVEALS YOU (#3769; owner, 2026-10-25: "Search
+        # reveals"). This supersedes #2562, which hid the line from the
+        # observers who could not see the searcher and left them hidden:
+        # the announcer now breaks the hide first, so those observers read
+        # "... emerges from concealment." and then the search, and can
+        # target the person they were just told about.
         msg_room_identity(
-            acting=(),   # a hidden searcher stays quiet to those who cannot see them (#2562); kept, see #3769
             location=caller.location,
             template="{actor} searches the area carefully.",
             char_refs={"actor": caller},
-            exclude=[caller] + unseen_by,
+            exclude=[caller],
         )
         found_chars, found_objs = active_search(caller)
         from world.stealth import search_hidden_exits
