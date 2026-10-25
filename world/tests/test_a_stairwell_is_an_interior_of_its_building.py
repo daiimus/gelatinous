@@ -1,4 +1,4 @@
-"""#3757 -- the stair rooms are `stairwell`, a type the code already knew.
+"""#3757, #3759 -- the stair rooms are `stairwell`, a type the code already knew.
 
 Owner, 2026-10-23/24, on the #3755 footer in the Brackett stairwells and
 the Greenhaus stair cores: "the room type will need to be changed from
@@ -8,8 +8,9 @@ Greenhaus) and renamed the 30 "Stair Core" rooms "Stairway".
 
 What the word means, pinned here because the retype rides on it:
 
-- an interior for the glance (`room_type_is_open_air` is False), so the
-  Greenhaus stairways stop being glanced into from the platforms;
+- on the glance list (`room_type_is_open_air`, #3759): you can see into a
+  stairwell from the landing or platform beside it, which is what the
+  glance is for, chase scenes and losing a pursuer in a crowd;
 - residential for the crowd prose, since the Brackett stairwells were
   `tenement` and their crowd lines must not switch to the street pool;
 - the footer reads the stairs as a building of their own, two sentences
@@ -29,8 +30,8 @@ from world.crowd.crowd_messages import (RESIDENTIAL_ROOM_TYPES,
 
 class TestTheWord(EvenniaTest):
 
-    def test_a_stairwell_is_not_open_air(self):
-        self.assertFalse(room_type_is_open_air("stairwell"))
+    def test_a_stairwell_is_on_the_glance_list(self):
+        self.assertTrue(room_type_is_open_air("stairwell"))
 
     def test_a_stairwell_is_residential_like_the_tenement_it_serves(self):
         self.assertIn("stairwell", RESIDENTIAL_ROOM_TYPES)
@@ -83,11 +84,23 @@ class TestTheFooterInAStairwell(EvenniaTest):
         self.assertEqual(self.room1.get_custom_exit_display(self.char1),
                          "There is a stairwell to the west (w).")
 
-    def test_the_glance_does_not_look_into_a_stairwell(self):
+    def test_the_glance_looks_into_a_stairwell(self):
+        """A pursuer on the platform sees the figure on the stairs (#3759)."""
         self.room1.db.type = "farm"
         stair = self.room("stairwell", "Stairway")
         self.hang("south", stair, "s")
         neighbour = create.create_object("typeclasses.characters.Character",
                                          key="a grower", location=stair)
         neighbour.msg = lambda text=None, **kw: None
-        self.assertNotIn("lone figure", self.room1.return_appearance(self.char1))
+        self.assertIn("You see a lone figure to the south.",
+                      self.room1.return_appearance(self.char1))
+
+    def test_and_from_the_landing_into_the_brackett_stairs(self):
+        self.room1.db.type = "tenement"
+        stair = self.room("stairwell", "Stairwell (Floor 3)")
+        self.hang("up", stair, "u")
+        neighbour = create.create_object("typeclasses.characters.Character",
+                                         key="a tenant", location=stair)
+        neighbour.msg = lambda text=None, **kw: None
+        self.assertIn("You see a lone figure above.",
+                      self.room1.return_appearance(self.char1))

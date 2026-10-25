@@ -318,17 +318,19 @@ this game has had its balance pass.
   - **Fifth gate, 2026-10-17 (#3753): a sightline into open ground.** The walker skips a
     destination whose `type` is not in `world.crowd.crowd_messages.OPEN_AIR_ROOM_TYPES`
     (street, alley, market, bridge, rooftop, courtyard, balcony, fire escape, farm, hull,
-    garden, agridome; `room_type_is_open_air`). Owner: "Streets, sure. Cubes? Not so much." / "I think it makes
+    garden, agridome, stairwell; `room_type_is_open_air`). The list is the room types you
+    can see into from next door, so a pursuer sees where someone went and a crowd can hide
+    them (#3759, 2026-10-24); it is not a list of outdoor rooms, whatever its name says.
+    Owner: "Streets, sure. Cubes? Not so much." / "I think it makes
     more sense for us to have room types...which I think we already do. It's a very standard
     mud design." The word is the whole test, so two words take in more than open ground:
     `market` covers the open-air Shipbreaker yard and the covered galleries (`MarketRoom`,
-    `outside=False`) alike, and `farm` covers the Greenhaus growing platforms and their 6
-    ground bays (`outside=False`), open to the eye if not to the sky. Until build 170
-    (#3757, 2026-10-24) the 33 Greenhaus stair rooms were `farm` too, so a figure in a
-    stair core showed from the platform beside it and from the core above or below ("You
-    see a lone figure above.", #3755); they are `stairwell` now, an interior, and the glance
-    no longer looks into them. Owner: "Stair core is not a phrase" / "the room type will
-    need to be changed from tenement or farm to stairwell" / "stairwell should be fine." Any
+    `outside=False`) alike, `farm` covers the Greenhaus growing platforms and their 6 ground
+    bays (`outside=False`), and `stairwell` covers the 17 Brackett stairs and the 33
+    Greenhaus stairways (typed by build 170, #3757), so a figure on the stairs shows from
+    the platform or landing beside them and from the flight above or below ("You see a lone
+    figure above.", #3755). For one deploy, build 170 to #3759, `stairwell` was off the list
+    and the platforms went dark. Any
     other type -- a rented unit, a tenement hall, the
     constabulary -- is never glanced into, open door or not, and an untyped room is treated
     the same. `look <door>` through an open door is its own renderer and still shows who is

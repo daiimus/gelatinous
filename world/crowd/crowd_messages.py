@@ -1008,27 +1008,24 @@ def room_type_is_unpeopled(room_type):
     return str(room_type or "").lower() in UNPEOPLED_ROOM_TYPES
 
 
-#: Room types the neighbour glance may look into. The glance in
-#: `Room.get_adjacent_character_sightings` is a sightline: it looks into
-#: these and into nothing else (#3753). Owner, 2026-10-15: "Streets, sure.
-#: Cubes? Not so much." Owner, 2026-10-19, on farm, hull, garden and
-#: agridome: "I feel like those types should allow 'glance'". The word is
-#: the whole test, so two of them reach past open ground: 'market' covers
-#: the open-air Shipbreaker yard and the covered galleries (`MarketRoom`,
-#: stall rows under a roof or a hull) alike, and 'farm' covers the
-#: Greenhaus growing platforms and the six enclosed ground bays with
-#: them, so a figure in a ground bay shows from the lawn beside it. Open
-#: to the eye if not to the sky. (Build 055 typed all 99 Greenhaus cells
-#: 'farm', stair column included, so until build 170 retyped the 33 stair
-#: rooms 'stairwell' (#3757) a figure in a stair core showed from the
-#: platform beside it too; a stairwell is an interior.)
-#: Any other word, and an untyped room, is treated as an interior
-#: whatever its door is doing. `sky` is left out: nobody stands in the air, and a sky cell
-#: shows no exits of its own. A new type is glanced into only once it is
-#: listed here.
+#: Room types the neighbour glance may look into (#3753, #3759).
+#:
+#: The glance (`Room.get_adjacent_character_sightings`) is for chase
+#: scenes: from one room you see that someone stands in the next, so a
+#: pursuer sees where their quarry went, and a heavy crowd over there
+#: hides them. This list is the room types you can see into from next
+#: door. Despite the name it is not a list of outdoor rooms: a market
+#: gallery, a Greenhaus ground bay and a stairwell are all on it because
+#: you can see into them, and a rented unit, a tenement hall and the
+#: constabulary are off it because you cannot. The word is the whole
+#: test; an untyped room is never glanced into; `sky` is left out because
+#: nobody stands in the air. A new type is glanced into only once it is
+#: listed here. History: eight words with #3753; farm, hull, garden,
+#: agridome added 2026-10-19; stairwell added 2026-10-24 (#3759).
 OPEN_AIR_ROOM_TYPES = {
     'street', 'alley', 'market', 'bridge', 'rooftop', 'courtyard',
     'balcony', 'fire escape', 'farm', 'hull', 'garden', 'agridome',
+    'stairwell',
 }
 
 #: `CROWD_INTENSITY` names at which nobody in a room can be picked out from
