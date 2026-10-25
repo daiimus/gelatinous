@@ -104,3 +104,17 @@ class TestTheFooterInAStairwell(EvenniaTest):
         neighbour.msg = lambda text=None, **kw: None
         self.assertIn("You see a lone figure above.",
                       self.room1.return_appearance(self.char1))
+
+    def test_and_from_one_flight_to_the_next(self):
+        """The gate reads the far room's type, so with `stairwell` off the
+        list a stair could not see up its own flight either (build 170 to
+        #3759). Now every stair chain, Brackett and Greenhaus, shows the
+        flight above and below."""
+        self.room1.db.type = "stairwell"
+        above = self.room("stairwell", "Stairwell (Floor 4)")
+        self.hang("up", above, "u")
+        neighbour = create.create_object("typeclasses.characters.Character",
+                                         key="a tenant", location=above)
+        neighbour.msg = lambda text=None, **kw: None
+        self.assertIn("You see a lone figure above.",
+                      self.room1.return_appearance(self.char1))
