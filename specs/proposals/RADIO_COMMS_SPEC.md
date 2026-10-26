@@ -330,7 +330,7 @@ identical. We can't have NPCs cheating." A radio turn's words go to `xmit` and
 nowhere else; the brain never renders them to the room. `xmit` refuses an NPC
 as it refuses a player (no radio worn or in hand and no working comms organ,
 switched off, sweeping, untuned), and every such refusal carries
-`type="refusal"` (`world.radio.REFUSAL`). A player reads it on their screen;
+`type="refusal"` (`world.perception.REFUSAL`; the channel gate's "You're busy … — 'stop' first" carries it too). A player reads it on their screen;
 the LLM brain buffers it as a witnessed event ("You could not: …") so the next
 turn can act on it (`wield` the radio in its pocket) and the turn in flight
 does not remember the refused words as said; a scripted voice (courier, hunt,

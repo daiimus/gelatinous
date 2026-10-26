@@ -22,7 +22,7 @@ from __future__ import annotations
 import random
 from typing import Any, Optional
 
-from world.perception import perceives
+from world.perception import REFUSAL, perceives
 
 RADIO_CHANNEL_KEY = "Radio"
 #: The special "frequency" that receives every band (scanner sweep mode).
@@ -35,15 +35,6 @@ EMERGENCY_BAND = "911MHz"
 # --------------------------------------------------------------------------
 # Device predicates & state
 # --------------------------------------------------------------------------
-
-#: The ``type`` a command's refusal carries when it tells the caller it
-#: could not do the thing ("You have no radio worn or in hand", "is
-#: switched off"). A player reads it on their screen; an LLM NPC's receive
-#: hook buffers it so its next turn knows what it could not do, and the
-#: turn in flight learns its words never went out (#2585). The same line
-#: for both — NPCs and players seem identical.
-REFUSAL = "refusal"
-
 
 def is_radio(obj: Any) -> bool:
     """Duck-typed: a comm device that transmits/receives on a frequency.

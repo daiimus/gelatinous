@@ -38,6 +38,15 @@ from world.combat.capacity import SIGHT_OVERRIDE_CONDITION
 # --------------------------------------------------------------------------
 # Capacity / condition reads (low-level helpers, shared with world.voice)
 # --------------------------------------------------------------------------
+#: The ``type`` a command's refusal carries when it tells the caller it
+#: could not do the thing ("You have no radio worn or in hand", "is
+#: switched off", "You're busy operating — 'stop' first"). A player reads it
+#: on their screen; an LLM NPC's receive hook buffers it so its next turn
+#: knows what it could not do, and the turn in flight learns its words never
+#: went out (#2585). The same line for both: NPCs and players seem identical.
+REFUSAL = "refusal"
+
+
 def _read_capacity(char: Any, name: str) -> float | None:
     """Raw body capacity *name* (0.0–1.0) for *char*, or ``None`` if unreadable.
 

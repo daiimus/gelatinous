@@ -7,7 +7,9 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from commands.CmdRadio import CmdTransmit
-from world.radio import REFUSAL, transmit, transmit_organ
+from world.channeled import refuse_if_channeling
+from world.perception import REFUSAL
+from world.radio import transmit, transmit_organ
 
 
 def _radio(on=True, freq="447"):
@@ -80,6 +82,24 @@ class TestTheCommandTagsItsRefusals(TestCase):
         c = _char()
         self.assertFalse(transmit_organ(c, "hello"))
         self.assertIn("no working comms module", _refusals(c)[0])
+
+
+class TestTheChannelGateTagsItsRefusalToo(TestCase):
+    """`xmit` asks `refuse_if_channeling` first; a body mid-channel is
+    refused with the same tag, so a radio turn taken mid-surgery is not
+    counted as aired (review of #2585)."""
+
+    def test_busy_is_a_tagged_refusal(self):
+        c = _char()
+        with patch("world.channeled.is_channeling", return_value="operating"):
+            self.assertTrue(refuse_if_channeling(c))
+        self.assertEqual(_refusals(c), ["You're busy operating — 'stop' first."])
+
+    def test_not_busy_says_nothing(self):
+        c = _char()
+        with patch("world.channeled.is_channeling", return_value=None):
+            self.assertFalse(refuse_if_channeling(c))
+        c.msg.assert_not_called()
 
 
 class TestAWorkingTransmitIsNotARefusal(TestCase):

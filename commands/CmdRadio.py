@@ -7,9 +7,10 @@ matching traffic to its holder (see ``world/radio.py``)."""
 from evennia import Command
 
 from world.radio import (
-    REFUSAL, SCAN, active_transmit_radio, frequency_of, is_powered, is_radio,
+    SCAN, active_transmit_radio, frequency_of, is_powered, is_radio,
     is_scanning, transmit,
 )
+from world.perception import REFUSAL
 
 
 def _resolve_device(caller, phrase, *, require_radio=True):

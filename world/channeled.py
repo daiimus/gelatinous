@@ -82,7 +82,10 @@ def refuse_if_channeling(actor: Any) -> bool:
     key = is_channeling(actor)
     if not key:
         return False
-    actor.msg(f"You're busy {key} — 'stop' first.")
+    # Tagged as a refusal (#2585): the same line a player reads, and the
+    # one thing an NPC body hears about a verb it could not do.
+    from world.perception import REFUSAL
+    actor.msg(f"You're busy {key} — 'stop' first.", type=REFUSAL)
     return True
 
 

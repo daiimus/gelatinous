@@ -83,7 +83,8 @@ class LLMNpcMixin:
         # A refusal of our own command ("You have no radio worn or in
         # hand"): the line a player reads on their screen. No speaker, so
         # it is caught before the speaker guard (#2585).
-        if kwargs.get("type") == "refusal":
+        from world.perception import REFUSAL
+        if kwargs.get("type") == REFUSAL:
             self._hear_refusal(text)
             return True
         speaker = from_obj
