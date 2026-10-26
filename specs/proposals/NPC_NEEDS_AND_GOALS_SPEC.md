@@ -180,6 +180,33 @@ unrecognized — grudges cling to the abandoned body. Consequence
 evasion by resleeving is an emergent mechanic from day one; the
 identity spec's cyberbrain/digital-ID seam is its designed counter.
 
+## 3.9 · Comms — a soul keeps its radio ready (2026-10-26, #3777)
+
+A handheld in a pocket receives but cannot transmit; one switched off does
+neither. Nothing in the tree knew a radio could be *not ready*, so two souls
+answered every call with a refusal (#2585). Owner: "If a radio is off - they
+should turn it on. This should organically feed into the GOAP system, more or
+less."
+
+- **One predicate, `world/souls/comms.py: radio_to_ready(soul)`** — pure; the
+  handheld to ready and why (`pocket`, `off`, `untuned`), or None when the
+  soul can already transmit (working comms organ; worn/held/seated set that is
+  on and tuned) or carries none. This is the single door for any future reason
+  to stay silent (a radio-silence order, hiding, a dead battery): a clause here,
+  a test beside it, nothing else changes. Future-proof by shape, not by flags
+  (owner, same day).
+- **Goal `comms`** — band 4 (idle colour, first) whenever the predicate answers,
+  so the set gets taken out and turned on on a quiet beat; band 2 when
+  `db.soul_comms_pending` is set, which `xmit`'s refusal does (it carries
+  `verb="transmit"` beside `type="refusal"`), so a called unit fixes it next
+  beat before the shift reclaims the body.
+- **Plan / job `ready_radio`** — one real command per beat: `wield <radio>`,
+  then `toggle <radio> on`; done when the predicate answers None. Faults,
+  legibly and with the usual cooldown: "hands full", "no band to tune to"
+  (nothing tells a soul its home band yet — next slice), three refused tries.
+- Not here: retrying the words a refusal lost; turning a radio off; organs and
+  consoles (already ready).
+
 ## 4 · Advertisements — the world tells souls what it offers
 
 Venues and objects already exist; they gain a declaration:

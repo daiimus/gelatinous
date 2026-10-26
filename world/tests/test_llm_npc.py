@@ -528,6 +528,22 @@ class TestHearingARefusal(TestCase):
                          type="refusal")
         self.assertEqual(b.ndb.llm_refused, "Transmit what?")
 
+    def test_a_refused_transmit_raises_the_comms_goal(self):
+        """#3777: the verb on the tag is what the soul reads."""
+        b = self._body()
+        b.db.soul_comms_pending = None
+        b.at_msg_receive(text="You have no radio worn or in hand to transmit "
+                              "with.", from_obj=None, type="refusal",
+                         verb="transmit")
+        self.assertIs(b.db.soul_comms_pending, True)
+
+    def test_another_verbs_refusal_does_not(self):
+        b = self._body()
+        b.db.soul_comms_pending = None
+        b.at_msg_receive(text="You're busy operating — 'stop' first.",
+                         from_obj=None, type="refusal")
+        self.assertIsNone(b.db.soul_comms_pending)
+
 
 class TestEchoGuard(TestCase):
     """A pose aimed at the NPC must never come straight back as its reply."""

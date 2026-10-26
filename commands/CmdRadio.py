@@ -90,7 +90,7 @@ class CmdTransmit(Command):
             return  # BLOCKED (CHANNELED_ACTIONS_SPEC §2.2): device work is hands-work
         caller = self.caller
         if not self.raw_message:
-            caller.msg("Transmit what?", type=REFUSAL)
+            caller.msg("Transmit what?", type=REFUSAL, verb="transmit")
             return
         device = None
         if self.device_phrase:
@@ -111,7 +111,7 @@ class CmdTransmit(Command):
                     transmit_organ(caller, self.message)
                     return
                 caller.msg("You have no radio worn or in hand to transmit "
-                           "with.", type=REFUSAL)
+                           "with.", type=REFUSAL, verb="transmit")
                 return
         transmit(caller, self.message, device)
 

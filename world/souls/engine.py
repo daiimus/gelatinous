@@ -350,6 +350,12 @@ def _desired_goal(soul, hour, exclude=()):
         return (2, "wardrobe")
     # band 2: schedule
     sched = SCHEDULES[soul.db.soul_schedule or "day"]
+    # A call just refused for want of a ready radio (#3777): fix it at
+    # duty level, before the shift reclaims the body. One or two beats.
+    if soul.db.soul_comms_pending and "comms" not in exclude:
+        from world.souls.comms import wants_comms
+        if wants_comms(soul):
+            return (2, "comms")
     if soul.db.soul_post and "duty" not in exclude \
             and on_duty(soul, hour):
         return (2, "duty")
@@ -367,6 +373,13 @@ def _desired_goal(soul, hour, exclude=()):
     # loitering behind her own counter for the seven hours between the
     # end of her day and the start of her sleep. Nobody stays at work
     # for want of a reason to leave.
+    # Idle colour, first: a handheld in a pocket or switched off gets
+    # taken out and turned on on a quiet beat (#3777). One-shot -- once
+    # the set is ready the predicate stops offering it.
+    if "comms" not in exclude:
+        from world.souls.comms import wants_comms
+        if wants_comms(soul):
+            return (4, "comms")
     if soul.db.soul_home is not None and soul.db.soul_post is not None \
             and soul.location == soul.db.soul_post \
             and not _in_block(hour, sched["work"]) \
@@ -424,7 +437,7 @@ def _goal_band(goal):
     # needs still can, which is what we want: she drops the parcel run
     # to flee, not to go back to standing at the counter.
     return {"safety": 0, "hunger": 1, "rest": 2, "duty": 2, "claim": 2,
-            "wardrobe": 2, "run": 2, "recover": 2, "patrol": 4,
+            "wardrobe": 2, "run": 2, "recover": 2, "comms": 2, "patrol": 4,
             "hunt": 4,
         "respond": 0,
             "craving": 3, "social": 3, "insurance": 3,

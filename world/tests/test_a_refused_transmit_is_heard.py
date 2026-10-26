@@ -37,6 +37,11 @@ def _refusals(char):
             if call.kwargs.get("type") == REFUSAL]
 
 
+def _verbs(char):
+    return [call.kwargs.get("verb") for call in char.msg.call_args_list
+            if call.kwargs.get("type") == REFUSAL]
+
+
 def _xmit(char, line):
     cmd = CmdTransmit()
     cmd.caller = char
@@ -82,6 +87,33 @@ class TestTheCommandTagsItsRefusals(TestCase):
         c = _char()
         self.assertFalse(transmit_organ(c, "hello"))
         self.assertIn("no working comms module", _refusals(c)[0])
+
+
+class TestEveryTransmitRefusalNamesItsVerb(TestCase):
+    """#3777: the soul raises the comms goal on the verb, not the prose."""
+
+    def test_no_radio(self):
+        c = _char(); _xmit(c, "hello")
+        self.assertEqual(_verbs(c), ["transmit"])
+
+    def test_nothing_to_transmit(self):
+        c = _char(worn=[_radio()]); _xmit(c, "")
+        self.assertEqual(_verbs(c), ["transmit"])
+
+    def test_switched_off_sweeping_untuned(self):
+        for dev in (_radio(on=False), _radio(freq="scan"), _radio(freq=None)):
+            c = _char(worn=[dev]); transmit(c, "hello", dev)
+            self.assertEqual(_verbs(c), ["transmit"])
+
+    def test_no_organ(self):
+        c = _char(); transmit_organ(c, "hello")
+        self.assertEqual(_verbs(c), ["transmit"])
+
+    def test_the_channel_gate_names_none(self):
+        c = _char()
+        with patch("world.channeled.is_channeling", return_value="operating"):
+            refuse_if_channeling(c)
+        self.assertEqual(_verbs(c), [None])
 
 
 class TestTheChannelGateTagsItsRefusalToo(TestCase):
