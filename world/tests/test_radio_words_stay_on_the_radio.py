@@ -46,8 +46,10 @@ from unittest import mock
 from evennia.utils.test_resources import EvenniaTest
 
 
-class TestTheGuardMatchesTheCommand(EvenniaTest):
-    """The pre-check must accept everything `xmit` accepts."""
+class TestTheCommandIsTheOnlyGate(EvenniaTest):
+    """There is no pre-check in front of `xmit` any more (#2585): the
+    command's own device ladder (worn, held, seated, comms organ) decides
+    for an NPC exactly as for a player, and refuses the same way."""
 
     def _source(self, relpath):
         import pathlib
@@ -59,17 +61,13 @@ class TestTheGuardMatchesTheCommand(EvenniaTest):
         self.assertIn("comms_organ_frequency", body)
         self.assertIn("transmit_organ", body)
 
-    def test_the_npc_guard_checks_it_too(self):
+    def test_the_npc_has_no_second_copy_of_the_ladder(self):
         body = self._source("typeclasses/llm_npc.py")
         start = body.index("def _transmit_words")
         end = body.index("def ", start + 40)
-        self.assertIn("comms_organ_frequency", body[start:end])
-
-    def test_the_guard_still_refuses_with_no_device_at_all(self):
-        body = self._source("typeclasses/llm_npc.py")
-        start = body.index("def _transmit_words")
-        end = body.index("def ", start + 40)
-        self.assertIn("return False", body[start:end])
+        self.assertNotIn("active_transmit_radio", body[start:end])
+        self.assertNotIn("comms_organ_frequency", body[start:end])
+        self.assertIn('execute_cmd(f"xmit {words}")', body[start:end])
 
 
 class TestAirWordsAreNeverRoomSaid(EvenniaTest):
@@ -118,16 +116,17 @@ class TestAirWordsAreNeverRoomSaid(EvenniaTest):
             self.render_arg("radio", "muttering to itself", "radio", True),
             "muttering to itself")
 
-    def test_the_conflict_is_recorded_rather_than_decided(self):
-        """The downgrade is NOT changed — see the PR. Two intents in the
-        tree disagree, and this pins that the reasoning is written down
-        where the next reader will find it."""
+    def test_the_decision_is_recorded_where_the_branch_is(self):
+        """Decided 2026-10-26 (#2585, "NPCs and players should seem
+        identical"): the old note that held the question open is gone and
+        the rule stands in its place."""
         import pathlib
         root = pathlib.Path(__file__).resolve().parents[2]
         body = (root / "typeclasses" / "llm_npc.py").read_text(
             errors="ignore")
-        self.assertIn("device-snatched unit standing in a crowd", body)
-        self.assertIn("Deliberately NOT changed here", body)
+        self.assertNotIn("Deliberately NOT changed here", body)
+        self.assertNotIn("device-snatched unit standing in a crowd", body)
+        self.assertIn("never reach the room from\n        # here (#2585", body)
 
 
 class TestSpawnmobRefusesAnUnknownSwitch(EvenniaTest):

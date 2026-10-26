@@ -227,16 +227,24 @@ class TestRadioTool(TestCase):
         b.execute_cmd.assert_called_once_with(
             "xmit Unit responding, en route.")
 
-    def test_no_device_means_no_transmission(self):
-        """Dead, absent or radio-less: nothing goes out, and nothing
-        leaks into the room as speech either."""
+    def test_no_device_is_the_commands_call(self):
+        """Radio-less: the tool still goes to `xmit`, which refuses the
+        NPC exactly as it refuses a player (#2585). No pre-check here,
+        and nothing leaks into the room as speech: the refusal is the
+        only thing the body hears, and it is not speech."""
         b = MagicMock()
         _bind(b, "_handle_action_tool")
         _bind(b, "_transmit_words")
-        with patch("world.radio.active_transmit_radio", return_value=None):
-            b._handle_action_tool("radio", '"Unit responding."',
-                                  MagicMock())
-        b.execute_cmd.assert_not_called()
+        _bind(b, "_hear_refusal")
+        _bind(b, "at_msg_receive")
+        b.execute_cmd.side_effect = lambda cmd: b.at_msg_receive(
+            text="You have no radio worn or in hand to transmit with.",
+            from_obj=None, type="refusal")
+        b._handle_action_tool("radio", '"Unit responding."', MagicMock())
+        b.execute_cmd.assert_called_once_with("xmit Unit responding.")
+        self.assertEqual(b.ndb.llm_refused, None)   # consumed by the transmit
+        b._try_llm_reply.assert_not_called()
+        b._observe_action.assert_called_once()
 
     def test_radio_turn_framing_is_unambiguous(self):
         from world.llm.prompt import build_messages

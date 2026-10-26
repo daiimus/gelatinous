@@ -80,6 +80,12 @@ class LLMNpcMixin:
         """React to heard speech. Job-specific handlers get first crack; the
         LLM layer only runs when both gates (per-NPC + deployment) are on, so a
         scripted NPC is byte-identical with the LLM off."""
+        # A refusal of our own command ("You have no radio worn or in
+        # hand"): the line a player reads on their screen. No speaker, so
+        # it is caught before the speaker guard (#2585).
+        if kwargs.get("type") == "refusal":
+            self._hear_refusal(text)
+            return True
         speaker = from_obj
         if speaker is None or speaker is self:
             return True
@@ -792,6 +798,20 @@ class LLMNpcMixin:
             text = f"You yourself just did this: {raw}"
         self._observe_action(self, text)
 
+    def _hear_refusal(self, text):
+        """A command of ours was refused — `xmit` with no radio in hand, a
+        set switched off or sweeping (#2585). The same line a player reads
+        on their screen, read two ways: flagged for the turn in flight, so
+        `_transmit_words` learns its words never went out and the turn does
+        not remember them as said; and, for an LLM-driven body, buffered as
+        a witnessed event so the next turn knows what it could not do (and
+        can `wield` the radio in its pocket, as a player would)."""
+        clean = text[0] if isinstance(text, tuple) else text
+        clean = " ".join(str(clean or "").split())
+        self.ndb.llm_refused = clean or "refused"
+        if self.db.llm_driven and clean:
+            self._observe_action(None, f"You could not: {clean}")
+
     def _observe_action(self, actor, text):
         """Buffer a witnessed room action — reactor-side, NO LLM. Already
         rendered from this NPC's POV (names resolved), so just keep the text."""
@@ -1176,38 +1196,24 @@ class LLMNpcMixin:
                                 mode=mode)
             return
         # Terminal: render speech/action/thought, route any action tool, remember.
-        # A radio turn answers ON THE AIR (§7.3): the reply speech keys the
-        # NPC's real transmit device via ``xmit`` — never room-say, which
-        # would address the walls (the Rook's sealed studio taught us this).
-        # When the model ALSO called the radio tool, that call carries the
-        # transmission and speech stays room-side flavour.
-        # NOTE (#2585): `aired` collapses two facts — "the model chose
-        # not to transmit" and "the transmission was ATTEMPTED AND
-        # FAILED" — and both take the false branch, so a failed
-        # transmit drops the words into `say`/`emote`.
-        #
-        # Deliberately NOT changed here, because the two intents in the
-        # tree disagree and it is a design call:
-        #
-        #   * the comment above says "never room-say, which would
-        #     address the walls (the Rook's sealed studio taught us
-        #     this)"
-        #   * `test_llm_npc.TestRadioRepliesAir` asserts the fallback and
-        #     explains it: "harmless in a sealed room, correct for a
-        #     device-snatched unit standing in a crowd"
-        #
-        # The half of #2585 that is unambiguous — a guard NARROWER than
-        # the command it guards, which turned six organ-only security
-        # units away before `xmit` could route them — is fixed in
-        # `_transmit_words`. Those six now transmit, so the leak that
-        # actually fired in the live game is closed either way.
-        aired = False
-        if (mode in ("radio", "radio_ambient", "broadcast")
-                and turn["speech"] and tool != "radio"):
-            aired = self._transmit_words(turn["speech"])
+        # A radio turn answers ON THE AIR (§7.3): the reply speech goes to
+        # the NPC's real transmit command, `xmit`, which mutters or says it
+        # in the room when it transmits and REFUSES when it cannot — no
+        # device, switched off, sweeping, untuned — exactly as it refuses a
+        # player. Words composed for the air never reach the room from
+        # here (#2585; the Rook's sealed studio taught us the first half,
+        # #1314 said "mute, player-equal" and then rendered the refusal as
+        # a say). When the model ALSO called the radio tool, that call
+        # carries the transmission and speech stays room-side flavour.
+        radio_turn = bool(mode in ("radio", "radio_ambient", "broadcast")
+                          and turn["speech"] and tool != "radio")
+        aired = self._transmit_words(turn["speech"]) if radio_turn else False
         rendered = self._render_llm_reply(
-            None if aired else turn["speech"], turn["action"],
+            None if radio_turn else turn["speech"], turn["action"],
             turn["thought"], patron)
+        # What was actually said: room speech, or air speech that went out.
+        # A refused transmit was never said, and is not remembered as said.
+        said = turn["speech"] if (aired or not radio_turn) else None
         # Opt-in tuning log: raw model decision beside the final rendered text,
         # so the game-side transform (conjugation/selfify/second-person) is
         # auditable — the sidecar log sees the prompt but not this step.
@@ -1217,10 +1223,10 @@ class LLMNpcMixin:
                          messages=messages)
         self._handle_action_tool(tool, arg, patron)
         if patron is not None:            # broadcasts have no caller
-            self._remember_turn(patron, line, speaker_name, turn["speech"],
+            self._remember_turn(patron, line, speaker_name, said,
                                 turn["action"], turn["thought"])
         # Long-term memory: persist what was learned (async, post-render).
-        self._store_memory(patron, speaker_name, line, turn["speech"],
+        self._store_memory(patron, speaker_name, line, said,
                            subject=subject)
 
     def _run_context_tool(self, tool, arg, patron):
@@ -1341,8 +1347,8 @@ class LLMNpcMixin:
         elif tool == "radio" and arg:
             # Key up for REAL through the transmit command (§7.3) — worn/held
             # walkie first; the command's own fallback covers a built-in comms
-            # organ. No device = the command refuses = the NPC stays mute,
-            # exactly as it would for a player (§7.5).
+            # organ. No device = the command refuses = the NPC stays mute and
+            # hears the refusal, exactly as a player would (§7.5, #2585).
             self._transmit_words(arg)
         elif tool == "release":
             # The character has decided the exchange is over: drop the
@@ -1394,10 +1400,14 @@ class LLMNpcMixin:
         return False
 
     def _transmit_words(self, words):
-        """Key the NPC's real transmit device with *words* (the radio
-        tool's sanitation, shared). Returns True when a transmission was
-        attempted — the command itself refuses without a device (§7.5),
-        exactly as it would for a player."""
+        """Key the NPC's real transmit device with *words* through the
+        `xmit` command, exactly as a player would. Returns True when the
+        words went out, False when the command refused (no radio worn or
+        in hand and no working comms organ, a set switched off, sweeping
+        or untuned) or there was nothing left to say. The refusal reaches
+        this body as the tagged line a player reads (#2585,
+        `_hear_refusal`); there is no second copy of the command's device
+        ladder here to drift from it."""
         words = " ".join(str(words).split()).strip().strip('"').strip()
         if not words:
             return False
@@ -1409,18 +1419,11 @@ class LLMNpcMixin:
         words = filter_for_duty(self, words)
         if not words:
             return False
-        # The gate must match what `xmit` ITSELF accepts (#2585).
-        # `active_transmit_radio` sees worn / held / seated devices only,
-        # but `xmit` falls back to a BUILT-IN COMMS ORGAN — which is how
-        # a security unit keys up. Six live units are organ-only, so
-        # every one of them was turned away here and had its dispatch
-        # traffic room-said instead.
-        from world.radio import active_transmit_radio, comms_organ_frequency
-        if (active_transmit_radio(self) is None
-                and not comms_organ_frequency(self)):
-            return False          # no device: stay mute, don't say-leak
+        self.ndb.llm_refused = None
         self.execute_cmd(f"xmit {words}")
-        return True
+        refused = self.ndb.llm_refused
+        self.ndb.llm_refused = None
+        return refused is None
 
     def _remember_person(self, patron, name):
         """Privately name/nickname the interlocutor via the REAL ``remember``

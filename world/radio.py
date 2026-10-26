@@ -36,6 +36,15 @@ EMERGENCY_BAND = "911MHz"
 # Device predicates & state
 # --------------------------------------------------------------------------
 
+#: The ``type`` a command's refusal carries when it tells the caller it
+#: could not do the thing ("You have no radio worn or in hand", "is
+#: switched off"). A player reads it on their screen; an LLM NPC's receive
+#: hook buffers it so its next turn knows what it could not do, and the
+#: turn in flight learns its words never went out (#2585). The same line
+#: for both — NPCs and players seem identical.
+REFUSAL = "refusal"
+
+
 def is_radio(obj: Any) -> bool:
     """Duck-typed: a comm device that transmits/receives on a frequency.
     Strict ``is True`` — the flag is only ever written as a literal, so a
@@ -420,16 +429,18 @@ def transmit(speaker: Any, message: str, device: Any,
     the staff channel and echoes to every powered radio tuned to that
     frequency (plus any radio in scan mode, which catches all bands)."""
     if not is_powered(device):
-        speaker.msg(f"{device.get_display_name(speaker)} is switched off.")
+        speaker.msg(f"{device.get_display_name(speaker)} is switched off.",
+                    type=REFUSAL)
         return False
     if is_scanning(device):
         speaker.msg(f"{device.get_display_name(speaker)} is sweeping — "
-                    f"tune it to a frequency before you transmit.")
+                    f"tune it to a frequency before you transmit.",
+                    type=REFUSAL)
         return False
     frequency = frequency_of(device)
     if not frequency:
         speaker.msg(f"{device.get_display_name(speaker)} isn't tuned to "
-                    f"anything.")
+                    f"anything.", type=REFUSAL)
         return False
 
     speaker.msg(f'You transmit on {frequency}: "{message}"')
@@ -466,7 +477,8 @@ def transmit_organ(speaker: Any, message: str) -> bool:
     so a bot keys up through the identical player command."""
     frequency = comms_organ_frequency(speaker)
     if not frequency:
-        speaker.msg("You have no working comms module to transmit with.")
+        speaker.msg("You have no working comms module to transmit with.",
+                    type=REFUSAL)
         return False
     speaker.msg(f'You transmit on {frequency}: "{message}"')
     _log_to_channel(speaker, message, frequency)

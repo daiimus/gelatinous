@@ -7,7 +7,7 @@ matching traffic to its holder (see ``world/radio.py``)."""
 from evennia import Command
 
 from world.radio import (
-    SCAN, active_transmit_radio, frequency_of, is_powered, is_radio,
+    REFUSAL, SCAN, active_transmit_radio, frequency_of, is_powered, is_radio,
     is_scanning, transmit,
 )
 
@@ -89,7 +89,7 @@ class CmdTransmit(Command):
             return  # BLOCKED (CHANNELED_ACTIONS_SPEC §2.2): device work is hands-work
         caller = self.caller
         if not self.raw_message:
-            caller.msg("Transmit what?")
+            caller.msg("Transmit what?", type=REFUSAL)
             return
         device = None
         if self.device_phrase:
@@ -110,7 +110,7 @@ class CmdTransmit(Command):
                     transmit_organ(caller, self.message)
                     return
                 caller.msg("You have no radio worn or in hand to transmit "
-                           "with.")
+                           "with.", type=REFUSAL)
                 return
         transmit(caller, self.message, device)
 
