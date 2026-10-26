@@ -229,6 +229,22 @@ class TestOneBeatOfReadying(TestCase):
         self.assertEqual(self.beat(s, (POCKET, _radio())), ACTING)
         self.assertEqual(s.db.soul_comms_tries["n"], 1)
 
+    def test_a_saved_budget_is_a_mapping_not_a_dict(self):
+        """Evennia hands a db dict back as a _SaverDict (a Mapping). The
+        count must still read it, or it never passes 1 and a refused
+        wield repeats every beat with no cap."""
+        from collections.abc import Mapping
+
+        class Saved(Mapping):
+            def __init__(self, d): self._d = dict(d)
+            def __getitem__(self, k): return self._d[k]
+            def __iter__(self): return iter(self._d)
+            def __len__(self): return len(self._d)
+
+        s = _soul()
+        s.db.soul_comms_tries = Saved(_tries(POCKET, 3))
+        self.assertEqual(self.beat(s, (POCKET, _radio())), GAVE_UP)
+
     def test_a_budget_for_another_set_starts_over(self):
         s = _soul()
         s.db.soul_comms_tries = _tries(POCKET, 3, radio=999)

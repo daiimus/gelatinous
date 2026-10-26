@@ -15,6 +15,7 @@ planner changes. Future-proof by shape, not by flags (owner, same day).
 """
 
 import time
+from collections.abc import Mapping
 
 from world.radio import (
     active_transmit_radio, comms_organ_frequency, frequency_of, is_powered,
@@ -114,8 +115,12 @@ def ready_beat(soul):
         return READY
     why, radio = want
     rid = getattr(radio, "id", None)
+    # An Evennia db dict comes back as a _SaverDict: a Mapping, NOT a
+    # dict subclass. `isinstance(rec, dict)` would never match a saved
+    # record, the count would never pass 1, and a refused wield would
+    # repeat every beat with no cap.
     rec = soul.db.soul_comms_tries or {}
-    same = (isinstance(rec, dict) and rec.get("state") == why
+    same = (isinstance(rec, Mapping) and rec.get("state") == why
             and rec.get("radio") == rid
             and _now() - float(rec.get("at", 0.0)) < BUDGET_WINDOW)
     n = int(rec.get("n", 0)) if same else 0
