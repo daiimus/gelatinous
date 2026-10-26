@@ -426,6 +426,25 @@ def step_job(soul):
         soul.db.soul_job = job
         return True
 
+    if do == "ready_radio":
+        # The idle comms goal (#3777): the same one-command-per-beat
+        # `ready_beat` the refused-call reflex uses, so there is one way
+        # to take a radio out and switch it on. Done when the predicate
+        # answers None; the one fault is a state three beats could not
+        # change (a `wield` the game keeps refusing).
+        from world.souls.comms import ACTING, GAVE_UP, ready_beat
+        outcome = ready_beat(soul)
+        if outcome == ACTING:
+            soul.db.soul_job = job
+            return True
+        soul.db.soul_comms_pending = None
+        if outcome == GAVE_UP:
+            fault(soul, "could not ready the radio: three beats refused")
+            return False
+        job["at"] = at + 1
+        soul.db.soul_job = job
+        return True
+
     if do == "stand_down":
         # Home again: settle the assignment through the director's own
         # completion path, so intel syncs exactly where it always did.

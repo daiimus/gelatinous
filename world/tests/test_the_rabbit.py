@@ -375,18 +375,48 @@ class TestSheAsksForTheCrane(EvenniaCommandTest):
         super().setUp()
         self.rabbit = self.char1
 
-    def _handset(self, on=True, freq=None):
+    def _handset(self, on=True, freq=None, in_hand=True):
         from evennia.prototypes.spawner import spawn
         from world import prototypes
         radio = spawn(prototypes.WALKIE_TALKIE)[0]
         radio.db.radio_on = on
         radio.db.frequency = freq
         radio.move_to(self.rabbit, quiet=True, move_hooks=False)
+        if in_hand:
+            self.rabbit.wield_item(radio, hand="left")
         return radio
 
     def test_no_handset_no_call(self):
         """She can't shout at a crane."""
         self.assertFalse(courier.call_the_crane(self.rabbit, 2))
+
+    def test_she_takes_a_pocketed_handset_out_first(self):
+        """A pocket set receives but cannot be keyed: `xmit` refuses it as
+        it refuses a player (#2585). She wields it before anything else,
+        and a set that stayed in the pocket is not a transmission (#3777)."""
+        self._handset(on=True, freq="27.0", in_hand=False)
+        with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:
+            self.assertFalse(courier.call_the_crane(self.rabbit, 2))
+        said = [c.args[0] for c in cmd.call_args_list]
+        self.assertTrue(said and said[0].startswith("wield "), said)
+        self.assertNotIn("xmit", " ".join(said))
+
+    def test_the_set_in_hand_wins_over_one_in_a_pocket(self):
+        """Contents order used to pick the handset, so a pocketed twin could
+        be taken out while the check kept reading the one in hand."""
+        pocket = self._handset(on=True, freq="27.0", in_hand=False)
+        held = self._handset(on=True, freq="27.0")
+        with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:
+            self.assertTrue(courier.call_the_crane(self.rabbit, 2))
+        said = " ".join(c.args[0] for c in cmd.call_args_list)
+        self.assertNotIn("wield", said)
+        self.assertIn("xmit", said)
+
+    def test_a_handset_in_hand_is_not_taken_out_again(self):
+        self._handset(on=True, freq="27.0")
+        with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:
+            courier.call_the_crane(self.rabbit, 2)
+        self.assertNotIn("wield", " ".join(c.args[0] for c in cmd.call_args_list))
 
     def test_she_keys_the_real_verb(self):
         """This asserted `"12"` — the raw Z she was handed — and that

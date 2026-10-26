@@ -82,14 +82,16 @@ class TestTheCourierAsksInFloors(EvenniaTest):
         # `call_the_crane` imports these INSIDE the function, so they are
         # attributes of `world.radio` and never of `courier`.
         from world import radio as radio_mod
+        handset = create_object("typeclasses.items.Item",
+                                key="a Magpie", location=who)
         with patch.object(radio_mod, "is_radio", return_value=True), \
              patch.object(radio_mod, "is_powered", return_value=True), \
              patch.object(radio_mod, "same_band", return_value=True), \
              patch.object(radio_mod, "frequency_of", return_value="27MHz"), \
+             patch.object(radio_mod, "active_transmit_radio",
+                          return_value=handset), \
              patch.object(type(who), "execute_cmd",
                           side_effect=lambda line, **kw: said.append(line)):
-            handset = create_object("typeclasses.items.Item",
-                                    key="a Magpie", location=who)
             courier.call_the_crane(who, CraneContainer.QOC_Z)
         self.assertTrue(said, "she never keyed the handset")
         self.assertIn(str(floor_of(CraneContainer.QOC_Z)),

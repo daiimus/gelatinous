@@ -180,6 +180,48 @@ unrecognized — grudges cling to the abandoned body. Consequence
 evasion by resleeving is an emergent mechanic from day one; the
 identity spec's cyberbrain/digital-ID seam is its designed counter.
 
+## 3.9 · Comms — a soul keeps its radio ready (2026-10-26, #3777)
+
+A handheld in a pocket receives but cannot transmit; one switched off does
+neither. Nothing in the tree knew a radio could be *not ready*, so two souls
+answered every call with a refusal (#2585). Owner: "If a radio is off - they
+should turn it on. This should organically feed into the GOAP system, more or
+less."
+
+- **One predicate, `world/souls/comms.py: radio_to_ready(soul)`** — pure; the
+  handheld to ready and why (`pocket`, `off`), or None when the soul can already
+  transmit (working comms organ; worn/held/seated set that is on and tuned) or
+  carries none — and None for what the body cannot do right now, so the tree
+  never plans a job that can only fault: a pocket set with no free hand; a set
+  on but on no band (nothing tells a soul its home band yet — next slice); a set
+  whose key a twin in sight makes unreachable by `toggle` (Evennia's ordinal
+  form reads the `-01` in "AWE Magpie-01 radio" as the ordinal, a player bug of
+  its own). *What it cannot do, it does not want.* This is the single door for
+  any future reason to stay silent (a radio-silence order, hiding, a dead
+  battery): a clause here, a test beside it, nothing else changes. Future-proof
+  by shape, not by flags (owner, same day).
+- **Goal `comms`** — band 4 (idle colour, first) whenever the predicate answers,
+  so the set gets taken out and turned on on a quiet beat.
+- **A refused call is a reflex, not a goal.** `xmit`'s refusal carries
+  `verb="transmit"` beside `type="refusal"`; the body sets `db.soul_comms_pending`
+  when there is something to ready, and the next `think` spends one beat on
+  `ready_beat` before arbitration — like `notice_casualty` — then carries on with
+  whatever it was doing. Not a preemption: a goal that interrupted the running
+  job would drop a courier's run or a unit's recovery for a radio (nothing
+  re-plans those), and a player mid-errand simply takes the radio out while
+  walking. The flag clears itself when nothing is left to ready.
+- **`ready_beat`**, shared by the reflex and the idle job — one real command per
+  beat: `wield <radio>`, then `toggle <radio> on`; ready when the predicate
+  answers None; gives up after three beats in the same state (the idle job then
+  faults with the usual cooldown; the reflex just stops).
+- **Scripted voices ready their own set.** The courier's crane call
+  (`world/director/courier.py: call_the_crane`) already switched the handset on
+  and tuned it; it now takes it out of the pocket first, and its evidence check
+  reads the hand. A pocketed handset had meant every crane call refused and
+  every run faulted.
+- Not here: retrying the words a refusal lost; turning a radio off; organs and
+  consoles (already ready).
+
 ## 4 · Advertisements — the world tells souls what it offers
 
 Venues and objects already exist; they gain a declaration:

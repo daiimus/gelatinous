@@ -339,6 +339,10 @@ is not looking. From 2026-07-25 (#1314) to this change the brain rendered a
 refused transmit as room speech, the slip that issue's own message ("mute,
 player-equal") described the fix for. Any other command's refusal may carry
 the same tag and is heard the same way.
+A refusal also names its verb (`verb="transmit"`), and a soul hearing that
+verb raises the **comms** goal (NPC_NEEDS_AND_GOALS §3.9, #3777): the think
+tree takes the handheld out of the pocket and switches it on through `wield`
+and `toggle`, the same commands a player would type.
 
 ### 7.6 · Risks
 

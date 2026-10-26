@@ -85,7 +85,7 @@ class LLMNpcMixin:
         # it is caught before the speaker guard (#2585).
         from world.perception import REFUSAL
         if kwargs.get("type") == REFUSAL:
-            self._hear_refusal(text)
+            self._hear_refusal(text, verb=kwargs.get("verb"))
             return True
         speaker = from_obj
         if speaker is None or speaker is self:
@@ -799,17 +799,23 @@ class LLMNpcMixin:
             text = f"You yourself just did this: {raw}"
         self._observe_action(self, text)
 
-    def _hear_refusal(self, text):
+    def _hear_refusal(self, text, verb=None):
         """A command of ours was refused — `xmit` with no radio in hand, a
         set switched off or sweeping (#2585). The same line a player reads
-        on their screen, read two ways: flagged for the turn in flight, so
+        on their screen, read three ways: flagged for the turn in flight, so
         `_transmit_words` learns its words never went out and the turn does
-        not remember them as said; and, for an LLM-driven body, buffered as
-        a witnessed event so the next turn knows what it could not do (and
-        can `wield` the radio in its pocket, as a player would)."""
+        not remember them as said; for an LLM-driven body, buffered as a
+        witnessed event so the next turn knows what it could not do; and,
+        when the refused verb is ``transmit``, raised to the soul as the
+        comms goal (#3777), so the body readies its radio through the
+        think tree whether or not a model is behind it."""
         clean = text[0] if isinstance(text, tuple) else text
         clean = " ".join(str(clean or "").split())
         self.ndb.llm_refused = clean or "refused"
+        if verb == "transmit":
+            from world.souls.comms import wants_comms
+            if wants_comms(self):
+                self.db.soul_comms_pending = True
         if self.db.llm_driven and clean:
             self._observe_action(None, f"You could not: {clean}")
 

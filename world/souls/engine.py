@@ -362,6 +362,13 @@ def _desired_goal(soul, hour, exclude=()):
             if derived[n] >= needs_mod.soft_for(soul, n)]
     if soft:
         return (3, max(soft)[2])
+    # Idle colour, first: a handheld in a pocket or switched off gets
+    # taken out and turned on on a quiet beat (#3777). One-shot -- once
+    # the set is ready the predicate stops offering it.
+    if "comms" not in exclude:
+        from world.souls.comms import wants_comms
+        if wants_comms(soul):
+            return (4, "comms")
     # CLOCKING OFF: a soul whose shift has ended and who has nothing
     # pressing used to simply stand where it ended — a shopkeeper
     # loitering behind her own counter for the seven hours between the
@@ -424,7 +431,7 @@ def _goal_band(goal):
     # needs still can, which is what we want: she drops the parcel run
     # to flee, not to go back to standing at the counter.
     return {"safety": 0, "hunger": 1, "rest": 2, "duty": 2, "claim": 2,
-            "wardrobe": 2, "run": 2, "recover": 2, "patrol": 4,
+            "wardrobe": 2, "run": 2, "recover": 2, "comms": 4, "patrol": 4,
             "hunt": 4,
         "respond": 0,
             "craving": 3, "social": 3, "insurance": 3,
@@ -516,6 +523,17 @@ def think(soul, hour):
         notice_casualty(soul, soul.location)
     except Exception:  # noqa: BLE001 — mercy must not break the beat
         pass
+    # A call just refused for want of a ready radio (#3777): a REFLEX, not
+    # a goal. One beat spent taking the set out of the pocket or switching
+    # it on, then whatever the body was doing. Not a preemption: a goal
+    # that interrupted the running job would drop a courier's run or a
+    # unit's recovery for a radio -- nothing re-plans those -- and a
+    # player mid-errand simply takes the radio out while walking.
+    if soul.db.soul_comms_pending:
+        from world.souls.comms import ACTING, ready_beat
+        if ready_beat(soul) == ACTING:
+            return
+        soul.db.soul_comms_pending = None
 
     job = soul.db.soul_job
     sched = SCHEDULES[soul.db.soul_schedule or "day"]

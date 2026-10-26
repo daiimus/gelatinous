@@ -315,10 +315,22 @@ def call_the_crane(soul, level) -> bool:
     exactly as it hears a player — no back door, and the operator can
     refuse, be absent, or ask her to confirm.
     """
-    from world.radio import frequency_of, is_powered, is_radio, same_band
-    handset = next((o for o in soul.contents if is_radio(o)), None)
+    from world.radio import (
+        active_transmit_radio, frequency_of, is_powered, is_radio, same_band,
+    )
+    # The set she can already key -- worn, held or seated -- before any
+    # pocketed one, or the wield below would take out a second set while
+    # the evidence check kept reading the first (#3778 review).
+    handset = active_transmit_radio(soul) or next(
+        (o for o in soul.contents if is_radio(o)), None)
     if handset is None:
         return False
+    # A pocketed handset receives but cannot be keyed: `xmit` refuses a
+    # set that is not worn or held, for her as for a player (#2585). Take
+    # it out first, the way she already switches it on and tunes it
+    # (#3777). The evidence check below reads the hand, not the attempt.
+    if active_transmit_radio(soul) is not handset:
+        soul.execute_cmd(f"wield {handset.key}")
     if not is_powered(handset):
         soul.execute_cmd(f"toggle {handset.key} on")
     # `tune` stores the CANONICAL band ("27MHz"), so a raw string compare
@@ -331,8 +343,8 @@ def call_the_crane(soul, level) -> bool:
     # the only honest evidence the two setup verbs took. Without this the
     # function returned True on having FOUND a radio, and a caller
     # believed a request reached Ossie that never left the room.
-    if not is_powered(handset) or not same_band(frequency_of(handset),
-                                                CRANE_BAND):
+    if active_transmit_radio(soul) is not handset or not is_powered(handset) \
+            or not same_band(frequency_of(handset), CRANE_BAND):
         return False
     # SHE ASKS IN FLOORS, because that is what a person says on a radio
     # and what the console parses. `level` is a Z off the car; hailing it

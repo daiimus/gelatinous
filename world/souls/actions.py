@@ -721,6 +721,17 @@ def plan_for(soul, goal_need):
     if goal_need == "patrol":
         return _patrol_plan(soul)
 
+    if goal_need == "comms":
+        # Ready the carried handheld (#3777). A single step that re-asks
+        # the one predicate each beat and issues one real command --
+        # `wield`, then `toggle ... on` -- until it answers None; the
+        # verb faults legibly ("hands full", "no band") rather than
+        # this planner guessing at them.
+        from world.souls.comms import radio_to_ready
+        if radio_to_ready(soul) is None:
+            return None
+        return {"goal": "comms", "at": 0, "steps": [{"do": "ready_radio"}]}
+
     if goal_need == "hunt":
         return _hunt_plan(soul)
 
