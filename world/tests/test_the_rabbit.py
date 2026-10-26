@@ -401,6 +401,17 @@ class TestSheAsksForTheCrane(EvenniaCommandTest):
         self.assertTrue(said and said[0].startswith("wield "), said)
         self.assertNotIn("xmit", " ".join(said))
 
+    def test_the_set_in_hand_wins_over_one_in_a_pocket(self):
+        """Contents order used to pick the handset, so a pocketed twin could
+        be taken out while the check kept reading the one in hand."""
+        pocket = self._handset(on=True, freq="27.0", in_hand=False)
+        held = self._handset(on=True, freq="27.0")
+        with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:
+            self.assertTrue(courier.call_the_crane(self.rabbit, 2))
+        said = " ".join(c.args[0] for c in cmd.call_args_list)
+        self.assertNotIn("wield", said)
+        self.assertIn("xmit", said)
+
     def test_a_handset_in_hand_is_not_taken_out_again(self):
         self._handset(on=True, freq="27.0")
         with mock.patch.object(type(self.rabbit), "execute_cmd") as cmd:

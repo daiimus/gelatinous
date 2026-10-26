@@ -318,7 +318,11 @@ def call_the_crane(soul, level) -> bool:
     from world.radio import (
         active_transmit_radio, frequency_of, is_powered, is_radio, same_band,
     )
-    handset = next((o for o in soul.contents if is_radio(o)), None)
+    # The set she can already key -- worn, held or seated -- before any
+    # pocketed one, or the wield below would take out a second set while
+    # the evidence check kept reading the first (#3778 review).
+    handset = active_transmit_radio(soul) or next(
+        (o for o in soul.contents if is_radio(o)), None)
     if handset is None:
         return False
     # A pocketed handset receives but cannot be keyed: `xmit` refuses a

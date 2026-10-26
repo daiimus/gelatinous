@@ -14,10 +14,16 @@ a clause here, a test beside it, nothing else in the tree or the
 planner changes. Future-proof by shape, not by flags (owner, same day).
 """
 
+import time
+
 from world.radio import (
     active_transmit_radio, comms_organ_frequency, frequency_of, is_powered,
     is_radio,
 )
+
+
+def _now() -> float:
+    return time.time()
 
 #: Why a handheld is not ready, in the words the audit line uses.
 POCKET, OFF, UNTUNED = "pocket", "off", "untuned"
@@ -86,6 +92,10 @@ def wants_comms(soul) -> bool:
 
 #: One real command per beat, three beats per state before giving up.
 BEATS_PER_STATE = 3
+#: A budget older than this belongs to an earlier episode (an idle job
+#: dropped mid-way, a set readied by other means): it starts over. Three
+#: beats take ~90 s; nothing legitimate spans five minutes.
+BUDGET_WINDOW = 300.0
 READY, ACTING, GAVE_UP = "ready", "acting", "gave_up"
 
 
@@ -103,12 +113,17 @@ def ready_beat(soul):
         soul.db.soul_comms_tries = None
         return READY
     why, radio = want
-    state, n = (soul.db.soul_comms_tries or (None, 0))
-    n = int(n) if state == why else 0
+    rid = getattr(radio, "id", None)
+    rec = soul.db.soul_comms_tries or {}
+    same = (isinstance(rec, dict) and rec.get("state") == why
+            and rec.get("radio") == rid
+            and _now() - float(rec.get("at", 0.0)) < BUDGET_WINDOW)
+    n = int(rec.get("n", 0)) if same else 0
     if n >= BEATS_PER_STATE:
         soul.db.soul_comms_tries = None
         return GAVE_UP
-    soul.db.soul_comms_tries = (why, n + 1)
+    soul.db.soul_comms_tries = {"state": why, "radio": rid, "n": n + 1,
+                                "at": _now()}
     if why == POCKET:
         soul.execute_cmd(f"wield {radio.key}")
     else:

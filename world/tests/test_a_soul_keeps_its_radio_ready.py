@@ -17,10 +17,16 @@ from world.souls.comms import (
 def _radio(on=True, freq="27MHz", key="AWE Magpie-01 radio"):
     r = MagicMock()
     r.key = key
+    r.id = 7
     r.db.is_radio = True
     r.db.radio_on = on
     r.db.frequency = freq
     return r
+
+
+def _tries(state, n, radio=7, age=0.0):
+    import time
+    return {"state": state, "radio": radio, "n": n, "at": time.time() - age}
 
 
 def _soul(worn=(), hands=None, pocket=(), organ=None):
@@ -188,7 +194,7 @@ class TestOneBeatOfReadying(TestCase):
 
     def test_ready_when_the_predicate_answers_none(self):
         s = _soul()
-        s.db.soul_comms_tries = (POCKET, 2)
+        s.db.soul_comms_tries = _tries(POCKET, 2)
         self.assertEqual(self.beat(s, None), READY)
         s.execute_cmd.assert_not_called()
         self.assertIsNone(s.db.soul_comms_tries)
@@ -196,22 +202,37 @@ class TestOneBeatOfReadying(TestCase):
     def test_each_beat_is_counted(self):
         s = _soul()
         self.beat(s, (POCKET, _radio()))
-        self.assertEqual(tuple(s.db.soul_comms_tries), (POCKET, 1))
+        rec = s.db.soul_comms_tries
+        self.assertEqual((rec["state"], rec["n"]), (POCKET, 1))
 
     def test_the_count_starts_over_when_the_state_changes(self):
         """A pocket set that is also off: the wield counts against POCKET,
         the toggles against OFF — three beats per state."""
         s = _soul()
-        s.db.soul_comms_tries = (POCKET, 2)
+        s.db.soul_comms_tries = _tries(POCKET, 2)
         self.assertEqual(self.beat(s, (OFF, _radio(on=False))), ACTING)
-        self.assertEqual(tuple(s.db.soul_comms_tries), (OFF, 1))
+        rec = s.db.soul_comms_tries
+        self.assertEqual((rec["state"], rec["n"]), (OFF, 1))
 
     def test_three_beats_in_one_state_give_up(self):
         s = _soul()
-        s.db.soul_comms_tries = (POCKET, 3)
+        s.db.soul_comms_tries = _tries(POCKET, 3)
         self.assertEqual(self.beat(s, (POCKET, _radio())), GAVE_UP)
         s.execute_cmd.assert_not_called()
         self.assertIsNone(s.db.soul_comms_tries)
+
+    def test_a_budget_from_an_earlier_episode_starts_over(self):
+        """An idle job dropped mid-way, or a set readied another way, can
+        leave a count behind; minutes later it is not this episode's."""
+        s = _soul()
+        s.db.soul_comms_tries = _tries(POCKET, 3, age=600.0)
+        self.assertEqual(self.beat(s, (POCKET, _radio())), ACTING)
+        self.assertEqual(s.db.soul_comms_tries["n"], 1)
+
+    def test_a_budget_for_another_set_starts_over(self):
+        s = _soul()
+        s.db.soul_comms_tries = _tries(POCKET, 3, radio=999)
+        self.assertEqual(self.beat(s, (POCKET, _radio())), ACTING)
 
 
 # --------------------------------------------------------------------------
