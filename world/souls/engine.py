@@ -313,16 +313,6 @@ def _desired_goal(soul, hour, exclude=()):
     # band 0: survive
     if derived.get("safety", 0.0) >= needs_mod.critical_for(soul, "safety"):
         return (0, "safety")
-    # A call just refused for want of a ready radio (#3777): one or two
-    # beats, ahead of the shift and the errand (band 2 cannot interrupt
-    # a running band-2 duty; only a strictly lower band preempts), behind
-    # survival and an active response. The flag clears itself when there
-    # is nothing left to ready, so it never promotes a later fix.
-    if soul.db.soul_comms_pending and "comms" not in exclude:
-        from world.souls.comms import wants_comms
-        if wants_comms(soul):
-            return (1, "comms")
-        soul.db.soul_comms_pending = None
     # band 1: critical profile needs — ties break by PROFILE ORDER
     # (hunger before rest before social), never alphabetically: a soul
     # that is starving, exhausted, and lonely at once eats first
@@ -441,7 +431,7 @@ def _goal_band(goal):
     # needs still can, which is what we want: she drops the parcel run
     # to flee, not to go back to standing at the counter.
     return {"safety": 0, "hunger": 1, "rest": 2, "duty": 2, "claim": 2,
-            "wardrobe": 2, "run": 2, "recover": 2, "comms": 2, "patrol": 4,
+            "wardrobe": 2, "run": 2, "recover": 2, "comms": 4, "patrol": 4,
             "hunt": 4,
         "respond": 0,
             "craving": 3, "social": 3, "insurance": 3,
@@ -533,6 +523,17 @@ def think(soul, hour):
         notice_casualty(soul, soul.location)
     except Exception:  # noqa: BLE001 — mercy must not break the beat
         pass
+    # A call just refused for want of a ready radio (#3777): a REFLEX, not
+    # a goal. One beat spent taking the set out of the pocket or switching
+    # it on, then whatever the body was doing. Not a preemption: a goal
+    # that interrupted the running job would drop a courier's run or a
+    # unit's recovery for a radio -- nothing re-plans those -- and a
+    # player mid-errand simply takes the radio out while walking.
+    if soul.db.soul_comms_pending:
+        from world.souls.comms import ACTING, ready_beat
+        if ready_beat(soul) == ACTING:
+            return
+        soul.db.soul_comms_pending = None
 
     job = soul.db.soul_job
     sched = SCHEDULES[soul.db.soul_schedule or "day"]

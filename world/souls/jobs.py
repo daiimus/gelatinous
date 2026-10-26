@@ -427,33 +427,22 @@ def step_job(soul):
         return True
 
     if do == "ready_radio":
-        # The comms goal (#3777): make the carried handheld transmit-ready
-        # the way a player would, one real command per beat. Re-asks the
-        # ONE predicate (world/souls/comms.py) each beat and is done when
-        # it answers None; the predicate only wants what the body can do,
-        # so the one fault left is a command refused three beats running
-        # in the same state (a `wield` the game keeps declining is not
-        # retried forever).
-        from world.souls.comms import POCKET, radio_to_ready
-        want = radio_to_ready(soul)
-        if want is None:
-            soul.db.soul_comms_pending = None
-            job["at"] = at + 1
+        # The idle comms goal (#3777): the same one-command-per-beat
+        # `ready_beat` the refused-call reflex uses, so there is one way
+        # to take a radio out and switch it on. Done when the predicate
+        # answers None; the one fault is a state three beats could not
+        # change (a `wield` the game keeps refusing).
+        from world.souls.comms import ACTING, GAVE_UP, ready_beat
+        outcome = ready_beat(soul)
+        if outcome == ACTING:
             soul.db.soul_job = job
             return True
-        why, radio = want
-        tries = int(step.get("tries", 0)) if step.get("state") == why else 0
-        if tries >= 3:
-            soul.db.soul_comms_pending = None
-            fault(soul, f"could not ready {radio.key} ({why})")
+        soul.db.soul_comms_pending = None
+        if outcome == GAVE_UP:
+            fault(soul, "could not ready the radio: three beats refused")
             return False
-        step["state"] = why
-        step["tries"] = tries + 1
+        job["at"] = at + 1
         soul.db.soul_job = job
-        if why == POCKET:
-            soul.execute_cmd(f"wield {radio.key}")
-        else:
-            soul.execute_cmd(f"toggle {radio.key} on")
         return True
 
     if do == "stand_down":

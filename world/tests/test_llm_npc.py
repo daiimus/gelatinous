@@ -549,10 +549,14 @@ class TestHearingARefusal(TestCase):
         self.assertIsNone(b.db.soul_comms_pending)
 
     def test_another_verbs_refusal_does_not(self):
+        """Even with a set to ready: only `transmit` raises the goal."""
         b = self._body()
         b.db.soul_comms_pending = None
-        b.at_msg_receive(text="You're busy operating — 'stop' first.",
-                         from_obj=None, type="refusal")
+        with patch("world.souls.comms.wants_comms", return_value=True):
+            b.at_msg_receive(text="The handset has nothing to switch.",
+                             from_obj=None, type="refusal", verb="toggle")
+            b.at_msg_receive(text="You're busy operating — 'stop' first.",
+                             from_obj=None, type="refusal")
         self.assertIsNone(b.db.soul_comms_pending)
 
 

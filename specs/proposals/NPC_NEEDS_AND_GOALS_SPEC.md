@@ -201,16 +201,24 @@ less."
   battery): a clause here, a test beside it, nothing else changes. Future-proof
   by shape, not by flags (owner, same day).
 - **Goal `comms`** — band 4 (idle colour, first) whenever the predicate answers,
-  so the set gets taken out and turned on on a quiet beat; band 1 when
-  `db.soul_comms_pending` is set, which `xmit`'s refusal does when there is
-  something to ready (it carries `verb="transmit"` beside `type="refusal"`), so a
-  called unit fixes it next beat even mid-shift or mid-errand (only a strictly
-  lower band preempts a running job; survival and an active response still
-  outrank it). The flag clears itself when nothing is left to ready.
-- **Plan / job `ready_radio`** — one real command per beat: `wield <radio>`,
-  then `toggle <radio> on`; done when the predicate answers None. The one fault
-  left, with the usual cooldown: a command refused three beats running in the
-  same state.
+  so the set gets taken out and turned on on a quiet beat.
+- **A refused call is a reflex, not a goal.** `xmit`'s refusal carries
+  `verb="transmit"` beside `type="refusal"`; the body sets `db.soul_comms_pending`
+  when there is something to ready, and the next `think` spends one beat on
+  `ready_beat` before arbitration — like `notice_casualty` — then carries on with
+  whatever it was doing. Not a preemption: a goal that interrupted the running
+  job would drop a courier's run or a unit's recovery for a radio (nothing
+  re-plans those), and a player mid-errand simply takes the radio out while
+  walking. The flag clears itself when nothing is left to ready.
+- **`ready_beat`**, shared by the reflex and the idle job — one real command per
+  beat: `wield <radio>`, then `toggle <radio> on`; ready when the predicate
+  answers None; gives up after three beats in the same state (the idle job then
+  faults with the usual cooldown; the reflex just stops).
+- **Scripted voices ready their own set.** The courier's crane call
+  (`world/director/courier.py: call_the_crane`) already switched the handset on
+  and tuned it; it now takes it out of the pocket first, and its evidence check
+  reads the hand. A pocketed handset had meant every crane call refused and
+  every run faulted.
 - Not here: retrying the words a refusal lost; turning a radio off; organs and
   consoles (already ready).
 

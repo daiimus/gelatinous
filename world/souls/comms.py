@@ -28,19 +28,22 @@ def _free_hand(soul) -> bool:
     return any(v is None for v in hands.values())
 
 
-def _ambiguous(soul, radio) -> bool:
-    """Would `toggle <key>` reach a different set, or none? The command
-    resolves by a plain search of room and inventory and refuses a
-    multimatch, and Evennia's ordinal form cannot narrow a key like
-    "AWE Magpie-01 radio" (the -01 reads as the ordinal). So a twin in
-    sight makes the set unreachable by any command the body could type;
-    the predicate says so by not wanting it (#3778 review)."""
+def _only_one_answers(soul, radio, pool=None) -> bool:
+    """Would a command naming ``radio.key`` reach exactly this set? `wield`
+    searches the inventory and takes the first match; `toggle` searches
+    room and inventory and refuses a multimatch; and Evennia's ordinal
+    form cannot narrow a key like "AWE Magpie-01 radio" (the -01 reads as
+    the ordinal, #3779). A twin in the pool makes the set unreachable by
+    any command the body could type, so the predicate does not want it."""
     try:
-        found = soul.search(radio.key, quiet=True)
+        if pool is not None:
+            found = soul.search(radio.key, candidates=list(pool), quiet=True)
+        else:
+            found = soul.search(radio.key, quiet=True)
     except Exception:  # noqa: BLE001 — a mock or a bodiless soul
-        return False
+        return True
     found = list(found) if isinstance(found, (list, tuple)) else [found]
-    return len([o for o in found if o is not None]) > 1
+    return len([o for o in found if o is not None]) == 1
 
 
 def radio_to_ready(soul):
@@ -53,8 +56,8 @@ def radio_to_ready(soul):
     Also ``None`` for what the body cannot do right now, so the tree never
     plans a job that can only fault: a pocket set with no free hand; a set
     that is on but on no band (:data:`UNTUNED` -- nothing tells a soul its
-    home band yet, the next slice); a set whose key a twin in sight makes
-    unreachable by ``toggle``. What it cannot do, it does not want.
+    home band yet, the next slice); a set a twin of the same key makes
+    unreachable by name. What it cannot do, it does not want.
 
     With several in a pocket, the one already on and tuned comes first:
     one command instead of two.
@@ -64,17 +67,50 @@ def radio_to_ready(soul):
     tx = active_transmit_radio(soul)
     if tx is not None:
         if not is_powered(tx):
-            return None if _ambiguous(soul, tx) else (OFF, tx)
+            return (OFF, tx) if _only_one_answers(soul, tx) else None
         return None            # on and tuned, or UNTUNED: nothing to do yet
-    carried = [r for r in (getattr(soul, "contents", None) or [])
-               if is_radio(r)]
+    contents = list(getattr(soul, "contents", None) or [])
+    carried = [r for r in contents if is_radio(r)]
     if not carried or not _free_hand(soul):
         return None
     carried.sort(key=lambda r: (not is_powered(r), not frequency_of(r)))
-    return (POCKET, carried[0])
+    chosen = carried[0]
+    return (POCKET, chosen) if _only_one_answers(soul, chosen, contents) else None
 
 
 def wants_comms(soul) -> bool:
     """Does this soul want its radio ready right now? The band tree's
     question, answered by the one predicate above."""
     return radio_to_ready(soul) is not None
+
+
+#: One real command per beat, three beats per state before giving up.
+BEATS_PER_STATE = 3
+READY, ACTING, GAVE_UP = "ready", "acting", "gave_up"
+
+
+def ready_beat(soul):
+    """One beat of readying the handheld, as a player would: ``wield`` a
+    pocket set, ``toggle ... on`` a dark one. Returns :data:`READY` when
+    there is nothing (left) to do, :data:`ACTING` when a command went out
+    this beat, :data:`GAVE_UP` when the same state has had
+    :data:`BEATS_PER_STATE` commands and still stands (a `wield` the game
+    keeps refusing is not retried forever). Shared by the reflex in
+    ``engine.think`` (a refused call: one beat, then whatever the body
+    was doing) and the idle ``comms`` job, so there is one way to do it."""
+    want = radio_to_ready(soul)
+    if want is None:
+        soul.db.soul_comms_tries = None
+        return READY
+    why, radio = want
+    state, n = (soul.db.soul_comms_tries or (None, 0))
+    n = int(n) if state == why else 0
+    if n >= BEATS_PER_STATE:
+        soul.db.soul_comms_tries = None
+        return GAVE_UP
+    soul.db.soul_comms_tries = (why, n + 1)
+    if why == POCKET:
+        soul.execute_cmd(f"wield {radio.key}")
+    else:
+        soul.execute_cmd(f"toggle {radio.key} on")
+    return ACTING
