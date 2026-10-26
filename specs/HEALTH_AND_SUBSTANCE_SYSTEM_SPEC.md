@@ -994,6 +994,7 @@ HIT_WEIGHTS = {
 - HIT_WEIGHT_* values
 - PAIN_MODIFIER_*
 - All treatment success rates and failure penalties
+- `WOUND_HEALING_DIVISOR` / `WOUND_HEALING_FLOOR_HP_PER_TICK` — **flat in its used range (#3254, parked 2026-10-26 for the balance pass).** The slow heal is `rating // 5` HP per minute, and the six items that carry `wound_healing` (gauze bandages 6, surgical sealant 5, sealant patches 6, conformal coating 5, stimpak 8, antiseptic spray 5) all heal one point per minute; the authored "excellent" vs "modest" comments describe a gradient that does not exist. The items differ in their other effects. Owner: "We're bug hunting not fine tuning." Fix shapes when the pass comes: fractional accumulation, a smaller divisor, or re-authored ratings.
 
 ### Medical Conditions
 
