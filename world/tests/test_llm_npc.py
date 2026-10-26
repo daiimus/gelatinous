@@ -384,20 +384,32 @@ class TestAntiPhotocopy(TestCase):
 
 
 class TestRadioRepliesAir(TestCase):
-    """A radio-mode turn answers ON THE AIR: reply speech keys the real
-    transmit device via xmit, never room-say (the Rook's sealed studio)."""
+    """A radio-mode turn answers ON THE AIR: reply speech goes to the real
+    transmit command, `xmit`, and never to the room from here. When `xmit`
+    refuses — as it refuses a player with no radio in hand — the NPC stays
+    mute, hears the refusal, and does not remember the words as said
+    (#2585: "NPCs and players should seem identical")."""
+
+    REFUSAL = "You have no radio worn or in hand to transmit with."
 
     def _turn(self, mode, turn, has_device=True):
         b = MagicMock()
         _bind(b, "_on_turn")
         _bind(b, "_transmit_words")
+        _bind(b, "_hear_refusal")
         _bind(b, "_handle_action_tool")
         _bind(b, "_repeats_self")
-        device = MagicMock() if has_device else None
+        if not has_device:
+            # What `xmit` does to a deviceless caller: the tagged refusal,
+            # delivered during the command, as the real msg path does.
+            def refuse(cmd):
+                if str(cmd).startswith("xmit"):
+                    b.at_msg_receive(text=self.REFUSAL, from_obj=None,
+                                     type="refusal")
+            _bind(b, "at_msg_receive")
+            b.execute_cmd.side_effect = refuse
         with patch.object(llmnpc, "parse_turn", return_value=dict(turn)), \
-                patch.object(llmnpc, "tool_names", return_value=[]), \
-                patch("world.radio.active_transmit_radio",
-                      return_value=device):
+                patch.object(llmnpc, "tool_names", return_value=[]):
             b._on_turn([], {}, MagicMock(), "hi", "a voice", lambda: None, 0,
                        None, mode, "{}")
         return b
@@ -409,6 +421,15 @@ class TestRadioRepliesAir(TestCase):
         b.execute_cmd.assert_any_call("xmit You are on the air, caller.")
         self.assertIsNone(b._render_llm_reply.call_args.args[0])  # no say
 
+    def test_aired_words_are_remembered_as_said(self):
+        b = self._turn("radio", {"speech": "You are on the air, caller.",
+                                 "action": None, "thought": None,
+                                 "tool": "none", "tool_argument": ""})
+        self.assertEqual(b._remember_turn.call_args.args[3],
+                         "You are on the air, caller.")
+        self.assertEqual(b._store_memory.call_args.args[3],
+                         "You are on the air, caller.")
+
     def test_room_speech_untouched(self):
         b = self._turn("directed", {"speech": "hey", "action": None,
                                     "thought": None, "tool": "none",
@@ -417,15 +438,32 @@ class TestRadioRepliesAir(TestCase):
         for call in b.execute_cmd.call_args_list:
             self.assertFalse(str(call.args[0]).startswith("xmit"))
 
+    def test_no_device_goes_to_the_command_and_is_refused(self):
+        """The command decides, as for a player: no pre-check here."""
+        b = self._turn("radio", {"speech": "hello?", "action": None,
+                                 "thought": None, "tool": "none",
+                                 "tool_argument": ""}, has_device=False)
+        b.execute_cmd.assert_any_call("xmit hello?")
+
     def test_no_device_stays_mute_not_say(self):
         b = self._turn("radio", {"speech": "hello?", "action": None,
                                  "thought": None, "tool": "none",
                                  "tool_argument": ""}, has_device=False)
-        for call in b.execute_cmd.call_args_list:
-            self.assertFalse(str(call.args[0]).startswith("xmit"))
-        # speech falls back to the room render (harmless in a sealed room,
-        # correct for a device-snatched unit standing in a crowd)
-        self.assertEqual(b._render_llm_reply.call_args.args[0], "hello?")
+        self.assertIsNone(b._render_llm_reply.call_args.args[0])
+
+    def test_refused_words_are_not_remembered_as_said(self):
+        b = self._turn("radio", {"speech": "hello?", "action": None,
+                                 "thought": None, "tool": "none",
+                                 "tool_argument": ""}, has_device=False)
+        self.assertIsNone(b._remember_turn.call_args.args[3])
+        self.assertIsNone(b._store_memory.call_args.args[3])
+
+    def test_the_refusal_is_heard_for_the_next_turn(self):
+        b = self._turn("radio", {"speech": "hello?", "action": None,
+                                 "thought": None, "tool": "none",
+                                 "tool_argument": ""}, has_device=False)
+        b._observe_action.assert_called_once()
+        self.assertIn(self.REFUSAL, b._observe_action.call_args.args[1])
 
     def test_broadcast_speech_airs_too(self):
         b = self._turn("broadcast", {"speech": "It is night in the colony "
@@ -444,6 +482,51 @@ class TestRadioRepliesAir(TestCase):
         # speech stays room-side when the tool carried the transmission
         self.assertEqual(b._render_llm_reply.call_args.args[0],
                          "flavour line")
+
+
+class TestHearingARefusal(TestCase):
+    """The receive hook catches a tagged refusal before the speaker guard
+    (a refusal has no speaker) and never treats it as speech."""
+
+    def _body(self, llm_driven=True):
+        b = MagicMock()
+        _bind(b, "at_msg_receive")
+        _bind(b, "_hear_refusal")
+        b.db.llm_driven = llm_driven
+        return b
+
+    def test_flagged_for_the_turn_in_flight(self):
+        b = self._body()
+        b.at_msg_receive(text="The handset is switched off.", from_obj=None,
+                         type="refusal")
+        self.assertEqual(b.ndb.llm_refused, "The handset is switched off.")
+
+    def test_buffered_for_the_next_turn(self):
+        b = self._body()
+        b.at_msg_receive(text="The handset is switched off.", from_obj=None,
+                         type="refusal")
+        b._observe_action.assert_called_once_with(
+            None, "You could not: The handset is switched off.")
+
+    def test_not_a_reply_trigger(self):
+        b = self._body()
+        b.at_msg_receive(text="The handset is switched off.", from_obj=None,
+                         type="refusal")
+        b._try_llm_reply.assert_not_called()
+        b._classify_speech.assert_not_called()
+
+    def test_a_scripted_body_only_flags(self):
+        b = self._body(llm_driven=False)
+        b.at_msg_receive(text="The handset is switched off.", from_obj=None,
+                         type="refusal")
+        self.assertEqual(b.ndb.llm_refused, "The handset is switched off.")
+        b._observe_action.assert_not_called()
+
+    def test_a_tuple_text_is_read(self):
+        b = self._body()
+        b.at_msg_receive(text=("Transmit what?", {}), from_obj=None,
+                         type="refusal")
+        self.assertEqual(b.ndb.llm_refused, "Transmit what?")
 
 
 class TestEchoGuard(TestCase):

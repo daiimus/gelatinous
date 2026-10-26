@@ -325,6 +325,21 @@ break it, destroy the ear → the NPC goes deaf/mute exactly as the mechanics
 already enforce for the witness and the EMP-muted bot. Comprehension rides the
 same physical gate players do.
 
+**Refusals too (2026-10-26, #2585).** Owner: "NPCs and players should seem
+identical. We can't have NPCs cheating." A radio turn's words go to `xmit` and
+nowhere else; the brain never renders them to the room. `xmit` refuses an NPC
+as it refuses a player (no radio worn or in hand and no working comms organ,
+switched off, sweeping, untuned), and every such refusal carries
+`type="refusal"` (`world.perception.REFUSAL`; the channel gate's "You're busy … — 'stop' first" carries it too). A player reads it on their screen;
+the LLM brain buffers it as a witnessed event ("You could not: …") so the next
+turn can act on it (`wield` the radio in its pocket) and the turn in flight
+does not remember the refused words as said; a scripted voice (courier, hunt,
+dispatch, witness — all through `xmit` already) simply fails like a player who
+is not looking. From 2026-07-25 (#1314) to this change the brain rendered a
+refused transmit as room speech, the slip that issue's own message ("mute,
+player-equal") described the fix for. Any other command's refusal may carry
+the same tag and is heard the same way.
+
 ### 7.6 · Risks
 
 * **Saturation / cost** — the gating (§7.2) is the whole game; radio turns
