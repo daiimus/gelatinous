@@ -189,21 +189,28 @@ should turn it on. This should organically feed into the GOAP system, more or
 less."
 
 - **One predicate, `world/souls/comms.py: radio_to_ready(soul)`** — pure; the
-  handheld to ready and why (`pocket`, `off`, `untuned`), or None when the
-  soul can already transmit (working comms organ; worn/held/seated set that is
-  on and tuned) or carries none. This is the single door for any future reason
-  to stay silent (a radio-silence order, hiding, a dead battery): a clause here,
-  a test beside it, nothing else changes. Future-proof by shape, not by flags
-  (owner, same day).
+  handheld to ready and why (`pocket`, `off`), or None when the soul can already
+  transmit (working comms organ; worn/held/seated set that is on and tuned) or
+  carries none — and None for what the body cannot do right now, so the tree
+  never plans a job that can only fault: a pocket set with no free hand; a set
+  on but on no band (nothing tells a soul its home band yet — next slice); a set
+  whose key a twin in sight makes unreachable by `toggle` (Evennia's ordinal
+  form reads the `-01` in "AWE Magpie-01 radio" as the ordinal, a player bug of
+  its own). *What it cannot do, it does not want.* This is the single door for
+  any future reason to stay silent (a radio-silence order, hiding, a dead
+  battery): a clause here, a test beside it, nothing else changes. Future-proof
+  by shape, not by flags (owner, same day).
 - **Goal `comms`** — band 4 (idle colour, first) whenever the predicate answers,
-  so the set gets taken out and turned on on a quiet beat; band 2 when
-  `db.soul_comms_pending` is set, which `xmit`'s refusal does (it carries
-  `verb="transmit"` beside `type="refusal"`), so a called unit fixes it next
-  beat before the shift reclaims the body.
+  so the set gets taken out and turned on on a quiet beat; band 1 when
+  `db.soul_comms_pending` is set, which `xmit`'s refusal does when there is
+  something to ready (it carries `verb="transmit"` beside `type="refusal"`), so a
+  called unit fixes it next beat even mid-shift or mid-errand (only a strictly
+  lower band preempts a running job; survival and an active response still
+  outrank it). The flag clears itself when nothing is left to ready.
 - **Plan / job `ready_radio`** — one real command per beat: `wield <radio>`,
-  then `toggle <radio> on`; done when the predicate answers None. Faults,
-  legibly and with the usual cooldown: "hands full", "no band to tune to"
-  (nothing tells a soul its home band yet — next slice), three refused tries.
+  then `toggle <radio> on`; done when the predicate answers None. The one fault
+  left, with the usual cooldown: a command refused three beats running in the
+  same state.
 - Not here: retrying the words a refusal lost; turning a radio off; organs and
   consoles (already ready).
 

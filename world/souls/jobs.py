@@ -430,9 +430,11 @@ def step_job(soul):
         # The comms goal (#3777): make the carried handheld transmit-ready
         # the way a player would, one real command per beat. Re-asks the
         # ONE predicate (world/souls/comms.py) each beat and is done when
-        # it answers None. Three tries per state, then a fault: a `wield`
-        # the command refused is not retried forever.
-        from world.souls.comms import OFF, POCKET, UNTUNED, radio_to_ready
+        # it answers None; the predicate only wants what the body can do,
+        # so the one fault left is a command refused three beats running
+        # in the same state (a `wield` the game keeps declining is not
+        # retried forever).
+        from world.souls.comms import POCKET, radio_to_ready
         want = radio_to_ready(soul)
         if want is None:
             soul.db.soul_comms_pending = None
@@ -440,22 +442,12 @@ def step_job(soul):
             soul.db.soul_job = job
             return True
         why, radio = want
-        tries = int(step.get("tries", 0))
+        tries = int(step.get("tries", 0)) if step.get("state") == why else 0
         if tries >= 3:
             soul.db.soul_comms_pending = None
             fault(soul, f"could not ready {radio.key} ({why})")
             return False
-        if why == UNTUNED:
-            # Nothing tells a soul which band is theirs yet (#3777,
-            # next slice): recorded, cooled, not guessed.
-            soul.db.soul_comms_pending = None
-            fault(soul, f"{radio.key} has no band to tune to")
-            return False
-        if why == POCKET and not any(
-                v is None for v in (soul.hands or {}).values()):
-            soul.db.soul_comms_pending = None
-            fault(soul, f"hands full, cannot take out {radio.key}")
-            return False
+        step["state"] = why
         step["tries"] = tries + 1
         soul.db.soul_job = job
         if why == POCKET:

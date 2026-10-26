@@ -9,7 +9,7 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from world.souls import actions, engine, jobs
-from world.souls.comms import OFF, POCKET, UNTUNED, radio_to_ready, wants_comms
+from world.souls.comms import OFF, POCKET, radio_to_ready, wants_comms
 
 
 def _radio(on=True, freq="27MHz", key="AWE Magpie-01 radio"):
@@ -48,16 +48,34 @@ class TestWhatNeedsReadying(TestCase):
 
     def test_a_held_set_switched_off(self):
         r = _radio(on=False)
-        why, which = radio_to_ready(_soul(hands={"left_hand": r, "right_hand": None}))
-        self.assertEqual((why, which), (OFF, r))
+        s = _soul(hands={"left_hand": r, "right_hand": None})
+        s.search = lambda phrase, **kw: [r]
+        self.assertEqual(radio_to_ready(s), (OFF, r))
 
-    def test_a_worn_set_sweeping(self):
-        r = _radio(freq="scan")
-        self.assertEqual(radio_to_ready(_soul(worn=[r]))[0], UNTUNED)
+    def test_a_worn_set_on_but_on_no_band_is_not_wanted(self):
+        """Nothing tells a soul its home band yet: not offered, not faulted."""
+        self.assertIsNone(radio_to_ready(_soul(worn=[_radio(freq="scan")])))
+        self.assertIsNone(radio_to_ready(_soul(worn=[_radio(freq=None)])))
 
-    def test_a_worn_set_on_no_band(self):
-        r = _radio(freq=None)
-        self.assertEqual(radio_to_ready(_soul(worn=[r]))[0], UNTUNED)
+    def test_a_pocket_set_with_both_hands_full_is_not_wanted(self):
+        s = _soul(hands={"left_hand": MagicMock(), "right_hand": MagicMock()},
+                  pocket=[_radio()])
+        with patch("world.radio.seated_base_station", return_value=None):
+            self.assertIsNone(radio_to_ready(s))
+
+    def test_an_off_set_with_a_twin_in_sight_is_not_wanted(self):
+        """`toggle <key>` would multimatch and Evennia's ordinal cannot
+        narrow a key with -01 in it: unreachable, so not wanted."""
+        r = _radio(on=False)
+        s = _soul(worn=[r])
+        s.search = lambda phrase, **kw: [r, _radio(on=False)]
+        self.assertIsNone(radio_to_ready(s))
+
+    def test_an_off_set_alone_is_wanted(self):
+        r = _radio(on=False)
+        s = _soul(worn=[r])
+        s.search = lambda phrase, **kw: [r]
+        self.assertEqual(radio_to_ready(s), (OFF, r))
 
     def test_a_pocket_radio(self):
         r = _radio()
@@ -100,11 +118,19 @@ class TestTheTreeOffersComms(TestCase):
         with patch("world.radio.seated_base_station", return_value=None):
             self.assertEqual(self.desired(s), (4, "comms"))
 
-    def test_duty_band_after_a_refused_transmit(self):
+    def test_band_one_after_a_refused_transmit(self):
+        """Strictly below duty, run and recover (band 2), which it must be
+        able to interrupt; below survival and a response (band 0)."""
         s = _soul(pocket=[_radio()])
         s.db.soul_comms_pending = True
         with patch("world.radio.seated_base_station", return_value=None):
-            self.assertEqual(self.desired(s), (2, "comms"))
+            self.assertEqual(self.desired(s), (1, "comms"))
+
+    def test_a_stale_flag_clears_itself(self):
+        s = _soul()
+        s.db.soul_comms_pending = True
+        self.desired(s)
+        self.assertIsNone(s.db.soul_comms_pending)
 
     def test_nothing_offered_when_ready(self):
         self.assertEqual(self.desired(_soul()), (4, None))
@@ -178,24 +204,9 @@ class TestReadyingTheRadio(TestCase):
         self.assertIsNone(s.db.soul_comms_pending)
         fault.assert_not_called()
 
-    def test_hands_full_faults(self):
-        s = self.job(_soul(hands={"left_hand": MagicMock(), "right_hand": MagicMock()}))
-        s.db.soul_comms_pending = True
-        cont, fault = self.step(s, (POCKET, _radio()))
-        s.execute_cmd.assert_not_called()
-        self.assertFalse(cont)
-        self.assertIn("hands full", fault.call_args.args[1])
-        self.assertIsNone(s.db.soul_comms_pending)
-
-    def test_no_band_faults(self):
-        s = self.job(_soul())
-        cont, fault = self.step(s, (UNTUNED, _radio(freq=None)))
-        s.execute_cmd.assert_not_called()
-        self.assertFalse(cont)
-        self.assertIn("no band", fault.call_args.args[1])
-
     def test_three_refused_tries_fault(self):
         s = self.job(_soul(), tries=3)
+        s.db.soul_job["steps"][0]["state"] = POCKET
         cont, fault = self.step(s, (POCKET, _radio()))
         s.execute_cmd.assert_not_called()
         self.assertFalse(cont)
@@ -205,3 +216,14 @@ class TestReadyingTheRadio(TestCase):
         s = self.job(_soul())
         self.step(s, (POCKET, _radio()))
         self.assertEqual(s.db.soul_job["steps"][0]["tries"], 1)
+
+    def test_tries_start_over_when_the_state_changes(self):
+        """A pocket set that is also off: the wield counts against POCKET,
+        the toggles against OFF — three beats per state, as the comment says."""
+        s = self.job(_soul(), tries=2)
+        s.db.soul_job["steps"][0]["state"] = POCKET
+        cont, fault = self.step(s, (OFF, _radio(on=False)))
+        self.assertTrue(cont)
+        fault.assert_not_called()
+        self.assertEqual(s.db.soul_job["steps"][0]["tries"], 1)
+        self.assertEqual(s.db.soul_job["steps"][0]["state"], OFF)

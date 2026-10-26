@@ -813,7 +813,9 @@ class LLMNpcMixin:
         clean = " ".join(str(clean or "").split())
         self.ndb.llm_refused = clean or "refused"
         if verb == "transmit":
-            self.db.soul_comms_pending = True
+            from world.souls.comms import wants_comms
+            if wants_comms(self):
+                self.db.soul_comms_pending = True
         if self.db.llm_driven and clean:
             self._observe_action(None, f"You could not: {clean}")
 

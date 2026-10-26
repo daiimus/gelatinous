@@ -313,6 +313,16 @@ def _desired_goal(soul, hour, exclude=()):
     # band 0: survive
     if derived.get("safety", 0.0) >= needs_mod.critical_for(soul, "safety"):
         return (0, "safety")
+    # A call just refused for want of a ready radio (#3777): one or two
+    # beats, ahead of the shift and the errand (band 2 cannot interrupt
+    # a running band-2 duty; only a strictly lower band preempts), behind
+    # survival and an active response. The flag clears itself when there
+    # is nothing left to ready, so it never promotes a later fix.
+    if soul.db.soul_comms_pending and "comms" not in exclude:
+        from world.souls.comms import wants_comms
+        if wants_comms(soul):
+            return (1, "comms")
+        soul.db.soul_comms_pending = None
     # band 1: critical profile needs — ties break by PROFILE ORDER
     # (hunger before rest before social), never alphabetically: a soul
     # that is starving, exhausted, and lonely at once eats first
@@ -350,12 +360,6 @@ def _desired_goal(soul, hour, exclude=()):
         return (2, "wardrobe")
     # band 2: schedule
     sched = SCHEDULES[soul.db.soul_schedule or "day"]
-    # A call just refused for want of a ready radio (#3777): fix it at
-    # duty level, before the shift reclaims the body. One or two beats.
-    if soul.db.soul_comms_pending and "comms" not in exclude:
-        from world.souls.comms import wants_comms
-        if wants_comms(soul):
-            return (2, "comms")
     if soul.db.soul_post and "duty" not in exclude \
             and on_duty(soul, hour):
         return (2, "duty")
@@ -368,11 +372,6 @@ def _desired_goal(soul, hour, exclude=()):
             if derived[n] >= needs_mod.soft_for(soul, n)]
     if soft:
         return (3, max(soft)[2])
-    # CLOCKING OFF: a soul whose shift has ended and who has nothing
-    # pressing used to simply stand where it ended — a shopkeeper
-    # loitering behind her own counter for the seven hours between the
-    # end of her day and the start of her sleep. Nobody stays at work
-    # for want of a reason to leave.
     # Idle colour, first: a handheld in a pocket or switched off gets
     # taken out and turned on on a quiet beat (#3777). One-shot -- once
     # the set is ready the predicate stops offering it.
@@ -380,6 +379,11 @@ def _desired_goal(soul, hour, exclude=()):
         from world.souls.comms import wants_comms
         if wants_comms(soul):
             return (4, "comms")
+    # CLOCKING OFF: a soul whose shift has ended and who has nothing
+    # pressing used to simply stand where it ended — a shopkeeper
+    # loitering behind her own counter for the seven hours between the
+    # end of her day and the start of her sleep. Nobody stays at work
+    # for want of a reason to leave.
     if soul.db.soul_home is not None and soul.db.soul_post is not None \
             and soul.location == soul.db.soul_post \
             and not _in_block(hour, sched["work"]) \

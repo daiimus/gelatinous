@@ -529,13 +529,24 @@ class TestHearingARefusal(TestCase):
         self.assertEqual(b.ndb.llm_refused, "Transmit what?")
 
     def test_a_refused_transmit_raises_the_comms_goal(self):
-        """#3777: the verb on the tag is what the soul reads."""
+        """#3777: the verb on the tag is what the soul reads — when there
+        is a set to ready."""
         b = self._body()
         b.db.soul_comms_pending = None
-        b.at_msg_receive(text="You have no radio worn or in hand to transmit "
-                              "with.", from_obj=None, type="refusal",
-                         verb="transmit")
+        with patch("world.souls.comms.wants_comms", return_value=True):
+            b.at_msg_receive(text="You have no radio worn or in hand to "
+                                  "transmit with.", from_obj=None,
+                             type="refusal", verb="transmit")
         self.assertIs(b.db.soul_comms_pending, True)
+
+    def test_no_set_to_ready_raises_nothing(self):
+        b = self._body()
+        b.db.soul_comms_pending = None
+        with patch("world.souls.comms.wants_comms", return_value=False):
+            b.at_msg_receive(text="You have no radio worn or in hand to "
+                                  "transmit with.", from_obj=None,
+                             type="refusal", verb="transmit")
+        self.assertIsNone(b.db.soul_comms_pending)
 
     def test_another_verbs_refusal_does_not(self):
         b = self._body()
