@@ -6,7 +6,7 @@ The full z7 roofline after the rooftop accuracy pass: an L of eight
 cells — west column (Northwest/West/Southwest Roof), center column
 (North Roof/Roof Deck/South Roof), east pair (East/Southeast Roof with
 the elevator headhouse) — with the tower's true notch at local (1,0)
-left open. The AWE Sentinel-9 mast keeps its post on North Roof; tanks
+left open. The AWE Sentinel9 mast keeps its post on North Roof; tanks
 hold the west column; laundry runs the Deck; the painted arrow now
 marks the SOUTH rim, where the drop is real. Local origin = North
 Roof's base center; anchor (-10,-17,7).

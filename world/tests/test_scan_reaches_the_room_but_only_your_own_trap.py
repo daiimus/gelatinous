@@ -18,7 +18,7 @@ class ScanReachTest(EvenniaCommandTest):
     def setUp(self):
         super().setUp()
         self.detonator = create_object("typeclasses.items.RemoteDetonator",
-                                       key="VECTOR UEM-3 detonator", location=self.char1)
+                                       key="VECTOR UEM3 detonator", location=self.char1)
         self.char1.wield_item(self.detonator, hand="right")
 
     def _grenade(self, key, location):
@@ -63,7 +63,7 @@ class ScanReachTest(EvenniaCommandTest):
         self.char1.sex = "male"; self.char1.height = "tall"; self.char1.build = "lean"
         seen_as = self.char1.get_display_name(self.char2)
         self.assertNotIn(self.char1.key, seen_as, "fixture: stranger's sdesc still shows their key: %r" % seen_as)
-        det = create_object("typeclasses.items.RemoteDetonator", key="VECTOR UEM-3 detonator", location=self.char2)
+        det = create_object("typeclasses.items.RemoteDetonator", key="VECTOR UEM3 detonator", location=self.char2)
         self.char2.wield_item(det, hand="right")
         out = self.call(CmdScan(), f"{self.char1.key} with detonator", caller=self.char2) or ""
         self.assertNotIn(f"{self.char1.key} is not an explosive device", out,
