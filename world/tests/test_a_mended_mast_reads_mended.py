@@ -11,7 +11,7 @@ text *unconditionally* and `db.intact` was set back to `True`.
 The result is a one-way trap: intact and relaying, reading as wrecked,
 and mending again does nothing because it is already "intact".
 
-Live when found — **#5641, the AWE Sentinel-9 repeater mast**:
+Live when found — **#5641, the AWE Sentinel9 repeater mast**:
 
 ```
 intact = True
@@ -41,7 +41,7 @@ claim a felling that did not happen.
 
 ## #2559 — the wreck prose named the wrong thing
 
-It hardcoded *"antenna mast"*, so a branded `AWE Sentinel-9 repeater
+It hardcoded *"antenna mast"*, so a branded `AWE Sentinel9 repeater
 mast` and a `derelict repeater` were both described in player prose as a
 generic mast. It uses the structure's own key now — what the room
 already calls the thing.
@@ -155,9 +155,9 @@ class TestNeitherFlipRunsTwice(_MastCase):
 
 class TestTheWreckNamesTheStructure(_MastCase):
     def test_a_branded_repeater_is_named(self):
-        mast = self.mast(key="AWE Sentinel-9 repeater mast")
+        mast = self.mast(key="AWE Sentinel9 repeater mast")
         wreck_structure(mast)
-        self.assertIn("AWE Sentinel-9 repeater mast",
+        self.assertIn("AWE Sentinel9 repeater mast",
                       self.sensory(mast).get("visual", ""))
 
     def test_a_derelict_repeater_is_named(self):

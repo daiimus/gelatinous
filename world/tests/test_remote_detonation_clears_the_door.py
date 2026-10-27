@@ -21,7 +21,7 @@ class RemoteDetonationClearsTheDoorTest(EvenniaCommandTest):
         # self.exit: room1 -> room2. Add the return exit the rig command would also mark.
         self.back = create_object("typeclasses.exits.Exit", key="back", location=self.room2, destination=self.room1)
         self.detonator = create_object("typeclasses.items.RemoteDetonator",
-                                       key="VECTOR UEM-3 detonator", location=self.char1)
+                                       key="VECTOR UEM3 detonator", location=self.char1)
         self.char1.wield_item(self.detonator, hand="right")
 
     def _rigged_grenade(self, key="frag grenade"):

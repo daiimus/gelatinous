@@ -38,10 +38,11 @@ def _free_hand(soul) -> bool:
 def _only_one_answers(soul, radio, pool=None) -> bool:
     """Would a command naming ``radio.key`` reach exactly this set? `wield`
     searches the inventory and takes the first match; `toggle` searches
-    room and inventory and refuses a multimatch; and Evennia's ordinal
-    form cannot narrow a key like "AWE Magpie-01 radio" (the -01 reads as
-    the ordinal, #3779). A twin in the pool makes the set unreachable by
-    any command the body could type, so the predicate does not want it."""
+    room and inventory and refuses a multimatch; and the body types the
+    bare key, never an ordinal. A twin in the pool makes the set
+    unreachable by any command the body would type, so the predicate
+    does not want it. (Keys carry no dash-digits since #3779, so a
+    player's ``2nd ...`` can narrow a twin; this body does not try.)"""
     try:
         if pool is not None:
             found = soul.search(radio.key, candidates=list(pool), quiet=True)

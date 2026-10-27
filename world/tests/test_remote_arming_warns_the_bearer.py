@@ -26,7 +26,7 @@ class RemoteArmingWarnsTheBearerTest(EvenniaCommandTest):
     def setUp(self):
         super().setUp()
         self.detonator = create_object("typeclasses.items.RemoteDetonator",
-                                       key="VECTOR UEM-3 detonator", location=self.char1)
+                                       key="VECTOR UEM3 detonator", location=self.char1)
         self.char1.wield_item(self.detonator, hand="right")
 
     def _charge(self, key, location, fuse=6):

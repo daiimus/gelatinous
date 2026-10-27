@@ -8,7 +8,7 @@ was set back to `True`. The mast ends up intact and relaying, reading as
 wrecked, with no way back: mending again does nothing, because it is
 already "intact".
 
-Live: **#5641, the AWE Sentinel-9 repeater mast** — `intact=True`, and
+Live: **#5641, the AWE Sentinel9 repeater mast** — `intact=True`, and
 its only sensory line is *"A wrecked antenna mast lists against its cut
 guy lines…"*.
 

@@ -45,7 +45,7 @@ def wrecked_sensory_for(structure):
     """The wreck's sensory layer, naming the structure it belongs to.
 
     The literal below hardcoded "antenna mast" (#2559), so a branded
-    `AWE Sentinel-9 repeater mast` and a `derelict repeater` were both
+    `AWE Sentinel9 repeater mast` and a `derelict repeater` were both
     described in player prose as a generic mast. The key is what the
     room already calls the thing, so it is what the wreck should call
     it too.

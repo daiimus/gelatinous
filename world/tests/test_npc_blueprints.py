@@ -165,8 +165,8 @@ class TestPostReferencesAreReal(BaseEvenniaTest):
         from world.npcs.blueprints import BLUEPRINTS
         dead = {"#4931": "the dispatch console",
                 "#6027": "the AWE head-end cabinet",
-                "#5133": "Octavia Autodoc W-4",
-                "#3143": "Octavia Autodoc X-1"}
+                "#5133": "Octavia Autodoc W4",
+                "#3143": "Octavia Autodoc X1"}
         for key, bp in BLUEPRINTS.items():
             ref = str((bp.get("post") or {}).get("fixture") or "")
             self.assertNotIn(ref, dead,

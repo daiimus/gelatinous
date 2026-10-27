@@ -4,7 +4,7 @@
     then foreground reload.
 
 Owner-designed:
-  * The AWE Sentinel-9 mast (orphaned inside Floor 7's hallway when the
+  * The AWE Sentinel9 mast (orphaned inside Floor 7's hallway when the
     tower rose) relocates to a climbable industrial antenna rising three
     stories above the roof deck to a platform near rim height. The
     basement head-end cabinet references it by name, so coverage follows
@@ -93,7 +93,7 @@ mast_rooms[18].db.desc = (
 mast_rooms[19].db.desc = (
     "The antenna platform at the mast's head — the highest walkable "
     "point of the Brackett, near the height of the crater rim itself. "
-    "The AWE Sentinel-9 relays from the steel overhead; the whole "
+    "The AWE Sentinel9 relays from the steel overhead; the whole "
     "colony lies spread and glittering, and the wall is close enough to "
     "read its unbuilt reaches.")
 mast_rooms[19].db.sense_descs = {
@@ -146,7 +146,7 @@ south.db.sense_descs = {
 # NO exits by design (owner: air/climb only, future)
 
 # the untuned repeater: a dormant node, a future decking prize.
-# NB: rename off the prototype key — it ships as "AWE Sentinel-9
+# NB: rename off the prototype key — it ships as "AWE Sentinel9
 # repeater mast", which would collide with the real Sentinel the
 # basement cabinet resolves its antenna by NAME.
 rep = next((o for o in south.contents if o.destination is None and
