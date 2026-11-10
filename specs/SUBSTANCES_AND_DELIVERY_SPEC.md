@@ -88,7 +88,7 @@ Three layers, three independent axes:
   `delivery_magnitude` / `magnitude_modifier` / a delivery multiplier
   return nothing repo-wide.  `apply_substance`'s only dial is a plain
   `doses` count (`world/substances/registry.py:504`): `CmdSmoke` passes
-  the default 1 per puff (`commands/CmdSmoke.py:295`), the ingestion
+  the default 1 per puff (`commands/CmdSmoke.py:276`), the ingestion
   verbs pass 1 or the item's own `drink_effects` count, and
   `chug`/`devour` pass `uses_left`.  A smoked dose and an injected dose
   of the same substance are identical.  Dose count is per ITEM, never
@@ -267,7 +267,10 @@ migration from the old `medical_type` strings.
   wrapper over `consume_use` with "crumbles away" broadcast.
 * **`commands/CmdSmoke.py`** — `light` / `smoke` / `snuff`
   routing on the `("smoke", "delivery_method")` tag.  Cross-
-  character syntax via possessive parser.  Each puff applies one
+  character syntax via possessive parser.  The smokable is named
+  through the core matcher over the smokables in the hands
+  (`_held_smokables`, #3783): key or alias, ordinals (`2nd cig`),
+  and a held smoke grenade never answers `smoke smoke`.  Each puff applies one
   dose through `apply_substance` (#458).  `CmdLight._spend_lighter`
   burns one `db.uses_left` charge per light (#803): unset =
   infinite (Zippo), zero → the lighter announces its last flame

@@ -24,9 +24,14 @@ it). Original desc/sensory prose is stashed on the object at wreck time
 and restored at repair, so bespoke authored masts survive the round trip.
 """
 
+from typing import TYPE_CHECKING
+
 from evennia import Command
 
 from world.identity_utils import msg_room_identity
+
+if TYPE_CHECKING:
+    from evennia import DefaultCharacter, DefaultObject
 
 #: Cutting guys and tearing a feedline takes a sustained window —
 #: exposure is the cost of the crime.
@@ -70,28 +75,15 @@ def _is_breachable(obj):
     return getattr(getattr(obj, "db", None), "breachable", None) is True
 
 
-def find_breachable(caller, name):
-    """A breachable structure in the caller's room matching *name*, or
-    None — room objects only (you sabotage what you're standing at)."""
-    if not name:
-        return None
-    location = getattr(caller, "location", None)
-    try:
-        contents = list(getattr(location, "contents", None) or [])
-    except Exception:  # noqa: BLE001
-        return None
-    needle = name.strip().lower()
-    for obj in contents:
-        if not _is_breachable(obj):
-            continue
-        names = [getattr(obj, "key", "") or ""]
-        try:
-            names += list(obj.aliases.all())
-        except Exception:  # noqa: BLE001
-            pass
-        if any(needle in str(n).lower() for n in names):
-            return obj
-    return None
+def breachable_here(caller: "DefaultCharacter") -> list["DefaultObject"]:
+    """The breachable structures in the caller's room: the pool both
+    verbs search. Room objects only, because you sabotage what you are
+    standing at. Filtered before matching so an ordinal ("2nd mast")
+    counts only structures the verbs can act on (#3783)."""
+    location = caller.location
+    if location is None:
+        return []
+    return [obj for obj in location.contents if _is_breachable(obj)]
 
 
 def wreck_structure(structure):
@@ -162,10 +154,15 @@ class CmdSabotage(Command):
 
     def func(self):
         caller = self.caller
-        target = find_breachable(caller, self.args)
-        if target is None:
+        name = self.args.strip()
+        matches = []
+        if name:
+            matches = caller.search(
+                name, candidates=breachable_here(caller), quiet=True)
+        if not matches:
             caller.msg("Sabotage what? Nothing here answers to that.")
             return
+        target = matches[0]
         if getattr(target.db, "intact", None) is not True:
             caller.msg(f"The {target.key} is already down.")
             return
@@ -231,9 +228,15 @@ def try_repair_structure(caller, args):
     """The structure branch of the shared ``repair`` verb (CmdArmor owns
     the key; armor stays untouched when nothing breachable matches).
     Returns True when this path handled the command."""
-    target = find_breachable(caller, args)
-    if target is None:
+    name = args.strip()
+    if not name:
         return False
+    # Quiet: a miss is not an error here, it hands the verb to armor.
+    matches = caller.search(name, candidates=breachable_here(caller),
+                            quiet=True)
+    if not matches:
+        return False
+    target = matches[0]
     if getattr(target.db, "intact", None) is True:
         caller.msg(f"The {target.key} is standing and sound.")
         return True

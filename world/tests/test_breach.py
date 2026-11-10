@@ -10,6 +10,9 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
+from evennia import create_object
+from evennia.utils.test_resources import EvenniaTest
+
 import commands.CmdBreach as breach
 
 
@@ -24,27 +27,12 @@ def _mast(intact=True, key="antenna mast"):
     return mast
 
 
-def _caller(room_contents):
-    caller = MagicMock()
-    caller.location.contents = room_contents
-    return caller
-
-
-def _run_sabotage(caller):
-    cmd = breach.CmdSabotage()
-    cmd.caller = caller
-    cmd.args = "mast"
-    captured = {}
-
-    def fake_begin(actor, duration, tell, on_complete, on_interrupt, key):
-        captured.update(complete=on_complete, interrupt=on_interrupt,
-                        duration=duration, key=key)
-        return True
-
-    with patch("world.channeled.begin_channel", side_effect=fake_begin), \
-         patch.object(breach, "msg_room_identity"):
-        cmd.func()
-    return captured
+# #3783: the sabotage/repair tests that drove the verbs with a MagicMock
+# caller now run with real objects in
+# world/tests/test_breach_names_a_structure_like_any_other.py, which
+# pins the same claims through the commands; see that file. That
+# includes `test_already_wrecked_refuses`: on a mock caller the search
+# hands back a mock, so the old test passed whatever the mast's state.
 
 
 class TestSabotage(TestCase):
@@ -60,77 +48,32 @@ class TestSabotage(TestCase):
         self.assertEqual(mast.db.sensory_contributions,
                          {"visual": "authored"})
 
-    def test_completion_wrecks_and_commits_the_crime(self):
-        mast = _mast()
-        caller = _caller([mast])
-        captured = _run_sabotage(caller)
-        self.assertEqual(captured["key"], "sabotaging")
-        with patch("world.director.crime.report_crime") as crime, \
-             patch.object(breach, "msg_room_identity"):
-            captured["complete"]()
-        self.assertIs(mast.db.intact, False)
-        crime.assert_called_once_with("sabotage", caller.location,
-                                      perp=caller)
 
-    def test_interruption_lands_nothing(self):
-        mast = _mast()
-        caller = _caller([mast])
-        captured = _run_sabotage(caller)
-        with patch.object(breach, "msg_room_identity"):
-            captured["interrupt"](0.9)
-        self.assertIs(mast.db.intact, True)
-        self.assertEqual(mast.db.desc, "authored prose")
-
-    def test_already_wrecked_refuses(self):
-        mast = _mast(intact=False)
-        caller = _caller([mast])
-        cmd = breach.CmdSabotage()
-        cmd.caller = caller
-        cmd.args = "mast"
-        with patch("world.channeled.begin_channel") as begin:
-            cmd.func()
-        begin.assert_not_called()
-        self.assertIn("already down", caller.msg.call_args.args[0])
-
-    def test_non_breachable_room_finds_nothing(self):
-        prop = MagicMock()
-        prop.key = "antenna mast"
-        prop.db = SimpleNamespace(breachable=None)
-        caller = _caller([prop])
-        self.assertIsNone(breach.find_breachable(caller, "mast"))
-
-
-class TestSharedRepairVerb(TestCase):
-    def test_no_breachable_match_yields_to_armor(self):
-        caller = _caller([])
-        self.assertFalse(breach.try_repair_structure(caller, "vest"))
+class TestSharedRepairVerb(EvenniaTest):
+    """Real objects and a real searcher (#3783): the old MagicMock
+    caller had no search, so the verb could not find the mast."""
 
     def test_wrecked_structure_claims_the_verb_and_mends(self):
-        mast = _mast(intact=False)
-        mast.db.intact_desc = "authored prose"
-        mast.db.intact_sensory = {"visual": "authored"}
-        caller = _caller([mast])
+        mast = create_object("typeclasses.objects.Object",
+                             key="antenna mast", location=self.room1,
+                             aliases=["mast"])
+        mast.db.breachable = True
+        mast.db.intact = True
+        mast.db.desc = "authored prose"
+        mast.db.sensory_contributions = {"visual": "authored"}
+        breach.wreck_structure(mast)
         captured = {}
 
         def fake_begin(actor, duration, tell, on_complete, on_interrupt, key):
             captured.update(complete=on_complete, key=key)
             return True
 
-        with patch("world.channeled.begin_channel", side_effect=fake_begin), \
-             patch.object(breach, "msg_room_identity"):
-            handled = breach.try_repair_structure(caller, "mast")
+        with patch("world.channeled.begin_channel", side_effect=fake_begin):
+            handled = breach.try_repair_structure(self.char2, "mast")
         self.assertTrue(handled)
         self.assertEqual(captured["key"], "repairing")
-        with patch.object(breach, "msg_room_identity"):
-            captured["complete"]()
+        captured["complete"]()
         self.assertIs(mast.db.intact, True)
         self.assertEqual(mast.db.desc, "authored prose")
-
-    def test_intact_structure_reports_sound_without_channel(self):
-        mast = _mast(intact=True)
-        caller = _caller([mast])
-        with patch("world.channeled.begin_channel") as begin:
-            handled = breach.try_repair_structure(caller, "mast")
-        self.assertTrue(handled)
-        begin.assert_not_called()
-        self.assertIn("standing and sound", caller.msg.call_args.args[0])
+        self.assertEqual(mast.db.sensory_contributions,
+                         {"visual": "authored"})

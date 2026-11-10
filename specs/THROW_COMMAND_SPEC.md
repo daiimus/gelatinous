@@ -121,6 +121,25 @@ throw <object> to here            # Throw randomly in current room (same as firs
 4. **Direction validation** (if specified) must be a valid, traversable exit
 5. **"here" handling** for explicit current-room throwing
 
+### Naming the Object (`throw`, `pull`, `catch`)
+All three commands name their object with the core matcher,
+`caller.search(name, candidates=pool, quiet=True)` (#2537, #3783), scoped
+to their own pool: the items in the hands for `throw` and `pull`, the
+room's in-flight objects for `catch`. So they read names the way every
+other command does:
+
+- An exact key or alias wins over a partial name (`pipe` throws the pipe,
+  not the pipe bomb; `c4` finds the charge aliased `c4`).
+- A partial name must START a word of the key or an alias: `frag`, `m67`
+  and `hdg frag` find the *HDG M67 fragmentation grenade*; `nade` does not.
+- Ordinals pick a twin: `2nd grenade`, `second grenade`, `grenade-2`.
+  With several matches and no ordinal, the first by creation order is used.
+- `me` / `self` / `here` are not in any of these pools, so they find nothing.
+
+The not-held check that chooses between *"You must be wielding X"* and
+*"You don't have X"* uses the same matcher over the inventory, so the two
+lookups cannot disagree. `catch` refuses an empty name before searching.
+
 ### Technical Infrastructure Notes
 - **Mr. Hand System**: Fully implemented in `typeclasses/characters.py` with `hands` AttributeProperty
 - **Hand Structure**: Dictionary-based (`{"left": None, "right": None}`) supporting dynamic anatomy

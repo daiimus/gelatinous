@@ -606,6 +606,34 @@ He wears a worn leather jacket with brass buckles across his torso.
 
 ## Command Interface
 
+### Naming a garment (#3783)
+
+Every clothing verb names its garment through the one core matcher,
+`Character.search`, scoped to the verb's own pool with
+`candidates=`. No verb compares typed text to keys itself.
+
+| verb | pool |
+|---|---|
+| `wear` | the caller's contents (held items included) |
+| `remove` / `unwear`, `rollup` / `unroll`, `zip` / `unzip` / `button` / `unbutton` | the caller's worn items |
+| `undress <target> <item>` | `target.worn_garments()` (a character, a corpse, a severed part) |
+
+So a garment answers to its key or any alias, exact first, then a
+partial name in which each typed word starts a word of the key or an
+alias (`coat` finds `Vantage all-weather greatcoat` by its alias;
+`remove leather boots` finds `black leather combat boots`; a fragment
+from inside a word, `irt` for `shirt`, finds nothing). An ordinal
+picks among twins: `remove 2nd shirt`, `zip up second jacket`,
+`undress corpse jacket-2` (only the dash form there, because `undress`
+splits the target from the item at the last space). The pool is the
+worn list itself, so an ordinal counts worn garments only; a worn
+garment with no sleeves or no closure is still matched, and gets its
+own refusal (`The X doesn't have anything to roll up.`). Several
+matches without an ordinal take the first the matcher returns. The
+presence gate applies: a garment the caller cannot perceive is not
+found. The refusal texts (`You don't have 'X'.`, `You're not wearing
+'X'.`, `<target> isn't wearing 'X'.`) are unchanged.
+
 ### Primary Commands
 
 #### `wear <item>`

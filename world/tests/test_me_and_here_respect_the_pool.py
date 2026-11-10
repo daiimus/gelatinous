@@ -9,7 +9,10 @@ mean?" got a person back: `rig me to north`, `catch me`, `throw me`.
 Evennia's own rule (`DefaultObject.get_search_direct_match`) is that the
 tokens resolve when the search is global or the pool holds the caller or the
 room. The ordinary local search always does, so nothing a player types at
-`look me` or `medical me` changes. A scoped search now gets Evennia's rule.
+`look me` or `medical me` changes. A scoped search now follows that rule, and
+a token its pool does not hold names nothing. `Character.search` answers that
+itself: on a miss Evennia goes on to search the pool for the caller's key as
+text, which can hand back someone whose name starts the same way.
 
 This is the root of the per-command guards the #3783 census kept proposing:
 one fix in the core matcher instead of a membership filter at forty sites.
@@ -57,13 +60,31 @@ class TestMagicKeywordsRespectThePool(EvenniaTest):
         self.assertEqual(list(self.char1.search("here", candidates=[], quiet=True)), [])
 
     def test_me_does_not_turn_into_a_partial_name(self):
-        """`drop me` must not drop the medkit. When the pool does not hold
-        the caller, Evennia goes on to look for the CALLER in that pool,
-        not for a name beginning with "me", so the answer is nothing."""
+        """`drop me` must not drop the medkit: a token the pool does not
+        hold names nothing, it is not retried as a word."""
         medkit = create_object("typeclasses.items.Item", key="medkit",
                                location=self.char1)
         found = self.char1.search("me", candidates=[self.knife, medkit], quiet=True)
         self.assertEqual(list(found), [])
+
+    def test_me_never_becomes_a_search_for_my_own_name(self):
+        """The control for answering the token here and not in Evennia.
+        Left to Evennia, a miss goes on to search the pool for the
+        caller's KEY as text, and `Char` is the start of `Char2`: `get
+        jumpsuit from me` resolved the other person."""
+        self.assertTrue(self.char2.key.startswith(self.char1.key))
+        found = self.char1.search("me", candidates=[self.char2], quiet=True)
+        self.assertEqual(list(found), [])
+
+    def test_a_miss_says_so_when_the_search_is_not_quiet(self):
+        heard = []
+        self.char1.msg = lambda text=None, **kw: heard.append(str(text))
+        self.assertIsNone(self.char1.search("me", candidates=[self.knife]))
+        self.assertEqual(heard, ["Could not find 'me'."])
+        heard.clear()
+        self.assertIsNone(self.char1.search(
+            "here", candidates=[self.knife], nofound_string="Not in your hands."))
+        self.assertEqual(heard, ["Not in your hands."])
 
     # -- a pool that DOES hold the caller or the room: Evennia's rule ----
     def test_me_resolves_when_the_pool_holds_the_caller(self):

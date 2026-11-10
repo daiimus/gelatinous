@@ -228,25 +228,12 @@ class TestPressRouting(TestCase):
         cmd.caller.location.contents = contents
         return cmd
 
-    def _pressable(self, key, aliases=(), handles=True):
-        obj = MagicMock()
-        obj.key = key
-        obj.db.pressable = True
-        obj.aliases.all.return_value = list(aliases)
-        obj.at_press.return_value = handles
-        return obj
-
-    def test_name_match_presses_the_object(self):
-        btn = self._pressable("call button", aliases=["button"])
-        cmd = self._cmd("call button", [btn])
-        self.assertTrue(cmd._press_pressable())
-        btn.at_press.assert_called_once_with(cmd.caller, None)
-
-    def test_label_falls_through_to_the_panel(self):
-        panel = self._pressable("floor panel")
-        cmd = self._cmd("2", [panel])
-        self.assertTrue(cmd._press_pressable())
-        panel.at_press.assert_called_once_with(cmd.caller, "2")
+    # #3783: the router now names objects through caller.search. On a
+    # MagicMock caller that returns a mock, so the mock button is never
+    # the one pressed. The name match, the label falling through to the
+    # panel, `call`, and `call` with trailing words are pinned on real
+    # objects in test_press_names_through_the_core_search
+    # (ThePressRouting, TheCallShorthand).
 
     def test_nothing_pressable_defers_to_usage(self):
         stranger = MagicMock()
@@ -260,20 +247,6 @@ class TestPressRouting(TestCase):
         cmd._press_spray_can = MagicMock()
         cmd.func()
         cmd._press_spray_can.assert_called_once_with("blue", "spray can")
-
-    def test_call_is_press_call(self):
-        btn = self._pressable("call button", aliases=["button"])
-        cmd = self._cmd("", [btn])
-        cmd.cmdstring = "call"
-        cmd.func()
-        btn.at_press.assert_called_once_with(cmd.caller, None)
-
-    def test_call_with_trailing_words_still_lands(self):
-        btn = self._pressable("call button")
-        cmd = self._cmd("elevator", [btn])
-        cmd.cmdstring = "call"
-        cmd.func()
-        btn.at_press.assert_called_once_with(cmd.caller, None)
 
     def test_call_without_a_button_says_so(self):
         cmd = self._cmd("", [])

@@ -265,12 +265,15 @@ class PutInLockerIsStash(EvenniaCommandTest):
     def test_me_cannot_be_stowed(self):
         # `stash me` filed the PLAYER into the compartment, hooks off,
         # with no exits and no verbs; `put me in locker` reached the same
-        # door (review, #3619). Both refused: `put` never resolves `me`
-        # as an item, and the door itself takes Items only.
+        # door (review, #3619). Both refused, and now for the same
+        # reason: neither resolves `me` out of what you carry. `stash`
+        # used to get the caller back from the matcher and be stopped by
+        # the door ("can't stow"); the matcher no longer answers `me`
+        # from a scoped pool (#3783), so it never reaches the door.
         with self._leased_and_open():
             stash_out = self.call(CmdLockerStash(), "me", obj=self.bank)
             put_out = self.call(CmdPut(), "me in locker")
-        self.assertIn("can't stow", stash_out or "")
+        self.assertIn("aren't carrying", stash_out or "")
         self.assertIn("aren't carrying", put_out or "")
         self.assertEqual(self.char1.location, self.room1)
         self.assertEqual(list(self.bank.contents), [], "a compartment was created for nothing")

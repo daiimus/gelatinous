@@ -1855,12 +1855,13 @@ class Character(
         ``.key``. The presence gate applies to Builders too; a hidden
         target is reached by #dbref.
 
-        **Magic keywords** (all permissions), in an ordinary local search:
+        **Magic keywords** (all permissions):
           - ``me`` / ``self`` → the caller
           - ``here`` → the caller's location
-        A search scoped with ``candidates=`` or ``location=`` goes to
-        Evennia, which answers them only when that pool holds the
-        caller or the room.
+        They resolve when the search is global or its pool holds the
+        caller or the room, which the ordinary local search always
+        does. Scoped with ``candidates=`` or ``location=`` to a pool
+        that holds neither, they name nothing.
 
         **Identity pipeline** (local room search):
           1. Try identity matching (assigned names → sdescs) against
@@ -1875,6 +1876,7 @@ class Character(
         ``specs/IDENTITY_RECOGNITION_SPEC.md`` §Target Resolution for
         the full specification.
         """
+        from evennia.utils.utils import make_iter
         from world.combat.constants import PERM_BUILDER
         from world.search import identity_match_characters, is_identity_match
 
@@ -1901,23 +1903,39 @@ class Character(
         # regardless of permissions.
         # See ``specs/IDENTITY_RECOGNITION_SPEC.md`` §Target Resolution.
         #
-        # ONLY the ordinary local search (#3783). This ran before the
-        # bypass test, so it answered every search, including one a
-        # command had scoped to a pool: `search("me", candidates=held)`
-        # returned the caller, and `rig me to north` or `catch me` got a
-        # person where it asked for something in the hand. Evennia's own
-        # `get_search_direct_match` answers these tokens only when the
-        # pool holds the caller or the room, and a scoped search goes to
-        # Evennia below, so it now gets exactly that.
-        if not bypass:
-            stripped = searchdata.strip().lower()
-            if stripped in ("me", "self"):
-                return [self] if quiet else self
-            if stripped == "here":
-                loc = self.location
+        # ONLY where the pool holds them (#3783). This used to answer
+        # every search, including one a command had scoped to a pool:
+        # `search("me", candidates=held)` returned the caller, and
+        # `rig me to north` or `catch me` got a person where it asked
+        # for something in the hand. The rule is Evennia's own
+        # (`get_search_direct_match`): the tokens resolve when the search
+        # is global or the pool holds the caller or the room. The
+        # ordinary local search always does.
+        #
+        # Answered here and not left to Evennia, because on a miss
+        # Evennia goes on to search the pool for the CALLER'S KEY as
+        # text, and a partial match hands back somebody else: `get
+        # jumpsuit from me` resolved Char2 for a caller keyed Char. A
+        # token the pool does not hold names nothing.
+        if isinstance(searchdata, str):
+            token = searchdata.strip().lower()
+            if token in ("me", "self", "here"):
+                target = self.location if token == "here" else self
+                if candidates is not None:
+                    in_pool = target in candidates
+                elif location is not None:
+                    in_pool = any(
+                        target in place.contents
+                        for place in make_iter(location))
+                else:
+                    in_pool = True
+                if target is not None and (global_search or in_pool):
+                    return [target] if quiet else target
                 if quiet:
-                    return [loc] if loc else []
-                return loc
+                    return []
+                self.msg(nofound_string
+                         or f"Could not find '{searchdata.strip()}'.")
+                return None
 
         # Builder+ can also target by .key — tracked as a flag so the
         # identity pipeline still runs first (sdesc/assigned-name

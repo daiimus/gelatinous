@@ -377,19 +377,13 @@ class CmdArmor(Command):
 
     def _show_item_details(self, caller, item_name, worn_armor):
         """Show detailed information about a specific armor piece."""
-        # Find the armor item
-        target_armor = None
-        for armor in worn_armor:
-            armor_aliases = armor.aliases.all()
-            if item_name.lower() in armor.key.lower() or item_name.lower() in [
-                alias.lower() for alias in armor_aliases
-            ]:
-                target_armor = armor
-                break
-
-        if not target_armor:
+        # The core matcher over the worn armour only, so an ordinal
+        # counts armour you wear and an alias names a piece (#3783).
+        matches = caller.search(item_name, candidates=worn_armor, quiet=True)
+        if not matches:
             caller.msg(f"You are not wearing any armor matching '{item_name}'.")
             return
+        target_armor = matches[0]
 
         # Get all armor stats
         armor_type = target_armor.armor_type or "generic"
@@ -871,44 +865,28 @@ class CmdArmorRepair(Command):
 
     def _find_repairable_armor(self, caller, armor_name):
         """Find armor item that can be repaired."""
-        # Check worn armor first
-        if caller.worn_items:
-            for location, items in caller.worn_items.items():
-                for item in items:
-                    item_aliases = item.aliases.all()
-                    if item.armor_rating > 0 and (
-                        armor_name.lower() in item.key.lower()
-                        or armor_name.lower()
-                        in [alias.lower() for alias in item_aliases]
-                    ):
-                        return item
-
-        # Check inventory
-        for item in caller.contents:
-            item_aliases = item.aliases.all()
-            if item.armor_rating > 0 and (
-                armor_name.lower() in item.key.lower()
-                or armor_name.lower()
-                in [alias.lower() for alias in item_aliases]
-            ):
-                return item
-
-        caller.msg(f"You don't have any armor matching '{armor_name}'.")
-        return None
+        # Worn pieces are in caller.contents too, so one pool of armour
+        # covers both; the core matcher resolves the name (#3783), and a
+        # worn piece still wins over a carried one among the matches.
+        pool = [item for item in caller.contents if item.armor_rating > 0]
+        matches = caller.search(armor_name, candidates=pool, quiet=True)
+        if not matches:
+            caller.msg(f"You don't have any armor matching '{armor_name}'.")
+            return None
+        worn = worn_by(caller)
+        return next((item for item in matches if item in worn), matches[0])
 
     def _find_repair_tool(self, caller, tool_name):
         """Find repair tool in inventory."""
-        for item in caller.contents:
-            item_aliases = item.aliases.all()
-            if item.db.repair_tool_type is not None and (
-                tool_name.lower() in item.key.lower()
-                or tool_name.lower()
-                in [alias.lower() for alias in item_aliases]
-            ):
-                return item
-
-        caller.msg(f"You don't have a repair tool matching '{tool_name}'.")
-        return None
+        pool = [
+            item for item in caller.contents
+            if item.db.repair_tool_type is not None
+        ]
+        matches = caller.search(tool_name, candidates=pool, quiet=True)
+        if not matches:
+            caller.msg(f"You don't have a repair tool matching '{tool_name}'.")
+            return None
+        return matches[0]
 
     def _attempt_repair(self, caller, armor_item, repair_type, repair_tool):
         """Attempt to repair the armor based on type and tools."""
@@ -1324,6 +1302,18 @@ def installed_slot_of(carrier, plate):
     return None
 
 
+def plates_installed_in(carriers: list) -> dict:
+    """Every plate installed in *carriers*, mapped to ``(carrier, slot)``.
+    The keys are the pool ``unslot`` hands to the core matcher; the values
+    say where the matched plate came from (#3783)."""
+    return {
+        plate: (carrier, slot_name)
+        for carrier in carriers
+        for slot_name, plate in (carrier.installed_plates or {}).items()
+        if plate
+    }
+
+
 def pull_plate_into_hand(caller, plate, carrier, slot_name):
     """Take *plate* out of *slot_name* of *carrier* and into a free hand,
     or leave it where it is (#3463, the Mr. Hands rule: a plate comes
@@ -1438,9 +1428,9 @@ def find_carrier_by_name(caller, carrier_name):
         return None
     if isinstance(candidates, list):
         candidates = candidates[0]
-    # getattr: `me`/`here` short-circuit Character.search ahead of the
-    # location= reach and hand back a Character or a Room, which have no
-    # armour properties at all (review, #3619).
+    # getattr: a Builder's `#dbref` search is global and can hand back a
+    # Character or a Room, which have no armour properties at all. (`me`
+    # and `here` did the same for everyone, #3619, until #3783.)
     if not getattr(candidates, "is_plate_carrier", False):
         caller.msg(f"The {candidates.key} is not a plate carrier.")
         return None
@@ -1751,21 +1741,28 @@ class CmdUnslot(Command):
 
         # Two doors on purpose (#3463, owner ruling): `unslot <plate>`
         # alone means a carrier you are WEARING; a carrier in your pack
-        # is reached by `unslot <plate> from <carrier>`.
-        for carrier in worn_carriers:
-            for slot_name, plate in carrier.installed_plates.items():
-                if plate and plate_name.lower() in plate.key.lower():
-                    pull_plate_into_hand(caller, plate, carrier, slot_name)
-                    return
-        for carrier in carried_carriers:
-            for slot_name, plate in carrier.installed_plates.items():
-                if plate and plate_name.lower() in plate.key.lower():
-                    caller.msg(
-                        f"The {plate.key} is in your {carrier.key}, which"
-                        " you're carrying, not wearing. Use: unslot"
-                        f" {plate.key} from {carrier.key}"
-                    )
-                    return
+        # is reached by `unslot <plate> from <carrier>`. So each door is
+        # its own pool, and an ordinal counts the plates of that door.
+        worn_plates = plates_installed_in(worn_carriers)
+        matches = caller.search(plate_name, candidates=list(worn_plates), quiet=True)
+        if matches:
+            plate = matches[0]
+            carrier, slot_name = worn_plates[plate]
+            pull_plate_into_hand(caller, plate, carrier, slot_name)
+            return
+        carried_plates = plates_installed_in(carried_carriers)
+        matches = caller.search(
+            plate_name, candidates=list(carried_plates), quiet=True
+        )
+        if matches:
+            plate = matches[0]
+            carrier, _ = carried_plates[plate]
+            caller.msg(
+                f"The {plate.key} is in your {carrier.key}, which"
+                " you're carrying, not wearing. Use: unslot"
+                f" {plate.key} from {carrier.key}"
+            )
+            return
 
         if not worn_carriers:
             caller.msg("You are not wearing any plate carriers.")
@@ -1777,22 +1774,17 @@ class CmdUnslot(Command):
 
     def _remove_from_carrier(self, caller, item_name, carrier_name):
         """Remove plate from specific carrier, by plate name or slot name."""
-        # Find the carrier
-        carrier = None
-        for item in caller.contents:
-            if (
-                carrier_name.lower() in item.key.lower()
-                and item.is_plate_carrier
-            ):
-                carrier = item
-                break
-
-        if not carrier:
+        # Carriers only, before matching, so a held plate named "plate"
+        # cannot shadow the carrier and an ordinal counts carriers (#3783).
+        carriers = [item for item in caller.contents if item.is_plate_carrier]
+        matches = caller.search(carrier_name, candidates=carriers, quiet=True)
+        if not matches:
             caller.msg(
                 "You don't have a plate carrier matching"
                 f" '{carrier_name}'."
             )
             return
+        carrier = matches[0]
 
         installed_plates = carrier.installed_plates
 
@@ -1807,11 +1799,14 @@ class CmdUnslot(Command):
                 caller.msg(f"The {slot_name} slot is already empty.")
                 return
 
-        # Try as plate name
-        for slot_name, plate in installed_plates.items():
-            if plate and item_name.lower() in plate.key.lower():
-                pull_plate_into_hand(caller, plate, carrier, slot_name)
-                return
+        # Then as a plate in this carrier
+        plates = plates_installed_in([carrier])
+        matches = caller.search(item_name, candidates=list(plates), quiet=True)
+        if matches:
+            plate = matches[0]
+            _, slot_name = plates[plate]
+            pull_plate_into_hand(caller, plate, carrier, slot_name)
+            return
 
         caller.msg(
             f"No plate or slot matching '{item_name}'"

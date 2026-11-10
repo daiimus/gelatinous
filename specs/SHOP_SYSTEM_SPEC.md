@@ -2277,6 +2277,12 @@ All items in `world/prototypes.py` can be sold in shops:
 # the mechanism §5 describes — so the snippet below misrepresents the very
 # example it is illustrating.
 #
+# 2026-11-10 (#3783): the keys are now the shown names, "can of spraypaint"
+# and "can of solvent". "can of" could not be completed to the shown name by
+# the core search, so a can was findable by what the player saw only where a
+# command hand-rolled a walk over display names. `get_display_name_for_prototype`
+# still builds the same string from `aerosol_contents`; it no longer has to.
+#
 # The missing `value` matters for pricing: `add_prototype("SPRAYPAINT_CAN")`
 # with no explicit price falls through `get_prototype_value(prototype,
 # "value", 10)` to **10**, not 50 (`typeclasses/shopkeeper.py:94-96`). The

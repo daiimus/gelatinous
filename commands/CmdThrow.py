@@ -71,50 +71,6 @@ from world.identity_utils import msg_room_identity
 from commands._identity_targeting import resolve_character_target
 
 
-def match_held(name, candidates):
-    """Find ``name`` among ``candidates`` by key OR alias.
-
-    `throw`, `pull` and `catch` each hand-rolled ``name in obj.key`` and
-    ignored aliases entirely (#2537). The not-found fallback then
-    searched with ``caller.search()``, which DOES honour aliases — so an
-    aliased item you were holding failed the hand loop, succeeded the
-    fallback, and produced *"You must be wielding 'c4' to throw it."*
-    for something already in your hand.
-
-    The branding convention makes that systemic rather than rare: every
-    manufactured item carries a brand, so keys are long branded strings
-    and the aliases are what a player actually types. `HDG M67
-    fragmentation grenade` has aliases `grenade`, `frag`, `m67`, `hdg
-    grenade`, `frag grenade` — the first three work by luck, because
-    they happen to be contiguous substrings of the key; the last two are
-    not, and failed.
-
-    Exact key or alias wins over a substring, so a precise name is never
-    beaten by a longer item that merely contains it.
-    """
-    wanted = (name or "").strip().lower()
-    if not wanted:
-        return None
-    pool = [obj for obj in candidates if obj]
-
-    def aliases_of(obj):
-        try:
-            return [str(a).lower() for a in obj.aliases.all()]
-        except Exception:  # noqa: BLE001 — a stub with no alias handler
-            return []
-
-    for obj in pool:                       # exact key or alias
-        if wanted == str(obj.key).lower() or wanted in aliases_of(obj):
-            return obj
-    for obj in pool:                       # then substring of the key
-        if wanted in str(obj.key).lower():
-            return obj
-    for obj in pool:                       # then substring of an alias
-        if any(wanted in alias for alias in aliases_of(obj)):
-            return obj
-    return None
-
-
 class CmdThrow(Command):
     """
     Throw objects at targets or in directions.
@@ -253,8 +209,11 @@ class CmdThrow(Command):
             self.caller.msg(MSG_THROW_NO_HANDS)
             return None
 
-        # Find object in hands — by key OR alias (#2537)
-        obj = match_held(self.object_name, caller_hands.values())
+        # The core matcher, so the hand and the not-held check below read
+        # names, aliases and ordinals the same way (#2537, #3783).
+        held = [item for item in caller_hands.values() if item]
+        matches = self.caller.search(self.object_name, candidates=held, quiet=True)
+        obj = matches[0] if matches else None
 
         if not obj:
             # Check if object exists but not wielded
@@ -586,8 +545,11 @@ class CmdPull(Command):
             self.caller.msg(MSG_PULL_NO_HANDS)
             return
 
-        # Find grenade in hands — by key OR alias (#2537)
-        grenade = match_held(self.grenade_name, caller_hands.values())
+        # The core matcher, so the hand and the not-held check below read
+        # names, aliases and ordinals the same way (#2537, #3783).
+        held = [item for item in caller_hands.values() if item]
+        matches = self.caller.search(self.grenade_name, candidates=held, quiet=True)
+        grenade = matches[0] if matches else None
 
         if not grenade:
             # Check if exists but not wielded
@@ -673,11 +635,11 @@ class CmdCatch(Command):
 
     def func(self):
         """Execute catch command."""
-        if not self.args:
+        # An empty name would match every flying object in the core matcher.
+        object_name = self.args.strip()
+        if not object_name:
             self.caller.msg(MSG_CATCH_WHAT)
             return
-
-        object_name = self.args.strip()
 
         # Check for hands at all
         caller_hands = getattr(self.caller, 'hands', None)
@@ -701,9 +663,10 @@ class CmdCatch(Command):
         if not isinstance(flying_objects, list):
             flying_objects = []
 
-        # By key OR alias (#2537) — a thrown branded item is exactly
-        # the thing a player will try to catch by its short name.
-        target_obj = match_held(object_name, flying_objects)
+        # A thrown branded item is exactly the thing a player will try to
+        # catch by its short name or an alias (#2537, #3783).
+        matches = self.caller.search(object_name, candidates=flying_objects, quiet=True)
+        target_obj = matches[0] if matches else None
 
         if not target_obj:
             self.caller.msg(MSG_CATCH_OBJECT_NOT_FOUND.format(object=object_name))

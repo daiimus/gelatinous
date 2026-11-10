@@ -33,7 +33,6 @@ from world.substances import apply_substance
 from world.smoke import (
     get_smoke_noun,
     find_held_lighter,
-    find_held_smokable,
     get_substance,
     is_lit,
     is_smokable,
@@ -52,41 +51,16 @@ from world.smoke import (
 # ---------------------------------------------------------------------
 
 
-def _aliases_of(item) -> list[str]:
-    """Return ``item.aliases`` as a plain list of strings.
+def _held_smokables(character) -> list:
+    """The smokables in ``character``'s hands: the pool the three
+    commands hand to ``caller.search``.
 
-    Evennia exposes ``aliases`` as an :class:`AliasHandler`, not a
-    list — call ``.all()`` for the underlying tags.  Test fakes
-    (plain lists) work via the duck-typed fallback.
+    Filtered to smokables BEFORE the name is matched, so an ordinal
+    ("2nd cig") counts only smokables, and a held smoke grenade, whose
+    alias is also "smoke", never answers ``smoke smoke`` (#3783).
     """
-    aliases = getattr(item, "aliases", None)
-    if aliases is None:
-        return []
-    if hasattr(aliases, "all"):
-        return list(aliases.all() or [])
-    try:
-        return list(aliases)
-    except TypeError:
-        return []
-
-
-def _find_held_smokable_matching(character, phrase: str):
-    """Return the smokable in ``character``'s hand that matches
-    ``phrase`` (case-insensitive substring against key / aliases),
-    or None.  When ``phrase`` is empty, returns the first held
-    smokable."""
-    phrase = (phrase or "").strip().lower()
     hands = getattr(character, "hands", None) or {}
-    candidates = [item for item in hands.values() if item and is_smokable(item)]
-    if not phrase:
-        return candidates[0] if candidates else None
-    for item in candidates:
-        haystack = " ".join(
-            [getattr(item, "key", "") or ""] + _aliases_of(item)
-        ).lower()
-        if phrase in haystack:
-            return item
-    return None
+    return [item for item in hands.values() if item and is_smokable(item)]
 
 
 # ---------------------------------------------------------------------
@@ -140,13 +114,12 @@ class CmdLight(Command):
         self._light_other(caller, owner_phrase, cigarette_phrase, lighter)
 
     def _light_own(self, caller, phrase, lighter):
-        cigarette = _find_held_smokable_matching(caller, phrase)
+        matches = caller.search(
+            phrase, candidates=_held_smokables(caller), quiet=True
+        )
+        cigarette = matches[0] if matches else None
         if cigarette is None:
-            caller.msg(
-                "You aren't holding a cigarette matching that."
-                if phrase else
-                "You aren't holding a cigarette."
-            )
+            caller.msg("You aren't holding a cigarette matching that.")
             return
         if is_lit(cigarette):
             caller.msg("It's already lit.")
@@ -176,7 +149,12 @@ class CmdLight(Command):
             self._light_own(caller, cigarette_phrase, lighter)
             return
 
-        cigarette = _find_held_smokable_matching(target, cigarette_phrase)
+        # The pool is the target's hands, but the CALLER searches, so the
+        # presence gate and ordinals are the lighter-holder's view.
+        matches = caller.search(
+            cigarette_phrase, candidates=_held_smokables(target), quiet=True
+        )
+        cigarette = matches[0] if matches else None
         if cigarette is None:
             tname = target.get_display_name(caller)
             caller.msg(f"{tname} isn't holding a cigarette matching that.")
@@ -265,7 +243,10 @@ class CmdSmoke(Command):
                 "``smoke joint``)."
             )
             return
-        cigarette = _find_held_smokable_matching(caller, args)
+        matches = caller.search(
+            args, candidates=_held_smokables(caller), quiet=True
+        )
+        cigarette = matches[0] if matches else None
         if cigarette is None:
             caller.msg(
                 f"You aren't holding a smokable matching '{args}'."
@@ -342,7 +323,10 @@ class CmdSnuff(Command):
         if not args:
             caller.msg("Snuff what?  Name a smokable you're holding.")
             return
-        cigarette = _find_held_smokable_matching(caller, args)
+        matches = caller.search(
+            args, candidates=_held_smokables(caller), quiet=True
+        )
+        cigarette = matches[0] if matches else None
         if cigarette is None:
             caller.msg(
                 f"You aren't holding a smokable matching '{args}'."
