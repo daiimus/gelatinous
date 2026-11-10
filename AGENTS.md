@@ -53,7 +53,7 @@ docker exec <CONTAINER> evennia shell --settings settings.py -c "..."
 **Deploy cycle (every change, even docs):**
 ```bash
 # issue -> branch -> PR -> merge, then sync the live checkout
-gh issue create --label <feature|refactoring|documentation|bug> ...
+gh issue create --label "type: <defect|enhancement|design|question|debt>" --label "area: <subsystem>" ...   # labels: see WORKFLOW.md
 git checkout -b <issue>-<short-desc>
 # ... commit with "Closes #N" in the body ...
 git push -u origin <branch>
@@ -159,7 +159,8 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
   `self.db.desc` and let Evennia's default `return_appearance` slot it in — the
   Evennia-standard way. **Do not override `return_appearance`** to inject text.
   (`Organ.configure_from_harvest` / `Appendage.configure_from_sever` follow this;
-  enforced by `world/tests/test_organ_display.py`.)
+  enforced by `world/tests/test_organ_display.py` and
+  `world/tests/test_severed_part_descriptions.py`.)
 
 ## File → Concept Map
 
@@ -169,7 +170,7 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 | Change melee range rules | `world/combat/proximity.py` |
 | Fix grappling mechanics | `world/combat/grappling.py` |
 | Add/change combat constants | `world/combat/constants.py` |
-| Modify attack/damage logic | `world/combat/utils.py` |
+| Modify attack/damage logic | `world/combat/attack.py` |
 | Modify throw flight/landing/deflection | `world/combat/throwing.py` |
 | Change combat messages | `world/combat/messages/*.py` |
 | Modify attack command | `commands/combat/core_actions.py` |
@@ -177,7 +178,7 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 | Add special actions | `commands/combat/special_actions.py` |
 | Change character stats/behavior | `typeclasses/characters.py` |
 | Modify items/weapons | `typeclasses/items.py` |
-| Work on death/corpses | `typeclasses/corpse.py`, `typeclasses/deathscroll.py` |
+| Work on death/corpses | `typeclasses/corpse.py`, `typeclasses/death_progression.py`, `typeclasses/curtain_of_death.py` |
 | Change room behavior | `typeclasses/rooms.py` |
 | Find object prototypes | `world/prototypes.py` |
 | Modify identity/recognition/sdescs/keywords | `world/identity.py` |
@@ -194,7 +195,7 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 
 1. **`server/logs/server.log`** — tracebacks and errors.
 2. **`server/logs/combat_audit.log`** — every combat/medical diagnostic, always on
-   (async writes via `world/combat/debug.py`).  For live in-game output, set
+   (written via `world/combat/debug.py`).  For live in-game output, set
    `SPLATTERCAST_LIVE = True` in settings to mirror it to the Splattercast channel.
 3. **Grep for the constant** — most strings live in a `constants.py`.
 4. **Trace from the command** — `commands/` calls into handler/system methods.
