@@ -1097,6 +1097,13 @@ class LLMNpcMixin:
             pass
         room = getattr(self, "location", None)
         room_contents = list(getattr(room, "contents", None) or [])
+        # `me` and `here` are this body and this room, as for a player's
+        # `look`. Said here: the pools below hold neither, and the matcher
+        # resolves the words only where the pool holds them (#3783).
+        if query.lower() in ("me", "self"):
+            return self._perceive(self) or "nothing remarkable"
+        if query.lower() == "here" and room is not None:
+            return self._perceive(room) or "nothing remarkable"
         # People first, by how THIS NPC perceives them (masks, sdescs).
         try:
             from commands._identity_targeting import resolve_character_target

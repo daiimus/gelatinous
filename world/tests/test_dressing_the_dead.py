@@ -49,8 +49,11 @@ The greedy pass is now silent, and a genuine failure still speaks once.
 
 **The item filter.** `[it for it in worn if phrase in it.key.lower()]`
 kept **every** substring hit and ignored aliases, so `undress bob shirt`
-stripped every garment whose name contained "shirt". `pick_worn` takes
-the one item named, exact key or alias first.
+stripped every garment whose name contained "shirt". `undress` now
+takes the one item named through the core matcher, exact key or alias
+first (#3783); `pick_worn` is gone, and its cases live on the command in
+`world/tests/test_clothing_verbs_use_the_core_matcher.py`
+(`TestUndressTakesWhatWasNamed`).
 """
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaTest
@@ -59,11 +62,6 @@ from evennia.utils.test_resources import EvenniaTest
 def is_corpse(target):
     from commands.CmdClothing import _is_corpse
     return _is_corpse(target)
-
-
-def pick_worn(phrase, worn):
-    from commands.CmdClothing import pick_worn as real
-    return real(phrase, worn)
 
 
 class _ClothCase(EvenniaTest):
@@ -168,30 +166,6 @@ class TestDressingAndUndressingACorpse(_ClothCase):
         cmd = CmdUndress()
         cmd.caller = self.char1
         self.assertEqual(cmd._undress_remains(body, None), [])
-
-
-class TestThePickerTakesWhatWasNamed(_ClothCase):
-    def test_it_takes_one_item_not_every_match(self):
-        shirt = self.garment("a work shirt")
-        dress_shirt = self.garment("a dress shirt")
-        picked = pick_worn("shirt", [shirt, dress_shirt])
-        self.assertIn(picked, (shirt, dress_shirt))
-        self.assertIsNot(picked, None)
-
-    def test_an_exact_key_beats_a_longer_match(self):
-        shirt = self.garment("shirt")
-        dress_shirt = self.garment("a dress shirt")
-        self.assertIs(pick_worn("shirt", [dress_shirt, shirt]), shirt)
-
-    def test_an_alias_is_found(self):
-        coat = self.garment("Vantage all-weather greatcoat", ["coat"])
-        self.assertIs(pick_worn("coat", [coat]), coat)
-
-    def test_an_unmatched_phrase_finds_nothing(self):
-        self.assertIsNone(pick_worn("hat", [self.garment("a shirt")]))
-
-    def test_an_empty_phrase_finds_nothing(self):
-        self.assertIsNone(pick_worn("", [self.garment("a shirt")]))
 
 
 class TestTheGreedyPassIsSilent(EvenniaTest):

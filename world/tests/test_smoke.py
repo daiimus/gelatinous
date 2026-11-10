@@ -7,11 +7,10 @@ Evennia DB required.  Pins:
 * Held-item helpers find role-tagged items in ``character.hands``.
 * ``pick_smoke_message`` returns brand-matched messages and falls
   back to NEUTRAL for unknown brands.
-* ``CmdLight`` self path lights an unlit cigarette.
-* ``CmdLight`` other-target path routes by identity resolution.
 * ``CmdLight`` rejects unholding-a-lighter.
-* ``CmdSmoke`` requires lit; decrements puffs; destroys at zero.
-* ``CmdSnuff`` clears lit state.
+
+The other light / smoke / snuff command pins live on real objects in
+``test_smoke_commands_use_the_core_matcher.py`` (#3783).
 """
 from __future__ import annotations
 
@@ -402,136 +401,11 @@ class TestCmdLight(TestCase):
         self._run(caller, "cigarette")
         self.assertTrue(any("lighter" in m for m in caller.msgs))
 
-    def test_self_light_marks_cigarette_lit(self):
-        room = _FakeRoom()
-        cig = _cigarette()
-        caller = _FakeCharacter(
-            location=room,
-            hands={"left_hand": cig, "right_hand": _lighter()},
-        )
-        room.contents.append(caller)
-        self._run(caller, "cigarette")
-        self.assertTrue(sm.is_lit(cig))
-
-    def test_self_light_already_lit_rejects(self):
-        room = _FakeRoom()
-        cig = _cigarette()
-        sm.set_lit(cig, True)
-        caller = _FakeCharacter(
-            location=room,
-            hands={"left_hand": cig, "right_hand": _lighter()},
-        )
-        room.contents.append(caller)
-        self._run(caller, "cigarette")
-        self.assertTrue(any("already lit" in m for m in caller.msgs))
-
-    def test_other_light_routes_via_identity(self):
-        room = _FakeRoom()
-        target_cig = _cigarette(substance="tobacco_noir")
-        target = _FakeCharacter(
-            key="Bob", location=room,
-            hands={"left_hand": target_cig},
-        )
-        caller = _FakeCharacter(
-            location=room,
-            hands={"left_hand": _lighter()},
-        )
-        room.contents.extend([caller, target])
-        # Patch identity resolver to return our target deterministically.
-        with patch(
-            "commands.CmdSmoke.resolve_character_target",
-            return_value=target,
-        ):
-            self._run(caller, "bob's cigarette")
-        self.assertTrue(sm.is_lit(target_cig))
-        # Target was msg'd.
-        self.assertTrue(any("cigarette" in m for m in target.msgs))
-
-
-# ---------------------------------------------------------------------
-# CmdSmoke
-# ---------------------------------------------------------------------
-
-
-class TestCmdSmoke(TestCase):
-    def _run(self, caller, args):
-        from commands.CmdSmoke import CmdSmoke
-        cmd = CmdSmoke()
-        cmd.caller = caller
-        cmd.args = " " + args
-        with patch("commands.CmdSmoke.msg_room_identity"):
-            cmd.func()
-
-    def _setup(self, *, substance="tobacco_neutral", uses_left=6, lit=True):
-        room = _FakeRoom()
-        cig = _cigarette(substance=substance, uses_left=uses_left, max_uses=6)
-        if lit:
-            sm.set_lit(cig, True)
-        caller = _FakeCharacter(
-            location=room, hands={"left_hand": cig},
-        )
-        room.contents.append(caller)
-        return caller, cig
-
-    def test_requires_lit(self):
-        caller, _cig = self._setup(lit=False)
-        self._run(caller, "cigarette")
-        self.assertTrue(any("isn't lit" in m for m in caller.msgs))
-
-    def test_decrements_uses_left(self):
-        caller, cig = self._setup(uses_left=6)
-        self._run(caller, "cigarette")
-        self.assertEqual(cig.attributes.get("uses_left"), 5)
-        self.assertFalse(cig.deleted)
-
-    def test_destroys_on_final_puff(self):
-        caller, cig = self._setup(uses_left=1)
-        self._run(caller, "cigarette")
-        self.assertEqual(cig.attributes.get("uses_left"), 0)
-        self.assertTrue(cig.deleted)
-        # Burnout message went out.
-        joined = "\n".join(caller.msgs)
-        self.assertTrue(
-            "spent" in joined or "burns down" in joined
-            or "tumbles" in joined,
-            joined,
-        )
-
-
-# ---------------------------------------------------------------------
-# CmdSnuff
-# ---------------------------------------------------------------------
-
-
-class TestCmdSnuff(TestCase):
-    def _run(self, caller, args):
-        from commands.CmdSmoke import CmdSnuff
-        cmd = CmdSnuff()
-        cmd.caller = caller
-        cmd.args = " " + args
-        with patch("commands.CmdSmoke.msg_room_identity"):
-            cmd.func()
-
-    def test_clears_lit_state(self):
-        room = _FakeRoom()
-        cig = _cigarette()
-        sm.set_lit(cig, True)
-        caller = _FakeCharacter(
-            location=room, hands={"left_hand": cig},
-        )
-        room.contents.append(caller)
-        self._run(caller, "cigarette")
-        self.assertFalse(sm.is_lit(cig))
-
-    def test_rejects_unlit(self):
-        room = _FakeRoom()
-        cig = _cigarette()
-        caller = _FakeCharacter(
-            location=room, hands={"left_hand": cig},
-        )
-        room.contents.append(caller)
-        self._run(caller, "cigarette")
-        self.assertTrue(any("isn't lit" in m for m in caller.msgs))
+    # The rest of the light / smoke / snuff command pins (lights, already
+    # lit, light-other, needs lit, puff count, last puff, snuff, rejects
+    # unlit) now name the smokable through caller.search (#3783), which
+    # these duck-typed fakes do not have.  They run on real objects in
+    # world/tests/test_smoke_commands_use_the_core_matcher.py.
 
 
 # ---------------------------------------------------------------------

@@ -112,6 +112,15 @@ class TestAPersonIsNotAContainer(_LootCase):
         out = self.call(CmdGet(), "jumpsuit from me", caller=self.char1)
         self.assertIn("remove", out)
 
+    def test_from_here_is_the_room(self):
+        """`get knife from here` takes it off the floor. The container
+        pool leaves the room out, and the matcher answers `here` only
+        where the pool holds the room, so the command says it (#3783)."""
+        knife = create_object("typeclasses.items.Item", key="a knife",
+                              location=self.room1)
+        self.call(CmdGet(), "knife from here", caller=self.char1)
+        self.assertEqual(knife.location, self.char1)
+
     def test_a_corpse_is_still_lootable(self):
         """The door this path was BUILT for — and safe, because a
         corpse derives worn from its contents."""

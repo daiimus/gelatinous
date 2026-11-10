@@ -639,6 +639,18 @@ class CmdGet(Command):
         natural flow ("get pack, get cig from pack, light cig")
         works without dropping the container first.
         """
+        # `from me` names no container. Said here, because the pool
+        # below leaves the caller out (so a name can never match
+        # yourself), and the matcher answers `me` only where the pool
+        # holds you (#3783).
+        token = container_name.strip().lower()
+        if token in ("me", "self"):
+            caller.msg(
+                "Take it off with |wremove|n, or just |wget|n "
+                "it if it is loose.")
+            return None
+        if token == "here" and caller.location is not None:
+            return caller.location       # `get knife from here`
         room_candidates = [
             obj for obj in (caller.location.contents if caller.location else [])
             if obj != caller
@@ -670,20 +682,13 @@ class CmdGet(Command):
             # coverage and toward the disguise signature, so a mask
             # taken off a face left the Apparent UID unchanged.
             #
-            # `get x from me` reached it with no second party at all:
-            # Character.search answers the literal `me` before
-            # candidates are consulted.
+            # `get x from me` reached it with no second party at all.
             from typeclasses.characters import Character
             if isinstance(container, Character):
-                if container is caller:
-                    caller.msg(
-                        "Take it off with |wremove|n, or just |wget|n "
-                        "it if it is loose.")
-                else:
-                    caller.msg(
-                        f"You would have to take that off "
-                        f"{container.get_display_name(caller)} — try "
-                        f"|wsteal|n, |wwrest|n or |wundress|n.")
+                caller.msg(
+                    f"You would have to take that off "
+                    f"{container.get_display_name(caller)} — try "
+                    f"|wsteal|n, |wwrest|n or |wundress|n.")
                 return None
             return container
 
@@ -900,10 +905,12 @@ class CmdPut(Command):
             caller.msg("Usage: put <item> in <target>")
             return
 
-        # The ITEM first, and it has to be an Item you are carrying. `me`
-        # and `here` short-circuit Character.search ahead of every reach
-        # argument, so a name-taking door hands back the caller or the
-        # room (review, #3619: `put me in locker` filed the player).
+        # The ITEM first, and it has to be an Item you are carrying. A
+        # Builder's `#dbref` search is global, so a name-taking door can
+        # still be handed a person or a room. (`me` and `here` did the
+        # same for everyone, and `put me in locker` filed the player,
+        # #3619, until the matcher stopped answering them out of a
+        # scoped pool, #3783.)
         item = self._resolve_item(caller, self.item_name)
         if item is None:
             return

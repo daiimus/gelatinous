@@ -84,30 +84,20 @@ class CmdWear(Command):
         if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
             return
         caller = self.caller
-        
-        if not self.args:
+        name = self.args.strip()
+        if not name:
             caller.msg("Wear what?")
             return
-        
-        # Find the item in inventory
-        item = caller.search(self.args.strip(), location=caller, quiet=True)
-        
-        # If not found in inventory, check hands (wielded items)
-        if not item:
-            hands = getattr(caller, 'hands', {})
-            for hand, held_item in hands.items():
-                if held_item and held_item.key.lower() == self.args.strip().lower():
-                    item = held_item
-                    break
-        
-        if not item:
-            caller.msg(f"You don't have '{self.args.strip()}'.")
+
+        # Held items stay in caller.contents, so this one search reaches
+        # the hands too; a held item the caller cannot perceive stays
+        # unfound (#3783).
+        matches = caller.search(name, location=caller, quiet=True)
+        if not matches:
+            caller.msg(f"You don't have '{name}'.")
             return
-        
-        # Use first match if multiple found
-        if isinstance(item, list):
-            item = item[0]
-        
+        item = matches[0]
+
         # Check if item is wearable
         if not item.is_wearable():
             caller.msg(f"You can't wear {item.key}.")
@@ -179,15 +169,13 @@ class CmdRemove(Command):
         if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
             return
         caller = self.caller
-        
-        if not self.args:
+        name = self.args.strip()
+        if not name:
             caller.msg("Remove what?")
             return
-        
-        args = self.args.strip().lower()
-        
+
         # Handle "remove all"
-        if args == "all":
+        if name.lower() == "all":
             worn_items = caller.get_worn_items()
             if not worn_items:
                 caller.msg("You're not wearing anything.")
@@ -233,20 +221,15 @@ class CmdRemove(Command):
                 caller.msg("You couldn't remove anything.")
             return
         
-        # Find worn item by name
-        worn_items = caller.get_worn_items()
-        item = None
-        
-        # Search through worn items
-        for worn_item in worn_items:
-            if args in worn_item.key.lower():
-                item = worn_item
-                break
-        
-        if not item:
-            caller.msg(f"You're not wearing '{self.args.strip()}'.")
+        # Only worn items are in the pool, so "2nd shirt" counts worn
+        # shirts (#3783).
+        matches = caller.search(
+            name, candidates=caller.get_worn_items(), quiet=True)
+        if not matches:
+            caller.msg(f"You're not wearing '{name}'.")
             return
-        
+        item = matches[0]
+
         # STICKY GRENADE WARNING - Check for stuck grenades before removal
         # Snapshot actor names BEFORE remove_item mutates worn state.
         char_refs = {"actor": caller}
@@ -430,25 +413,21 @@ class CmdRollUp(Command):
         if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
             return
         caller = self.caller
-        
-        if not self.args:
+        name = self.args.strip()
+        if not name:
             caller.msg("Roll up what?")
             return
-        
-        # Find worn item
-        worn_items = caller.get_worn_items()
-        item = None
-        
-        args = self.args.strip().lower()
-        for worn_item in worn_items:
-            if args in worn_item.key.lower():
-                item = worn_item
-                break
-        
-        if not item:
-            caller.msg(f"You're not wearing '{self.args.strip()}'.")
+
+        # The pool is every worn item, not only adjustable ones, so a
+        # worn garment with nothing to roll gets its own refusal below
+        # (#3783).
+        matches = caller.search(
+            name, candidates=caller.get_worn_items(), quiet=True)
+        if not matches:
+            caller.msg(f"You're not wearing '{name}'.")
             return
-        
+        item = matches[0]
+
         # Ask the GARMENT what it can be adjusted TO, rather than
         # naming a state and hoping it has one (#2742).
         adjusting = self.cmdstring.lower() == "rollup"
@@ -528,29 +507,26 @@ class CmdZip(Command):
         if refuse_if_channeling(self.caller):   # BLOCKED while channeling (#3376)
             return
         caller = self.caller
-        
-        if not self.args:
+        typed = self.args.strip()
+        if not typed:
             caller.msg("Zip what?")
             return
-        
-        # Find worn item
-        worn_items = caller.get_worn_items()
-        item = None
-        
-        args = self.args.strip().lower()
-        # Handle "zip up" as just "zip"
-        if args.startswith("up "):
-            args = args[3:]
-        
-        for worn_item in worn_items:
-            if args in worn_item.key.lower():
-                item = worn_item
-                break
-        
-        if not item:
-            caller.msg(f"You're not wearing '{self.args.strip()}'.")
+
+        # Handle "zip up" as just "zip". Strip first, then test for
+        # "up ", so the name left behind is never empty.
+        name = typed
+        if name.lower().startswith("up "):
+            name = name[3:].strip()
+
+        # The pool is every worn item, not only ones with a closure, so
+        # a worn garment without one gets its own refusal below (#3783).
+        matches = caller.search(
+            name, candidates=caller.get_worn_items(), quiet=True)
+        if not matches:
+            caller.msg(f"You're not wearing '{typed}'.")
             return
-        
+        item = matches[0]
+
         # The closure the GARMENT declares, preferring the one this
         # command is named for. The corporate blazer and the white lab
         # coat close to `buttoned`/`open`, which neither `zip` nor
@@ -647,43 +623,6 @@ def _can_third_party_clothing(caller, target):
         return True
     from world.consent import check_consent
     return check_consent(caller, target, "dress")
-
-
-def pick_worn(phrase, worn):
-    """The ONE worn item ``phrase`` names, or ``None``.
-
-    The filters this replaces were ``[it for it in worn if phrase in
-    it.key.lower()]`` — a substring test that kept EVERY hit and ignored
-    aliases (#2517). `undress bob shirt` stripped every garment whose
-    name contained "shirt", not the one the player named, and an item
-    addressed by its alias was not found at all — which matters because
-    every manufactured item carries a brand, so keys are long branded
-    strings and aliases are what players type.
-
-    Exact key or alias first, so a precise name is never beaten by a
-    longer garment that merely contains it.
-    """
-    wanted = (phrase or "").strip().lower()
-    if not wanted:
-        return None
-
-    def aliases_of(obj):
-        try:
-            return [str(a).lower() for a in obj.aliases.all()]
-        except Exception:  # noqa: BLE001 — stubs without an alias handler
-            return []
-
-    pool = [it for it in worn if it]
-    for item in pool:
-        if wanted == str(item.key).lower() or wanted in aliases_of(item):
-            return item
-    for item in pool:
-        if wanted in str(item.key).lower():
-            return item
-    for item in pool:
-        if any(wanted in alias for alias in aliases_of(item)):
-            return item
-    return None
 
 
 def _is_corpse(target) -> bool:
@@ -1049,8 +988,8 @@ class CmdUndress(Command):
         undress <target> <item>
 
     First form removes all worn items.  Second removes a single
-    item by name (substring match against the target's worn
-    items).  Removed items transfer to your inventory.
+    worn item, named by key or alias (``jacket-2`` picks the second
+    of two).  Removed items transfer to your inventory.
 
     Works freely on a target who cannot contest (unconscious,
     dead, restrained, or a severed appendage); a conscious, free
@@ -1186,9 +1125,11 @@ class CmdUndress(Command):
             return []
 
         if item_phrase:
-            # The item the player NAMED, by key or alias (#2517).
-            chosen = pick_worn(item_phrase, worn)
-            worn = [chosen] if chosen else []
+            # The ONE item the player named, never every garment whose
+            # name contains the word (#2517). The pool sits on the
+            # target, not the caller; candidates= does not care (#3783).
+            worn = self.caller.search(
+                item_phrase, candidates=worn, quiet=True)[:1]
             if not worn:
                 return []
 
@@ -1211,8 +1152,9 @@ class CmdUndress(Command):
         if not garments:
             return []
         if item_phrase:
-            chosen = pick_worn(item_phrase, garments)
-            garments = [chosen] if chosen else []
+            # One named garment, as `_undress_character` (#2517, #3783).
+            garments = self.caller.search(
+                item_phrase, candidates=garments, quiet=True)[:1]
         removed = []
         for item in garments:
             item.move_to(self.caller, quiet=True)

@@ -672,6 +672,17 @@ path goes through one door, `pull_plate_into_hand`, in
 an item in your inventory) because slot/unslot are expected to gain
 non-plate uses.
 
+**Naming (#3783).** `armor <item>`, `repair <armor> [with <tool>]` and both
+`unslot` doors name their object through the core matcher,
+`caller.search(name, candidates=pool, quiet=True)`: worn armour for `armor`;
+the armour you carry for `repair`, a worn piece winning over a carried one;
+repair tools you carry for `with`; the plates installed in the carriers you
+wear, then in the ones you carry, for bare `unslot`; your carriers and then
+that carrier's plates for the `from` form. So a piece answers to its key or
+an alias, exact first, then a partial name in which each typed word starts a
+word; `2nd plate` picks the second; a fragment from the middle of a word
+finds nothing. The refusal texts are unchanged.
+
 ```
 > unslot medium ballistic plate
 You pull the medium ballistic plate out of the front slot of your plate carrier and hold it.

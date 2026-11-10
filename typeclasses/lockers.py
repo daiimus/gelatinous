@@ -321,10 +321,12 @@ class LockerBank(Item):
         in locker` (#3619) both come through here."""
         if not self._can_use(caller):
             return
-        # `me`/`here` short-circuit Character.search ahead of the
-        # candidates= reach, so `stash me` resolved to the caller and
-        # `move_to` filed the PLAYER into the compartment, hooks off, with
-        # no exits and no verbs (review, #3619).
+        # This door takes Items only. `stash me` once resolved to the
+        # caller and `move_to` filed the PLAYER into the compartment,
+        # hooks off, with no exits and no verbs (review, #3619). The
+        # matcher no longer answers `me` out of a scoped pool (#3783);
+        # a Builder's `#dbref` search is still global, and `put <item>
+        # in locker` reaches this door with whatever it resolved.
         if not isinstance(item, Item):
             caller.msg("You can't stow that in a locker.")
             return
@@ -372,8 +374,9 @@ class LockerBank(Item):
                              nofound_string=f"Your locker holds no '{name}'.")
         if not item:
             return
-        # Same short-circuit as stash_item: `retrieve me` got the caller
-        # back and tried to move them into themselves (review, #3619).
+        # Items only, as stash_item: `retrieve me` once got the caller
+        # back and tried to move them into themselves (review, #3619);
+        # a Builder's `#dbref` can still name anything.
         if not isinstance(item, Item):
             caller.msg(f"Your locker holds no '{name}'.")
             return

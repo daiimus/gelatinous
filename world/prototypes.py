@@ -528,7 +528,7 @@ BOTTLE = {
 # Base spray paint can
 SPRAYPAINT_CAN = {
     "prototype_key": "spraypaint_can",
-    "key": "can of",
+    "key": "can of spraypaint",
     "aliases": ["can", "paint", "spray", "spraycan", "spraypaint"],
     "typeclass": "typeclasses.items.SprayCanItem", 
     "desc": "A can of spraypaint with a red nozzle. It feels heavy with paint.",
@@ -552,7 +552,7 @@ SPRAYPAINT_CAN = {
 # Solvent can for cleaning graffiti
 SOLVENT_CAN = {
     "prototype_key": "solvent_can",
-    "key": "can of",
+    "key": "can of solvent",
     "aliases": ["solvent", "cleaner", "cleaning_can", "can"],
     "typeclass": "typeclasses.items.SolventCanItem",
     "desc": "A can of solvent for cleaning graffiti. It feels heavy with solvent.", 

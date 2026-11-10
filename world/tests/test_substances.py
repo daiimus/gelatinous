@@ -11,13 +11,17 @@ Pure-function coverage against fakes — no Evennia DB.  Pins:
 * Dose bookkeeping increments ``db.substance_doses``.
 * Vitals refresh + medical-state flush fire after application.
 * ``CmdSmoke`` integration: a puff applies one dose and renders
-  the feedback line only when an effect landed.
+  the feedback line only when an effect landed.  That one class runs
+  on real objects (a real character and cigarette), since the command
+  names the cigarette through ``caller.search`` (#3783).
 """
 from __future__ import annotations
 
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
+
+from evennia.utils.test_resources import EvenniaCommandTest
 
 from world.substances import (
     SUBSTANCES,
@@ -252,75 +256,63 @@ class TestBookkeeping(TestCase):
 # ---------------------------------------------------------------------
 
 
-class TestCmdSmokeIntegration(TestCase):
-    def _run_smoke(self, caller, args):
-        from commands.CmdSmoke import CmdSmoke
-        cmd = CmdSmoke()
-        cmd.caller = caller
-        cmd.args = " " + args
-        with patch("commands.CmdSmoke.msg_room_identity"):
-            cmd.func()
+class TestCmdSmokeIntegration(EvenniaCommandTest):
+    """A real lit cigarette in a real hand, puffed through the real
+    ``smoke`` command: the dose lands on the smoker's own medical state.
+    Rebuilt on real objects for #3783: the command now names the
+    cigarette through ``caller.search``, which a fake caller lacks."""
 
-    def _smoking_caller(self, *, substance, conditions=None):
+    def setUp(self):
+        super().setUp()
+        patcher = patch("commands.CmdSmoke.msg_room_identity")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _smoke(self, args):
+        from commands.CmdSmoke import CmdSmoke
+        return self.call(CmdSmoke(), args, caller=self.char1)
+
+    def _lit_cigarette(self, *, substance):
+        from evennia import create_object
         from world import smoke as sm
 
-        class _Tags:
-            def __init__(self):
-                self._t = set()
-
-            def has(self, key, category=None):
-                return (key, category) in self._t
-
-            def add(self, key, category=None):
-                self._t.add((key, category))
-
-            def remove(self, key, category=None):
-                self._t.discard((key, category))
-
-        cig = SimpleNamespace(
-            key="cigarette",
-            aliases=[],
-            tags=_Tags(),
-            db=_FakeDB(substance=substance),
-            attributes=SimpleNamespace(
-                get=lambda k, d=None, _v={"uses_left": 6, "max_uses": 6}:
-                    _v.get(k, d),
-                add=lambda k, v: None,
-            ),
-        )
+        cig = create_object("typeclasses.items.Item", key="cigarette",
+                            location=self.char1)
         cig.tags.add(sm.SMOKE_DELIVERY, category=sm.DELIVERY_METHOD_CATEGORY)
-        cig.tags.add(sm.LIT_TAG, category=sm.CIGARETTE_STATE_CATEGORY)
+        cig.db.substance = substance
+        cig.db.uses_left = 6
+        cig.db.max_uses = 6
+        sm.set_lit(cig, True)
+        self.char1.wield_item(cig, hand="left")
+        self.assertIs(self.char1.hands["left_hand"], cig)
+        return cig
 
-        caller = _FakeConsumer(conditions=conditions)
-        caller.location = SimpleNamespace(contents=[])
-        caller.hands = {"left_hand": cig}
-        caller.msgs = []
-        caller.msg = lambda text: caller.msgs.append(text)
-        caller.get_display_name = lambda looker=None: "Tester"
-        return caller
+    def _pains(self):
+        return [c for c in self.char1.medical_state.conditions
+                if c.condition_type == "pain"]
 
     def test_puff_applies_dose_and_renders_feedback(self):
-        caller = self._smoking_caller(
-            substance="tobacco_neutral", conditions=[_pain(4)],
-        )
-        self._run_smoke(caller, "cigarette")
+        from world.medical.conditions import PainCondition
+
+        self._lit_cigarette(substance="tobacco_neutral")
+        self.char1.medical_state.add_condition(PainCondition(4, location=None))
+        out = self._smoke("cigarette")
         # Pain shaved by one.
-        self.assertEqual(caller.medical_state.conditions[0].severity, 3)
+        self.assertEqual([c.severity for c in self._pains()], [3])
         # Dose recorded.
         self.assertEqual(
-            caller.db.substance_doses, {"tobacco_neutral": 1},
+            dict(self.char1.db.substance_doses), {"tobacco_neutral": 1},
         )
-        # Feedback line rendered (colour-wrapped).
-        joined = "\n".join(caller.msgs)
-        self.assertIn("ache dulls", joined)
+        # Feedback line rendered (colour stripped by self.call).
+        self.assertIn("ache dulls", out)
 
     def test_pain_free_puff_renders_no_feedback(self):
-        caller = self._smoking_caller(substance="tobacco_neutral")
-        self._run_smoke(caller, "cigarette")
-        joined = "\n".join(caller.msgs)
-        self.assertNotIn("ache dulls", joined)
+        self._lit_cigarette(substance="tobacco_neutral")
+        self.assertEqual(self._pains(), [])
+        out = self._smoke("cigarette")
+        self.assertNotIn("ache dulls", out)
         # Flavor message still arrived (something got rendered).
-        self.assertTrue(caller.msgs)
+        self.assertTrue(out.strip())
 
 
 # ---------------------------------------------------------------------

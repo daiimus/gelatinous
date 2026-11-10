@@ -225,12 +225,12 @@ class CmdRig(Command):
             self.caller.msg(MSG_RIG_NO_HANDS)
             return
 
-        # Find grenade in hands
-        grenade = None
-        for hand, wielded_obj in caller_hands.items():
-            if wielded_obj and self.grenade_name.lower() in wielded_obj.key.lower():
-                grenade = wielded_obj
-                break
+        # The core matcher over what is in hand, so a branded charge's alias
+        # and an ordinal name it (#3783). No is_explosive filter here: a
+        # held non-explosive gets its own refusal below, not "not wielded".
+        held = [obj for obj in caller_hands.values() if obj]
+        matches = self.caller.search(self.grenade_name, candidates=held, quiet=True)
+        grenade = matches[0] if matches else None
 
         if not grenade:
             # Check if exists but not wielded
@@ -390,11 +390,10 @@ class CmdDefuse(Command):
 
     def func(self):
         """Execute defuse command."""
-        if not self.args:
+        grenade_name = self.args.strip()
+        if not grenade_name:
             self.caller.msg("Defuse what?")
             return
-
-        grenade_name = self.args.strip()
 
         # Find grenade in proximity
         grenade = self.find_grenade_in_proximity(grenade_name)
@@ -415,58 +414,48 @@ class CmdDefuse(Command):
 
     def find_grenade_in_proximity(self, grenade_name):
         """Find grenade in proximity or establish proximity for nearby grenades."""
-        # First check existing proximity relationships
-        proximity_candidates = []
+        # Explosives in the room and in your own inventory. The search below
+        # applies the presence gate to this pool (#3637), so a stashed
+        # charge is found by `search` first, as it is for `jump on`.
+        room = self.caller.location
+        nearby = (list(room.contents) if room else []) + list(self.caller.contents)
+        explosives = [obj for obj in nearby if obj.db.is_explosive]
 
-        # Check both room contents AND character inventory for proximity
-        # candidates. The room half goes through the presence gate every
-        # search pool gets (#3637): a stashed charge is found by `search`
-        # first, as it is for `jump on`; your own inventory is yours.
-        from world.perception import filter_present
-        all_candidates = (filter_present(self.caller, list(self.caller.location.contents))
-                          + list(self.caller.contents))
+        # First, a charge you are already within reach of, live or not:
+        # a dud in reach still answers "not armed" below. The pools are
+        # filtered before matching so an ordinal counts only eligible
+        # charges (#3783).
+        in_reach = [
+            obj for obj in explosives
+            if self.caller in (getattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL, None) or [])
+        ]
+        matches = self.caller.search(grenade_name, candidates=in_reach, quiet=True)
+        if len(matches) > 1:
+            self.caller.msg(
+                f"Multiple {grenade_name}s are within reach. Be more specific."
+            )
+            return None
+        if matches:
+            return matches[0]
 
-        for obj in all_candidates:
-            if (grenade_name.lower() in obj.key.lower() and
-                obj.db.is_explosive):
-
-                # Check if caller is already in this object's proximity
-                obj_proximity = getattr(obj.ndb, NDB_PROXIMITY_UNIVERSAL, [])
-                if obj_proximity and self.caller in obj_proximity:
-                    proximity_candidates.append(obj)
-
-        # If found in existing proximity, return it
-        if proximity_candidates:
-            if len(proximity_candidates) > 1:
-                self.caller.msg(f"Multiple {grenade_name}s are within reach. Be more specific.")
-                return None
-            return proximity_candidates[0]
-
-        # If not in proximity, check for physical presence and establish mutual proximity
-        physical_candidates = []
-
-        # Check both room contents AND character inventory for physical candidates
-        for obj in all_candidates:
-            if (grenade_name.lower() in obj.key.lower() and
-                obj.db.is_explosive):
-
-                # Check if grenade is live (either pin pulled OR rigged to exit)
-                pin_pulled = obj.db.pin_pulled
-                is_rigged = obj.db.rigged_to_exit is not None
-
-                if pin_pulled or is_rigged:
-                    physical_candidates.append(obj)
-
-        if not physical_candidates:
-            self.caller.msg(f"You don't see any armed '{grenade_name}' within reach to defuse.")
+        # Otherwise a live charge here (pin pulled, or rigged to an exit),
+        # which you step up to.
+        live = [
+            obj for obj in explosives
+            if obj.db.pin_pulled or obj.db.rigged_to_exit is not None
+        ]
+        matches = self.caller.search(grenade_name, candidates=live, quiet=True)
+        if not matches:
+            self.caller.msg(
+                f"You don't see any armed '{grenade_name}' within reach to defuse."
+            )
             return None
 
-        if len(physical_candidates) > 1:
+        if len(matches) > 1:
             self.caller.msg(f"Multiple {grenade_name}s are nearby. Be more specific.")
             return None
 
-        # Establish mutual proximity and return the grenade
-        grenade = physical_candidates[0]
+        grenade = matches[0]
 
         # Different message for held vs room grenades
         if grenade.location == self.caller:

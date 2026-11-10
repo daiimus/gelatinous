@@ -799,11 +799,8 @@ def _pick_aliases(item, species=None):
     # so typing "stump" selected "suture all" and so did typing "n"
     # (#2553); the install picker stored the same way, which silently
     # broke the underscore form of every location name. Both are now
-    # value-first, like the donor / organ / location pickers.
+    # value-first, like the organ / location pickers.
     value = item[0] if isinstance(item, tuple) else item
-    if not isinstance(value, str):
-        # donor entries are ``(item_object, organ)``
-        return {str(getattr(value, "key", value)).lower()}
     return {value.lower(), value.replace("_", " ").lower(),
             get_organ_display_name(value, species).lower()}
 
@@ -854,9 +851,7 @@ def _name_picks(items, species=None):
     out = []
     for item in items:
         value = item[0] if isinstance(item, tuple) else item
-        out.append(get_organ_display_name(value, species)
-                   if isinstance(value, str)
-                   else str(getattr(value, "key", value)))
+        out.append(get_organ_display_name(value, species))
     return ", ".join(sorted(out))
 
 
@@ -1061,28 +1056,22 @@ def _process_install_donor(caller, raw_string, **kwargs):
     if not raw:
         return None
     donors = caller.ndb._operate_pickable or []
-    # _parse_pick matches against the FIRST tuple element (Item key).
-    # We need to match against item.key text; adapt by building a
-    # name-keyed list for parse_pick.
-    name_pairs = [
-        (item.key, (item, name)) for item, name in donors
-    ]
     if raw.isdigit():
         idx = int(raw) - 1
-        if not (0 <= idx < len(name_pairs)):
+        if not (0 <= idx < len(donors)):
             caller.msg("|rOut of range.|n")
             return None
-        pick = name_pairs[idx][1]
+        item = donors[idx][0]
     else:
-        pick = None
-        for key, payload in name_pairs:
-            if raw.lower() in key.lower():
-                pick = payload
-                break
-        if pick is None:
+        # The donors are real objects, so the core matcher names them:
+        # aliases and "2nd kidney" work as in every other command (#3783).
+        matches = caller.search(
+            raw, candidates=[obj for obj, _label in donors], quiet=True,
+        )
+        if not matches:
             caller.msg("|rNo donor matches.|n")
             return None
-    item, organ_name = pick
+        item = matches[0]
     caller.ndb._operate_install_donor = item.key
     # Stash the item object too so the install-location picker can
     # read its compatibility / placement attrs (db.organ_name,
@@ -1210,16 +1199,6 @@ def _node_install_location(caller, raw_string, **kwargs):
     # `or`, not a getattr default -- an ndb miss returns None (#2548).
     donor_key = getattr(caller.ndb, "_operate_install_donor", None) or "?"
     donor_item = getattr(caller.ndb, "_operate_install_donor_item", None)
-
-    if donor_item is None:
-        # Fallback for stale state — re-resolve from caller inventory
-        # by key.  Shouldn't normally fire (the donor picker stashes
-        # the item directly) but keeps the menu robust.
-        for obj in (getattr(caller, "contents", None) or ()):
-            if getattr(obj, "key", None) == donor_key:
-                donor_item = obj
-                break
-
     if donor_item is None:
         caller.msg(
             f"|r{donor_key} is no longer in your inventory.|n"

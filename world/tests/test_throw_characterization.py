@@ -33,7 +33,12 @@ Run via::
 from unittest import TestCase, mock
 from unittest.mock import MagicMock, patch
 
+from evennia import create_object
+from evennia.utils.test_resources import EvenniaTest
+
 from world.combat.constants import (
+    DB_CHAR,
+    DB_GRAPPLED_BY_DBREF,
     MSG_THROW_GRAPPLED,
     MSG_THROW_INVALID_DIRECTION,
     MSG_THROW_NO_AIM_CROSS_ROOM,
@@ -45,6 +50,7 @@ from world.combat.constants import (
     MSG_PULL_NOT_EXPLOSIVE,
     MSG_CATCH_NO_FREE_HANDS,
     MSG_CATCH_OBJECT_NOT_FOUND,
+    NDB_COMBAT_HANDLER,
     NDB_COUNTDOWN_REMAINING,
     NDB_FLYING_OBJECTS,
     NDB_PROXIMITY_UNIVERSAL,
@@ -117,6 +123,33 @@ def caller_messages(caller):
     return [str(c.args[0]) for c in caller.msg.call_args_list if c.args]
 
 
+class RealHandsTest(EvenniaTest):
+    """A real character holding real items.
+
+    The commands find what is named with the core matcher
+    (``Character.search``, #3783), which matches database objects, so
+    the tests that need an item FOUND cannot use MagicMock items or a
+    mocked ``search``. ``char2`` is the caller: ``char1`` is a Developer
+    in EvenniaTest, which changes the #dbref and key-match branches.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.caller = self.char2
+        self.caller.msg = MagicMock()
+
+    def item(self, key, location=None, **db_fields):
+        obj = create_object(
+            "typeclasses.items.Item", key=key, location=location or self.caller
+        )
+        for name, value in db_fields.items():
+            obj.attributes.add(name, value)
+        return obj
+
+    def hold(self, right=None, left=None):
+        self.caller.hands = {"right_hand": right, "left_hand": left}
+
+
 # ===================================================================
 # Parsing — the four syntaxes
 # ===================================================================
@@ -176,27 +209,11 @@ class TestThrowParsing(TestCase):
 
 
 class TestGetObjectToThrow(TestCase):
-    def test_wielded_object_found_by_substring(self):
-        rock = make_obj("heavy rock")
-        caller = make_caller(hands={"right": rock, "left": None})
-        cmd = make_throw_cmd(caller, "rock")
-        self.assertIs(cmd.get_object_to_throw(), rock)
-
     def test_no_hands_at_all(self):
         caller = make_caller(hands={})
         cmd = make_throw_cmd(caller, "rock")
         self.assertIsNone(cmd.get_object_to_throw())
         self.assertIn(MSG_THROW_NO_HANDS, caller_messages(caller))
-
-    def test_in_inventory_but_not_wielded(self):
-        caller = make_caller(hands={"right": None})
-        caller.search = MagicMock(return_value=[make_obj("rock")])
-        cmd = make_throw_cmd(caller, "rock")
-        self.assertIsNone(cmd.get_object_to_throw())
-        self.assertIn(
-            MSG_THROW_OBJECT_NOT_WIELDED.format(object="rock"),
-            caller_messages(caller),
-        )
 
     def test_object_nowhere(self):
         caller = make_caller(hands={"right": None})
@@ -208,17 +225,38 @@ class TestGetObjectToThrow(TestCase):
             caller_messages(caller),
         )
 
+
+class TestGetObjectToThrowFromRealHands(RealHandsTest):
+    def test_wielded_object_found_by_a_word_of_its_key(self):
+        rock = self.item("heavy rock")
+        self.hold(right=rock)
+        cmd = make_throw_cmd(self.caller, "rock")
+        self.assertIs(cmd.get_object_to_throw(), rock)
+
+    def test_in_inventory_but_not_wielded(self):
+        self.item("rock")
+        self.hold()
+        cmd = make_throw_cmd(self.caller, "rock")
+        self.assertIsNone(cmd.get_object_to_throw())
+        self.assertIn(
+            MSG_THROW_OBJECT_NOT_WIELDED.format(object="rock"),
+            caller_messages(self.caller),
+        )
+
     def test_grappled_thrower_blocked(self):
-        rock = make_obj("rock")
-        caller = make_caller(hands={"right": rock})
+        rock = self.item("rock")
+        self.hold(right=rock)
         handler = MagicMock()
         handler.db.combatants = [
-            {"char": caller, "grappled_by_dbref": 99},
+            {DB_CHAR: self.caller, DB_GRAPPLED_BY_DBREF: 99},
         ]
-        caller.ndb = Bag(combat_handler=handler)
-        cmd = make_throw_cmd(caller, "rock")
-        self.assertIsNone(cmd.get_object_to_throw())
-        self.assertIn(MSG_THROW_GRAPPLED, caller_messages(caller))
+        setattr(self.caller.ndb, NDB_COMBAT_HANDLER, handler)
+        try:
+            cmd = make_throw_cmd(self.caller, "rock")
+            self.assertIsNone(cmd.get_object_to_throw())
+        finally:
+            setattr(self.caller.ndb, NDB_COMBAT_HANDLER, None)
+        self.assertIn(MSG_THROW_GRAPPLED, caller_messages(self.caller))
 
     def test_expired_grenade_explodes_in_hand(self):
         """A held grenade whose countdown hit zero detonates instead of
@@ -240,57 +278,65 @@ class TestGetObjectToThrow(TestCase):
         there. Asserting the ROUTE rather than the internals, because
         the internals were the defect.
         """
-        grenade = make_obj(
+        grenade = self.item(
             "grenade", is_explosive=True, blast_damage=12, damage_type="blast"
         )
-        grenade.ndb = Bag(countdown_remaining=0)
-        caller = make_caller(hands={"right": grenade})
-        cmd = make_throw_cmd(caller, "grenade")
+        setattr(grenade.ndb, NDB_COUNTDOWN_REMAINING, 0)
+        self.hold(right=grenade)
+        cmd = make_throw_cmd(self.caller, "grenade")
         with mock.patch(
             "commands.explosion_utils.explode_standalone_grenade"
-        ) as detonate:
+        ) as detonate, patch.object(
+            self.caller, "take_damage"
+        ) as take_damage, patch.object(grenade, "delete") as delete:
             self.assertIsNone(cmd.get_object_to_throw())
         detonate.assert_called_once_with(grenade)
         # The validator no longer does the explosion itself.
-        caller.take_damage.assert_not_called()
-        grenade.delete.assert_not_called()
-
+        take_damage.assert_not_called()
+        delete.assert_not_called()
 
 # ===================================================================
 # Dedicated throwing weapons — redirect, never flight
 # ===================================================================
 
 
-class TestThrowingWeaponRedirect(TestCase):
+class TestThrowingWeaponRedirect(RealHandsTest):
     """``is_throwing_weapon`` objects redirect to ``attack`` and
     never enter the utility flight path."""
 
+    def held_knife(self):
+        knife = self.item("knife", is_throwing_weapon=True)
+        self.hold(right=knife)
+        return knife
+
     def test_targeted_weapon_throw_invokes_attack(self):
-        knife = make_obj("knife", is_throwing_weapon=True)
-        caller = make_caller(hands={"right": knife})
-        cmd = make_throw_cmd(caller, "knife at bob")
-        cmd.func()
-        caller.execute_cmd.assert_called_once_with("attack bob")
+        self.held_knife()
+        cmd = make_throw_cmd(self.caller, "knife at bob")
+        with patch.object(self.caller, "execute_cmd") as execute_cmd:
+            cmd.func()
+        execute_cmd.assert_called_once_with("attack bob")
 
     def test_untargeted_weapon_throw_gets_guidance(self):
-        knife = make_obj("knife", is_throwing_weapon=True)
-        caller = make_caller(hands={"right": knife})
-        cmd = make_throw_cmd(caller, "knife")
-        cmd.func()
-        caller.execute_cmd.assert_not_called()
+        self.held_knife()
+        cmd = make_throw_cmd(self.caller, "knife")
+        with patch.object(self.caller, "execute_cmd") as execute_cmd:
+            cmd.func()
+        execute_cmd.assert_not_called()
         self.assertTrue(
-            any("attack" in m for m in caller_messages(caller))
+            any("attack" in m for m in caller_messages(self.caller))
         )
 
     def test_weapon_never_takes_utility_flight(self):
         """Even a targeted weapon throw never launches a utility
-        flight — the redirect fires first."""
-        knife = make_obj("knife", is_throwing_weapon=True)
-        caller = make_caller(hands={"right": knife})
-        cmd = make_throw_cmd(caller, "knife at bob")
-        with patch.object(cmd, "handle_utility_throw") as mock_fly:
+        flight — the redirect fires first. The redirect is asserted
+        too, so this cannot pass on a knife that was never found."""
+        self.held_knife()
+        cmd = make_throw_cmd(self.caller, "knife at bob")
+        with patch.object(cmd, "handle_utility_throw") as mock_fly, \
+                patch.object(self.caller, "execute_cmd") as execute_cmd:
             cmd.func()
         mock_fly.assert_not_called()
+        execute_cmd.assert_called_once_with("attack bob")
 
 
 # ===================================================================
@@ -827,49 +873,52 @@ class TestCmdPull(TestCase):
         cmd.func()
         self.assertTrue(caller_messages(caller))
 
+
+class TestCmdPullFromRealHands(RealHandsTest):
+    def _cmd(self, args):
+        from commands.CmdThrow import CmdPull
+
+        cmd = CmdPull()
+        cmd.caller = self.caller
+        cmd.args = args
+        cmd.parse()
+        return cmd
+
     def test_not_explosive_rejected(self):
-        rock = make_obj("rock")
-        caller = make_caller(hands={"right": rock})
-        cmd = self._cmd(caller, "pin on rock")
-        cmd.func()
+        self.hold(right=self.item("rock"))
+        self._cmd("pin on rock").func()
         self.assertIn(
             MSG_PULL_NOT_EXPLOSIVE.format(object="rock"),
-            caller_messages(caller),
+            caller_messages(self.caller),
         )
 
     def test_pinless_grenade_rejected(self):
-        grenade = make_obj("grenade", is_explosive=True, requires_pin=False)
-        caller = make_caller(hands={"right": grenade})
-        cmd = self._cmd(caller, "pin on grenade")
-        cmd.func()
+        self.hold(right=self.item("grenade", is_explosive=True, requires_pin=False))
+        self._cmd("pin on grenade").func()
         self.assertIn(
             MSG_PULL_NO_PIN_REQUIRED.format(object="grenade"),
-            caller_messages(caller),
+            caller_messages(self.caller),
         )
 
     def test_already_pulled_rejected(self):
-        grenade = make_obj("grenade", is_explosive=True, pin_pulled=True)
-        caller = make_caller(hands={"right": grenade})
-        cmd = self._cmd(caller, "pin on grenade")
-        cmd.func()
+        self.hold(right=self.item("grenade", is_explosive=True, pin_pulled=True))
+        self._cmd("pin on grenade").func()
         self.assertIn(
             MSG_PULL_ALREADY_PULLED.format(object="grenade"),
-            caller_messages(caller),
+            caller_messages(self.caller),
         )
 
     @patch("commands.explosion_utils.start_grenade_ticker")
     @patch("commands.CmdThrow.msg_room_identity")
     def test_pull_sets_flag_countdown_and_ticker(self, mock_room, mock_ticker):
-        grenade = make_obj("grenade", is_explosive=True, fuse_time=8)
-        caller = make_caller(hands={"right": grenade})
-        cmd = self._cmd(caller, "pin on grenade")
-        cmd.func()
+        grenade = self.item("grenade", is_explosive=True, fuse_time=8)
+        self.hold(right=grenade)
+        self._cmd("pin on grenade").func()
         self.assertTrue(grenade.db.pin_pulled)
         self.assertEqual(
             getattr(grenade.ndb, NDB_COUNTDOWN_REMAINING), 8
         )
         mock_ticker.assert_called_once_with(grenade)
-
 
 # ===================================================================
 # CmdCatch — hot potato
@@ -901,18 +950,35 @@ class TestCmdCatch(TestCase):
             caller_messages(caller),
         )
 
+
+class TestCmdCatchRealFlight(RealHandsTest):
+    """A thrown object stays in the thrower's contents until it lands,
+    so the flying list holds real objects the core matcher can find."""
+
+    def _cmd(self, args="grenade"):
+        from commands.CmdThrow import CmdCatch
+
+        cmd = CmdCatch()
+        cmd.caller = self.caller
+        cmd.args = args
+        return cmd
+
+    def flying(self, *objs):
+        setattr(self.room1.ndb, NDB_FLYING_OBJECTS, list(objs))
+        return getattr(self.room1.ndb, NDB_FLYING_OBJECTS)
+
     @patch("commands.CmdThrow.msg_room_identity")
     def test_failed_catch_object_flies_on(self, mock_room):
-        grenade = make_obj("grenade")
-        caller = make_caller()
-        setattr(caller.location.ndb, NDB_FLYING_OBJECTS, [grenade])
-        cmd = self._cmd(caller)
-        with patch("commands.CmdThrow.random") as mock_random:
+        grenade = self.item("grenade", location=self.char1)
+        self.flying(grenade)
+        cmd = self._cmd()
+        with patch("commands.CmdThrow.random") as mock_random, \
+                patch.object(grenade, "move_to") as move_to:
             mock_random.random.return_value = 0.9  # over 0.6 → fail
             cmd.func()
-        grenade.move_to.assert_not_called()
+        move_to.assert_not_called()
         self.assertIn(
-            grenade, getattr(caller.location.ndb, NDB_FLYING_OBJECTS)
+            grenade, getattr(self.room1.ndb, NDB_FLYING_OBJECTS)
         )
 
     @patch("commands.CmdThrow.msg_room_identity")
@@ -921,24 +987,21 @@ class TestCmdCatch(TestCase):
         flying list, flight state is cleared, and the pending flight
         timer is cancelled (no ghost arrival).  This is the path the
         ``room=`` → ``location=`` fix repaired."""
-        grenade = make_obj("grenade")
+        grenade = self.item("grenade", location=self.char1)
         timer = MagicMock()
-        destination = make_room("dest")
-        grenade.ndb = Bag(
-            flight_destination=destination,
-            flight_timer=timer,
-        )
-        caller = make_caller(hands={"right": None})
-        setattr(caller.location.ndb, NDB_FLYING_OBJECTS, [grenade])
-        cmd = self._cmd(caller)
+        grenade.ndb.flight_destination = self.room2
+        grenade.ndb.flight_timer = timer
+        self.hold(left=self.item("brick"))  # the right hand is the free one
+        self.flying(grenade)
+        cmd = self._cmd()
         with patch("commands.CmdThrow.random") as mock_random:
             mock_random.random.return_value = 0.1  # under 0.6 → catch
             cmd.func()
 
-        grenade.move_to.assert_called_once_with(caller)
-        self.assertIs(caller.hands["right"], grenade)
+        self.assertEqual(grenade.location, self.caller)
+        self.assertIs(self.caller.hands["right_hand"], grenade)
         self.assertNotIn(
-            grenade, getattr(caller.location.ndb, NDB_FLYING_OBJECTS)
+            grenade, getattr(self.room1.ndb, NDB_FLYING_OBJECTS)
         )
         timer.cancel.assert_called_once()
         self.assertIsNone(grenade.ndb.flight_destination)

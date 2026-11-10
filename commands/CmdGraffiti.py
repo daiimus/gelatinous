@@ -495,6 +495,9 @@ class CmdPress(Command):
     locks = "cmd:all()"
     help_category = "General"
 
+    USAGE = ("Usage: press <color> on <spray_can>, or "
+             "press <button> for buttons and panels.")
+
     def func(self):
         """Execute the press command."""
         from world.channeled import refuse_if_channeling
@@ -508,23 +511,24 @@ class CmdPress(Command):
             # tier (#2608). The shorthand means "press that object", and
             # a synthetic label is not that: it would offer "call" to
             # every machine in the room as if it were a button they
-            # might own. `_press_by_name` does tiers 1 and 3 only.
+            # might own.
             self.args = "call"
-            if not self._press_by_name("call"):
+            pool = self._pressables()
+            matches = (self.caller.search("call", candidates=pool, quiet=True)
+                       if pool else [])
+            if not matches or not matches[0].at_press(self.caller, None):
                 self.caller.msg("There's no call button here.")
             return
 
         if not self.args:
-            self.caller.msg("Usage: press <color> on <spray_can>, or "
-                            "press <button> for buttons and panels.")
+            self.caller.msg(self.USAGE)
             return
 
         if " on " not in self.args:
             # no "on" — a wall button or panel (elevators etc.), not a can
             if self._press_pressable():
                 return
-            self.caller.msg("Usage: press <color> on <spray_can>, or "
-                            "press <button> for buttons and panels.")
+            self.caller.msg(self.USAGE)
             return
         
         # Split button/color and target name
@@ -537,94 +541,54 @@ class CmdPress(Command):
             return
         return self._press_spray_can(color_part, can_part)
 
-    def _press_named_pressable(self, target_name, button):
+    def _pressables(self) -> list:
+        """The machines in this room that take a press."""
         location = self.caller.location
         if not location:
+            return []
+        return [obj for obj in location.contents
+                if obj.db.pressable is True and hasattr(obj, "at_press")]
+
+    def _press_named_pressable(self, target_name: str, button: str) -> bool:
+        pool = self._pressables()
+        if not target_name or not pool:
             return False
-        low = target_name.lower()
-        for obj in location.contents:
-            if obj.db.pressable is not True or not hasattr(obj, "at_press"):
-                continue
-            names = [obj.key.lower()] + [a.lower()
-                                         for a in obj.aliases.all()]
-            if low in names or any(low in name for name in names):
-                return bool(obj.at_press(self.caller, button))
-        return False
-
-    def _press_by_name(self, name):
-        """Press the object called *name* — exact match, then partial.
-
-        The name half of `_press_pressable`, without the label tier, for
-        callers that mean "press that thing" rather than "push that
-        button" (#2608).
-        """
-        location = self.caller.location
-        if not location:
-            return False
-        low = name.strip().lower()
-        pressables = [obj for obj in location.contents
-                      if obj.db.pressable is True
-                      and hasattr(obj, "at_press")]
-
-        def _names(obj):
-            return [obj.key.lower()] + [a.lower() for a in obj.aliases.all()]
-
-        for obj in pressables:
-            if low in _names(obj):
-                return bool(obj.at_press(self.caller, None))
-        for obj in pressables:
-            if any(low in name_ for name_ in _names(obj)):
-                return bool(obj.at_press(self.caller, None))
-        return False
+        matches = self.caller.search(target_name, candidates=pool, quiet=True)
+        return bool(matches and matches[0].at_press(self.caller, button))
 
     def _press_pressable(self):
         """Route `press <arg>` to a pressable object in the room.
 
         Three tiers, in this order (#2608):
 
-        1. an EXACT name or alias — `press kiosk` means press the kiosk;
+        1. an EXACT name or alias — `press kiosk` means press the kiosk,
+           and `press 2nd kiosk` the second one;
         2. the machine's own button labels — `press rent`, `press 2`;
         3. a PARTIAL name — `press rental`, still forgiving.
 
-        The middle tier used to come last, and tier 1 used to accept a
-        substring. `rent` is a substring of `rental terminal`, which is
-        the key of all three live kiosks — so the documented
-        `press rent` resolved as "press the kiosk itself", arrived at
-        `at_press(presser, None)`, and read STATUS instead of claiming a
-        cube. `press confirm` and `press rent 3b` do not substring-match
-        the key, so only the exact phrasing the class docstring
-        advertises was broken.
-
-        Splitting exact from partial keeps the forgiveness — `press
-        rental` still presses the terminal — while letting a machine's
-        own verbs win over a loose match on its name. Tier 2 is only
-        trustworthy because a machine returns False for a label that is
-        not one of its buttons; `SleeveDispenser` did not, which is
-        #2616 and fixed alongside this.
+        A machine's own verbs must win over a loose match on its name:
+        all three live kiosks are keyed `rental terminal`, and when the
+        name came first `press rent` pressed the kiosk itself and read
+        STATUS instead of claiming a cube. Tier 2 is only trustworthy
+        because a machine returns False for a label that is not one of
+        its buttons (#2616). Tiers 1 and 3 are the core search, exact
+        and then partial, so a fragment from the middle of a word names
+        nothing (#3783).
         """
         arg = self.args.strip()
-        location = self.caller.location
-        if not location:
+        pool = self._pressables()
+        if not arg or not pool:
             return False
-        pressables = [obj for obj in location.contents
-                      if obj.db.pressable is True
-                      and hasattr(obj, "at_press")]
-        if not pressables:
-            return False
-        low = arg.lower()
-
-        def _names(obj):
-            return [obj.key.lower()] + [a.lower() for a in obj.aliases.all()]
-
-        for obj in pressables:                       # 1. exact name
-            if low in _names(obj):
-                return bool(obj.at_press(self.caller, None))
-        for obj in pressables:                       # 2. its own buttons
+        matches = self.caller.search(arg, candidates=pool, quiet=True,
+                                     exact=True)
+        if matches:                                  # 1. exact name
+            return bool(matches[0].at_press(self.caller, None))
+        for obj in pool:                             # 2. its own buttons
             if obj.at_press(self.caller, arg):
                 return True
-        for obj in pressables:                       # 3. partial name
-            if any(low in name for name in _names(obj)):
-                return bool(obj.at_press(self.caller, None))
+        matches = self.caller.search(arg, candidates=pool, quiet=True)
+        if matches:                                  # 3. partial name
+            return bool(matches[0].at_press(self.caller, None))
         return False
 
     def _press_spray_can(self, color_part, can_part):
@@ -635,23 +599,14 @@ class CmdPress(Command):
         if not new_color:
             self.caller.msg("You need to specify a color to press.")
             return
-        
-        # Find the spray can - check inventory and wielded items
-        spray_can = self.caller.search(can_name, candidates=self.caller.contents, quiet=True)
-        
-        # If not found in inventory, check wielded items (Mr. Hands system)
-        if not spray_can and hasattr(self.caller, 'hands'):
-            hands = self.caller.hands
-            for hand_name, held_item in hands.items():
-                if held_item:
-                    # Check display name, key, and aliases
-                    if (can_name.lower() in held_item.get_display_name(self.caller).lower() or
-                        can_name.lower() in held_item.key.lower() or
-                        (hasattr(held_item, 'aliases') and held_item.aliases.all() and
-                         any(can_name.lower() in alias.lower() for alias in held_item.aliases.all()))):
-                        spray_can = [held_item]
-                        break
-        
+        if not can_name:
+            self.caller.msg(self.USAGE)
+            return
+
+        # A can in the hand is in contents too, so this one search covers
+        # inventory and wielded cans alike.
+        spray_can = self.caller.search(can_name, candidates=self.caller.contents,
+                                       quiet=True)
         if not spray_can:
             self.caller.msg(f"You don't have a '{can_name}'.")
             return

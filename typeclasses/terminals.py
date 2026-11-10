@@ -153,11 +153,14 @@ class SleeveDispenser(Item):
         # usage message a bad press should produce — and it makes the
         # label tier of `_press_pressable` untrustworthy for everything
         # else in the room (#2608).
+        #
+        # Its own name counts as a button: `press dispenser on machine`.
+        # Exact only, so a loose match on this name never beats another
+        # machine's real button in the router's label tier (#2608, #3783).
         if arg:
             low = arg.strip().lower()
-            names = [self.key.lower()] + [a.lower()
-                                          for a in self.aliases.all()]
-            if low not in self.BUTTONS and low not in names:
+            if low not in self.BUTTONS and not (low and presser.search(
+                    low, candidates=[self], quiet=True, exact=True)):
                 return False
 
         issued = []
@@ -238,11 +241,11 @@ class InsuranceTerminal(Item):
         from world.identity_utils import msg_room_identity
         from world.insurance import buy_policy, status_line
 
+        # Its own name reads status, exact only, as for the dispenser.
         low = (arg or "").strip().lower()
-        if low and low not in self.BUTTONS:
-            names = [self.key.lower()] + [a.lower() for a in self.aliases.all()]
-            if low not in names:
-                return False            # not one of this machine's buttons
+        if low and low not in self.BUTTONS and not presser.search(
+                low, candidates=[self], quiet=True, exact=True):
+            return False                # not one of this machine's buttons
 
         if low in self.BUY_BUTTONS:
             ok, message = buy_policy(presser, self)

@@ -110,16 +110,31 @@ Unified graffiti system providing player-driven street expression through spray 
 **Visual feedback:** Colored text showing available options
 
 > ⚠ 2026-09-11 — **`CmdPress` outgrew this section.** It is now the game's
-> general **button router**, still living in `commands/CmdGraffiti.py:469-696`:
-> `aliases = ["call", "push"]` (`:486`); bare `call` presses the local call
-> button by name only, deliberately skipping the label tier (`:492-504`, via
-> `_press_by_name` at `:543-567`, #2608); `press <button>` resolves against
-> room objects flagged `db.pressable` in three tiers — exact name, then the
-> machine's own button labels, then partial name (`_press_pressable`,
-> `:569-617`); and `press <button> on <machine>` presses a named pressable
-> (`_press_named_pressable`, `:529-541`). The spray-can colour grammar is one
-> branch of it (`_press_spray_can`, `:619-696`). Elevators, rental kiosks and
+> general **button router**, still living in `commands/CmdGraffiti.py`:
+> `aliases = ["call", "push"]`; bare `call` presses the local call button by
+> name only, deliberately skipping the label tier (#2608); `press <button>`
+> resolves against room objects flagged `db.pressable` (`_pressables`) in
+> three tiers — exact name, then the machine's own button labels, then
+> partial name (`_press_pressable`); and `press <button> on <machine>`
+> presses a named pressable (`_press_named_pressable`). The spray-can colour
+> grammar is one branch of it (`_press_spray_can`). Elevators, rental kiosks and
 > terminals ride that router and are documented in no shipped spec.
+>
+> 2026-11-10 (#3783) — every name in the router goes through the core
+> `Character.search`, scoped to the pool with `candidates=`: the room's
+> pressables for machines, the presser's contents (held cans included) for the
+> spray can. Exact key or alias first, then a partial where each typed word
+> starts a word of the key or an alias; a fragment from the middle of a word
+> (`press ntal`, `press blue on pray`) names nothing. Ordinals pick among
+> twins (`press 2nd kiosk`, `press blue on 2nd can`); with several matches and
+> no ordinal the first is pressed. Tier 1 is the exact search, tier 3 the
+> partial one, and tier 2 still hands the raw text to each machine. A
+> machine's own name counts as one of its buttons (`press dispenser on
+> machine`), checked by the same search with `candidates=[itself]` and
+> `exact=True`. The cans' keys are the names they show, `can of
+> spraypaint` and `can of solvent` (they were both `can of`, which the search
+> could not complete to the shown name), so a can is found by what the player
+> sees as well as by its aliases.
 >
 > Also: `available_colors` is described above as a "cycling" palette, but
 > nothing cycles — `press <color>` sets the colour absolutely via

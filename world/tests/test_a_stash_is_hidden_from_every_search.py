@@ -139,8 +139,9 @@ class AHiddenPerson(_Stash):
 
 
 class TheDoorsThatWalkedAroundIt(_Stash):
-    """Two resolvers matched names over room contents by hand and never
-    reached the search pool. They take the same gate now (#3637)."""
+    """Two resolvers walked room contents themselves and never reached
+    the search pool's gate. They take the same gate now (#3637); `defuse`
+    hands its pool to `Character.search`, which applies it (#3783)."""
 
     def live_charge(self, *, hidden):
         charge = self.thing("frag grenade", hidden=hidden)
