@@ -1,5 +1,7 @@
 # Gelatinous
 
+> **Read two more files before you change anything:** [`DEVELOPMENT_GUIDE.md`](DEVELOPMENT_GUIDE.md) (core principles, decision priority order, code standards) and [`WORKFLOW.md`](WORKFLOW.md) (how work is classified, labelled and tracked). The three files are one set of instructions.
+
 ## Overview
 
 Gelatinous is a setting-agnostic RPG codebase built on Evennia; the current MUD
