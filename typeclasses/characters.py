@@ -1855,9 +1855,12 @@ class Character(
         ``.key``. The presence gate applies to Builders too; a hidden
         target is reached by #dbref.
 
-        **Magic keywords** (always short-circuit, all permissions):
+        **Magic keywords** (all permissions), in an ordinary local search:
           - ``me`` / ``self`` → the caller
           - ``here`` → the caller's location
+        A search scoped with ``candidates=`` or ``location=`` goes to
+        Evennia, which answers them only when that pool holds the
+        caller or the room.
 
         **Identity pipeline** (local room search):
           1. Try identity matching (assigned names → sdescs) against
@@ -1876,26 +1879,6 @@ class Character(
         from world.search import identity_match_characters, is_identity_match
 
         # ----------------------------------------------------------
-        # Magic keyword shortcut: ``me`` / ``self`` / ``here``
-        # ----------------------------------------------------------
-        # Evennia's DefaultObject.search resolves these tokens to the
-        # caller / caller.location.  Our identity filter would then
-        # strip the caller (because ``is_identity_match(self, self,
-        # "me")`` is False) and return ``Could not find 'me'.`` for
-        # any non-Builder.  Short-circuit before the identity pipeline
-        # so these tokens always resolve, regardless of permissions.
-        # See ``specs/IDENTITY_RECOGNITION_SPEC.md`` §Target Resolution.
-        if isinstance(searchdata, str):
-            stripped = searchdata.strip().lower()
-            if stripped in ("me", "self"):
-                return [self] if quiet else self
-            if stripped == "here":
-                loc = self.location
-                if quiet:
-                    return [loc] if loc else []
-                return loc
-
-        # ----------------------------------------------------------
         # Bypass: let Evennia handle non-local or privileged searches
         # ----------------------------------------------------------
         bypass = (
@@ -1905,6 +1888,36 @@ class Character(
             or location is not None
             or not isinstance(searchdata, str)
         )
+
+        # ----------------------------------------------------------
+        # Magic keyword shortcut: ``me`` / ``self`` / ``here``
+        # ----------------------------------------------------------
+        # Evennia's DefaultObject.search resolves these tokens to the
+        # caller / caller.location.  Our identity filter would then
+        # strip the caller (because ``is_identity_match(self, self,
+        # "me")`` is False) and return ``Could not find 'me'.`` for
+        # any non-Builder.  Short-circuit before the identity pipeline
+        # so these tokens resolve in an ordinary local search,
+        # regardless of permissions.
+        # See ``specs/IDENTITY_RECOGNITION_SPEC.md`` §Target Resolution.
+        #
+        # ONLY the ordinary local search (#3783). This ran before the
+        # bypass test, so it answered every search, including one a
+        # command had scoped to a pool: `search("me", candidates=held)`
+        # returned the caller, and `rig me to north` or `catch me` got a
+        # person where it asked for something in the hand. Evennia's own
+        # `get_search_direct_match` answers these tokens only when the
+        # pool holds the caller or the room, and a scoped search goes to
+        # Evennia below, so it now gets exactly that.
+        if not bypass:
+            stripped = searchdata.strip().lower()
+            if stripped in ("me", "self"):
+                return [self] if quiet else self
+            if stripped == "here":
+                loc = self.location
+                if quiet:
+                    return [loc] if loc else []
+                return loc
 
         # Builder+ can also target by .key — tracked as a flag so the
         # identity pipeline still runs first (sdesc/assigned-name
