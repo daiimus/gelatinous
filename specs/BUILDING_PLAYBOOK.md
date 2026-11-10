@@ -247,10 +247,14 @@ unaffected.)*
 - The `outside` flag is weather and sky truth — the Toe breach doctrine:
   a hole in the hull means weather comes through it.
 - Props are **seasoned, not stewed** — and branded.
-- A key never carries a dash followed by digits (`Magpie-01`, `DX-15`).
-  Evennia's ordinal form is `name-N` and its parser takes the first `-N`
-  it meets, so a player could not narrow a twin of such a key with
-  `2nd ...` (#3779). Write model numbers `DX15`, or leave them to the desc.
+- No key a player can target (item, fixture, body) carries a dash followed
+  by digits (`Magpie-01`, `DX-15`). Evennia's ordinal form is `name-N`, and
+  its parser cuts the name at the first `-N` that a space or the end of the
+  line follows, so `2nd AWE Magpie-01 radio` quietly returned the FIRST
+  twin (#3779). Write model numbers `DX15`, or leave them to the desc. An
+  alias that ENDS in the number (`dx-15`) is safe. Room keys are exempt
+  (`R1-02` berths, the `BRM S-2 Crane` cells): nobody picks a room by
+  ordinal.
 
 **The vertical city** (Greenhaus arc, builds 055–065, 2026-08-24/25):
 - **Structures never stand over walkable cells**; only air crosses a
