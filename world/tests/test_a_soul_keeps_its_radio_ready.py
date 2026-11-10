@@ -14,7 +14,7 @@ from world.souls.comms import (
 )
 
 
-def _radio(on=True, freq="27MHz", key="AWE Magpie-01 radio"):
+def _radio(on=True, freq="27MHz", key="AWE Magpie radio"):
     r = MagicMock()
     r.key = key
     r.id = 7
@@ -185,12 +185,12 @@ class TestOneBeatOfReadying(TestCase):
     def test_a_pocket_radio_is_wielded(self):
         s = _soul()
         self.assertEqual(self.beat(s, (POCKET, _radio())), ACTING)
-        s.execute_cmd.assert_called_once_with("wield AWE Magpie-01 radio")
+        s.execute_cmd.assert_called_once_with("wield AWE Magpie radio")
 
     def test_a_switched_off_set_is_toggled_on(self):
         s = _soul()
         self.assertEqual(self.beat(s, (OFF, _radio(on=False))), ACTING)
-        s.execute_cmd.assert_called_once_with("toggle AWE Magpie-01 radio on")
+        s.execute_cmd.assert_called_once_with("toggle AWE Magpie radio on")
 
     def test_ready_when_the_predicate_answers_none(self):
         s = _soul()

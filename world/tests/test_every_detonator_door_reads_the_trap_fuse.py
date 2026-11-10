@@ -36,7 +36,7 @@ def _explosive(test, *, rigged, fuse=10, key="SPDR M9 grenade"):
 
 def _detonator(test, *ids):
     from evennia.utils.create import create_object
-    d = create_object("typeclasses.items.RemoteDetonator", key="VECTOR UEM-3 detonator", location=test.room1)
+    d = create_object("typeclasses.items.RemoteDetonator", key="VECTOR UEM3 detonator", location=test.room1)
     d.db.device_type = "remote_detonator"
     d.db.scanned_explosives = list(ids)
     d.db.max_capacity = 10

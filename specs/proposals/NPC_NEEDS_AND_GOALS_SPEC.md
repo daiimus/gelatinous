@@ -194,9 +194,9 @@ less."
   carries none — and None for what the body cannot do right now, so the tree
   never plans a job that can only fault: a pocket set with no free hand; a set
   on but on no band (nothing tells a soul its home band yet — next slice); a set
-  whose key a twin in sight makes unreachable by `toggle` (Evennia's ordinal
-  form reads the `-01` in "AWE Magpie-01 radio" as the ordinal, a player bug of
-  its own). *What it cannot do, it does not want.* This is the single door for
+  whose key a twin in sight makes unreachable by the bare `toggle` the body
+  types (a player narrows a twin with `2nd ...`; keys carry no dash-digits
+  since #3779, so that form works). *What it cannot do, it does not want.* This is the single door for
   any future reason to stay silent (a radio-silence order, hiding, a dead
   battery): a clause here, a test beside it, nothing else changes. Future-proof
   by shape, not by flags (owner, same day).

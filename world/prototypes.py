@@ -89,9 +89,9 @@ TACTICAL_GRENADE = {
 # High-damage demo charge
 DEMO_CHARGE = {
     "prototype_parent": "EXPLOSIVE_BASE",
-    "key": "HDG DX-15 demolition charge", 
+    "key": "HDG DX15 demolition charge", 
     "aliases": ["charge", "demo", "dx-15", "dx15", "hdg demo", "demo charge", "c4"],
-    "desc": "A Helios Defense Group DX-15 demolition charge - military-grade plastic explosive in a standardized one-kilogram block. The putty-like compound is stable enough to survive drops, fire, and even small-arms fire, but detonates with devastating force when triggered by the integrated electric blasting cap. The tan-colored explosive can be molded to fit against structural weak points, and the adhesive backing ensures it stays exactly where you place it. A digital timer/detonator is embedded in the block, offering settings from 10 seconds to 24 hours - though combat engineers rarely use anything longer than the minimum. When absolute structural destruction is required, whether it's breaching reinforced doors, collapsing tunnels, or eliminating hardened positions, the DX-15 delivers predictable, overwhelming force. HDG's technical documentation carefully avoids mentioning that this is the same compound used in shaped charges, improvised devices, and enough war crimes to fill a database.",
+    "desc": "A Helios Defense Group DX15 demolition charge - military-grade plastic explosive in a standardized one-kilogram block. The putty-like compound is stable enough to survive drops, fire, and even small-arms fire, but detonates with devastating force when triggered by the integrated electric blasting cap. The tan-colored explosive can be molded to fit against structural weak points, and the adhesive backing ensures it stays exactly where you place it. A digital timer/detonator is embedded in the block, offering settings from 10 seconds to 24 hours - though combat engineers rarely use anything longer than the minimum. When absolute structural destruction is required, whether it's breaching reinforced doors, collapsing tunnels, or eliminating hardened positions, the DX15 delivers predictable, overwhelming force. HDG's technical documentation carefully avoids mentioning that this is the same compound used in shaped charges, improvised devices, and enough war crimes to fill a database.",
     "fuse_time": 10,
     "blast_damage": 40,
     "dud_chance": 0.01,  # Very reliable
@@ -147,10 +147,10 @@ STICKY_GRENADE = {
 # =============================================================================
 
 REMOTE_DETONATOR = {
-    "key": "VECTOR UEM-3 detonator",
+    "key": "VECTOR UEM3 detonator",
     "aliases": ["vector", "uem3", "uem-3", "detonator", "remote", "trigger"],
     "typeclass": "typeclasses.items.RemoteDetonator",
-    "desc": "A VECTOR UEM-3 (Universal Explosive Module, Series 3) - a compact military-grade remote detonator with a matte black finish and angular, utilitarian design. Its digital display shows scanned explosive device signatures in crisp amber text. The device can store up to 20 explosive signatures simultaneously and trigger them remotely with surgical precision. A prominent red safety cover protects the main detonation switch, while smaller buttons below handle scanning and memory management. The VECTOR logo is subtly embossed on the casing, along with the serial number and dire warnings about unauthorized use.",
+    "desc": "A VECTOR UEM3 (Universal Explosive Module, Series 3) - a compact military-grade remote detonator with a matte black finish and angular, utilitarian design. Its digital display shows scanned explosive device signatures in crisp amber text. The device can store up to 20 explosive signatures simultaneously and trigger them remotely with surgical precision. A prominent red safety cover protects the main detonation switch, while smaller buttons below handle scanning and memory management. The VECTOR logo is subtly embossed on the casing, along with the serial number and dire warnings about unauthorized use.",
     "tags": [
         ("item", "general"),
         ("tool", "category"),
@@ -4626,10 +4626,10 @@ HIGH_TOPS = {
 WALKIE_TALKIE = {
     "prototype_key": "WALKIE_TALKIE",
     "typeclass": "typeclasses.items.Radio",
-    "key": "AWE Magpie-01 radio",
+    "key": "AWE Magpie radio",
     "aliases": ["walkie", "walkie-talkie", "radio", "handset", "magpie",
-                "magpie-01", "awe"],
-    "desc": ("A knock-around AWE Magpie-01 — a handheld transceiver in scuffed "
+                "awe"],
+    "desc": ("A knock-around AWE Magpie — a handheld transceiver in scuffed "
              "high-impact plastic, its stubby antenna taped at the base and a "
              "rubberised push-to-talk worn pale by a thousand thumbs. The "
              "Ashford Wireless & Electric wordmark and its little etched magpie "
@@ -4682,7 +4682,7 @@ BASE_STATION = {
 REPEATER_MAST = {
     "prototype_key": "REPEATER_MAST",
     "typeclass": "typeclasses.items.Item",
-    "key": "AWE Sentinel-9 repeater mast",
+    "key": "AWE Sentinel9 repeater mast",
     "aliases": ["mast", "repeater", "sentinel", "sentinel-9"],
     "desc": ("A lattice-steel repeater mast in Ashford Wireless & Electric "
              "grey, guyed to the deck at three points and crowned with a "
@@ -4707,9 +4707,9 @@ REPEATER_MAST = {
 AWE_SHELF_RADIO = {
     "prototype_key": "AWE_SHELF_RADIO",
     "typeclass": "typeclasses.items.Radio",
-    "key": "AWE Fireside-12 shelf radio",
+    "key": "AWE Fireside shelf radio",
     "aliases": ["radio", "shelf radio", "fireside", "set"],
-    "desc": ("An AWE Fireside-12: a shoebox of scuffed bakelite and brass "
+    "desc": ("An AWE Fireside: a shoebox of scuffed bakelite and brass "
              "grille-cloth, the etched magpie riding the corner of the "
              "dial plate. The tuner's had one favourite spot long enough "
              "to wear a pale arc in the dial."),

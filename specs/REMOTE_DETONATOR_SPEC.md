@@ -94,6 +94,8 @@ class RemoteDetonator(Item):
 
 ### Prototype
 
+> *2026-10-27 (#3779): key renamed `"VECTOR UEM3 detonator"`, desc to match; no key carries a dash followed by digits, because Evennia's `name-N` ordinal form reads the first `-N` it meets and a player could not narrow a twin. Aliases unchanged. The 2026-09-12 note below records the key as it shipped then.*
+>
 > *2026-09-12: the shipped prototype is BRANDED per the everything-branded mandate (`world/prototypes.py:149-163`): key `"VECTOR UEM-3 detonator"`, aliases `["vector", "uem3", "uem-3", "detonator", "remote", "trigger"]`, a VECTOR UEM-3 desc, and tags `("item", "general")` / `("tool", "category")`. The typeclass path and the three `attrs` below still match exactly; the key, aliases and desc below are the pre-brand draft.*
 
 ```python

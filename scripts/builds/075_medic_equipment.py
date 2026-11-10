@@ -1,7 +1,7 @@
 """Build 075 — the medic's working equipment (souls spec §14 layer 2).
 
 Maritza gets what the job needs, all real and all loose (no carried
-containers, by law): an AWE Magpie-01 walkie powered and tuned to the
+containers, by law): an AWE Magpie walkie powered and tuned to the
 emergency band — dispatch orders are radio traffic, and a medic
 without a set is honestly unreachable — plus par-level field supplies
 in her pockets. Her director role and return-post are set so the
@@ -35,7 +35,7 @@ else:
     OUT.append(f"role=medic, post={clinic.key}")
 
     walkie = next((o for o in mar.contents
-                   if "Magpie-01" in o.key), None)
+                   if "Magpie" in o.key), None)
     if walkie is None:
         walkie = spawn(prototypes.WALKIE_TALKIE)[0]
         walkie.move_to(mar, quiet=True, move_hooks=False)
