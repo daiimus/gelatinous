@@ -868,7 +868,9 @@ class CmdArmorRepair(Command):
         # Worn pieces are in caller.contents too, so one pool of armour
         # covers both; the core matcher resolves the name (#3783), and a
         # worn piece still wins over a carried one among the matches.
-        pool = [item for item in caller.contents if item.armor_rating > 0]
+        # getattr: not everything carried is an Item with armour fields.
+        pool = [item for item in caller.contents
+                if getattr(item, "armor_rating", 0) > 0]
         matches = caller.search(armor_name, candidates=pool, quiet=True)
         if not matches:
             caller.msg(f"You don't have any armor matching '{armor_name}'.")
@@ -1735,7 +1737,8 @@ class CmdUnslot(Command):
     def _remove_plate_by_name(self, caller, plate_name):
         """Remove a plate by name from any carrier the player is wearing."""
         all_worn = worn_by(caller)
-        carriers = [item for item in caller.contents if item.is_plate_carrier]
+        carriers = [item for item in caller.contents
+                    if getattr(item, "is_plate_carrier", False)]
         worn_carriers = [c for c in carriers if c in all_worn]
         carried_carriers = [c for c in carriers if c not in all_worn]
 
@@ -1776,7 +1779,8 @@ class CmdUnslot(Command):
         """Remove plate from specific carrier, by plate name or slot name."""
         # Carriers only, before matching, so a held plate named "plate"
         # cannot shadow the carrier and an ordinal counts carriers (#3783).
-        carriers = [item for item in caller.contents if item.is_plate_carrier]
+        carriers = [item for item in caller.contents
+                    if getattr(item, "is_plate_carrier", False)]
         matches = caller.search(carrier_name, candidates=carriers, quiet=True)
         if not matches:
             caller.msg(

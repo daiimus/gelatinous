@@ -643,11 +643,14 @@ class CmdGet(Command):
         # below leaves the caller out (so a name can never match
         # yourself), and the matcher answers `me` only where the pool
         # holds you (#3783).
-        if container_name.strip().lower() in ("me", "self"):
+        token = container_name.strip().lower()
+        if token in ("me", "self"):
             caller.msg(
                 "Take it off with |wremove|n, or just |wget|n "
                 "it if it is loose.")
             return None
+        if token == "here" and caller.location is not None:
+            return caller.location       # `get knife from here`
         room_candidates = [
             obj for obj in (caller.location.contents if caller.location else [])
             if obj != caller

@@ -49,6 +49,16 @@ class NpcLooksAtWhatItAskedForTest(EvenniaTest):
         self.assertNotIn("rain-slick", out)
         self.assertIn("nothing", out.lower())
 
+    def test_look_here_is_the_room_and_look_me_is_itself(self):
+        """As a player's `look here` and `look me`. Neither is in the
+        pools the tool searches, and the matcher answers the words only
+        where the pool holds them (#3783), so the tool says them."""
+        self.room1.db.desc = "A low room that smells of burnt coffee."
+        self.npc.db.desc = "A broad barkeep with a towel over one shoulder."
+        self.assertIn("burnt coffee", self.look("here"))
+        self.assertIn("towel", self.look("me"))
+        self.assertIn("towel", self.look("self"))
+
     # --- controls -----------------------------------------------------------
 
     def test_look_with_no_argument_still_yields_the_patron(self):

@@ -143,6 +143,15 @@ class RepairFindsArmorTest(EvenniaCommandTest):
         self.assertIsNone(armor)
         self.assertIn("You don't have any armor matching 'racer'.", out)
 
+    def test_a_carried_thing_with_no_armour_fields_is_just_not_armour(self):
+        """The pool reads `armor_rating` off everything carried, and a
+        plain Object has no such property: `repair` raised for anyone
+        with a keyring in their pack (review of #3783)."""
+        create_object("typeclasses.objects.Object", key="keyring",
+                      location=self.char1)
+        _, armor = self._repaired("steel bracer")
+        self.assertIs(armor, self.worn)
+
 
 class RepairFindsToolTest(EvenniaCommandTest):
     """``repair <armor> with <tool>``: repair tools you carry."""
@@ -197,6 +206,17 @@ class UnslotFromWornCarrierTest(EvenniaCommandTest):
     def test_an_alias_that_is_not_in_the_key_resolves(self):
         self.call(CmdUnslot(), "ballistic insert")
         self.assertTrue(self._out(self.front) or self._out(self.back))
+
+    def test_a_carried_thing_with_no_armour_fields_is_just_not_a_carrier(self):
+        """Both unslot doors read `is_plate_carrier` off everything
+        carried; a plain Object has no such property (review of #3783)."""
+        create_object("typeclasses.objects.Object", key="rock",
+                      location=self.char1)
+        self.call(CmdUnslot(), "ballistic insert")
+        self.assertTrue(self._out(self.front) or self._out(self.back))
+        still_in = self.back if self._out(self.front) else self.front
+        self.call(CmdUnslot(), f"{still_in.key} from {self.carrier.key}")
+        self.assertTrue(self._out(still_in))
 
     def test_an_ordinal_picks_the_second_twin(self):
         self.call(CmdUnslot(), "2nd standard plate")
