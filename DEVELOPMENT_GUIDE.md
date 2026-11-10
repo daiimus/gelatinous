@@ -72,7 +72,7 @@ def example_function(param1: str, param2: int) -> bool:
 
 ### Diagrams in Specs
 
-Use [Mermaid](https://mermaid.js.org/) (`\`\`\`mermaid` code fences) for all architectural, flow, sequence, and state diagrams. GitHub renders these natively.
+Use [Mermaid](https://mermaid.js.org/) (`` ```mermaid `` code fences) for all architectural, flow, sequence, and state diagrams. GitHub renders these natively.
 
 **Use Mermaid for:**
 - Architecture overviews, system flowcharts, state machines
@@ -101,10 +101,10 @@ graph LR
 
 ```python
 # world/combat/constants.py
-MSG_ATTACK_SUCCESS = "|gYou strike {target} with {weapon}!|n"
-MSG_ATTACK_MISS = "|yYou miss {target} with your attack.|n"
+MSG_ATTACK_WHO = "Attack who?"
+MSG_GRAPPLE_WHO = "Grapple whom?"
 DEFAULT_GRIT = 1
-GRAPPLE_DIFFICULTY = 8
+FALL_EDGE_DIFFICULTY_DEFAULT = 8
 ```
 
 **Avoiding Magic Numbers**
@@ -114,7 +114,7 @@ if roll_result >= 8:
     success = True
 
 # Good
-if roll_result >= constants.GRAPPLE_DIFFICULTY:
+if roll_result >= constants.FALL_EDGE_DIFFICULTY_DEFAULT:
     success = True
 ```
 
@@ -127,12 +127,13 @@ if roll_result >= constants.GRAPPLE_DIFFICULTY:
 - Fail gracefully without breaking the system
 
 ```python
-from world.combat.utils import log_combat_action
+from world.combat.constants import DEBUG_ERROR, DEBUG_TEMPLATE
+from world.combat.debug import log_debug
 
 try:
     result = risky_operation()
 except SpecificException as e:
-    log_combat_action(f"Operation failed: {e}", level="ERROR")
+    log_debug(DEBUG_TEMPLATE, DEBUG_ERROR, f"Operation failed: {e}")
     caller.msg("Something went wrong. Please try again.")
     return False
 ```
@@ -179,7 +180,7 @@ commands/combat/
 ├── core_actions.py      # Fundamental combat actions
 ├── movement.py          # Movement and positioning
 ├── special_actions.py   # Advanced tactical actions
-├── info_commands.py     # Information and awareness
+├── jump.py              # Jumping and edge descent
 └── cmdset_combat.py     # Command set definition
 ```
 
@@ -267,7 +268,7 @@ class CombatHandler(DefaultScript):
 
 **Test Structure**
 ```python
-# tests/test_combat_utils.py
+# world/tests/test_combat_utils.py
 import unittest
 from unittest.mock import Mock, patch
 from world.combat.utils import get_numeric_stat
@@ -320,7 +321,7 @@ class TestCombatUtils(unittest.TestCase):
 - Explain why the change is needed
 - List any breaking changes
 - Include testing instructions
-- Reference related issues
+- Reference the issue it closes (`Closes #N`)
 
 ### Code Review Standards
 
@@ -338,13 +339,12 @@ class TestCombatUtils(unittest.TestCase):
 
 **Logging System**
 ```python
-from world.combat.utils import log_combat_action
+from world.combat.constants import DEBUG_PREFIX_ATTACK, DEBUG_SUCCESS
+from world.combat.debug import log_combat_action, log_debug
 
-# Different log levels
-log_combat_action("Debug information", level="DEBUG")
-log_combat_action("Important information", level="INFO")
-log_combat_action("Warning condition", level="WARNING")
-log_combat_action("Error occurred", level="ERROR")
+# Both write to server/logs/combat_audit.log. There are no log levels.
+log_combat_action(caller, "attack", target=target, success=True, details="hit for 4")
+log_debug(DEBUG_PREFIX_ATTACK, DEBUG_SUCCESS, "resolved against cover", character=caller)
 ```
 
 **Debug Prefixes**
@@ -451,13 +451,14 @@ class CombatEventBus:
 - [Evennia Scripts](https://www.evennia.com/docs/latest/Components/Scripts.html)
 
 ### Python Resources
-- [PEP 8 Style Guide](https://www.python.org/dev/peps/pep-0008/)
+- [PEP 8 Style Guide](https://peps.python.org/pep-0008/)
 - [Python Type Hints](https://docs.python.org/3/library/typing.html)
 - [Python Testing](https://docs.python.org/3/library/unittest.html)
 
 ### Project-Specific Documentation
 - `README.md` - Project overview, architecture, and feature summary
 - `AGENTS.md` - Agent operational reference: conventions, deploy workflow, file map
+- `WORKFLOW.md` - Specs, roadmaps and issues: how work is classified, labelled and tracked
 - `specs/COMBAT_SYSTEM.md` - Combat system documentation
 - Module-specific README files
 
