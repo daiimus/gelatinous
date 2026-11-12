@@ -107,6 +107,30 @@ emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
 > own time; 0.0 once covered, or for a body with no sleeve signature).
 > `cash`-as-a-resource and the broke-skip-paid rule both still hold.
 
+> **A soul uses what it carries before it buys more (#2244, #3793).**
+> `hunger` and `craving` both check the pockets first and name what
+> they found: a soul carrying food plans `eat` on it, and a soul
+> carrying a ware with the craved substance plans `consume` on it, with
+> no trip and no purchase. Food means what it means on a shelf: the eat
+> verb works and the ware carries nutrition. Chewing tobacco is eatable
+> and is not a meal.
+>
+> The meal and the vice run are one loop (`jobs._serve_one`):
+>
+> - **One ware's worth a run.** The ware is the one the plan names
+>   (`step["item"]`: what the pocket check found, or what `buy` or
+>   `pickup` just handed over through `jobs._hand_on`), else the first
+>   one carried. A run takes that ware's servings, at most
+>   `SERVINGS_PER_RUN` (12), and ends. It does not empty the pockets.
+> - **It says which one**, as a player must: `eat first stew`,
+>   `drink first rotgut`.
+> - **A serving counts only if it went down**, measured on everything
+>   of that kind the soul carries. A refusal is the fault
+>   `could not <verb> <ware>`, at once.
+>
+> Until #3793 only the meal did the second and third, and the vice run
+> left 9,849 full mugs of rotgut in NPC inventories.
+
 ## 3.5 · Souls advertise too — NPC↔NPC interaction
 
 Everything §4 says about venues applies to **souls themselves**: an

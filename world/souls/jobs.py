@@ -7,6 +7,7 @@ re-arbitrates next think. No teleports, no db pokes.
 """
 
 import time
+from typing import Any
 
 from world.director.travel import is_travelling, stop_travel, travel_to
 from world.souls import needs as needs_mod
@@ -161,6 +162,118 @@ def _uses_left(item):
         return item.db.uses_left
     except Exception:  # noqa: BLE001
         return None
+
+
+#: A run works through ONE ware, and takes at most this many servings of
+#: it however much it holds: a soul with a twenty-pull bottle has a
+#: drink, not the bottle.
+SERVINGS_PER_RUN = 12
+
+#: What one beat of a meal or a vice run came to (`_serve_one`).
+NOTHING, REFUSED, MORE, DONE = "nothing", "refused", "more", "done"
+
+
+def _servings(soul: Any, verb: str) -> int:
+    """Every bite or sip of `verb` ware the soul is carrying, all told.
+
+    A ware that does not count its uses is one serving.
+    """
+    from world.consumables import supports_delivery
+    total = 0
+    for obj in soul.contents:
+        if not supports_delivery(obj, verb):
+            continue
+        left = _uses_left(obj)
+        total += max(1, int(left)) if isinstance(left, (int, float)) else 1
+    return total
+
+
+def _take_a_serving(soul: Any, ware_key: str, verb: str) -> bool:
+    """One bite or sip of the named ware through the real verb. True when
+    it went down.
+
+    SAY WHICH ONE, the way a player has to. `eat stew` is fine until you
+    carry a second bowl; then every attempt gets "Multiple items match
+    'stew'." and the meal never happens. The command already
+    disambiguates ("first stew", "2nd mug"). No auto-picking: one of
+    those bowls could be poisoned, and choosing for the eater is not the
+    parser's business.
+
+    COUNT ONLY WHAT HAPPENED. Counting the attempt made twelve refusals
+    look exactly like twelve mouthfuls. The measure is everything the
+    soul carries of that kind, not one object: "first mug" may be a twin
+    of the mug the run set out with.
+    """
+    before = _servings(soul, verb)
+    soul.execute_cmd(f"{verb} first {ware_key.split()[-1]}")
+    return _servings(soul, verb) < before
+
+
+def _serve_one(soul: Any, step: dict, verb: str) -> str:
+    """One beat of a meal or a vice run: the next serving of ONE ware.
+
+    The one mouth for both the meal (`eat`) and the vice run
+    (`consume`). They were two copies of the same loop, and only the
+    meal was ever taught to say which bowl and to count real bites
+    (#2244); the vice run kept typing `drink rotgut` and counting it,
+    which is how souls came to carry 9,849 full mugs of rotgut between
+    them (#3793).
+
+    A run is ONE WARE'S WORTH, fixed on its first beat: the ware the
+    plan named (`step["item"]`: what the pocket check found, or what
+    `buy` or `pickup` just handed over), else the first one carried. It
+    does not empty the pockets. Both loops were written to run until
+    the soul carried nothing of the kind and to call the thirteenth
+    serving a ware that "never finishes": a false fault for the meal of
+    anyone carrying seven bowls, and for the vice run the day it could
+    drink at all.
+
+    Returns NOTHING (no such ware carried), REFUSED (the verb took no
+    serving), MORE (one went down) or DONE (the run's servings are all
+    taken; nothing was consumed this beat).
+    """
+    from world.consumables import supports_delivery
+    if "left" not in step:
+        ware = _obj(step["item"]) if step.get("item") else None
+        if (ware is None or ware.location != soul
+                or not supports_delivery(ware, verb)):
+            ware = next((o for o in soul.contents
+                         if supports_delivery(o, verb)), None)
+        if ware is None:
+            return NOTHING
+        left = _uses_left(ware)
+        holds = max(1, int(left)) if isinstance(left, (int, float)) else 1
+        step["left"] = min(SERVINGS_PER_RUN, holds)
+        step["ware"] = ware.key
+    if step["left"] <= 0:
+        return DONE
+    if not _take_a_serving(soul, step["ware"], verb):
+        return REFUSED
+    step["left"] -= 1
+    return MORE
+
+
+def _hand_on(soul: Any, job: dict, at: int, before: set) -> bool:
+    """Tell the step that will eat or drink it which ware this step just
+    put in the soul's hands. False when nothing new arrived.
+
+    Without it the mouth takes the first ware of its kind the soul
+    carries, which need not be the one just paid for.
+    """
+    from world.consumables import supports_delivery
+    new = [o for o in soul.contents if o.id not in before]
+    if not new:
+        return False
+    steps = job.get("steps") or []
+    if at + 1 < len(steps):
+        nxt = steps[at + 1]
+        verb = {"eat": "eat", "consume": nxt.get("verb", "drink")}.get(
+            nxt.get("do"))
+        ware = verb and next(
+            (o for o in new if supports_delivery(o, verb)), None)
+        if ware:
+            nxt["item"] = ware.id
+    return True
 
 
 def _post_seat(soul):
@@ -543,7 +656,7 @@ def step_job(soul):
             return True
         before = set(o.id for o in soul.contents)
         soul.execute_cmd(f"get {item.key} from {counter.key}")
-        if not any(o.id not in before for o in soul.contents):
+        if not _hand_on(soul, job, at, before):
             fault(soul, f"could not lift {item.key} off {counter.key}")
             return False
         job["at"] = at + 1
@@ -562,7 +675,7 @@ def step_job(soul):
             # bar/cart venues serve ON the counter — take it, real verb
             word = proto.split("_")[-1]
             soul.execute_cmd(f"get {word} from {counter.key}")
-        if not any(o.id not in before for o in soul.contents):
+        if not _hand_on(soul, job, at, before):
             fault(soul, f"buy {proto} yielded nothing (broke? stock?)")
             return False
         job["at"] = at + 1
@@ -570,97 +683,72 @@ def step_job(soul):
         return True
 
     if do == "eat":
-        from world.consumables import supports_delivery
         from world.souls import thoughts
-        edible = next((o for o in soul.contents
-                       if supports_delivery(o, "eat")), None)
-        if edible is None:
-            if step.get("bites"):
-                # meal over — the eat COMMAND moved the meter (#2074:
-                # nutrition rides the substance pipeline, per bite);
-                # here we only judge the outcome
-                fed = (step.get("start_p", 1.0)
-                       - needs_mod.pressure(soul, "hunger"))
-                if fed < 0.05:
-                    fault(soul, f"{step.get('last_food', 'the meal')} "
-                                "didn't nourish (proto missing nutrition?)")
-                else:
-                    where = (soul.location.key if soul.location
-                             else "the street")
-                    thoughts.add_thought(
-                        soul, "ate_well", 0.15,
-                        f"{step.get('last_food', 'a hot meal')} at {where}")
-                job["at"] = at + 1
-                soul.db.soul_job = job
-                return True
+        if "start_p" not in step:           # the baseline, taken once
+            step["start_p"] = needs_mod.pressure(soul, "hunger")
+        outcome = _serve_one(soul, step, "eat")
+        food = step.get("ware", "the meal")
+        if outcome == NOTHING:
             fault(soul, "nothing edible in hand")
             return False
-        if not step.get("bites"):
-            step["start_p"] = needs_mod.pressure(soul, "hunger")
-        step["last_food"] = edible.key
-        bites = step.get("bites", 0) + 1
-        if bites > 12:
-            fault(soul, f"{edible.key} never finishes (uses_left stuck?)")
+        if outcome == REFUSED:
+            # A bite that did not happen is a fault, not a bite:
+            # counting it sent the fault off accusing the food's
+            # nutrition data (#2244).
+            fault(soul, f"could not eat {food}")
             return False
-        # Say WHICH one, the way a player has to. `eat stew` is fine
-        # until you carry a second bowl; then every attempt gets
-        # "Multiple items match 'stew'." and the meal never happens.
-        # Souls bought a bowl per hunger pang and ate none of them,
-        # twenty-three deep — which is also where the memory spam and
-        # the permanent crowd at the counter came from (#2244).
-        #
-        # The command already disambiguates ("first stew", "2nd mug"):
-        # the souls layer simply never used the syntax it offers. No
-        # auto-picking — one of those bowls could be poisoned, and
-        # choosing for the eater is not the parser's business.
-        before = _uses_left(edible)
-        soul.execute_cmd(f"eat first {edible.key.split()[-1]}")
-        # Only count a bite that actually happened. Counting the attempt
-        # made twelve refusals look exactly like twelve mouthfuls, and
-        # sent the fault off accusing the food's nutrition data.
-        if _uses_left(edible) == before and edible.pk:
-            fault(soul, f"could not eat {edible.key}")
-            return False
-        step["bites"] = bites
+        if outcome == MORE:
+            soul.db.soul_job = job
+            return True
+        # meal over — the eat COMMAND moved the meter (#2074: nutrition
+        # rides the substance pipeline, per bite); here we only judge
+        # the outcome
+        fed = (step.get("start_p", 1.0)
+               - needs_mod.pressure(soul, "hunger"))
+        if fed < 0.05:
+            fault(soul, f"{food} didn't nourish (proto missing nutrition?)")
+        else:
+            where = (soul.location.key if soul.location
+                     else "the street")
+            thoughts.add_thought(
+                soul, "ate_well", 0.15, f"{food} at {where}")
+        job["at"] = at + 1
         soul.db.soul_job = job
         return True
 
     if do == "consume":
-        # the vice run's mouth (#2076): drink/eat the bought ware via
-        # the real verb. The dose resets the addiction clock inside
+        # the vice run's mouth (#2076): drink/eat the ware via the real
+        # verb. The dose resets the addiction clock inside
         # apply_substance (record_dose) — no engine-side satisfaction.
-        from world.consumables import supports_delivery
         from world.souls import thoughts
         verb = step.get("verb", "drink")
-        item = next((o for o in soul.contents
-                     if supports_delivery(o, verb)), None)
-        if item is None:
-            if step.get("sips"):
-                where = (soul.location.key if soul.location
-                         else "the street")
-                thoughts.add_thought(
-                    soul, "took_the_edge_off", 0.10,
-                    f"{step.get('last_item', 'a drink')} at {where}")
-                eased = (step.get("start_p", 1.0)
-                         - needs_mod.pressure(soul, "craving"))
-                if job.get("goal") == "craving" and eased < 0.05:
-                    fault(soul, f"{step.get('last_item', 'the vice')} "
-                                "didn't scratch the itch (ware missing "
-                                "the substance?)")
-                job["at"] = at + 1
-                soul.db.soul_job = job
-                return True
+        if "start_p" not in step:           # the baseline, taken once
+            step["start_p"] = needs_mod.pressure(soul, "craving")
+        outcome = _serve_one(soul, step, verb)
+        ware = step.get("ware", "the vice")
+        if outcome == NOTHING:
             fault(soul, f"nothing to {verb} in hand")
             return False
-        if not step.get("sips"):
-            step["start_p"] = needs_mod.pressure(soul, "craving")
-        step["last_item"] = item.key
-        sips = step.get("sips", 0) + 1
-        if sips > 12:
-            fault(soul, f"{item.key} never finishes (uses_left stuck?)")
+        if outcome == REFUSED:
+            # A sip that did not happen is a fault, not a sip (#3793).
+            # This step typed `drink rotgut`, was refused as ambiguous
+            # the moment the soul held two mugs, and counted the
+            # refusal; the mug stayed in the pocket and the next craving
+            # bought another.
+            fault(soul, f"could not {verb} {ware}")
             return False
-        soul.execute_cmd(f"{verb} {item.key.split()[-1]}")
-        step["sips"] = sips
+        if outcome == MORE:
+            soul.db.soul_job = job
+            return True
+        where = (soul.location.key if soul.location else "the street")
+        thoughts.add_thought(
+            soul, "took_the_edge_off", 0.10, f"{ware} at {where}")
+        eased = (step.get("start_p", 1.0)
+                 - needs_mod.pressure(soul, "craving"))
+        if job.get("goal") == "craving" and eased < 0.05:
+            fault(soul, f"{ware} didn't scratch the itch (ware missing "
+                        "the substance?)")
+        job["at"] = at + 1
         soul.db.soul_job = job
         return True
 
