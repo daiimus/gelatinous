@@ -13,6 +13,7 @@ with the residents' faction/standing work (owner verdict #2).
 """
 
 import time as _time
+from typing import Any, Optional
 
 from world.spatial import get_xyz
 
@@ -358,6 +359,50 @@ def _sub_matches(subs, craved):
         return True
     return craved.startswith("tobacco") and any(
         s.startswith("tobacco") for s in subs)
+
+
+def _carried_doses(obj: Any) -> dict:
+    """{substance: doses} a carried ware delivers, read the way the
+    consumption commands read it: a recipe or a dish carries a
+    `db.drink_effects` map (possibly empty), anything else names one
+    `db.substance`."""
+    effects = obj.db.drink_effects
+    if effects is not None:
+        return dict(effects)
+    return {obj.db.substance: 1} if obj.db.substance else {}
+
+
+def _carried_food(soul: Any) -> Optional[Any]:
+    """Something already in the soul's pockets that is FOOD, or None.
+
+    The same test a shelf ware has to pass (`_is_edible_proto`): the eat
+    verb works AND it nourishes. The tag alone admits chewing tobacco,
+    which is eatable but not food, and a meal is one ware: a soul that
+    sat down to a plug would chew it, fault that it did not nourish, and
+    leave the stew beside it uneaten.
+    """
+    from world.consumables import supports_delivery
+    for obj in soul.contents:
+        if (supports_delivery(obj, "eat")
+                and _carried_doses(obj).get("nutrition")):
+            return obj
+    return None
+
+
+def _carried_vice(soul: Any, craved: str) -> Optional[tuple]:
+    """(ware, verb) for something already in the soul's pockets that
+    answers this craving, or None.
+
+    Verb preference drink > eat and no smoking, as for a ware on a shelf
+    (`_vice_info`).
+    """
+    from world.consumables import supports_delivery
+    for verb in ("drink", "eat"):
+        for obj in soul.contents:
+            if (supports_delivery(obj, verb)
+                    and _sub_matches(set(_carried_doses(obj)), craved)):
+                return obj, verb
+    return None
 
 
 _wear_memo = {}                # proto_key -> frozenset coverage or None
@@ -744,9 +789,10 @@ def plan_for(soul, goal_need):
         # is how souls came to carry thirty-odd bowls of the same stew:
         # every hunger pang planned a fresh purchase and nothing ever
         # looked in a pocket (#2244).
-        from world.consumables import supports_delivery
-        if any(supports_delivery(o, "eat") for o in soul.contents):
-            return {"goal": "hunger", "steps": [{"do": "eat"}], "at": 0}
+        food = _carried_food(soul)
+        if food is not None:
+            return {"goal": "hunger", "at": 0,
+                    "steps": [{"do": "eat", "item": food.id}]}
         shape = needs_mod.shape_of(soul, "hunger")
         for score, fixture, room in _advertisers(soul, "hunger"):
             steps = _feed_at(soul, fixture, shape)
@@ -795,6 +841,15 @@ def plan_for(soul, goal_need):
         craved = craved or "alcohol"   # pre-habit misery reaches for drink
         if not _permits(soul, "craving", ("indulgence",)):
             return None                # they know what it costs
+        # CHECK YOUR POCKETS FIRST, as hunger does above. The meal got
+        # this in #2244 and the vice run did not, so every craving
+        # planned a fresh purchase past the undrunk mug already in the
+        # coat (#3793).
+        carried = _carried_vice(soul, craved)
+        if carried:
+            ware, verb = carried
+            return {"goal": "craving", "at": 0, "steps": [
+                {"do": "consume", "verb": verb, "item": ware.id}]}
         for score, fixture, room in _advertisers(soul, "vice"):
             steps = _indulge_at(soul, fixture, craved)
             if steps:
