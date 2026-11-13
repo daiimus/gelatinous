@@ -351,6 +351,16 @@ def ate_well_valence(quality: Any) -> float:
     return max(0.0, min(constants.ATE_WELL_VALENCE_MAX, lift))
 
 
+def _put_away(soul: Any, item: Any) -> None:
+    """Take this out of the soul's hand and into a pocket, with the
+    real `unwield`, the one a player types. Not held (the shop put it
+    straight in a pocket because both hands were full) is nothing to
+    do. A refusal leaves it where it is; that is not a fault."""
+    if item.location == soul and any(
+            held == item for held in soul.hands.values()):
+        soul.execute_cmd(f"unwield {_word_for(soul, item.key)}")
+
+
 def _hand_on(soul: Any, job: dict, at: int, before: set) -> bool:
     """Tell the step that will eat or drink it which ware this step just
     put in the soul's hands. False when nothing new arrived.
@@ -809,6 +819,14 @@ def step_job(soul):
         if not _hand_on(soul, job, at, before):
             fault(soul, f"buy {proto} yielded nothing (broke? stock?)")
             return False
+        if step.get("keep"):
+            # Bought to be kept, not eaten (#3808): out of the hand the
+            # shop put it in and into a pocket, NOW. In this beat and
+            # not the next, because the errand is the lowest band there
+            # is: a shift starting between two steps would drop the job
+            # with the ration still in the hand, for good.
+            for item in [o for o in soul.contents if o.id not in before]:
+                _put_away(soul, item)
         job["at"] = at + 1
         soul.db.soul_job = job
         return True

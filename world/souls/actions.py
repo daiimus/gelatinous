@@ -1329,9 +1329,8 @@ def plan_for(soul, goal_need):
         ], "at": 0}
 
     if goal_need == "provision":
-        # Put a ration in the pocket (#3804): walk to a source and buy
-        # one, and do NOT eat it. The `buy` step with nothing after it
-        # is the whole errand. `wants_ration` asked the same question of
+        # Put a ration in the pocket (#3804): walk to a source, buy one,
+        # and do NOT eat it. `wants_ration` asked the same question of
         # the same function (`_ration_source`) before offering this.
         if len(_carried_rations(soul)) >= constants.RATION_CARRY_MAX:
             return None
@@ -1342,10 +1341,19 @@ def plan_for(soul, goal_need):
             _remember_no_ration_route(soul)
             return None
         fixture, room, proto, price = source
+        # ...to KEEP (#3808). A shop hands a purchase into the buyer's
+        # free hand, which is right for a meal about to be eaten and
+        # wrong for something bought to be kept: the soul would walk
+        # about holding its ration for days, with one hand fewer for
+        # its radio. `keep` has the `buy` step put it away in the same
+        # beat. Not a step of its own: this is the lowest band there
+        # is, so anything arriving between two steps drops the job, and
+        # a soul already carrying its ration is never sent on the
+        # errand again to finish it.
         return {"goal": "provision", "at": 0, "steps": [
             {"do": "travel", "room": room.id},
             {"do": "buy", "counter": fixture.id, "proto": proto,
-             "price": price},
+             "price": price, "keep": True},
         ]}
 
     if goal_need == "off_duty":

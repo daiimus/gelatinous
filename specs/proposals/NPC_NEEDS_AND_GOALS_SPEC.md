@@ -211,7 +211,10 @@ emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
 >   interruption added another.
 > - **One ration.** A soul carries at most one and goes for another, as
 >   an idle errand (`provision`, band 4: walk to a source and `buy`,
->   with no `eat`), only when it has none, has no job running, and
+>   with no `eat`; the purchase is put away with `unwield` in the same
+>   beat, since a shop hands it into the buyer's free hand and a job
+>   this low is dropped by anything that arrives between two steps,
+>   #3808), only when it has none, has no job running, and
 >   there is a source in range that is open, within its purse and has a
 >   real route to it. The offer and the plan ask one function
 >   (`_ration_source`) in the same think from the same room, so the
