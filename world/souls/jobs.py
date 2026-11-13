@@ -661,6 +661,39 @@ def step_job(soul):
         soul.db.soul_job = job
         return True
 
+    if do == "prepare":
+        # Make it yourself: the keeper's own meal, off their own board
+        # (#3802). The real `prepare` command, the one a player working
+        # the counter uses; it plates the dish onto the counter and
+        # charges nobody, which is the owner's ruling for a keeper's
+        # meal. The `pickup` step that follows lifts it.
+        counter = _obj(step["counter"])
+        if counter is None or counter.location != soul.location:
+            fault(soul, "counter gone from room")
+            return False
+        is_bartender = getattr(counter, "is_bartender", None)
+        if not (callable(is_bartender) and is_bartender(soul)):
+            # relieved, or the shift turned, between the plan and now
+            fault(soul, f"not working {counter.key} any more")
+            return False
+        before = set(o.id for o in counter.contents)
+        soul.execute_cmd(f"prepare {step['word']}")
+        if not any(o.id not in before for o in counter.contents):
+            # `prepare` sets the dish down at once, so an empty counter
+            # is a refusal (off the board, or it would not come
+            # together), not a wait. Say so here; left to `pickup` it
+            # would stand three rounds and blame an order nobody took.
+            asked = step.get("want") or step["word"]
+            fault(soul, f"could not prepare {asked} at {counter.key}")
+            return False
+        # No tokens move; the line is what lets a count of the wares
+        # made at a counter still add up (`audit.record` never raises).
+        from world.souls import audit
+        audit.coin(soul, 0, "staff_meal", other=counter)
+        job["at"] = at + 1
+        soul.db.soul_job = job
+        return True
+
     if do == "pickup":
         # Take what was set down for you. The tender serves ONTO the
         # counter and the transaction is already closed by the time we

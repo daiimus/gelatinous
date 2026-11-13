@@ -309,6 +309,8 @@ def _tender_for(soul, fixture):
         # their own post spoke into the void, waited, and faulted —
         # Sable ordering at the Helix while tending the Helix (#2364).
         # Falling through sends her somewhere she can actually be served.
+        # A keeper's own MEAL does not come through here: `_feed_at`
+        # asks `_works` first and has them prepare it (#3802).
         return None
     try:
         from world.perception import can_perceive
@@ -317,6 +319,20 @@ def _tender_for(soul, fixture):
     except Exception:  # noqa: BLE001 — perception is a filter, not a gate
         pass
     return tender
+
+
+def _works(soul, fixture) -> bool:
+    """Is this soul the one working this counter right now?
+
+    The other half of `_tender_for`'s "you cannot be served by
+    yourself": the keeper is the one person who does not need serving.
+    Asked the way the counter asks it, so the planner and the `prepare`
+    command cannot disagree about who is behind it."""
+    from world.bar import tender_at
+    if tender_at(fixture) is not soul:
+        return False
+    is_bartender = getattr(fixture, "is_bartender", None)
+    return bool(callable(is_bartender) and is_bartender(soul))
 
 
 _vice_memo = {}                # proto_key -> (verb or None, substances)
@@ -593,7 +609,8 @@ def _feed_at(soul, fixture, shape):
 
     Three doors, and the VENUE decides which one opens: a tended board
     is ORDERED from, a serving fixture is GRAZED, a shelf is BOUGHT
-    from. The door used to be chosen by the soul's species profile
+    from. The one soul a tended board cannot serve is its own keeper,
+    who PREPARES a dish instead (#3802). The door used to be chosen by the soul's species profile
     instead, which is how sixteen colonists could stand in a restaurant
     and starve — only a recluse knew how to be served, and only a shelf
     would sell to anybody (#2342).
@@ -608,6 +625,25 @@ def _feed_at(soul, fixture, shape):
         # standing here" — so the planner and the counter can never
         # disagree about whether a place is open (#2142).
         if board and _counter_open(fixture):
+            if _works(soul, fixture):
+                # THE KEEPER EATS FROM THEIR OWN BOARD, ON THE HOUSE
+                # (owner ruling 2026-11-13, #3802). `_tender_for` sends a
+                # keeper elsewhere because nobody can serve them here;
+                # for the keepers of the colony's one free kitchen there
+                # was no elsewhere, and they stood behind the stew at
+                # maximum hunger for hours of every shift. They do what
+                # a player behind the counter does: `prepare` it, lift
+                # it, eat it. Complimentary, so the purse is not asked;
+                # the house staple, so the cheapest thing on the board.
+                entry, _price = min(board, key=lambda pair: pair[1])
+                return [
+                    {"do": "prepare", "counter": fixture.id,
+                     "word": _order_word(entry),
+                     "want": entry.get("name", "")},
+                    {"do": "pickup", "counter": fixture.id, "verb": "eat",
+                     "want": entry.get("name", "")},
+                    {"do": "eat"},
+                ]
             tender = _tender_for(soul, fixture)
             pick = _pick_ware(soul, board) if tender is not None else None
             if pick is not None:
