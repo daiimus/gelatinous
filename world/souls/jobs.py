@@ -60,6 +60,40 @@ def release_recovery(soul):
         db.soul_recovering = None
 
 
+def order_outstanding(job: Any) -> bool:
+    """True while a soul has ordered at a counter and not yet collected.
+
+    The `order` step speaks and moves on, and the keeper sets the ware
+    down a beat later, so a job standing on its `pickup` step has
+    something of its own waiting on the counter. Whoever is about to
+    replace that job asks this first (#3796): dropped here, the ware
+    stays where it was set down for good, because the only thing that
+    ever clears a counter is a person running `clean`.
+
+    Live, 2026-11-13: sixty bowls of stew stood on one counter, about
+    one a day since September. In the seven hours after #3793, five
+    orders there ended with the buyer called to a shift or to bed and
+    no meal logged.
+
+    Past the pickup there is nothing to protect. The ware is in the
+    pocket, and a soul eats and drinks what it carries before it buys
+    more (#3793).
+
+    Duck-typed on `.get`: a stored job reads back as `_SaverDict`,
+    which is dict-like and not a dict (#2701).
+    """
+    getter = getattr(job, "get", None)
+    if not callable(getter):
+        return False
+    steps = getter("steps") or []
+    at = getter("at", 0)
+    if not isinstance(at, int) or isinstance(at, bool):
+        return False
+    if not 0 <= at < len(steps):
+        return False
+    return steps[at].get("do") == "pickup"
+
+
 def fault(soul, msg):
     release_recovery(soul)
     note_fault(soul, msg)

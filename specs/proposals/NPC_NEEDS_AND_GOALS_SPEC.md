@@ -131,6 +131,36 @@ emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
 > Until #3793 only the meal did the second and third, and the vice run
 > left 9,849 full mugs of rotgut in NPC inventories.
 
+> **A soul collects what it ordered (#3796).** At a tended counter the
+> soul asks (`order`), the keeper sets the ware down a beat later, and
+> the soul takes it (`pickup`). A job standing on its `pickup` step has
+> something of its own on the counter, and nothing but a person running
+> `clean` ever takes anything off a counter. So that step is not
+> abandoned (`jobs.order_outstanding`):
+>
+> - **The think tree waits one step.** A higher band that would replace
+>   the job lets it take the pickup first and interrupts on the next
+>   think. The ware goes along in the pocket and is the next meal or
+>   the next drink, by the rule above.
+> - **The job market waits too.** A soul with an order waiting is not
+>   offered a post on that sweep.
+> - **Emergencies do not wait.** Fleeing (band 0), a dispatched call
+>   (`respond`, band 0) and a casualty recovery replace the job at
+>   once, and the order stays where it was set down.
+> - **The wait is bounded** by the pickup's own patience: three rounds
+>   for a ware that never comes, then the fault
+>   `ordered <ware> and nothing came`.
+>
+> What an NPC orders is therefore eaten, carried away, or left for one
+> of those three emergencies. Before this, a soul called to its shift
+> or its bed between the asking and the reaching left the ware behind:
+> sixty bowls of stew stood on one counter on 2026-11-13.
+>
+> What a PLAYER leaves on a counter is not covered. 📋 UNBUILT: the
+> keeper wiping stale orders at shift end is #3797 (parked, with the
+> owner's constraint that food carried in from elsewhere is never
+> cleared).
+
 ## 3.5 · Souls advertise too — NPC↔NPC interaction
 
 Everything §4 says about venues applies to **souls themselves**: an
@@ -292,7 +322,9 @@ job eat_out(target=Lin's cart):
 Steps can fail (no stock, no cash, blocked path) → the job **faults**:
 recorded on the soul (visible in §8 tooling), goal re-ranked next tick.
 Interruption law inherits patrols': assigned/fighting/travelling souls
-are not nudged; band-1 preempts everything.
+are not nudged; band-1 preempts everything. One step is held through an
+interruption: a soul that has ordered at a counter collects the order
+first (§3, #3796).
 
 ## 7 · LOD — souls cost nothing until watched
 

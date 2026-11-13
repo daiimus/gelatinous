@@ -49,6 +49,10 @@ SCHEDULES = {
 SHIFTS = ("day", "swing", "night")
 
 GOAL_COOLDOWN_SECONDS = 900   # a failed goal rests before it's retried
+
+#: The band nothing waits for: a soul fleeing for its life (`safety`).
+#: Every other band lets a soul finish collecting an order first (#3796).
+SURVIVAL_BAND = 0
 WAGE_FLUSH_BEATS = 10         # ndb wage accrual checkpoints to db (5 min)
 
 
@@ -602,6 +606,27 @@ def think(soul, hour):
         # and the sleep step never ran)
         job_band = job.get("band", _goal_band(job.get("goal")))
         if desired and band < job_band:
+            if band > SURVIVAL_BAND and jobs.order_outstanding(job):
+                # COLLECT WHAT YOU ORDERED FIRST (#3796). The job is
+                # standing on its `pickup` step: the keeper has set the
+                # ware down, or is about to, and dropping the job here
+                # leaves it on the counter for good. So the shift, the
+                # bed or the bottle waits one step while the soul
+                # reaches for what it asked for. The next think finds
+                # the job past its pickup and interrupts as it always
+                # did; the ware goes along in the pocket and is the
+                # next meal (#3793).
+                #
+                # Bounded: `pickup` waits three rounds for a ware that
+                # never comes and then faults, which clears the job.
+                #
+                # Only fleeing does not wait. The other things that
+                # replace a job without passing through here do not
+                # wait either, by design: a dispatched call (band 0,
+                # `assignment.py`) and a casualty recovery
+                # (`director/medical.py`) are somebody else's emergency.
+                jobs.step_job(soul)
+                return
             from world.director.travel import stop_travel
             stop_travel(soul)            # preemption must actually stop feet
             if job.get("goal") == "duty":
