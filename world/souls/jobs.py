@@ -365,6 +365,9 @@ def _hand_on(soul: Any, job: dict, at: int, before: set) -> bool:
     steps = job.get("steps") or []
     if at + 1 < len(steps):
         nxt = steps[at + 1]
+        if nxt.get("do") == "stow":
+            nxt["item"] = new[0].id      # whatever it was, put THAT away
+            return True
         verb = {"eat": "eat", "consume": nxt.get("verb", "drink")}.get(
             nxt.get("do"))
         ware = verb and next(
@@ -809,6 +812,20 @@ def step_job(soul):
         if not _hand_on(soul, job, at, before):
             fault(soul, f"buy {proto} yielded nothing (broke? stock?)")
             return False
+        job["at"] = at + 1
+        soul.db.soul_job = job
+        return True
+
+    if do == "stow":
+        # Put away what the step before just put in a hand (#3808). A
+        # shop hands a purchase over, and something bought to be kept
+        # is not something to walk about holding. The real `unwield`,
+        # the one a player types. Nothing to do is not a fault: the
+        # purchase went straight to a pocket when both hands were full.
+        item = _obj(step["item"]) if step.get("item") else None
+        if item is not None and item.location == soul \
+                and any(held == item for held in soul.hands.values()):
+            soul.execute_cmd(f"unwield {_word_for(soul, item.key)}")
         job["at"] = at + 1
         soul.db.soul_job = job
         return True

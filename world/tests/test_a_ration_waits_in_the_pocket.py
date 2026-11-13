@@ -110,7 +110,7 @@ class _PocketCase(BaseEvenniaTest):
         `in_range`; asked for sources with a route (the default) it
         also needs `routable`. `self.routes_asked` counts the second
         kind, which is the one that costs a pathfind."""
-        found = [(0.5, machine, self.far)]
+        found = [(0.5, machine, machine.location)]
         self.routes_asked = 0
         self.routable = routable        # a test may lock the door later
 
@@ -486,7 +486,8 @@ class TestRestocking(_PocketCase):
         machine = self.machine()
         self.sells(machine)
         job = actions.plan_for(self.soul, "provision")
-        self.assertEqual([s["do"] for s in job["steps"]], ["travel", "buy"])
+        self.assertEqual([s["do"] for s in job["steps"]],
+                         ["travel", "buy", "stow"])
         self.assertEqual(job["steps"][0]["room"], self.far.id)
         self.assertEqual(job["steps"][1]["counter"], machine.id)
         self.assertEqual(job["steps"][1]["proto"], "ration_bar")
@@ -521,6 +522,68 @@ class TestRestocking(_PocketCase):
         self.soul.db.soul_needs = {"hunger": 0.7, "_at": _time.time()}
         _band, goal = engine._desired_goal(self.soul, NOON, exclude=skip)
         self.assertEqual(goal, "hunger")
+
+    def bought_into_the_hand(self):
+        """Stand in for the shop, which this test has none of: `buy`
+        puts a ration in the buyer's free hand, as
+        `ShopContainer.purchase_item` does. Every other command is
+        real."""
+        soul = self.soul
+        real = soul.execute_cmd
+
+        def execute_cmd(raw_string, **kwargs):
+            if not raw_string.startswith("buy "):
+                return real(raw_string, **kwargs)
+            bar = self.bar()
+            free = next(hand for hand, held in soul.hands.items()
+                        if held is None)
+            soul.wield_item(bar, free)
+
+        soul.execute_cmd = execute_cmd
+
+    def held(self):
+        return [item.key for item in self.soul.hands.values() if item]
+
+    def test_the_errand_ends_with_the_ration_put_away(self):
+        """A shop hands a purchase over (#3808). Bought to be kept, it
+        would have stayed in that hand for days: seventy souls each
+        holding a bar, and each a hand short for its radio."""
+        machine = self.machine()
+        machine.location = self.yard
+        self.sells(machine)
+        self.bought_into_the_hand()
+        self.soul.db.soul_job = actions.plan_for(self.soul, "provision")
+        for _ in range(6):
+            if self.soul.db.soul_job is None:
+                break
+            jobs.step_job(self.soul)
+        self.assertIsNone(self.soul.db.soul_job)
+        self.assertEqual([o.key for o in actions._carried_rations(self.soul)],
+                         ["a ration bar"])
+        self.assertEqual(self.held(), [], "still holding it")
+        self.assertEqual(self.soul.db.soul_faults or [], [])
+
+    def test_putting_away_nothing_is_not_a_fault(self):
+        """Both hands were full, so the shop put it straight in a
+        pocket: the step has nothing to do and says nothing."""
+        bar = self.bar()
+        self.soul.db.soul_job = {"goal": "provision", "band": 4, "at": 0,
+                                 "steps": [{"do": "stow", "item": bar.id}]}
+        jobs.step_job(self.soul)
+        jobs.step_job(self.soul)
+        self.assertIsNone(self.soul.db.soul_job)
+        self.assertEqual(self.soul.db.soul_faults or [], [])
+        self.assertEqual([o.key for o in self.soul.contents],
+                         ["a ration bar"])
+
+    def test_a_meal_bought_is_still_handed_on_to_be_eaten(self):
+        """The control: `buy` then `eat` names the ware for the mouth,
+        as it did, and nothing is put away."""
+        steps = [{"do": "buy", "counter": 1, "proto": "x"}, {"do": "eat"}]
+        job = {"goal": "hunger", "at": 0, "steps": steps}
+        stew = self.stew()
+        self.assertTrue(jobs._hand_on(self.soul, job, 0, set()))
+        self.assertEqual(steps[1].get("item"), stew.id)
 
     def test_the_bought_ration_stays_in_the_pocket(self):
         """`buy` with no `eat` after it: bought, kept, job done."""
