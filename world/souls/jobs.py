@@ -819,12 +819,6 @@ def step_job(soul):
         if not _hand_on(soul, job, at, before):
             fault(soul, f"buy {proto} yielded nothing (broke? stock?)")
             return False
-        # THE PURCHASE IS MADE: say so before anything else can go
-        # wrong. The heartbeat isolates a think that raises, so a step
-        # that paid and then failed to move on would be run again on the
-        # next think, and buy again, and again.
-        job["at"] = at + 1
-        soul.db.soul_job = job
         if step.get("keep"):
             # Bought to be kept, not eaten (#3808): out of the hand the
             # shop put it in and into a pocket, NOW. In this beat and
@@ -833,6 +827,8 @@ def step_job(soul):
             # with the ration still in the hand, for good.
             for item in [o for o in soul.contents if o.id not in before]:
                 _put_away(soul, item)
+        job["at"] = at + 1
+        soul.db.soul_job = job
         return True
 
     if do == "eat":

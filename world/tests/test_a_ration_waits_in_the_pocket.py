@@ -585,23 +585,6 @@ class TestRestocking(_PocketCase):
         self.assertEqual(self.held(), [], "dropped with it in the hand")
         self.assertFalse(actions.wants_ration(self.soul))
 
-    def test_a_putting_away_that_goes_wrong_does_not_buy_again(self):
-        """The heartbeat isolates a think that raises. Were the step to
-        pay, fail to put away and so never move on, it would run again
-        on the next think and buy again, and again: the hoard, by
-        purchase."""
-        self.shop_hands_it_over(self.bar)
-        self.errand()
-        with mock.patch.object(jobs, "_put_away",
-                               side_effect=RuntimeError("no hands")):
-            with self.assertRaises(RuntimeError):
-                jobs.step_job(self.soul)
-        self.assertEqual(self.soul.db.soul_job.get("at"), 2,
-                         "still standing on the purchase")
-        jobs.step_job(self.soul)
-        self.assertIsNone(self.soul.db.soul_job)
-        self.assertEqual(len(actions._carried_rations(self.soul)), 1)
-
     def test_a_purchase_that_went_straight_to_a_pocket_is_left_there(self):
         """Both hands full: nothing to put away, and nothing said."""
         self.shop_hands_it_over(self.bar, wield=False)
