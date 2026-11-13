@@ -15,6 +15,7 @@ with the residents' faction/standing work (owner verdict #2).
 import time as _time
 from typing import Any, Optional
 
+from world.souls import constants
 from world.spatial import get_xyz
 
 PLAN_DEPTH = 4
@@ -396,13 +397,228 @@ def _carried_food(soul: Any) -> Optional[Any]:
     which is eatable but not food, and a meal is one ware: a soul that
     sat down to a plug would chew it, fault that it did not nourish, and
     leave the stew beside it uneaten.
+
+    A RATION is not this. It is the one food allowed to wait in a
+    pocket (`_carried_rations`), and counting it here would have every
+    soul eat its ration at the first pang and never reach a kitchen
+    again. Everything else carried is still eaten before anything is
+    bought, which is the rule that ended the hoard (#3793).
     """
     from world.consumables import supports_delivery
     for obj in soul.contents:
         if (supports_delivery(obj, "eat")
-                and _carried_doses(obj).get("nutrition")):
+                and _carried_doses(obj).get("nutrition")
+                and not _is_ration(obj)):
             return obj
     return None
+
+
+def _is_ration(obj: Any) -> bool:
+    """Does this food KEEP: may it wait in a pocket (#3804)?"""
+    key, category = constants.RATION_TAG
+    return bool(obj.tags.has(key, category=category))
+
+
+def _carried_rations(soul: Any) -> list:
+    """The rations in a soul's pockets that would actually feed it."""
+    from world.consumables import supports_delivery
+    return [obj for obj in soul.contents
+            if _is_ration(obj) and supports_delivery(obj, "eat")
+            and _carried_doses(obj).get("nutrition")]
+
+
+def food_quality(obj: Any) -> float:
+    """How good this food is, as a number (#3804). A food that declares
+    none is ordinary (`constants.FOOD_QUALITY_DEFAULT`)."""
+    return _as_quality(obj.attributes.get(constants.FOOD_QUALITY_ATTR))
+
+
+def _as_quality(value: Any) -> float:
+    """A declared quality as a number, or the default if it is not one."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    return constants.FOOD_QUALITY_DEFAULT
+
+
+_proto_food_memo = {}          # proto_key -> (quality or None, is ration)
+
+
+def _proto_food(proto_key: Any) -> tuple:
+    """(declared quality or None, is a ration) for a prototype.
+
+    Memoized like `_is_edible_proto`: prototypes are static registry
+    entries. Read off the prototype because the planner has to weigh a
+    dish before anybody has made it."""
+    if proto_key not in _proto_food_memo:
+        from evennia.prototypes.prototypes import search_prototype
+        hits = search_prototype(proto_key) if proto_key else []
+        attrs = (hits[0].get("attrs") or []) if hits else []
+        tags = (hits[0].get("tags") or []) if hits else []
+        quality = next((a[1] for a in attrs
+                        if isinstance(a, (tuple, list)) and len(a) >= 2
+                        and a[0] == constants.FOOD_QUALITY_ATTR), None)
+        key, category = constants.RATION_TAG
+        ration = any(len(t) >= 2 and t[0] == key and t[1] == category
+                     for t in tags if isinstance(t, (tuple, list)))
+        _proto_food_memo[proto_key] = (quality, ration)
+    return _proto_food_memo[proto_key]
+
+
+def _meal_quality(fixture: Any, steps: list) -> float:
+    """The quality of the food a feeding plan would end in.
+
+    Read off the PROTOTYPE, because that is what the eater will hold:
+    a shelf plan names it, and a board plan names an entry that is
+    plated from one. An entry mixed on the spot, and a serving
+    fixture's snack, have no prototype and are ordinary. The number is
+    deliberately not taken from the board entry itself: nothing would
+    carry it onto the dish, and the walk would be weighed on one
+    figure and the meal felt on another."""
+    for step in steps or []:
+        if step.get("proto"):
+            return _as_quality(_proto_food(step["proto"])[0])
+        want = step.get("want")
+        if want:
+            entry = next((e for e in _board_of(fixture)
+                          if e.get("name") == want), None)
+            if entry is not None and entry.get("proto"):
+                return _as_quality(_proto_food(entry["proto"])[0])
+            return constants.FOOD_QUALITY_DEFAULT
+    return constants.FOOD_QUALITY_DEFAULT
+
+
+def _ration_beats(soul: Any, ration: Any, fixture: Any, room: Any,
+                  steps: list) -> bool:
+    """Is the ration in the pocket worth more than this meal after the
+    walk to it?
+
+    A meal is worth its quality less a little for every room on the
+    way; the ration has no way to go. So there is no "far": the
+    distance at which a soul stops walking moves with what is at the
+    end of it and with what it is carrying, and closes in by itself as
+    kitchens are built nearer (#3804). The route is the real one, the
+    same the feet will take. A tie goes to the pocket."""
+    from world.spatial.pathfind import path_length
+    here = getattr(soul, "location", None)
+    rooms = 0 if (here is None or room is here) else path_length(
+        here, room, traverser=soul)
+    if rooms is None:
+        return True                  # no way there after all
+    worth = (_meal_quality(fixture, steps)
+             - constants.FOOD_WALK_COST_PER_ROOM * rooms)
+    return food_quality(ration) >= worth
+
+
+def _ration_wares(counter: Any) -> list:
+    """[(proto_key, price)] for the rations a shelf has in stock."""
+    return [(proto_key, price)
+            for proto_key, price in (counter.db.prototype_inventory or {}).items()
+            if _proto_food(proto_key)[1] and _is_edible_proto(proto_key)
+            and _in_stock(counter, proto_key)]
+
+
+def _purse(soul: Any) -> int:
+    """What a soul can spend. `tokens` is a property of the game's
+    Character, not an Attribute; a body without one has an empty purse,
+    as the till reads it."""
+    return int(getattr(soul, "tokens", 0) or 0)
+
+
+def _ration_on_offer(soul: Any, fixture: Any) -> Optional[tuple]:
+    """(proto_key, price) for the ration this soul would take from this
+    shelf, the cheapest it can pay for, or None: shut, out, or dear."""
+    if not _counter_open(fixture):
+        return None
+    purse = _purse(soul)
+    within = [pair for pair in _ration_wares(fixture) if pair[1] <= purse]
+    return min(within, key=lambda pair: pair[1]) if within else None
+
+
+def _ration_source(soul: Any) -> Optional[tuple]:
+    """(fixture, room, proto_key, price) for the ration this soul would
+    go and buy, or None. ONE reading, for the offer and for the plan:
+    a source the soul has a real route to (`_advertisers` asks the
+    pathfinder), that is open, with a ration it can pay for."""
+    for _score, fixture, room in _advertisers(soul, constants.RATION_ADVERT):
+        pick = _ration_on_offer(soul, fixture)
+        if pick is not None:
+            return fixture, room, pick[0], pick[1]
+    return None
+
+
+def wants_ration(soul: Any) -> bool:
+    """Should this soul go and put a ration in its pocket, NOW?
+
+    Only a body that eats bought food, only on a quiet beat, only while
+    it carries fewer than it may, and only when there is one to be had:
+    a source in range, open, within its purse, and with a real route to
+    it. All of that is asked HERE, not left for the plan to fail on. A
+    goal offered where it cannot be planned faults, cools for fifteen
+    minutes and is offered again, for ever, and a machine behind a door
+    a soul cannot open is exactly such a place (#2316 was the same loop
+    for clothes).
+
+    A QUIET BEAT means no job running. The band tree is consulted on
+    every think, a job in hand or not, but an idle errand never
+    replaces a job, so asking a busy soul only produced an answer for
+    wherever its job had walked it to, to be spent somewhere else. An
+    idle soul is planned for in the same think it is asked in, from the
+    room it is standing in, and the offer and the plan ask one function
+    (`_ration_source`), so they cannot disagree.
+
+    Asked on every idle think of every soul, so in order of cost. The
+    straight-line pass is arithmetic and ends it for anybody out of
+    range, which today is everybody. Only then the route, which is a
+    pathfind. A NO is remembered, for this room, for
+    `RATION_ROUTE_RECHECK_SECONDS`; a yes is never remembered, because
+    a yes is acted on at once."""
+    from world.souls import needs as needs_mod
+    if soul.db.soul_job:
+        return False
+    if "hunger" not in needs_mod.profile_of(soul) \
+            or needs_mod.shape_of(soul, "hunger") != "buy_consume":
+        return False
+    if len(_carried_rations(soul)) >= constants.RATION_CARRY_MAX:
+        return False
+    if not any(_ration_on_offer(soul, fixture) is not None
+               for _score, fixture, _room in _advertisers(
+                   soul, constants.RATION_ADVERT, reachable=False)):
+        return False
+    if _no_ration_route_from_here(soul):
+        return False
+    if _ration_source(soul) is None:
+        _remember_no_ration_route(soul)
+        return False
+    return True
+
+
+def _room_id(soul: Any) -> Optional[int]:
+    room = getattr(soul, "location", None)
+    return room.id if room is not None else None
+
+
+def _no_ration_route_from_here(soul: Any) -> bool:
+    """Was this soul told, lately and in this room, that it has no
+    route to a ration?"""
+    told = soul.ndb.ration_no_route or {}       # {room id: good until}
+    return told.get(_room_id(soul), 0.0) > _time.time()
+
+
+def _remember_no_ration_route(soul: Any) -> None:
+    """Do not ask the pathfinder again from this room for a while.
+
+    One entry a room, not one for the soul: a soul on a beat stands
+    idle at every stop of it, and a single remembered room was
+    overwritten at each, so it paid for the pathfind again at every
+    stop for as long as the door stayed shut. Stale rooms are dropped
+    on each write, which bounds it by the rooms one soul can stand
+    idle in inside the recheck time."""
+    now = _time.time()
+    told = {room: until
+            for room, until in (soul.ndb.ration_no_route or {}).items()
+            if until > now}
+    told[_room_id(soul)] = now + constants.RATION_ROUTE_RECHECK_SECONDS
+    soul.ndb.ration_no_route = told
 
 
 def _carried_vice(soul: Any, craved: str) -> Optional[tuple]:
@@ -830,11 +1046,22 @@ def plan_for(soul, goal_need):
             return {"goal": "hunger", "at": 0,
                     "steps": [{"do": "eat", "item": food.id}]}
         shape = needs_mod.shape_of(soul, "hunger")
+        # THE RATION WAITS (#3804). It was passed over just above so a
+        # soul still walks to a kitchen; here it is weighed against the
+        # one meal that soul would otherwise walk to, and eaten when the
+        # walk is not worth it or there is nowhere to walk.
+        ration = next(iter(_carried_rations(soul)), None)
         for score, fixture, room in _advertisers(soul, "hunger"):
             steps = _feed_at(soul, fixture, shape)
             if steps:
+                if ration is not None and _ration_beats(
+                        soul, ration, fixture, room, steps):
+                    break
                 return {"goal": "hunger", "at": 0, "steps":
                         [{"do": "travel", "room": room.id}] + steps}
+        if ration is not None:
+            return {"goal": "hunger", "at": 0,
+                    "steps": [{"do": "eat", "item": ration.id}]}
         # the desperate fallback (spec §2 disposition gates): a LAWLESS
         # soul that cannot afford to eat turns predator — grapple, lift
         # a cut of the mark's tokens, disengage. Lawful souls simply
@@ -1100,6 +1327,26 @@ def plan_for(soul, goal_need):
             {"do": "travel", "room": post.id},
             {"do": "work"},
         ], "at": 0}
+
+    if goal_need == "provision":
+        # Put a ration in the pocket (#3804): walk to a source and buy
+        # one, and do NOT eat it. The `buy` step with nothing after it
+        # is the whole errand. `wants_ration` asked the same question of
+        # the same function (`_ration_source`) before offering this.
+        if len(_carried_rations(soul)) >= constants.RATION_CARRY_MAX:
+            return None
+        source = _ration_source(soul)
+        if source is None:
+            # the world moved between the offer and the plan: do not be
+            # offered again from here until the route is asked afresh
+            _remember_no_ration_route(soul)
+            return None
+        fixture, room, proto, price = source
+        return {"goal": "provision", "at": 0, "steps": [
+            {"do": "travel", "room": room.id},
+            {"do": "buy", "counter": fixture.id, "proto": proto,
+             "price": price},
+        ]}
 
     if goal_need == "off_duty":
         # not a need — an absence of one. The shift is over and there is

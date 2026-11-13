@@ -154,6 +154,12 @@ may stand unbranded (the Escallier precedent).
 
 1. Dish quality tiers (cook skill?) or flat like the bar's v1? (G.R.I.M.
    stats exist; a Motorics/Intellect dab is possible but unproposed.)
+   > **Answered in outline, 2026-11-13:** "A number is probably best for
+   > graded quality so we can expand/grow as we develop the system." The
+   > eater's side is built (#3804): a food carries `food_quality`, souls
+   > weigh it against the walk and feel it in the meal's mood lift. What
+   > SETS a dish's number (cook skill, ingredients) is still open, and
+   > every dish sits on the default until something does.
 2. Should saved dish recipes be *teachable* NPC→player (Nonna teaches a
    snail dish as a favor reward)?
 3. Which pilot venue — dumpling window, or push diversity westward with
