@@ -53,12 +53,11 @@ RATION_CARRY_MAX = 1
 #: bars.
 RATION_ADVERT = "ration"
 
-#: How long a soul trusts its last answer to "is there a ration source I
-#: can actually walk to". Range, opening and price are asked on every
-#: idle think because they cost nothing; the route costs a pathfind, so
-#: it is asked once and remembered for this long. The same length as
-#: the engine's goal cooldown, so a source that stops being reachable
-#: costs one failed plan and then silence.
+#: How long a soul remembers being told "there is no route to a ration
+#: from this room". Range, opening and price are asked on every idle
+#: think because they cost nothing; the route costs a pathfind, so a NO
+#: is remembered for this long, for the room it was given in. A yes is
+#: never remembered: it is acted on in the same think.
 RATION_ROUTE_RECHECK_SECONDS = 900
 
 # ---------------------------------------------------------------- mood

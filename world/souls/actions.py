@@ -547,22 +547,34 @@ def _ration_source(soul: Any) -> Optional[tuple]:
 
 
 def wants_ration(soul: Any) -> bool:
-    """Should this soul go and put a ration in its pocket?
+    """Should this soul go and put a ration in its pocket, NOW?
 
-    Only a body that eats bought food, only while it carries fewer than
-    it may, and only when there is one to be had: a source in range,
-    open, within its purse, and with a real route to it. All of that is
-    asked HERE, not left for the plan to fail on. A goal offered where
-    it cannot be planned faults, cools for fifteen minutes and is
-    offered again, for ever, and a machine behind a door a soul cannot
-    open is exactly such a place (#2316 was the same loop for clothes).
+    Only a body that eats bought food, only on a quiet beat, only while
+    it carries fewer than it may, and only when there is one to be had:
+    a source in range, open, within its purse, and with a real route to
+    it. All of that is asked HERE, not left for the plan to fail on. A
+    goal offered where it cannot be planned faults, cools for fifteen
+    minutes and is offered again, for ever, and a machine behind a door
+    a soul cannot open is exactly such a place (#2316 was the same loop
+    for clothes).
+
+    A QUIET BEAT means no job running. The band tree is consulted on
+    every think, a job in hand or not, but an idle errand never
+    replaces a job, so asking a busy soul only produced an answer for
+    wherever its job had walked it to, to be spent somewhere else. An
+    idle soul is planned for in the same think it is asked in, from the
+    room it is standing in, and the offer and the plan ask one function
+    (`_ration_source`), so they cannot disagree.
 
     Asked on every idle think of every soul, so in order of cost. The
     straight-line pass is arithmetic and ends it for anybody out of
     range, which today is everybody. Only then the route, which is a
-    pathfind: asked once and remembered on the body for
-    `RATION_ROUTE_RECHECK_SECONDS`."""
+    pathfind. A NO is remembered, for this room, for
+    `RATION_ROUTE_RECHECK_SECONDS`; a yes is never remembered, because
+    a yes is acted on at once."""
     from world.souls import needs as needs_mod
+    if soul.db.soul_job:
+        return False
     if "hunger" not in needs_mod.profile_of(soul) \
             or needs_mod.shape_of(soul, "hunger") != "buy_consume":
         return False
@@ -572,19 +584,32 @@ def wants_ration(soul: Any) -> bool:
                for _score, fixture, _room in _advertisers(
                    soul, constants.RATION_ADVERT, reachable=False)):
         return False
-    now = _time.time()
-    remembered = soul.ndb.ration_route          # (good until, answer)
-    if remembered and remembered[0] > now:
-        return remembered[1]
-    answer = _ration_source(soul) is not None
-    _remember_ration_route(soul, answer)
-    return answer
+    if _no_ration_route_from_here(soul):
+        return False
+    if _ration_source(soul) is None:
+        _remember_no_ration_route(soul)
+        return False
+    return True
 
 
-def _remember_ration_route(soul: Any, answer: bool) -> None:
-    """Keep the answer to "can I walk to a ration" for a while."""
-    soul.ndb.ration_route = (
-        _time.time() + constants.RATION_ROUTE_RECHECK_SECONDS, answer)
+def _room_id(soul: Any) -> Optional[int]:
+    room = getattr(soul, "location", None)
+    return room.id if room is not None else None
+
+
+def _no_ration_route_from_here(soul: Any) -> bool:
+    """Was this soul told, lately and in this room, that it has no
+    route to a ration?"""
+    told = soul.ndb.ration_no_route             # (good until, room id)
+    return bool(told and told[0] > _time.time()
+                and told[1] == _room_id(soul))
+
+
+def _remember_no_ration_route(soul: Any) -> None:
+    """Do not ask the pathfinder again from this room for a while."""
+    soul.ndb.ration_no_route = (
+        _time.time() + constants.RATION_ROUTE_RECHECK_SECONDS,
+        _room_id(soul))
 
 
 def _carried_vice(soul: Any, craved: str) -> Optional[tuple]:
@@ -1303,9 +1328,9 @@ def plan_for(soul, goal_need):
             return None
         source = _ration_source(soul)
         if source is None:
-            # the world moved since the offer: do not be offered again
-            # until the route has been asked afresh
-            _remember_ration_route(soul, False)
+            # the world moved between the offer and the plan: do not be
+            # offered again from here until the route is asked afresh
+            _remember_no_ration_route(soul)
             return None
         fixture, room, proto, price = source
         return {"goal": "provision", "at": 0, "steps": [

@@ -262,6 +262,11 @@ def _word_for(soul: Any, ware_key: str) -> str:
     nearest word of the key that nothing else answers to. Twins (the
     same key) do not count against it; "first" is for them. With no
     such word the last one stands, as it always did.
+
+    Only a plain word is put forward in its place: letters and digits,
+    three or more. The ordinal is rewritten into the search's own
+    numbered form before it is matched, and a word carrying a hyphen is
+    not one this function should be the first to send through that.
     """
     words = ware_key.split()
     if not words:
@@ -280,7 +285,7 @@ def _word_for(soul: Any, ware_key: str) -> str:
     if not answers_to(words[-1]):
         return words[-1]
     for word in reversed(words[:-1]):
-        if len(word) > 2 and not answers_to(word):
+        if len(word) > 2 and word.isalnum() and not answers_to(word):
             return word
     return words[-1]
 

@@ -112,13 +112,14 @@ class _PocketCase(BaseEvenniaTest):
         kind, which is the one that costs a pathfind."""
         found = [(0.5, machine, self.far)]
         self.routes_asked = 0
+        self.routable = routable        # a test may lock the door later
 
         def advertisers(soul, need, radius=30, reachable=True):
             if need != constants.RATION_ADVERT or not in_range:
                 return []
             if reachable:
                 self.routes_asked += 1
-                return list(found) if routable else []
+                return list(found) if self.routable else []
             return list(found)
 
         patches = [
@@ -346,20 +347,57 @@ class TestRestocking(_PocketCase):
         self.assertEqual(self.routes_asked, 1)
 
     def test_and_asked_again_when_the_memory_is_stale(self):
+        self.sells(self.machine(), routable=False)
+        self.assertFalse(actions.wants_ration(self.soul))
+        self.soul.ndb.ration_no_route = (_time.time() - 1, self.yard.id)
+        self.assertFalse(actions.wants_ration(self.soul))
+        self.assertEqual(self.routes_asked, 2)
+
+    def test_a_no_holds_only_for_the_room_it_was_given_in(self):
+        """The route depends on where the soul stands. An answer got in
+        one room and spent in another is how an errand comes to be
+        offered where it cannot be planned."""
+        self.sells(self.machine(), routable=False)
+        self.assertFalse(actions.wants_ration(self.soul))
+        self.soul.location = self.far
+        self.assertFalse(actions.wants_ration(self.soul))
+        self.assertEqual(self.routes_asked, 2, "the old room's no was used")
+
+    def test_a_yes_is_never_remembered(self):
+        """A yes is acted on in the same think, from the same room, so
+        there is nothing to carry anywhere."""
         self.sells(self.machine())
         self.assertTrue(actions.wants_ration(self.soul))
-        self.soul.ndb.ration_route = (_time.time() - 1, True)
         self.assertTrue(actions.wants_ration(self.soul))
         self.assertEqual(self.routes_asked, 2)
+        self.routable = False                       # the door is locked
+        self.assertFalse(actions.wants_ration(self.soul))
+
+    def test_a_busy_soul_is_not_asked(self):
+        """The band tree runs on every think, job or no job, and an
+        idle errand never replaces a job. Asking mid-patrol only got an
+        answer for wherever the beat had reached."""
+        self.sells(self.machine())
+        skip = self.idle()
+        self.soul.db.soul_job = {"goal": "patrol", "band": 4, "at": 0,
+                                 "steps": [{"do": "patrol_mark"}]}
+        self.assertFalse(actions.wants_ration(self.soul))
+        self.assertEqual(self.routes_asked, 0)
+        _band, goal = engine._desired_goal(self.soul, NOON, exclude=skip)
+        self.assertNotEqual(goal, "provision")
 
     def test_a_plan_that_finds_no_route_stops_the_offer(self):
         """The door was locked between the offer and the plan: one
-        failed plan, then nothing until the route is asked afresh."""
-        self.sells(self.machine(), routable=False)
-        self.soul.ndb.ration_route = (_time.time() + 600, True)
-        self.assertTrue(actions.wants_ration(self.soul))      # stale yes
+        failed plan, then nothing from this room until the route is
+        asked afresh."""
+        self.sells(self.machine())
+        self.assertTrue(actions.wants_ration(self.soul))
+        self.routable = False
         self.assertIsNone(actions.plan_for(self.soul, "provision"))
+        asked = self.routes_asked
         self.assertFalse(actions.wants_ration(self.soul))
+        self.assertEqual(self.routes_asked, asked,
+                         "it paid for another pathfind to hear no again")
 
     def test_a_shut_counter_is_not_wanted(self):
         """A staffed shelf with nobody on shift sells nothing."""
@@ -533,6 +571,15 @@ class TestTheMeal(_PocketCase):
                          "a twin does not count against the word")
         self.assertEqual(word("a ration bar"), "ration")
         self.assertEqual(word("bar"), "bar", "no other word to use")
+
+    def test_only_a_plain_word_is_put_forward(self):
+        """Two stews: `stew` and `bowl` are both taken, `of` is too
+        short to mean anything, and the hyphenated word is not sent
+        through the ordinal's rewriting. The last word stands, which is
+        what was typed before this function existed."""
+        self.food("a bowl of rat stew")
+        self.assertEqual(
+            jobs._word_for(self.soul, "a bowl of kuro-nikomi stew"), "stew")
 
     def test_an_ordinary_meal_lifts_what_a_meal_always_lifted(self):
         """The control: no dish has a number yet, so nothing moves."""

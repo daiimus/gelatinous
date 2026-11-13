@@ -211,13 +211,15 @@ emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
 >   interruption added another.
 > - **One ration.** A soul carries at most one and goes for another, as
 >   an idle errand (`provision`, band 4: walk to a source and `buy`,
->   with no `eat`), only when it has none and there is a source in
->   range that is open, within its purse and has a real route to it.
->   The offer and the plan ask one function (`_ration_source`), so the
->   errand is not offered where it cannot be planned; the route is a
->   pathfind, so the answer is remembered on the body for fifteen
->   minutes. A source advertises `ration`, not `hunger`: a machine is
->   where a pocket is filled, not a place to eat.
+>   with no `eat`), only when it has none, has no job running, and
+>   there is a source in range that is open, within its purse and has a
+>   real route to it. The offer and the plan ask one function
+>   (`_ration_source`) in the same think from the same room, so the
+>   errand is not offered where it cannot be planned. The route is a
+>   pathfind, so a NO is remembered on the body for fifteen minutes,
+>   for the room it was given in; a yes is acted on at once and never
+>   remembered. A source advertises `ration`, not `hunger`: a machine
+>   is where a pocket is filled, not a place to eat.
 > - **The meal named is the meal eaten.** The verb takes one word, and
 >   a ration now sits in the pocket beside the meal just bought. A soul
 >   asks for its ware by a word nothing else it carries answers to
