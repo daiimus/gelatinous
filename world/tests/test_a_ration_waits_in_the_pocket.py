@@ -486,8 +486,9 @@ class TestRestocking(_PocketCase):
         machine = self.machine()
         self.sells(machine)
         job = actions.plan_for(self.soul, "provision")
-        self.assertEqual([s["do"] for s in job["steps"]],
-                         ["travel", "buy", "stow"])
+        self.assertEqual([s["do"] for s in job["steps"]], ["travel", "buy"])
+        self.assertTrue(job["steps"][1].get("keep"),
+                        "bought to be kept, and not told so")
         self.assertEqual(job["steps"][0]["room"], self.far.id)
         self.assertEqual(job["steps"][1]["counter"], machine.id)
         self.assertEqual(job["steps"][1]["proto"], "ration_bar")
@@ -523,67 +524,92 @@ class TestRestocking(_PocketCase):
         _band, goal = engine._desired_goal(self.soul, NOON, exclude=skip)
         self.assertEqual(goal, "hunger")
 
-    def bought_into_the_hand(self):
+    def shop_hands_it_over(self, make, wield=True):
         """Stand in for the shop, which this test has none of: `buy`
-        puts a ration in the buyer's free hand, as
-        `ShopContainer.purchase_item` does. Every other command is
-        real."""
+        puts the purchase in the buyer's free hand, as
+        `ShopContainer.purchase_item` does (or straight in a pocket
+        when `wield` is off, as it does with both hands full). Every
+        other command is real."""
         soul = self.soul
         real = soul.execute_cmd
 
         def execute_cmd(raw_string, **kwargs):
             if not raw_string.startswith("buy "):
                 return real(raw_string, **kwargs)
-            bar = self.bar()
-            free = next(hand for hand, held in soul.hands.items()
-                        if held is None)
-            soul.wield_item(bar, free)
+            item = make()
+            if wield:
+                free = next(hand for hand, held in soul.hands.items()
+                            if held is None)
+                soul.wield_item(item, free)
 
         soul.execute_cmd = execute_cmd
 
     def held(self):
         return [item.key for item in self.soul.hands.values() if item]
 
-    def test_the_errand_ends_with_the_ration_put_away(self):
-        """A shop hands a purchase over (#3808). Bought to be kept, it
-        would have stayed in that hand for days: seventy souls each
-        holding a bar, and each a hand short for its radio."""
+    def errand(self):
         machine = self.machine()
         machine.location = self.yard
         self.sells(machine)
-        self.bought_into_the_hand()
         self.soul.db.soul_job = actions.plan_for(self.soul, "provision")
-        for _ in range(6):
-            if self.soul.db.soul_job is None:
-                break
-            jobs.step_job(self.soul)
-        self.assertIsNone(self.soul.db.soul_job)
+        self.soul.db.soul_job["band"] = 4
+        jobs.step_job(self.soul)                    # travel: already here
+        return self.soul.db.soul_job
+
+    def test_the_ration_is_bought_and_put_away_in_one_beat(self):
+        """A shop hands a purchase over (#3808). Bought to be kept, it
+        would have stayed in that hand for days: seventy souls each
+        holding a bar, and each a hand short for its radio."""
+        self.shop_hands_it_over(self.bar)
+        self.errand()
+        jobs.step_job(self.soul)                    # buy, and away
         self.assertEqual([o.key for o in actions._carried_rations(self.soul)],
                          ["a ration bar"])
         self.assertEqual(self.held(), [], "still holding it")
         self.assertEqual(self.soul.db.soul_faults or [], [])
 
-    def test_putting_away_nothing_is_not_a_fault(self):
-        """Both hands were full, so the shop put it straight in a
-        pocket: the step has nothing to do and says nothing."""
-        bar = self.bar()
-        self.soul.db.soul_job = {"goal": "provision", "band": 4, "at": 0,
-                                 "steps": [{"do": "stow", "item": bar.id}]}
-        jobs.step_job(self.soul)
-        jobs.step_job(self.soul)
-        self.assertIsNone(self.soul.db.soul_job)
-        self.assertEqual(self.soul.db.soul_faults or [], [])
-        self.assertEqual([o.key for o in self.soul.contents],
-                         ["a ration bar"])
+    def test_a_shift_starting_on_the_next_think_strands_nothing(self):
+        """The errand is the lowest band there is, so anything arriving
+        on the think after the purchase drops the job. Put away on a
+        step of its own, the ration stayed in the hand for good: a soul
+        already carrying one is never sent again to finish."""
+        self.shop_hands_it_over(self.bar)
+        self.errand()
+        jobs.step_job(self.soul)                    # the purchase
+        with mock.patch.object(engine, "_desired_goal",
+                               return_value=(2, "duty")), \
+                mock.patch.object(actions, "plan_for", return_value=None):
+            engine.think(self.soul, NOON)           # the shift bell
+        self.assertNotEqual((self.soul.db.soul_job or {}).get("goal"),
+                            "provision", "the errand was not dropped")
+        self.assertEqual(self.held(), [], "dropped with it in the hand")
+        self.assertFalse(actions.wants_ration(self.soul))
 
-    def test_a_meal_bought_is_still_handed_on_to_be_eaten(self):
-        """The control: `buy` then `eat` names the ware for the mouth,
-        as it did, and nothing is put away."""
-        steps = [{"do": "buy", "counter": 1, "proto": "x"}, {"do": "eat"}]
-        job = {"goal": "hunger", "at": 0, "steps": steps}
-        stew = self.stew()
-        self.assertTrue(jobs._hand_on(self.soul, job, 0, set()))
-        self.assertEqual(steps[1].get("item"), stew.id)
+    def test_a_purchase_that_went_straight_to_a_pocket_is_left_there(self):
+        """Both hands full: nothing to put away, and nothing said."""
+        self.shop_hands_it_over(self.bar, wield=False)
+        self.errand()
+        self.soul.execute_cmd = mock.Mock(side_effect=self.soul.execute_cmd)
+        jobs.step_job(self.soul)
+        typed = [call.args[0] for call in self.soul.execute_cmd.call_args_list]
+        self.assertEqual([t.split()[0] for t in typed], ["buy"])
+        self.assertEqual(self.soul.db.soul_faults or [], [])
+
+    def test_a_meal_bought_stays_in_the_hand_to_be_eaten(self):
+        """The control: `buy` then `eat`, with no `keep`, is as it was."""
+        self.shop_hands_it_over(self.stew)
+        machine = self.machine()
+        machine.location = self.yard
+        self.soul.db.soul_job = {"goal": "hunger", "band": 3, "at": 0,
+                                 "steps": [{"do": "buy",
+                                            "counter": machine.id,
+                                            "proto": "meal", "price": 0},
+                                           {"do": "eat"}]}
+        jobs.step_job(self.soul)
+        self.assertEqual(self.held(), ["a bowl of stew"])
+        stew = next(o for o in self.soul.contents)
+        self.assertEqual(self.soul.db.soul_job["steps"][1].get("item"),
+                         stew.id)
 
     def test_the_bought_ration_stays_in_the_pocket(self):
         """`buy` with no `eat` after it: bought, kept, job done."""

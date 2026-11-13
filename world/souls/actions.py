@@ -1341,16 +1341,19 @@ def plan_for(soul, goal_need):
             _remember_no_ration_route(soul)
             return None
         fixture, room, proto, price = source
-        # ...and PUT IT AWAY (#3808). A shop hands a purchase into the
-        # buyer's free hand, which is right for a meal about to be
-        # eaten and wrong for something bought to be kept: the soul
-        # would walk about holding its ration for days, with one hand
-        # fewer for its radio.
+        # ...to KEEP (#3808). A shop hands a purchase into the buyer's
+        # free hand, which is right for a meal about to be eaten and
+        # wrong for something bought to be kept: the soul would walk
+        # about holding its ration for days, with one hand fewer for
+        # its radio. `keep` has the `buy` step put it away in the same
+        # beat. Not a step of its own: this is the lowest band there
+        # is, so anything arriving between two steps drops the job, and
+        # a soul already carrying its ration is never sent on the
+        # errand again to finish it.
         return {"goal": "provision", "at": 0, "steps": [
             {"do": "travel", "room": room.id},
             {"do": "buy", "counter": fixture.id, "proto": proto,
-             "price": price},
-            {"do": "stow"},
+             "price": price, "keep": True},
         ]}
 
     if goal_need == "off_duty":
