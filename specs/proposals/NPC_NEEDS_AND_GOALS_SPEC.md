@@ -166,6 +166,25 @@ emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
 > owner's constraint that food carried in from elsewhere is never
 > cleared).
 
+> **A keeper eats from their own board, on the house (#3802).** Nobody
+> can serve a keeper at their own counter: an order is directed speech
+> and a body does not hear itself (#2364), so the planner sends a keeper
+> who wants serving somewhere else. For a meal that left the keepers of
+> the colony's one free kitchen with nowhere to go. A keeper standing
+> their shift at a counter whose board has food on it now makes it
+> themselves, the way a player behind the counter does: `prepare`, then
+> lift it (`pickup`), then eat. Owner ruling 2026-11-13: the keeper's
+> meal is **complimentary**, so the purse is not asked and nothing goes
+> through the till; the dish is the cheapest on the board. It happens
+> when hunger turns critical, because nothing short of that outranks
+> the shift, and the counter keeps serving while they eat. The audit
+> log records it as `coin ... amount=0 why=staff_meal`.
+>
+> Food only. A keeper's DRINK at their own bar is still refused by the
+> same rule; they can walk to another bar. And a keeper whose post has
+> no food on its board is unchanged: they walk to the nearest open
+> seller, as every such keeper already does.
+
 ## 3.5 · Souls advertise too — NPC↔NPC interaction
 
 Everything §4 says about venues applies to **souls themselves**: an
