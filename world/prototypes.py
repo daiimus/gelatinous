@@ -5374,6 +5374,46 @@ SNAIL_KURO = {
     "tags": [("eat", "delivery_method"), ("food", "item_type")],
 }
 
+# ---------------------------------------------------------------------------
+# RATIONS: food that keeps (#3804, #3806)
+#
+# A ration is the one food a soul may carry and not eat at the first pang:
+# the `ration` tag is what exempts it from the eat-what-you-carry rule
+# (`world/souls/constants.RATION_TAG`). It is poor on purpose. `food_quality`
+# 2 against an ordinary meal's 5 means it loses to any kitchen worth the
+# walk and is eaten when there is none: nothing open, nothing in reach, or
+# a walk that costs more than the meal is worth. It feeds as a bowl of stew
+# does (three doses), in one sitting, so no half-eaten pouch goes back in a
+# pocket.
+#
+# Owner, 2026-11-13: "Let's make a MRE." Longhaul is the workman's brand
+# already (the cigarettes, the bonded parcels, the crew chrono).
+# ---------------------------------------------------------------------------
+
+LONGHAUL_MRE = {
+    "prototype_key": "longhaul_mre",
+    "key": "a Longhaul MRE",
+    "aliases": ["mre", "ration", "pouch"],
+    "typeclass": "typeclasses.items.Item",
+    "desc": "A flat heat-sealed pouch in dull Longhaul tan, the little hauler "
+            "logo and the letters MRE stencilled across it in black. The "
+            "corners are scuffed pale from riding in other pockets. A "
+            "tear-notch is cut into one edge, and the small print along the "
+            "seal reads: MEAL, READY TO EAT. NO HEATING REQUIRED. ONE POUCH, "
+            "ONE SHIFT.",
+    "attrs": [
+        ("drink_taste", "Salt, starch and a brown gravy that tastes faintly "
+                        "of the pouch. It is not unpleasant, it is filling, "
+                        "and it is gone before you have decided what it was."),
+        ("drink_effects", {"nutrition": 3}),
+        ("uses_left", 1),
+        ("food_quality", 2),
+        ("value", 0),
+    ],
+    "tags": [("eat", "delivery_method"), ("food", "item_type"),
+             ("ration", "food_class")],
+}
+
 # ===================================================================
 # DOCUMENTS — paper that vouches for a face (#2408)
 #

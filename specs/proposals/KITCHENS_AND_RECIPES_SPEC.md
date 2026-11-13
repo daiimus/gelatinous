@@ -159,7 +159,9 @@ may stand unbranded (the Escallier precedent).
    > eater's side is built (#3804): a food carries `food_quality`, souls
    > weigh it against the walk and feel it in the meal's mood lift. What
    > SETS a dish's number (cook skill, ingredients) is still open, and
-   > every dish sits on the default until something does.
+   > every dish sits on the default until something does. The one
+   > food that declares its own is the ration, the Longhaul MRE, at 2
+   > (#3806).
 2. Should saved dish recipes be *teachable* NPC→player (Nonna teaches a
    snail dish as a favor reward)?
 3. Which pilot venue — dumpling window, or push diversity westward with

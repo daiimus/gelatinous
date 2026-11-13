@@ -232,10 +232,18 @@ emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
 > walk to; how a soul picks between two kitchens is unchanged
 > (advertised value over distance). Every number lives in
 > `world/souls/constants.py` and none has had a balance pass: the review
-> is #3805. 📋 UNBUILT: nothing in the world is a ration or sells one yet
-> (#3806), so the mechanic is dormant; and a charge for leaving a post
-> on shift, which is what would have a keeper reach for the ration
-> before walking off, is in #3805.
+> is #3805.
+>
+> **The ration is the Longhaul MRE (#3806).** Owner, 2026-11-13: "Let's
+> make a MRE." `longhaul_mre` in `world/prototypes.py`: one sitting of
+> three doses (what a bowl of stew feeds), quality 2 against an ordinary
+> meal's 5, tagged as a ration. Whether a world SELLS one is world data,
+> not code: build 171 stocks it, at 0, in the cigarette machine on
+> Bhavani Corridor and has that machine advertise `ration`. Where no
+> source is in range the errand is never offered and the mechanic does
+> nothing. 📋 UNBUILT: a weight against leaving a post on shift, which
+> is what would have a keeper reach for the ration before walking off
+> to a kitchen, is in #3805.
 
 ## 3.5 · Souls advertise too — NPC↔NPC interaction
 
