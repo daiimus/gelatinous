@@ -3,8 +3,8 @@
 Live, 2026-11-13: sixty bowls of kuro-nikomi stew stood on the shell
 counter at the Escallier Snailery. Souls take the oldest bowl first, so
 the pile never looked old: it was a standing backlog that every later
-order rotated through, and nothing but a person running `clean` ever
-takes anything off a counter.
+order rotated through and none reduced, and the only thing that clears
+a counter is a person running `clean`.
 
 A bowl is stranded when the engine replaces a job between its `order`
 and its `pickup`. `engine.think` dropped the running job for any

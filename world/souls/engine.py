@@ -610,8 +610,9 @@ def think(soul, hour):
                 # COLLECT WHAT YOU ORDERED FIRST (#3796). The job is
                 # standing on its `pickup` step: the keeper has set the
                 # ware down, or is about to, and dropping the job here
-                # leaves it on the counter for good. So the shift, the
-                # bed or the bottle waits one step while the soul
+                # leaves the counter one ware over, a surplus later
+                # orders rotate through and never reduce. So the shift,
+                # the bed or the bottle waits one step while the soul
                 # reaches for what it asked for. The next think finds
                 # the job past its pickup and interrupts as it always
                 # did; the ware goes along in the pocket and is the
@@ -620,11 +621,12 @@ def think(soul, hour):
                 # Bounded: `pickup` waits three rounds for a ware that
                 # never comes and then faults, which clears the job.
                 #
-                # Only fleeing does not wait. The other things that
-                # replace a job without passing through here do not
-                # wait either, by design: a dispatched call (band 0,
-                # `assignment.py`) and a casualty recovery
-                # (`director/medical.py`) are somebody else's emergency.
+                # Only fleeing does not wait here. Two writers that
+                # replace a job without passing through this branch do
+                # not wait either, by design: a dispatched call
+                # (`director/assignment.py`, planned at the survival
+                # band) and a casualty recovery (`director/medical.py`)
+                # are somebody else's emergency.
                 jobs.step_job(soul)
                 return
             from world.director.travel import stop_travel

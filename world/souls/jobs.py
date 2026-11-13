@@ -66,9 +66,12 @@ def order_outstanding(job: Any) -> bool:
     The `order` step speaks and moves on, and the keeper sets the ware
     down a beat later, so a job standing on its `pickup` step has
     something of its own waiting on the counter. Whoever is about to
-    replace that job asks this first (#3796): dropped here, the ware
-    stays where it was set down for good, because the only thing that
-    ever clears a counter is a person running `clean`.
+    replace that job asks this first (#3796): dropped here, the counter
+    holds one more ware than anyone is coming for, and nothing brings
+    that count back down. A later `pickup` takes the oldest match, but
+    it comes with an order of its own, so the surplus only rotates;
+    short of somebody helping themselves, a person running `clean` is
+    the one thing that removes it.
 
     Live, 2026-11-13: sixty bowls of stew stood on one counter, about
     one a day since September. In the seven hours after #3793, five
