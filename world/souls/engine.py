@@ -416,6 +416,14 @@ def _desired_goal(soul, hour, exclude=()):
         from world.director.hunt import wants_hunt
         if wants_hunt(soul):
             return (4, "hunt")
+    # band 4: PROVISION — a quiet errand to put a ration in an empty
+    # pocket (#3804). Idle work, so anything at all outranks it, and it
+    # sits under the hunt so a security unit never leaves an intruder
+    # for a snack. `wants_ration` only says yes when a source is in
+    # range, open and affordable, so this is never offered where it
+    # cannot be planned.
+    if "provision" not in exclude and actions.wants_ration(soul):
+        return (4, "provision")
     if soul.db.patrol_beat and "patrol" not in exclude:
         from world.director.routines import cadence_ready
         if cadence_ready(soul):

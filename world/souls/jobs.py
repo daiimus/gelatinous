@@ -282,12 +282,29 @@ def _serve_one(soul: Any, step: dict, verb: str) -> str:
         holds = max(1, int(left)) if isinstance(left, (int, float)) else 1
         step["left"] = min(SERVINGS_PER_RUN, holds)
         step["ware"] = ware.key
+        # read now: the ware is gone by the time the meal is judged
+        from world.souls.actions import food_quality
+        step["quality"] = food_quality(ware)
     if step["left"] <= 0:
         return DONE
     if not _take_a_serving(soul, step["ware"], verb):
         return REFUSED
     step["left"] -= 1
     return MORE
+
+
+def ate_well_valence(quality: Any) -> float:
+    """How much a finished meal of this quality lifts a mood (#3804).
+
+    In proportion to quality, so better food is felt and a ration is
+    felt less; a food of default quality lifts exactly what every meal
+    lifted before quality existed. Capped, so no dish is a drug."""
+    from world.souls import constants
+    if not isinstance(quality, (int, float)) or isinstance(quality, bool):
+        quality = constants.FOOD_QUALITY_DEFAULT
+    lift = (constants.ATE_WELL_VALENCE * float(quality)
+            / constants.FOOD_QUALITY_DEFAULT)
+    return max(0.0, min(constants.ATE_WELL_VALENCE_MAX, lift))
 
 
 def _hand_on(soul: Any, job: dict, at: int, before: set) -> bool:
@@ -780,8 +797,10 @@ def step_job(soul):
         else:
             where = (soul.location.key if soul.location
                      else "the street")
-            thoughts.add_thought(
-                soul, "ate_well", 0.15, f"{food} at {where}")
+            lift = ate_well_valence(step.get("quality"))
+            if lift > 0:
+                thoughts.add_thought(
+                    soul, "ate_well", lift, f"{food} at {where}")
         job["at"] = at + 1
         soul.db.soul_job = job
         return True

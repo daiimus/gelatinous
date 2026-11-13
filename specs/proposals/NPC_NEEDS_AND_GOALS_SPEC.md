@@ -185,6 +185,44 @@ emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
 > no food on its board is unchanged: they walk to the nearest open
 > seller, as every such keeper already does.
 
+> **Food has a quality, a walk has a cost, and one ration may wait in
+> the pocket (#3804).** Owner, 2026-11-13: "A number is probably best for
+> graded quality so we can expand/grow as we develop the system", and
+> "What I want to avoid is someone deep in the currently non-existent
+> mines going like 40+ rooms to a restaurant rather then eating a
+> ration."
+>
+> - **Quality** is a number on the food (`food_quality`; a food that
+>   declares none is ordinary). It is used twice: to weigh a meal
+>   against the ration, and to size the `ate_well` lift when the meal is
+>   finished, so better food is felt and a ration is felt less.
+> - **The walk.** A meal is worth its quality less a little for every
+>   room on the real route to it; the ration in the pocket has no way to
+>   go. The soul eats whichever is worth more, and a tie goes to the
+>   pocket. Nothing says how far "far" is: the distance at which a soul
+>   stops walking moves with what is at the end of it, and closes in by
+>   itself as kitchens are built nearer.
+> - **The hoard rule is untouched (#3793).** Everything a soul carries
+>   is still eaten before anything is bought, EXCEPT one kind of item:
+>   food tagged as a ration. Only that may wait. Had all pocket food
+>   competed on quality, a stew carried off after an interrupted order
+>   could have sat behind better meals for ever while each new
+>   interruption added another.
+> - **One ration.** A soul carries at most one and goes for another, as
+>   an idle errand (`provision`, band 4: walk to a source and `buy`,
+>   with no `eat`), only when it has none and a source is in range, open
+>   and within its purse. A source advertises `ration`, not `hunger`: a
+>   machine is where a pocket is filled, not a place to eat.
+>
+> The ration is weighed against the ONE meal the soul would otherwise
+> walk to; how a soul picks between two kitchens is unchanged
+> (advertised value over distance). Every number lives in
+> `world/souls/constants.py` and none has had a balance pass: the review
+> is #3805. 📋 UNBUILT: nothing in the world is a ration or sells one yet
+> (#3806), so the mechanic is dormant; and a charge for leaving a post
+> on shift, which is what would have a keeper reach for the ration
+> before walking off, is in #3805.
+
 ## 3.5 · Souls advertise too — NPC↔NPC interaction
 
 Everything §4 says about venues applies to **souls themselves**: an
