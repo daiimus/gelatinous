@@ -349,7 +349,7 @@ class TestRestocking(_PocketCase):
     def test_and_asked_again_when_the_memory_is_stale(self):
         self.sells(self.machine(), routable=False)
         self.assertFalse(actions.wants_ration(self.soul))
-        self.soul.ndb.ration_no_route = (_time.time() - 1, self.yard.id)
+        self.soul.ndb.ration_no_route = {self.yard.id: _time.time() - 1}
         self.assertFalse(actions.wants_ration(self.soul))
         self.assertEqual(self.routes_asked, 2)
 
@@ -362,6 +362,24 @@ class TestRestocking(_PocketCase):
         self.soul.location = self.far
         self.assertFalse(actions.wants_ration(self.soul))
         self.assertEqual(self.routes_asked, 2, "the old room's no was used")
+
+    def test_a_soul_on_a_beat_asks_once_a_stop_not_once_a_visit(self):
+        """Idle at every stop of a beat. With one remembered room each
+        stop overwrote the last, and the pathfind was paid again on
+        every return for as long as the door stayed shut."""
+        self.sells(self.machine(), routable=False)
+        for _lap in range(3):
+            for stop in (self.yard, self.far):
+                self.soul.location = stop
+                self.assertFalse(actions.wants_ration(self.soul))
+        self.assertEqual(self.routes_asked, 2, "one for each stop")
+
+    def test_stale_rooms_are_forgotten(self):
+        self.sells(self.machine(), routable=False)
+        self.soul.ndb.ration_no_route = {999: _time.time() - 1}
+        self.assertFalse(actions.wants_ration(self.soul))
+        self.assertEqual(list(self.soul.ndb.ration_no_route),
+                         [self.yard.id])
 
     def test_a_yes_is_never_remembered(self):
         """A yes is acted on in the same think, from the same room, so

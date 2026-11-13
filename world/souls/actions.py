@@ -600,16 +600,25 @@ def _room_id(soul: Any) -> Optional[int]:
 def _no_ration_route_from_here(soul: Any) -> bool:
     """Was this soul told, lately and in this room, that it has no
     route to a ration?"""
-    told = soul.ndb.ration_no_route             # (good until, room id)
-    return bool(told and told[0] > _time.time()
-                and told[1] == _room_id(soul))
+    told = soul.ndb.ration_no_route or {}       # {room id: good until}
+    return told.get(_room_id(soul), 0.0) > _time.time()
 
 
 def _remember_no_ration_route(soul: Any) -> None:
-    """Do not ask the pathfinder again from this room for a while."""
-    soul.ndb.ration_no_route = (
-        _time.time() + constants.RATION_ROUTE_RECHECK_SECONDS,
-        _room_id(soul))
+    """Do not ask the pathfinder again from this room for a while.
+
+    One entry a room, not one for the soul: a soul on a beat stands
+    idle at every stop of it, and a single remembered room was
+    overwritten at each, so it paid for the pathfind again at every
+    stop for as long as the door stayed shut. Stale rooms are dropped
+    on each write, which bounds it by the rooms one soul can stand
+    idle in inside the recheck time."""
+    now = _time.time()
+    told = {room: until
+            for room, until in (soul.ndb.ration_no_route or {}).items()
+            if until > now}
+    told[_room_id(soul)] = now + constants.RATION_ROUTE_RECHECK_SECONDS
+    soul.ndb.ration_no_route = told
 
 
 def _carried_vice(soul: Any, craved: str) -> Optional[tuple]:

@@ -56,8 +56,9 @@ RATION_ADVERT = "ration"
 #: How long a soul remembers being told "there is no route to a ration
 #: from this room". Range, opening and price are asked on every idle
 #: think because they cost nothing; the route costs a pathfind, so a NO
-#: is remembered for this long, for the room it was given in. A yes is
-#: never remembered: it is acted on in the same think.
+#: is remembered for this long, room by room (a soul on a beat is idle
+#: at every stop of it). A yes is never remembered: it is acted on in
+#: the same think.
 RATION_ROUTE_RECHECK_SECONDS = 900
 
 # ---------------------------------------------------------------- mood
