@@ -123,13 +123,24 @@ def off_duty_keepers_present(post):
     return out
 
 
-def relief_has_arrived(post) -> bool:
-    """Is the CURRENT shift's keeper actually standing this counter?
+def relief_has_arrived(post, outgoing) -> bool:
+    """Has somebody OTHER than `outgoing` taken the running shift here?
 
     Deliberately a RAW read of `post_slots` rather than a call to
     :func:`keeper_on_duty` — that one now accepts a holdover, so asking
     it here would be circular: "am I relieved?" would answer "yes,
     by you".
+
+    `outgoing` is the keeper asking, and is never the answer. A KEEPER
+    CANNOT RELIEVE THEMSELVES (owner ruling 2026-11-13, #3800). The
+    slot is picked by the raw colony clock, while the keeper asking
+    runs on a personal clock up to fifteen minutes off it. A keeper
+    whose clock is EARLY ends their shift while the colony clock still
+    names it, so the keeper of the running shift is the one asking.
+    Standing at the post they read as relieved and left; once away they
+    read as unrelieved and were called back; a flip every think until
+    the colony clock turned. Four counters went dark that way on one
+    night, both of the colony's food sellers among them.
 
     Takes the post fixture OR the room it stands in, because the souls
     engine holds `soul_post` as a room while everything here holds the
@@ -147,7 +158,9 @@ def relief_has_arrived(post) -> bool:
     room = _post_room(fixture)
     slot = slots.get(current_shift()) or {}
     keeper = slot.get("keeper")
-    return bool(keeper is not None and keeper.pk and keeper.location == room)
+    if keeper is None or not keeper.pk or keeper == outgoing:
+        return False
+    return keeper.location == room
 
 
 def keeper_on_duty(fixture):

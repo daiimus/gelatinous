@@ -189,6 +189,18 @@ makes them *administrative*:
   > adoption of a pre-slots post still read `post_keeper` (the thin
   > death-side writer that also read it went with #3424). Ask the slots
   > first.
+  >
+  > **The shift change (#2434, #3800).** Each keeper works to a personal
+  > clock up to fifteen minutes off the colony's
+  > (`engine.shift_jitter_hours`), while the slot that is "running" is
+  > read from the colony clock. A keeper whose own shift has ended covers
+  > until somebody ELSE holds the running slot at the post, and gives up
+  > after `HOLDOVER_HOURS` (`engine.on_duty`,
+  > `posts.relief_has_arrived(post, outgoing)`). A keeper is never their
+  > own relief (owner ruling 2026-11-13): one whose clock runs early stays
+  > through the minutes in which the colony clock still names their own
+  > shift, wherever they are standing. A post with a single slot has no
+  > relief at all, so its keeper covers the whole of `HOLDOVER_HOURS`.
 - **The post persists through death.** The cart keeps its stock, till, and
   prices while unstaffed — commerce pauses, property remains. (Deterministic
   transactions gate on the keeper being present: no butcher, no grinding.)

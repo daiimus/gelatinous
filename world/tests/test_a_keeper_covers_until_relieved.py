@@ -164,7 +164,7 @@ class TestTheCounterAcceptsACoveringKeeper(EvenniaTest):
                                  key="Covering", location=self.room1)
         other = "night" if current_shift() != "night" else "day"
         fixture = self._counter(covering, other)
-        self.assertFalse(relief_has_arrived(fixture))
+        self.assertFalse(relief_has_arrived(fixture, covering))
 
     def test_it_sees_a_real_relief(self):
         from evennia import create_object
@@ -172,7 +172,7 @@ class TestTheCounterAcceptsACoveringKeeper(EvenniaTest):
         arriving = create_object("typeclasses.characters.Character",
                                  key="Arriving", location=self.room1)
         fixture = self._counter(arriving, current_shift())
-        self.assertTrue(relief_has_arrived(fixture))
+        self.assertTrue(relief_has_arrived(fixture, self.char1))
 
     def test_an_absent_relief_does_not_count(self):
         from evennia import create_object
@@ -180,4 +180,4 @@ class TestTheCounterAcceptsACoveringKeeper(EvenniaTest):
         elsewhere = create_object("typeclasses.characters.Character",
                                   key="Elsewhere", location=self.room2)
         fixture = self._counter(elsewhere, current_shift())
-        self.assertFalse(relief_has_arrived(fixture))
+        self.assertFalse(relief_has_arrived(fixture, self.char1))

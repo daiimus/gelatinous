@@ -120,11 +120,16 @@ def _holding_over(soul, hour, sched) -> bool:
     """Covering: my shift ended recently and nobody has taken over."""
     end = sched["work"][1]
     since = (hour - end) % 24.0
-    if since <= 0 or since > HOLDOVER_HOURS:
+    # `since` is never negative, and it is exactly zero for one whole
+    # colony minute: the heartbeat's hour has minute resolution and a
+    # block excludes its own end (`_in_block`). That minute is the first
+    # of the cover, not a gap in front of it. It used to answer "not
+    # covering" whoever had or had not come (#3800).
+    if since > HOLDOVER_HOURS:
         return False
     try:
         from world.souls.posts import relief_has_arrived
-        return not relief_has_arrived(soul.db.soul_post)
+        return not relief_has_arrived(soul.db.soul_post, soul)
     except Exception:  # noqa: BLE001 — unreadable post: do not hold over
         return False
 
