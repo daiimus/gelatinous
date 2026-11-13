@@ -375,6 +375,13 @@ def _eligible_candidates(room):
         goal = (soul.db.soul_job or {}).get("goal")
         if goal in ("hunger", "safety", "claim", "treat"):
             continue
+        # ...and leisure with an order on the counter is one step from
+        # free (#3796). `_offer` overwrites the job it finds, so an
+        # offer made now would strand the drink the soul just asked
+        # for. It is a candidate again on the next sweep, glass in hand.
+        from world.souls import jobs
+        if jobs.order_outstanding(soul.db.soul_job):
+            continue
         if needs_mod.profile_name(soul) == "robot":
             continue
         pos = get_xyz(soul.location)
