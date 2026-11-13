@@ -568,8 +568,8 @@ def wants_ration(soul: Any) -> bool:
 
     Asked on every idle think of every soul, so in order of cost. The
     straight-line pass is arithmetic and ends it for anybody out of
-    range, which today is everybody. Only then the route, which is a
-    pathfind. A NO is remembered, for this room, for
+    range, and for everybody where nothing sells one. Only then the
+    route, which is a pathfind. A NO is remembered, for this room, for
     `RATION_ROUTE_RECHECK_SECONDS`; a yes is never remembered, because
     a yes is acted on at once."""
     from world.souls import needs as needs_mod

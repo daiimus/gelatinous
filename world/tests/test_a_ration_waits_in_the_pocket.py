@@ -19,8 +19,8 @@ its controls:
   one is to be had.
 
 Hand-made food, as in the #3796 tests: what is under test is the
-planner's choice and the job's steps, and nothing in the world sells a
-ration yet (#3806).
+planner's choice and the job's steps. The real ration and a real shop
+are in `test_the_machine_drops_an_mre` (#3806).
 """
 import time as _time
 from unittest import mock
@@ -317,7 +317,7 @@ class TestRestocking(_PocketCase):
     to be had."""
 
     def test_nothing_sells_one_so_nobody_wants_one(self):
-        """The world as it stands today (#3806): dormant."""
+        """A world where nothing sells one: dormant."""
         self.no_kitchen()
         self.assertFalse(actions.wants_ration(self.soul))
 
@@ -451,8 +451,8 @@ class TestRestocking(_PocketCase):
 
     def test_and_keeps_a_far_one_out_without_asking_the_route(self):
         """Beyond the planner's thirty cells nothing is offered, and
-        nothing is pathed: this is where the whole colony stands until
-        a machine sells a ration."""
+        nothing is pathed: this is where everybody stands who is far
+        from a machine that sells one."""
         self.real_source(cells_away=40)
         with mock.patch.object(actions, "_ration_source") as routed:
             self.assertFalse(actions.wants_ration(self.soul))
