@@ -467,10 +467,13 @@ def _proto_food(proto_key: Any) -> tuple:
 def _meal_quality(fixture: Any, steps: list) -> float:
     """The quality of the food a feeding plan would end in.
 
-    A shelf plan names its prototype; a board plan names the entry it
-    asks for, which is plated from a prototype or mixed on the spot; a
-    serving fixture has only its snack entry. An entry may carry its
-    own `quality`."""
+    Read off the PROTOTYPE, because that is what the eater will hold:
+    a shelf plan names it, and a board plan names an entry that is
+    plated from one. An entry mixed on the spot, and a serving
+    fixture's snack, have no prototype and are ordinary. The number is
+    deliberately not taken from the board entry itself: nothing would
+    carry it onto the dish, and the walk would be weighed on one
+    figure and the meal felt on another."""
     for step in steps or []:
         if step.get("proto"):
             return _as_quality(_proto_food(step["proto"])[0])
@@ -478,11 +481,9 @@ def _meal_quality(fixture: Any, steps: list) -> float:
         if want:
             entry = next((e for e in _board_of(fixture)
                           if e.get("name") == want), None)
-            if entry is not None:
-                declared = entry.get("quality")
-                if declared is None and entry.get("proto"):
-                    declared = _proto_food(entry["proto"])[0]
-                return _as_quality(declared)
+            if entry is not None and entry.get("proto"):
+                return _as_quality(_proto_food(entry["proto"])[0])
+            return constants.FOOD_QUALITY_DEFAULT
     return constants.FOOD_QUALITY_DEFAULT
 
 
@@ -516,30 +517,74 @@ def _ration_wares(counter: Any) -> list:
             and _in_stock(counter, proto_key)]
 
 
+def _purse(soul: Any) -> int:
+    """What a soul can spend. `tokens` is a property of the game's
+    Character, not an Attribute; a body without one has an empty purse,
+    as the till reads it."""
+    return int(getattr(soul, "tokens", 0) or 0)
+
+
+def _ration_on_offer(soul: Any, fixture: Any) -> Optional[tuple]:
+    """(proto_key, price) for the ration this soul would take from this
+    shelf, the cheapest it can pay for, or None: shut, out, or dear."""
+    if not _counter_open(fixture):
+        return None
+    purse = _purse(soul)
+    within = [pair for pair in _ration_wares(fixture) if pair[1] <= purse]
+    return min(within, key=lambda pair: pair[1]) if within else None
+
+
+def _ration_source(soul: Any) -> Optional[tuple]:
+    """(fixture, room, proto_key, price) for the ration this soul would
+    go and buy, or None. ONE reading, for the offer and for the plan:
+    a source the soul has a real route to (`_advertisers` asks the
+    pathfinder), that is open, with a ration it can pay for."""
+    for _score, fixture, room in _advertisers(soul, constants.RATION_ADVERT):
+        pick = _ration_on_offer(soul, fixture)
+        if pick is not None:
+            return fixture, room, pick[0], pick[1]
+    return None
+
+
 def wants_ration(soul: Any) -> bool:
     """Should this soul go and put a ration in its pocket?
 
     Only a body that eats bought food, only while it carries fewer than
-    it may, and only when a source is in range, open and within its
-    purse. The last three are asked HERE, not left for the plan to fail
-    on: a goal offered where it cannot be planned faults every fifteen
-    minutes for ever, and most of the colony may live out of range of a
-    machine. Range is the straight-line one; the plan asks the route."""
+    it may, and only when there is one to be had: a source in range,
+    open, within its purse, and with a real route to it. All of that is
+    asked HERE, not left for the plan to fail on. A goal offered where
+    it cannot be planned faults, cools for fifteen minutes and is
+    offered again, for ever, and a machine behind a door a soul cannot
+    open is exactly such a place (#2316 was the same loop for clothes).
+
+    Asked on every idle think of every soul, so in order of cost. The
+    straight-line pass is arithmetic and ends it for anybody out of
+    range, which today is everybody. Only then the route, which is a
+    pathfind: asked once and remembered on the body for
+    `RATION_ROUTE_RECHECK_SECONDS`."""
     from world.souls import needs as needs_mod
     if "hunger" not in needs_mod.profile_of(soul) \
             or needs_mod.shape_of(soul, "hunger") != "buy_consume":
         return False
     if len(_carried_rations(soul)) >= constants.RATION_CARRY_MAX:
         return False
-    # `tokens` is a property of the game's Character, not an Attribute;
-    # a body without one has an empty purse, as the till reads it.
-    purse = int(getattr(soul, "tokens", 0) or 0)
-    for _score, fixture, _room in _advertisers(
-            soul, constants.RATION_ADVERT, reachable=False):
-        if _counter_open(fixture) and any(
-                price <= purse for _proto, price in _ration_wares(fixture)):
-            return True
-    return False
+    if not any(_ration_on_offer(soul, fixture) is not None
+               for _score, fixture, _room in _advertisers(
+                   soul, constants.RATION_ADVERT, reachable=False)):
+        return False
+    now = _time.time()
+    remembered = soul.ndb.ration_route          # (good until, answer)
+    if remembered and remembered[0] > now:
+        return remembered[1]
+    answer = _ration_source(soul) is not None
+    _remember_ration_route(soul, answer)
+    return answer
+
+
+def _remember_ration_route(soul: Any, answer: bool) -> None:
+    """Keep the answer to "can I walk to a ration" for a while."""
+    soul.ndb.ration_route = (
+        _time.time() + constants.RATION_ROUTE_RECHECK_SECONDS, answer)
 
 
 def _carried_vice(soul: Any, craved: str) -> Optional[tuple]:
@@ -1252,23 +1297,22 @@ def plan_for(soul, goal_need):
     if goal_need == "provision":
         # Put a ration in the pocket (#3804): walk to a source and buy
         # one, and do NOT eat it. The `buy` step with nothing after it
-        # is the whole errand. `wants_ration` already asked whether one
-        # is wanted and in range; this asks the route.
+        # is the whole errand. `wants_ration` asked the same question of
+        # the same function (`_ration_source`) before offering this.
         if len(_carried_rations(soul)) >= constants.RATION_CARRY_MAX:
             return None
-        for _score, fixture, room in _advertisers(
-                soul, constants.RATION_ADVERT):
-            if not _counter_open(fixture):
-                continue
-            pick = _pick_ware(soul, _ration_wares(fixture))
-            if pick is not None:
-                proto, price = pick
-                return {"goal": "provision", "at": 0, "steps": [
-                    {"do": "travel", "room": room.id},
-                    {"do": "buy", "counter": fixture.id, "proto": proto,
-                     "price": price},
-                ]}
-        return None
+        source = _ration_source(soul)
+        if source is None:
+            # the world moved since the offer: do not be offered again
+            # until the route has been asked afresh
+            _remember_ration_route(soul, False)
+            return None
+        fixture, room, proto, price = source
+        return {"goal": "provision", "at": 0, "steps": [
+            {"do": "travel", "room": room.id},
+            {"do": "buy", "counter": fixture.id, "proto": proto,
+             "price": price},
+        ]}
 
     if goal_need == "off_duty":
         # not a need — an absence of one. The shift is over and there is

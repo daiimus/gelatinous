@@ -103,15 +103,27 @@ class _PocketCase(BaseEvenniaTest):
         machine.db.prototype_inventory = {"ration_bar": price}
         return machine
 
-    def sells(self, machine, in_range=True):
-        """Make the machine a restock point the planner can see (or one
-        out of range), with a ration prototype behind its one ware."""
-        found = [(0.5, machine, self.far)] if in_range else []
+    def sells(self, machine, in_range=True, routable=True):
+        """Make the machine a restock point, with a ration prototype
+        behind its one ware. `_advertisers` is stood in for as the real
+        one behaves: asked for straight-line range it answers
+        `in_range`; asked for sources with a route (the default) it
+        also needs `routable`. `self.routes_asked` counts the second
+        kind, which is the one that costs a pathfind."""
+        found = [(0.5, machine, self.far)]
+        self.routes_asked = 0
+
+        def advertisers(soul, need, radius=30, reachable=True):
+            if need != constants.RATION_ADVERT or not in_range:
+                return []
+            if reachable:
+                self.routes_asked += 1
+                return list(found) if routable else []
+            return list(found)
+
         patches = [
-            mock.patch.object(
-                actions, "_advertisers",
-                side_effect=lambda soul, need, **kw: (
-                    found if need == constants.RATION_ADVERT else [])),
+            mock.patch.object(actions, "_advertisers",
+                              side_effect=advertisers),
             mock.patch.object(actions, "_proto_food",
                               return_value=(2, True)),
             mock.patch.object(actions, "_is_edible_proto", return_value=True),
@@ -264,17 +276,39 @@ class TestTheQualityOfAMeal(_PocketCase):
                                return_value=(7, False)):
             self.assertEqual(actions._meal_quality(self.kitchen, steps), 7.0)
 
-    def test_a_board_plan_reads_the_entry_it_asks_for(self):
+    def test_a_board_plan_reads_the_prototype_it_would_plate(self):
+        """The number comes from the food, never from the board entry:
+        nothing would carry an entry's figure onto the dish, and the
+        walk would be weighed on one number and the meal felt on
+        another."""
         self.kitchen.db.menu = [
-            {"name": "plain bowl"},
-            {"name": "good bowl", "quality": 8},
+            {"name": "mixed bowl"},
+            {"name": "mixed bowl with a figure on the board", "quality": 8},
             {"name": "plated bowl", "proto": "meal"}]
         asks = lambda name: [{"do": "order", "counter": 1, "want": name}]
         with mock.patch.object(actions, "_proto_food",
                                return_value=(6, False)):
-            got = [actions._meal_quality(self.kitchen, asks(name))
-                   for name in ("plain bowl", "good bowl", "plated bowl")]
-        self.assertEqual(got, [constants.FOOD_QUALITY_DEFAULT, 8.0, 6.0])
+            got = [actions._meal_quality(self.kitchen, asks(entry["name"]))
+                   for entry in self.kitchen.db.menu]
+        ordinary = constants.FOOD_QUALITY_DEFAULT
+        self.assertEqual(got, [ordinary, ordinary, 6.0])
+
+    def test_the_real_prototype_reader(self):
+        """Unpatched: quality and the ration tag off a registry entry."""
+        entry = {"prototype_key": "x",
+                 "tags": [("eat", "delivery_method"), RATION],
+                 "attrs": [("uses_left", 1),
+                           (constants.FOOD_QUALITY_ATTR, 2)]}
+        plain = {"prototype_key": "y", "tags": [("eat", "delivery_method")],
+                 "attrs": [("uses_left", 3)]}
+        actions._proto_food_memo.clear()
+        self.addCleanup(actions._proto_food_memo.clear)
+        with mock.patch("evennia.prototypes.prototypes.search_prototype",
+                        side_effect=lambda key: {"x": [entry],
+                                                 "y": [plain]}.get(key, [])):
+            self.assertEqual(actions._proto_food("x"), (2, True))
+            self.assertEqual(actions._proto_food("y"), (None, False))
+            self.assertEqual(actions._proto_food("nothing"), (None, False))
 
 
 class TestRestocking(_PocketCase):
@@ -294,6 +328,79 @@ class TestRestocking(_PocketCase):
         """Or the goal would be offered and fail every fifteen minutes."""
         self.sells(self.machine(), in_range=False)
         self.assertFalse(actions.wants_ration(self.soul))
+
+    def test_no_route_is_not_wanted(self):
+        """In straight-line range, behind a door this soul cannot open
+        (#2316's padlocked shutter). Offered anyway, the plan would
+        fail, fault, cool for fifteen minutes and be offered again, for
+        every soul in range, for as long as the machine stood."""
+        self.sells(self.machine(), routable=False)
+        self.assertFalse(actions.wants_ration(self.soul))
+        self.assertIsNone(actions.plan_for(self.soul, "provision"))
+
+    def test_the_route_is_asked_once_and_remembered(self):
+        """Every idle think asks; only the first pays for a pathfind."""
+        self.sells(self.machine(), routable=False)
+        for _ in range(5):
+            self.assertFalse(actions.wants_ration(self.soul))
+        self.assertEqual(self.routes_asked, 1)
+
+    def test_and_asked_again_when_the_memory_is_stale(self):
+        self.sells(self.machine())
+        self.assertTrue(actions.wants_ration(self.soul))
+        self.soul.ndb.ration_route = (_time.time() - 1, True)
+        self.assertTrue(actions.wants_ration(self.soul))
+        self.assertEqual(self.routes_asked, 2)
+
+    def test_a_plan_that_finds_no_route_stops_the_offer(self):
+        """The door was locked between the offer and the plan: one
+        failed plan, then nothing until the route is asked afresh."""
+        self.sells(self.machine(), routable=False)
+        self.soul.ndb.ration_route = (_time.time() + 600, True)
+        self.assertTrue(actions.wants_ration(self.soul))      # stale yes
+        self.assertIsNone(actions.plan_for(self.soul, "provision"))
+        self.assertFalse(actions.wants_ration(self.soul))
+
+    def test_a_shut_counter_is_not_wanted(self):
+        """A staffed shelf with nobody on shift sells nothing."""
+        self.sells(self.machine())
+        with mock.patch.object(actions, "_counter_open", return_value=False):
+            self.assertFalse(actions.wants_ration(self.soul))
+            self.assertIsNone(actions.plan_for(self.soul, "provision"))
+
+    def real_source(self, cells_away):
+        """A machine the REAL `_advertisers` has to find: tagged,
+        advertising, and that many map cells from the soul."""
+        self.yard.db.xyz = (0, 0, 0)
+        self.far.db.xyz = (cells_away, 0, 0)
+        machine = self.machine()
+        machine.db.advertises = {constants.RATION_ADVERT: 0.5}
+        machine.tags.add("advertiser", category="souls")
+        actions._ad_cache["at"] = 0.0             # re-read the tag index
+        self.addCleanup(actions._ad_cache.update, {"at": 0.0})
+        patches = [
+            mock.patch.object(actions, "_proto_food", return_value=(2, True)),
+            mock.patch.object(actions, "_is_edible_proto", return_value=True),
+            mock.patch.object(actions, "_reachable_only",
+                              side_effect=lambda soul, found: found),
+        ]
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+        return machine
+
+    def test_the_real_range_lets_a_near_source_in(self):
+        self.real_source(cells_away=10)
+        self.assertTrue(actions.wants_ration(self.soul))
+
+    def test_and_keeps_a_far_one_out_without_asking_the_route(self):
+        """Beyond the planner's thirty cells nothing is offered, and
+        nothing is pathed: this is where the whole colony stands until
+        a machine sells a ration."""
+        self.real_source(cells_away=40)
+        with mock.patch.object(actions, "_ration_source") as routed:
+            self.assertFalse(actions.wants_ration(self.soul))
+        routed.assert_not_called()
 
     def test_beyond_the_purse_is_not_wanted(self):
         self.sells(self.machine(price=3))
@@ -404,6 +511,28 @@ class TestTheMeal(_PocketCase):
         self.finish(stew)
         self.assertEqual([o.key for o in self.soul.contents],
                          ["a ration bar"])
+
+    def test_a_meal_and_a_ration_that_are_both_a_bar(self):
+        """`eat first bar` took whichever came first. The ration went
+        down, the meal the plan named stayed in the pocket, and the
+        soul went for another ration."""
+        self.food("a ration bar", quality=2, ration=True)   # carried first
+        chocolate = self.food("a chocolate bar")
+        self.finish(chocolate)
+        self.assertEqual([o.key for o in self.soul.contents],
+                         ["a ration bar"])
+
+    def test_the_word_a_ware_is_asked_for_by(self):
+        word = lambda key: jobs._word_for(self.soul, key)
+        self.assertEqual(word("a bowl of stew"), "stew")     # nothing carried
+        self.food("a ration bar", ration=True)
+        self.assertEqual(word("a bowl of stew"), "stew")     # still its own
+        self.assertEqual(word("a chocolate bar"), "chocolate")
+        self.food("a chocolate bar")
+        self.assertEqual(word("a chocolate bar"), "chocolate",
+                         "a twin does not count against the word")
+        self.assertEqual(word("a ration bar"), "ration")
+        self.assertEqual(word("bar"), "bar", "no other word to use")
 
     def test_an_ordinary_meal_lifts_what_a_meal_always_lifted(self):
         """The control: no dish has a number yet, so nothing moves."""

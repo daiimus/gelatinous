@@ -242,8 +242,47 @@ def _take_a_serving(soul: Any, ware_key: str, verb: str) -> bool:
     of the mug the run set out with.
     """
     before = _servings(soul, verb)
-    soul.execute_cmd(f"{verb} first {ware_key.split()[-1]}")
+    soul.execute_cmd(f"{verb} first {_word_for(soul, ware_key)}")
     return _servings(soul, verb) < before
+
+
+def _word_for(soul: Any, ware_key: str) -> str:
+    """The one word to ask for this ware by.
+
+    The verb takes an ordinal and a single word, and a word names
+    anything carried that has a word starting with it. The last word of
+    the key ("stew", "mug") was always used, which was safe while a
+    soul ate whatever it carried before it bought anything. A ration
+    now waits in the pocket BESIDE the meal just bought (#3804), and
+    "a chocolate bar" and "a ration bar" are both a `bar`: `first bar`
+    took whichever came first, so the ration could go down in place of
+    the meal the plan named and the meal be left behind.
+
+    So: the last word if nothing else carried answers to it, else the
+    nearest word of the key that nothing else answers to. Twins (the
+    same key) do not count against it; "first" is for them. With no
+    such word the last one stands, as it always did.
+    """
+    words = ware_key.split()
+    if not words:
+        return ware_key
+    taken = set()
+    for obj in soul.contents:
+        if obj.key == ware_key:
+            continue
+        for name in [obj.key] + list(obj.aliases.all()):
+            taken.update(word.lower() for word in name.split())
+
+    def answers_to(word):
+        low = word.lower()
+        return any(other.startswith(low) for other in taken)
+
+    if not answers_to(words[-1]):
+        return words[-1]
+    for word in reversed(words[:-1]):
+        if len(word) > 2 and not answers_to(word):
+            return word
+    return words[-1]
 
 
 def _serve_one(soul: Any, step: dict, verb: str) -> str:

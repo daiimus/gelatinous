@@ -192,8 +192,9 @@ emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
 > mines going like 40+ rooms to a restaurant rather then eating a
 > ration."
 >
-> - **Quality** is a number on the food (`food_quality`; a food that
->   declares none is ordinary). It is used twice: to weigh a meal
+> - **Quality** is a number on the food (`food_quality`, read off the
+>   item or its prototype, never off a board entry; a food that declares
+>   none is ordinary). It is used twice: to weigh a meal
 >   against the ration, and to size the `ate_well` lift when the meal is
 >   finished, so better food is felt and a ration is felt less.
 > - **The walk.** A meal is worth its quality less a little for every
@@ -210,9 +211,18 @@ emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
 >   interruption added another.
 > - **One ration.** A soul carries at most one and goes for another, as
 >   an idle errand (`provision`, band 4: walk to a source and `buy`,
->   with no `eat`), only when it has none and a source is in range, open
->   and within its purse. A source advertises `ration`, not `hunger`: a
->   machine is where a pocket is filled, not a place to eat.
+>   with no `eat`), only when it has none and there is a source in
+>   range that is open, within its purse and has a real route to it.
+>   The offer and the plan ask one function (`_ration_source`), so the
+>   errand is not offered where it cannot be planned; the route is a
+>   pathfind, so the answer is remembered on the body for fifteen
+>   minutes. A source advertises `ration`, not `hunger`: a machine is
+>   where a pocket is filled, not a place to eat.
+> - **The meal named is the meal eaten.** The verb takes one word, and
+>   a ration now sits in the pocket beside the meal just bought. A soul
+>   asks for its ware by a word nothing else it carries answers to
+>   (`jobs._word_for`), so "a chocolate bar" is not eaten as "a ration
+>   bar".
 >
 > The ration is weighed against the ONE meal the soul would otherwise
 > walk to; how a soul picks between two kitchens is unchanged

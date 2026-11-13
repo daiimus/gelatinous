@@ -419,8 +419,9 @@ def _desired_goal(soul, hour, exclude=()):
     # band 4: PROVISION — a quiet errand to put a ration in an empty
     # pocket (#3804). Idle work, so anything at all outranks it, and it
     # sits under the hunt so a security unit never leaves an intruder
-    # for a snack. `wants_ration` only says yes when a source is in
-    # range, open and affordable, so this is never offered where it
+    # for a snack. `wants_ration` only says yes when there is a source
+    # in range that is open, affordable and has a route to it, which is
+    # the question the plan asks, so this is not offered where it
     # cannot be planned.
     if "provision" not in exclude and actions.wants_ration(soul):
         return (4, "provision")
