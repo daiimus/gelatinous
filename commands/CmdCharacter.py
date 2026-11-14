@@ -2485,24 +2485,27 @@ class CmdRemember(Command):
 
 
 def _forget_entry(memory, uid):
-    """Take the name off one recognition entry, and its link with it.
+    """Take the name off one recognition entry, and its standing as a
+    look the caller watched arrive.
 
     A name can be read THROUGH a link (#3811): a look with no name of
-    its own answers to the name of the look it is linked to. So
-    clearing only the name was no longer enough. Forgetting "Ghost",
-    the name given to a masked figure, left the figure showing as
-    "Tamsin" through the link, under a message saying they would now
-    appear as their description; and where the link was one the
-    `remember` command makes between two looks of one body, it named
-    somebody the caller had never seen through to.
+    its own, which the caller watched come from one they had named,
+    answers to that name. So clearing only the name was no longer
+    enough. Forgetting "Ghost", the name given to a masked figure, left
+    the figure showing as "Tamsin" under a message saying they would
+    now appear as their description.
 
-    After `forget`, the look that carried the name names nobody. The
-    other look keeps its own name: forgetting "Batman" leaves "Bruce"
-    alone, as it always did.
+    After `forget`, the look that carried the name names nobody: the
+    mark that lets its link be read (``witnessed``) goes with the name.
+    The LINK stays, as it always has. It is what `recall` and an NPC's
+    memories use to hold several names for one person together, and the
+    forgotten look may be the only thing joining two names the caller
+    did not forget. The other look keeps its own name: forgetting
+    "Batman" leaves "Bruce" alone.
     """
     entry = memory[uid]
     entry["assigned_name"] = ""
-    entry["linked_to"] = None
+    entry["witnessed"] = False
 
 
 def _find_remembered_uid_by_name(caller, name):
@@ -2846,10 +2849,13 @@ class CmdRecall(Command):
                 return
             memory = caller.recognition_memory or {}
             entry = memory.get(apparent_uid)
-            if entry is None:
-                # Seen through to somebody remembered (#3811): the look
-                # itself has no entry, the person does.
-                from world.identity import seen_through
+            from world.identity import resolve_assigned_name, seen_through
+            if not resolve_assigned_name(memory, apparent_uid)[0]:
+                # No name held for this look. If the caller has seen
+                # through it to somebody they remember, the room is
+                # naming THAT person, and theirs is the entry to read
+                # out (#3811): the look may have no entry at all, or a
+                # blank one left by `forget`.
                 _name, source_uid = seen_through(caller, target)
                 if source_uid is not None:
                     apparent_uid, entry = source_uid, memory.get(source_uid)

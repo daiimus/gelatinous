@@ -1359,9 +1359,20 @@ class Character(
         # may have previously remembered the underlying sleeve under a
         # different presentation.  Opposed Intellect-vs-Resonance roll
         # (cached per presentation) decides whether they see through.
-        from world.identity import attempt_display_pierce
+        #
+        # ``decided_only=True`` reads a verdict already stored and makes
+        # none (#3811). It is for callers that need the name in order to
+        # MATCH what was typed, not to show it: the dot-pose resolver
+        # builds a handle for everybody in the room before it has
+        # matched anything, so it rolled for people the actor had not
+        # looked at, and a pose could land on a name `look` had just
+        # said was not there.
+        from world.identity import attempt_display_pierce, seen_through
 
-        pierced_name = attempt_display_pierce(looker, self, apparent_uid)
+        if kwargs.get("decided_only"):
+            pierced_name = seen_through(looker, self)[0]
+        else:
+            pierced_name = attempt_display_pierce(looker, self, apparent_uid)
         if pierced_name is not None:
             return pierced_name
 

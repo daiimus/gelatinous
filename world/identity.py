@@ -1185,6 +1185,18 @@ def resolve_assigned_name(memory: Any, uid: str | None) -> tuple:
     gets nothing here, which is what keeps this theirs alone. A name
     the observer has given the look itself always wins.
 
+    ONLY A LINK THE OBSERVER WATCHED BEING MADE is followed: the entry
+    it leaves from must carry ``witnessed``, which the unmasking hook
+    sets and `forget` clears. ``linked_to`` alone is not evidence of
+    that. The `remember` command links a newly named look to another
+    entry for the same body without asking whether the observer saw
+    through; `forget` on master cleared a name and left its link; and
+    papers link two faces. Following any nameless entry's link would
+    have named, on the day this loaded, every look anybody had ever
+    forgotten. An entry from before this change carries no mark and is
+    not followed, so an eyewitness from before it is where they were:
+    the roll.
+
     Silent on a loop, unlike :func:`walk_linked_chain`: mask on, mask
     off, mask on again in front of the same viewer links the two looks
     at each other, by design, and this is asked on every `look`.
@@ -1199,6 +1211,8 @@ def resolve_assigned_name(memory: Any, uid: str | None) -> tuple:
         name = entry.get("assigned_name") or ""
         if name:
             return name, current
+        if not entry.get("witnessed"):
+            break
         seen.add(current)
         current = entry.get("linked_to")
     return None, None
@@ -2095,6 +2109,10 @@ def _build_link_entry(
         "lost_contact": False,
         "recent_interactions": [],
         "linked_to": linked_to,
+        # The observer WATCHED this look come from `linked_to` (#3811).
+        # Only an entry carrying this has its link read for a name
+        # (`resolve_assigned_name`); `forget` clears it.
+        "witnessed": linked_to is not None,
         "real_sleeve_uid": real_sleeve_uid,
         # names documents have vouched for — see `attest`. Written only by
         # proof, never by speech; a name someone merely CLAIMS is an
@@ -2398,6 +2416,29 @@ def _send_unmasking_message(
         return
 
 
+def _witness_known_look(new_entry: dict, old_uid: str) -> None:
+    """Cell D's link: the observer already held an entry for the look
+    that has just arrived, and watched it arrive.
+
+    As before: the link is set when there is none, and a link already
+    there is never rewritten on an entry the observer has named.
+
+    New (#3811): an entry with NO name of its own, not yet marked as
+    watched, is marked now and pointed at the look it was just seen to
+    come from. That is somebody they forgot, or named on a guess and
+    forgot, standing in front of them and changing: they are an
+    eyewitness again. Whatever link such an entry carried is replaced,
+    because nothing vouches for it (`resolve_assigned_name`). An entry
+    already marked keeps the link it was watched with.
+    """
+    if new_entry.get("linked_to") is None:
+        new_entry["linked_to"] = old_uid
+    if (new_entry.get("assigned_name") or "") or new_entry.get("witnessed"):
+        return
+    new_entry["linked_to"] = old_uid
+    new_entry["witnessed"] = True
+
+
 def _broadcast_unmasking(
     char: Any,
     old_uid: str | None,
@@ -2508,8 +2549,7 @@ def _broadcast_unmasking(
         new_entry["lost_contact"] = False
         if hasattr(char, "get_sdesc"):
             new_entry["sdesc_at_last_encounter"] = char.get_sdesc()
-        if new_entry.get("linked_to") is None:
-            new_entry["linked_to"] = old_uid
+        _witness_known_look(new_entry, old_uid)
         # Lazy backfill of `real_sleeve_uid` on both entries; cell D
         # touches both, so backfill both opportunistically.
         real_sleeve_uid = getattr(char, "sleeve_uid", None)
@@ -2665,8 +2705,7 @@ def _broadcast_unmask_with_action(
             new_entry["lost_contact"] = False
             if hasattr(char, "get_sdesc"):
                 new_entry["sdesc_at_last_encounter"] = char.get_sdesc()
-            if new_entry.get("linked_to") is None:
-                new_entry["linked_to"] = old_uid
+            _witness_known_look(new_entry, old_uid)
             sleeve_uid = getattr(char, "sleeve_uid", None)
             if sleeve_uid:
                 if new_entry.get("real_sleeve_uid") is None:

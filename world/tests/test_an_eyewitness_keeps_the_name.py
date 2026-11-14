@@ -143,6 +143,14 @@ class TestTheEyewitness(_MaskCase):
         self.assertIn("Tamsin", self.roster())
         self.assertNotIn("masked man", self.roster())
 
+    def test_the_entry_says_they_watched(self):
+        """The mark the name is read by: `linked_to` alone is not
+        evidence that anybody watched anything."""
+        entry = dict(self.viewer.recognition_memory)[
+            get_apparent_uid(self.them)]
+        self.assertEqual(entry["assigned_name"], "")
+        self.assertIs(entry["witnessed"], True)
+
     def test_the_name_can_be_typed(self):
         self.assertEqual(self.first(self.do("look tamsin")),
                          f"Tamsin ({MASKED})")
@@ -288,6 +296,16 @@ class TestWalkingInOnTheMask(_MaskCase):
         self.assertEqual(self.viewer.search("tamsin", quiet=True), [])
         self.assertIsNone(self.viewer.db.disguise_pierce_cache)
 
+    def test_a_pose_never_rolls_either(self):
+        """The pose resolver builds a handle for everybody in the room
+        before it matches anything. It asked for the display name, so
+        it rolled, and a pose could land on a name `look` had just said
+        was not there."""
+        self.no_dice()
+        self.viewer.move_to(self.room1, quiet=True, move_hooks=False)
+        self.assertEqual(self.do(".wave at tamsin"), "You wave at tamsin.")
+        self.assertIsNone(self.viewer.db.disguise_pierce_cache)
+
     def test_forgetting_a_name_seen_through_to(self):
         self.walk_in(WON)
         self.assertIn("You forget the name 'Tamsin'", self.do("forget tamsin"))
@@ -399,36 +417,59 @@ class TestTheWalk(TestCase):
                   "face": {"assigned_name": "Tamsin"}}
         self.assertEqual(self.named(memory, "mask"), ("Ghost", "mask"))
 
+    def watched(self, linked_to):
+        """An entry as the unmasking hook writes it for an eyewitness."""
+        return {"assigned_name": "", "linked_to": linked_to,
+                "witnessed": True}
+
     def test_the_look_it_was_seen_to_come_from(self):
-        memory = {"mask": {"assigned_name": "", "linked_to": "face"},
+        memory = {"mask": self.watched("face"),
                   "face": {"assigned_name": "Tamsin"}}
         self.assertEqual(self.named(memory, "mask"), ("Tamsin", "face"))
 
+    def test_a_link_nobody_watched_being_made_is_not_followed(self):
+        """The control on the mark. This is every nameless, linked
+        entry from before the change: a look `forget` cleared on the
+        old code (which left the link), and a look named on a guess by
+        `remember` (which links two looks of one body without asking
+        whether the caller saw through) and then forgotten. Following
+        these would have named them all on the day this loaded."""
+        memory = {"mask": {"assigned_name": "", "linked_to": "face"},
+                  "face": {"assigned_name": "Tamsin"}}
+        self.assertEqual(self.named(memory, "mask"), (None, None))
+        memory["mask"]["witnessed"] = False
+        self.assertEqual(self.named(memory, "mask"), (None, None))
+
     def test_the_nearest_name_and_no_further(self):
-        memory = {"c": {"assigned_name": "", "linked_to": "b"},
+        memory = {"c": self.watched("b"),
                   "b": {"assigned_name": "Near", "linked_to": "a"},
                   "a": {"assigned_name": "Far"}}
         self.assertEqual(self.named(memory, "c"), ("Near", "b"))
 
+    def test_it_does_not_pass_through_a_look_they_did_not_watch(self):
+        memory = {"c": self.watched("b"),
+                  "b": {"assigned_name": "", "linked_to": "a"},
+                  "a": {"assigned_name": "Far"}}
+        self.assertEqual(self.named(memory, "c"), (None, None))
+
     def test_two_nameless_looks_linked_at_each_other(self):
         """Nothing here stops the walk but the walk itself."""
-        memory = {"mask": {"assigned_name": "", "linked_to": "face"},
-                  "face": {"assigned_name": "", "linked_to": "mask"}}
+        memory = {"mask": self.watched("face"),
+                  "face": self.watched("mask")}
         self.assertEqual(self.named(memory, "mask"), (None, None))
         self.assertEqual(self.named(memory, "face"), (None, None))
 
     def test_a_look_linked_at_itself(self):
-        memory = {"mask": {"assigned_name": "", "linked_to": "mask"}}
+        memory = {"mask": self.watched("mask")}
         self.assertEqual(self.named(memory, "mask"), (None, None))
 
     def test_a_chain_too_long_to_be_real(self):
-        memory = {f"u{i}": {"assigned_name": "", "linked_to": f"u{i + 1}"}
-                  for i in range(500)}
+        memory = {f"u{i}": self.watched(f"u{i + 1}") for i in range(500)}
         memory["u500"] = {"assigned_name": "Too far"}
         self.assertEqual(self.named(memory, "u0"), (None, None))
 
     def test_a_link_to_an_entry_that_is_gone(self):
-        memory = {"mask": {"assigned_name": "", "linked_to": "gone"}}
+        memory = {"mask": self.watched("gone")}
         self.assertEqual(self.named(memory, "mask"), (None, None))
 
     def test_a_look_the_observer_has_no_entry_for(self):
@@ -444,7 +485,8 @@ class TestOtherSurfaces(TestCase):
     grant, by uid, and they read the name by hand too."""
 
     WATCHED = {"face": {"assigned_name": "Tamsin"},
-               "mask": {"assigned_name": "", "linked_to": "face"}}
+               "mask": {"assigned_name": "", "linked_to": "face",
+                        "witnessed": True}}
 
     def corpse_name(self, memory):
         bearer = _FakeBearer(apparent_uid="mask")
@@ -465,7 +507,8 @@ class TestOtherSurfaces(TestCase):
         """The control."""
         self.assertEqual(
             self.corpse_name({"face": {"assigned_name": "Tamsin"},
-                              "mask": {"assigned_name": ""}}),
+                              "mask": {"assigned_name": "",
+                                       "linked_to": "face"}}),
             "fresh bearer")
 
     def test_a_grant_is_shown_by_the_name_held_for_that_look(self):
@@ -474,4 +517,84 @@ class TestOtherSurfaces(TestCase):
         self.assertEqual(
             grant_display_name(grantor, "mask", entry={"label": "a man"}),
             "Tamsin")
+
+
+class TestWhatForgetLeavesAlone(TestCase):
+    """`forget` takes the name and the mark, and leaves the link: the
+    forgotten look may be all that joins two names the caller kept."""
+
+    def setUp(self):
+        from commands.CmdCharacter import _forget_entry
+        self.memory = {
+            "face": {"assigned_name": "Bruce"},
+            "mask": {"assigned_name": "Batman", "linked_to": "face",
+                     "witnessed": True},
+            "helm": {"assigned_name": "Knight", "linked_to": "mask",
+                     "witnessed": True},
+        }
+        _forget_entry(self.memory, "mask")
+
+    def test_the_forgotten_look_names_nobody(self):
+        self.assertEqual(resolve_assigned_name(self.memory, "mask"),
+                         (None, None))
+
+    def test_the_names_on_either_side_still_go_together(self):
+        from world.identity import get_linked_aliases
+        self.assertEqual(get_linked_aliases(self.memory, "face"), ["Knight"])
+        self.assertEqual(get_linked_aliases(self.memory, "helm"), ["Bruce"])
+
+    def test_and_each_keeps_its_own(self):
+        self.assertEqual(resolve_assigned_name(self.memory, "face")[0],
+                         "Bruce")
+        self.assertEqual(resolve_assigned_name(self.memory, "helm")[0],
+                         "Knight")
+
+
+class TestAMemoryFromBeforeThisChange(_MaskCase):
+    """Live memories already hold nameless, linked entries that nobody
+    marked. They are not read for a name. Watching the change again
+    marks them."""
+
+    def setUp(self):
+        super().setUp()
+        self.dice(LOST)
+        self.they("wear ski mask")
+        memory = self.viewer.recognition_memory
+        del memory[get_apparent_uid(self.them)]["witnessed"]
+        self.viewer.recognition_memory = memory
+        self.viewer.db.disguise_pierce_cache = None
+
+    def test_it_is_where_it_was_the_roll(self):
+        self.assertIn("gaunt masked man", self.roster())
+        self.assertNotIn("Tamsin", self.roster())
+        self.assertEqual(self.do("look tamsin"), "Could not find 'tamsin'.")
+
+    def test_watching_it_happen_again_is_watching(self):
+        self.they("remove ski mask")
+        self.they("wear ski mask")
+        self.assertIn("Tamsin", self.roster())
+        self.assertEqual(self.first(self.do("look tamsin")),
+                         f"Tamsin ({MASKED})")
+
+
+class TestSeeingThroughALookYouForgot(_MaskCase):
+    """`forget` leaves a blank entry for the look. If the viewer then
+    sees through it, the room names the person, and `recall` has to
+    read out that person: it looked no further than the blank entry."""
+
+    def setUp(self):
+        super().setUp()
+        self.dice(WON)
+        self.they("wear ski mask")
+        self.do("remember tamsin as Ghost")
+        self.do("forget ghost")
+
+    def test_the_room_names_who_they_saw_through_to(self):
+        self.assertIn("Tamsin", self.roster())
+
+    def test_and_recall_reads_out_the_same_person(self):
+        self.roster()
+        self.assertIn("You remember them as: Tamsin", self.do("recall man"))
+        self.assertIn("You remember them as: Tamsin",
+                      self.do("recall tamsin"))
 

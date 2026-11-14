@@ -325,8 +325,11 @@ def build_char_candidates(
 
         names: list[tuple[str, bool]] = []
 
-        # 1. Display name as seen by actor (assigned name or sdesc with article)
-        display_name = char.get_display_name(actor)
+        # 1. Display name as seen by actor (assigned name or sdesc with
+        # article). What is ALREADY decided, and no roll: this is
+        # matching what was typed, not showing anybody anything, and it
+        # runs for everybody in the room (#3811).
+        display_name = char.get_display_name(actor, decided_only=True)
         if display_name:
             names.append((display_name, False))
             # 2. Article-stripped version
