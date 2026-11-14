@@ -129,6 +129,18 @@ class TestEveryDoorAsksIt(_Bodies):
         super().setUp()
         self.viewer = self.body("Petra Lund")
         self.them = self.body(REAL, "tall", "lean", "man")
+        # Somebody in the next room, for the look down an aim.
+        self.far = self.body("Odile Marsh", "tall", "lean", "man")
+        self.far.move_to(self.room2, quiet=True, move_hooks=False)
+
+    def aimed_look(self, words):
+        """`look <words>` while aiming into the next room: the door in
+        `CmdLook.aimed_target`, called as the command calls it."""
+        from commands.CmdLook import CmdLook
+        cmd = CmdLook()
+        cmd.caller = self.viewer
+        cmd.args = words
+        return cmd.aimed_target(self.viewer, self.room2)
 
     def answer(self, yes):
         asked = mock.patch("world.search.may_use_real_names",
@@ -155,6 +167,8 @@ class TestEveryDoorAsksIt(_Bodies):
             "an emote token":
                 any(name == REAL for name, _who, _cap in
                     build_char_candidates(self.viewer, [self.them])),
+            "a look down an aim":
+                self.aimed_look("Odile Marsh") is self.far,
         }
 
     def test_yes_opens_every_one(self):
@@ -168,6 +182,12 @@ class TestEveryDoorAsksIt(_Bodies):
         for door, opened in self.reached().items():
             with self.subTest(door=door):
                 self.assertFalse(opened)
+
+    def test_the_aimed_look_still_finds_them_by_description(self):
+        """The control on the aimed door: it is the real name that the
+        answer decides, not whether the look works at all."""
+        self.answer(False)
+        self.assertIs(self.aimed_look("gaunt man"), self.far)
 
     def test_and_no_door_asks_the_old_question(self):
         """Read off the source of each door."""
