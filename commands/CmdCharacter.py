@@ -2213,11 +2213,13 @@ class CmdRemember(Command):
             caller.msg("You already know your own name.")
             return
 
-        # Target must have a derivable Apparent UID (requires a real
-        # sleeve_uid — pre-chargen shells return None).
-        from world.identity import get_apparent_uid
+        # Target must have a look to be known by: a real sleeve_uid
+        # (pre-chargen shells return None), and a face. A name given to
+        # a beheaded body would be a name for the bare face, and the
+        # severed head would answer to it (#3835).
+        from world.identity import get_apparent_uid, get_recognisable_uid
 
-        apparent_uid = get_apparent_uid(target)
+        apparent_uid = get_recognisable_uid(target)
         if apparent_uid is None:
             caller.msg("You can't remember that character.")
             return
