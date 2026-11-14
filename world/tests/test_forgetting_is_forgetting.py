@@ -206,30 +206,82 @@ class TestTheVoiceLearnedWithTheLook(TestCase):
             face={"assigned_name": "Alder", "real_sleeve_uid": None})
         self.assertEqual(list(voices), ["stranger"])
 
-    def test_papers_mark_an_older_voice_before_they_rename_the_face(self):
-        """Review round two, and #2652 once more. Every voice in the
-        live world is an older entry. Named "Big J" in person, the face
-        then renamed from his papers: the voice keeps "Big J", so it is
-        marked with the look while the name can still say whose it is."""
-        import inspect
-        from commands import CmdCharacter
-        voices = {"v": {"assigned_name": "Big J",
+    def settle(self, memory, voices):
+        settle = getattr(voice_mod, "settle_older_voices", None)
+        self.assertIsNotNone(settle, "world.voice.settle_older_voices is missing")
+        observer = _observer(memory, voices)
+        return observer, settle(observer)
+
+    def test_an_older_voice_is_marked_with_the_one_face_it_matches(self):
+        """Every voice in the live world is an older entry, and each
+        matches exactly one face of the same body by name."""
+        memory = {"face": {"assigned_name": "Big J",
+                           "real_sleeve_uid": "sleeve-a"}}
+        voices = {"v": {"assigned_name": "big j",
                         "real_sleeve_uid": "sleeve-a"},
                   "other": {"assigned_name": "Big J",
-                            "real_sleeve_uid": "sleeve-b"}}
-        observer = _observer({}, voices)
-        mark = getattr(voice_mod, "note_voices_named_with", None)
-        self.assertIsNotNone(mark, "world.voice.note_voices_named_with is missing")
-        self.assertEqual(mark(observer, "face", "big j", "sleeve-a"), 1)
+                            "real_sleeve_uid": "sleeve-b"},
+                  "new": {"assigned_name": "Big J", "named_with": "elsewhere",
+                          "real_sleeve_uid": "sleeve-a"}}
+        _watcher, marked = self.settle(memory, voices)
+        self.assertEqual(marked, 1)
         self.assertEqual(voices["v"]["named_with"], "face")
         self.assertNotIn("named_with", voices["other"])
-        source = inspect.getsource(
+        self.assertEqual(voices["new"]["named_with"], "elsewhere")
+
+    def test_then_a_new_name_on_the_face_cannot_lose_it(self):
+        """Review rounds two and three, and #2652 once more: named
+        "Big J" in person, the face then renamed, from his papers or in
+        person while he could not be heard. The voice keeps "Big J"."""
+        memory = {"face": {"assigned_name": "Big J",
+                           "real_sleeve_uid": "sleeve-a"}}
+        voices = {"v": {"assigned_name": "Big J",
+                        "real_sleeve_uid": "sleeve-a"}}
+        observer, _marked = self.settle(memory, voices)
+        memory["face"]["assigned_name"] = "Jorge Ruiz"
+        _erase(observer, "face")
+        self.assertEqual(voices, {})
+
+    def test_nor_can_a_second_face_under_the_same_name_take_it(self):
+        """Review round four. Papers put a second look of the same man
+        under the name his bare face already has, and that look later
+        gets his body tag. The voice was named with the bare face."""
+        memory = {"bare": {"assigned_name": "Bruce",
+                           "real_sleeve_uid": "sleeve-a"}}
+        voices = {"v": {"assigned_name": "Bruce",
+                        "real_sleeve_uid": "sleeve-a"}}
+        observer, _marked = self.settle(memory, voices)
+        memory["papers"] = {"assigned_name": "Bruce",
+                            "real_sleeve_uid": "sleeve-a"}
+        _erase(observer, "papers")
+        self.assertIn("v", voices)
+        _erase(observer, "bare")
+        self.assertEqual(voices, {})
+
+    def test_a_voice_that_matches_two_faces_is_left_unmarked(self):
+        memory = {"a": {"assigned_name": "Bruce", "real_sleeve_uid": "s"},
+                  "b": {"assigned_name": "Bruce", "real_sleeve_uid": "s"}}
+        voices = {"v": {"assigned_name": "Bruce", "real_sleeve_uid": "s"}}
+        _watcher, marked = self.settle(memory, voices)
+        self.assertEqual(marked, 0)
+        self.assertNotIn("named_with", voices["v"])
+
+    def test_every_door_settles_before_it_writes(self):
+        import inspect
+        from commands import CmdCharacter
+        papers = inspect.getsource(
             CmdCharacter.CmdRemember._remember_from_document)
-        self.assertLess(source.index("note_voices_named_with("),
-                        source.index("dict(memory[uid], assigned_name=name)"))
-        self.forget_the_face(voices, face={"assigned_name": "Jorge Ruiz",
-                                           "real_sleeve_uid": "sleeve-a"})
-        self.assertEqual(list(voices), ["other"])
+        self.assertLess(papers.index("settle_older_voices(caller)"),
+                        papers.index("new_face = uid not in memory"))
+        person = inspect.getsource(CmdCharacter.CmdRemember._remember_target)
+        self.assertLess(person.index("settle_older_voices(caller)"),
+                        person.index('entry["assigned_name"] = name'))
+        erase = inspect.getsource(identity.erase_look)
+        self.assertLess(erase.index("settle_older_voices(observer)"),
+                        erase.index("del memory[uid]"))
+        self.assertFalse(hasattr(voice_mod, "note_voices_named_with"),
+                         "marking at each rename site lent a body it "
+                         "should not have")
 
     def test_nobody_lends_their_body_to_an_entry_that_has_none(self):
         """Review round three. Round two had the door with the person in

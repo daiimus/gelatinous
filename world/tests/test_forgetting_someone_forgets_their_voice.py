@@ -27,14 +27,16 @@ That was true when it was read and is not true now — #2809 gave
 forgetting a voice needs nothing from the target.  What was missing was
 the call.
 
-Scope, since #3825: **by name**. This used to be sleeve-wide, every
-named voice of the same true body whatever the observer had called it.
-The owner ruled that forgetting clears what the observer connected and
-nothing because the game knows two things are one body. A voice is
-given a name in one place only, ``remember <somebody in front of
-you>``, so a voice under the forgotten name is the observer's own
-connection, and a voice of the same body under another name is not.
-The voice ENTRY goes, as the face entry does.
+Scope, since #3825: **the look the voice was named with**. This used
+to be sleeve-wide, every named voice of the same true body whatever
+the observer had called it. The owner ruled that forgetting clears
+what the observer connected and nothing because the game knows two
+things are one body. A voice is given a name in one place only,
+``remember <somebody in front of you>``, and its entry records that
+look (``named_with``). The fixtures here are older entries with no
+such record; those are settled onto the one face they match by name
+and body, which is why a voice of the same body under ANOTHER name
+stays. The voice ENTRY goes, as the face entry does.
 """
 
 from __future__ import annotations

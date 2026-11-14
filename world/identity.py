@@ -1999,6 +1999,11 @@ def erase_look(observer: Any, uid: str) -> str:
         return ""
     name = str(memory[uid].get("assigned_name") or "")
 
+    # Voices named before a voice recorded its look are told by name and
+    # body. Write the look on them while this entry can still be matched.
+    from world.voice import erase_voices_named, settle_older_voices
+    settle_older_voices(observer)
+
     # Worked out while the entry is still there to be found.
     doomed_verdicts = _won_verdicts_standing_on(observer, uid)
     # The body tag is used only to tell older voice entries of two
@@ -2036,7 +2041,6 @@ def erase_look(observer: Any, uid: str) -> str:
                 del cache[key]
         observer.db.disguise_pierce_cache = cache
 
-    from world.voice import erase_voices_named
     erase_voices_named(observer, name, look_uid=uid, real_sleeve_uid=sleeve)
     return name
 

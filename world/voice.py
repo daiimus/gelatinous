@@ -378,31 +378,51 @@ def _older_entry_is_theirs(entry: Any, wanted: str,
     return not theirs or (bool(real_sleeve_uid) and theirs == real_sleeve_uid)
 
 
-def note_voices_named_with(observer: Any, look_uid: str, name: str,
-                           real_sleeve_uid: str | None) -> int:
-    """Record, on older voice entries, the look they were named with.
+def settle_older_voices(observer: Any) -> int:
+    """Write, on older voice entries, the look each was named with.
 
-    Called just before something other than naming in person changes a
-    face's name (papers: ``_remember_from_document``). Until that
-    moment an older voice entry can still be told by its name; after
-    it the voice keeps the old name and the face has a new one, and
-    `forget` could no longer find the voice of the person being
-    forgotten (#2652 again). So the connection is written down while
-    it can still be read. Returns the number of entries marked.
+    A voice entry from before ``named_with`` was recorded was written by
+    the same ``remember`` that named a face: it carried that face's
+    name and that face's body tag. While it still matches exactly ONE
+    face entry by both, that face is the look it was named with, and
+    this writes it down. Run at the start of every ``remember`` and
+    ``forget`` (#3825), before anything is written.
+
+    It has to be settled early because the match does not last.
+    Naming in person renames the face always and the voice only when
+    it is heard; papers rename a face and never its voice; and papers
+    can put a second face under a name already in use. After any of
+    those, name and body no longer say which look a voice belongs
+    with. Marking at each of those moments was tried and got it wrong
+    by lending a papers-made face the body of whoever stood there
+    (review round four). Settled beforehand, none of them can move it.
+
+    A voice that matches no face, or more than one, is left as it is,
+    and `forget` falls back to :func:`_older_entry_is_theirs` for it.
+    Every named voice in the live world on 2026-11-14 matched exactly
+    one. Returns the number of entries marked.
     """
-    wanted = str(name or "").strip().lower()
-    memory = getattr(observer, "voice_memory", None)
-    if not memory or not wanted or not look_uid:
+    voices = getattr(observer, "voice_memory", None)
+    faces = getattr(observer, "recognition_memory", None)
+    if not voices or not faces:
         return 0
     marked = 0
-    for entry in memory.values():
-        if (entry or {}).get("named_with"):
+    for entry in voices.values():
+        if not entry or entry.get("named_with"):
             continue
-        if _older_entry_is_theirs(entry, wanted, real_sleeve_uid):
-            entry["named_with"] = look_uid
+        wanted = str(entry.get("assigned_name") or "").strip().lower()
+        body = entry.get("real_sleeve_uid")
+        if not wanted or not body:
+            continue
+        matches = [uid for uid, face in faces.items()
+                   if (face or {}).get("real_sleeve_uid") == body
+                   and str((face or {}).get("assigned_name") or "").strip().lower()
+                   == wanted]
+        if len(matches) == 1:
+            entry["named_with"] = matches[0]
             marked += 1
     if marked:
-        observer.voice_memory = memory
+        observer.voice_memory = voices
     return marked
 
 
@@ -429,8 +449,8 @@ def erase_voices_named(observer: Any, name: str, *,
     the true body is read only to tell two people under one name apart
     (:func:`_older_entry_is_theirs`). Every named voice in the live
     world on 2026-11-14 was such an entry, and each matched a face of
-    the same body by name; a later rename by papers marks them first
-    (:func:`note_voices_named_with`).
+    the same body by name, and :func:`settle_older_voices` writes the
+    look on them while that is still so.
 
     The entries go, not just their names, and so do the voices placed
     by way of them; a failed attempt to place a voice stays (#3817).

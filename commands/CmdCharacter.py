@@ -2284,6 +2284,13 @@ class CmdRemember(Command):
         memory = caller.recognition_memory or {}
         now = _recognition_now_iso()
         where = caller.location.key if caller.location else "unknown"
+        # Before papers add a face or rename one, settle the voices
+        # named before a voice recorded its look (#3825): papers never
+        # rename a voice, and can put a second face under a name
+        # already in use, and after either the name no longer says
+        # which look a voice belongs with.
+        from world.voice import settle_older_voices
+        settle_older_voices(caller)
         new_face = uid not in memory
         if new_face:
             # Known BY PAPER, not by sight: first_seen records the document,
@@ -2309,14 +2316,6 @@ class CmdRemember(Command):
                 "attested": [],
             }
         else:
-            # Papers are about to give this face another name. Its voice
-            # was named in person and keeps the old one, so write down
-            # which look the voice was named with while the name can
-            # still say (#3825): `forget` erases a voice by that record.
-            from world.voice import note_voices_named_with
-            note_voices_named_with(
-                caller, uid, memory[uid].get("assigned_name", ""),
-                memory[uid].get("real_sleeve_uid"))
             memory[uid] = dict(memory[uid], assigned_name=name)
         caller.recognition_memory = memory
 
@@ -2379,18 +2378,16 @@ class CmdRemember(Command):
         location_name = caller.location.key if caller.location else "unknown"
         real_sleeve_uid = getattr(target, "sleeve_uid", None)
 
+        # Before any name is written, settle the voices named before a
+        # voice recorded its look (#3825). A face can get another name
+        # here while its voice keeps the old one: the voice is not
+        # renamed when it is garbled, or when the caller cannot hear
+        # (below).
+        from world.voice import settle_older_voices
+        settle_older_voices(caller)
+
         if apparent_uid in memory:
             entry = memory[apparent_uid]
-            # This face may be about to get another name while its voice
-            # keeps the old one: the voice is not renamed when it is
-            # garbled, or when the caller cannot hear (below). So write
-            # down, on voice entries from before that was recorded, the
-            # look they were named with, while the name can still say
-            # (#3825). The papers door does the same before it renames.
-            from world.voice import note_voices_named_with
-            note_voices_named_with(
-                caller, apparent_uid, entry.get("assigned_name", ""),
-                entry.get("real_sleeve_uid") or real_sleeve_uid)
             entry["assigned_name"] = name
             entry["last_seen"] = now
             entry["times_seen"] = entry.get("times_seen", 0) + 1
