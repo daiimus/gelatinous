@@ -2089,7 +2089,13 @@ class Appendage(Item):
         longdescs = self.db.longdesc_data or {}
         wounds = self.db.wounds_at_death or []
         gender = self.db.original_gender
-        name = self.db.original_character_name or "the corpse"
+        # The name the READER knew them by, for the one severed part
+        # that carries a face (`SeveredHead`, through `recognised_as`),
+        # and "the corpse" for every other part and every stranger. It
+        # was the dead character's real key, for everybody (#3821).
+        recognised_as = getattr(self, "recognised_as", None)
+        name = (recognised_as(looker) if callable(recognised_as)
+                else None) or "the corpse"
         # Issue #350 / PR-A: thread species through so the body-noun
         # flex pass consults the species pair table.  ``source_species``
         # was captured at sever time; falls back to "human" when absent.

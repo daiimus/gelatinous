@@ -18,7 +18,7 @@ from world.combat.constants import (
     MSG_WREST_OBJECT_NOT_IN_HANDS, DB_CHAR, DB_GRAPPLED_BY_DBREF,
     STAT_GRIT, )
 from world.combat.utils import roll_stat, roll_with_disadvantage
-from world.identity_utils import msg_room_identity
+from world.identity_utils import msg_room_identity, named_for_each
 from commands._identity_targeting import resolve_character_target
 from commands.CmdArmor import (
     install_plate_from_hand,
@@ -389,10 +389,12 @@ class CmdDrop(Command):
             caller.msg(f"You release {item_name} from your {hand_display} and drop it.")
         else:
             caller.msg(f"You drop {item_name}.")
+        refs = {"actor": caller}
+        room_item = named_for_each(obj, caller, "item", refs)
         msg_room_identity(
             location=caller.location,
-            template=f"{{actor}} drops {item_name}.",
-            char_refs={"actor": caller},
+            template=f"{{actor}} drops {room_item}.",
+            char_refs=refs,
             exclude=[caller],
         )
 
@@ -725,6 +727,12 @@ class CmdGet(Command):
         """Give an item to the character, managing hands and inventory."""
         item_name = item.get_display_name(caller)
         container_name = from_container.get_display_name(caller) if from_container else None
+        # What the ROOM is told: remains are named for each reader (#3821).
+        refs = {"actor": caller}
+        room_item = named_for_each(item, caller, "item", refs)
+        room_container = (named_for_each(from_container, caller,
+                                         "container", refs)
+                          if from_container else None)
 
         # No grasping slots, no pickup -- but SAY so (#2456). Both loops
         # below iterate `caller.hands`, so an empty view fell off the
@@ -771,8 +779,8 @@ class CmdGet(Command):
                                + caller.grip_notes(item))
                     msg_room_identity(
                         location=caller.location,
-                        template=f"{{actor}} takes {item_name} from {container_name}.",
-                        char_refs={"actor": caller},
+                        template=f"{{actor}} takes {room_item} from {room_container}.",
+                        char_refs=refs,
                         exclude=[caller],
                     )
                 else:
@@ -780,8 +788,8 @@ class CmdGet(Command):
                                + caller.grip_notes(item))
                     msg_room_identity(
                         location=caller.location,
-                        template=f"{{actor}} picks up {item_name} and holds it in {hand_display}.",
-                        char_refs={"actor": caller},
+                        template=f"{{actor}} picks up {room_item} and holds it in {hand_display}.",
+                        char_refs=refs,
                         exclude=[caller],
                     )
                 return
@@ -791,6 +799,8 @@ class CmdGet(Command):
         for hand, held in hands_snapshot.items():
             if held:
                 held_name = held.get_display_name(caller)
+                # The room is told what was shifted, too: remains per reader (#3821).
+                room_held = named_for_each(held, caller, "held", refs)
                 held.move_to(caller, quiet=True)  # move to inventory
                 hands_snapshot[hand] = item
                 caller.hands = hands_snapshot
@@ -805,8 +815,8 @@ class CmdGet(Command):
                     )
                     msg_room_identity(
                         location=caller.location,
-                        template=f"{{actor}} takes {item_name} from {container_name}, shifting {held_name} to inventory.",
-                        char_refs={"actor": caller},
+                        template=f"{{actor}} takes {room_item} from {room_container}, shifting {room_held} to inventory.",
+                        char_refs=refs,
                         exclude=[caller],
                     )
                 else:
@@ -817,8 +827,8 @@ class CmdGet(Command):
                     )
                     msg_room_identity(
                         location=caller.location,
-                        template=f"{{actor}} picks up {item_name}, shifting {held_name} to inventory.",
-                        char_refs={"actor": caller},
+                        template=f"{{actor}} picks up {room_item}, shifting {room_held} to inventory.",
+                        char_refs=refs,
                         exclude=[caller],
                     )
                 return
@@ -1173,11 +1183,13 @@ class CmdGive(Command):
         free_hand_display = free_hand.replace("_", " ")
         item_name = item.get_display_name(caller)
         caller.msg(f"You give {item_name} to {target.get_display_name(caller)}.")
-        target.msg(f"{caller.get_display_name(target)} gives you {item_name}. You hold it in your {free_hand_display}.")
+        target.msg(f"{caller.get_display_name(target)} gives you {item.get_display_name(target)}. You hold it in your {free_hand_display}.")
+        refs = {"actor": caller, "target": target}
+        room_item = named_for_each(item, caller, "item", refs)
         msg_room_identity(
             location=caller.location,
-            template=f"{{actor}} gives {item_name} to {{target}}.",
-            char_refs={"actor": caller, "target": target},
+            template=f"{{actor}} gives {room_item} to {{target}}.",
+            char_refs=refs,
             exclude=[caller, target],
         )
 
@@ -1429,16 +1441,19 @@ class CmdWrest(Command):
         # Message to target
         target.msg(msg_target.format(
             caller=caller.get_display_name(target),
-            object=object_name
+            object=obj.get_display_name(target)
         ))
         
-        # Per-observer room message — pre-fill item name, let identity resolve characters
-        room_template = msg_room.replace("{object}", object_name)
+        # Per-observer room message — pre-fill a thing's name, let identity
+        # resolve characters, and remains with them (#3821).
+        refs = {"caller": caller, "target": target}
+        room_template = msg_room.replace(
+            "{object}", named_for_each(obj, caller, "object", refs))
         msg_room_identity(
             acting=("caller",),
             location=caller.location,
             template=room_template,
-            char_refs={"caller": caller, "target": target},
+            char_refs=refs,
             exclude=[caller, target],
         )
 
@@ -1455,16 +1470,19 @@ class CmdWrest(Command):
         # Message to target
         target.msg(msg_target.format(
             caller=caller.get_display_name(target),
-            object=object_name
+            object=obj.get_display_name(target)
         ))
         
-        # Per-observer room message — pre-fill item name, let identity resolve characters
-        room_template = msg_room.replace("{object}", object_name)
+        # Per-observer room message — pre-fill a thing's name, let identity
+        # resolve characters, and remains with them (#3821).
+        refs = {"caller": caller, "target": target}
+        room_template = msg_room.replace(
+            "{object}", named_for_each(obj, caller, "object", refs))
         msg_room_identity(
             acting=("caller",),
             location=caller.location,
             template=room_template,
-            char_refs={"caller": caller, "target": target},
+            char_refs=refs,
             exclude=[caller, target],
         )
 

@@ -66,6 +66,9 @@ class _FakeDecayCorpse:
 
     # Bind production methods so tests exercise the real implementation.
     get_display_name = Corpse.get_display_name
+    # The recognition half of `get_display_name`, split out so the
+    # `{name}` token can read it too (#3821).
+    recognised_as = Corpse.recognised_as
     _is_headless = Corpse._is_headless
     _attempt_forensic_recognition = Corpse._attempt_forensic_recognition
     _FORENSIC_RECOGNITION_DC = Corpse._FORENSIC_RECOGNITION_DC

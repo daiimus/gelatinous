@@ -54,7 +54,11 @@ class TestSeveredPartTokenSubstitution(EvenniaTest):
             longdesc_data={"head": "{name's} jaw is set. {They} stare blankly."},
         )
         out = part.return_appearance(self.char1)
-        self.assertIn("Ripley's jaw is set.", out)
+        # The token resolves, to what the READER may know (#3821). This
+        # asserted "Ripley's jaw is set.": the dead character's real
+        # name, read by anybody who picked the part up.
+        self.assertIn("the corpse's jaw is set.", out)
+        self.assertNotIn("Ripley", out)
         self.assertIn("She stare blankly.", out)
         self.assertNotIn("{", out)
 

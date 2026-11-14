@@ -55,6 +55,9 @@ class _FakeSeveredHead:
 
     # Bind production methods so tests hit the real implementation.
     get_display_name = SeveredHead.get_display_name
+    # The recognition half of `get_display_name`, split out so the
+    # `{name}` token can read it too (#3821).
+    recognised_as = SeveredHead.recognised_as
     _attempt_forensic_recognition = SeveredHead._attempt_forensic_recognition
     _FORENSIC_RECOGNITION_DC = SeveredHead._FORENSIC_RECOGNITION_DC
 

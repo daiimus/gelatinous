@@ -105,6 +105,27 @@ def _opens_a_sentence(template: str, pos: int) -> bool:
     return not prefix or prefix[-1] in ".!?"
 
 
+def named_for_each(obj, viewer, ref: str, char_refs: dict) -> str:
+    """How to write *obj* into the template of a room line.
+
+    A thing is written the way the actor sees it, as ever: its name is
+    the same for everybody. REMAINS are not a thing in that sense
+    (#3821). A corpse or a severed head is named per observer ("rotting
+    corpse (Jorge)" to somebody who knew him, "rotting corpse" to
+    everybody else), and writing the ACTOR's name for it into the room's
+    line told the room who the actor took the dead to be. So an object
+    that names itself per observer (`recognised_as`) goes into
+    *char_refs* under *ref* and the template gets the placeholder, and
+    `msg_room_identity` renders it for each reader as it does a person.
+
+    Returns the text to interpolate: ``"{ref}"`` or the plain name.
+    """
+    if callable(getattr(obj, "recognised_as", None)):
+        char_refs[ref] = obj
+        return "{" + ref + "}"
+    return obj.get_display_name(viewer)
+
+
 def msg_room_identity(
     location: "Room",
     template: str,

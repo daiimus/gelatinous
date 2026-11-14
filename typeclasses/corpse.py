@@ -299,7 +299,7 @@ class Corpse(IdentityBearerMixin, Item):
             if getattr(item, "disguise_essential", False)
         ]
 
-    def _get_preserved_longdesc_descriptions(self):
+    def _get_preserved_longdesc_descriptions(self, looker=None):
         """Get visible longdesc descriptions with clothing integration, like living characters.
 
         Symmetric ``left_*`` / ``right_*`` pairs collapse to a single
@@ -431,7 +431,7 @@ class Corpse(IdentityBearerMixin, Item):
             # paragraph (_build_decay_desc_paragraph); per-location
             # echoes were dropped in issue #323.
             processed = self._process_corpse_description_variables(
-                left_desc, number="plural",
+                left_desc, number="plural", looker=looker,
             )
             collapse_anchor[left_loc] = processed
             collapse_skip.add(right_loc)
@@ -458,7 +458,8 @@ class Corpse(IdentityBearerMixin, Item):
                 # Only add each clothing item once, regardless of how many locations it covers
                 if clothing_item not in added_clothing_items:
                     # Get clothing description for corpse context
-                    desc = self._get_clothing_desc_for_corpse(clothing_item, location)
+                    desc = self._get_clothing_desc_for_corpse(
+                        clothing_item, location, looker=looker)
                     if desc:
                         descriptions.append((location, desc))
                         added_clothing_items.add(clothing_item)
@@ -487,7 +488,7 @@ class Corpse(IdentityBearerMixin, Item):
                     elif location.startswith("right_"):
                         side = "right"
                     final_desc = self._process_corpse_description_variables(
-                        description, side=side,
+                        description, side=side, looker=looker,
                     )
 
                 # Add preserved wound descriptions for this location
@@ -673,7 +674,8 @@ class Corpse(IdentityBearerMixin, Item):
         
         return wound_descriptions
     
-    def _get_clothing_desc_for_corpse(self, clothing_item, location):
+    def _get_clothing_desc_for_corpse(self, clothing_item, location,
+                                      looker=None):
         """Get clothing description for corpse context."""
         # Set item context for color processing
         self._current_item_context = clothing_item
@@ -684,7 +686,8 @@ class Corpse(IdentityBearerMixin, Item):
         worn_desc = clothing_item.get_current_worn_desc()
         if worn_desc:
             # Process template variables like living characters do
-            processed_desc = self._process_corpse_description_variables(worn_desc)
+            processed_desc = self._process_corpse_description_variables(
+                worn_desc, looker=looker)
             
             # Modify for corpse context - change "you" to "the corpse"
             corpse_desc = processed_desc.replace("You are wearing", "The corpse is wearing")
@@ -709,7 +712,8 @@ class Corpse(IdentityBearerMixin, Item):
         item_desc = clothing_item.db.desc
         if item_desc:
             # Process template variables
-            processed_desc = self._process_corpse_description_variables(item_desc)
+            processed_desc = self._process_corpse_description_variables(
+                item_desc, looker=looker)
 
             # Create a simple worn description
             item_name = clothing_item.get_display_name(None)
@@ -806,8 +810,26 @@ class Corpse(IdentityBearerMixin, Item):
         except ImportError:
             return "extended"
     
+    def _name_for(self, looker):
+        """What the ``{name}`` token reads on these remains, for *looker*.
+
+        On a living body ``{name}`` is the looker's own name for them
+        (`appearance_mixin`: ``self.get_display_name(looker)``). On a
+        corpse it was the dead character's REAL KEY, kept from the
+        moment of death, for everybody who looked (#3821): die with a
+        description that says "{name} has a scar" and every stranger at
+        the body reads your name.
+
+        It is the name the looker knew them by when they recognise the
+        body (`recognised_as`), and "the corpse" otherwise, which is the
+        wording this path already fell back to. The real key is still
+        kept on the corpse; nothing a player reads is built from it.
+        """
+        return self.recognised_as(looker) or "the corpse"
+
     def _process_corpse_description_variables(self, description, number="singular",
-                                              side=None):
+                                              side=None,
+                                              looker=None):
         """Process template variables in corpse descriptions using preserved character data.
 
         Args:
@@ -824,8 +846,8 @@ class Corpse(IdentityBearerMixin, Item):
         if not description:
             return description
 
-        # Get preserved character data for template processing
-        original_name = self.db.original_character_name or "the corpse"
+        # The name the READER knows the dead by, or "the corpse" (#3821).
+        original_name = self._name_for(looker)
 
         # Manual processing using preserved character data (more reliable than character method)
         processed_desc = description
@@ -918,14 +940,15 @@ class Corpse(IdentityBearerMixin, Item):
 
         # 1. Corpse name and main description (computed per current stage).
         name_and_desc = [self.get_display_name(looker)]
-        decay_paragraph = self._build_decay_desc_paragraph(stage)
+        decay_paragraph = self._build_decay_desc_paragraph(stage, looker)
         if decay_paragraph:
             name_and_desc.append(decay_paragraph)
         parts.append('\n'.join(name_and_desc))
 
         # 2. Display preserved longdesc data with clothing integration.
         if self.db.longdesc_data:
-            longdesc_descriptions = self._get_preserved_longdesc_descriptions()
+            longdesc_descriptions = self._get_preserved_longdesc_descriptions(
+                looker)
             if longdesc_descriptions:
                 formatted_longdesc = self._format_corpse_longdescs(longdesc_descriptions)
                 parts.append(formatted_longdesc)
@@ -957,7 +980,7 @@ class Corpse(IdentityBearerMixin, Item):
             if self.db.apparent_uid_at_death is not None:
                 self.db.apparent_uid_at_death = None
     
-    def _build_decay_desc_paragraph(self, stage):
+    def _build_decay_desc_paragraph(self, stage, looker=None):
         """Return the staged decay paragraph for ``stage``.  Pure.
 
         Issue #230: replaces the old ``_update_decay_descriptions``
@@ -996,7 +1019,7 @@ class Corpse(IdentityBearerMixin, Item):
         # they.  Without this, neutral sleeves render "They holds
         # themselves" instead of "They hold themselves" (issue #321).
         original_gender = self.db.original_gender if self.db.original_gender is not None else 'neutral'
-        original_name = self.db.original_character_name or "the corpse"
+        original_name = self._name_for(looker)
         verb_number = "singular" if original_gender in ("male", "female") else "plural"
         base_desc = substitute_pronoun_tokens(
             base_desc,
