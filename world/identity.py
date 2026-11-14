@@ -2327,6 +2327,7 @@ def _send_unmasking_message(
     cell: str,
     old_uid: str | None = None,
     new_uid: str | None = None,
+    already_one: bool = False,
 ) -> None:
     """Send per-cell narrative observer message for an unmasking moment.
 
@@ -2392,6 +2393,16 @@ def _send_unmasking_message(
         return
 
     if cell == "D":
+        # Nothing is realized by somebody who already held the two
+        # looks as one person (#3811): the same entry named both before
+        # the change. They watched the mask go on and have called the
+        # masked figure by the face's name since, and "You realize that
+        # ... are the same person" told them so again every time it
+        # came off by a door with no line of its own (`undress`,
+        # `remove all`, an override dropped). Silent, like cell C:
+        # there is nothing to learn from the change.
+        if already_one:
+            return
         # Link discovered — the observer realises two tracked
         # presentations are the same person.  Surface each side's
         # assigned name when the observer has set one; either, both,
@@ -2537,6 +2548,9 @@ def _broadcast_unmasking(
         knew_old = old_uid in memory
         knew_new = new_uid in memory
         known_from = _name_source_for_look(observer, char, memory, old_uid)
+        already_one = (
+            known_from is not None
+            and known_from == resolve_assigned_name(memory, new_uid)[1])
         location_name = (
             observer.location.key
             if getattr(observer, "location", None) is not None
@@ -2623,7 +2637,8 @@ def _broadcast_unmasking(
                 memory[old_uid]["real_sleeve_uid"] = real_sleeve_uid
         observer.recognition_memory = memory
         _send_unmasking_message(
-            observer, char, "D", old_uid=old_uid, new_uid=new_uid
+            observer, char, "D", old_uid=old_uid, new_uid=new_uid,
+            already_one=already_one,
         )
 
     del source  # reserved for future debug/flavor routing
@@ -2824,9 +2839,12 @@ def _broadcast_unmask_with_action(
         # and we end the combined line with a single full stop.
         suffix = ""
         if cell in ("C", "D"):
-            new_name = (
-                (memory.get(new_uid) or {}).get("assigned_name") or ""
-            )
+            # The name the room will show them for the look that has
+            # arrived: its own, or the one it was watched to come from.
+            # Read off the entry by hand, a look known only through
+            # what was watched got no reveal, and the name turned up in
+            # the room on the next `look` with nothing said (#3811).
+            new_name = resolve_assigned_name(memory, new_uid)[0] or ""
             # Nothing is revealed to somebody who was already calling
             # them that (#3811). An eyewitness to the mask going on
             # keeps the name, so the mask coming off read "Tamsin

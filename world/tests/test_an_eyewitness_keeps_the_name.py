@@ -660,6 +660,38 @@ class TestWhoeverPutsTheMaskOn(_MaskCase):
                          f"Tamsin ({MASKED})")
 
 
+class TestAHoodComesOffTheMaskTheyKnow(_MaskCase):
+    """The viewer watched the mask go on. Later the same person walks
+    in with a hood over it, and the hooded figure is a stranger to
+    them. Then the hood comes off in front of them, and what is left is
+    the masked look they know."""
+
+    def setUp(self):
+        super().setUp()
+        self.dice(LOST)
+        self.they("wear ski mask")
+        self.them.move_to(self.room2, quiet=True, move_hooks=False)
+        hood = spawn("HOODIE_HOOD_UP")[0]
+        hood.move_to(self.them, quiet=True)
+        self.them.execute_cmd("wear hood")
+        self.them.move_to(self.room1, quiet=True, move_hooks=False)
+
+    def test_the_hooded_figure_is_a_stranger(self):
+        """The control on the setup."""
+        self.assertNotIn("Tamsin", self.roster())
+
+    def test_they_are_told_who_it_turns_out_to_be(self):
+        """The reveal read the arriving look's own name, which is
+        blank: nothing was said, and the name turned up in the room on
+        the next `look`."""
+        self.roster()
+        told = self.they("remove hood")
+        self.assertTrue(
+            told.endswith("revealing they are none other than Tamsin."),
+            told)
+        self.assertIn("Tamsin", self.roster())
+
+
 class TestForgettingIsForGood(_MaskCase):
     """The viewer watched the mask go on, then forgot the name. Naming
     the face again later is new knowledge about the face. It is not
@@ -806,6 +838,16 @@ class TestWatchingAChange(_MaskCase):
             yield composed, {uid: dict(entry) for uid, entry
                              in dict(self.viewer.recognition_memory).items()}
 
+    def told(self, memory, saw_through=False):
+        """What the plain broadcast says to the viewer. (The composed
+        one says the action's own line, which these cases do not
+        have.)"""
+        self.heard[self.viewer].clear()
+        for composed, _now in self.after(memory, saw_through):
+            if not composed:
+                return list(self.heard[self.viewer])
+            self.heard[self.viewer].clear()
+
     def known_as(self, memory, saw_through=False):
         """Who the viewer takes NEW for, by each broadcast."""
         return [resolve_assigned_name(now, self.NEW)[0]
@@ -816,6 +858,14 @@ class TestWatchingAChange(_MaskCase):
         self.assertEqual(
             self.known_as({self.OLD: self.entry("Tamsin")}),
             ["Tamsin", "Tamsin"])
+
+    def test_and_are_told_it_in_the_words_it_always_was(self):
+        """The control on the wording: this branch does not rewrite
+        the line the plain broadcast gives somebody who knew the look
+        that went."""
+        self.assertEqual(
+            self.told({self.OLD: self.entry("Tamsin")}),
+            ["gaunt man steps into view where Tamsin stood a moment ago."])
 
     def test_they_knew_it_through_what_they_had_watched(self):
         self.assertEqual(
@@ -833,10 +883,12 @@ class TestWatchingAChange(_MaskCase):
 
     def test_they_held_it_blank_and_knew_nothing(self):
         """The control: the same memory with no see-through."""
+        memory = {self.FACE: self.entry("Tamsin"),
+                  self.OLD: self.entry(linked_to=self.FACE)}
+        self.assertEqual(self.known_as(memory), [None, None])
         self.assertEqual(
-            self.known_as({self.FACE: self.entry("Tamsin"),
-                           self.OLD: self.entry(linked_to=self.FACE)}),
-            [None, None])
+            self.told(memory),
+            ["gaunt man steps into view where somebody stood a moment ago."])
 
     def test_the_new_entry_is_linked_as_it_always_was(self):
         for _composed, now in self.after({self.OLD: self.entry("Tamsin")}):
@@ -934,4 +986,33 @@ class TestWatchingAChange(_MaskCase):
             self.assertIsNone(now[self.NEW].get("witnessed_from"))
             self.assertEqual(resolve_assigned_name(now, self.NEW)[0],
                              "Tamsin")
+
+    def test_and_nothing_is_realized_by_somebody_who_knew_all_along(self):
+        """The mask comes off by a door with no line of its own
+        (`undress`, `remove all`, an override dropped). They watched it
+        go on and have called the masked figure Tamsin since."""
+        self.assertEqual(
+            self.told({self.NEW: self.entry("Tamsin"),
+                       self.OLD: self.entry(witnessed_from=self.NEW)}),
+            [])
+
+    def test_a_look_held_without_knowing_whose_is_a_realization(self):
+        """The control: they held the look that arrives and did not
+        know who it was. Watching somebody they have named turn into it
+        is finding out."""
+        told = self.told({self.OLD: self.entry("Tamsin"),
+                          self.NEW: self.entry()})
+        self.assertEqual(len(told), 1)
+        self.assertIn("You realize that", told[0])
+        self.assertIn("who you call Tamsin", told[0])
+
+    def test_two_people_turning_out_to_be_one_is_still_a_realization(self):
+        """The control: two looks held under two names, never
+        connected, and one becomes the other."""
+        told = self.told({self.OLD: self.entry("Ghost"),
+                          self.NEW: self.entry("Tamsin")})
+        self.assertEqual(len(told), 1)
+        self.assertIn("You realize that", told[0])
+        self.assertIn("who you call Ghost", told[0])
+        self.assertIn("who you call Tamsin", told[0])
 

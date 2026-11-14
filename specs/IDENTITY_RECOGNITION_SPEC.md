@@ -985,7 +985,7 @@ This is the bridge that keeps disguise legible after the fact. Without it, a sig
 
 > **Since #3811 an eyewitness's new look is NAMED for them.** The cells in the table above are unchanged: cell B still creates the entry with a blank `assigned_name` and `linked_to = old_uid`, and cell D still sets `linked_to` only when it is `None`. After the cell, one rule runs (`_keep_knowing`, §Who is this to me?): an observer who held a name for the old look and holds none for the new has the new look's `witnessed_from` set to the entry that name is on. `world.identity.resolve_assigned_name` follows `witnessed_from`, never `linked_to`, and `get_assigned_name` returns the name. Before, only `recall`, `memory` and an NPC's memories read the link, so an eyewitness was shown a stranger (or, on a won see-through roll, a name that could not be typed) while `recall` on the same figure said "Also known as". A name the observer gives the new look itself always wins. An arriving look that already leads to a name is left alone, so mask on, hood up, hood down in front of one observer keeps the mask leading to the face. Whoever is excluded from the composed line because the command gives them their own (`dress <somebody> in <a mask>` excludes the dresser) has their memory written all the same: they watched.
 >
-> The reveal suffix ("revealing they are none other than ...") is dropped for an observer who was already calling the actor by that name when the action began. An eyewitness to the mask going on would otherwise read "Tamsin removes a wool ski mask, revealing they are none other than Tamsin."
+> The reveal suffix ("revealing they are none other than ...") names the arriving look as the room will show it (`resolve_assigned_name`: its own name, or the one it was watched to come from), and is dropped for an observer who was already calling the actor by that name when the action began. An eyewitness to the mask going on would otherwise read "Tamsin removes a wool ski mask, revealing they are none other than Tamsin."
 
 **Chain semantics.**
 
@@ -1028,6 +1028,8 @@ This is the bridge that keeps disguise legible after the fact. Without it, a sig
 | B | `"{new_sdesc} steps into view where {old_sdesc} stood a moment ago."` |
 | C | silent — the observer already knew the new presentation; nothing to learn |
 | D | `"You realize that {old_sdesc}, who you call {old_name}, and {new_sdesc}, who you call {new_name}, are the same person."` |
+
+Cell D is silent, like cell C, for an observer who already held the two looks as one person: the same entry named both before the change (#3811). They watched the mask go on and have called the masked figure by the face's name since, and "You realize ..." told them so again each time it came off by a door with no line of its own (`undress`, `remove all`, an override dropped). Somebody who held the arriving look WITHOUT knowing whose it was still gets the line: for them it is finding out. Cell B's line is unchanged.
 
 Cell D falls back to the shorter `"You realize that {old_sdesc} and {new_sdesc} are the same person."` template if either `assigned_name` is blank (defensive — cell D by definition has both, but a future code path that drops one should still produce coherent prose). Cell B suppresses the message entirely if either sdesc is missing, rather than ship a malformed line.
 
