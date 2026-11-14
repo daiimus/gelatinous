@@ -196,7 +196,7 @@ class TestRecall(TestCase):
         b._relationship_line = lambda subject, patron: None
         b._drain_actions = lambda: []
         b._perceive = lambda p: None
-        b._recent_history = lambda p: []
+        b._recent_history = lambda p, subject=None: []
         b._agentic_round = MagicMock()
         b._llm_silent = lambda: None
         _bind(b, "_try_llm_reply")
@@ -255,10 +255,16 @@ class TestConversationHold(TestCase):
         b._relationship_line = lambda subject, patron: None
         b._drain_actions = lambda: []
         b._perceive = lambda p: None
-        b._recent_history = lambda p: []
+        b._recent_history = lambda p, subject=None: []
         b._agentic_round = MagicMock()
         b._llm_silent = lambda: None
         b._hist_key = lambda p: f"#{p.id}"
+        # The hold is filed under the SUBJECT (the look) and found through
+        # the looks the NPC has connected to it (#3820). This fake's subject
+        # is its id, and it has connected nothing.
+        b.recognition_memory = {}
+        _bind(b, "_memory_scope")
+        _bind(b, "_thread_keys")
         b._is_npc_speaker = lambda s: False
         for m in ("_try_llm_reply", "_classify_speech", "_is_engaged_with",
                   "_handle_action_tool"):
