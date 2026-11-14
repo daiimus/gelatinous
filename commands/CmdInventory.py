@@ -674,8 +674,9 @@ class CmdGet(Command):
             # A PERSON is not a container (#2456). This path was built
             # for corpses and packs -- the docstring's own example is
             # `get jeans from corpse` -- and a corpse is safe because
-            # `Corpse.get_worn_items` derives "worn" live from its
-            # contents. A living character keeps a stored registry
+            # what it wears is read live (its contents, narrowed by its
+            # worn record), so a garment that has left is no longer
+            # worn. A living character keeps a stored registry
             # instead, so the same code that is correct on a corpse
             # lifted worn and wielded gear straight off an awake,
             # unwilling person: no contest, no consent grant, no crime

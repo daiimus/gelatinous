@@ -3585,11 +3585,11 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         severed head flow through the same identity pipeline so the
         IdentityBearerMixin recognition path can match looker memory.
 
-        The sleeve UID is the face-side identity axis — the only one
-        that survives decapitation.  Body-side axes (height / build /
-        keyword overrides, worn essential items) stay with the corpse;
-        :meth:`get_worn_items` returns ``[]`` on a head so the
-        essential-items axis collapses to an empty tuple naturally.
+        The sleeve UID is the face-side identity axis.  Body-side axes
+        (height / build / keyword overrides) stay with the corpse.  A
+        mask is on the face: one worn on the head goes with it, and
+        :meth:`get_worn_items` reports it, so the head presents the
+        masked look until the mask is taken off (#3832).
         """
         return self.db.sleeve_uid
 
@@ -3621,17 +3621,33 @@ class SeveredHead(IdentityBearerMixin, Appendage):
         return self.db.medical_state_at_death
 
     def get_worn_items(self, location=None):
-        """The identity axis reads no live clothing off a head: ``[]``.
+        """The disguise items this head WEARS: what identity counts.
 
-        Compatibility shim for any code path that calls
-        :func:`world.identity.get_essential_item_type_ids` against a
-        severed head (the identity signature is the snapshotted one,
-        not a re-derived live signature). What the head WEARS lives in
-        ``db.worn_items`` and is read by :meth:`worn_garments` and the
-        renderer (#3578); this is not that ledger.
+        The head carries the face, and a mask over the face conceals it
+        here as it does on a living body or a corpse. So this is the
+        disguise part of :meth:`worn_garments`, the head's own record,
+        which the description and ``undress`` already read.
+
+        It used to answer ``[]`` (#3832), from when nothing could be
+        worn on a severed head. Since #3577 a mask worn at the cut goes
+        with the head, and ``dress <head> in <item>`` fits one on. The
+        description showed the mask and identity did not see it: a head
+        in a balaclava was named to everybody who knew the bare face.
+
+        Args:
+            location: Accepted for signature parity with
+                :meth:`typeclasses.clothing_mixin.ClothingMixin.get_worn_items`;
+                ignored.
+
+        Returns:
+            The disguise-essential items among what the head wears.
         """
         del location  # parity with ClothingMixin.get_worn_items signature
-        return []
+        return [
+            item
+            for item in self.worn_garments()
+            if getattr(item, "disguise_essential", False)
+        ]
 
     # ------------------------------------------------------------------
     # Sever-time configuration

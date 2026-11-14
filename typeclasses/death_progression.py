@@ -684,9 +684,10 @@ class DeathProgressionScript(DefaultScript):
 
         # Snapshot the wearer's identity-signature axes at the moment of
         # death so the corpse's Apparent UID matches the disguise the
-        # character died in.  Worn items move to ``corpse.contents`` via
-        # the normal drop/transfer hooks and are re-evaluated lazily by
-        # :meth:`Corpse.get_worn_items` whenever the signature is read.
+        # character died in.  Everything carried moves to
+        # ``corpse.contents``; which of it was WORN is recorded below
+        # (``worn_at_death``), and :meth:`Corpse.get_worn_items` reads
+        # that record whenever the signature is read (#3831).
         corpse.db.height_override = character.db.height_override
         corpse.db.build_override = character.db.build_override
         corpse.db.keyword_override = character.db.keyword_override
