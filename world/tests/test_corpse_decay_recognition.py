@@ -38,6 +38,7 @@ instance — no Evennia database is required.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -47,6 +48,19 @@ from world.identity import (
     get_apparent_uid_for_decay,
 )
 from world.tests.test_identity import _FakeDisguiseItem
+
+
+def _as_a_garment(item):
+    """Give a fake item the ``db.coverage`` every real garment has.
+
+    The stand-in corpse below answers what it wears with the
+    PRODUCTION methods (#3831), and `Corpse.worn_garments` counts only
+    things that declare coverage.
+    """
+    if getattr(item, "db", None) is None:
+        item.db = SimpleNamespace(
+            coverage=list(getattr(item, "coverage", None) or ["head"]))
+    return item
 
 
 # ---------------------------------------------------------------------
@@ -105,7 +119,7 @@ class _FakeDecayCorpse:
         self.db.head_severed = False
         self.db.severed_locations = []
         self.db.wounds_at_death = []
-        self.contents = list(contents or [])
+        self.contents = [_as_a_garment(i) for i in (contents or [])]
         self.ndb = type("_NDB", (), {})()
         self._stage = stage
         # PR-G: match the species-aware vocabulary produced by
@@ -122,13 +136,12 @@ class _FakeDecayCorpse:
     def sleeve_uid(self):
         return self.db.sleeve_uid
 
-    def get_worn_items(self, location=None):
-        del location
-        return [
-            item
-            for item in self.contents
-            if getattr(item, "disguise_essential", False)
-        ]
+    # What the corpse wears, for identity, is the production answer
+    # (#3831): the disguise part of `worn_garments()`. This stand-in
+    # keeps no worn record, so that is contents-wide, as it is for a
+    # corpse made before the record existed.
+    get_worn_items = Corpse.get_worn_items
+    worn_garments = Corpse.worn_garments
 
     def get_decay_stage(self):
         return self._stage

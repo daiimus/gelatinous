@@ -7,10 +7,10 @@ Verifies that:
    matches the deceased character's real sleeve UID — so
    :func:`world.identity.get_apparent_uid` flows through the same
    pipeline used for living characters.
-2. :meth:`typeclasses.corpse.Corpse.get_worn_items` returns only
-   disguise-essential items currently in ``corpse.contents``, mirroring
-   :meth:`typeclasses.clothing_mixin.ClothingMixin.get_worn_items` so
-   the identity signature recomputes naturally as loot is removed.
+2. :meth:`typeclasses.corpse.Corpse.get_worn_items` returns the
+   disguise-essential items the corpse WEARS (#3831): the disguise
+   part of ``worn_garments()``, so the identity signature recomputes
+   as a worn mask is taken off and ignores one merely carried.
 3. The death-time snapshot writes ``apparent_uid_at_death`` and the
    identity override axes, matching what ``get_apparent_uid`` would
    compute for the living character at the moment of death.
@@ -19,7 +19,7 @@ Verifies that:
    a balaclava off the corpse breaks the recognition silently).
 5. :meth:`Corpse.at_object_leave` clears the stale
    ``apparent_uid_at_death`` snapshot when a disguise-essential item
-   is removed.
+   the corpse was wearing is removed.
 
 Run via::
 
@@ -31,11 +31,26 @@ database is required.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest import TestCase
 
+from typeclasses.corpse import Corpse
 from world.identity import get_apparent_uid
 
 from world.tests.test_identity import _FakeDisguiseItem
+
+
+def _as_a_garment(item):
+    """Give a fake item the ``db.coverage`` every real garment has.
+
+    The stand-in corpse below answers what it wears with the
+    PRODUCTION methods (#3831), and `Corpse.worn_garments` counts only
+    things that declare coverage.
+    """
+    if getattr(item, "db", None) is None:
+        item.db = SimpleNamespace(
+            coverage=list(getattr(item, "coverage", None) or ["head"]))
+    return item
 
 
 # ---------------------------------------------------------------------
@@ -46,11 +61,13 @@ from world.tests.test_identity import _FakeDisguiseItem
 class _FakeCorpse:
     """Duck-typed stand-in for :class:`typeclasses.corpse.Corpse`.
 
-    Re-implements just the surface that PR 2 adds — the ``sleeve_uid``
-    property, the ``get_worn_items`` view over ``contents``, the
-    recognition-aware ``get_display_name``, and the
-    ``at_object_leave`` snapshot invalidation — so the tests can run
-    without spinning up Evennia's typeclass machinery.
+    Re-implements the ``sleeve_uid`` property, a recognition-aware
+    ``get_display_name`` and the ``at_object_leave`` snapshot
+    invalidation, so the tests can run without spinning up Evennia's
+    typeclass machinery. What the corpse WEARS is not re-implemented:
+    ``get_worn_items`` and ``worn_garments`` are the production
+    methods (#3831). The real leave hook, on a real corpse, is in
+    ``test_identity_is_in_the_face``.
     """
 
     def __init__(
@@ -72,7 +89,7 @@ class _FakeCorpse:
         self.db.build_override = build_override
         self.db.keyword_override = keyword_override
         self.db.apparent_uid_at_death = apparent_uid_at_death
-        self.contents = list(contents or [])
+        self.contents = [_as_a_garment(i) for i in (contents or [])]
         self.key = "fresh corpse"
         self._decay_name = "fresh corpse"
         self.ndb = type("_NDB", (), {})()
@@ -83,13 +100,8 @@ class _FakeCorpse:
     def sleeve_uid(self):
         return self.db.sleeve_uid
 
-    def get_worn_items(self, location=None):
-        del location
-        return [
-            item
-            for item in self.contents
-            if getattr(item, "disguise_essential", False)
-        ]
+    get_worn_items = Corpse.get_worn_items
+    worn_garments = Corpse.worn_garments
 
     def _decay_display_name(self):
         return self._decay_name
@@ -108,7 +120,8 @@ class _FakeCorpse:
         return decay
 
     def at_object_leave(self, moved_obj, target_location, **kwargs):
-        if getattr(moved_obj, "disguise_essential", False):
+        if (getattr(moved_obj, "disguise_essential", False)
+                and moved_obj in self.get_worn_items()):
             if self.db.apparent_uid_at_death is not None:
                 self.db.apparent_uid_at_death = None
 
@@ -142,7 +155,7 @@ class TestCorpseSleeveUidProperty(TestCase):
 
 
 class TestCorpseWornItemsView(TestCase):
-    """``get_worn_items`` returns only disguise-essential contents."""
+    """``get_worn_items`` returns only the disguise items it wears."""
 
     def test_no_contents_returns_empty(self):
         corpse = _FakeCorpse(contents=[])
@@ -267,12 +280,32 @@ class TestCorpseAtObjectLeave(TestCase):
         )
 
     def test_essential_leave_clears_snapshot(self):
-        corpse = _FakeCorpse(
-            sleeve_uid="uid-jorge",
-            apparent_uid_at_death="deadbeef00112233",
-        )
         balaclava = _FakeDisguiseItem(
             disguise_essential=True, disguise_type_id="balaclava",
         )
+        corpse = _FakeCorpse(
+            sleeve_uid="uid-jorge",
+            apparent_uid_at_death="deadbeef00112233",
+            contents=[balaclava],
+        )
         corpse.at_object_leave(balaclava, None)
         self.assertIsNone(corpse.db.apparent_uid_at_death)
+
+    def test_a_mask_that_was_only_carried_leaves_the_snapshot(self):
+        """#3831: a worn record that does not list it means it was in
+        a pocket, and taking it changes nothing about the look."""
+        balaclava = _FakeDisguiseItem(
+            disguise_essential=True, disguise_type_id="balaclava",
+        )
+        corpse = _FakeCorpse(
+            sleeve_uid="uid-jorge",
+            apparent_uid_at_death="deadbeef00112233",
+            contents=[balaclava],
+        )
+        balaclava.id = 41           # a worn record is a list of ids
+        corpse.db.worn_at_death = []
+        self.assertEqual(corpse.get_worn_items(), [])
+        corpse.at_object_leave(balaclava, None)
+        self.assertEqual(
+            corpse.db.apparent_uid_at_death, "deadbeef00112233",
+        )
