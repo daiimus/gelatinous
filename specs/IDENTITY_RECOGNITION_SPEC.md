@@ -88,6 +88,14 @@ When a body is transformed — death, decapitation, limb severance, organ harves
 
 **Why this is the only rule needed.** A corpse with an intact head is just the live-body case continuing post-death: face still visible, recognition still fires until decay obscures it. A corpse with a severed head is the default case (forensic-only) with the head as a separate carrier of face-side identity. No other transformation in the system propagates a face — limbs don't have one, organs don't have one, blood doesn't have one, a prosthetic arm doesn't have one. So no other surface needs face-side propagation.
 
+**What a body wears, for identity.** A mask conceals a body only while it is over the face. For a living body, a corpse and a severed head alike, the disguise items identity counts are the ones the body is *shown* wearing: the record the description, `undress` and the sever travel rule read (`worn_garments()`). The identity signature asks through `get_worn_items()` and keeps the disguise-essential items. On a living body that method returns everything worn and the signature does the narrowing (`get_essential_item_type_ids`); on a corpse and a severed head it returns the disguise-essential part of `worn_garments()`. Either way the signature counts the disguise items the body is shown wearing, and no others.
+
+- **A mask in a corpse's pocket conceals nothing** (#3831). The death transfer moves the whole inventory into the corpse; only what was worn, or has been put on since with `dress`, is worn. Taking a carried mask out leaves the death-time snapshot alone; taking a worn one off clears it.
+- **A mask on a severed head conceals it** (#3832). One worn at the cut goes with the head, and `dress <head> in <item>` fits one on. The head presents the masked look until the mask is taken off.
+- **A body without its head is recognised by nobody at a glance**, in its header and in any description text that names the dead. `Corpse.recognised_as` is the one gate for both; the `{name}` token of a preserved description reads "the corpse" (#3834).
+- 📋 UNBUILT: a beheaded body is still a character for the death window and is named like any living person (#3835).
+- 📋 UNDECIDED: whether somebody who watches remains being dressed or stripped keeps the name, as a witness to a living change does (#3833).
+
 **When the rule will need a second exception.** A future "face-overlay" cyberware item — a synthetic mask that lets the wearer adopt someone else's apparent identity — would carry face-side identity *the wearer presents*, not the wearer's own. That's a second exception: a face that isn't tied to a sleeve, just worn. Mechanically it slots into the same overlay machinery `apply_severed_head_overlay` uses; design-wise it's a separate conversation about how it interacts with disguise, consent, and the identity-signature pipeline. Until it exists, the head stays the only exception.
 
 **Practical consequence for new surfaces.** Adding a body-derived surface means stamping `apparent_uid_at_death` and `source_signature` at the transformation event. No identity-pipeline change, no recognition-system change, no `_resolve_target` change. If the new surface should *also* participate in surgical / identity-pipeline target resolution (the way `Corpse` does and the way `Appendage` deliberately doesn't — see §Room-scoped item fallbacks → Detached-parts filter), that's a separate flag question, but it isn't an identity question.
@@ -1667,7 +1675,7 @@ Blood pools currently store the character's name. With recognition:
 Corpses already preserve forensic data (original name, dbref, physical description, longdesc, skintone, gender). With recognition:
 - `sleeve_uid` is propagated to the corpse — **shipped** (PR #133).
 - Looking at a corpse: investigator sees recognized name or sdesc based on their memory — **shipped**. The corpse's `get_display_name` routes through the observer's recognition memory keyed on the corpse's apparent UID (derived from `sleeve_uid` plus whatever the corpse is still wearing).
-- Worn-item changes on the corpse re-derive the apparent presentation — **shipped** via `at_object_leave` invalidation, so stripping a body changes its signature exactly like stripping a live character.
+- Worn-item changes on the corpse re-derive the apparent presentation — **shipped** via `at_object_leave` invalidation, so stripping a body changes its signature exactly like stripping a live character. Worn, not carried: a mask in a pocket is not part of the presentation (#3831).
 - Corpse decay interacts with recognition via the **decay-aware recognition** policy below — **shipped** (PR B).
 - **Pure `look`** (issue #230) — **shipped**. ``Corpse.return_appearance`` is a pure read; it does not write ``db.desc``, ``key``, or aliases. All decay-stage aliases (``corpse``, ``remains``, ``body``, ``human corpse``, ``rotting corpse``, ``skeletal remains``) are pre-seeded at creation by ``_seed_decay_aliases_and_key`` so search/targeting works from t=0 regardless of which stage is current. The corpse's ``key`` is refreshed on stage transitions by ``_refresh_decay_key_if_changed``, invoked from ``Room._check_corpse_decay`` on character entry (a lifecycle event). The staged decay paragraph is computed on the fly by ``_build_decay_desc_paragraph`` and inlined into the look output without persisting. The death-time ``db.desc`` snapshot set in ``death_progression.py`` survives untouched.
 - **Species-aware decay prose** (issue #232) — **shipped**. ``_build_decay_desc_paragraph`` delegates to ``world.anatomy.species.get_species_corpse_description(species, decay_stage, base_desc)`` rather than hardcoding "human", so a non-human corpse's body prose reads correctly at every stage (e.g. "Decomposing synth remains."). The death-time physical description is embedded into the fresh / early tiers; moderate onward describe the decay state generically as the original features deteriorate. Following the unknown-species token-drop convention (issue #215), an unregistered / ``None`` species drops the species word entirely ("A recently deceased body.") rather than misclaiming itself as human. The helper is pure, preserving the #230 pure-look contract.
@@ -2118,17 +2126,20 @@ identity surface is **duplicated**, not transferred:
    `world.identity.get_identity_signature`'s 5-tuple
    `(sleeve_uid, height_override, build_override, keyword_override,
    essential_item_type_ids)`. The head's `get_worn_items()` returns
-   `[]`, so the essentials axis collapses naturally and the head
-   reduces to the face-side signature.
+   the disguise items the head is wearing, from its own worn record:
+   a bare head reduces to the face-side signature, and a head in a
+   mask presents the masked look until the mask comes off (#3832).
 2. **Corpse retains its snapshot** — `signature_at_death`,
    `apparent_uid_at_death`, `sleeve_uid`, `medical_state_at_death`
    are untouched. Autopsy/harvest/forensic-recovery paths still
    resolve the source identity.
-3. **Corpse look-time recognition is gated** — the overlay sets
-   `corpse.db.head_severed = True`. `Corpse.get_display_name`
-   short-circuits to the decay-tier name (e.g. `"a rotting corpse"`)
-   when this flag is true, suppressing unaided recognition while
-   leaving the forensic surface intact. Autopsy bypasses
+3. **Corpse look-time recognition is gated** — a corpse that has
+   lost its head (read from its severance record, not a stored flag)
+   is recognised by nobody: `Corpse.recognised_as` answers `None`, so
+   `get_display_name` gives the decay-tier name (e.g. `"a rotting
+   corpse"`) and the `{name}` token of a preserved description gives
+   "the corpse" (#3834). Unaided recognition is suppressed while the
+   forensic surface stays intact. Autopsy bypasses
    live-derivation entirely (it reads `medical_state_at_death`), so
    forensic identification continues to work on headless corpses.
 

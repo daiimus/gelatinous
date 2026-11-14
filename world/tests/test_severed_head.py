@@ -23,6 +23,7 @@ Run via::
 from __future__ import annotations
 
 import time
+from types import SimpleNamespace
 from unittest import TestCase
 
 from typeclasses.items import SeveredHead, apply_severed_head_overlay
@@ -201,12 +202,21 @@ class SeveredHeadDecayContractTests(TestCase):
         head.db.creation_time = time.time() - (604800 + 10)
         self.assertEqual(SeveredHead._decay_display_name(head), "skeletal head")
 
-    def test_get_worn_items_is_empty(self):
+    def test_get_worn_items_is_the_disguise_part_of_what_it_wears(self):
+        """#3832: this used to be ``[]`` whatever the head wore, from
+        when nothing could be worn on one. Real heads, real masks and
+        the doors that put them on are in
+        ``test_identity_is_in_the_face``."""
+        mask = SimpleNamespace(disguise_essential=True)
+        hat = SimpleNamespace(disguise_essential=False)
         head = _FakeHead()
-        self.assertEqual(SeveredHead.get_worn_items(head), [])
+        head.worn_garments = lambda: [hat, mask]
+        self.assertEqual(SeveredHead.get_worn_items(head), [mask])
         self.assertEqual(
-            SeveredHead.get_worn_items(head, location="head"), []
+            SeveredHead.get_worn_items(head, location="head"), [mask]
         )
+        head.worn_garments = lambda: []
+        self.assertEqual(SeveredHead.get_worn_items(head), [])
 
 
 # ---------------------------------------------------------------------

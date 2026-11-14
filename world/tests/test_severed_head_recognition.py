@@ -92,9 +92,13 @@ class _FakeSeveredHead:
             "skeletal": "skeletal head",
         }
 
-    def get_worn_items(self, location=None):
-        del location
-        # SeveredHead always returns [] (heads carry no clothing).
+    # What a head wears, for identity, is the production answer
+    # (#3832): the disguise part of `worn_garments()`. This stand-in
+    # is a bare head; masked heads are in
+    # ``test_identity_is_in_the_face``.
+    get_worn_items = SeveredHead.get_worn_items
+
+    def worn_garments(self):
         return []
 
     def get_decay_stage(self):

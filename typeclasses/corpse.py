@@ -227,11 +227,11 @@ class Corpse(IdentityBearerMixin, Item):
         PR #208: a headless corpse loses the face — the dominant
         unaided-recognition cue.  When the corpse is headless (see
         :meth:`_is_headless`, which derives from the corpse's actual
-        severance record rather than a stored flag) we short-circuit to
-        the bare decay-stage name,
-        suppressing both natural recognition (Pass 1 in the mixin —
-        live degraded-UID lookup) and the forensic-recovery Intellect
-        roll (Pass 2).  Investigators must use the explicit
+        severance record rather than a stored flag)
+        :meth:`recognised_as` answers nobody, so this is the bare
+        decay-stage name: both natural recognition (Pass 1 in the
+        mixin — live degraded-UID lookup) and the forensic-recovery
+        Intellect roll (Pass 2) are suppressed.  Investigators must use the explicit
         :class:`commands.forensics.CmdAutopsy` flow, which reads
         :attr:`db.signature_at_death` directly via
         :func:`world.forensics.extract_subject_from_corpse` and so
@@ -249,9 +249,25 @@ class Corpse(IdentityBearerMixin, Item):
         :class:`world.tests.test_corpse_decay_recognition._FakeDecayCorpse`)
         still resolve the recognition pipeline correctly.
         """
-        if self._is_headless():
-            return self._decay_display_name()
         return IdentityBearerMixin.get_display_name(self, looker, **kwargs)
+
+    def recognised_as(self, looker):
+        """Nobody knows a body without its head at a glance (PR #208).
+
+        The one place that says so, for the header AND for any text
+        that names the dead inside a sentence. The header used to make
+        this check itself, in :meth:`get_display_name`; the ``{name}``
+        token of a preserved description, which reads this method
+        (#3821), did not, so a headless corpse was "human corpse" in
+        its header and "Jorge has a scar" one line down (#3834).
+
+        Called on the mixin by name for the reason
+        :meth:`get_display_name` gives: stand-ins in the tests bind
+        these methods onto classes that are not the mixin.
+        """
+        if self._is_headless():
+            return None
+        return IdentityBearerMixin.recognised_as(self, looker)
 
     # ------------------------------------------------------------------
     # Disguise / identity signature surface
@@ -270,32 +286,41 @@ class Corpse(IdentityBearerMixin, Item):
         return self.db.sleeve_uid
 
     def get_worn_items(self, location=None):
-        """Return disguise-essential items still on the corpse.
+        """The disguise items this corpse WEARS: what identity counts.
 
-        Corpses do not maintain a separate ``worn_items`` map — when a
-        character dies, their kit drops into ``corpse.contents`` (and is
-        treated as "still worn" for coverage purposes by
-        :meth:`_build_corpse_clothing_coverage_map`).  Mirroring
-        :meth:`typeclasses.clothing_mixin.ClothingMixin.get_worn_items`
-        here lets :func:`world.identity.get_essential_item_type_ids`
-        recompute the signature naturally as items are looted.
+        Identity is in the face (spec: "Identity Across Surfaces"), and
+        a mask conceals a body only while it is over that face. So this
+        is the disguise part of :meth:`worn_garments` -- what the corpse
+        wore when it died and what has been put on it since with
+        ``dress``, less whatever has been taken off. The description,
+        ``undress`` and the rule that sends garments along with a
+        severed part all ask that same question.
 
-        Only items flagged ``disguise_essential`` are returned — that is
-        all the signature pipeline consumes, and it avoids accidentally
-        treating loose loot in the corpse's inventory as worn clothing.
+        It used to be every disguise-essential item anywhere in
+        ``self.contents`` (#3831). The death transfer moves the whole
+        inventory in, so a mask carried in a pocket counted as worn:
+        somebody who died bare-faced left a body that presented the
+        masked look, while its description showed the face and
+        ``undress`` found nothing on it. The worn record that settles
+        "worn or only carried" arrived for the description (#3048,
+        #3108) and identity was never moved onto it.
+
+        A corpse made before that record existed has none, and
+        :meth:`worn_garments` then answers contents-wide, for the
+        description and for identity alike.
 
         Args:
-            location: Accepted for signature parity with the mixin;
-                ignored because corpses have no per-location worn map.
+            location: Accepted for signature parity with
+                :meth:`typeclasses.clothing_mixin.ClothingMixin.get_worn_items`;
+                ignored, a corpse has no per-location worn map.
 
         Returns:
-            List of disguise-essential items currently in
-            ``self.contents``.
+            The disguise-essential items among what the corpse wears.
         """
         del location  # parity with ClothingMixin.get_worn_items signature
         return [
             item
-            for item in self.contents
+            for item in self.worn_garments()
             if getattr(item, "disguise_essential", False)
         ]
 
@@ -967,16 +992,19 @@ class Corpse(IdentityBearerMixin, Item):
         super().at_object_leave(moved_obj, target_location, **kwargs)
         # Clear any cached appearance data since contents changed
 
-        # If a disguise-essential item was looted, the corpse's
-        # signature has shifted: the previously-snapshot
+        # If a disguise-essential item the corpse was WEARING is taken,
+        # the corpse's signature has shifted: the previously-snapshot
         # ``apparent_uid_at_death`` is now stale and observers who only
         # remember the disguised UID should silently stop recognising
-        # the corpse.  We do *not* recompute and store a new UID here:
+        # the corpse. A mask lifted out of a pocket shifts nothing and
+        # leaves the snapshot alone (#3831). This hook runs before the
+        # item has left, so the corpse can still say whether it wore it.  We do *not* recompute and store a new UID here:
         # :func:`world.identity.get_apparent_uid` re-derives lazily from
         # the live ``get_worn_items()`` view on every display, so a
         # stored value would only drift.  Clearing the snapshot is
         # enough to signal "the death-time presentation is gone".
-        if getattr(moved_obj, "disguise_essential", False):
+        if (getattr(moved_obj, "disguise_essential", False)
+                and moved_obj in self.get_worn_items()):
             if self.db.apparent_uid_at_death is not None:
                 self.db.apparent_uid_at_death = None
     
