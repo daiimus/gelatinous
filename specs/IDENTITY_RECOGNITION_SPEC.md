@@ -1094,8 +1094,12 @@ Observers or targets without a `dbref` are not cached and re-roll on every call 
 **`forget` invalidation (PR #211, issue #210).** When an observer
 runs `forget <target>`, every cache entry on
 `observer.db.disguise_pierce_cache` whose target shares the
-forgotten entry's `real_sleeve_uid` is dropped — across **all**
-apparent UIDs for that sleeve, not just the current presentation.
+forgotten entry's `real_sleeve_uid` **and whose verdict was a
+success** is dropped — across **all** apparent UIDs for that sleeve,
+not just the current presentation. A lost verdict is never dropped
+(#3817): it is the one "cached permanently", and dropping it let a
+player roll again at will by naming the masked figure and forgetting
+that name.
 Rationale: `forget` declares "I no longer claim to know this
 person"; a stale `True` verdict from a prior pierce would otherwise
 short-circuit future `look`s and silently restore the recognition
