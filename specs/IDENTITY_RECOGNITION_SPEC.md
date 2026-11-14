@@ -28,7 +28,7 @@ The decisions this system rests on, in the owner's words, newest last. Each row 
 | 2026-11-14 | "I don't think that's a feature we need at this time." | Staff reaching somebody by real name are shown no notice that the privilege was used. | #3818 | Target Resolution, "Who is staff, and what they are told" |
 | 2026-11-14 | "A body without a head is hard to identify. A head on its own is easy to identify but can also still be concealed by a mask." | Identity is in the face. A mask conceals wherever the face is: a living body, a corpse with its head, a severed head. A body without its head is recognised by nobody at a glance. Identity counts what a body is shown wearing. | #3831, #3832, #3834 | Identity Across Surfaces, "What a body wears, for identity" |
 | 2026-11-14 | "I mean...is someone really dying if there head is missing? They should be a corpse." | A beheading is a death, not a dying. The body becomes a corpse at once: no death window, no revival. A destroyed brain, the other case #330 lists, is not decided. | #3835, #330 | Identity Across Surfaces, "What a body wears, for identity" |
-| 2026-11-14 | "If the game still uses it - it doesn't seem like they've been actually forgotten. What if someones memory is blanked out by a machine or a bioroid hacked." | `forget` is a real erase of a look from one observer: the entry, every pointer and link to it, the voice entry that carries its name, and see-throughs won through it. Only what the observer connected, nothing because the game knows two things are one body. The one thing kept is the record of a failed see-through roll, which is not memory but the rule that a lost roll cannot be bought again. A later memory-wipe mechanic calls the same function. 📋 UNBUILT. | #3825 | Recognition System, the `forget` command |
+| 2026-11-14 | "If the game still uses it - it doesn't seem like they've been actually forgotten. What if someones memory is blanked out by a machine or a bioroid hacked." | `forget` is a real erase of a look from one observer: the entry, every pointer and link to it, the voice entry that carries its name, and see-throughs won through it. Only what the observer connected, nothing because the game knows two things are one body. The one thing kept is the record of a failed see-through roll, which is not memory but the rule that a lost roll cannot be bought again. A later memory-wipe mechanic calls the same function. | #3825 | Recognition System, the `forget` command |
 
 **Not ruled yet:** whether somebody who watches remains being dressed or stripped keeps the name (#3833); whether naming somebody in person may overwrite a name already given to that voice; whether a forced memory wipe earns a fresh see-through roll.
 
@@ -502,17 +502,21 @@ You now know Jorge (previously 'Jorge') as Johnny Twoshoes.
 forget <target>
 ```
 
-Clears the assigned name on a recognition entry. The entry itself is preserved (sdesc snapshots, locations, `times_seen`, etc.) so future `remember` calls extend the existing history rather than starting fresh. Targets resolve against currently-visible characters first, then against previously-remembered names — you can `forget` someone who isn't present.
+Erases a look from the caller's memory (#3825, owner ruling 2026-11-14: "If the game still uses it - it doesn't seem like they've been actually forgotten"). Targets resolve against currently-visible characters first, then against previously-remembered names: you can `forget` someone who isn't present. One function does it for both, `world.identity.erase_look(observer, uid)`, and a memory-wipe mechanic is to call the same function.
 
-> 📋 UNBUILT (#3825, owner ruling 2026-11-14): `forget` becomes a real erase. The entry is removed, not blanked: the name, `times_seen`, the first and last seen fields and `real_sleeve_uid` go with it, as do every `witnessed_from` and `linked_to` that points at it, the voice entry that carries the same name, and see-throughs won through it. Nothing is cleared because another entry shares the true body. The record of a failed see-through roll stays (#3817). The paragraphs on either side of this note describe what runs until that is built: the entry is preserved, so naming a forgotten look again brings back its links and carries on its seen-count, and forgetting by name also clears every named voice of the same true body.
+What goes:
 
-`forget` additionally drops the caller's WON `disguise_pierce_cache`
-entries for the target's sleeve (PR #211 / issue #210).  Without
-this, a future encounter under a disguise the caller had seen through
-would short-circuit on the stale cached success and name somebody they
-had just disowned.  A LOST entry is kept (#3817): the verdict is for
-good, and forgetting a name is not a way to roll again.  See §Disguise
-Piercing → Caching.
+- **the entry itself**: the name, `times_seen`, the first and last seen fields, and `real_sleeve_uid`;
+- **every pointer to it**: `witnessed_from` and `linked_to` on other entries. A look the caller watched come from it no longer answers to its name, and two names that were joined only through it stand alone again;
+- **the unnamed entries known only through it**: an entry with no name of its own that was joined to this one, once nothing it is still joined to has a name. One that another name still reaches stays;
+- **the voice entries that carry the same name**. A voice is given a name in one place only, `remember <somebody in front of you>`, so the same name on a voice is the caller's own connection (`world.voice.erase_voices_named`);
+- **the see-throughs won by way of it**: a won `disguise_pierce_cache` verdict whose named candidate is the entry being forgotten. One that stands on another name the caller holds for the same body stays. The voice side mirrors this.
+
+What stays: a LOST see-through (#3817: the verdict is for good, and forgetting a name is not a way to roll again), and everything the caller never connected to this name. Nothing is cleared because the game knows two things are one body.
+
+After `forget`, meeting that person again is a clean start: naming them makes a new entry with `times_seen` 1 and no links. Entries blanked by `forget` before this change are still in live memories; they are not migrated, and are not swept up when some other name is forgotten.
+
+It replaced a `forget` that blanked `assigned_name` and kept the entry, so that naming the look again brought back its links and carried on its seen-count, and that cleared every named voice and every won verdict of the same true body whatever the caller had called them.
 
 **`recall` command:**
 
@@ -1018,7 +1022,7 @@ This is the bridge that keeps disguise legible after the fact. Without it, a sig
 - `linked_to` forms a **one-directional chain** new → old. Walking the chain (`world/identity.py:walk_linked_chain`) terminates on `None`, on a cycle (logged and broken), or on `_LINKED_CHAIN_MAX_HOPS = 64` (defensive guard).
 - `get_linked_aliases(memory, current_uid)` returns the list of non-empty `assigned_name`s from every *other* entry in `current_uid`'s linked family. The renderer uses this to emit `Also known as: |w<name1>|n, |w<name2>|n` in `recall` and an indented `aka: <name1>, <name2>` row per listed entry in the `memory` report panel.
 - ~~The chain is *not* bidirectional — viewing an old entry does not currently surface the new presentation's name. Forward-only walk was chosen for simplicity and is sufficient for the "Also known as" UX. If a future need arises (e.g. "this name was later replaced by..."), the inverse walk can be added without schema change.~~ **Superseded — see the note below.** The reasoning here was right at the time, and the *storage* shape it defends is unchanged; only the walk is now two-way.
-- **Forget interaction:** Forgetting the *old* entry leaves the new entry's `linked_to` pointing at a missing UID; the walk silently drops it (`linked_family` follows a pointer only when the target UID is still present in `memory`, and returns `[uid]` unchanged when the start UID is itself absent). No dangling-reference error.
+- **Forget interaction:** `forget` erases the entry and clears every `linked_to` and `witnessed_from` that pointed at it (#3825), so two names joined only through the forgotten look are no longer one family. The walk also tolerates a pointer at a missing UID from memories written earlier (`linked_family` follows a pointer only when the target UID is still present in `memory`, and returns `[uid]` unchanged when the start UID is itself absent). No dangling-reference error.
 
 > **⚠️ Superseded 2026-09-11 — the alias walk is bidirectional (#2410, #2651).**
 > The *stored* `linked_to` pointer is still one-directional, new → old, exactly
@@ -1117,27 +1121,25 @@ Observers or targets without a `dbref` are not cached and re-roll on every call 
 
 **dbref recycling.** Cache entries for deleted targets are dead weight but cannot misfire: Evennia/Django primary keys are monotonically allocated and never reused, so a freshly-created object will never collide with a stale entry. No prune-on-delete hook is wired; entries accumulate at the rate the observer encounters distinct presentations, bounded in practice by their social surface. If pruning becomes warranted (very long-lived observers + churn-heavy NPC populations), the right place to add it is an `at_object_delete` broadcast on the target side mirroring the unmasking-moment pipeline.
 
-**`forget` invalidation (PR #211, issue #210).** When an observer
-runs `forget <target>`, every cache entry on
-`observer.db.disguise_pierce_cache` whose target shares the
-forgotten entry's `real_sleeve_uid` **and whose verdict was a
-success** is dropped — across **all** apparent UIDs for that sleeve,
-not just the current presentation. A lost verdict is never dropped
-(#3817): it is the one "cached permanently", and dropping it let a
-player roll again at will by naming the masked figure and forgetting
-that name.
-Rationale: `forget` declares "I no longer claim to know this
-person"; a stale `True` verdict from a prior pierce would otherwise
-short-circuit future `look`s and silently restore the recognition
-the player just disowned.  The clear is scoped to the caller; other
-observers' caches are untouched (their verdicts are their own).
-Implementation: `commands.CmdCharacter.CmdForget._forget_visible`
-reads the entry's stored `real_sleeve_uid` (falling back to the
-target's live `sleeve_uid` for pre-schema entries) and calls
-`world.identity.invalidate_pierce_cache_for_sleeve(observer,
-sleeve_uid)` before clearing the entry's `assigned_name`.  Keying
-on `sleeve_uid` rather than dbref ensures the clear covers
-backfilled presentations of the same body.
+**`forget` and stored verdicts (issue #210, #3817, #3825).** When an observer
+runs `forget`, the won verdicts that stand on the name being forgotten
+are dropped: a `True` entry on `observer.db.disguise_pierce_cache`
+whose named candidate (`_see_through_candidate`) is the entry being
+erased. A stale `True` would otherwise short-circuit future `look`s and
+restore the recognition the player just disowned. A won verdict that
+stands on ANOTHER name the observer holds for the same body is kept:
+forgetting one name is not forgetting the other. A lost verdict is
+never dropped (#3817): it is the one "cached permanently", and
+dropping it let a player roll again at will by naming the masked
+figure and forgetting that name.
+
+It used to be sleeve-wide: every won verdict for the forgotten entry's
+true body went, across all its looks. The owner ruled that nothing is
+cleared because the game knows two things are one body (#3825). The
+true body is still read, in `world.identity._won_verdicts_standing_on`,
+to work out which of the observer's own connections a verdict is.
+The clear is scoped to the caller; other observers' caches are
+untouched.
 
 **Tunables.** Recognition/disguise balance constants, all defined in `world/identity.py`:
 

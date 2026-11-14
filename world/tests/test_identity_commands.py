@@ -623,7 +623,8 @@ class TestForgetCommand(TestCase):
     """Test the forget command."""
 
     def test_forget_visible_target_clears_name(self):
-        """forget <visible target> blanks assigned_name, preserves entry."""
+        """forget <visible target> erases the entry (#3825). It used to
+        blank the name and keep the history."""
         from commands.CmdCharacter import CmdForget
 
         target = _make_character(
@@ -644,14 +645,8 @@ class TestForgetCommand(TestCase):
         cmd.caller = caller
         cmd._forget_visible(caller, target, target_uid)
 
-        memory = caller.recognition_memory
-        self.assertIn(target_uid, memory)
-        self.assertEqual(memory[target_uid]["assigned_name"], "")
-        # History preserved
-        self.assertEqual(memory[target_uid]["times_seen"], 2)
-        self.assertEqual(
-            memory[target_uid]["sdesc_at_first_encounter"], "a gaunt man"
-        )
+        self.assertNotIn(target_uid, caller.recognition_memory)
+        self.assertIn("forget the name 'Big J'", caller.msg.call_args[0][0])
 
     def test_forget_remembered_name_when_target_absent(self):
         """forget <remembered name> works without target object."""
@@ -679,9 +674,8 @@ class TestForgetCommand(TestCase):
         cmd.caller = caller
         cmd._forget_remembered(caller, sleeve_uid, entry)
 
-        memory = caller.recognition_memory
-        self.assertEqual(memory[target_uid]["assigned_name"], "")
-        # Output message references snapshot data
+        self.assertNotIn(target_uid, caller.recognition_memory)
+        # Output message references snapshot data, read before the erase
         msg_text = caller.msg.call_args[0][0]
         self.assertIn("Big J", msg_text)
         self.assertIn("Back Alley", msg_text)
@@ -743,307 +737,15 @@ def _seed_memory_with_sleeve(
     return memory
 
 
-class TestForgetInvalidatesPierceCache(TestCase):
-    """``forget`` drops cached pierce verdicts for the target's sleeve.
-
-    Regression coverage for issue #210: a cached ``True`` in
-    ``observer.db.disguise_pierce_cache`` survived ``forget`` and
-    ``attempt_disguise_pierce`` short-circuited on it, leaving
-    forgotten targets perpetually recognized through any disguise.
-
-    Scope: sleeve-wide.  Every cached ``apparent_uid`` belonging to
-    the forgotten target's sleeve drops, not just the current
-    presentation.
-    """
-
-    def _make_caller_with_cache(self, *, memory, cache):
-        caller = _make_character(
-            key="Observer",
-            sleeve_uid="uid-observer",
-            recognition_memory=memory,
-        )
-        caller.db.disguise_pierce_cache = cache
-        return caller
-
-    def test_forget_visible_drops_pierce_cache_for_target_sleeve(self):
-        """All cached presentations for the forgotten sleeve are removed."""
-        from commands.CmdCharacter import CmdForget
-
-        target = _make_character(
-            key="Jorge",
-            sleeve_uid="sleeve-jorge",
-            height="tall",
-            build="lean",
-            sdesc_keyword="man",
-        )
-        target.dbref = "#101"
-        bare_uid = apparent_uid_for(target)
-        memory = _seed_memory_with_sleeve(
-            uid=bare_uid, real_sleeve_uid="sleeve-jorge"
-        )
-        # A second masked presentation for the same sleeve.
-        memory["uid-jorge-masked"] = {
-            "assigned_name": "",
-            "real_sleeve_uid": "sleeve-jorge",
-            "first_seen": "2026-01-02T00:00:00",
-            "last_seen": "2026-01-02T00:00:00",
-            "times_seen": 1,
-            "linked_to": bare_uid,
-        }
-        cache = {
-            ("#101", bare_uid): True,
-            ("#101", "uid-jorge-masked"): True,
-        }
-        caller = self._make_caller_with_cache(memory=memory, cache=cache)
-
-        cmd = CmdForget()
-        cmd.caller = caller
-        cmd._forget_visible(caller, target, bare_uid)
-
-        self.assertEqual(caller.db.disguise_pierce_cache, {})
-
-    def test_forget_visible_preserves_other_sleeve_cache(self):
-        """Forgetting one sleeve must not touch unrelated cached pierces."""
-        from commands.CmdCharacter import CmdForget
-
-        target = _make_character(
-            key="Jorge",
-            sleeve_uid="sleeve-jorge",
-            height="tall",
-            build="lean",
-            sdesc_keyword="man",
-        )
-        target.dbref = "#101"
-        bare_uid = apparent_uid_for(target)
-        memory = _seed_memory_with_sleeve(
-            uid=bare_uid, real_sleeve_uid="sleeve-jorge"
-        )
-        # Unrelated second sleeve in memory + cache.
-        memory["uid-other-bare"] = {
-            "assigned_name": "Maria",
-            "real_sleeve_uid": "sleeve-maria",
-            "first_seen": "2026-01-03T00:00:00",
-            "last_seen": "2026-01-03T00:00:00",
-            "times_seen": 1,
-        }
-        cache = {
-            ("#101", bare_uid): True,
-            ("#202", "uid-other-bare"): True,
-        }
-        caller = self._make_caller_with_cache(memory=memory, cache=cache)
-
-        cmd = CmdForget()
-        cmd.caller = caller
-        cmd._forget_visible(caller, target, bare_uid)
-
-        self.assertEqual(
-            caller.db.disguise_pierce_cache,
-            {("#202", "uid-other-bare"): True},
-        )
-
-    def test_forget_remembered_clears_cache_via_entry_sleeve(self):
-        """Absent-target path uses ``entry['real_sleeve_uid']`` for scope."""
-        from commands.CmdCharacter import (
-            CmdForget,
-            _find_remembered_uid_by_name,
-        )
-
-        # Build a target only to derive its apparent UID for seeding.
-        target = _make_character(
-            key="Jorge",
-            sleeve_uid="sleeve-jorge",
-            height="tall",
-            build="lean",
-            sdesc_keyword="man",
-        )
-        bare_uid = apparent_uid_for(target)
-        memory = _seed_memory_with_sleeve(
-            uid=bare_uid, real_sleeve_uid="sleeve-jorge"
-        )
-        memory["uid-jorge-masked"] = {
-            "assigned_name": "",
-            "real_sleeve_uid": "sleeve-jorge",
-            "first_seen": "2026-01-02T00:00:00",
-            "last_seen": "2026-01-02T00:00:00",
-            "times_seen": 1,
-        }
-        cache = {
-            ("#101", bare_uid): True,
-            ("#101", "uid-jorge-masked"): True,
-        }
-        caller = self._make_caller_with_cache(memory=memory, cache=cache)
-
-        sleeve_uid, entry = _find_remembered_uid_by_name(caller, "big j")
-        self.assertEqual(sleeve_uid, bare_uid)
-
-        cmd = CmdForget()
-        cmd.caller = caller
-        cmd._forget_remembered(caller, sleeve_uid, entry)
-
-        self.assertEqual(caller.db.disguise_pierce_cache, {})
-
-    def test_forget_remembered_pre_schema_entry_skips_invalidation(self):
-        """Entry without ``real_sleeve_uid`` leaves cache untouched.
-
-        Pre-schema memory entries cannot be reverse-keyed by sleeve, so
-        invalidation has no anchor.  Forget still succeeds (clears the
-        assigned_name) — the pierce candidate filter in
-        :func:`world.identity.attempt_display_pierce` guards rendering
-        correctness in that case (it requires a truthy
-        ``assigned_name``, which the forget just cleared).
-        """
-        from commands.CmdCharacter import CmdForget
-
-        bare_uid = "uid-jorge-bare"
-        memory = _seed_memory(uid=bare_uid)
-        # Pre-schema entry — no real_sleeve_uid.
-        cache = {("#101", bare_uid): True}
-        caller = self._make_caller_with_cache(memory=memory, cache=cache)
-
-        cmd = CmdForget()
-        cmd.caller = caller
-        cmd._forget_remembered(caller, bare_uid, memory[bare_uid])
-
-        # Cache untouched; assigned_name cleared.
-        self.assertEqual(
-            caller.db.disguise_pierce_cache, {("#101", bare_uid): True}
-        )
-        self.assertEqual(memory[bare_uid]["assigned_name"], "")
-
-    def test_forget_visible_falls_back_to_live_sleeve_for_pre_schema_entry(self):
-        """Visible-target path can still invalidate via ``target.sleeve_uid``.
-
-        Even when the memory entry pre-dates the ``real_sleeve_uid``
-        schema, the visible target itself exposes its sleeve and the
-        invalidator can run.
-        """
-        from commands.CmdCharacter import CmdForget
-
-        target = _make_character(
-            key="Jorge",
-            sleeve_uid="sleeve-jorge",
-            height="tall",
-            build="lean",
-            sdesc_keyword="man",
-        )
-        target.dbref = "#101"
-        bare_uid = apparent_uid_for(target)
-        memory = _seed_memory(uid=bare_uid)  # no real_sleeve_uid
-        # Add a second presentation that HAS the field — so the
-        # invalidator has something to find via reverse lookup.
-        memory["uid-jorge-masked"] = {
-            "assigned_name": "",
-            "real_sleeve_uid": "sleeve-jorge",
-            "first_seen": "2026-01-02T00:00:00",
-            "last_seen": "2026-01-02T00:00:00",
-            "times_seen": 1,
-        }
-        cache = {("#101", "uid-jorge-masked"): True}
-        caller = self._make_caller_with_cache(memory=memory, cache=cache)
-
-        cmd = CmdForget()
-        cmd.caller = caller
-        cmd._forget_visible(caller, target, bare_uid)
-
-        self.assertEqual(caller.db.disguise_pierce_cache, {})
-
-    def test_forget_with_empty_cache_no_crash(self):
-        """No cache present is a no-op (not an error)."""
-        from commands.CmdCharacter import CmdForget
-
-        target = _make_character(
-            key="Jorge",
-            sleeve_uid="sleeve-jorge",
-            height="tall",
-            build="lean",
-            sdesc_keyword="man",
-        )
-        bare_uid = apparent_uid_for(target)
-        memory = _seed_memory_with_sleeve(
-            uid=bare_uid, real_sleeve_uid="sleeve-jorge"
-        )
-        caller = self._make_caller_with_cache(memory=memory, cache=None)
-
-        cmd = CmdForget()
-        cmd.caller = caller
-        cmd._forget_visible(caller, target, bare_uid)
-
-        self.assertIsNone(caller.db.disguise_pierce_cache)
-
-
-# ===================================================================
-# invalidate_pierce_cache_for_sleeve — direct unit coverage
-# ===================================================================
-
-
-class TestInvalidatePierceCacheForSleeve(TestCase):
-    """Direct unit coverage for the helper."""
-
-    def _make_observer(self, *, memory, cache):
-        observer = _make_character(
-            key="Observer",
-            sleeve_uid="uid-observer",
-            recognition_memory=memory,
-        )
-        observer.db.disguise_pierce_cache = cache
-        return observer
-
-    def test_returns_zero_for_empty_sleeve_uid(self):
-        from world.identity import invalidate_pierce_cache_for_sleeve
-
-        observer = self._make_observer(memory={}, cache={})
-        self.assertEqual(
-            invalidate_pierce_cache_for_sleeve(observer, ""), 0
-        )
-        self.assertEqual(
-            invalidate_pierce_cache_for_sleeve(observer, None), 0
-        )
-
-    def test_returns_zero_for_empty_cache(self):
-        from world.identity import invalidate_pierce_cache_for_sleeve
-
-        observer = self._make_observer(memory={}, cache=None)
-        self.assertEqual(
-            invalidate_pierce_cache_for_sleeve(observer, "sleeve-x"), 0
-        )
-
-    def test_returns_zero_when_sleeve_has_no_memory_entries(self):
-        from world.identity import invalidate_pierce_cache_for_sleeve
-
-        cache = {("#101", "uid-other"): True}
-        observer = self._make_observer(memory={}, cache=cache)
-        self.assertEqual(
-            invalidate_pierce_cache_for_sleeve(observer, "sleeve-x"), 0
-        )
-        # Cache untouched.
-        self.assertEqual(
-            observer.db.disguise_pierce_cache,
-            {("#101", "uid-other"): True},
-        )
-
-    def test_drops_matching_keys_and_returns_count(self):
-        from world.identity import invalidate_pierce_cache_for_sleeve
-
-        memory = {
-            "uid-a": {"real_sleeve_uid": "sleeve-x", "assigned_name": "A"},
-            "uid-b": {"real_sleeve_uid": "sleeve-x", "assigned_name": ""},
-            "uid-c": {"real_sleeve_uid": "sleeve-y", "assigned_name": "C"},
-        }
-        cache = {
-            ("#10", "uid-a"): True,
-            ("#10", "uid-b"): False,
-            ("#11", "uid-c"): True,
-        }
-        observer = self._make_observer(memory=memory, cache=cache)
-        dropped = invalidate_pierce_cache_for_sleeve(observer, "sleeve-x")
-        # The won verdict for this sleeve goes. The LOST one stays
-        # (#3817): this test used to expect it gone too, and that was
-        # the re-roll.
-        self.assertEqual(dropped, 1)
-        self.assertEqual(
-            observer.db.disguise_pierce_cache,
-            {("#10", "uid-b"): False, ("#11", "uid-c"): True},
-        )
+# What `forget` does to stored see-through verdicts used to be pinned
+# here, sleeve-wide, on stand-ins: two classes, one for the command and
+# one for `invalidate_pierce_cache_for_sleeve`. That function is gone
+# (#3825). A won see-through now goes only when it stands on the name
+# being forgotten, which takes real objects to show:
+# `test_forgetting_is_forgetting` (the entry, the links, the voice, a
+# verdict that stands on another name) and
+# `test_a_lost_see_through_is_for_good` (a lost one stays, a won one
+# goes with its name).
 
 
 # ===================================================================

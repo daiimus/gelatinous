@@ -601,7 +601,7 @@ helper module.
    `_resolve_autopsy` call sites to use the runtime dict.
 3. Wire the flush into `at_server_shutdown`,
    `at_post_unpuppet`, and any invalidation paths
-   (`invalidate_pierce_cache_for_sleeve` already exists).
+   (`world.identity.erase_look` drops verdicts when a name is forgotten).
 4. Tests: add a "cache survives restart" integration test that
    forces a flush and reload.
 

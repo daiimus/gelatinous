@@ -1879,100 +1879,145 @@ def attempt_disguise_pierce(
     return success
 
 
-def invalidate_pierce_cache_for_sleeve(
-    observer: Any, real_sleeve_uid: str | None
-) -> int:
-    """Drop pierce-cache entries for every presentation of ``real_sleeve_uid``.
+def _named(entry: Any) -> bool:
+    return bool(str((entry or {}).get("assigned_name") or "").strip())
 
-    Walks :attr:`observer.recognition_memory` to collect every
-    ``apparent_uid`` belonging to the supplied sleeve (via the
-    ``real_sleeve_uid`` field populated by :func:`_remember_target`
-    and the unmasking-moments lazy backfill), then removes any
-    ``(target_dbref, apparent_uid)`` key from
-    ``observer.db.disguise_pierce_cache`` whose ``apparent_uid``
-    matches.
 
-    Used by ``CmdForget`` (see ``commands/CmdCharacter.py``) so the
-    cognitive act of forgetting a person also discards every cached
-    pierce verdict for any disguise that person has worn.  Without
-    this invalidation, :func:`attempt_disguise_pierce` short-circuits
-    on a cached ``True`` and surfaces the bare-face entry's
-    ``assigned_name`` from any *other* (still-named) entry sharing the
-    sleeve — leaving forgotten targets perpetually recognized through
-    disguises.  See issue #210.
+def _points_at(entry: Any) -> list:
+    """The looks a recognition entry points at: the one it was watched
+    to come from, and the one it is linked to."""
+    entry = entry or {}
+    return [uid for uid in (entry.get("witnessed_from"), entry.get("linked_to"))
+            if uid]
 
-    Sleeve-wide scope matches the semantics of forget: the player is
-    declaring "I no longer know this person", not "I no longer know
-    this particular presentation".  Per-``apparent_uid`` invalidation
-    would leave stale ``True`` verdicts the moment the target swaps
-    any signature axis.
 
-    ONLY WON VERDICTS ARE DROPPED (#3817). Everything above is about
-    a stale ``True``: the reason this function exists. It dropped lost
-    verdicts as well, and a lost verdict is the one the spec says is
-    for good ("cached permanently ... no re-roll abuse"). Dropping it
-    was a way to roll again at will: name the masked figure anything,
-    forget that name (which reaches here with the true body), and the
-    next display found no verdict and rolled afresh; a mask that had
-    held was seen through on the fourth try in play. Forgetting takes
-    away a recognition the player disowns. It never hands back a
-    chance they have already used. The voice cache keeps the same rule
-    (`world.voice.invalidate_voice_discern_cache_for_sleeve`).
+def _memory_component(memory: dict, uid: str) -> set:
+    """Every entry joined to *uid* by pointers, in either direction."""
+    seen = {uid}
+    frontier = [uid]
+    while frontier:
+        current = frontier.pop()
+        near = set(_points_at(memory.get(current)))
+        near |= {other for other, entry in memory.items()
+                 if current in _points_at(entry)}
+        for other in near:
+            if other in memory and other not in seen:
+                seen.add(other)
+                frontier.append(other)
+    return seen
 
-    Pre-schema memory entries (missing ``real_sleeve_uid``) are
-    silently skipped — same contract as
-    :func:`find_entries_by_real_sleeve_uid`.  A missing or empty
-    ``real_sleeve_uid`` argument is a no-op.  Missing or empty cache
-    is a no-op.
 
-    Args:
-        observer: Character whose pierce cache is pruned.
-        real_sleeve_uid: The underlying sleeve UID whose
-            presentations should be invalidated.
+def _won_verdicts_standing_on(observer: Any, uid: str) -> list:
+    """The see-throughs *observer* won BY WAY OF the entry *uid*.
 
-    Returns:
-        Count of cache entries removed.
+    A won verdict says "I saw through that look to somebody I know",
+    and the somebody is the named entry `_see_through_candidate` finds
+    for that body. When that entry is the one being forgotten, the
+    verdict is knowledge of the forgotten person and goes with them. A
+    verdict that stands on ANOTHER name the observer holds for the same
+    body stays: forgetting one name is not forgetting the other.
+
+    The true body is read here to find out which of the observer's own
+    connections a verdict is, not to clear anything the observer never
+    connected. Lost verdicts are never returned (#3817): a lost roll is
+    not memory, it is the rule that the roll cannot be bought again.
     """
-    if not real_sleeve_uid:
-        return 0
+    memory = getattr(observer, "recognition_memory", None) or {}
+    sleeve = (memory.get(uid) or {}).get("real_sleeve_uid")
     cache = observer.db.disguise_pierce_cache
-    if not cache:
-        return 0
-
-    matching_uids = {
-        apparent_uid
-        for apparent_uid, _entry in find_entries_by_real_sleeve_uid(
-            observer, real_sleeve_uid
-        )
-    }
-
-    # ...and every verdict about a body with this sleeve, whatever look
-    # it was given for (#3811). A look that was seen THROUGH has no
-    # memory entry by definition, so the walk above never reached its
-    # verdict: `forget` left a stored "seen through" behind, and the
-    # masked figure was named again, with no roll, the moment the face
-    # was remembered a second time. The key carries the body's dbref,
-    # which is the one handle on a look nobody wrote down.
+    if not sleeve or not cache:
+        return []
     from evennia.utils.search import search_object
 
-    def same_body(dbref: Any) -> bool:
+    standing = []
+    for key in list(cache):
+        if not (isinstance(key, tuple) and len(key) == 2 and cache[key]):
+            continue
+        dbref, look = key
         found = search_object(dbref) if isinstance(dbref, str) else []
-        return any(getattr(obj, "sleeve_uid", None) == real_sleeve_uid
-                   for obj in found)
+        target = next((obj for obj in found
+                       if getattr(obj, "sleeve_uid", None) == sleeve), None)
+        if (target is not None
+                and _see_through_candidate(observer, target, look)[0] == uid):
+            standing.append(key)
+    return standing
 
-    keys_to_drop = [
-        key for key in cache
-        if isinstance(key, tuple) and len(key) == 2
-        and cache[key]                  # a lost verdict is for good
-        and (key[1] in matching_uids or same_body(key[0]))
-    ]
-    for key in keys_to_drop:
-        del cache[key]
 
-    if keys_to_drop:
+def erase_look(observer: Any, uid: str) -> str:
+    """Erase one look from *observer*'s memory. Returns the name it had.
+
+    This is what forgetting is (#3825). Owner, 2026-11-14: "If the
+    game still uses it - it doesn't seem like they've been actually
+    forgotten. What if someones memory is blanked out by a machine or
+    a bioroid hacked." The ``forget`` command calls it, and a
+    memory-wipe mechanic is to call the same function.
+
+    What goes:
+
+    * **the entry itself**: the name, the seen-count, first and last
+      seen, and the game's tag for the true body;
+    * **every pointer to it**: a look the observer watched come from
+      it no longer answers to its name, and a name that was joined to
+      another only through it stands alone again;
+    * **the unnamed entries known only through it**: a look with no
+      name of its own that was joined to this one, once nothing it is
+      still joined to has a name. One that another name still reaches
+      stays;
+    * **the voice entries that carry the same name**: a voice is only
+      ever named together with the person in front of you
+      (``remember``), so the same name on a voice is the observer's
+      own connection;
+    * **the see-throughs won by way of it**
+      (:func:`_won_verdicts_standing_on`).
+
+    What stays: every lost see-through (#3817), and anything the
+    observer never connected to this name. Nothing is cleared because
+    the game knows two things are one body.
+
+    It used to blank the name and keep the entry, so naming the look
+    again brought back its links and carried on its seen-count; and it
+    cleared every named voice and every won verdict of the same true
+    body, whatever the observer had called them.
+    """
+    memory = getattr(observer, "recognition_memory", None)
+    if not memory or uid not in memory:
+        return ""
+    name = str(memory[uid].get("assigned_name") or "")
+
+    # Worked out while the entry is still there to be found.
+    doomed_verdicts = _won_verdicts_standing_on(observer, uid)
+    kin = {other for other in _memory_component(memory, uid)
+           if other != uid and not _named(memory.get(other))}
+
+    del memory[uid]
+    gone = {uid}
+    for other in kin:
+        if other in memory and not any(
+                _named(memory.get(joined))
+                for joined in _memory_component(
+                    {k: v for k, v in memory.items() if k not in gone},
+                    other)):
+            gone.add(other)
+    for other in gone - {uid}:
+        del memory[other]
+    for entry in memory.values():
+        if entry.get("witnessed_from") in gone:
+            entry["witnessed_from"] = None
+        if entry.get("linked_to") in gone:
+            entry["linked_to"] = None
+    observer.recognition_memory = memory
+
+    if doomed_verdicts:
+        cache = observer.db.disguise_pierce_cache
+        for key in doomed_verdicts:
+            if key in cache:
+                del cache[key]
         observer.db.disguise_pierce_cache = cache
 
-    return len(keys_to_drop)
+    if name:
+        from world.voice import erase_voices_named
+        erase_voices_named(observer, name)
+    return name
 
 
 def attempt_display_pierce(

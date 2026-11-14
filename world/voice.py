@@ -312,81 +312,80 @@ def remember_voice(observer: Any, target: Any, name: str) -> bool:
     return True
 
 
-def forget_voice(observer: Any, target: Any = None, *, name: str = "",
-                 voice_uid: str = "") -> bool:
-    """Clear *observer*'s assigned name for a voice they have named.
+def _won_voice_verdicts_standing_on(observer: Any, uids: Any) -> list:
+    """The voices *observer* placed BY WAY OF the entries *uids*.
 
-    Addressable three ways: by a present ``target``, by the ``name`` the
-    observer assigned, or by ``voice_uid`` directly.
-
-    Remembering requires presence — you learn a voice by hearing it.
-    FORGETTING does not: the entry lives under a voice UID in the
-    observer's own memory and needs nothing from the target to clear. So
-    a name assigned to a voice could only be revised while that person
-    stood in front of you, which for a disguised or hostile speaker — the
-    case voice memory exists for — is the least likely moment (#2809).
-
-    Returns ``True`` if an entry was cleared, ``False`` otherwise.
+    Mirror of :func:`world.identity._won_verdicts_standing_on`. A won
+    verdict stands on the entry :func:`attempt_voice_discern` read the
+    name from: the heard voice's own entry when it has a name, else the
+    first named voice the observer holds for that body. Lost verdicts
+    are never returned (#3817).
     """
-    memory = getattr(observer, "voice_memory", None)
-    if not memory:
-        return False
+    cache = getattr(getattr(observer, "db", None), "voice_discern_cache", None)
+    memory = getattr(observer, "voice_memory", None) or {}
+    if not cache:
+        return []
+    from evennia.utils.search import search_object
 
-    if not voice_uid and target is not None:
-        voice_uid = get_apparent_voice_uid(target) or ""
-    if not voice_uid and name:
-        wanted = str(name).strip().lower()
-        voice_uid = next(
-            (uid for uid, entry in memory.items()
-             if str((entry or {}).get("assigned_name") or "").lower() == wanted),
-            "")
-    if not voice_uid or voice_uid not in memory:
-        return False
-
-    memory[voice_uid]["assigned_name"] = ""
-    observer.voice_memory = memory
-    sleeve = (getattr(target, "sleeve_uid", None) if target is not None
-              else memory[voice_uid].get("real_sleeve_uid"))
-    invalidate_voice_discern_cache_for_sleeve(observer, sleeve)
-    return True
-
-
-def forget_voices_for_sleeve(observer, real_sleeve_uid) -> int:
-    """Clear every named voice presentation *observer* holds for one sleeve.
-
-    The by-sleeve sibling of :func:`forget_voice`, for the ``forget`` door
-    that has no target object — forgetting someone by the name you gave
-    them, when they are not in the room.  That path holds a recognition
-    entry, not a body, so it cannot compute a current voice UID; what it
-    does hold is the entry's ``real_sleeve_uid``, which every voice-memory
-    entry also carries.
-
-    Sleeve-scoped rather than presentation-scoped because that is what
-    ``forget`` means when it is addressed to a person rather than to a
-    face in front of you: *I no longer claim to know this person*
-    (IDENTITY_RECOGNITION_SPEC, "forget invalidation").  The pierce-cache
-    clear on the same command is already sleeve-wide for the same reason.
-    The visible door stays per-presentation, because there it has a
-    presentation to scope to.
-
-    Args:
-        observer: Character whose voice memory is cleared.
-        real_sleeve_uid: The sleeve to forget every voice presentation of.
-
-    Returns:
-        Count of voice entries whose assigned name was cleared.
-    """
-    if not real_sleeve_uid:
-        return 0
-    cleared = 0
-    for voice_uid, entry in find_voice_entries_by_real_sleeve_uid(
-        observer, real_sleeve_uid
-    ):
-        if not (entry or {}).get("assigned_name"):
+    uids = set(uids)
+    standing = []
+    for key in list(cache):
+        if not (isinstance(key, tuple) and len(key) == 2 and cache[key]):
             continue
-        if forget_voice(observer, voice_uid=voice_uid):
-            cleared += 1
-    return cleared
+        dbref, voice_uid = key
+        if (memory.get(voice_uid) or {}).get("assigned_name"):
+            stands_on = voice_uid
+        else:
+            found = search_object(dbref) if isinstance(dbref, str) else []
+            sleeve = next((getattr(obj, "sleeve_uid", None) for obj in found
+                           if getattr(obj, "sleeve_uid", None)), None)
+            named = [uid for uid, entry
+                     in find_voice_entries_by_real_sleeve_uid(observer, sleeve)
+                     if entry.get("assigned_name")]
+            stands_on = named[0] if named else None
+        if stands_on in uids:
+            standing.append(key)
+    return standing
+
+
+def erase_voices_named(observer: Any, name: str) -> int:
+    """Erase every voice entry *observer* holds under *name*.
+
+    The voice half of forgetting (#3825), called by
+    :func:`world.identity.erase_look`. A voice is given a name in one
+    place only, ``remember <somebody in front of you> as <name>``, so
+    a voice that carries the forgotten name is one the observer
+    connected to it themselves. The entries go, not just their names,
+    and so do the voices placed by way of them; a failed attempt to
+    place a voice stays (#3817).
+
+    It used to be done by true body: forgetting somebody by name
+    blanked every named voice of the same body, whatever the observer
+    had called it, and forgetting somebody present blanked their
+    current voice whatever it was called.
+
+    Returns the number of entries erased.
+    """
+    wanted = str(name or "").strip().lower()
+    memory = getattr(observer, "voice_memory", None)
+    if not wanted or not memory:
+        return 0
+    doomed = [uid for uid, entry in memory.items()
+              if str((entry or {}).get("assigned_name") or "").strip().lower()
+              == wanted]
+    if not doomed:
+        return 0
+    verdicts = _won_voice_verdicts_standing_on(observer, doomed)
+    for uid in doomed:
+        del memory[uid]
+    observer.voice_memory = memory
+    if verdicts:
+        cache = observer.db.voice_discern_cache
+        for key in verdicts:
+            if key in cache:
+                del cache[key]
+        observer.db.voice_discern_cache = cache
+    return len(doomed)
 
 
 def find_voice_entries_by_real_sleeve_uid(observer, real_sleeve_uid):
@@ -505,44 +504,6 @@ def attempt_voice_discern(observer: Any, target: Any) -> str | None:
     return assigned_name if success else None
 
 
-def invalidate_voice_discern_cache_for_sleeve(observer, real_sleeve_uid):
-    """Drop cached voice-discern verdicts for every presentation of a sleeve.
-
-    Voice parallel to ``world.identity.invalidate_pierce_cache_for_sleeve`` —
-    called on forget so the cognitive act of forgetting a person also discards
-    every cached discernment for any voice presentation they have used.
-
-    Only WON verdicts, as there (#3817). A lost placement is the one that is
-    "permanently cached ... so one determination sticks"; dropping it let a
-    listener place a voice again at will by forgetting the name and giving
-    it back.
-    """
-    if not real_sleeve_uid:
-        return 0
-    db = getattr(observer, "db", None)
-    cache = getattr(db, "voice_discern_cache", None) if db is not None else None
-    if not cache:
-        return 0
-    uids = {
-        uid for uid, _ in find_voice_entries_by_real_sleeve_uid(observer, real_sleeve_uid)
-    }
-    if not uids:
-        return 0
-    removed = 0
-    for key in list(cache.keys()):
-        # key == (target_dbref, voice_uid)
-        if (isinstance(key, tuple) and len(key) == 2 and key[1] in uids
-                and cache[key]):            # a lost verdict is for good
-            del cache[key]
-            removed += 1
-    if removed:
-        observer.db.voice_discern_cache = cache
-    return removed
-
-
-# --------------------------------------------------------------------------
-# The resolution chain — who said it, per listener (§4.5)
-# --------------------------------------------------------------------------
 def resolve_speaker_attribution(speaker: Any, observer: Any) -> str:
     """How *observer* hears *speaker* attributed in speech.
 

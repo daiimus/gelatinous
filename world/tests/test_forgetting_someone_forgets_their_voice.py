@@ -1,6 +1,12 @@
 """`forget <name>` on an absent person clears the voice too.
 
-Regression pin for #2652.  ``CmdForget`` has two doors:
+The history below names `forget_voice` and a sleeve-wide scope. Both are
+gone since #3825: forgetting is `world.identity.erase_look`, and the
+voice half is `world.voice.erase_voices_named`. The defect this module
+pins is unchanged: forget somebody who has walked out, and their voice
+must not go on naming them.
+
+Regression pin for #2652.  ``CmdForget`` had two doors:
 
 * ``_forget_visible`` — the target is in the room.  Clears the face, and
   clears the voice via ``forget_voice(caller, target)``.
@@ -21,10 +27,14 @@ That was true when it was read and is not true now — #2809 gave
 forgetting a voice needs nothing from the target.  What was missing was
 the call.
 
-Scope: **sleeve-wide**, matching what ``forget`` means when addressed to
-a person rather than to a face in front of you, and matching the
-pierce-cache clear on the same command.  The visible door stays
-per-presentation — it has a presentation to scope to.
+Scope, since #3825: **by name**. This used to be sleeve-wide, every
+named voice of the same true body whatever the observer had called it.
+The owner ruled that forgetting clears what the observer connected and
+nothing because the game knows two things are one body. A voice is
+given a name in one place only, ``remember <somebody in front of
+you>``, so a voice under the forgotten name is the observer's own
+connection, and a voice of the same body under another name is not.
+The voice ENTRY goes, as the face entry does.
 """
 
 from __future__ import annotations
@@ -79,24 +89,24 @@ def _forget_by_name(caller):
 
 class TestForgettingSomeoneForgetsTheirVoice(TestCase):
 
-    def test_the_absent_door_clears_the_voice(self):
-        """The defect: face forgotten, voice still names them on the radio."""
+    def test_the_absent_door_forgets_the_voice(self):
+        """The defect of #2652: face forgotten, voice still names them
+        on the radio. The face fixture is named "Big J"."""
         caller = _observer(_voice_memory(("voice-jorge", "Big J", SLEEVE)))
 
         _forget_by_name(caller)
 
-        self.assertEqual(
-            caller.recognition_memory[FACE_UID]["assigned_name"], "",
-            "fixture check — the face must be cleared either way",
-        )
-        self.assertEqual(
-            caller.voice_memory["voice-jorge"]["assigned_name"], "",
+        self.assertNotIn(FACE_UID, caller.recognition_memory,
+                         "fixture check: the face must be forgotten")
+        self.assertNotIn(
+            "voice-jorge", caller.voice_memory,
             "the voice survived the forget, so the forgotten person was "
             "still named over the radio",
         )
 
-    def test_every_presentation_of_that_sleeve_is_cleared(self):
-        """Natural and modulated voices are one person; forget means both."""
+    def test_a_voice_of_that_body_under_another_name_stays(self):
+        """It used to be cleared: "natural and modulated voices are one
+        person". The observer never said so (#3825)."""
         caller = _observer(_voice_memory(
             ("voice-natural", "Big J", SLEEVE),
             ("voice-modulated", "the buzzing one", SLEEVE),
@@ -104,11 +114,13 @@ class TestForgettingSomeoneForgetsTheirVoice(TestCase):
 
         _forget_by_name(caller)
 
-        for uid in ("voice-natural", "voice-modulated"):
-            self.assertEqual(caller.voice_memory[uid]["assigned_name"], "")
+        self.assertNotIn("voice-natural", caller.voice_memory)
+        self.assertEqual(
+            caller.voice_memory["voice-modulated"]["assigned_name"],
+            "the buzzing one")
 
-    def test_a_stranger_sharing_no_sleeve_is_untouched(self):
-        """The negative control. Forget is scoped to one person."""
+    def test_a_stranger_is_untouched(self):
+        """The negative control. Forget is scoped to one name."""
         caller = _observer(_voice_memory(
             ("voice-jorge", "Big J", SLEEVE),
             ("voice-other", "Wren", "sleeve-someone-else"),
@@ -116,24 +128,14 @@ class TestForgettingSomeoneForgetsTheirVoice(TestCase):
 
         _forget_by_name(caller)
 
-        self.assertEqual(caller.voice_memory["voice-jorge"]["assigned_name"], "")
+        self.assertNotIn("voice-jorge", caller.voice_memory)
         self.assertEqual(
             caller.voice_memory["voice-other"]["assigned_name"], "Wren",
             "forgetting one person cleared an unrelated voice",
         )
 
-    def test_the_entry_itself_survives(self):
-        """Forget clears the name, not the history — as the face side does."""
-        caller = _observer(_voice_memory(("voice-jorge", "Big J", SLEEVE)))
-
-        _forget_by_name(caller)
-
-        entry = caller.voice_memory["voice-jorge"]
-        self.assertEqual(entry["times_heard"], 3)
-        self.assertEqual(entry["real_sleeve_uid"], SLEEVE)
-
-    def test_a_pre_schema_entry_falls_back_to_the_name(self):
-        """No sleeve recorded: `remember` taught both axes one name."""
+    def test_an_entry_with_no_sleeve_recorded_is_forgotten_the_same(self):
+        """Nothing here is done by sleeve any more."""
         memory = _seed_memory_with_sleeve(uid=FACE_UID, real_sleeve_uid=SLEEVE)
         memory[FACE_UID]["real_sleeve_uid"] = None
         caller = _observer(
@@ -142,24 +144,24 @@ class TestForgettingSomeoneForgetsTheirVoice(TestCase):
 
         _forget_by_name(caller)
 
-        self.assertEqual(caller.voice_memory["voice-jorge"]["assigned_name"], "")
+        self.assertNotIn("voice-jorge", caller.voice_memory)
 
     def test_an_empty_voice_memory_is_not_an_error(self):
         """The overwhelmingly common case today: no voice ever named."""
         caller = _observer({})
         _forget_by_name(caller)
-        self.assertEqual(caller.recognition_memory[FACE_UID]["assigned_name"], "")
+        self.assertNotIn(FACE_UID, caller.recognition_memory)
 
-    def test_the_by_sleeve_helper_exists_and_reports_what_it_cleared(self):
+    def test_the_by_name_helper_exists_and_reports_what_it_erased(self):
         """Bound off the module so this file still LOADS unfixed."""
-        helper = getattr(voice_mod, "forget_voices_for_sleeve", None)
+        helper = getattr(voice_mod, "erase_voices_named", None)
         self.assertIsNotNone(
-            helper, "world.voice.forget_voices_for_sleeve is missing",
+            helper, "world.voice.erase_voices_named is missing",
         )
         caller = _observer(_voice_memory(
             ("voice-a", "Big J", SLEEVE),
-            ("voice-b", "", SLEEVE),          # never named — nothing to clear
+            ("voice-b", "", SLEEVE),          # never named: nothing to erase
             ("voice-c", "Wren", "sleeve-other"),
         ))
-        self.assertEqual(helper(caller, SLEEVE), 1)
+        self.assertEqual(helper(caller, "Big J"), 1)
         self.assertEqual(helper(caller, None), 0)
