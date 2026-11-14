@@ -2495,17 +2495,18 @@ def _forget_entry(memory, uid):
     the figure showing as "Tamsin" under a message saying they would
     now appear as their description.
 
-    After `forget`, the look that carried the name names nobody: the
-    mark that lets its link be read (``witnessed``) goes with the name.
-    The LINK stays, as it always has. It is what `recall` and an NPC's
-    memories use to hold several names for one person together, and the
+    After `forget`, the look that carried the name names nobody: what
+    it was watched to come from (``witnessed_from``), which is what a
+    name is read through, goes with the name. The LINK (``linked_to``)
+    stays, as it always has. It is what `recall` and an NPC's memories
+    use to hold several names for one person together, and the
     forgotten look may be the only thing joining two names the caller
     did not forget. The other look keeps its own name: forgetting
     "Batman" leaves "Bruce" alone.
     """
     entry = memory[uid]
     entry["assigned_name"] = ""
-    entry["witnessed"] = False
+    entry["witnessed_from"] = None
 
 
 def _find_remembered_uid_by_name(caller, name):

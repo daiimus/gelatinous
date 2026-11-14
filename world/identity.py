@@ -1185,17 +1185,21 @@ def resolve_assigned_name(memory: Any, uid: str | None) -> tuple:
     gets nothing here, which is what keeps this theirs alone. A name
     the observer has given the look itself always wins.
 
-    ONLY A LINK THE OBSERVER WATCHED BEING MADE is followed: the entry
-    it leaves from must carry ``witnessed``, which the unmasking hook
-    sets and `forget` clears. ``linked_to`` alone is not evidence of
-    that. The `remember` command links a newly named look to another
-    entry for the same body without asking whether the observer saw
-    through; `forget` on master cleared a name and left its link; and
-    papers link two faces. Following any nameless entry's link would
-    have named, on the day this loaded, every look anybody had ever
-    forgotten. An entry from before this change carries no mark and is
-    not followed, so an eyewitness from before it is where they were:
-    the roll.
+    WHAT IS FOLLOWED IS ``witnessed_from``, NOT ``linked_to``. The
+    unmasking hook writes ``witnessed_from`` with the uid of the look
+    the observer actually watched this one come from, and `forget`
+    clears it. ``linked_to`` is not evidence that anybody watched
+    anything: the `remember` command links a newly named look to
+    another entry for the same body without asking whether the observer
+    saw through; `forget` clears a name and leaves the link, because
+    the link is what holds several names for one person together; and
+    papers link two faces. Following it would have named, on the day
+    this loaded, every look anybody had ever forgotten. So the two are
+    kept apart: ``linked_to`` is what `recall` reads and is written
+    exactly as it always was, and ``witnessed_from`` is what the room
+    reads. An entry from before this change has none and is not
+    followed, so an eyewitness from before it is where they were: the
+    roll.
 
     Silent on a loop, unlike :func:`walk_linked_chain`: mask on, mask
     off, mask on again in front of the same viewer links the two looks
@@ -1211,10 +1215,8 @@ def resolve_assigned_name(memory: Any, uid: str | None) -> tuple:
         name = entry.get("assigned_name") or ""
         if name:
             return name, current
-        if not entry.get("witnessed"):
-            break
         seen.add(current)
-        current = entry.get("linked_to")
+        current = entry.get("witnessed_from")
     return None, None
 
 
@@ -2109,10 +2111,10 @@ def _build_link_entry(
         "lost_contact": False,
         "recent_interactions": [],
         "linked_to": linked_to,
-        # The observer WATCHED this look come from `linked_to` (#3811).
-        # Only an entry carrying this has its link read for a name
+        # The look the observer WATCHED this one come from (#3811).
+        # This, and not `linked_to`, is what a name is read through
         # (`resolve_assigned_name`); `forget` clears it.
-        "witnessed": linked_to is not None,
+        "witnessed_from": linked_to,
         "real_sleeve_uid": real_sleeve_uid,
         # names documents have vouched for — see `attest`. Written only by
         # proof, never by speech; a name someone merely CLAIMS is an
@@ -2420,23 +2422,21 @@ def _witness_known_look(new_entry: dict, old_uid: str) -> None:
     """Cell D's link: the observer already held an entry for the look
     that has just arrived, and watched it arrive.
 
-    As before: the link is set when there is none, and a link already
-    there is never rewritten on an entry the observer has named.
+    ``linked_to`` exactly as before: set when there is none, and never
+    rewritten. A forgotten look keeps its link on purpose, and it may
+    be all that joins two names the observer did not forget.
 
-    New (#3811): an entry with NO name of its own, not yet marked as
-    watched, is marked now and pointed at the look it was just seen to
-    come from. That is somebody they forgot, or named on a guess and
-    forgot, standing in front of them and changing: they are an
-    eyewitness again. Whatever link such an entry carried is replaced,
-    because nothing vouches for it (`resolve_assigned_name`). An entry
-    already marked keeps the link it was watched with.
+    New (#3811): an entry with NO name of its own records the look it
+    was just seen to come from (``witnessed_from``). That is somebody
+    the observer forgot, or named on a guess and forgot, standing in
+    front of them and changing: they are an eyewitness again, to THIS
+    change, whatever the entry's link says. A named entry is left
+    alone; its own name is what the room shows.
     """
     if new_entry.get("linked_to") is None:
         new_entry["linked_to"] = old_uid
-    if (new_entry.get("assigned_name") or "") or new_entry.get("witnessed"):
-        return
-    new_entry["linked_to"] = old_uid
-    new_entry["witnessed"] = True
+    if not (new_entry.get("assigned_name") or ""):
+        new_entry["witnessed_from"] = old_uid
 
 
 def _broadcast_unmasking(

@@ -143,13 +143,14 @@ class TestTheEyewitness(_MaskCase):
         self.assertIn("Tamsin", self.roster())
         self.assertNotIn("masked man", self.roster())
 
-    def test_the_entry_says_they_watched(self):
-        """The mark the name is read by: `linked_to` alone is not
+    def test_the_entry_says_what_they_watched_it_come_from(self):
+        """What the name is read through: `linked_to` alone is not
         evidence that anybody watched anything."""
-        entry = dict(self.viewer.recognition_memory)[
-            get_apparent_uid(self.them)]
+        memory = dict(self.viewer.recognition_memory)
+        entry = memory[get_apparent_uid(self.them)]
         self.assertEqual(entry["assigned_name"], "")
-        self.assertIs(entry["witnessed"], True)
+        self.assertEqual(
+            memory[entry["witnessed_from"]]["assigned_name"], "Tamsin")
 
     def test_the_name_can_be_typed(self):
         self.assertEqual(self.first(self.do("look tamsin")),
@@ -420,7 +421,7 @@ class TestTheWalk(TestCase):
     def watched(self, linked_to):
         """An entry as the unmasking hook writes it for an eyewitness."""
         return {"assigned_name": "", "linked_to": linked_to,
-                "witnessed": True}
+                "witnessed_from": linked_to}
 
     def test_the_look_it_was_seen_to_come_from(self):
         memory = {"mask": self.watched("face"),
@@ -437,7 +438,7 @@ class TestTheWalk(TestCase):
         memory = {"mask": {"assigned_name": "", "linked_to": "face"},
                   "face": {"assigned_name": "Tamsin"}}
         self.assertEqual(self.named(memory, "mask"), (None, None))
-        memory["mask"]["witnessed"] = False
+        memory["mask"]["witnessed_from"] = None
         self.assertEqual(self.named(memory, "mask"), (None, None))
 
     def test_the_nearest_name_and_no_further(self):
@@ -486,7 +487,7 @@ class TestOtherSurfaces(TestCase):
 
     WATCHED = {"face": {"assigned_name": "Tamsin"},
                "mask": {"assigned_name": "", "linked_to": "face",
-                        "witnessed": True}}
+                        "witnessed_from": "face"}}
 
     def corpse_name(self, memory):
         bearer = _FakeBearer(apparent_uid="mask")
@@ -528,9 +529,9 @@ class TestWhatForgetLeavesAlone(TestCase):
         self.memory = {
             "face": {"assigned_name": "Bruce"},
             "mask": {"assigned_name": "Batman", "linked_to": "face",
-                     "witnessed": True},
+                     "witnessed_from": "face"},
             "helm": {"assigned_name": "Knight", "linked_to": "mask",
-                     "witnessed": True},
+                     "witnessed_from": "mask"},
         }
         _forget_entry(self.memory, "mask")
 
@@ -549,18 +550,42 @@ class TestWhatForgetLeavesAlone(TestCase):
         self.assertEqual(resolve_assigned_name(self.memory, "helm")[0],
                          "Knight")
 
+    def test_watching_them_change_back_into_it_cuts_nothing(self):
+        """The helm comes off in front of the caller, and the forgotten
+        look arrives again (cell D). It is known again, by the name of
+        the look it was just watched to come from, and its link is as
+        it was: rewriting it here left "Bruce" joined to nobody."""
+        from world.identity import _witness_known_look, get_linked_aliases
+        _witness_known_look(self.memory["mask"], "helm")
+        self.assertEqual(self.memory["mask"]["linked_to"], "face")
+        self.assertEqual(resolve_assigned_name(self.memory, "mask"),
+                         ("Knight", "helm"))
+        self.assertEqual(get_linked_aliases(self.memory, "face"), ["Knight"])
+        self.assertEqual(get_linked_aliases(self.memory, "helm"), ["Bruce"])
+
+    def test_a_named_look_arriving_is_treated_as_it_always_was(self):
+        """The control: cell D on an entry with its own name sets a
+        missing link and nothing else."""
+        from world.identity import _witness_known_look
+        linked = {"assigned_name": "Ghost", "linked_to": "x"}
+        _witness_known_look(linked, "y")
+        self.assertEqual(linked, {"assigned_name": "Ghost", "linked_to": "x"})
+        bare = {"assigned_name": "Ghost", "linked_to": None}
+        _witness_known_look(bare, "y")
+        self.assertEqual(bare, {"assigned_name": "Ghost", "linked_to": "y"})
+
 
 class TestAMemoryFromBeforeThisChange(_MaskCase):
-    """Live memories already hold nameless, linked entries that nobody
-    marked. They are not read for a name. Watching the change again
-    marks them."""
+    """Live memories already hold nameless, linked entries with no
+    record of what, if anything, was watched. They are not read for a
+    name. Watching the change again records it."""
 
     def setUp(self):
         super().setUp()
         self.dice(LOST)
         self.they("wear ski mask")
         memory = self.viewer.recognition_memory
-        del memory[get_apparent_uid(self.them)]["witnessed"]
+        del memory[get_apparent_uid(self.them)]["witnessed_from"]
         self.viewer.recognition_memory = memory
         self.viewer.db.disguise_pierce_cache = None
 
