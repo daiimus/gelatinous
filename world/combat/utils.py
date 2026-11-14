@@ -204,16 +204,21 @@ def surplus_limb_initiative_bonus(char) -> int:
 # DISPLAY NAME HELPERS
 # ===================================================================
 
-def get_display_name_safe(character, observer=None):
+def get_display_name_safe(character, observer):
     """
-    Safely get a character's display name with fallback.
-    
+    A character's name for *observer*, or "someone".
+
     Args:
-        character: The character object
-        observer: Optional observer for context
-        
+        character: The character to name.
+        observer: Who will READ the name. Required (#3819): it was
+            optional, and a call that left it out got the real key.
+            Two lines sent to players did exactly that. Pass ``None``
+            only for a line no player reads (a log, the staff channel);
+            that is the one case that gets the real key.
+
     Returns:
-        str: Character's display name or fallback
+        str: The name as *observer* sees it; the real key when
+        *observer* is ``None``; "someone" when there is no character.
     """
     if not character:
         return "someone"

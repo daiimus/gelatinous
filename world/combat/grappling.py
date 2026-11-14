@@ -242,8 +242,9 @@ def break_grapple(combat_handler, grappler=None, victim=None):
         # Save the updated list
         combat_handler.db.combatants = combatants_list
 
-        grappler_name = get_display_name_safe(grappler) if grappler else "someone"
-        victim_name = get_display_name_safe(victim) if victim else "someone"
+        # A log line: real keys, and said so (#3819).
+        grappler_name = get_display_name_safe(grappler, None)
+        victim_name = get_display_name_safe(victim, None)
 
         log_debug("GRAPPLE", "BREAK", f"{grappler_name} -> {victim_name}")
 
