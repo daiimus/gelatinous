@@ -120,7 +120,14 @@ def break_aim_lock(caller, *, bonus=0, label=None, immediate_attack=False):
             aimer.msg(f"|y{caller.get_display_name(aimer)} breaks free from your aim!|n")
 
         if hasattr(aimer, "clear_aim_state"):
-            aimer.clear_aim_state(reason_for_clearing=f"as {caller.key} breaks free")
+            # The reason is appended to the AIMER's own line ("You stop
+            # aiming at ... as <reason>."), so it names the one who got
+            # away the way the aimer sees them (#3819). It carried
+            # `caller.key`: aim at a stranger, let them slip, and read
+            # their real name.
+            aimer.clear_aim_state(
+                reason_for_clearing=(
+                    f"as {caller.get_display_name(aimer)} breaks free"))
         else: # Fallback if clear_aim_state is missing on aimer
             if hasattr(aimer.ndb, NDB_AIMING_AT):
                 del aimer.ndb.aiming_at
