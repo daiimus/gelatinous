@@ -1162,42 +1162,84 @@ def parse_introduction(text: str) -> str | None:
     return None
 
 
+def resolve_assigned_name(memory: Any, uid: str | None) -> tuple:
+    """``(name, uid the name is stored on)`` for the look *uid*, in one
+    observer's *memory*; ``(None, None)`` when they have no name for it.
+
+    The look's OWN name first. Failing that, the name of the look it
+    was SEEN to come from, by following ``linked_to`` (#3811).
+
+    Owner, 2026-11-13, asked whether somebody who watches a person they
+    know put on a mask goes on knowing them: *"Yes, and it's specific
+    to that person."* The unmasking hook had recorded exactly that all
+    along: an eyewitness gets an entry for the new look with no name
+    and a link back to the one they do have a name for
+    (:func:`_build_link_entry`). `recall` and `memory` read the link.
+    The name on screen and the name that can be typed did not, so an
+    eyewitness fell through to the see-through roll, which was built
+    for somebody who walks in already masked.
+
+    FORWARD only, and to the NEAREST name: the link points from a look
+    at the one it replaced, which is the direction the watching went.
+    An observer who did not watch has no entry for the look at all and
+    gets nothing here, which is what keeps this theirs alone. A name
+    the observer has given the look itself always wins.
+
+    Silent on a loop, unlike :func:`walk_linked_chain`: mask on, mask
+    off, mask on again in front of the same viewer links the two looks
+    at each other, by design, and this is asked on every `look`.
+    """
+    if not memory or not uid or uid not in memory:
+        return None, None
+    seen = set()
+    current = uid
+    while (current and current in memory and current not in seen
+            and len(seen) < _LINKED_CHAIN_MAX_HOPS):
+        entry = memory[current] or {}
+        name = entry.get("assigned_name") or ""
+        if name:
+            return name, current
+        seen.add(current)
+        current = entry.get("linked_to")
+    return None, None
+
+
 def get_assigned_name(observer: Any, target: Any) -> str | None:
     """Return *observer*'s assigned recognition name for *target*.
 
     Single source of truth for "what name has the observer chosen to
     remember this character by."  Resolves *target*'s current Apparent
     UID and looks up the matching ``recognition_memory`` entry on
-    *observer*, returning its non-empty ``assigned_name``.
+    *observer*: its own non-empty ``assigned_name``, or failing that
+    the name of the look the observer watched it come from
+    (:func:`resolve_assigned_name`).
 
-    Used by the display-name pipeline (:meth:`Character.get_display_name`),
-    identity-aware search (:func:`world.search._match_assigned_name`),
-    and the emote/dot-pose target resolver
-    (:func:`world.emote.build_char_candidates`) so all three agree on the
-    exact name the observer has assigned.
+    Used by the display-name pipeline (:meth:`Character.get_display_name`
+    and :meth:`Character.get_look_header`), identity-aware search
+    (:func:`world.search._match_assigned_name`, through
+    :func:`get_known_name`), and the emote/dot-pose target resolver
+    (:func:`world.emote.build_char_candidates`) so all of them agree on
+    the exact name the observer has for the person in front of them.
 
-    Note: this returns the assigned name only.  It does NOT attempt
-    disguise piercing — callers that need the full display resolution
-    (assigned name → pierce → sdesc fallback) should use
-    :meth:`Character.get_display_name`.
+    Note: this returns a name the observer HOLDS.  It does NOT attempt
+    disguise piercing — the display pipeline rolls for that itself, and
+    a typed name reads only a see-through already decided
+    (:func:`seen_through`).
 
     Args:
         observer: The character whose recognition memory is consulted.
         target: The character being named.
 
     Returns:
-        The non-empty assigned name string, or ``None`` when the
-        observer has no name assigned for *target*'s current
-        presentation (including when *target* has no Apparent UID).
+        The name string, or ``None`` when the observer has no name for
+        *target*'s current presentation (including when *target* has no
+        Apparent UID).
     """
     apparent_uid = get_apparent_uid(target)
     if apparent_uid is None:
         return None
     memory = getattr(observer, "recognition_memory", None)
-    if not memory or apparent_uid not in memory:
-        return None
-    assigned = memory[apparent_uid].get("assigned_name") or ""
-    return assigned or None
+    return resolve_assigned_name(memory, apparent_uid)[0]
 
 
 # Decay stages at which a corpse's body-identity axis (``sleeve_uid``) is
@@ -1875,22 +1917,90 @@ def attempt_display_pierce(
     memory = getattr(looker, "recognition_memory", None)
     if not memory:
         return None
-    real_sleeve = getattr(target, "sleeve_uid", None)
-    if not real_sleeve:
-        return None
 
-    candidates = [
-        (uid, entry)
-        for uid, entry in find_entries_by_real_sleeve_uid(looker, real_sleeve)
-        if uid != apparent_uid and entry.get("assigned_name")
-    ]
-    if not candidates:
+    _bare_uid, bare_entry = _see_through_candidate(
+        looker, target, apparent_uid)
+    if bare_entry is None:
         return None
-
-    _bare_uid, bare_entry = candidates[0]
     if attempt_disguise_pierce(looker, target, apparent_uid, bare_entry):
         return bare_entry.get("assigned_name")
     return None
+
+
+def _see_through_candidate(
+    looker: Any, target: Any, apparent_uid: str | None
+) -> tuple:
+    """``(uid, entry)`` of the remembered look a see-through would name,
+    or ``(None, None)``. One selection, for the roll and for the reader
+    of a roll already made, so the two cannot name different entries:
+    the first named entry (insertion order) for the same sleeve that is
+    not the look in front of the looker."""
+    real_sleeve = getattr(target, "sleeve_uid", None)
+    if not real_sleeve or not apparent_uid:
+        return None, None
+    for uid, entry in find_entries_by_real_sleeve_uid(looker, real_sleeve):
+        if uid != apparent_uid and entry.get("assigned_name"):
+            return uid, entry
+    return None, None
+
+
+def seen_through(looker: Any, target: Any) -> tuple:
+    """``(name, uid the name is stored on)`` when *looker* has ALREADY
+    seen through *target*'s current look, else ``(None, None)``.
+
+    Reads the stored verdict and never rolls (#3811, finding 4 of
+    #2451). The display pipeline rolls once, on the first look, and
+    stores the result for good; from then on the name is on screen in
+    the room, the look header and every broadcast. Typed names could
+    not find it: a name that was shown and could not be used.
+
+    Rolling from the typing side would let anybody fish for who is
+    under a mask by trying names, which is why it was left alone the
+    first time. A verdict only ever comes from looking, so this makes a
+    name typeable exactly when it has been shown, and typing teaches
+    nothing.
+    """
+    if looker is None or looker is target:
+        return None, None
+    apparent_uid = get_apparent_uid(target)
+    target_dbref = getattr(target, "dbref", None)
+    if not apparent_uid or target_dbref is None:
+        return None, None
+    cache = getattr(getattr(looker, "db", None), "disguise_pierce_cache", None)
+    if not cache or not cache.get((target_dbref, apparent_uid)):
+        return None, None
+    memory = getattr(looker, "recognition_memory", None)
+    if not memory:
+        return None, None
+    uid, entry = _see_through_candidate(looker, target, apparent_uid)
+    if entry is None:
+        return None, None
+    return entry.get("assigned_name"), uid
+
+
+def known_name_source(observer: Any, target: Any) -> tuple:
+    """``(name, uid the name is stored on)`` for the name *observer* has
+    for *target* as they stand: a name they hold
+    (:func:`resolve_assigned_name`), else one they have already seen
+    through to (:func:`seen_through`); ``(None, None)`` for neither.
+
+    This is the name the room shows them, so it is the name they may
+    type, the name `forget` takes away and the name `recall` reads out.
+    """
+    apparent_uid = get_apparent_uid(target)
+    if apparent_uid is None:
+        return None, None
+    memory = getattr(observer, "recognition_memory", None)
+    name, uid = resolve_assigned_name(memory, apparent_uid)
+    if name:
+        return name, uid
+    return seen_through(observer, target)
+
+
+def get_known_name(observer: Any, target: Any) -> str | None:
+    """The name *observer* may TYPE for *target*: see
+    :func:`known_name_source`."""
+    return known_name_source(observer, target)[0]
 
 
 # =========================================================================
@@ -2553,6 +2663,7 @@ def _broadcast_unmask_with_action(
         # Use the snapshot's pre-mutation display name so the actor
         # reads as they appeared at the start of the action.
         rendered = action_template
+        already_called = set()        # what this observer called `char`
         for placeholder, char_ref in action_char_refs.items():
             snapshot = action_pre_resolved_refs.get(placeholder)
             if snapshot is not None and observer in snapshot:
@@ -2561,6 +2672,8 @@ def _broadcast_unmask_with_action(
                 display_name = char_ref.get_display_name(observer)
             else:
                 display_name = getattr(char_ref, "key", "")
+            if char_ref is char:
+                already_called.add(display_name)
             if placeholder == first_placeholder:
                 display_name = capitalize_first(display_name)
             rendered = rendered.replace(
@@ -2577,7 +2690,13 @@ def _broadcast_unmask_with_action(
             new_name = (
                 (memory.get(new_uid) or {}).get("assigned_name") or ""
             )
-            if new_name:
+            # Nothing is revealed to somebody who was already calling
+            # them that (#3811). An eyewitness to the mask going on
+            # keeps the name, so the mask coming off read "Tamsin
+            # removes a wool ski mask, revealing they are none other
+            # than Tamsin." The same line was always there for anybody
+            # who had seen through the mask.
+            if new_name and new_name not in already_called:
                 suffix = f", revealing they are none other than {new_name}"
 
         if suffix:

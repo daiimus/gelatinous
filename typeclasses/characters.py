@@ -1315,10 +1315,13 @@ class Character(
 
         Resolution order:
           1. ``looker is self`` → ``self.key`` (own real name)
-          2. *looker* has an assigned name in ``recognition_memory``
-             keyed on this character's current Apparent UID → that
-             assigned name
-          3. Otherwise → composed sdesc with indefinite article
+          2. *looker* holds a name for this character's current look:
+             one they gave it, or the name of the look they watched it
+             come from (``world.identity.get_assigned_name``) → that
+             name
+          3. *looker* sees through the look to somebody they remember
+             (one opposed roll, stored for good) → that name
+          4. Otherwise → composed sdesc with indefinite article
              (e.g. ``"a lanky man in a Black Trenchcoat"``)
 
         The Apparent UID is derived from the target's full identity
@@ -1408,18 +1411,13 @@ class Character(
         if looker is self:
             name = self.key
         else:
-            from world.identity import get_apparent_uid
+            from world.identity import get_apparent_uid, get_assigned_name
 
-            name = None
+            # The same lookup as the room listing. This read the memory
+            # entry by hand, so it had its own idea of who a look
+            # belongs to (#3811).
             apparent_uid = get_apparent_uid(self)
-            if apparent_uid is not None and hasattr(
-                looker, "recognition_memory"
-            ):
-                memory = looker.recognition_memory
-                if memory and apparent_uid in memory:
-                    assigned = memory[apparent_uid].get("assigned_name")
-                    if assigned:
-                        name = assigned
+            name = get_assigned_name(looker, self)
             # Disguise piercing — if not yet recognised, see through?
             if name is None:
                 from world.identity import attempt_display_pierce

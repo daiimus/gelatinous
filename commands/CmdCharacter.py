@@ -2660,9 +2660,13 @@ class CmdForget(Command):
     def _forget_visible(self, caller, target, apparent_uid):
         """Forget a target who is currently present.
 
-        Keyed on the target's *Apparent UID* (derived from their current
-        identity signature), so forgetting under a disguise only forgets
-        the disguised persona — the real-form entry is untouched.
+        Takes away the name the caller has for the target AS THEY STAND
+        (`world.identity.known_name_source`). A look the caller has
+        named for itself loses that name and nothing else: forgetting
+        "Batman" leaves "Bruce" alone. A look with no name of its own,
+        which the caller knows because they watched it come from one
+        they had named, or because they saw through it, loses the name
+        at its source: that is the only name there is to forget (#3811).
 
         Also invalidates every cached pierce verdict for any
         presentation of the target's sleeve (issue #210): without this,
@@ -2670,17 +2674,20 @@ class CmdForget(Command):
         survives forget and the rendering pipeline keeps surfacing the
         forgotten name through any disguise.
         """
+        # The name the room shows them, and the entry it is stored on
+        # (#3811): this look's own entry, or the look the caller watched
+        # it come from, or one they have seen through to. This cleared
+        # only the first, so an eyewitness was told "You don't have a
+        # name remembered for them" about somebody the room went on
+        # naming.
+        from world.identity import known_name_source
         memory = caller.recognition_memory
-        if not memory or apparent_uid not in memory:
+        old_name, source_uid = known_name_source(caller, target)
+        if not memory or not old_name or source_uid not in memory:
             caller.msg("You don't have a name remembered for them.")
             return
 
-        old_name = memory[apparent_uid].get("assigned_name", "")
-        if not old_name:
-            caller.msg("You don't have a name remembered for them.")
-            return
-
-        memory[apparent_uid]["assigned_name"] = ""
+        memory[source_uid]["assigned_name"] = ""
         caller.recognition_memory = memory
 
         # Forget their voice too (CAPACITY_CONSUMERS spec §4.2) — the visible
@@ -2696,7 +2703,7 @@ class CmdForget(Command):
         # for pre-schema entries.
         from world.identity import invalidate_pierce_cache_for_sleeve
 
-        entry_sleeve = memory[apparent_uid].get("real_sleeve_uid")
+        entry_sleeve = memory[source_uid].get("real_sleeve_uid")
         live_sleeve = getattr(target, "sleeve_uid", None)
         sleeve_uid = entry_sleeve or live_sleeve
         if sleeve_uid:
@@ -2818,6 +2825,13 @@ class CmdRecall(Command):
                 return
             memory = caller.recognition_memory or {}
             entry = memory.get(apparent_uid)
+            if entry is None:
+                # Seen through to somebody remembered (#3811): the look
+                # itself has no entry, the person does.
+                from world.identity import seen_through
+                _name, source_uid = seen_through(caller, target)
+                if source_uid is not None:
+                    apparent_uid, entry = source_uid, memory.get(source_uid)
         else:
             # Fall back to remembered-name lookup
             apparent_uid, entry = _find_remembered_uid_by_name(caller, args)
@@ -2852,10 +2866,22 @@ class CmdRecall(Command):
 
         when = _format_relative_time(first_seen)
 
+        # A look with no name of its own may still be somebody the
+        # caller knows: they watched it come from a look they have named
+        # (#3811). Say so, and do not list that name again below.
+        through_name = ""
+        if not assigned_name and apparent_uid is not None:
+            from world.identity import resolve_assigned_name
+            through_name = resolve_assigned_name(
+                caller.recognition_memory or {}, apparent_uid)[0] or ""
+
         if assigned_name:
             header = f"You remember them as: |w{assigned_name}|n"
             if lost_contact:
                 header += " |y(lost contact)|n"
+        elif through_name:
+            header = (f"You know them as: |w{through_name}|n. You have "
+                      f"no separate name for this look.")
         else:
             header = (
                 "You've encountered them before but don't have a "
@@ -2875,7 +2901,9 @@ class CmdRecall(Command):
             from world.identity import get_linked_aliases
 
             memory = caller.recognition_memory or {}
-            aliases = get_linked_aliases(memory, apparent_uid)
+            aliases = [alias for alias in
+                       get_linked_aliases(memory, apparent_uid)
+                       if alias != through_name]
             if aliases:
                 lines.append(
                     f"Also known as: |w{'|n, |w'.join(aliases)}|n"
