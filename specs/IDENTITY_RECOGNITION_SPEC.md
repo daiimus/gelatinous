@@ -481,12 +481,13 @@ forget <target>
 
 Clears the assigned name on a recognition entry. The entry itself is preserved (sdesc snapshots, locations, `times_seen`, etc.) so future `remember` calls extend the existing history rather than starting fresh. Targets resolve against currently-visible characters first, then against previously-remembered names — you can `forget` someone who isn't present.
 
-`forget` additionally invalidates the caller's
-`disguise_pierce_cache` entries for the target's sleeve
-(PR #211 / issue #210).  Without this, a future encounter under a
-previously-seen disguise would short-circuit on the stale cached
-verdict instead of re-rolling cleanly against the now-name-less
-memory entry.  See §Disguise Piercing → Caching.
+`forget` additionally drops the caller's WON `disguise_pierce_cache`
+entries for the target's sleeve (PR #211 / issue #210).  Without
+this, a future encounter under a disguise the caller had seen through
+would short-circuit on the stale cached success and name somebody they
+had just disowned.  A LOST entry is kept (#3817): the verdict is for
+good, and forgetting a name is not a way to roll again.  See §Disguise
+Piercing → Caching.
 
 **`recall` command:**
 
@@ -1094,8 +1095,12 @@ Observers or targets without a `dbref` are not cached and re-roll on every call 
 **`forget` invalidation (PR #211, issue #210).** When an observer
 runs `forget <target>`, every cache entry on
 `observer.db.disguise_pierce_cache` whose target shares the
-forgotten entry's `real_sleeve_uid` is dropped — across **all**
-apparent UIDs for that sleeve, not just the current presentation.
+forgotten entry's `real_sleeve_uid` **and whose verdict was a
+success** is dropped — across **all** apparent UIDs for that sleeve,
+not just the current presentation. A lost verdict is never dropped
+(#3817): it is the one "cached permanently", and dropping it let a
+player roll again at will by naming the masked figure and forgetting
+that name.
 Rationale: `forget` declares "I no longer claim to know this
 person"; a stale `True` verdict from a prior pierce would otherwise
 short-circuit future `look`s and silently restore the recognition

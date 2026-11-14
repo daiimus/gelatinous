@@ -1016,10 +1016,13 @@ class TestInvalidatePierceCacheForSleeve(TestCase):
         }
         observer = self._make_observer(memory=memory, cache=cache)
         dropped = invalidate_pierce_cache_for_sleeve(observer, "sleeve-x")
-        self.assertEqual(dropped, 2)
+        # The won verdict for this sleeve goes. The LOST one stays
+        # (#3817): this test used to expect it gone too, and that was
+        # the re-roll.
+        self.assertEqual(dropped, 1)
         self.assertEqual(
             observer.db.disguise_pierce_cache,
-            {("#11", "uid-c"): True},
+            {("#10", "uid-b"): False, ("#11", "uid-c"): True},
         )
 
 

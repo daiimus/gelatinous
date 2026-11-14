@@ -1857,6 +1857,18 @@ def invalidate_pierce_cache_for_sleeve(
     would leave stale ``True`` verdicts the moment the target swaps
     any signature axis.
 
+    ONLY WON VERDICTS ARE DROPPED (#3817). Everything above is about
+    a stale ``True``: the reason this function exists. It dropped lost
+    verdicts as well, and a lost verdict is the one the spec says is
+    for good ("cached permanently ... no re-roll abuse"). Dropping it
+    was a way to roll again at will: name the masked figure anything,
+    forget that name (which reaches here with the true body), and the
+    next display found no verdict and rolled afresh; a mask that had
+    held was seen through on the fourth try in play. Forgetting takes
+    away a recognition the player disowns. It never hands back a
+    chance they have already used. The voice cache keeps the same rule
+    (`world.voice.invalidate_voice_discern_cache_for_sleeve`).
+
     Pre-schema memory entries (missing ``real_sleeve_uid``) are
     silently skipped — same contract as
     :func:`find_entries_by_real_sleeve_uid`.  A missing or empty
@@ -1901,6 +1913,7 @@ def invalidate_pierce_cache_for_sleeve(
     keys_to_drop = [
         key for key in cache
         if isinstance(key, tuple) and len(key) == 2
+        and cache[key]                  # a lost verdict is for good
         and (key[1] in matching_uids or same_body(key[0]))
     ]
     for key in keys_to_drop:
