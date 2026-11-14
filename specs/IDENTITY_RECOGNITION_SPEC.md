@@ -481,12 +481,13 @@ forget <target>
 
 Clears the assigned name on a recognition entry. The entry itself is preserved (sdesc snapshots, locations, `times_seen`, etc.) so future `remember` calls extend the existing history rather than starting fresh. Targets resolve against currently-visible characters first, then against previously-remembered names — you can `forget` someone who isn't present.
 
-`forget` additionally invalidates the caller's
-`disguise_pierce_cache` entries for the target's sleeve
-(PR #211 / issue #210).  Without this, a future encounter under a
-previously-seen disguise would short-circuit on the stale cached
-verdict instead of re-rolling cleanly against the now-name-less
-memory entry.  See §Disguise Piercing → Caching.
+`forget` additionally drops the caller's WON `disguise_pierce_cache`
+entries for the target's sleeve (PR #211 / issue #210).  Without
+this, a future encounter under a disguise the caller had seen through
+would short-circuit on the stale cached success and name somebody they
+had just disowned.  A LOST entry is kept (#3817): the verdict is for
+good, and forgetting a name is not a way to roll again.  See §Disguise
+Piercing → Caching.
 
 **`recall` command:**
 

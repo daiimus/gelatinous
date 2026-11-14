@@ -557,7 +557,7 @@ is the content lift) → per-effector resolver (manipulation/moving).
      mirroring disguise piercing: `attempt_voice_discern` runs opposed
      Intellect-vs-Resonance, familiarity buff, modulator penalty, **weighted by
      the listener's `hearing` capacity** (the consumer — `hearing` finally lands),
-     cached per presentation; forget invalidates it. **Decided simplification:**
+     cached per presentation; forget drops a won placement and keeps a lost one (#3817). **Decided simplification:**
      an unrecognised/undiscerned voice is *not* attributed (no descriptor) — it
      renders as "someone"; the voice-descriptor-as-identity ("a gravelly drawl
      says…") and the §4.6 multi-voice disambiguation are **deferred**. Wired into
