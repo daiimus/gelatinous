@@ -416,6 +416,27 @@ def held_by_others(looker, query: str) -> list:
     return out
 
 
+def only_what_they_can_name(
+    searcher: "Character", found: list, query: str, *, staff: bool
+) -> list:
+    """The identity rule, applied to what a search by key and alias found.
+
+    A thing stays. A person stays only if *query* is something
+    *searcher* knows them by: a name they hold for them, or their
+    description. A person the search reached by real key or alias alone
+    is dropped, and the caller cannot tell that from nothing having
+    matched. Staff keep everything; that is their privilege.
+
+    One function, because the rule has to be the same wherever a typed
+    word is matched against a pool that can hold people: the ordinary
+    local search, and a pool a command hands over (#3816). They used to
+    be two code paths and only one of them ran this.
+    """
+    if staff:
+        return list(found)
+    return [obj for obj in found if is_identity_match(searcher, obj, query)]
+
+
 def is_identity_match(
     searcher: "Character", target: object, query: str
 ) -> bool:

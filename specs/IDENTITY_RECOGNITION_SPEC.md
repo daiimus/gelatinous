@@ -1392,10 +1392,26 @@ The existing `CmdAttack` manual substring search (`core_actions.py:110-120`) mus
 
 When a command resolves a **character** target from player input, it MUST go through the identity pipeline. There are exactly two acceptable paths:
 
-1. **Plain caller search** — `caller.search(name)` with **no** scope-narrowing kwargs (no `global_search=`, no `candidates=`, no `location=`, no `attribute_name=`). The `Character.search` override (`typeclasses/characters.py:1176`) applies the identity filter only on this code path. Any scope kwarg causes Evennia's base `ObjectDB.search` to be called and the filter is bypassed (documented at `characters.py:1201–1206`, bypass at `:1251`).
+1. **Plain caller search** — `caller.search(name)` with no scope-narrowing kwargs. This is the path that MATCHES people: by a name the searcher knows them by, then by description, then ordinals.
 2. **Explicit identity helper** — `world.search.identity_match_characters(searcher, query, candidates)` when you must pre-narrow the candidate set (e.g. cross-room scans, combat handler-managed rooms, victim resolution within a grapple). Validate a single candidate with `world.search.is_identity_match(searcher, target, query)`.
 
 A thin wrapper, `commands._identity_targeting.resolve_character_target(caller, query, candidates=None)`, encapsulates the common cases (same-room targeting with Builder-by-key fallback, ambiguity messaging) and SHOULD be preferred by new commands.
+
+#### The rule is in the search, not in the author's care (#3816)
+
+The first version of this section made the rule a convention: "any scope kwarg ... the filter is bypassed", so do not pass one when you mean a person. It failed in a way a convention cannot catch. Nine commands passed a pool while looking for a THING (`get`, `get ... from`, `get ... from here`, `inspect`, `sever`, `buy ... from`, `jump on`, the two edge jumps, `throw ... to`), the pool was the room, the room holds people, and Evennia matched those people by real key. Each command then refused to act on a person, and the refusal was the leak: it differed from "nothing matched" and named the figure the guessed name belonged to.
+
+So the rule is now a property of `Character.search` and not of its callers:
+
+| The call | What applies |
+|---|---|
+| `caller.search(name)` | The identity pipeline: people by known name, then description; everything else by key. |
+| `caller.search(name, candidates=...)` or `location=...` | Evennia matches the pool by key and alias, and then **a person matched only by real name is dropped** unless the searcher is staff (`world.search.only_what_they_can_name`, the same function the ordinary search ends with). People are not matched by description here: a command that means a person uses one of the two paths above. |
+| `global_search=True`, a `#dbref`, `attribute_name=` | Plain Evennia. Staff tooling: `world/tests/test_a_real_name_opens_no_door.py` fails if a `global_search=True` appears in a command whose lock names no permission. |
+
+This is where Evennia's own RP contrib draws the line (`evennia.contrib.rpg.rpsystem`, `ContribRPObject.get_search_result`): a search that has a pool is matched by description and recognition, a Builder falls back to the key, and only a search with no pool is plain. Ours stays in the `search` override and not in that hook because the hook receives the query after `get_search_query_replacement` has rewritten an ordinal (`2nd man` becomes `man-2`), and the identity matcher parses the words the player typed.
+
+**The invariant, in one sentence:** no local search returns a person to a non-staff searcher unless the typed words are a name that searcher knows them by or their description, and a refusal never differs from "nothing matched".
 
 #### Anti-patterns (forbidden for character targets)
 
@@ -1406,7 +1422,9 @@ for char in caller.location.contents:
         target = char
         break
 
-# WRONG — passing candidates= or location= bypasses the identity filter.
+# WRONG — a pool does not match people by description or known name,
+# so this finds nobody a player could name. (It no longer leaks: a
+# person matched by real key is dropped, #3816.)
 target = caller.search(name, candidates=caller.location.contents)
 target = caller.search(name, location=room)
 

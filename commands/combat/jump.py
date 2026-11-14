@@ -170,7 +170,11 @@ class CmdJump(Command):
         
         # Validate it's an explosive
         if not explosive.db.is_explosive:
-            self.caller.msg(f"{explosive.key} is not an explosive device.")
+            # What they see, not its key (#3816): the room holds people
+            # too, and this line printed whatever the word had matched.
+            self.caller.msg(
+                f"{explosive.get_display_name(self.caller)} is not an "
+                f"explosive device.")
             return
         
         # Check if someone is already jumping on this grenade
