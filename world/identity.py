@@ -1183,8 +1183,10 @@ def resolve_assigned_name(memory: Any, uid: str | None) -> tuple:
     look that went and watched this one arrive (`_keep_knowing`), and
     `forget` clears it. ``linked_to`` is not evidence that anybody
     watched anything: the `remember` command links a newly named look
-    to another entry for the same body without asking whether the
-    observer saw through; `forget` clears a name and leaves the link,
+    to the entry the observer saw THROUGH to (and until #3813 linked it
+    to any entry for the same body, seen through or not, so memories
+    written before then carry such links); `forget` clears a name and
+    leaves the link,
     because the link is what holds several names for one person
     together; and papers link two faces. Following it would have named,
     on the day this loaded, every look anybody had ever forgotten. So

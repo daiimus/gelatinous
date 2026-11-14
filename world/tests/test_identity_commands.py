@@ -394,15 +394,47 @@ class TestRememberCommand(TestCase):
         self.assertEqual(entry["relationship_valence"], "friendly")
         self.assertEqual(entry["first_seen"], "2026-01-01T00:00:00")
 
-    def test_new_entry_auto_links_to_prior_presentation(self):
-        """Remembering a new presentation auto-links to a prior one.
+    def _seen_through_or_not(self, verdict):
+        """A caller who named the bare face, the same body now under
+        another look, and the stored see-through *verdict* for it
+        (``None``: never rolled). Returns the new entry `remember`
+        writes for the look in front of them."""
+        from commands.CmdCharacter import CmdRemember
 
-        Closes the pierce-then-remember loop: if the looker has any
-        other recognition entry for the same underlying sleeve, the
-        freshly-created entry's ``linked_to`` points at that prior
-        presentation so ``recall`` / ``memory`` render the aka-line
-        correctly without requiring a witnessed unmasking moment.
-        """
+        target = _make_character(key="Jorge", sleeve_uid="uid-target",
+                                 height="tall", build="lean",
+                                 sdesc_keyword="man")
+        target.dbref = "#4242"
+        target_uid = apparent_uid_for(target)
+        caller = _make_character(
+            key="Observer", sleeve_uid="uid-observer",
+            recognition_memory={"uid-bare-face": {
+                "assigned_name": "Jorge", "real_sleeve_uid": "uid-target"}})
+        # Said out loud: `caller.db` is a mock, and a mock's attribute
+        # is truthy, which reads as a won see-through.
+        caller.db.disguise_pierce_cache = (
+            None if verdict is None else {("#4242", target_uid): verdict})
+        cmd = CmdRemember()
+        cmd.caller = caller
+        cmd._remember_target(caller, target, target_uid, "the cloaked one")
+        return caller.recognition_memory[target_uid]
+
+    def test_a_look_seen_through_links_to_the_face_it_was_seen_as(self):
+        """The spec's pierce-then-remember sentence (#3813)."""
+        self.assertEqual(self._seen_through_or_not(True)["linked_to"],
+                         "uid-bare-face")
+
+    def test_a_disguise_that_held_links_to_nothing(self):
+        """What 2026-05-15 left out: it linked this too, off the true
+        body, and `recall` then read out who was under the mask."""
+        self.assertIsNone(self._seen_through_or_not(False).get("linked_to"))
+
+    def test_nor_does_a_look_never_rolled_against(self):
+        self.assertIsNone(self._seen_through_or_not(None).get("linked_to"))
+
+    def test_new_entry_auto_links_to_prior_presentation(self):
+        """The original test of the link, kept with its setup made
+        honest: the caller HAS seen through (the verdict is stored)."""
         from commands.CmdCharacter import CmdRemember
 
         target = _make_character(
@@ -438,6 +470,8 @@ class TestRememberCommand(TestCase):
             },
         )
 
+        target.dbref = "#4242"
+        caller.db.disguise_pierce_cache = {("#4242", target_uid): True}
         cmd = CmdRemember()
         cmd.caller = caller
         cmd._remember_target(caller, target, target_uid, "the cloaked one")
@@ -518,59 +552,45 @@ class TestRememberCommand(TestCase):
         entry = caller.recognition_memory[target_uid]
         self.assertIsNone(entry.get("linked_to"))
 
-    def test_new_entry_preserves_existing_link(self):
-        """A pre-existing linked_to (e.g. from unmasking) is not overwritten."""
+    def test_an_existing_link_is_not_overwritten(self):
+        """A link the unmasking hook wrote is left alone when the look
+        is named afterwards.
+
+        This was `test_new_entry_preserves_existing_link`, and it did
+        not test that: it named a look the caller held NO entry for and
+        asserted a link to another entry of the same true body. That is
+        the #3813 defect, and it went on passing after the fix only
+        because the mock caller's unset verdict cache read as a won
+        see-through. Here the entry exists, as the hook leaves it, and
+        the stored verdict is stated: none.
+        """
         from commands.CmdCharacter import CmdRemember
 
-        target = _make_character(
-            key="Jorge",
-            sleeve_uid="uid-target",
-            height="tall",
-            build="lean",
-            sdesc_keyword="man",
-        )
+        target = _make_character(key="Jorge", sleeve_uid="uid-target",
+                                 height="tall", build="lean",
+                                 sdesc_keyword="man")
+        target.dbref = "#4242"
         target_uid = apparent_uid_for(target)
         caller = _make_character(
-            key="Observer",
-            sleeve_uid="uid-observer",
+            key="Observer", sleeve_uid="uid-observer",
             recognition_memory={
-                "uid-original": {
-                    "assigned_name": "Jorge",
-                    "real_sleeve_uid": "uid-target",
-                    "first_seen": "2026-01-01T00:00:00",
-                    "last_seen": "2026-01-01T00:00:00",
-                    "times_seen": 1,
-                    "location_first_seen": "Bar",
-                    "location_last_seen": "Bar",
-                    "locations_seen": ["Bar"],
-                    "sdesc_at_first_encounter": "x",
-                    "sdesc_at_last_encounter": "x",
-                    "notes": "",
-                    "tags": [],
-                    "confidence": 1.0,
-                    "relationship_valence": "neutral",
-                    "recent_interactions": [],
-                    "lost_contact": False,
-                },
-            },
-        )
-
+                "uid-original": {"assigned_name": "Jorge",
+                                 "real_sleeve_uid": "uid-target"},
+                "uid-other": {"assigned_name": "Somebody",
+                              "real_sleeve_uid": "uid-target"},
+                target_uid: {"assigned_name": "",
+                             "linked_to": "uid-original",
+                             "real_sleeve_uid": "uid-target",
+                             "times_seen": 1},
+            })
+        caller.db.disguise_pierce_cache = None
         cmd = CmdRemember()
         cmd.caller = caller
-        # Existing entry already has a non-None linked_to; remember
-        # must not clobber it.  We test the *new-entry* path, so the
-        # entry must not pre-exist; build a fresh entry that the
-        # builder will short-circuit through the if-branch (the entry
-        # is created with no linked_to, then auto-link runs).  This is
-        # the realistic flow: the only way a brand-new entry gets a
-        # link is via the auto-link logic, so this test confirms the
-        # link points to the original presentation as expected.
         cmd._remember_target(caller, target, target_uid, "the cloaked one")
 
         entry = caller.recognition_memory[target_uid]
+        self.assertEqual(entry["assigned_name"], "the cloaked one")
         self.assertEqual(entry["linked_to"], "uid-original")
-
-
 # ===================================================================
 # forget command
 # ===================================================================
