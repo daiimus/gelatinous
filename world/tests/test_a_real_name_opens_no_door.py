@@ -182,12 +182,17 @@ class TestARealNameChangesNothing(_Strangers):
         # A souled NPC is keyed "First Last" with both as aliases.
         self.them.aliases.add(["jorvik", "ansel", "brown"])
         # A second man, whose real name starts with a description word.
-        self.manfred = self.body("Manfred Ostrow", "tall", "lean", "man")
+        # He is not built like the first: two men of one description
+        # and `remember gaunt man as ...` below names neither of them.
+        self.manfred = self.body("Manfred Ostrow", "short", "stocky", "man")
         # Things whose names a real name or alias would shadow.
         self.wig = self.thing("brown wig")
         self.idol = self.thing("jorvik idol")
         # A guess, made the only way a player can make one stick.
         self.do("remember gaunt man as Jorvik")
+        from world.identity import get_assigned_name
+        self.assertEqual(get_assigned_name(self.viewer, self.them), "Jorvik",
+                         "the setup did not store the guess")
 
     def every_answer(self):
         answers = {}
@@ -224,6 +229,9 @@ class TestARealNameChangesNothing(_Strangers):
         self.assertEqual(answers["location", "brown"], ["brown wig"])
         self.assertEqual(answers["candidates", "jorvik"], ["jorvik idol"])
         self.assertIn("a person", answers["ordinary", "gaunt man"])
+        # ... and the guess is in force: the ordinary search answers to it.
+        self.assertEqual(answers["ordinary", "jorvik"], ["a person"])
+        self.assertIn("Jorvik (a gaunt man)", answers["look {}", "jorvik"])
 
 
 class TestWhatAFilterOnResultsGetsWrong(_Strangers):
