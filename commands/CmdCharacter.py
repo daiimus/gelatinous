@@ -2405,27 +2405,31 @@ class CmdRemember(Command):
                 "recent_interactions": [],
                 "real_sleeve_uid": real_sleeve_uid,
             }
-            # Auto-link this fresh entry to any *other* presentation of
-            # the same underlying sleeve the caller has already
-            # remembered.  This closes the pierce-then-remember loop
-            # promised in spec §Disguise Piercing: if the looker
-            # pierced a disguise and then `remember`s the pierced name,
-            # the new entry chains back to the bare-face entry so
-            # `recall` / `memory` render the aka-line correctly.
+            # Linked to the look the caller SEES THROUGH to, and to
+            # nothing else (#3813). The spec's sentence was always about
+            # that case: "If the looker subsequently runs `remember
+            # <pierced name>`", the new entry chains back to the
+            # bare-face entry "the looker matched against".
             #
-            # First match (insertion order) wins, mirroring
-            # `attempt_display_pierce`.  No-op when no prior
-            # presentation exists, when the sleeve is unknown, or when
-            # an unmasking hook has already populated `linked_to`.
-            if real_sleeve_uid and entry.get("linked_to") is None:
-                from world.identity import find_entries_by_real_sleeve_uid
+            # The first version of this block (2026-05-15) left the
+            # condition out. It linked EVERY newly named look to another
+            # entry for the same true body, read off `real_sleeve_uid`,
+            # which the caller has no way to know. So naming a masked
+            # stranger whose disguise had held, and then typing `recall`,
+            # printed "Also known as: <the name given to their bare
+            # face>". The same link told an AI-driven NPC "you know
+            # these are the same person under different faces".
+            #
+            # `seen_through` reads the verdict the display stored and
+            # never rolls. A change the caller WATCHED needs nothing
+            # here: the unmasking broadcast has already written an entry
+            # for the new look, with its own link, and this is the
+            # new-entry path.
+            from world.identity import seen_through
 
-                for other_uid, _other_entry in (
-                    find_entries_by_real_sleeve_uid(caller, real_sleeve_uid)
-                ):
-                    if other_uid != apparent_uid:
-                        entry["linked_to"] = other_uid
-                        break
+            _seen_as, seen_uid = seen_through(caller, target)
+            if seen_uid and seen_uid != apparent_uid:
+                entry["linked_to"] = seen_uid
 
         memory[apparent_uid] = entry
         caller.recognition_memory = memory
