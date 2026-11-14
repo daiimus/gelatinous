@@ -1951,7 +1951,8 @@ def _won_verdicts_standing_on(observer: Any, uid: str) -> list:
     return standing
 
 
-def erase_look(observer: Any, uid: str) -> str:
+def erase_look(observer: Any, uid: str, *,
+               real_sleeve_uid: str | None = None) -> str:
     """Erase one look from *observer*'s memory. Returns the name it had.
 
     This is what forgetting is (#3825). Owner, 2026-11-14: "If the
@@ -1995,7 +1996,11 @@ def erase_look(observer: Any, uid: str) -> str:
 
     # Worked out while the entry is still there to be found.
     doomed_verdicts = _won_verdicts_standing_on(observer, uid)
-    sleeve = memory[uid].get("real_sleeve_uid")
+    # The body tag is used only to tell older voice entries of two
+    # people under one name apart. An entry from before the tag was
+    # recorded has none; the door that has the person in front of it
+    # passes theirs.
+    sleeve = memory[uid].get("real_sleeve_uid") or real_sleeve_uid
     kin = {other for other in _memory_component(memory, uid)
            if other != uid and not _stands_alone(memory.get(other))}
 

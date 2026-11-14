@@ -189,6 +189,64 @@ class TestTheVoiceLearnedWithTheLook(TestCase):
         })
         self.assertEqual(sorted(voices), ["other-body", "other-name"])
 
+    def test_no_other_door_blanks_a_name_and_keeps_the_entry(self):
+        """A third, dead, method did what `forget` used to. Found by
+        listing every writer of a name."""
+        from commands import CmdCharacter
+        self.assertFalse(hasattr(CmdCharacter.CmdRemember, "_clear_assignment"))
+
+    def test_a_face_known_only_from_papers_takes_nobody_elses_voice(self):
+        """Review round two. A face made from papers has no body tag and
+        was never named in person, so no voice was named with it. A
+        stranger's older voice under the same name is not its own."""
+        voices = self.forget_the_face(
+            {"stranger": {"assigned_name": "Alder",
+                          "real_sleeve_uid": "sleeve-b"},
+             "ancient": {"assigned_name": "Alder", "real_sleeve_uid": None}},
+            face={"assigned_name": "Alder", "real_sleeve_uid": None})
+        self.assertEqual(list(voices), ["stranger"])
+
+    def test_papers_mark_an_older_voice_before_they_rename_the_face(self):
+        """Review round two, and #2652 once more. Every voice in the
+        live world is an older entry. Named "Big J" in person, the face
+        then renamed from his papers: the voice keeps "Big J", so it is
+        marked with the look while the name can still say whose it is."""
+        import inspect
+        from commands import CmdCharacter
+        voices = {"v": {"assigned_name": "Big J",
+                        "real_sleeve_uid": "sleeve-a"},
+                  "other": {"assigned_name": "Big J",
+                            "real_sleeve_uid": "sleeve-b"}}
+        observer = _observer({}, voices)
+        mark = getattr(voice_mod, "note_voices_named_with", None)
+        self.assertIsNotNone(mark, "world.voice.note_voices_named_with is missing")
+        self.assertEqual(mark(observer, "face", "big j", "sleeve-a"), 1)
+        self.assertEqual(voices["v"]["named_with"], "face")
+        self.assertNotIn("named_with", voices["other"])
+        source = inspect.getsource(
+            CmdCharacter.CmdRemember._remember_from_document)
+        self.assertLess(source.index("note_voices_named_with("),
+                        source.index("dict(memory[uid], assigned_name=name)"))
+        self.forget_the_face(voices, face={"assigned_name": "Jorge Ruiz",
+                                           "real_sleeve_uid": "sleeve-a"})
+        self.assertEqual(list(voices), ["other"])
+
+    def test_the_door_with_the_person_in_front_of_it_passes_their_body(self):
+        """An entry from before the body tag was recorded has none. The
+        removed code fell back to the person standing there."""
+        import inspect
+        from commands import CmdCharacter
+        self.assertIn("real_sleeve_uid=getattr(target, \"sleeve_uid\", None)",
+                      inspect.getsource(CmdCharacter.CmdForget._forget_visible))
+        memory = {"face": {"assigned_name": "Alder"}}
+        voices = {"same": {"assigned_name": "Alder",
+                           "real_sleeve_uid": "sleeve-a"},
+                  "other": {"assigned_name": "Alder",
+                            "real_sleeve_uid": "sleeve-b"}}
+        identity.erase_look(_observer(memory, voices), "face",
+                            real_sleeve_uid="sleeve-a")
+        self.assertEqual(list(voices), ["other"])
+
     def test_the_voice_helper_reports_what_it_erased(self):
         erase = getattr(voice_mod, "erase_voices_named", None)
         self.assertIsNotNone(erase, "world.voice.erase_voices_named is missing")

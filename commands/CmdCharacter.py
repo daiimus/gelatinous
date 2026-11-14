@@ -2309,6 +2309,14 @@ class CmdRemember(Command):
                 "attested": [],
             }
         else:
+            # Papers are about to give this face another name. Its voice
+            # was named in person and keeps the old one, so write down
+            # which look the voice was named with while the name can
+            # still say (#3825): `forget` erases a voice by that record.
+            from world.voice import note_voices_named_with
+            note_voices_named_with(
+                caller, uid, memory[uid].get("assigned_name", ""),
+                memory[uid].get("real_sleeve_uid"))
             memory[uid] = dict(memory[uid], assigned_name=name)
         caller.recognition_memory = memory
 
@@ -2458,31 +2466,6 @@ class CmdRemember(Command):
                 f"You will now recognize "
                 f"{target.get_sdesc()} as |w{name}|n."
             )
-
-    def _clear_assignment(self, caller, target, apparent_uid):
-        """Remove a name assignment from recognition memory.
-
-        Retained for backward-compatible internal use; player-facing clear
-        is now the |wforget|n command (:class:`CmdForget`).
-        """
-        memory = caller.recognition_memory
-        if not memory or apparent_uid not in memory:
-            caller.msg("You don't have a name assigned to them.")
-            return
-
-        old_name = memory[apparent_uid].get("assigned_name", "")
-        # Clear the assigned name but keep the memory entry
-        memory[apparent_uid]["assigned_name"] = ""
-        caller.recognition_memory = memory
-
-        sdesc = target.get_sdesc()
-        if old_name:
-            caller.msg(
-                f"Cleared name '{old_name}'. "
-                f"They will now appear as their description."
-            )
-        else:
-            caller.msg("No name was assigned to clear.")
 
 
 # ===================================================================
@@ -2693,7 +2676,8 @@ class CmdForget(Command):
         if not memory or not old_name or source_uid not in memory:
             caller.msg("You don't have a name remembered for them.")
             return
-        erase_look(caller, source_uid)
+        erase_look(caller, source_uid,
+                   real_sleeve_uid=getattr(target, "sleeve_uid", None))
         caller.msg(
             f"You forget the name '{old_name}'. "
             f"They will now appear as their description."

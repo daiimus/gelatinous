@@ -239,7 +239,8 @@ class VoiceRecognitionTests(TestCase):
         observer = _FakeChar(sleeve_uid="obs")
         speaker = _FakeChar("gravelly", "drawl", sleeve_uid="spk")
         remember_voice(observer, speaker, "Bob")
-        self.assertEqual(erase_voices_named(observer, "Bob"), 1)
+        self.assertEqual(erase_voices_named(
+            observer, "Bob", real_sleeve_uid="spk"), 1)
         self.assertIsNone(get_assigned_voice_name(observer, speaker))
 
 
@@ -273,10 +274,10 @@ class ForgetAnAbsentVoiceTests(TestCase):
     Forgetting does not: the entry lives in the observer's OWN memory
     and needs nothing from the speaker (#2809).
 
-    A voice is forgotten by the NAME it carries (#3825). It is given a
-    name in one place only, ``remember <somebody in front of you>``, so
-    a voice under the forgotten name is one the observer connected to
-    it. The entry goes, not just its name.
+    A voice is forgotten with the look it was named with (#3825). These
+    stand-ins name a voice without a look, as every voice in the game
+    was named before that record existed, so they are matched the older
+    way: by name, on the same body. The entry goes, not just its name.
     """
 
     def _remembered(self):
@@ -287,18 +288,21 @@ class ForgetAnAbsentVoiceTests(TestCase):
 
     def test_forget_by_assigned_name(self):
         observer, speaker = self._remembered()
-        self.assertEqual(erase_voices_named(observer, "Bob"), 1)
+        self.assertEqual(erase_voices_named(
+            observer, "Bob", real_sleeve_uid="spk"), 1)
         self.assertIsNone(get_assigned_voice_name(observer, speaker))
 
     def test_the_entry_goes_and_not_just_its_name(self):
         observer, speaker = self._remembered()
-        erase_voices_named(observer, "Bob")
+        erase_voices_named(
+            observer, "Bob", real_sleeve_uid="spk")
         self.assertNotIn(get_apparent_voice_uid(speaker),
                          observer.voice_memory)
 
     def test_the_name_match_is_not_case_sensitive(self):
         observer, speaker = self._remembered()
-        self.assertEqual(erase_voices_named(observer, "bob"), 1)
+        self.assertEqual(erase_voices_named(
+            observer, "bob", real_sleeve_uid="spk"), 1)
         self.assertIsNone(get_assigned_voice_name(observer, speaker))
 
     def test_an_unknown_name_clears_nothing(self):
@@ -310,7 +314,8 @@ class ForgetAnAbsentVoiceTests(TestCase):
         observer, speaker = self._remembered()
         other = _FakeChar("reedy", "lilt", sleeve_uid="spk")
         remember_voice(observer, other, "Ghost")
-        erase_voices_named(observer, "Bob")
+        erase_voices_named(
+            observer, "Bob", real_sleeve_uid="spk")
         self.assertEqual(get_assigned_voice_name(observer, other), "Ghost")
 
 
@@ -407,7 +412,8 @@ class VoiceDiscernmentTests(TestCase):
         remember_voice(observer, speaker, "Bob")
         attempt_voice_discern(observer, speaker)  # populate cache
         self.assertTrue(observer.db.voice_discern_cache)
-        erase_voices_named(observer, "Bob")
+        erase_voices_named(
+            observer, "Bob", real_sleeve_uid="spk")
         self.assertFalse(observer.db.voice_discern_cache)
 
 

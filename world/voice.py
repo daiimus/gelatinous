@@ -356,6 +356,56 @@ def _won_voice_verdicts_standing_on(observer: Any, uids: Any) -> list:
     return standing
 
 
+def _older_entry_is_theirs(entry: Any, wanted: str,
+                           real_sleeve_uid: str | None) -> bool:
+    """Whether a voice entry with no ``named_with`` was named together
+    with the face called *wanted* on the body *real_sleeve_uid*.
+
+    Such an entry was written before the look was recorded, by the same
+    ``remember`` that named the face, so it carried the face's name and
+    the face's body tag. The name has to match. The body tag is read to
+    tell two people under one name apart, and it is strict in one
+    direction: a voice whose body is known is NOT theirs when the
+    face's body is unknown. A face with no body tag was never named in
+    person (papers made it), so no voice was named with it; treating
+    "unknown" as a match there took a stranger's voice.
+    """
+    if not wanted:
+        return False
+    if str((entry or {}).get("assigned_name") or "").strip().lower() != wanted:
+        return False
+    theirs = (entry or {}).get("real_sleeve_uid")
+    return not theirs or (bool(real_sleeve_uid) and theirs == real_sleeve_uid)
+
+
+def note_voices_named_with(observer: Any, look_uid: str, name: str,
+                           real_sleeve_uid: str | None) -> int:
+    """Record, on older voice entries, the look they were named with.
+
+    Called just before something other than naming in person changes a
+    face's name (papers: ``_remember_from_document``). Until that
+    moment an older voice entry can still be told by its name; after
+    it the voice keeps the old name and the face has a new one, and
+    `forget` could no longer find the voice of the person being
+    forgotten (#2652 again). So the connection is written down while
+    it can still be read. Returns the number of entries marked.
+    """
+    wanted = str(name or "").strip().lower()
+    memory = getattr(observer, "voice_memory", None)
+    if not memory or not wanted or not look_uid:
+        return 0
+    marked = 0
+    for entry in memory.values():
+        if (entry or {}).get("named_with"):
+            continue
+        if _older_entry_is_theirs(entry, wanted, real_sleeve_uid):
+            entry["named_with"] = look_uid
+            marked += 1
+    if marked:
+        observer.voice_memory = memory
+    return marked
+
+
 def erase_voices_named(observer: Any, name: str, *,
                        look_uid: str | None = None,
                        real_sleeve_uid: str | None = None) -> int:
@@ -376,9 +426,11 @@ def erase_voices_named(observer: Any, name: str, *,
 
     An entry written before the look was recorded has no
     ``named_with``. For those the name is all there is to go on, and
-    the true body is read only to tell two people under one name
-    apart: such an entry goes when its name matches *name* and it does
-    not belong to a different body from *real_sleeve_uid*.
+    the true body is read only to tell two people under one name apart
+    (:func:`_older_entry_is_theirs`). Every named voice in the live
+    world on 2026-11-14 was such an entry, and each matched a face of
+    the same body by name; a later rename by papers marks them first
+    (:func:`note_voices_named_with`).
 
     The entries go, not just their names, and so do the voices placed
     by way of them; a failed attempt to place a voice stays (#3817).
@@ -402,14 +454,8 @@ def erase_voices_named(observer: Any, name: str, *,
             if look_uid and learned_with == look_uid:
                 doomed.append(uid)
             continue
-        if (not wanted
-                or str(entry.get("assigned_name") or "").strip().lower()
-                != wanted):
-            continue
-        theirs = entry.get("real_sleeve_uid")
-        if theirs and real_sleeve_uid and theirs != real_sleeve_uid:
-            continue
-        doomed.append(uid)
+        if _older_entry_is_theirs(entry, wanted, real_sleeve_uid):
+            doomed.append(uid)
     if not doomed:
         return 0
     verdicts = _won_voice_verdicts_standing_on(observer, doomed)

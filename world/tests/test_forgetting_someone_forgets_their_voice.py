@@ -163,5 +163,8 @@ class TestForgettingSomeoneForgetsTheirVoice(TestCase):
             ("voice-b", "", SLEEVE),          # never named: nothing to erase
             ("voice-c", "Wren", "sleeve-other"),
         ))
-        self.assertEqual(helper(caller, "Big J"), 1)
+        self.assertEqual(helper(caller, "Big J"), 0,
+                         "a voice of a known body is not matched by name "
+                         "alone")
+        self.assertEqual(helper(caller, "Big J", real_sleeve_uid=SLEEVE), 1)
         self.assertEqual(helper(caller, None), 0)
