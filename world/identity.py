@@ -1162,42 +1162,98 @@ def parse_introduction(text: str) -> str | None:
     return None
 
 
+def resolve_assigned_name(memory: Any, uid: str | None) -> tuple:
+    """``(name, uid the name is stored on)`` for the look *uid*, in one
+    observer's *memory*; ``(None, None)`` when they have no name for it.
+
+    The look's OWN name first. Failing that, the name on the entry it
+    records as ``witnessed_from`` (#3811).
+
+    Owner, 2026-11-13, asked whether somebody who watches a person they
+    know put on a mask goes on knowing them: *"Yes, and it's specific
+    to that person."* The unmasking hook had always given an eyewitness
+    an entry for the new look, with no name. `recall` and `memory`
+    could tell the two looks were one person. The name on screen and
+    the name that can be typed could not, so an eyewitness fell through
+    to the see-through roll, which was built for somebody who walks in
+    already masked.
+
+    WHAT IS FOLLOWED IS ``witnessed_from``, NOT ``linked_to``. The hook
+    writes ``witnessed_from`` when the observer held a name for the
+    look that went and watched this one arrive (`_keep_knowing`), and
+    `forget` clears it. ``linked_to`` is not evidence that anybody
+    watched anything: the `remember` command links a newly named look
+    to another entry for the same body without asking whether the
+    observer saw through; `forget` clears a name and leaves the link,
+    because the link is what holds several names for one person
+    together; and papers link two faces. Following it would have named,
+    on the day this loaded, every look anybody had ever forgotten. So
+    the two are kept apart: ``linked_to`` is what `recall` reads, and
+    ``witnessed_from`` is what the room reads. An entry from before
+    this change has none and is not followed, so an eyewitness from
+    before it is where they were: the roll.
+
+    An observer who did not watch has no entry for the look at all and
+    gets nothing here, which is what keeps this theirs alone. A name
+    the observer has given the look itself always wins.
+
+    ``witnessed_from`` is written pointing straight at a named entry,
+    so this is one step in practice. It still walks, and stops quietly
+    on a loop, a missing entry or too many steps, because a name can be
+    forgotten after something was pointed at it and because stored
+    data is not to be trusted with a `look`.
+    """
+    if not memory or not uid or uid not in memory:
+        return None, None
+    seen = set()
+    current = uid
+    while (current and current in memory and current not in seen
+            and len(seen) < _LINKED_CHAIN_MAX_HOPS):
+        entry = memory[current] or {}
+        name = entry.get("assigned_name") or ""
+        if name:
+            return name, current
+        seen.add(current)
+        current = entry.get("witnessed_from")
+    return None, None
+
+
 def get_assigned_name(observer: Any, target: Any) -> str | None:
     """Return *observer*'s assigned recognition name for *target*.
 
     Single source of truth for "what name has the observer chosen to
     remember this character by."  Resolves *target*'s current Apparent
     UID and looks up the matching ``recognition_memory`` entry on
-    *observer*, returning its non-empty ``assigned_name``.
+    *observer*: its own non-empty ``assigned_name``, or failing that
+    the name of the look the observer watched it come from
+    (:func:`resolve_assigned_name`).
 
-    Used by the display-name pipeline (:meth:`Character.get_display_name`),
-    identity-aware search (:func:`world.search._match_assigned_name`),
-    and the emote/dot-pose target resolver
-    (:func:`world.emote.build_char_candidates`) so all three agree on the
-    exact name the observer has assigned.
+    Used by the display-name pipeline (:meth:`Character.get_display_name`
+    and :meth:`Character.get_look_header`), identity-aware search
+    (:func:`world.search._match_assigned_name`, through
+    :func:`get_known_name`), and the emote/dot-pose target resolver
+    (:func:`world.emote.build_char_candidates`) so all of them agree on
+    the exact name the observer has for the person in front of them.
 
-    Note: this returns the assigned name only.  It does NOT attempt
-    disguise piercing — callers that need the full display resolution
-    (assigned name → pierce → sdesc fallback) should use
-    :meth:`Character.get_display_name`.
+    Note: this returns a name the observer HOLDS.  It does NOT attempt
+    disguise piercing — the display pipeline rolls for that itself, and
+    a typed name reads only a see-through already decided
+    (:func:`seen_through`).
 
     Args:
         observer: The character whose recognition memory is consulted.
         target: The character being named.
 
     Returns:
-        The non-empty assigned name string, or ``None`` when the
-        observer has no name assigned for *target*'s current
-        presentation (including when *target* has no Apparent UID).
+        The name string, or ``None`` when the observer has no name for
+        *target*'s current presentation (including when *target* has no
+        Apparent UID).
     """
     apparent_uid = get_apparent_uid(target)
     if apparent_uid is None:
         return None
     memory = getattr(observer, "recognition_memory", None)
-    if not memory or apparent_uid not in memory:
-        return None
-    assigned = memory[apparent_uid].get("assigned_name") or ""
-    return assigned or None
+    return resolve_assigned_name(memory, apparent_uid)[0]
 
 
 # Decay stages at which a corpse's body-identity axis (``sleeve_uid``) is
@@ -1827,13 +1883,25 @@ def invalidate_pierce_cache_for_sleeve(
             observer, real_sleeve_uid
         )
     }
-    if not matching_uids:
-        return 0
+
+    # ...and every verdict about a body with this sleeve, whatever look
+    # it was given for (#3811). A look that was seen THROUGH has no
+    # memory entry by definition, so the walk above never reached its
+    # verdict: `forget` left a stored "seen through" behind, and the
+    # masked figure was named again, with no roll, the moment the face
+    # was remembered a second time. The key carries the body's dbref,
+    # which is the one handle on a look nobody wrote down.
+    from evennia.utils.search import search_object
+
+    def same_body(dbref: Any) -> bool:
+        found = search_object(dbref) if isinstance(dbref, str) else []
+        return any(getattr(obj, "sleeve_uid", None) == real_sleeve_uid
+                   for obj in found)
 
     keys_to_drop = [
         key for key in cache
         if isinstance(key, tuple) and len(key) == 2
-        and key[1] in matching_uids
+        and (key[1] in matching_uids or same_body(key[0]))
     ]
     for key in keys_to_drop:
         del cache[key]
@@ -1875,22 +1943,100 @@ def attempt_display_pierce(
     memory = getattr(looker, "recognition_memory", None)
     if not memory:
         return None
-    real_sleeve = getattr(target, "sleeve_uid", None)
-    if not real_sleeve:
-        return None
 
-    candidates = [
-        (uid, entry)
-        for uid, entry in find_entries_by_real_sleeve_uid(looker, real_sleeve)
-        if uid != apparent_uid and entry.get("assigned_name")
-    ]
-    if not candidates:
+    _bare_uid, bare_entry = _see_through_candidate(
+        looker, target, apparent_uid)
+    if bare_entry is None:
         return None
-
-    _bare_uid, bare_entry = candidates[0]
     if attempt_disguise_pierce(looker, target, apparent_uid, bare_entry):
         return bare_entry.get("assigned_name")
     return None
+
+
+def _see_through_candidate(
+    looker: Any, target: Any, apparent_uid: str | None
+) -> tuple:
+    """``(uid, entry)`` of the remembered look a see-through would name,
+    or ``(None, None)``. One selection, for the roll and for the reader
+    of a roll already made, so the two cannot name different entries:
+    the first named entry (insertion order) for the same sleeve that is
+    not the look in front of the looker."""
+    real_sleeve = getattr(target, "sleeve_uid", None)
+    if not real_sleeve or not apparent_uid:
+        return None, None
+    for uid, entry in find_entries_by_real_sleeve_uid(looker, real_sleeve):
+        if uid != apparent_uid and entry.get("assigned_name"):
+            return uid, entry
+    return None, None
+
+
+def seen_through(looker: Any, target: Any) -> tuple:
+    """``(name, uid the name is stored on)`` when *looker* has ALREADY
+    seen through *target*'s current look, else ``(None, None)``.
+
+    Reads the stored verdict and never rolls (#3811, finding 4 of
+    #2451). The display pipeline rolls once, on the first look, and
+    stores the result for good; from then on the name is on screen in
+    the room, the look header and every broadcast. Typed names could
+    not find it: a name that was shown and could not be used.
+
+    Rolling from the typing side would let anybody fish for who is
+    under a mask by trying names, which is why it was left alone the
+    first time. A verdict only ever comes from looking, so this makes a
+    name typeable exactly when it has been shown, and typing teaches
+    nothing.
+    """
+    return _seen_through_at(looker, target, get_apparent_uid(target))
+
+
+def _seen_through_at(looker: Any, target: Any, apparent_uid: Any) -> tuple:
+    """:func:`seen_through`, for the look *apparent_uid* of *target*,
+    which need not be the one they wear now: the unmasking hook asks it
+    about the look that has just gone."""
+    if looker is None or looker is target:
+        return None, None
+    target_dbref = getattr(target, "dbref", None)
+    if not apparent_uid or target_dbref is None:
+        return None, None
+    cache = getattr(getattr(looker, "db", None), "disguise_pierce_cache", None)
+    if not cache or not cache.get((target_dbref, apparent_uid)):
+        return None, None
+    memory = getattr(looker, "recognition_memory", None)
+    if not memory:
+        return None, None
+    uid, entry = _see_through_candidate(looker, target, apparent_uid)
+    if entry is None:
+        return None, None
+    return entry.get("assigned_name"), uid
+
+
+def known_name_source(observer: Any, target: Any) -> tuple:
+    """``(name, uid the name is stored on)`` for the name *observer* has
+    for *target* as they stand: a name they hold
+    (:func:`resolve_assigned_name`), else one they have already seen
+    through to (:func:`seen_through`); ``(None, None)`` for neither.
+
+    This is the name the room shows them, so it is the name they may
+    type, the name `forget` takes away and the name `recall` reads out.
+    """
+    apparent_uid = get_apparent_uid(target)
+    if apparent_uid is None:
+        return None, None
+    memory = getattr(observer, "recognition_memory", None)
+    name, uid = resolve_assigned_name(memory, apparent_uid)
+    if name:
+        return name, uid
+    return seen_through(observer, target)
+
+
+def get_known_name(observer: Any, target: Any) -> str | None:
+    """The name *observer* may TYPE for *target*: the one they hold
+    (:func:`get_assigned_name`, still the one question everything asks
+    first), else one they have already seen through to
+    (:func:`seen_through`). The same answer as
+    :func:`known_name_source`, without the entry."""
+    return (get_assigned_name(observer, target)
+            or seen_through(observer, target)[0])
 
 
 # =========================================================================
@@ -1969,6 +2115,12 @@ def _build_link_entry(
         "lost_contact": False,
         "recent_interactions": [],
         "linked_to": linked_to,
+        # The entry whose name this look answers to because the
+        # observer WATCHED it arrive (#3811). This, and not
+        # `linked_to`, is what a name is read through
+        # (`resolve_assigned_name`). `_keep_knowing` sets it and
+        # `forget` clears it.
+        "witnessed_from": None,
         "real_sleeve_uid": real_sleeve_uid,
         # names documents have vouched for — see `attest`. Written only by
         # proof, never by speech; a name someone merely CLAIMS is an
@@ -2175,6 +2327,7 @@ def _send_unmasking_message(
     cell: str,
     old_uid: str | None = None,
     new_uid: str | None = None,
+    already_one: bool = False,
 ) -> None:
     """Send per-cell narrative observer message for an unmasking moment.
 
@@ -2240,6 +2393,16 @@ def _send_unmasking_message(
         return
 
     if cell == "D":
+        # Nothing is realized by somebody who already held the two
+        # looks as one person (#3811): the same entry named both before
+        # the change. They watched the mask go on and have called the
+        # masked figure by the face's name since, and "You realize that
+        # ... are the same person" told them so again every time it
+        # came off by a door with no line of its own (`undress`,
+        # `remove all`, an override dropped). Silent, like cell C:
+        # there is nothing to learn from the change.
+        if already_one:
+            return
         # Link discovered — the observer realises two tracked
         # presentations are the same person.  Surface each side's
         # assigned name when the observer has set one; either, both,
@@ -2270,6 +2433,72 @@ def _send_unmasking_message(
             f"are the same person."
         )
         return
+
+
+def _name_source_for_look(
+    observer: Any, char: Any, memory: dict, uid: str | None
+) -> str | None:
+    """The uid of the entry that NAMES *char*'s look *uid* for
+    *observer*, or ``None`` when they hold no name for it.
+
+    Every route to a name counts, because the question is whether they
+    knew who they were looking at: the look's own name, a name read
+    through what they watched (:func:`resolve_assigned_name`), or one
+    they had already seen through to (:func:`_seen_through_at`).
+    """
+    _name, source_uid = resolve_assigned_name(memory, uid)
+    if source_uid is not None:
+        return source_uid
+    return _seen_through_at(observer, char, uid)[1]
+
+
+def _keep_knowing(
+    observer: Any, char: Any, memory: dict,
+    new_uid: str, known_from: str | None, now_iso: str,
+) -> bool:
+    """The eyewitness rule, applied once, after the cell has done what
+    it always did (#3811). True when *memory* was written.
+
+    If the observer held a name for the look that has just gone
+    (*known_from*, taken BEFORE anything was written:
+    :func:`_name_source_for_look`) and holds none for the look that has
+    arrived, the arriving look records that it was watched to come from
+    the entry that name is on.
+
+    It was written first as a fact about cells: cell B's new entry
+    pointed at the old look, then cell D's, then a second helper for
+    somebody who held no entry for the old look and had seen through
+    it. Each missed a way of knowing: an old look held blank and seen
+    through, an arriving look that already led to a name and was
+    pointed back at the hood it came from. The cells ask what entries
+    the observer holds. The ruling is about what they KNOW.
+
+    ``witnessed_from`` is always written pointing straight at a named
+    entry, so there is no chain to walk through and no loop to form.
+    An entry is made for the arriving look when the cell made none
+    (somebody who had only seen through the old look), and that one
+    entry also takes ``linked_to``, which is what joins the two looks
+    for `recall` and an NPC's memories. Nothing else here touches a
+    link.
+    """
+    if known_from is None or known_from == new_uid:
+        return False
+    if new_uid in memory:
+        if resolve_assigned_name(memory, new_uid)[0] is not None:
+            return False
+        memory[new_uid]["witnessed_from"] = known_from
+        return True
+    location_name = (
+        observer.location.key
+        if getattr(observer, "location", None) is not None
+        else "unknown"
+    )
+    memory[new_uid] = _build_link_entry(
+        target=char, observer=observer, linked_to=known_from,
+        now_iso=now_iso, location_name=location_name,
+    )
+    memory[new_uid]["witnessed_from"] = known_from
+    return True
 
 
 def _broadcast_unmasking(
@@ -2318,6 +2547,10 @@ def _broadcast_unmasking(
 
         knew_old = old_uid in memory
         knew_new = new_uid in memory
+        known_from = _name_source_for_look(observer, char, memory, old_uid)
+        already_one = (
+            known_from is not None
+            and known_from == resolve_assigned_name(memory, new_uid)[1])
         location_name = (
             observer.location.key
             if getattr(observer, "location", None) is not None
@@ -2325,7 +2558,11 @@ def _broadcast_unmasking(
         )
 
         if not knew_old and not knew_new:
-            # Cell A — stranger remains a stranger.
+            # Cell A — stranger remains a stranger. Unless they knew the
+            # old look by having seen through it (#3811).
+            if _keep_knowing(
+                    observer, char, memory, new_uid, known_from, now_iso):
+                observer.recognition_memory = memory
             continue
 
         if knew_old and not knew_new:
@@ -2346,6 +2583,8 @@ def _broadcast_unmasking(
                 now_iso=now_iso,
                 location_name=location_name,
             )
+            _keep_knowing(
+                observer, char, memory, new_uid, known_from, now_iso)
             observer.recognition_memory = memory
             _send_unmasking_message(
                 observer, char, "B", old_uid=old_uid, new_uid=new_uid
@@ -2366,6 +2605,8 @@ def _broadcast_unmasking(
                 real_sleeve_uid = getattr(char, "sleeve_uid", None)
                 if real_sleeve_uid:
                     entry["real_sleeve_uid"] = real_sleeve_uid
+            _keep_knowing(
+                observer, char, memory, new_uid, known_from, now_iso)
             observer.recognition_memory = memory
             _send_unmasking_message(
                 observer, char, "C", old_uid=old_uid, new_uid=new_uid
@@ -2384,6 +2625,8 @@ def _broadcast_unmasking(
             new_entry["sdesc_at_last_encounter"] = char.get_sdesc()
         if new_entry.get("linked_to") is None:
             new_entry["linked_to"] = old_uid
+        _keep_knowing(
+            observer, char, memory, new_uid, known_from, now_iso)
         # Lazy backfill of `real_sleeve_uid` on both entries; cell D
         # touches both, so backfill both opportunistically.
         real_sleeve_uid = getattr(char, "sleeve_uid", None)
@@ -2394,7 +2637,8 @@ def _broadcast_unmasking(
                 memory[old_uid]["real_sleeve_uid"] = real_sleeve_uid
         observer.recognition_memory = memory
         _send_unmasking_message(
-            observer, char, "D", old_uid=old_uid, new_uid=new_uid
+            observer, char, "D", old_uid=old_uid, new_uid=new_uid,
+            already_one=already_one,
         )
 
     del source  # reserved for future debug/flavor routing
@@ -2476,19 +2720,28 @@ def _broadcast_unmask_with_action(
             first_placeholder = placeholder
 
     for observer in _collect_unmasking_observers(char):
-        if observer in exclude_set:
-            continue
-
+        # `action_exclude` names who is not SENT this line, because the
+        # command gives them one of their own. It is not who did not
+        # watch (#3811): `dress <somebody> in <a mask>` excludes the
+        # dresser, who put the mask on with their own hands. The skip
+        # sat here, before the memory was touched, so the dresser got
+        # no entry for the new look and was sent to the see-through
+        # roll about somebody they had just masked. Their memory is
+        # written like anybody's; only the line is withheld, below.
         memory = getattr(observer, "recognition_memory", None)
         if memory is None:
             memory = {}
 
         knew_old = old_uid in memory
         knew_new = new_uid in memory
+        known_from = _name_source_for_look(observer, char, memory, old_uid)
 
         # Determine cell + apply matching memory mutation.
         if not knew_old and not knew_new:
             cell = "A"
+            if _keep_knowing(
+                    observer, char, memory, new_uid, known_from, now_iso):
+                observer.recognition_memory = memory
         elif knew_old and not knew_new:
             cell = "B"
             memory[old_uid]["lost_contact"] = True
@@ -2508,6 +2761,8 @@ def _broadcast_unmask_with_action(
                 now_iso=now_iso,
                 location_name=location_name,
             )
+            _keep_knowing(
+                observer, char, memory, new_uid, known_from, now_iso)
             observer.recognition_memory = memory
         elif not knew_old and knew_new:
             cell = "C"
@@ -2525,6 +2780,8 @@ def _broadcast_unmask_with_action(
                 sleeve_uid = getattr(char, "sleeve_uid", None)
                 if sleeve_uid:
                     entry["real_sleeve_uid"] = sleeve_uid
+            _keep_knowing(
+                observer, char, memory, new_uid, known_from, now_iso)
             observer.recognition_memory = memory
         else:
             cell = "D"
@@ -2541,6 +2798,8 @@ def _broadcast_unmask_with_action(
                 new_entry["sdesc_at_last_encounter"] = char.get_sdesc()
             if new_entry.get("linked_to") is None:
                 new_entry["linked_to"] = old_uid
+            _keep_knowing(
+                observer, char, memory, new_uid, known_from, now_iso)
             sleeve_uid = getattr(char, "sleeve_uid", None)
             if sleeve_uid:
                 if new_entry.get("real_sleeve_uid") is None:
@@ -2549,10 +2808,14 @@ def _broadcast_unmask_with_action(
                     memory[old_uid]["real_sleeve_uid"] = sleeve_uid
             observer.recognition_memory = memory
 
+        if observer in exclude_set:
+            continue                    # watched, and has their own line
+
         # Render action template with per-observer character names.
         # Use the snapshot's pre-mutation display name so the actor
         # reads as they appeared at the start of the action.
         rendered = action_template
+        already_called = set()        # what this observer called `char`
         for placeholder, char_ref in action_char_refs.items():
             snapshot = action_pre_resolved_refs.get(placeholder)
             if snapshot is not None and observer in snapshot:
@@ -2561,6 +2824,8 @@ def _broadcast_unmask_with_action(
                 display_name = char_ref.get_display_name(observer)
             else:
                 display_name = getattr(char_ref, "key", "")
+            if char_ref is char:
+                already_called.add(display_name)
             if placeholder == first_placeholder:
                 display_name = capitalize_first(display_name)
             rendered = rendered.replace(
@@ -2574,10 +2839,19 @@ def _broadcast_unmask_with_action(
         # and we end the combined line with a single full stop.
         suffix = ""
         if cell in ("C", "D"):
-            new_name = (
-                (memory.get(new_uid) or {}).get("assigned_name") or ""
-            )
-            if new_name:
+            # The name the room will show them for the look that has
+            # arrived: its own, or the one it was watched to come from.
+            # Read off the entry by hand, a look known only through
+            # what was watched got no reveal, and the name turned up in
+            # the room on the next `look` with nothing said (#3811).
+            new_name = resolve_assigned_name(memory, new_uid)[0] or ""
+            # Nothing is revealed to somebody who was already calling
+            # them that (#3811). An eyewitness to the mask going on
+            # keeps the name, so the mask coming off read "Tamsin
+            # removes a wool ski mask, revealing they are none other
+            # than Tamsin." The same line was always there for anybody
+            # who had seen through the mask.
+            if new_name and new_name not in already_called:
                 suffix = f", revealing they are none other than {new_name}"
 
         if suffix:

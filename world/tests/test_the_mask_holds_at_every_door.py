@@ -44,6 +44,9 @@ Wiring piercing into the search path naively would fire an opposed roll
 on every failed name lookup — farmable. It can be done cache-only
 (`disguise_pierce_cache` is permanent and roll-free on a hit), but that
 is a different shape from these three and is left for its own change.
+
+*That change is #3811 (2026-11-13): a typed name reads the stored
+verdict and never rolls. See `test_an_eyewitness_keeps_the_name`.*
 """
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaTest

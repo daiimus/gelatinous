@@ -244,6 +244,58 @@ graph TD
 
 Self-perception (`"You"`) is **not** returned by `get_display_name`; it is handled at the rendering layer (see §Self-Perception below).
 
+> **⚠️ Superseded 2026-11-13 — the chart above predates disguise piercing and the witness link (#3811).** It is kept because it is still the right picture of the two simplest outcomes. It leaves out what happens when the look in front of you is not one you have named, and the staff overlay it ends with was never built. The chart below is the pipeline as it runs.
+
+### Who is this to me? One answer for the eye and the keyboard
+
+Every surface that names a person to an observer asks the same question, and since #3811 they all get the same answer: the room listing and every broadcast (`Character.get_display_name`), the `look` header (`get_look_header`), a typed name (`world.search`), and a name a dot-pose is aimed at (`world.emote`).
+
+```mermaid
+flowchart TD
+    Start["Somebody is in front of you.<br/>Who are they to you?"] --> Self{"Is it you?"}
+    Self -->|Yes| Own["Your own name"]
+    Self -->|No| Entry{"Do you hold a memory entry<br/>for the look they wear NOW?"}
+    Entry -->|"Yes, and you named it<br/>(remember)"| Named["That name"]
+    Entry -->|"Yes, unnamed, and it records<br/>whose name it answers to,<br/>because you WATCHED it arrive"| Link{"Does the entry it<br/>points at hold a name?"}
+    Link -->|Yes| Witness["That name.<br/>No roll. Yours alone."]
+    Link -->|No| Sleeve
+    Entry -->|"Yes, unnamed, nothing recorded:<br/>a look you forgot"| Sleeve
+    Entry -->|No| Sleeve{"Do you hold a NAMED entry for<br/>the same body under another look?"}
+    Sleeve -->|No| Stranger["Their description"]
+    Sleeve -->|Yes| Verdict{"Is a see-through verdict<br/>already stored for this look?"}
+    Verdict -->|"Stored: seen through"| Pierced["The name of that other look"]
+    Verdict -->|"Stored: the mask held"| Stranger
+    Verdict -->|"None yet"| How{"Are you LOOKING,<br/>or TYPING a name?"}
+    How -->|"Looking: the room, look, a broadcast"| Roll["Roll once: your Intellect + familiarity<br/>against their Resonance + disguise.<br/>Store the verdict for good."]
+    Roll -->|Won| Pierced
+    Roll -->|Lost| Stranger
+    How -->|"Typing a target, or aiming a pose"| NoRoll["No roll.<br/>The name finds nobody."]
+```
+
+What writes each thing the chart reads:
+
+| the chart reads | written by | cleared by |
+|---|---|---|
+| a name on a look | `remember <them> as <name>` | `forget` |
+| whose name a look answers to because you watched it arrive (`witnessed_from`, on the entry for that look; it holds the uid of the NAMED entry, which is the look that went only when that look carried the name itself) | being in the room, conscious, when their look changes, if you held a name for the look that went (§Unmasking Moments) | `forget`: on the entry that loses its name, and on every entry that pointed at it |
+| the link (`linked_to`) | the same hook; also `remember` on a new look of a body you already hold, and matching papers | never. It is not read for a name. `recall` and an NPC's memories use it to hold several names for one person together |
+| a see-through verdict (`disguise_pierce_cache`) | the first time you LOOK at a look you hold no name for (no entry, or an entry that leads to none), on a body you have named under another (§Disguise Piercing) | `forget`, for every look of that body, whether or not you hold an entry for the look (the verdict is keyed by the body's dbref) |
+
+Two rules fall out of it, and both were owner rulings on 2026-11-13:
+
+- **An eyewitness goes on knowing them.** Asked whether somebody who watches a person they know put on a mask goes on knowing them: "Yes, and it's specific to that person." The witness link carries the name, with no roll, and only for the observer who holds the link. Somebody who walks in afterwards has no entry for the look and takes the see-through branch.
+- **A name on your screen is a name you can type.** A typed name reads a stored verdict and never makes one. A verdict only ever comes from looking, so a name becomes typeable exactly when it has been shown, and trying names teaches nothing about who is under a mask.
+
+**A name is read through what you watched, not through the link.** `linked_to` is not evidence that anybody watched anything: `remember` links a newly named look to another entry for the same body without asking whether you saw through, `forget` clears a name and leaves the link, and papers link two faces. So the unmasking hook records a second thing beside it, `witnessed_from`: the entry whose name this look answers to because you watched it arrive. The name walk follows that and nothing else. `linked_to` is never read for a name, and everything that wrote it before #3811 writes it as it did; the one addition is the entry described next. Memories written before #3811 have no `witnessed_from` and are not read this way; an eyewitness from before it is where they were, the roll, until they watch the change again.
+
+**One rule, applied after the cells, decides who goes on knowing (`_keep_knowing`).** If the observer held a name for the look that has just gone, by any route (its own name, a name read through `witnessed_from`, or a stored see-through), and holds none for the look that has arrived once the cell has done its work, the arriving look's `witnessed_from` is set to the entry that name is stored on. An entry is made for the arriving look if the cell made none, which is the case of somebody who had only seen through the old look; that one entry also takes the same `linked_to`. The cells ask what entries an observer holds. The ruling is about what they know, and the two came apart every time the rule was written as a fact about one cell: an old look held blank but seen through, an arriving look that already led to a name, somebody with no entry at all. `witnessed_from` is always written pointing straight at a named entry, so there is no chain to walk through and no loop to form.
+
+`forget` and `recall` follow the same answer. `recall` reads out the entry of the person the room is naming, which is the entry seen through to when the look itself has none or only a blank one. `forget` takes the name away where it is stored (the look's own entry, or the entry that what you watched or the see-through led to), through either of its doors, **and with it that entry's `witnessed_from` and the `witnessed_from` of every entry that pointed at it**: after `forget`, the look that carried the name names nobody, and neither does any look that was known through it. Naming the face again later is new knowledge about the face; it does not bring the masked look back. Without the second half, forgetting "Ghost", a name given to a masked figure, left the figure answering to "Tamsin" under a message saying they would now appear as their description. The link is left where it was, because the forgotten look may be all that joins two names you kept. The other look keeps its own name, as it always did: forgetting "Batman" leaves "Bruce" alone. From there the observer stands where anybody stands who did not watch, and may still see through on the roll.
+
+A dot-pose is typing, not looking. The pose resolver builds a handle for everybody in the room before it has matched anything, so it asks for what is already decided (`get_display_name(actor, decided_only=True)`) and rolls nothing. It asked for the plain display name before, so a pose could roll for somebody the actor had not looked at and land on a name `look` had just said was not there.
+
+The surfaces that ask the question about a uid and not a person in front of you read the same held name (`world.identity.resolve_assigned_name`): the name after a body on the floor or a severed head (`IdentityBearerMixin.get_display_name`), a forensic match and a post-mortem confirmation, and the name a trust grant is shown under (`world.consent.grant_display_name`). They read the entry by hand until #3811, so somebody named while they stood became anonymous to an eyewitness the moment they fell.
+
 ### `get_display_name` Override
 
 The central hook. Currently returns `self.key` (Evennia default). Overridden on Character:
@@ -902,6 +954,7 @@ A disguised character (overrides: `tall man` + essential cowl + non-essential ca
 
 - **Stranger meets disguised character:** Observer sees the disguised sdesc; no auto-recognition. Observer can `remember` them by a name, which binds to the current Apparent UID.
 - **Observer who knew real identity meets the disguised character:** The observer's recognition entry was keyed on the Apparent UID of the *undisguised* signature (real `sleeve_uid` + no overrides + no essential items). The disguise produces a *different* Apparent UID; no auto-recognition. The observer sees the disguised sdesc as a stranger.
+- **Observer WATCHES a character they know change their look** (the mask goes on in front of them): they go on knowing them. The unmasking hook gives the observer an unnamed entry for the new look that records whose name it now answers to (`witnessed_from`: the named entry that the look which went resolved to), and the name is read through that record (#3811; §Who is this to me?). The entry's `linked_to` is set as it always was and is not what the name is read through. No roll is made. It works the same the other way round: an observer who has named only the masked figure and watches the mask come off keeps that name for the face.
 - **Observer meets the same disguised character a second time, same signature:** Auto-recognition fires (same Apparent UID); observer sees the previously-assigned name.
 - **Observer meets the same disguised character a second time, different signature** (e.g., one essential item swapped): Different Apparent UID; observer sees a stranger.
 - **Two characters wearing identical overrides + items:** Visual collision (sdesc strings match), but Apparent UIDs differ (different salts). Each observer's recognition is per-UID; impersonation is *visual*, not *systemic*. An impostor *looks* the same but does not auto-resolve to the original's assigned name. Successful name-fooling requires either acquiring the original's salt (future adversarial-identity mechanic — e.g., through stolen contact cards) or the observer manually `remember`ing the same name onto the impostor's distinct UID.
@@ -929,6 +982,10 @@ This is the bridge that keeps disguise legible after the fact. Without it, a sig
 | **B** | Yes | No | Flip old entry's `lost_contact = True`. Auto-create a new entry under the new UID with `linked_to = old_uid` and a blank `assigned_name` so the observer can later `remember` the new presentation and the link is preserved. |
 | **C** | No | Yes | Refresh the new entry's `last_seen` / `location_last_seen` / `sdesc_at_last_encounter`; clear its `lost_contact`. No link formed — the observer never met the old presentation, so there is nothing to chain. |
 | **D** | Yes | Yes | Flip old entry's `lost_contact = True`. Refresh the new entry as in cell C. Set `linked_to = old_uid` on the new entry *only if* it is currently `None` (never overwrite an existing chain link). Both `assigned_name` values are preserved. |
+
+> **Since #3811 an eyewitness's new look is NAMED for them.** The cells in the table above are unchanged: cell B still creates the entry with a blank `assigned_name` and `linked_to = old_uid`, and cell D still sets `linked_to` only when it is `None`. After the cell, one rule runs (`_keep_knowing`, §Who is this to me?): an observer who held a name for the old look and holds none for the new has the new look's `witnessed_from` set to the entry that name is on. `world.identity.resolve_assigned_name` follows `witnessed_from`, never `linked_to`, and `get_assigned_name` returns the name. Before, only `recall`, `memory` and an NPC's memories read the link, so an eyewitness was shown a stranger (or, on a won see-through roll, a name that could not be typed) while `recall` on the same figure said "Also known as". A name the observer gives the new look itself always wins. An arriving look that already leads to a name is left alone, so mask on, hood up, hood down in front of one observer keeps the mask leading to the face. Whoever is excluded from the composed line because the command gives them their own (`dress <somebody> in <a mask>` excludes the dresser) has their memory written all the same: they watched.
+>
+> The reveal suffix ("revealing they are none other than ...") names the arriving look as the room will show it (`resolve_assigned_name`: its own name, or the one it was watched to come from), and is dropped for an observer who was already calling the actor by that name when the action began. An eyewitness to the mask going on would otherwise read "Tamsin removes a wool ski mask, revealing they are none other than Tamsin."
 
 **Chain semantics.**
 
@@ -962,6 +1019,8 @@ This is the bridge that keeps disguise legible after the fact. Without it, a sig
 > the conclusion a witnessed unmasking reaches by eye. `_link_by_papers` is
 > deliberately narrow: it refuses to link when either entry already has a
 > `linked_to`, and weaker tiers or unverified protocols never link at all.
+>
+> *Since #3811 a fourth:* `world/identity.py:_keep_knowing`, for the one entry it creates when an observer who had only SEEN THROUGH the old look watches it change. The cell made no entry for the look that arrives, so the rule makes one, linked to the entry the see-through led to (§Who is this to me?). No other writer changed, and `linked_to` is still never read for a name.
 
 **Per-cell narrative flavor.** `_send_unmasking_message` emits per-observer prose, dispatched as a direct `.msg()` call rather than through `msg_room_identity` (the recipient list is already narrowed by `_collect_unmasking_observers`, and the prose is tailored to what *this* observer knew going in). The cell-B and cell-D templates follow the same noir, recognition-centric voice as the wear/remove emote pipeline:
 
@@ -971,6 +1030,8 @@ This is the bridge that keeps disguise legible after the fact. Without it, a sig
 | B | `"{new_sdesc} steps into view where {old_sdesc} stood a moment ago."` |
 | C | silent — the observer already knew the new presentation; nothing to learn |
 | D | `"You realize that {old_sdesc}, who you call {old_name}, and {new_sdesc}, who you call {new_name}, are the same person."` |
+
+Cell D is silent, like cell C, for an observer who already held the two looks as one person: the same entry named both before the change (#3811). They watched the mask go on and have called the masked figure by the face's name since, and "You realize ..." told them so again each time it came off by a door with no line of its own (`undress`, `remove all`, an override dropped). Somebody who held the arriving look WITHOUT knowing whose it was still gets the line: for them it is finding out. Cell B's line is unchanged.
 
 Cell D falls back to the shorter `"You realize that {old_sdesc} and {new_sdesc} are the same person."` template if either `assigned_name` is blank (defensive — cell D by definition has both, but a future code path that drops one should still produce coherent prose). Cell B suppresses the message entirely if either sdesc is missing, rather than ship a malformed line.
 
@@ -1086,6 +1147,10 @@ sequenceDiagram
 ```
 
 > **Worked example — Lois Lane scrutinises Clark Kent.** Lois has tagged Clark's *Superman* presentation (no glasses, no "reporter" keyword) and seen him fly four times (`times_seen = 4`). When she runs into "a tall man in glasses" at the Daily Planet, the disguised Apparent UID misses her memory; the pierce path finds her Superman entry as the sole candidate. Opposed roll: Lois rolls **12** on Intellect; Clark rolls **9** on Resonance. Add Lois's familiarity bonus (**+4**, under the cap of 5) and subtract Clark's disguise penalty (**+2** to his side: glasses essential item of weight 1, plus one keyword override). Final: **16 > 11**, pierce succeeds, outcome cached on Lois — she now sees `"Superman (a tall man in glasses)"` and will keep seeing it until Clark changes his signature.
+
+**Who never reaches the roll.** An observer who watched the look change holds `witnessed_from` on their entry for it and gets the name through that (§Who is this to me?). The roll is for an observer who holds NO NAME for the look in front of them: no entry at all, or an entry that leads to none, such as a look they forgot.
+
+**A seen-through name can be typed (#3811; finding 4 of #2451).** `world.identity.seen_through(looker, target)` reads the stored verdict and never rolls; `world.search` and the emote resolver accept the bare-face name when it says the look was seen through. Until then the name was on screen and `look <name>` could not find it, while a dot-pose could. Rolling from the typing side was rejected the first time this was found, because it would let anybody fish for who is under a mask by trying names; reading the stored verdict has no such door.
 
 **Surface.** On success, the looker sees the bare-face entry's `assigned_name` in place of the articled sdesc — same surface as ordinary recognition. The `get_look_header` path further attaches the *current* (disguised) sdesc in parentheses, so the looker sees `"Bruce (a tall figure in a black coat)"` rather than the stranger fallback.
 
@@ -1312,7 +1377,7 @@ Currently, players type character names to target them. With the recognition sys
 When a player types a targeting string (e.g., `attack jorge` or `attack tall man`):
 
 1. **Magic keywords** — `me` / `self` resolve to the caller; `here` resolves to the caller's location. These short-circuit *before* the identity filter so they work in an ordinary local search, regardless of permissions. (Without this shortcut the identity filter strips the caller from `super().search('me')` results because `is_identity_match(self, self, 'me')` is False, breaking `look me` for non-Builders.) In a search a command has scoped to a pool with `candidates=` or `location=`, `me` / `self` / `here` resolve only when that pool holds the caller or the room (Evennia's own rule); otherwise they name nothing, so `rig me to north` cannot resolve a person out of the caller's hands (#3783). `Character.search` answers this itself, because on a miss Evennia goes on to search the pool for the caller's key as text and can hand back someone else.
-2. **Assigned names** — Check the player's recognition memory for any character in the room whose assigned name matches the input
+2. **Assigned names** — Check the player's recognition memory for any character in the room whose assigned name matches the input. "Assigned name" here is the name the room shows the player for that character as they stand (`world.identity.get_known_name`): one the player gave the look, one read through a witness link, or one already seen through to (#3811; §Who is this to me?)
 3. **sdescs** — Match against visible characters' sdescs (partial matching, case-insensitive)
 4. **Ordinals** — `"2nd tall man"` uses the existing ordinal system (`get_search_query_replacement`)
 5. **Real keys** — Fall through to standard Evennia search (matches `.key` and aliases)
@@ -1495,10 +1560,13 @@ never over-match free-form emote prose. The longest-match-first sort keeps
 the full assigned name winning when it is typed in full.
 
 `world.identity.get_assigned_name(observer, target)` is the single source
-of truth for "what name has the observer assigned to this target's current
-Apparent UID." It is consumed by `Character.get_display_name`,
-`world.search._match_assigned_name`, and `world.emote.build_char_candidates`
-so all three resolution paths agree.
+of truth for "what name does the observer HOLD for this target's current
+Apparent UID": the look's own, or the one read through a witness link
+(#3811). `Character.get_display_name` and `get_look_header` consume it and
+then roll for a see-through. `world.search._match_assigned_name` and
+`world.emote.build_char_candidates` consume `get_known_name`, which is the
+same name plus a see-through ALREADY decided, so a typed or posed name
+agrees with the one on screen and nothing is rolled by typing.
 
 ---
 

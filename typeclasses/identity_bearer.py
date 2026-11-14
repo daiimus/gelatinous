@@ -106,13 +106,18 @@ class IdentityBearerMixin:
             from world.identity import (
                 get_apparent_uid,
                 get_apparent_uid_for_decay,
+                resolve_assigned_name,
             )
             degraded_uid = get_apparent_uid_for_decay(self, stage)
         except (AttributeError, TypeError, ValueError):
             degraded_uid = None
 
+        # The name the looker HOLDS for that look: its own, or the one
+        # of the look they watched it come from (#3811). Read by hand,
+        # this found a blank for anybody who had watched the mask go on:
+        # named while they stood, anonymous the moment they fell.
         if degraded_uid is not None and degraded_uid in memory:
-            assigned = memory[degraded_uid].get("assigned_name")
+            assigned = resolve_assigned_name(memory, degraded_uid)[0]
             if assigned:
                 return f"{decay_name} ({assigned})"
 
@@ -128,7 +133,7 @@ class IdentityBearerMixin:
             and fresh_uid in memory
         ):
             if self._attempt_forensic_recognition(looker, stage):
-                assigned = memory[fresh_uid].get("assigned_name")
+                assigned = resolve_assigned_name(memory, fresh_uid)[0]
                 if assigned:
                     return f"{decay_name} ({assigned})"
 

@@ -1912,7 +1912,8 @@ def _resolve_autopsy(actor, target, **_) -> None:
     memory = getattr(actor, "recognition_memory", None) or {}
     header = "Post-mortem complete."
     if result.revealed_uid and result.revealed_uid in memory:
-        assigned = memory[result.revealed_uid].get("assigned_name")
+        from world.identity import resolve_assigned_name
+        assigned = resolve_assigned_name(memory, result.revealed_uid)[0]
         if assigned:
             header = (
                 f"Post-mortem complete.  The remains are confirmed "

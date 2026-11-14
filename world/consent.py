@@ -180,7 +180,8 @@ def grant_display_name(grantor, uid, entry=None) -> str:
     snapshotted at grant time."""
     try:
         memory = deserialize(grantor.recognition_memory) or {}
-        assigned = (memory.get(uid) or {}).get("assigned_name")
+        from world.identity import resolve_assigned_name
+        assigned = resolve_assigned_name(memory, uid)[0]
         if assigned:
             return assigned
     except Exception:  # noqa: BLE001

@@ -164,12 +164,20 @@ def _match_assigned_name(
         query: The normalized query string.
 
     Returns:
-        ``True`` if the searcher's assigned name for *target*'s current
-        Apparent UID matches *query*.
-    """
-    from world.identity import get_assigned_name
+        ``True`` if the name the searcher has for *target* as they
+        stand matches *query*.
 
-    assigned = get_assigned_name(searcher, target)
+    That is the name the room shows the searcher
+    (`world.identity.get_known_name`): one they hold for this look, or
+    one they have ALREADY seen through to. It read only the first, so a
+    name the display had surfaced by seeing through a disguise was on
+    screen and could not be typed (#3811; finding 4 of #2451). Nothing
+    is rolled from here: the see-through is read from the verdict the
+    display stored, so trying names teaches nothing.
+    """
+    from world.identity import get_known_name
+
+    assigned = get_known_name(searcher, target)
     if not assigned:
         return False
 

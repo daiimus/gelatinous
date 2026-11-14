@@ -1315,10 +1315,13 @@ class Character(
 
         Resolution order:
           1. ``looker is self`` → ``self.key`` (own real name)
-          2. *looker* has an assigned name in ``recognition_memory``
-             keyed on this character's current Apparent UID → that
-             assigned name
-          3. Otherwise → composed sdesc with indefinite article
+          2. *looker* holds a name for this character's current look:
+             one they gave it, or the name of the look they watched it
+             come from (``world.identity.get_assigned_name``) → that
+             name
+          3. *looker* sees through the look to somebody they remember
+             (one opposed roll, stored for good) → that name
+          4. Otherwise → composed sdesc with indefinite article
              (e.g. ``"a lanky man in a Black Trenchcoat"``)
 
         The Apparent UID is derived from the target's full identity
@@ -1356,9 +1359,20 @@ class Character(
         # may have previously remembered the underlying sleeve under a
         # different presentation.  Opposed Intellect-vs-Resonance roll
         # (cached per presentation) decides whether they see through.
-        from world.identity import attempt_display_pierce
+        #
+        # ``decided_only=True`` reads a verdict already stored and makes
+        # none (#3811). It is for callers that need the name in order to
+        # MATCH what was typed, not to show it: the dot-pose resolver
+        # builds a handle for everybody in the room before it has
+        # matched anything, so it rolled for people the actor had not
+        # looked at, and a pose could land on a name `look` had just
+        # said was not there.
+        from world.identity import attempt_display_pierce, seen_through
 
-        pierced_name = attempt_display_pierce(looker, self, apparent_uid)
+        if kwargs.get("decided_only"):
+            pierced_name = seen_through(looker, self)[0]
+        else:
+            pierced_name = attempt_display_pierce(looker, self, apparent_uid)
         if pierced_name is not None:
             return pierced_name
 
@@ -1408,18 +1422,13 @@ class Character(
         if looker is self:
             name = self.key
         else:
-            from world.identity import get_apparent_uid
+            from world.identity import get_apparent_uid, get_assigned_name
 
-            name = None
+            # The same lookup as the room listing. This read the memory
+            # entry by hand, so it had its own idea of who a look
+            # belongs to (#3811).
             apparent_uid = get_apparent_uid(self)
-            if apparent_uid is not None and hasattr(
-                looker, "recognition_memory"
-            ):
-                memory = looker.recognition_memory
-                if memory and apparent_uid in memory:
-                    assigned = memory[apparent_uid].get("assigned_name")
-                    if assigned:
-                        name = assigned
+            name = get_assigned_name(looker, self)
             # Disguise piercing — if not yet recognised, see through?
             if name is None:
                 from world.identity import attempt_display_pierce

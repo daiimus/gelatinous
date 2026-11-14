@@ -307,7 +307,7 @@ def build_char_candidates(
     from world.grammar import DEFAULT_SDESC_KEYWORDS, get_article
     from world.identity import (
         compose_sdesc,
-        get_assigned_name,
+        get_known_name,
         get_physical_descriptor,
     )
     from world.search import strip_leading_article
@@ -325,8 +325,11 @@ def build_char_candidates(
 
         names: list[tuple[str, bool]] = []
 
-        # 1. Display name as seen by actor (assigned name or sdesc with article)
-        display_name = char.get_display_name(actor)
+        # 1. Display name as seen by actor (assigned name or sdesc with
+        # article). What is ALREADY decided, and no roll: this is
+        # matching what was typed, not showing anybody anything, and it
+        # runs for everybody in the room (#3811).
+        display_name = char.get_display_name(actor, decided_only=True)
         if display_name:
             names.append((display_name, False))
             # 2. Article-stripped version
@@ -338,12 +341,14 @@ def build_char_candidates(
         # When the actor has remembered this character under a name like
         # "Whimsical Wendy", allow targeting by any single word of it
         # (e.g. "Wendy") — parity with the substring matching used by the
-        # ``look`` path (world.search._match_assigned_name).  Only the
+        # ``look`` path (world.search._match_assigned_name), and the
+        # same name: one the actor holds for this look or has already
+        # seen through to (`get_known_name`, #3811).  Only the
         # player-assigned name is tokenized; sdescs are NOT, so generic
         # descriptors ("lanky", "man") never over-match emote prose.  The
         # length-descending sort below keeps the full name winning when
         # the actor types it in full.
-        assigned = get_assigned_name(actor, char)
+        assigned = get_known_name(actor, char)
         if assigned:
             existing = [n for n, _rc in names]
             for token in assigned.split():
