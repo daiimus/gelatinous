@@ -17,6 +17,21 @@ This is foundational infrastructure. Identity and recognition form the backbone 
 
 ---
 
+## Owner rulings
+
+The decisions this system rests on, in the owner's words, newest last. Each row names the issue that carried the decision and the section of this document that states the rule. A ruling whose behaviour is not built yet is marked 📋 UNBUILT here and again where the rule is stated. Add a row when a ruling is made, in the pull request that records or builds it.
+
+| Date | The owner's words | The rule | Issue | Stated in |
+|---|---|---|---|---|
+| 2026-11-13 | "Yes, and it's specific to that person. We already have code for this, I believe. It's our 'Scooby doo' system." | Somebody who watches a look change goes on knowing who it is. Per viewer. | #3811 | Recognition System, "A name is read through what you watched" |
+| 2026-11-14 | "Your version is correct and was the original intent." | Two names are joined only by a change the observer watched, a see-through they won, or papers. Never because the game knows they are one body. | #3813 | Recognition System, the table of what writes each kind of knowledge |
+| 2026-11-14 | "I don't think that's a feature we need at this time." | Staff reaching somebody by real name are shown no notice that the privilege was used. | #3818 | Target Resolution, "Who is staff, and what they are told" |
+| 2026-11-14 | "A body without a head is hard to identify. A head on its own is easy to identify but can also still be concealed by a mask." | Identity is in the face. A mask conceals wherever the face is: a living body, a corpse with its head, a severed head. A body without its head is recognised by nobody at a glance. Identity counts what a body is shown wearing. | #3831, #3832, #3834 | Identity Across Surfaces, "What a body wears, for identity" |
+| 2026-11-14 | "I mean...is someone really dying if there head is missing? They should be a corpse." | A beheading is a death, not a dying. The body becomes a corpse at once: no death window, no revival. 📋 UNBUILT. A destroyed brain, the other case #330 lists, is not decided. | #3835, #330 | Identity Across Surfaces, "What a body wears, for identity" |
+| 2026-11-14 | "If the game still uses it - it doesn't seem like they've been actually forgotten. What if someones memory is blanked out by a machine or a bioroid hacked." | `forget` is a real erase of a look from one observer: the entry, every pointer and link to it, the voice entry that carries its name, and see-throughs won through it. Only what the observer connected, nothing because the game knows two things are one body. The one thing kept is the record of a failed see-through roll, which is not memory but the rule that a lost roll cannot be bought again. A later memory-wipe mechanic calls the same function. 📋 UNBUILT. | #3825 | Recognition System, the `forget` command |
+
+**Not ruled yet:** whether somebody who watches remains being dressed or stripped keeps the name (#3833); whether naming somebody in person may overwrite a name already given to that voice; whether a forced memory wipe earns a fresh see-through roll.
+
 ## Core Concepts
 
 ### Sleeve
@@ -93,7 +108,7 @@ When a body is transformed — death, decapitation, limb severance, organ harves
 - **A mask in a corpse's pocket conceals nothing** (#3831). The death transfer moves the whole inventory into the corpse; only what was worn, or has been put on since with `dress`, is worn. Taking a carried mask out leaves the death-time snapshot alone; taking a worn one off clears it.
 - **A mask on a severed head conceals it** (#3832). One worn at the cut goes with the head, and `dress <head> in <item>` fits one on. The head presents the masked look until the mask is taken off.
 - **A body without its head is recognised by nobody at a glance**, in its header and in any description text that names the dead. `Corpse.recognised_as` is the one gate for both; the `{name}` token of a preserved description reads "the corpse" (#3834).
-- 📋 UNBUILT: a beheaded body is still a character for the death window and is named like any living person (#3835).
+- 📋 UNBUILT: a beheaded body is still a character for the death window and is named like any living person (#3835). Ruled 2026-11-14: a beheading is a death, not a dying, and the body becomes a corpse at once, with no window and no revival (#3835, #330).
 - 📋 UNDECIDED: whether somebody who watches remains being dressed or stripped keeps the name, as a witness to a living change does (#3833).
 
 **When the rule will need a second exception.** A future "face-overlay" cyberware item — a synthetic mask that lets the wearer adopt someone else's apparent identity — would carry face-side identity *the wearer presents*, not the wearer's own. That's a second exception: a face that isn't tied to a sleeve, just worn. Mechanically it slots into the same overlay machinery `apply_severed_head_overlay` uses; design-wise it's a separate conversation about how it interacts with disguise, consent, and the identity-signature pipeline. Until it exists, the head stays the only exception.
@@ -488,6 +503,8 @@ forget <target>
 ```
 
 Clears the assigned name on a recognition entry. The entry itself is preserved (sdesc snapshots, locations, `times_seen`, etc.) so future `remember` calls extend the existing history rather than starting fresh. Targets resolve against currently-visible characters first, then against previously-remembered names — you can `forget` someone who isn't present.
+
+> 📋 UNBUILT (#3825, owner ruling 2026-11-14): `forget` becomes a real erase. The entry is removed, not blanked: the name, `times_seen`, the first and last seen fields and `real_sleeve_uid` go with it, as do every `witnessed_from` and `linked_to` that points at it, the voice entry that carries the same name, and see-throughs won through it. Nothing is cleared because another entry shares the true body. The record of a failed see-through roll stays (#3817). The paragraphs on either side of this note describe what runs until that is built: the entry is preserved, so naming a forgotten look again brings back its links and carries on its seen-count, and forgetting by name also clears every named voice of the same true body.
 
 `forget` additionally drops the caller's WON `disguise_pierce_cache`
 entries for the target's sleeve (PR #211 / issue #210).  Without
@@ -1428,6 +1445,8 @@ So the rule is enforced where no caller can step around it, in `Character.get_se
 **It has to be the pool and not the results.** The first attempt at this fix let Evennia match and then dropped the people it had found. Review found the real name still steering the answer three ways: an NPC's surname alias (`brown`) was an exact match that hid the partial match on the `brown wig` beside them, so `get brown` failed only while they were in the room; `get man` found only the man whose real name began with "man", which said which man that was; and `remember gaunt man as <guess>` followed by `get <guess>` answered differently when the guess was his real name. It is the same lesson as the presence gate (#3637), which sits in the same hook for the same reason: exact-before-partial and ordinals are decided inside the match, so anything that must not influence the answer has to be gone before it.
 
 **The invariant, in one sentence:** for a searcher who is not staff, no local search answers differently because of what somebody's real name or alias is. The test for it asks every question at every door, renames everybody, and asks again.
+
+**Who is staff, and what they are told.** One question decides it at every door, `world.search.may_use_real_names`: the account's permission, Builder or above, and while quelled the lower of the account's and the character's. Nothing on screen says that a match came from that privilege (owner ruling 2026-11-14, #3818).
 
 #### Anti-patterns (forbidden for character targets)
 
