@@ -1846,7 +1846,8 @@ class Character(
 
         from evennia.utils import logger
 
-        from world.identity import bump_recognition_recency, get_apparent_uid
+        from world.identity import (
+            bump_recognition_recency, get_recognisable_uid)
         from world.perception import can_perceive
 
         for obj in self.location.contents:
@@ -1860,7 +1861,12 @@ class Character(
                 # memory of someone walking in.
                 continue
             try:
-                apparent_uid = get_apparent_uid(obj)
+                # The look they can be KNOWN by. A body with no face is
+                # not a sighting of the face (#3835): this wrote the
+                # headless body's description, this room and "just now"
+                # onto the entry for the bare look, and `memory` read
+                # the name back beside them.
+                apparent_uid = get_recognisable_uid(obj)
                 if apparent_uid is None:
                     continue
                 bump_recognition_recency(self, obj, apparent_uid)

@@ -2584,7 +2584,7 @@ def _refresh_lost_contact(caller):
     Safe to call when ``caller`` has no location or no recognition
     memory; the underlying helper short-circuits cleanly.
     """
-    from world.identity import get_apparent_uid, mark_lost_contact_entries
+    from world.identity import get_recognisable_uid, mark_lost_contact_entries
     from typeclasses.characters import Character
 
     location = getattr(caller, "location", None)
@@ -2592,7 +2592,9 @@ def _refresh_lost_contact(caller):
     if location is not None:
         for obj in location.contents:
             if isinstance(obj, Character) and obj is not caller:
-                uid = get_apparent_uid(obj)
+                # A body with no face is not that look standing in
+                # front of the caller (#3835).
+                uid = get_recognisable_uid(obj)
                 if uid is not None:
                     current_uids.add(uid)
     mark_lost_contact_entries(caller, current_uids)

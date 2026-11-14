@@ -197,6 +197,40 @@ class TestWhatReviewFound(_TheBlow):
         self.assertFalse(self.dead.db.head_severed_at_decap)
         self.assertEqual(self.dead.get_display_name(self.friend), "Jorge")
 
+    def test_a_fresh_sleeve_has_a_head_whatever_chrome_it_carries(self):
+        """Round two. Severing marks the chrome in the head as severed
+        too, and a resleeve carries chrome across as it was, so the
+        anatomy still said "head" for a keeper with a chrome jaw. The
+        door that gives the body its flesh back clears the flag."""
+        from world.medical.procedures import reset_body_preserving_augments
+        self.behead()
+        reset_body_preserving_augments(self.dead)
+        self.assertFalse(self.dead.db.head_severed_at_decap)
+        with mock.patch("world.medical.severance.compute_severed_containers",
+                        return_value={"head"}):
+            self.assertFalse(_fixed("has_no_face")(self.dead))
+            self.assertEqual(self.dead.get_display_name(self.friend), "Jorge")
+
+    def sighting(self):
+        """The friend walks in on the body; what their entry for the
+        bare look then says about where they last saw Jorge."""
+        self.friend.location = self.room1
+        self.friend._refresh_recognition_recency()
+        entry = dict(self.friend.recognition_memory[self.bare_look])
+        return entry.get("location_last_seen"), entry.get("last_seen")
+
+    def test_walking_in_on_a_living_face_is_a_sighting(self):
+        """The control."""
+        where, when = self.sighting()
+        self.assertEqual(where, self.room1.key)
+        self.assertTrue(when)
+
+    def test_walking_in_on_a_beheaded_body_is_not(self):
+        """Round two: `memory` would have read "Jorge, here, just now"
+        beside a body the room shows by description."""
+        self.behead()
+        self.assertEqual(self.sighting(), (None, None))
+
     def test_a_revived_body_whose_head_is_still_off_keeps_the_flag(self):
         self.behead()
         self.dead.remove_death_state()
