@@ -72,7 +72,6 @@ class CmdLook(default_cmds.CmdLook):
         aiming), and treats `myself` like any other word in your own
         reach, as it always has."""
         from typeclasses.characters import Character
-        from world.combat.constants import PERM_BUILDER
         from world.perception import filter_present
         from world.search import identity_match_characters
 
@@ -81,7 +80,8 @@ class CmdLook(default_cmds.CmdLook):
             return None
         present = filter_present(caller, list(aimed.contents))
         people = identity_match_characters(caller, query, present)
-        if not people and caller.check_permstring(PERM_BUILDER):
+        from world.search import may_use_real_names
+        if not people and may_use_real_names(caller):
             staff_pool = [obj for obj in present if isinstance(obj, Character)]
             people = list(caller.search(query, candidates=staff_pool,
                                         quiet=True) or [])

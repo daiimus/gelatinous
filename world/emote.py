@@ -397,17 +397,10 @@ def build_char_candidates(
         # 7. Character .key — Builder+ only (check actor's permissions)
         # For the emote engine, we include .key if the actor has Builder+
         # permissions.  Normal players don't get .key access.
-        if hasattr(actor, "locks"):
-            try:
-                if actor.locks.check_lockstring(
-                    actor, "perm(Builder)"
-                ):
-                    if char.key not in [n for n, _rc in names]:
-                        names.append((char.key, False))
-            except Exception:
-                # Deliberate (#469): a lock-check hiccup just skips the
-                # builder-only true-name match candidate.
-                pass
+        from world.search import may_use_real_names
+        if may_use_real_names(actor):
+            if char.key not in [n for n, _rc in names]:
+                names.append((char.key, False))
 
         for name, requires_capital in names:
             candidates.append((name, char, requires_capital))

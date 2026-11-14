@@ -152,6 +152,43 @@ def _has_identity(obj: object) -> bool:
     return callable(getattr(obj, "get_sdesc", None))
 
 
+def may_use_real_names(searcher: object) -> bool:
+    """Is *searcher* staff, for the one privilege staff have in this
+    system: reaching a person by their real name?
+
+    ONE answer, asked in one place (#3818). Six doors grant a real-name
+    match (the search pool and its fallback, the two character
+    resolvers, `look` down an aim, emote tokens, and an NPC hearing its
+    own name) and they used to ask two different questions:
+
+    * ``searcher.check_permstring("Builder")`` reads the permission
+      tags on the CHARACTER, plus one shortcut for a superuser who is
+      not quelled. The account's own permission is never consulted, so
+      a Builder, Admin or Developer account whose character carries
+      only ``player`` failed it. The docstrings beside it said
+      "Builder+".
+    * the lock ``perm(Builder)`` reads the puppeting ACCOUNT's
+      permission, falls back to the object's when there is no account
+      (an NPC), and while quelled takes the lower of the two.
+
+    So an ordinary staff account could type a real name in an emote and
+    nowhere else. This is the second: it is what "Builder+" has always
+    been taken to mean, it is the check Evennia's own search makes
+    before it will honour a ``#dbref``, and it honours `quell` for
+    everybody. `commands/CmdCharacter.py` (`_staff_view`) moved to it
+    for the same reason after locking staff out of `@stats`.
+
+    A searcher that cannot answer (no lock handler) is not staff.
+    """
+    from world.combat.constants import PERM_BUILDER
+
+    try:
+        return bool(searcher.locks.check_lockstring(
+            searcher, f"_dummy:perm({PERM_BUILDER})"))
+    except (AttributeError, TypeError):
+        return False
+
+
 def name_is_hidden(obj: object) -> bool:
     """True for a person whose real name is not what they are seen as.
 
