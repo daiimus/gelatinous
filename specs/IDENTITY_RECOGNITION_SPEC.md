@@ -1397,21 +1397,24 @@ When a command resolves a **character** target from player input, it MUST go thr
 
 A thin wrapper, `commands._identity_targeting.resolve_character_target(caller, query, candidates=None)`, encapsulates the common cases (same-room targeting with Builder-by-key fallback, ambiguity messaging) and SHOULD be preferred by new commands.
 
-#### The rule is in the search, not in the author's care (#3816)
+#### The rule is in the pool, not in the author's care (#3816)
 
-The first version of this section made the rule a convention: "any scope kwarg ... the filter is bypassed", so do not pass one when you mean a person. It failed in a way a convention cannot catch. Nine commands passed a pool while looking for a THING (`get`, `get ... from`, `get ... from here`, `inspect`, `sever`, `buy ... from`, `jump on`, the two edge jumps, `throw ... to`), the pool was the room, the room holds people, and Evennia matched those people by real key. Each command then refused to act on a person, and the refusal was the leak: it differed from "nothing matched" and named the figure the guessed name belonged to.
+The first version of this section made the rule a convention: "any scope kwarg ... the filter is bypassed", so do not pass one when you mean a person. It failed in a way a convention cannot catch. Ten commands passed a pool while looking for a THING (`get`, `get ... from`, `get ... from here`, `inspect`, `sever`, `buy ... from`, `jump on`, the two edge jumps, `throw ... to`), the pool was the room, the room holds people, and Evennia matched those people by real key. Each command then refused to act on a person, and the refusal was the leak: it differed from "nothing matched" and named the figure the guessed name belonged to.
 
-So the rule is now a property of `Character.search` and not of its callers:
+So the rule is enforced where no caller can step around it, in `Character.get_search_candidates`, the hook Evennia calls to build the pool of every local search:
 
-| The call | What applies |
+**For a searcher who is not staff, a person whose real name is not what they are seen as (`world.search.name_is_hidden`) is not in the pool.** Evennia's match by key and alias never sees them. People are reached only through the identity matcher, which matches a name the searcher knows them by or their description and never reads a key.
+
+| The call | What happens |
 |---|---|
-| `caller.search(name)` | The identity pipeline: people by known name, then description; everything else by key. |
-| `caller.search(name, candidates=...)` or `location=...` | Evennia matches the pool by key and alias, and then **a person matched only by real name is dropped** unless the searcher is staff (`world.search.only_what_they_can_name`, the same function the ordinary search ends with). People are not matched by description here: a command that means a person uses one of the two paths above. |
-| `global_search=True`, a `#dbref`, `attribute_name=` | Plain Evennia. Staff tooling: `world/tests/test_a_real_name_opens_no_door.py` fails if a `global_search=True` appears in a command whose lock names no permission. |
+| `caller.search(name)` | The identity matcher over the people present; then Evennia over the pool, which holds things, the searcher, the room, and any body that is SEEN as its key (a mob, an NPC with no description of its own). |
+| `caller.search(name, candidates=...)` or `location=...` | Evennia over the pool it was handed, less the same people. Such a search finds things. It does not find people, by name or by description: a command that means a person uses one of the two paths above. |
+| `global_search=True`, a `#dbref` | No pool: plain Evennia, staff tooling. `world/tests/test_a_real_name_opens_no_door.py` fails if a `global_search=True` appears in a command whose lock names no permission, and Evennia refuses a `#dbref` to anybody below Builder. |
+| Staff | The pool keeps everybody, so a real name reaches them. |
 
-This is where Evennia's own RP contrib draws the line (`evennia.contrib.rpg.rpsystem`, `ContribRPObject.get_search_result`): a search that has a pool is matched by description and recognition, a Builder falls back to the key, and only a search with no pool is plain. Ours stays in the `search` override and not in that hook because the hook receives the query after `get_search_query_replacement` has rewritten an ordinal (`2nd man` becomes `man-2`), and the identity matcher parses the words the player typed.
+**It has to be the pool and not the results.** The first attempt at this fix let Evennia match and then dropped the people it had found. Review found the real name still steering the answer three ways: an NPC's surname alias (`brown`) was an exact match that hid the partial match on the `brown wig` beside them, so `get brown` failed only while they were in the room; `get man` found only the man whose real name began with "man", which said which man that was; and `remember gaunt man as <guess>` followed by `get <guess>` answered differently when the guess was his real name. It is the same lesson as the presence gate (#3637), which sits in the same hook for the same reason: exact-before-partial and ordinals are decided inside the match, so anything that must not influence the answer has to be gone before it.
 
-**The invariant, in one sentence:** no local search returns a person to a non-staff searcher unless the typed words are a name that searcher knows them by or their description, and a refusal never differs from "nothing matched".
+**The invariant, in one sentence:** for a searcher who is not staff, no local search answers differently because of what somebody's real name or alias is. The test for it asks every question at every door, renames everybody, and asks again.
 
 #### Anti-patterns (forbidden for character targets)
 
@@ -1422,9 +1425,8 @@ for char in caller.location.contents:
         target = char
         break
 
-# WRONG — a pool does not match people by description or known name,
-# so this finds nobody a player could name. (It no longer leaks: a
-# person matched by real key is dropped, #3816.)
+# WRONG — a handed-over pool holds no people for a player (#3816), so
+# this finds nobody. It no longer leaks; it just does not work.
 target = caller.search(name, candidates=caller.location.contents)
 target = caller.search(name, location=room)
 

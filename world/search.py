@@ -152,6 +152,20 @@ def _has_identity(obj: object) -> bool:
     return callable(getattr(obj, "get_sdesc", None))
 
 
+def name_is_hidden(obj: object) -> bool:
+    """True for a person whose real name is not what they are seen as.
+
+    That is everybody with a composed description: their key is known
+    only to themselves and to staff, and nothing a player types may be
+    matched against it (#3816). A body with no description of its own
+    (a mob, an NPC with no height or build) is SEEN as its key, so its
+    key is no secret and it stays reachable by it.
+    """
+    if not _has_identity(obj):
+        return False
+    return obj.get_sdesc() != getattr(obj, "key", "")
+
+
 def _match_assigned_name(
     searcher: "Character", target: object, query: str
 ) -> bool:
@@ -414,27 +428,6 @@ def held_by_others(looker, query: str) -> list:
             if any(q in str(n).lower() for n in names if n):
                 out.append(held)
     return out
-
-
-def only_what_they_can_name(
-    searcher: "Character", found: list, query: str, *, staff: bool
-) -> list:
-    """The identity rule, applied to what a search by key and alias found.
-
-    A thing stays. A person stays only if *query* is something
-    *searcher* knows them by: a name they hold for them, or their
-    description. A person the search reached by real key or alias alone
-    is dropped, and the caller cannot tell that from nothing having
-    matched. Staff keep everything; that is their privilege.
-
-    One function, because the rule has to be the same wherever a typed
-    word is matched against a pool that can hold people: the ordinary
-    local search, and a pool a command hands over (#3816). They used to
-    be two code paths and only one of them ran this.
-    """
-    if staff:
-        return list(found)
-    return [obj for obj in found if is_identity_match(searcher, obj, query)]
 
 
 def is_identity_match(

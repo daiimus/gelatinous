@@ -4,22 +4,32 @@ The owner, testing a disguise: "I'm still able to guess the object actual
 name ... to look at or otherwise interact with them even when the
 disguise ... holds up."
 
-`look` refused a real name. Nine other commands did not, because they
-hand `Character.search` a pool (`candidates=`, `location=`) and a pool
-used to switch the identity rule off. Each of them was looking for a
-THING, found the person whose real key the word matched, and refused to
-act on a person; the refusal told the player the guess was right and
-whose name it was, and `jump on` printed the key back.
+`look` refused a real name. Ten other commands did not, because they
+hand `Character.search` a pool (`candidates=`, `location=`) and Evennia
+matches a pool by key and alias. Each of them was looking for a THING,
+found the person whose real key the word matched, and refused to act on
+a person; the refusal told the player the guess was right and whose name
+it was, and `jump on` printed the key back.
+
+The fix takes people whose real name is not on show out of the POOL,
+before anything is matched (`Character.get_search_candidates`). A first
+attempt filtered the RESULTS and review found the real name still
+steering the answer three ways; each is a test here.
 
 Real commands on fresh bodies. What is pinned:
 
-* at every one of the nine doors, typing somebody's real name gets, word
-  for word, what typing a name nobody has gets;
-* the same for a fragment of it and for a word two real names share;
-* every call shape of `Character.search` that carries a pool;
-* the controls: a thing in the same pool is still found, a name the
-  searcher gave is still theirs to type, staff keep the privilege, and a
-  global search stays plain Evennia;
+* THE INVARIANT: whatever is typed, at every door and in every call
+  shape, the answer is the same whether or not the words are somebody's
+  real name or alias. Checked by asking twice, renaming everybody in
+  between;
+* at every door, a real name, a fragment of it and a word two real names
+  share get, word for word, what a name nobody has gets;
+* the three ways a filter on results fails: an alias hiding the thing
+  beside it, a description word that is also the start of a real name,
+  and a guess made by `remember`;
+* the controls: a thing is still found, a body that is SEEN as its key
+  is still reached by it, staff keep the privilege, a global search
+  stays plain Evennia;
 * that no command a player can run searches the whole game.
 """
 import ast
@@ -30,15 +40,6 @@ from evennia import create_object
 from evennia.utils.test_resources import EvenniaTest
 
 from typeclasses.characters import Character
-
-
-def only_what_they_can_name(*args, **kwargs):
-    """Called through a wrapper so this module still LOADS against the
-    unfixed tree: a module-scope import of a function that does not
-    exist yet turns the whole file into a loader error, and a loader
-    error is not evidence."""
-    from world import search
-    return search.only_what_they_can_name(*args, **kwargs)
 
 REAL = "Jorvik Ansel"
 SHARES_A_WORD = "Jorvik Brandt"
@@ -59,6 +60,22 @@ DOORS = (
     "jump across {} edge",
     "throw rock to {}",
 )
+
+#: The doors that change nothing when the word happens to be a THING's
+#: name, so the same question can be asked twice. With them, the
+#: ordinary search, which has a fallback to Evennia's of its own.
+ASKS_ONLY = tuple(d for d in DOORS if not d.startswith("get {}")) + (
+    "look {}",
+)
+
+
+def name_is_hidden(obj):
+    """Called through a wrapper so this module still LOADS against the
+    unfixed tree: a module-scope import of a function that does not
+    exist yet turns the whole file into a loader error, and a loader
+    error is not evidence."""
+    from world import search
+    return search.name_is_hidden(obj)
 
 
 def plain(text):
@@ -98,6 +115,10 @@ class _Strangers(EvenniaTest):
         char.db.disguise_pierce_cache = None
         return char
 
+    def thing(self, key):
+        return create_object("typeclasses.items.Item", key=key,
+                             location=self.room1)
+
     def do(self, command):
         self.heard.clear()
         self.viewer.execute_cmd(command)
@@ -109,7 +130,7 @@ class _Strangers(EvenniaTest):
                       flags=re.IGNORECASE)
 
 
-class TestTheNineDoors(_Strangers):
+class TestTheDoors(_Strangers):
     def test_the_setup_is_what_it_says(self):
         """The control on everything below: the stranger is there, is
         seen by description, and that description is not his name."""
@@ -145,108 +166,182 @@ class TestTheNineDoors(_Strangers):
                          f"Could not find '{REAL.lower()}'.")
 
 
+class TestARealNameChangesNothing(_Strangers):
+    """The invariant itself. The room is set up the way the three review
+    findings need it, every question is asked, everybody is given a
+    different real name and no aliases, and every question is asked
+    again. Nothing a player can read may differ."""
+
+    WORDS = (REAL.lower(), "ans", "jorvik", "ansel", "brown",
+             "man", "gaunt man", "manfred",
+             "1st jorvik", "2nd jorvik", "jorvik-1", "jorvik-2",
+             "2nd brown")
+
+    def setUp(self):
+        super().setUp()
+        # A souled NPC is keyed "First Last" with both as aliases.
+        self.them.aliases.add(["jorvik", "ansel", "brown"])
+        # A second man, whose real name starts with a description word.
+        self.manfred = self.body("Manfred Ostrow", "tall", "lean", "man")
+        # Things whose names a real name or alias would shadow.
+        self.wig = self.thing("brown wig")
+        self.idol = self.thing("jorvik idol")
+        # A guess, made the only way a player can make one stick.
+        self.do("remember gaunt man as Jorvik")
+
+    def every_answer(self):
+        answers = {}
+        for door in ASKS_ONLY:
+            for word in self.WORDS:
+                answers[door, word] = self.do(door.format(word))
+        for word in self.WORDS:
+            for shape, kwargs in (
+                    ("location", {"location": self.room1}),
+                    ("candidates",
+                     {"candidates": list(self.room1.contents)}),
+                    ("ordinary", {})):
+                found = self.viewer.search(word, quiet=True, **kwargs)
+                answers[shape, word] = sorted(
+                    "a person" if isinstance(obj, Character) else obj.key
+                    for obj in found)
+        return answers
+
+    def test_ask_everything_rename_everybody_ask_again(self):
+        before = self.every_answer()
+        for who, new in ((self.them, "Qqq Www"), (self.other, "Rrr Ttt"),
+                         (self.manfred, "Sss Vvv")):
+            who.aliases.clear()
+            who.key = new
+        after = self.every_answer()
+        for question in before:
+            with self.subTest(question=question):
+                self.assertEqual(before[question], after[question])
+
+    def test_the_questions_were_worth_asking(self):
+        """The control: some of them do find a thing, so equal answers
+        are not two blanks."""
+        answers = self.every_answer()
+        self.assertEqual(answers["location", "brown"], ["brown wig"])
+        self.assertEqual(answers["candidates", "jorvik"], ["jorvik idol"])
+        self.assertIn("a person", answers["ordinary", "gaunt man"])
+
+
+class TestWhatAFilterOnResultsGetsWrong(_Strangers):
+    """The three review findings against the first attempt, one each,
+    as a player would meet them."""
+
+    def test_a_surname_alias_does_not_hide_the_wig(self):
+        """Evennia tries an exact name before a partial one, and the
+        alias was exact."""
+        self.them.aliases.add(["jorvik", "ansel", "brown"])
+        wig = self.thing("brown wig")
+        self.do("get brown")
+        self.assertEqual(wig.location, self.viewer)
+
+    def test_nor_take_a_place_in_the_count(self):
+        self.them.aliases.add(["jorvik"])
+        idol = self.thing("jorvik idol")
+        self.assertEqual(
+            self.viewer.search("1st jorvik", location=self.room1,
+                               quiet=True), [idol])
+        self.assertEqual(
+            self.viewer.search("2nd jorvik", location=self.room1,
+                               quiet=True), [])
+
+    def test_a_description_word_that_starts_a_real_name_finds_nobody(self):
+        """`get man` found the one man whose real name began with it,
+        and so said which man that was."""
+        self.body("Manfred Ostrow", "tall", "lean", "man")
+        self.assertEqual(self.do("get man"), "You don't see a 'man' here.")
+
+    def test_a_guess_made_with_remember_is_not_confirmed(self):
+        self.do("remember gaunt man as Jorvik")
+        right = self.do("get jorvik")
+        self.do("remember gaunt man as Zzyzx")
+        wrong = self.do("get zzyzx")
+        self.assertEqual(right.replace("jorvik", "*"),
+                         wrong.replace("zzyzx", "*"))
+
+
 class TestWhatIsStillFound(_Strangers):
-    """The controls. The rule drops a person reached by real name and
-    nothing else."""
+    """The controls. The gate takes out a person whose real name is not
+    on show, and nothing else."""
 
     def test_a_thing_in_the_same_pool(self):
-        pebble = create_object("typeclasses.items.Item", key="pebble",
-                               location=self.room1)
+        pebble = self.thing("pebble")
         told = self.do("get pebble")
         self.assertNotIn("don't see", told)
         self.assertEqual(pebble.location, self.viewer)
 
-    def test_somebody_by_a_name_the_searcher_gave_them(self):
-        """They named him with a word of his real name. It is their
-        name for him now, and theirs to type."""
-        self.do("remember gaunt man as Ansel")
-        self.assertEqual(self.do("get ansel"), "You can't pick up Ansel.")
+    def test_a_body_that_is_seen_as_its_key(self):
+        """A mob, or an NPC with no description of its own: the key is
+        what everybody sees, so it is no secret."""
+        rat = create_object(Character, key="scrawny rat",
+                            location=self.room1)
+        self.assertFalse(name_is_hidden(rat))
+        self.assertEqual(self.do("get rat"),
+                         "You can't pick up scrawny rat.")
 
     def test_staff(self):
         self.viewer.check_permstring = lambda perm: True
         self.assertEqual(self.do(f"get {REAL.lower()}"),
                          f"You can't pick up a {SDESC}.")
 
-    def test_a_handed_over_pool_does_not_turn_a_description_into_a_person(
-            self):
-        """As it always was: `get` is looking for a thing, and Evennia
-        matches the pool by key. A command that means a person asks
+    def test_a_handed_over_pool_does_not_find_people_by_description(self):
+        """As it always was: `get` is looking for a thing. A command
+        that means a person makes an ordinary search or asks
         `resolve_character_target`."""
         self.assertEqual(self.do("get gaunt man"),
                          "You don't see a 'gaunt man' here.")
 
-
-class TestEveryCallShape(_Strangers):
-    """`Character.search` itself, however it is called."""
-
-    def found(self, query, **kwargs):
-        return self.viewer.search(query, quiet=True, **kwargs)
-
-    def test_a_list_of_candidates(self):
-        self.assertEqual(self.found(REAL, candidates=[self.them]), [])
-
-    def test_a_location(self):
-        self.assertEqual(self.found(REAL, location=self.room1), [])
-
-    def test_both(self):
-        self.assertEqual(
-            self.found(REAL, candidates=[self.them], location=self.room1),
-            [])
-
-    def test_out_loud_it_reads_as_nothing_found(self):
-        self.heard.clear()
-        self.assertIsNone(self.viewer.search(REAL, location=self.room1))
-        self.assertEqual(self.heard, [f"Could not find '{REAL}'."])
-
-    def test_two_people_matched_by_real_name_are_not_listed(self):
-        self.heard.clear()
-        self.assertIsNone(self.viewer.search("jorvik", location=self.room1))
-        self.assertEqual(self.heard, ["Could not find 'jorvik'."])
-
-    def test_a_thing_beside_them_in_the_pool_is_found(self):
-        self.assertEqual(
-            self.found("Obj", candidates=[self.obj1, self.them]),
-            [self.obj1])
-
-    def test_one_thing_and_one_person_by_real_name_is_one_match(self):
-        """Not a multimatch that lists the person."""
-        thing = create_object("typeclasses.items.Item", key="jorvik idol",
-                              location=self.room1)
-        self.heard.clear()
-        self.assertEqual(self.viewer.search("jorvik", location=self.room1),
-                         thing)
-        self.assertEqual(self.heard, [])
-
-    def test_staff_keep_the_real_name(self):
-        self.viewer.check_permstring = lambda perm: True
-        self.assertEqual(self.found(REAL, candidates=[self.them]),
+    def test_the_ordinary_search_still_does(self):
+        self.assertEqual(self.viewer.search("gaunt man", quiet=True),
                          [self.them])
 
-    def test_a_search_of_the_whole_game_is_plain_evennia(self):
-        """The one exemption. No command a player can run makes one;
-        `TestNoPlayerCommandSearchesTheWholeGame` holds that."""
-        self.assertEqual(self.found(REAL, global_search=True), [self.them])
+
+class TestThePool(_Strangers):
+    """`Character.get_search_candidates`, where the gate is."""
+
+    def pool(self, **kwargs):
+        return self.viewer.get_search_candidates("anything", **kwargs)
+
+    def test_whose_name_is_hidden(self):
+        self.assertTrue(name_is_hidden(self.them))
+        self.assertFalse(name_is_hidden(self.obj1))
+        self.assertFalse(name_is_hidden(self.char1))    # seen as "Char"
+
+    def test_a_handed_over_list(self):
+        self.assertEqual(
+            self.pool(candidates=[self.obj1, self.them, self.char1]),
+            [self.obj1, self.char1])
+
+    def test_a_location(self):
+        pool = self.pool(location=self.room1)
+        self.assertIn(self.obj1, pool)
+        self.assertNotIn(self.them, pool)
+        self.assertNotIn(self.other, pool)
+
+    def test_the_ordinary_reach(self):
+        pool = self.pool()
+        self.assertIn(self.viewer, pool)
+        self.assertIn(self.room1, pool)
+        self.assertNotIn(self.them, pool)
+
+    def test_staff_keep_everybody(self):
+        self.viewer.check_permstring = lambda perm: True
+        self.assertIn(self.them, self.pool(location=self.room1))
+
+    def test_a_search_of_the_whole_game_has_no_pool(self):
+        """The one exemption, and it is Evennia's own: staff tooling.
+        `TestNoPlayerCommandSearchesTheWholeGame` holds the other end."""
+        self.assertIsNone(self.pool(global_search=True))
+        self.assertEqual(
+            self.viewer.search(REAL, global_search=True, quiet=True),
+            [self.them])
 
     def test_an_object_number_is_refused_to_a_player(self):
-        self.assertEqual(self.found(self.them.dbref), [])
-
-
-class TestTheRule(_Strangers):
-    def test_staff_keep_everything(self):
-        found = [self.obj1, self.them]
-        self.assertEqual(
-            only_what_they_can_name(self.viewer, found, REAL, staff=True),
-            found)
-
-    def test_a_player_keeps_things_and_people_they_can_name(self):
-        self.assertEqual(
-            only_what_they_can_name(self.viewer, [self.obj1, self.them],
-                                    REAL, staff=False),
-            [self.obj1])
-        self.assertEqual(
-            only_what_they_can_name(self.viewer, [self.them], SDESC,
-                                    staff=False),
-            [self.them])
+        self.assertEqual(self.viewer.search(self.them.dbref, quiet=True),
+                         [])
 
 
 COMMANDS = Path(__file__).resolve().parents[2] / "commands"
@@ -263,9 +358,9 @@ def _lock_of(cls: ast.ClassDef) -> str:
 
 
 class TestNoPlayerCommandSearchesTheWholeGame(EvenniaTest):
-    """`global_search=True` is the one shape the identity rule does not
-    cover: it is Evennia's own search by key, for staff tooling. So it
-    may only appear in a command whose lock names a permission."""
+    """`global_search=True` is the one shape the identity gate does not
+    cover: it has no pool. So it may only appear in a command whose lock
+    names a permission."""
 
     def test_every_global_search_sits_behind_a_staff_lock(self):
         seen = 0

@@ -763,6 +763,32 @@ class Character(
         the active `search`) walk room contents themselves and never come
         through here: hidden is concealment, never invulnerability.
 
+        THE IDENTITY GATE, applied to the same pool for the same reason
+        (#3816). Evennia matches a pool by key and alias. A person whose
+        real name is not what they are seen as
+        (`world.search.name_is_hidden`) is therefore not in the pool of
+        a searcher who is not staff: their key cannot match, cannot
+        shadow a thing's partial match with its exact name, and cannot
+        take an ordinal. People are reached by what the searcher knows
+        them as, through the identity matcher (`Character.search` on an
+        ordinary search, `resolve_character_target`), which never reads
+        a key.
+
+        This was first tried as a filter on the RESULTS of a handed-over
+        pool, and review found the three things the paragraph above says
+        such a filter gets wrong, in a new coat: an NPC's surname alias
+        hid the wig beside them from `get brown`; `get man` found only
+        the man whose real name began with "man"; and `remember gaunt
+        man as <guess>` then `get <guess>` answered differently when the
+        guess was his real name. A real name that reaches the matcher
+        steers the answer, whatever is done with the answer afterwards.
+
+        Before this gate a pool was simply Evennia's: ten commands hand
+        one over while looking for a thing (`get`, `get ... from`,
+        `inspect`, `sever`, `buy ... from`, `jump on`, the edge jumps,
+        `throw ... to`), the pool was the room, and typing a real name
+        got a refusal that named the figure it belonged to.
+
         Args:
             searchdata (str): The search criterion
             **kwargs: Same as passed to search method
@@ -774,8 +800,14 @@ class Character(
         if candidates is None:
             return None
         from world.perception import can_perceive
-        return [obj for obj in candidates
+        pool = [obj for obj in candidates
                 if obj is self or can_perceive(self, obj)]
+        from world.combat.constants import PERM_BUILDER
+        if self.check_permstring(PERM_BUILDER):
+            return pool         # staff may reach anybody by real name
+        from world.search import name_is_hidden
+        return [obj for obj in pool
+                if obj is self or not name_is_hidden(obj)]
 
     def at_death(self):
         """
@@ -1852,22 +1884,19 @@ class Character(
         Evennia search, whose pool is presence-gated for people and
         things alike (`get_search_candidates`, #3637).
 
-        **Plain Evennia** (no identity rule; the presence gate still
-        applies to the attribute search, not to global and dbref):
+        **Bypass conditions** (skip the identity pipeline; the presence
+        gate still applies to every one except global and dbref):
           - ``global_search`` is ``True``
           - ``searchdata`` is a dbref (``#123``)
+          - ``candidates`` or ``location`` is explicitly provided
           - ``attribute_name`` is set
 
-        **A pool the caller hands over** (``candidates=`` or
-        ``location=``) is still a local search, and the identity rule
-        still holds in it (#3816): Evennia matches the pool by key and
-        alias, and a PERSON matched only by their real name is dropped
-        unless the searcher is staff. People are not matched by
-        description in a handed-over pool; a command that means a person
-        asks `resolve_character_target`. The line is where Evennia's own
-        RP contrib draws it (`ContribRPObject.get_search_result`): a
-        search that has a pool is identity-matched, only a global one is
-        plain.
+        A handed-over pool skips the pipeline and is still safe (#3816):
+        `get_search_candidates` has already taken out of it every person
+        whose real name is not on show, so Evennia's match by key and
+        alias has only things to find. Such a search does not find
+        people at all; a command that means a person makes an ordinary
+        search or asks `resolve_character_target`.
 
         Builder+ is NOT a bypass: the identity pipeline still runs first,
         and the privilege is only that the fallback keeps matches by
@@ -1897,26 +1926,16 @@ class Character(
         """
         from evennia.utils.utils import make_iter
         from world.combat.constants import PERM_BUILDER
-        from world.search import (
-            identity_match_characters,
-            only_what_they_can_name,
-        )
+        from world.search import identity_match_characters, is_identity_match
 
         # ----------------------------------------------------------
         # Bypass: let Evennia handle non-local or privileged searches
         # ----------------------------------------------------------
-        # A pool the caller hands over is NOT in this list (#3816). It
-        # was, so every command that scoped its search (`get`,
-        # `get ... from`, `inspect`, `sever`, `buy ... from`, `jump on`:
-        # nine in all) matched the people in that pool by real key. Each
-        # of them then refused to act, and the refusal was the leak: it
-        # differed from "nothing matched", named the figure the guessed
-        # name belonged to, and in one case printed the key back. The
-        # commands were looking for a thing; the pool held people too.
-        scoped = candidates is not None or location is not None
         bypass = (
             global_search
             or attribute_name is not None
+            or candidates is not None
+            or location is not None
             or not isinstance(searchdata, str)
         )
 
@@ -1999,38 +2018,6 @@ class Character(
                 use_dbref=use_dbref,
                 tags=tags,
                 stacked=stacked,
-            )
-
-        if scoped:
-            # Evennia's own match over the pool it was handed, and then
-            # the same rule the ordinary search ends with. The messages
-            # are Evennia's, as they were, through its own hook.
-            found = super().search(
-                searchdata,
-                global_search=global_search,
-                use_nicks=use_nicks,
-                typeclass=typeclass,
-                location=location,
-                attribute_name=attribute_name,
-                quiet=True,
-                exact=exact,
-                candidates=candidates,
-                use_locks=use_locks,
-                nofound_string=nofound_string,
-                multimatch_string=multimatch_string,
-                use_dbref=use_dbref,
-                tags=tags,
-                stacked=stacked,
-            )
-            found = only_what_they_can_name(
-                self, found, searchdata, staff=is_builder)
-            return self.handle_search_results(
-                self.get_search_query_replacement(
-                    searchdata, use_nicks=use_nicks),
-                found,
-                quiet=quiet,
-                nofound_string=nofound_string,
-                multimatch_string=multimatch_string,
             )
 
         # ----------------------------------------------------------
@@ -2121,8 +2108,13 @@ class Character(
         # Items, exits, rooms — anything without identity — passes
         # through unmodified.  Builders skip the identity filter so
         # they can also target by .key (their privilege).
-        filtered = only_what_they_can_name(
-            self, default_results, query, staff=is_builder)
+        if is_builder:
+            filtered = list(default_results)
+        else:
+            filtered = [
+                obj for obj in default_results
+                if is_identity_match(self, obj, query)
+            ]
 
         # Return using the caller's original quiet mode
         if quiet:
