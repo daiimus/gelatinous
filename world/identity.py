@@ -1220,6 +1220,54 @@ def resolve_assigned_name(memory: Any, uid: str | None) -> tuple:
     return None, None
 
 
+def has_no_face(target: Any) -> bool:
+    """True for a body whose head is off and which is not yet a corpse.
+
+    Identity is in the face (spec: "Identity Across Surfaces"). A
+    corpse without its head is recognised by nobody at a glance
+    (:meth:`typeclasses.corpse.Corpse.recognised_as`); this is the
+    same answer for the seconds in which a beheaded body is still a
+    character (#3835). ``head_severed_at_decap`` is written by
+    :func:`typeclasses.items.spawn_severed_head_for_living` once the
+    head exists as its own object, so the line that tells the room the
+    head is coming off still names whose it is, and every line after
+    it names nobody.
+
+    The flag says a head came off this body ONCE; the anatomy says
+    whether it is off now. An essential NPC is resleeved in the same
+    body, head and all (``world.souls.posts``), and a flag nobody
+    cleared would leave them without a face for the rest of their
+    life. So the flag is only the cheap first question, asked on every
+    name lookup, and :func:`world.medical.severance.compute_severed_containers`
+    is the answer, asked only of a body that carries the flag.
+
+    ``is True`` and not truthiness: a stand-in built from ``MagicMock``
+    answers truthy to any attribute it was never given.
+    """
+    db = getattr(target, "db", None)
+    if db is None or db.head_severed_at_decap is not True:
+        return False
+    from world.medical.severance import compute_severed_containers
+    return "head" in compute_severed_containers(target)
+
+
+def get_recognisable_uid(target: Any) -> str | None:
+    """The look an observer can KNOW *target* by, or ``None``.
+
+    :func:`get_apparent_uid`, except that a body with no face presents
+    no look to know (:func:`has_no_face`). Everything that asks "what
+    name does this observer hold for the person in front of them" reads
+    this: the name the room shows, the name that can be typed, and what
+    ``remember``, ``forget`` and ``recall`` act on. What is hashed for
+    the record (the death-time snapshot, the forensic chain) keeps
+    reading :func:`get_apparent_uid`: an autopsy still finds out who a
+    headless body was.
+    """
+    if has_no_face(target):
+        return None
+    return get_apparent_uid(target)
+
+
 def get_assigned_name(observer: Any, target: Any) -> str | None:
     """Return *observer*'s assigned recognition name for *target*.
 
@@ -1251,7 +1299,7 @@ def get_assigned_name(observer: Any, target: Any) -> str | None:
         *target*'s current presentation (including when *target* has no
         Apparent UID).
     """
-    apparent_uid = get_apparent_uid(target)
+    apparent_uid = get_recognisable_uid(target)
     if apparent_uid is None:
         return None
     memory = getattr(observer, "recognition_memory", None)
@@ -1955,6 +2003,8 @@ def attempt_display_pierce(
     """
     if looker is None or looker is target or not apparent_uid:
         return None
+    if has_no_face(target):
+        return None    # no face to see through to (#3835), and no roll
     memory = getattr(looker, "recognition_memory", None)
     if not memory:
         return None
@@ -2001,7 +2051,7 @@ def seen_through(looker: Any, target: Any) -> tuple:
     name typeable exactly when it has been shown, and typing teaches
     nothing.
     """
-    return _seen_through_at(looker, target, get_apparent_uid(target))
+    return _seen_through_at(looker, target, get_recognisable_uid(target))
 
 
 def _seen_through_at(looker: Any, target: Any, apparent_uid: Any) -> tuple:
@@ -2034,7 +2084,7 @@ def known_name_source(observer: Any, target: Any) -> tuple:
     This is the name the room shows them, so it is the name they may
     type, the name `forget` takes away and the name `recall` reads out.
     """
-    apparent_uid = get_apparent_uid(target)
+    apparent_uid = get_recognisable_uid(target)
     if apparent_uid is None:
         return None, None
     memory = getattr(observer, "recognition_memory", None)

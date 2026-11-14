@@ -361,6 +361,7 @@ class DeathCurtain:
         # fall through to the human default, which works for any small
         # mammal ("eyes lose focus", "charred form crumples", etc.).
         if not self.location:
+            self._finish_a_beheading()
             return
         try:
             from world.identity_utils import msg_room_identity
@@ -386,6 +387,25 @@ class DeathCurtain:
             logger.log_err(
                 f"DEATH_CURTAIN: death announcement failed for "
                 f"{getattr(self.character, 'key', '?')}: {e}"
+            )
+        self._finish_a_beheading()
+
+    def _finish_a_beheading(self):
+        """A beheading has no death window (#3835): the corpse now.
+
+        Last, after the transition has started and the room has been
+        told the cause, so the order the docstring above insists on
+        holds: a failure here costs nothing that had to happen, and the
+        script's own next tick completes the death instead.
+        """
+        try:
+            from .death_progression import complete_a_beheading
+            complete_a_beheading(self.character)
+        except Exception as e:  # noqa: BLE001 — the tick is the backstop
+            from evennia.utils import logger
+            logger.log_err(
+                f"DEATH_CURTAIN: a beheading was not completed at once "
+                f"for {getattr(self.character, 'key', '?')}: {e}"
             )
 
 

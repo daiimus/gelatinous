@@ -2213,11 +2213,13 @@ class CmdRemember(Command):
             caller.msg("You already know your own name.")
             return
 
-        # Target must have a derivable Apparent UID (requires a real
-        # sleeve_uid — pre-chargen shells return None).
-        from world.identity import get_apparent_uid
+        # Target must have a look to be known by: a real sleeve_uid
+        # (pre-chargen shells return None), and a face. A name given to
+        # a beheaded body would be a name for the bare face, and the
+        # severed head would answer to it (#3835).
+        from world.identity import get_apparent_uid, get_recognisable_uid
 
-        apparent_uid = get_apparent_uid(target)
+        apparent_uid = get_recognisable_uid(target)
         if apparent_uid is None:
             caller.msg("You can't remember that character.")
             return
@@ -2582,7 +2584,7 @@ def _refresh_lost_contact(caller):
     Safe to call when ``caller`` has no location or no recognition
     memory; the underlying helper short-circuits cleanly.
     """
-    from world.identity import get_apparent_uid, mark_lost_contact_entries
+    from world.identity import get_recognisable_uid, mark_lost_contact_entries
     from typeclasses.characters import Character
 
     location = getattr(caller, "location", None)
@@ -2590,7 +2592,9 @@ def _refresh_lost_contact(caller):
     if location is not None:
         for obj in location.contents:
             if isinstance(obj, Character) and obj is not caller:
-                uid = get_apparent_uid(obj)
+                # A body with no face is not that look standing in
+                # front of the caller (#3835).
+                uid = get_recognisable_uid(obj)
                 if uid is not None:
                     current_uids.add(uid)
     mark_lost_contact_entries(caller, current_uids)
@@ -2645,9 +2649,11 @@ class CmdForget(Command):
                 target = target[0] if target else None
 
         if target and isinstance(target, Character):
-            from world.identity import get_apparent_uid
+            from world.identity import get_recognisable_uid
 
-            apparent_uid = get_apparent_uid(target)
+            # The look they can be KNOWN by: none for a body with no
+            # face (#3835), as for one with no sleeve.
+            apparent_uid = get_recognisable_uid(target)
             if apparent_uid is None:
                 caller.msg("You can't forget that character.")
                 return
@@ -2856,9 +2862,12 @@ class CmdRecall(Command):
         entry = None
 
         if target and isinstance(target, Character):
-            from world.identity import get_apparent_uid
+            from world.identity import get_recognisable_uid
 
-            apparent_uid = get_apparent_uid(target)
+            # Not `get_apparent_uid`: that read the bare look off a
+            # beheaded body and printed the name the room no longer
+            # showed (#3835, found in review).
+            apparent_uid = get_recognisable_uid(target)
             if apparent_uid is None:
                 caller.msg("You can't recall anything about that character.")
                 return

@@ -218,8 +218,11 @@ class DeathProgressionScript(DefaultScript):
             f"{duration_minutes:.1f} minute revival window"
         )
             
-        # Send initial dying message
-        self._send_initial_message()
+        # Send initial dying message. Not for a beheading (#3835): it
+        # tells the player there may still be time for intervention,
+        # one moment before the closing lines.
+        if not is_beheaded(character):
+            self._send_initial_message()
         
     def at_repeat(self):
         """Called every DEATH_PROGRESSION_CHECK_INTERVAL seconds during death progression."""
@@ -240,6 +243,17 @@ class DeathProgressionScript(DefaultScript):
         splattercast.msg(f"DEATH_PROGRESSION: at_repeat for {character.key}, elapsed: {elapsed:.1f}s")
         
         # Check if medical conditions have been resolved and character should be revived
+        # A beheading is a death, not a dying (#3835): no revival check
+        # and no dying messages. The curtain completes it the moment it
+        # has told the room (`complete_a_beheading`). This is the
+        # backstop one tick later, for a completion that never ran: a
+        # reload in between, or a raise on the curtain's side. Not on
+        # the first tick, which Evennia fires as the script starts and
+        # which would build the corpse before the room is told.
+        if is_beheaded(character):
+            if elapsed >= self.interval:
+                self._complete_death_progression()
+            return
         if self._check_medical_revival_conditions(character):
             self._handle_medical_revival()
             return
@@ -1216,6 +1230,36 @@ def start_death_progression(character):
     splattercast.msg(f"DEATH_PROGRESSION: Script created and started: {script} for {character.key}")
         
     return script
+def is_beheaded(character):
+    """True when this death is a beheading: there is no window (#3835).
+
+    ``decapitation_pending`` is set at the blow, by combat and by the
+    surgical door alike, and cleared when the corpse is built. ``is
+    True`` and not truthiness, for stand-ins built from ``MagicMock``.
+    """
+    db = getattr(character, "db", None)
+    return db is not None and db.decapitation_pending is True
+
+
+def complete_a_beheading(character):
+    """Build the corpse of a beheaded character now, and say whether it did.
+
+    Owner, 2026-11-14: "is someone really dying if there head is
+    missing? They should be a corpse." A beheaded body used to stay a
+    character for the whole death window, with a revival check and the
+    dying messages of somebody who might yet be saved. Called by the
+    death curtain once it has finished and told the room the cause;
+    anything else that dies takes the window as before.
+    """
+    if not is_beheaded(character):
+        return False
+    script = get_death_progression_script(character)
+    if not script:
+        return False
+    script._complete_death_progression()
+    return True
+
+
 def get_death_progression_script(character):
     """
     Get the death progression script for a character if it exists.

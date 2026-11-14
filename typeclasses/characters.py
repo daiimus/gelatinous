@@ -1069,7 +1069,20 @@ class Character(
         # repaired) must not name the NEXT broken neck a decapitation.
         if self.db.decapitation_pending:
             self.db.decapitation_pending = False
-        
+        # And a body that has been given its head back is no longer one
+        # whose head is off (#3835). An essential NPC is resleeved in
+        # this same body, flesh reset first and then this door
+        # (`world.souls.posts`), and `head_severed_at_decap` was never
+        # cleared anywhere: it is the first thing
+        # `world.identity.has_no_face` reads, and it makes
+        # `spawn_severed_head_for_living` return early, so a second
+        # beheading of the same body spawned no head at the blow. Only
+        # when the anatomy agrees: a body revived by other means with
+        # its head still off keeps the flag.
+        if self.db.head_severed_at_decap:
+            from world.medical.severance import compute_severed_containers
+            if "head" not in compute_severed_containers(self):
+                self.db.head_severed_at_decap = False
         # Clear placement description
         if hasattr(self, 'override_place'):
             self.override_place = None
@@ -1833,7 +1846,8 @@ class Character(
 
         from evennia.utils import logger
 
-        from world.identity import bump_recognition_recency, get_apparent_uid
+        from world.identity import (
+            bump_recognition_recency, get_recognisable_uid)
         from world.perception import can_perceive
 
         for obj in self.location.contents:
@@ -1847,7 +1861,12 @@ class Character(
                 # memory of someone walking in.
                 continue
             try:
-                apparent_uid = get_apparent_uid(obj)
+                # The look they can be KNOWN by. A body with no face is
+                # not a sighting of the face (#3835): this wrote the
+                # headless body's description, this room and "just now"
+                # onto the entry for the bare look, and `memory` read
+                # the name back beside them.
+                apparent_uid = get_recognisable_uid(obj)
                 if apparent_uid is None:
                     continue
                 bump_recognition_recency(self, obj, apparent_uid)
