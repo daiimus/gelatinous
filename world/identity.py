@@ -1869,13 +1869,25 @@ def invalidate_pierce_cache_for_sleeve(
             observer, real_sleeve_uid
         )
     }
-    if not matching_uids:
-        return 0
+
+    # ...and every verdict about a body with this sleeve, whatever look
+    # it was given for (#3811). A look that was seen THROUGH has no
+    # memory entry by definition, so the walk above never reached its
+    # verdict: `forget` left a stored "seen through" behind, and the
+    # masked figure was named again, with no roll, the moment the face
+    # was remembered a second time. The key carries the body's dbref,
+    # which is the one handle on a look nobody wrote down.
+    from evennia.utils.search import search_object
+
+    def same_body(dbref: Any) -> bool:
+        found = search_object(dbref) if isinstance(dbref, str) else []
+        return any(getattr(obj, "sleeve_uid", None) == real_sleeve_uid
+                   for obj in found)
 
     keys_to_drop = [
         key for key in cache
         if isinstance(key, tuple) and len(key) == 2
-        and key[1] in matching_uids
+        and (key[1] in matching_uids or same_body(key[0]))
     ]
     for key in keys_to_drop:
         del cache[key]
@@ -1998,9 +2010,13 @@ def known_name_source(observer: Any, target: Any) -> tuple:
 
 
 def get_known_name(observer: Any, target: Any) -> str | None:
-    """The name *observer* may TYPE for *target*: see
-    :func:`known_name_source`."""
-    return known_name_source(observer, target)[0]
+    """The name *observer* may TYPE for *target*: the one they hold
+    (:func:`get_assigned_name`, still the one question everything asks
+    first), else one they have already seen through to
+    (:func:`seen_through`). The same answer as
+    :func:`known_name_source`, without the entry."""
+    return (get_assigned_name(observer, target)
+            or seen_through(observer, target)[0])
 
 
 # =========================================================================

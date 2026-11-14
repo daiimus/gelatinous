@@ -29,7 +29,7 @@ What is pinned:
   and a mask that holds against somebody who walked in gives no name.
 """
 import re
-from unittest import mock
+from unittest import TestCase, mock
 
 from evennia import create_object
 from evennia.prototypes.spawner import spawn
@@ -37,6 +37,16 @@ from evennia.utils.test_resources import EvenniaTest
 
 from typeclasses.characters import Character
 from world.identity import get_apparent_uid
+from world.tests.test_identity_bearer_mixin import _FakeBearer, _FakeLooker
+
+def resolve_assigned_name(memory, uid):
+    """Called through a wrapper so this module still LOADS against the
+    unfixed tree: a module-scope import of a function that does not
+    exist yet turns the whole file into a loader error, and a loader
+    error is not evidence."""
+    from world import identity
+    return identity.resolve_assigned_name(memory, uid)
+
 
 MASKED = "a gaunt masked man in a wool ski mask"
 ROLL = "world.combat.dice.opposed_roll"
@@ -283,6 +293,14 @@ class TestWalkingInOnTheMask(_MaskCase):
         self.assertIn("You forget the name 'Tamsin'", self.do("forget tamsin"))
         self.assertNotIn("Tamsin", self.roster())
 
+    def test_forgetting_takes_the_verdict_with_it(self):
+        """The look that was seen through has no memory entry, so its
+        verdict was never found to clear: remember the face again and
+        the masked figure was named at once, with no roll."""
+        self.walk_in(WON)
+        self.do("forget tamsin")
+        self.assertEqual(dict(self.viewer.db.disguise_pierce_cache or {}), {})
+
     def test_recall_reads_out_who_they_saw_through_to(self):
         self.walk_in(WON)
         self.assertIn("You remember them as: Tamsin", self.do("recall tamsin"))
@@ -304,3 +322,156 @@ class TestWalkingInOnTheMask(_MaskCase):
         self.walk_in(LOST)
         self.assertNotIn(get_apparent_uid(self.them),
                          dict(self.viewer.recognition_memory))
+
+
+class TestForgettingAMaskYouNamed(_MaskCase):
+    """After `forget`, the look that carried the name names nobody.
+
+    The viewer watched the mask go on and then gave the masked figure a
+    name of its own. Forgetting that name must not leave the figure
+    answering to the face's name through the link, under a message that
+    says they will now appear as their description. (From there the
+    viewer is where anybody is who did not watch: the mask holds unless
+    they see through it, so the dice are set against them here.)"""
+
+    def setUp(self):
+        super().setUp()
+        self.dice(LOST)
+        self.they("wear ski mask")
+        self.do("remember tamsin as Ghost")
+        self.told = self.do("forget ghost")
+
+    def test_it_says_what_then_happens(self):
+        self.assertIn("You forget the name 'Ghost'", self.told)
+        self.assertIn("appear as their description", self.told)
+
+    def test_and_that_is_what_happens(self):
+        self.assertIn("gaunt masked man", self.roster())
+        self.assertNotIn("Tamsin", self.roster())
+        self.assertNotIn("Ghost", self.roster())
+        self.assertEqual(self.do("look tamsin"), "Could not find 'tamsin'.")
+
+    def test_the_face_keeps_its_own_name(self):
+        """Forgetting "Batman" leaves "Bruce" alone."""
+        told = self.they("remove ski mask")
+        self.assertEqual(
+            told, "A gaunt masked man in a wool ski mask removes a wool "
+                  "ski mask, revealing they are none other than Tamsin.")
+        self.assertIn("Tamsin", self.roster())
+
+
+class TestATwoWordName(_MaskCase):
+    """A pose may be aimed at one word of a name, and that has to be
+    the same name a typed target answers to."""
+
+    def setUp(self):
+        super().setUp()
+        self.do("remember man as Whimsical Wendy")
+
+    def test_an_eyewitness_aims_at_one_word_of_it(self):
+        self.no_dice()
+        self.they("wear ski mask")
+        self.assertEqual(self.do(".wave at wendy"),
+                         "You wave at Whimsical Wendy.")
+
+    def test_and_so_does_somebody_who_saw_through(self):
+        self.viewer.move_to(self.room2, quiet=True, move_hooks=False)
+        self.them.execute_cmd("wear ski mask")
+        self.dice(WON)
+        self.viewer.move_to(self.room1, quiet=True)
+        self.assertEqual(self.do(".wave at wendy"),
+                         "You wave at Whimsical Wendy.")
+        self.assertEqual(self.first(self.do("look wendy")),
+                         f"Whimsical Wendy ({MASKED})")
+
+
+class TestTheWalk(TestCase):
+    """`resolve_assigned_name` on bare memories: no bodies needed."""
+
+    def named(self, memory, uid):
+        with mock.patch("evennia.utils.logger.log_warn") as warned:
+            found = resolve_assigned_name(memory, uid)
+        warned.assert_not_called()
+        return found
+
+    def test_a_look_with_its_own_name(self):
+        memory = {"mask": {"assigned_name": "Ghost", "linked_to": "face"},
+                  "face": {"assigned_name": "Tamsin"}}
+        self.assertEqual(self.named(memory, "mask"), ("Ghost", "mask"))
+
+    def test_the_look_it_was_seen_to_come_from(self):
+        memory = {"mask": {"assigned_name": "", "linked_to": "face"},
+                  "face": {"assigned_name": "Tamsin"}}
+        self.assertEqual(self.named(memory, "mask"), ("Tamsin", "face"))
+
+    def test_the_nearest_name_and_no_further(self):
+        memory = {"c": {"assigned_name": "", "linked_to": "b"},
+                  "b": {"assigned_name": "Near", "linked_to": "a"},
+                  "a": {"assigned_name": "Far"}}
+        self.assertEqual(self.named(memory, "c"), ("Near", "b"))
+
+    def test_two_nameless_looks_linked_at_each_other(self):
+        """Nothing here stops the walk but the walk itself."""
+        memory = {"mask": {"assigned_name": "", "linked_to": "face"},
+                  "face": {"assigned_name": "", "linked_to": "mask"}}
+        self.assertEqual(self.named(memory, "mask"), (None, None))
+        self.assertEqual(self.named(memory, "face"), (None, None))
+
+    def test_a_look_linked_at_itself(self):
+        memory = {"mask": {"assigned_name": "", "linked_to": "mask"}}
+        self.assertEqual(self.named(memory, "mask"), (None, None))
+
+    def test_a_chain_too_long_to_be_real(self):
+        memory = {f"u{i}": {"assigned_name": "", "linked_to": f"u{i + 1}"}
+                  for i in range(500)}
+        memory["u500"] = {"assigned_name": "Too far"}
+        self.assertEqual(self.named(memory, "u0"), (None, None))
+
+    def test_a_link_to_an_entry_that_is_gone(self):
+        memory = {"mask": {"assigned_name": "", "linked_to": "gone"}}
+        self.assertEqual(self.named(memory, "mask"), (None, None))
+
+    def test_a_look_the_observer_has_no_entry_for(self):
+        """The control: this is everybody who did not watch."""
+        memory = {"face": {"assigned_name": "Tamsin"}}
+        self.assertEqual(self.named(memory, "mask"), (None, None))
+        self.assertEqual(self.named({}, "mask"), (None, None))
+        self.assertEqual(self.named(None, "mask"), (None, None))
+
+
+class TestOtherSurfaces(TestCase):
+    """The same question is asked of a body on the floor and of a trust
+    grant, by uid, and they read the name by hand too."""
+
+    WATCHED = {"face": {"assigned_name": "Tamsin"},
+               "mask": {"assigned_name": "", "linked_to": "face"}}
+
+    def corpse_name(self, memory):
+        bearer = _FakeBearer(apparent_uid="mask")
+        with mock.patch("world.identity.get_apparent_uid_for_decay",
+                        return_value="mask"), \
+                mock.patch("world.identity.get_apparent_uid",
+                           return_value="mask"):
+            return bearer.get_display_name(_FakeLooker(memory=memory))
+
+    def test_an_eyewitness_still_knows_the_body(self):
+        """Named while they stood, and anonymous the moment they fell:
+        the masked look's own name is blank for whoever watched the
+        mask go on."""
+        self.assertEqual(self.corpse_name(self.WATCHED),
+                         "fresh bearer (Tamsin)")
+
+    def test_a_masked_body_nobody_watched_is_nobody(self):
+        """The control."""
+        self.assertEqual(
+            self.corpse_name({"face": {"assigned_name": "Tamsin"},
+                              "mask": {"assigned_name": ""}}),
+            "fresh bearer")
+
+    def test_a_grant_is_shown_by_the_name_held_for_that_look(self):
+        from world.consent import grant_display_name
+        grantor = _FakeLooker(memory=self.WATCHED)
+        self.assertEqual(
+            grant_display_name(grantor, "mask", entry={"label": "a man"}),
+            "Tamsin")
+

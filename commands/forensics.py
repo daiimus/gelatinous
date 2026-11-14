@@ -48,6 +48,7 @@ from world.forensics import (
     extract_subject_from_corpse,
     render_forensic_report,
 )
+from world.identity import resolve_assigned_name
 from world.identity_utils import msg_room_identity
 
 
@@ -184,7 +185,7 @@ class CmdInspect(Command):
         memory = getattr(caller, "recognition_memory", None) or {}
         header = f"You examine {corpse_name_for_caller}."
         if result.revealed_uid and result.revealed_uid in memory:
-            assigned = memory[result.revealed_uid].get("assigned_name")
+            assigned = resolve_assigned_name(memory, result.revealed_uid)[0]
             if assigned:
                 header = (
                     f"You examine {corpse_name_for_caller} and confirm the "
@@ -297,7 +298,7 @@ class CmdInspect(Command):
             )
             is_known = bool(
                 result.revealed_uid and result.revealed_uid in memory
-                and memory[result.revealed_uid].get("assigned_name")
+                and resolve_assigned_name(memory, result.revealed_uid)[0]
             )
 
             if has_axes or is_known:
@@ -310,7 +311,8 @@ class CmdInspect(Command):
             report = render_forensic_report(subject, observer=caller)
             header = "  — Bleeder's signature:"
             if result.revealed_uid and result.revealed_uid in memory:
-                assigned = memory[result.revealed_uid].get("assigned_name")
+                assigned = resolve_assigned_name(
+                    memory, result.revealed_uid)[0]
                 if assigned:
                     header = (
                         f"  — Bleeder's signature, matching {assigned}:"

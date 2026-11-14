@@ -2484,6 +2484,27 @@ class CmdRemember(Command):
 # ===================================================================
 
 
+def _forget_entry(memory, uid):
+    """Take the name off one recognition entry, and its link with it.
+
+    A name can be read THROUGH a link (#3811): a look with no name of
+    its own answers to the name of the look it is linked to. So
+    clearing only the name was no longer enough. Forgetting "Ghost",
+    the name given to a masked figure, left the figure showing as
+    "Tamsin" through the link, under a message saying they would now
+    appear as their description; and where the link was one the
+    `remember` command makes between two looks of one body, it named
+    somebody the caller had never seen through to.
+
+    After `forget`, the look that carried the name names nobody. The
+    other look keeps its own name: forgetting "Batman" leaves "Bruce"
+    alone, as it always did.
+    """
+    entry = memory[uid]
+    entry["assigned_name"] = ""
+    entry["linked_to"] = None
+
+
 def _find_remembered_uid_by_name(caller, name):
     """Look up an Apparent UID in caller's recognition_memory by assigned_name.
 
@@ -2687,7 +2708,7 @@ class CmdForget(Command):
             caller.msg("You don't have a name remembered for them.")
             return
 
-        memory[source_uid]["assigned_name"] = ""
+        _forget_entry(memory, source_uid)
         caller.recognition_memory = memory
 
         # Forget their voice too (CAPACITY_CONSUMERS spec §4.2) — the visible
@@ -2735,7 +2756,7 @@ class CmdForget(Command):
         when = _format_relative_time(last_seen)
 
         memory = caller.recognition_memory
-        memory[apparent_uid]["assigned_name"] = ""
+        _forget_entry(memory, apparent_uid)
         caller.recognition_memory = memory
 
         from world.identity import invalidate_pierce_cache_for_sleeve

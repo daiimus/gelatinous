@@ -276,15 +276,17 @@ What writes each thing the chart reads:
 | the chart reads | written by | cleared by |
 |---|---|---|
 | a name on a look | `remember <them> as <name>` | `forget` |
-| the witness link (`linked_to`) | being in the room, conscious, when their look changes (§Unmasking Moments) | never; it stops mattering when no name is left along it |
-| a see-through verdict (`disguise_pierce_cache`) | the first time you LOOK at a look you have no entry for, on a body you have named under another (§Disguise Piercing) | `forget`, for every look of that body |
+| the witness link (`linked_to`) | being in the room, conscious, when their look changes (§Unmasking Moments) | `forget`, on the one entry that loses its name |
+| a see-through verdict (`disguise_pierce_cache`) | the first time you LOOK at a look you have no entry for, on a body you have named under another (§Disguise Piercing) | `forget`, for every look of that body, whether or not you hold an entry for the look (the verdict is keyed by the body's dbref) |
 
 Two rules fall out of it, and both were owner rulings on 2026-11-13:
 
 - **An eyewitness goes on knowing them.** Asked whether somebody who watches a person they know put on a mask goes on knowing them: "Yes, and it's specific to that person." The witness link carries the name, with no roll, and only for the observer who holds the link. Somebody who walks in afterwards has no entry for the look and takes the see-through branch.
 - **A name on your screen is a name you can type.** A typed name reads a stored verdict and never makes one. A verdict only ever comes from looking, so a name becomes typeable exactly when it has been shown, and trying names teaches nothing about who is under a mask.
 
-`forget` and `recall` follow the same answer: `forget` takes the name away where it is stored (the look's own entry, or the entry the link or the see-through led to), and `recall` reads out the entry of the person the room is naming.
+`forget` and `recall` follow the same answer. `recall` reads out the entry of the person the room is naming. `forget` takes the name away where it is stored (the look's own entry, or the entry the link or the see-through led to), **and that entry's link with it**: after `forget`, the look that carried the name names nobody. Without the second half, forgetting "Ghost", a name given to a masked figure, left the figure answering to "Tamsin" through the link under a message saying they would now appear as their description. The other look keeps its own name, as it always did: forgetting "Batman" leaves "Bruce" alone. From there the observer stands where anybody stands who did not watch, and may still see through on the roll.
+
+The surfaces that ask the question about a uid and not a person in front of you read the same held name (`world.identity.resolve_assigned_name`): the name after a body on the floor or a severed head (`IdentityBearerMixin.get_display_name`), a forensic match and a post-mortem confirmation, and the name a trust grant is shown under (`world.consent.grant_display_name`). They read the entry by hand until #3811, so somebody named while they stood became anonymous to an eyewitness the moment they fell.
 
 ### `get_display_name` Override
 
