@@ -225,7 +225,9 @@ def restore_state(npc, puppet, path):
     with open(path) as fh:
         state = json.load(fh)
     if state.get("history"):
-        npc.ndb.llm_history = {npc._hist_key(puppet): state["history"]}
+        # Under the subject the NPC files it by (#3820), not the object id.
+        npc.ndb.llm_history = {
+            npc._memory_subject(puppet): state["history"]}
     if state.get("recognition"):
         npc.recognition_memory = state["recognition"]
     if state.get("memories"):
@@ -237,7 +239,7 @@ def save_state(npc, puppet, path):
         return
     from evennia.utils.dbserialize import deserialize   # _Saver* -> plain py
     state = deserialize({
-        "history": (npc.ndb.llm_history or {}).get(npc._hist_key(puppet), []),
+        "history": list(npc._recent_history(puppet)),
         "recognition": npc.recognition_memory or {},
         "memories": npc.db.llm_memories or [],
     })
@@ -309,7 +311,7 @@ def main():
     if args.as_keyword:
         puppet.sdesc_keyword = args.as_keyword
     restore_state(npc, puppet, args.state)
-    turns = len((npc.ndb.llm_history or {}).get(npc._hist_key(puppet), []))
+    turns = len(npc._recent_history(puppet))
     print(f"scene: {npc.key} ({args.archetype}) and {puppet.key} in {room.key}"
           + (f"  [resumed, {turns} prior turns]" if turns else ""))
 

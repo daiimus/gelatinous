@@ -1511,7 +1511,11 @@ class LLMNpcMixin:
 
         Filed under *subject*, as `_recent_history` reads it. A thread
         that began under a look this NPC has since connected to this one
-        is carried over, so it is one conversation and not two."""
+        is MOVED here, not copied: one thread for the looks the NPC holds
+        to be one person, under whichever of them spoke last. A copy left
+        behind was read first the moment they went back to that look, and
+        the NPC lost its latest turns each time a mask came off in front
+        of it."""
         reply = self._reconstruct_reply(speech, action, thought)
         if not reply:
             return
@@ -1525,6 +1529,8 @@ class LLMNpcMixin:
             "user": f'{speaker_name} says to you: "{line}"',
             "assistant": reply,
         })
+        for other in self._thread_keys(subject):
+            hist.pop(other, None)
         hist[key] = turns[-LLM_HISTORY_TURNS:]
         self.ndb.llm_history = hist
 

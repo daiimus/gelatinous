@@ -139,6 +139,64 @@ class TestMaskedInFrontOfAnNpcThatKnewThem(_AtTheBar):
                           'a gaunt man says to you: "another"'])
 
 
+class TestMaskOnAndOffAgainInFrontOfTheNpc(_AtTheBar):
+    """One conversation, however many times the look changes in sight."""
+
+    def setUp(self):
+        super().setUp()
+        self.npc.execute_cmd("remember gaunt man as Jorvik")
+        self.say("one")
+        self.patron.execute_cmd("wear ski mask")
+        self.say("two")
+        self.patron.execute_cmd("remove ski mask")
+
+    def test_the_face_reads_everything_said_under_the_mask_too(self):
+        """A copy of the thread was left under the face when the mask
+        went on, and was read first when it came off: the NPC lost
+        what it had just said."""
+        self.assertEqual(self.thread(),
+                         ['a gaunt man says to you: "one"',
+                          'a gaunt man says to you: "two"'])
+
+    def test_and_goes_on_from_there(self):
+        self.say("three")
+        self.patron.execute_cmd("wear ski mask")
+        self.assertEqual([t.rsplit(" ", 1)[1] for t in self.thread()],
+                         ['"one"', '"two"', '"three"'])
+
+    def test_there_is_one_thread_and_not_two(self):
+        self.say("three")
+        held = [key for key, turns in
+                (self.npc.ndb.llm_history or {}).items() if turns]
+        self.assertEqual(len(held), 1)
+
+
+class TestTheConsoleKeepsItsThread(_AtTheBar):
+    """`world/llm/npc_console.py --state` saves the thread between runs.
+    It read and wrote it under the object id, where the NPC no longer
+    looks."""
+
+    def test_a_saved_thread_is_the_one_the_npc_reads(self):
+        import json
+        import os
+        import tempfile
+        from world.llm import npc_console
+        self.say("a rotgut")
+        handle, path = tempfile.mkstemp(suffix=".json")
+        os.close(handle)
+        self.addCleanup(os.remove, path)
+        npc_console.save_state(self.npc, self.patron, path)
+        with open(path) as fh:
+            saved = json.load(fh)["history"]
+        self.assertEqual([t["user"] for t in saved],
+                         ['a gaunt man says to you: "a rotgut"'])
+        self.npc.ndb.llm_history = {}
+        self.assertEqual(self.thread(), [])
+        npc_console.restore_state(self.npc, self.patron, path)
+        self.assertEqual(self.thread(),
+                         ['a gaunt man says to you: "a rotgut"'])
+
+
 class TestAVoiceOnTheAir(_AtTheBar):
     def test_it_has_its_own_thread(self):
         self.say("a rotgut")
