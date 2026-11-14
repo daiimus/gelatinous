@@ -288,6 +288,32 @@ class TestWalkingInOnTheMask(_MaskCase):
         self.roster()
         self.assertEqual(rolled.call_count, 1)
 
+    def hood_up(self):
+        """A second change, in front of the viewer: a hood over the
+        mask. What the viewer is told."""
+        hood = spawn("HOODIE_HOOD_UP")[0]
+        hood.move_to(self.them, quiet=True)
+        return self.they("wear hood")
+
+    def test_a_viewer_who_saw_through_watches_the_next_change(self):
+        """They hold no entry for the masked look: seeing through
+        writes a verdict and nothing else. The hook read them as a
+        stranger, told them "Tamsin puts on a drawn hood", and then
+        rolled afresh for the hooded figure."""
+        rolled = self.walk_in(WON)
+        self.assertEqual(self.hood_up(), "Tamsin puts on a drawn hood.")
+        self.assertIn("Tamsin", self.roster())
+        self.assertIn("Tamsin (", self.first(self.do("look tamsin")))
+        self.assertEqual(rolled.call_count, 1, "rolled for the new look")
+
+    def test_a_viewer_the_mask_held_against_learns_nothing_from_it(self):
+        """The control: they never knew who it was, and watching a
+        stranger pull a hood up names nobody."""
+        self.walk_in(LOST)
+        self.assertNotIn("Tamsin", self.hood_up())
+        self.assertNotIn("Tamsin", self.roster())
+        self.assertEqual(self.do("look tamsin"), "Could not find 'tamsin'.")
+
     def test_typing_a_name_never_rolls(self):
         """In the room and not yet looked, so nothing is decided, and
         trying names must not decide it: that would be fishing for who
@@ -377,6 +403,30 @@ class TestForgettingAMaskYouNamed(_MaskCase):
             told, "A gaunt masked man in a wool ski mask removes a wool "
                   "ski mask, revealing they are none other than Tamsin.")
         self.assertIn("Tamsin", self.roster())
+
+
+class TestForgettingSomebodyWhoHasLeft(_MaskCase):
+    """`forget` has a second door, for a name typed when nobody by it
+    is in the room. It has to take the same thing away."""
+
+    def setUp(self):
+        super().setUp()
+        self.dice(LOST)
+        self.they("wear ski mask")
+        self.do("remember tamsin as Ghost")
+        self.them.move_to(self.room2, quiet=True, move_hooks=False)
+        self.told = self.do("forget ghost")
+        self.them.move_to(self.room1, quiet=True, move_hooks=False)
+
+    def test_the_name_is_forgotten(self):
+        self.assertIn("You forget the name 'Ghost'", self.told)
+
+    def test_and_they_come_back_a_stranger(self):
+        """Cleared of its name alone, the masked look still recorded
+        the face it was watched to come from, and answered to that."""
+        self.assertIn("gaunt masked man", self.roster())
+        self.assertNotIn("Tamsin", self.roster())
+        self.assertNotIn("Ghost", self.roster())
 
 
 class TestATwoWordName(_MaskCase):
@@ -511,6 +561,23 @@ class TestOtherSurfaces(TestCase):
                               "mask": {"assigned_name": "",
                                        "linked_to": "face"}}),
             "fresh bearer")
+
+    def test_a_body_too_far_gone_to_know_by_eye(self):
+        """The second pass: decay has taken the face, a forensic read
+        recovers the look they died in, and that look is one the
+        caller watched arrive."""
+        bearer = _FakeBearer(stage="moderate", decay_label="moderate thing",
+                             apparent_uid="mask")
+        with mock.patch("world.identity.get_apparent_uid_for_decay",
+                        return_value="degraded"), \
+                mock.patch("world.identity.get_apparent_uid",
+                           return_value="mask"), \
+                mock.patch("typeclasses.identity_bearer.IdentityBearerMixin"
+                           "._attempt_forensic_recognition",
+                           return_value=True):
+            self.assertEqual(
+                bearer.get_display_name(_FakeLooker(memory=self.WATCHED)),
+                "moderate thing (Tamsin)")
 
     def test_a_grant_is_shown_by_the_name_held_for_that_look(self):
         from world.consent import grant_display_name

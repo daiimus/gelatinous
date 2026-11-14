@@ -1988,9 +1988,15 @@ def seen_through(looker: Any, target: Any) -> tuple:
     name typeable exactly when it has been shown, and typing teaches
     nothing.
     """
+    return _seen_through_at(looker, target, get_apparent_uid(target))
+
+
+def _seen_through_at(looker: Any, target: Any, apparent_uid: Any) -> tuple:
+    """:func:`seen_through`, for the look *apparent_uid* of *target*,
+    which need not be the one they wear now: the unmasking hook asks it
+    about the look that has just gone."""
     if looker is None or looker is target:
         return None, None
-    apparent_uid = get_apparent_uid(target)
     target_dbref = getattr(target, "dbref", None)
     if not apparent_uid or target_dbref is None:
         return None, None
@@ -2448,6 +2454,47 @@ def _witness_known_look(memory: dict, new_uid: str, old_uid: str) -> None:
         new_entry["witnessed_from"] = old_uid
 
 
+def _witness_seen_through(
+    observer: Any, char: Any, memory: dict,
+    old_uid: str, new_uid: str, now_iso: str,
+) -> bool:
+    """An observer who held no ENTRY for the look that has just gone,
+    but knew it: they had seen through it to somebody they remember.
+    They watched the change like anybody else (#3811). True when
+    *memory* was written.
+
+    Seeing through writes a verdict and no memory entry, so the hook
+    read this observer as a stranger (cell A, or cell C when they held
+    the new look) and recorded nothing. They were told "Tamsin pulls up
+    a hood." and then rolled afresh for the hooded look, with a heavier
+    disguise against them and the verdict kept for good.
+
+    The new look is recorded as watched to come from the entry the
+    see-through led to. A new entry also takes that as its link, which
+    is what joins the two for `recall` and an NPC's memories; an entry
+    already there keeps its link, and is touched only if the observer
+    holds no name for it.
+    """
+    _name, source_uid = _seen_through_at(observer, char, old_uid)
+    if source_uid is None or source_uid == new_uid:
+        return False
+    if new_uid in memory:
+        if resolve_assigned_name(memory, new_uid)[0] is not None:
+            return False
+        memory[new_uid]["witnessed_from"] = source_uid
+        return True
+    location_name = (
+        observer.location.key
+        if getattr(observer, "location", None) is not None
+        else "unknown"
+    )
+    memory[new_uid] = _build_link_entry(
+        target=char, observer=observer, linked_to=source_uid,
+        now_iso=now_iso, location_name=location_name,
+    )
+    return True
+
+
 def _broadcast_unmasking(
     char: Any,
     old_uid: str | None,
@@ -2501,7 +2548,11 @@ def _broadcast_unmasking(
         )
 
         if not knew_old and not knew_new:
-            # Cell A — stranger remains a stranger.
+            # Cell A — stranger remains a stranger. Unless they knew the
+            # old look by having seen through it (#3811).
+            if _witness_seen_through(
+                    observer, char, memory, old_uid, new_uid, now_iso):
+                observer.recognition_memory = memory
             continue
 
         if knew_old and not knew_new:
@@ -2542,6 +2593,8 @@ def _broadcast_unmasking(
                 real_sleeve_uid = getattr(char, "sleeve_uid", None)
                 if real_sleeve_uid:
                     entry["real_sleeve_uid"] = real_sleeve_uid
+            _witness_seen_through(
+                observer, char, memory, old_uid, new_uid, now_iso)
             observer.recognition_memory = memory
             _send_unmasking_message(
                 observer, char, "C", old_uid=old_uid, new_uid=new_uid
@@ -2669,6 +2722,9 @@ def _broadcast_unmask_with_action(
         # Determine cell + apply matching memory mutation.
         if not knew_old and not knew_new:
             cell = "A"
+            if _witness_seen_through(
+                    observer, char, memory, old_uid, new_uid, now_iso):
+                observer.recognition_memory = memory
         elif knew_old and not knew_new:
             cell = "B"
             memory[old_uid]["lost_contact"] = True
@@ -2705,6 +2761,8 @@ def _broadcast_unmask_with_action(
                 sleeve_uid = getattr(char, "sleeve_uid", None)
                 if sleeve_uid:
                     entry["real_sleeve_uid"] = sleeve_uid
+            _witness_seen_through(
+                observer, char, memory, old_uid, new_uid, now_iso)
             observer.recognition_memory = memory
         else:
             cell = "D"

@@ -384,6 +384,30 @@ class TestCmdAutopsyNameDisclosure(TestCase):
         self.assertIn("Jorge Jackson", rendered)
         self.assertIn("remains are those of", rendered)
 
+    def test_name_surfaces_for_a_look_the_caller_watched_arrive(self):
+        """#3811: the look they died in has no name of its own for
+        somebody who watched the mask go on. It records the look it was
+        watched to come from, and that one is named."""
+        memory = {"face": {"assigned_name": "Jorge Jackson"},
+                  "abc123": {"assigned_name": "", "linked_to": "face",
+                             "witnessed_from": "face"}}
+        result = RecognitionResult(
+            success=True, revealed_uid="abc123", from_cache=False,
+        )
+        rendered = self._run_with_result(memory=memory, result=result)
+        self.assertIn("Jorge Jackson", rendered)
+        self.assertIn("remains are those of", rendered)
+
+    def test_no_name_through_a_link_nobody_watched(self):
+        """The control: a link alone names nobody."""
+        memory = {"face": {"assigned_name": "Jorge Jackson"},
+                  "abc123": {"assigned_name": "", "linked_to": "face"}}
+        result = RecognitionResult(
+            success=True, revealed_uid="abc123", from_cache=False,
+        )
+        rendered = self._run_with_result(memory=memory, result=result)
+        self.assertNotIn("remains are those of", rendered)
+
     def test_no_name_when_uid_in_memory_but_no_assigned_name(self):
         """Memory entry without ``assigned_name`` must not leak a name."""
         memory = {"abc123": {"sdesc": "the hooded one"}}

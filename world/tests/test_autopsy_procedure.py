@@ -221,6 +221,42 @@ class TestResolveAutopsy(TestCase):
         stored = corpse.db.surgical_state.get("pending_step_result")
         self.assertIn("Jorge", stored)
 
+    def _post_mortem(self, memory):
+        actor = _FakeActor()
+        actor.recognition_memory = memory
+        corpse = _FakeCorpse()
+        fake_result = SimpleNamespace(
+            success=True, revealed_uid="abc123", from_cache=False,
+        )
+        with patch(
+            "world.forensics.extract_subject_from_corpse",
+            return_value=_FakeSubject(),
+        ), patch(
+            "world.forensics.attempt_forensic_recognition",
+            return_value=fake_result,
+        ), patch(
+            "world.forensics.render_forensic_report",
+            return_value="REPORT",
+        ):
+            proc._resolve_autopsy(actor, corpse)
+        return corpse.db.surgical_state.get("pending_step_result")
+
+    def test_a_look_the_surgeon_watched_arrive_is_confirmed_by_name(self):
+        """#3811: the look they died in has no name of its own for
+        somebody who watched the mask go on."""
+        stored = self._post_mortem({
+            "face": {"assigned_name": "Jorge"},
+            "abc123": {"assigned_name": "", "linked_to": "face",
+                       "witnessed_from": "face"}})
+        self.assertIn("confirmed as those of Jorge", stored)
+
+    def test_a_link_nobody_watched_confirms_nobody(self):
+        """The control."""
+        stored = self._post_mortem({
+            "face": {"assigned_name": "Jorge"},
+            "abc123": {"assigned_name": "", "linked_to": "face"}})
+        self.assertNotIn("confirmed as those of", stored)
+
 
 # ---------------------------------------------------------------------
 # Chart runner pickup
