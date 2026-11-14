@@ -2647,9 +2647,11 @@ class CmdForget(Command):
                 target = target[0] if target else None
 
         if target and isinstance(target, Character):
-            from world.identity import get_apparent_uid
+            from world.identity import get_recognisable_uid
 
-            apparent_uid = get_apparent_uid(target)
+            # The look they can be KNOWN by: none for a body with no
+            # face (#3835), as for one with no sleeve.
+            apparent_uid = get_recognisable_uid(target)
             if apparent_uid is None:
                 caller.msg("You can't forget that character.")
                 return
@@ -2858,9 +2860,12 @@ class CmdRecall(Command):
         entry = None
 
         if target and isinstance(target, Character):
-            from world.identity import get_apparent_uid
+            from world.identity import get_recognisable_uid
 
-            apparent_uid = get_apparent_uid(target)
+            # Not `get_apparent_uid`: that read the bare look off a
+            # beheaded body and printed the name the room no longer
+            # showed (#3835, found in review).
+            apparent_uid = get_recognisable_uid(target)
             if apparent_uid is None:
                 caller.msg("You can't recall anything about that character.")
                 return

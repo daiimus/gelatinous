@@ -795,7 +795,13 @@ class _SignatureMockCharacter:
         self.gender = gender
 
         class _DB:
-            pass
+            """Like Evennia's ``db``: an attribute nobody set reads as
+            ``None``. A bare class raised instead, so any production
+            read of an attribute this stand-in was never given blew up
+            here and nowhere else (#3835)."""
+
+            def __getattr__(self, name):
+                return None
 
         self.db = _DB()
         self.db.height_override = height_override

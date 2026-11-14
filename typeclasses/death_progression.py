@@ -218,8 +218,11 @@ class DeathProgressionScript(DefaultScript):
             f"{duration_minutes:.1f} minute revival window"
         )
             
-        # Send initial dying message
-        self._send_initial_message()
+        # Send initial dying message. Not for a beheading (#3835): it
+        # tells the player there may still be time for intervention,
+        # one moment before the closing lines.
+        if not is_beheaded(character):
+            self._send_initial_message()
         
     def at_repeat(self):
         """Called every DEATH_PROGRESSION_CHECK_INTERVAL seconds during death progression."""

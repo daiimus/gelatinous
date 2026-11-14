@@ -157,6 +157,53 @@ class TestABodyWithItsHeadOffNamesNobody(_TheBlow):
         self.assertNotIn("(", corpse.get_display_name(self.friend))
 
 
+class TestWhatReviewFound(_TheBlow):
+
+    def recall(self):
+        """What `recall man` prints for somebody standing at the body,
+        who knows the bare face as Jorge."""
+        self.char1.recognition_memory = {
+            self.bare_look: {"assigned_name": "Jorge"}}
+        from commands.CmdCharacter import CmdRecall
+        cmd = CmdRecall()
+        cmd.caller, cmd.args, cmd.cmdstring = self.char1, "man", "recall"
+        out = []
+        with mock.patch.object(
+                type(self.char1), "msg",
+                lambda _self, text=None, **kw: out.append(str(text))):
+            cmd.func()
+        return "\n".join(out)
+
+    def test_recall_reads_the_name_off_a_living_body(self):
+        """The control: the command runs here and finds the entry."""
+        self.assertIn("Jorge", self.recall())
+
+    def test_recall_reads_nothing_off_a_beheaded_body(self):
+        self.behead()
+        said = self.recall()
+        self.assertNotIn("Jorge", said)
+        self.assertIn("can't recall", said)
+
+    def test_a_body_given_its_head_back_has_a_face_again(self):
+        """An essential NPC is resleeved in the same body: flesh reset,
+        then out of the death state (`world.souls.posts`)."""
+        from world.medical.procedures import reset_body_preserving_augments
+        self.behead()
+        self.assertTrue(_fixed("has_no_face")(self.dead))
+        reset_body_preserving_augments(self.dead)
+        self.assertFalse(_fixed("has_no_face")(self.dead),
+                         "a flag nobody cleared must not outvote the anatomy")
+        self.dead.remove_death_state()
+        self.assertFalse(self.dead.db.head_severed_at_decap)
+        self.assertEqual(self.dead.get_display_name(self.friend), "Jorge")
+
+    def test_a_revived_body_whose_head_is_still_off_keeps_the_flag(self):
+        self.behead()
+        self.dead.remove_death_state()
+        self.assertTrue(self.dead.db.head_severed_at_decap)
+        self.assertTrue(_fixed("has_no_face")(self.dead))
+
+
 class TestABeheadingHasNoDeathWindow(_TheBlow):
 
     def start(self):
@@ -213,6 +260,25 @@ class TestABeheadingHasNoDeathWindow(_TheBlow):
         script.db.start_time -= script.interval + 1
         script.at_repeat()
         self.assertEqual(len(self.corpses()), 1)
+
+    def test_the_first_dying_message_is_not_sent_either(self):
+        """It says there may still be time for intervention."""
+        self.behead()
+        with mock.patch.object(
+                death_progression.DeathProgressionScript,
+                "_send_initial_message") as said:
+            self.start()
+        said.assert_not_called()
+
+    def test_any_other_death_still_opens_with_it(self):
+        """The control."""
+        with mock.patch.object(
+                death_progression.DeathProgressionScript,
+                "_send_initial_message") as said, mock.patch.object(
+                death_progression.DeathProgressionScript,
+                "_check_medical_revival_conditions", return_value=False):
+            self.start()
+        self.assertTrue(said.called)
 
     def test_any_other_death_keeps_its_window(self):
         """The control, true before the fix and after it: not beheaded,

@@ -1233,11 +1233,22 @@ def has_no_face(target: Any) -> bool:
     head is coming off still names whose it is, and every line after
     it names nobody.
 
+    The flag says a head came off this body ONCE; the anatomy says
+    whether it is off now. An essential NPC is resleeved in the same
+    body, head and all (``world.souls.posts``), and a flag nobody
+    cleared would leave them without a face for the rest of their
+    life. So the flag is only the cheap first question, asked on every
+    name lookup, and :func:`world.medical.severance.compute_severed_containers`
+    is the answer, asked only of a body that carries the flag.
+
     ``is True`` and not truthiness: a stand-in built from ``MagicMock``
     answers truthy to any attribute it was never given.
     """
     db = getattr(target, "db", None)
-    return db is not None and db.head_severed_at_decap is True
+    if db is None or db.head_severed_at_decap is not True:
+        return False
+    from world.medical.severance import compute_severed_containers
+    return "head" in compute_severed_containers(target)
 
 
 def get_recognisable_uid(target: Any) -> str | None:
