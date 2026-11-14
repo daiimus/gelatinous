@@ -1195,10 +1195,20 @@ class LLMNpcMixin:
             subject = (self._hist_key(None) if patron is None
                        else self._memory_subject(patron))
         history = self.ndb.llm_history or {}
-        for key in self._thread_keys(subject):
-            if history.get(key):
-                return history[key]
-        return []
+        threads = [history[key] for key in self._thread_keys(subject)
+                   if history.get(key)]
+        if len(threads) < 2:
+            return threads[0] if threads else []
+        # Two looks that each had a thread, and the NPC has since
+        # connected them (talked to the face, talked to the mask as a
+        # stranger, then watched the mask come off). One conversation
+        # now, in the order it was said: every turn carries the number
+        # `_remember_turn` gave it. Taking the thread of whichever look
+        # is speaking kept the OLDER half and dropped the one that had
+        # just ended.
+        merged = sorted((turn for thread in threads for turn in thread),
+                        key=lambda turn: turn.get("n", 0))
+        return merged[-LLM_HISTORY_TURNS:]
 
     # --- the agentic tool loop (constrained turn → context tools → reply) ----
 
@@ -1525,9 +1535,14 @@ class LLMNpcMixin:
         hist = self.ndb.llm_history or {}
         key = subject
         turns = list(self._recent_history(patron, subject=subject))
+        # Numbered, so threads that are joined later can be put in the
+        # order they were said (see `_recent_history`).
+        said = (self.ndb.llm_turn_count or 0) + 1
+        self.ndb.llm_turn_count = said
         turns.append({
             "user": f'{speaker_name} says to you: "{line}"',
             "assistant": reply,
+            "n": said,
         })
         for other in self._thread_keys(subject):
             hist.pop(other, None)

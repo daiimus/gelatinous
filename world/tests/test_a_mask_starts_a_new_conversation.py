@@ -171,6 +171,44 @@ class TestMaskOnAndOffAgainInFrontOfTheNpc(_AtTheBar):
         self.assertEqual(len(held), 1)
 
 
+class TestTwoThreadsBecomeOne(_AtTheBar):
+    """The NPC talked to the face, then to the mask as a stranger (and
+    put a name to it), and then watched the mask come off. Two threads
+    until that moment; one conversation after it, in the order it was
+    said."""
+
+    def setUp(self):
+        super().setUp()
+        self.npc.execute_cmd("remember gaunt man as Jorvik")
+        self.say("one")
+        self.mask_out_of_sight()
+        self.npc.execute_cmd("remember masked man as Ghost")
+        self.say("two")
+        self.say("three")
+
+    def test_they_were_two_threads(self):
+        """The control: under the mask, the NPC has only what was said
+        to the mask."""
+        self.assertEqual([t.rsplit(" ", 1)[1] for t in self.thread()],
+                         ['"two"', '"three"'])
+
+    def test_the_face_reads_both_with_the_latest_last(self):
+        """It read only "one": the thread of the look now speaking, which
+        was the older half."""
+        self.patron.execute_cmd("remove ski mask")
+        self.assertEqual([t.rsplit(" ", 1)[1] for t in self.thread()],
+                         ['"one"', '"two"', '"three"'])
+
+    def test_and_the_next_turn_joins_them_for_good(self):
+        self.patron.execute_cmd("remove ski mask")
+        self.say("four")
+        self.assertEqual([t.rsplit(" ", 1)[1] for t in self.thread()],
+                         ['"one"', '"two"', '"three"', '"four"'])
+        held = [key for key, turns in
+                (self.npc.ndb.llm_history or {}).items() if turns]
+        self.assertEqual(len(held), 1)
+
+
 class TestTheConsoleKeepsItsThread(_AtTheBar):
     """`world/llm/npc_console.py --state` saves the thread between runs.
     It read and wrote it under the object id, where the NPC no longer
