@@ -617,69 +617,6 @@ class TestWhatForgetLeavesAlone(TestCase):
         self.assertEqual(resolve_assigned_name(self.memory, "helm")[0],
                          "Knight")
 
-    def test_watching_them_change_back_into_it_cuts_nothing(self):
-        """The helm comes off in front of the caller, and the forgotten
-        look arrives again (cell D). It is known again, by the name of
-        the look it was just watched to come from, and its link is as
-        it was: rewriting it here left "Bruce" joined to nobody."""
-        from world.identity import _witness_known_look, get_linked_aliases
-        _witness_known_look(self.memory, "mask", "helm")
-        self.assertEqual(self.memory["mask"]["linked_to"], "face")
-        self.assertEqual(resolve_assigned_name(self.memory, "mask"),
-                         ("Knight", "helm"))
-        self.assertEqual(get_linked_aliases(self.memory, "face"), ["Knight"])
-        self.assertEqual(get_linked_aliases(self.memory, "helm"), ["Bruce"])
-
-    def test_a_named_look_arriving_is_treated_as_it_always_was(self):
-        """The control: cell D on an entry with its own name sets a
-        missing link and nothing else."""
-        from world.identity import _witness_known_look
-        memory = {"a": {"assigned_name": "Ghost", "linked_to": "x"},
-                  "b": {"assigned_name": "Ghost", "linked_to": None}}
-        _witness_known_look(memory, "a", "y")
-        self.assertEqual(memory["a"],
-                         {"assigned_name": "Ghost", "linked_to": "x"})
-        _witness_known_look(memory, "b", "y")
-        self.assertEqual(memory["b"],
-                         {"assigned_name": "Ghost", "linked_to": "y"})
-
-
-class TestAThirdLook(TestCase):
-    """Mask on, hood up, hood down, all in front of one viewer. The
-    masked look arrives a second time, from the hood, which was itself
-    watched to come from the mask."""
-
-    def setUp(self):
-        self.memory = {
-            "face": {"assigned_name": "Tamsin"},
-            "mask": {"assigned_name": "", "linked_to": "face",
-                     "witnessed_from": "face"},
-            "hood": {"assigned_name": "", "linked_to": "mask",
-                     "witnessed_from": "mask"},
-        }
-
-    def test_the_mask_still_leads_to_the_face(self):
-        """Recording the hood here pointed the two at each other and
-        cut the face off: an eyewitness to every change, sent to the
-        roll."""
-        from world.identity import _witness_known_look
-        _witness_known_look(self.memory, "mask", "hood")
-        self.assertEqual(self.memory["mask"]["witnessed_from"], "face")
-        self.assertEqual(resolve_assigned_name(self.memory, "mask"),
-                         ("Tamsin", "face"))
-        self.assertEqual(resolve_assigned_name(self.memory, "hood"),
-                         ("Tamsin", "face"))
-
-    def test_a_look_that_reaches_no_name_takes_the_new_one(self):
-        """The control: the same arrival when the mask was forgotten.
-        It leads nowhere, so what was just watched is recorded."""
-        from world.identity import _witness_known_look
-        self.memory["mask"]["witnessed_from"] = None
-        self.memory["hood"]["assigned_name"] = "Hood"
-        _witness_known_look(self.memory, "mask", "hood")
-        self.assertEqual(resolve_assigned_name(self.memory, "mask"),
-                         ("Hood", "hood"))
-
 
 class TestWhoeverPutsTheMaskOn(_MaskCase):
     """`dress <somebody> in <a mask>`: the dresser is not sent the
@@ -741,7 +678,7 @@ class TestSeeingThroughALookYouForgot(_MaskCase):
 
     def setUp(self):
         super().setUp()
-        self.dice(WON)
+        self.rolled = self.dice(WON)
         self.they("wear ski mask")
         self.do("remember tamsin as Ghost")
         self.do("forget ghost")
@@ -754,4 +691,187 @@ class TestSeeingThroughALookYouForgot(_MaskCase):
         self.assertIn("You remember them as: Tamsin", self.do("recall man"))
         self.assertIn("You remember them as: Tamsin",
                       self.do("recall tamsin"))
+
+    def test_and_they_watch_the_next_change_knowing_who_it_is(self):
+        """The viewer holds a BLANK entry for the masked look, so the
+        hook does not read them as a stranger, and the hooded look was
+        pointed at that blank entry: one roll, won, and then a second
+        for somebody they had just watched pull a hood up."""
+        self.roster()
+        hood = spawn("HOODIE_HOOD_UP")[0]
+        hood.move_to(self.them, quiet=True)
+        self.assertEqual(self.they("wear hood"),
+                         "Tamsin puts on a drawn hood.")
+        self.assertIn("Tamsin", self.roster())
+        self.assertEqual(self.rolled.call_count, 1)
+
+
+class TestWatchingAChange(_MaskCase):
+    """The hook itself, both broadcasts, cell by cell, for every way an
+    observer can know the look that has just gone. The looks are named
+    by hand so that each case is exactly one cell."""
+
+    FACE, OLD, NEW, OTHER = "uid-face", "uid-old", "uid-new", "uid-other"
+
+    def setUp(self):
+        super().setUp()
+        self.no_dice()
+
+    def entry(self, name="", **more):
+        made = {"assigned_name": name, "linked_to": None,
+                "real_sleeve_uid": self.them.sleeve_uid,
+                "sdesc_at_last_encounter": "somebody"}
+        made.update(more)
+        return made
+
+    def after(self, memory, saw_through=False):
+        """The viewer's memory after *them* goes from OLD to NEW in
+        front of them, through each broadcast in turn."""
+        from world import identity
+        for composed in (False, True):
+            self.viewer.recognition_memory = {
+                uid: dict(entry) for uid, entry in memory.items()}
+            self.viewer.db.disguise_pierce_cache = (
+                {(self.them.dbref, self.OLD): True} if saw_through else None)
+            if composed:
+                identity._broadcast_unmask_with_action(
+                    self.them, self.OLD, self.NEW,
+                    action_template="{actor} changes.",
+                    action_char_refs={"actor": self.them},
+                    action_pre_resolved_refs={
+                        "actor": {self.viewer: "somebody"}},
+                    action_exclude=[])
+            else:
+                identity._broadcast_unmasking(self.them, self.OLD, self.NEW)
+            yield composed, {uid: dict(entry) for uid, entry
+                             in dict(self.viewer.recognition_memory).items()}
+
+    def known_as(self, memory, saw_through=False):
+        """Who the viewer takes NEW for, by each broadcast."""
+        return [resolve_assigned_name(now, self.NEW)[0]
+                for _composed, now in self.after(memory, saw_through)]
+
+    # -- cell B: they held the look that went, and not the one that came
+    def test_they_had_named_the_look_that_went(self):
+        self.assertEqual(
+            self.known_as({self.OLD: self.entry("Tamsin")}),
+            ["Tamsin", "Tamsin"])
+
+    def test_they_knew_it_through_what_they_had_watched(self):
+        self.assertEqual(
+            self.known_as({self.FACE: self.entry("Tamsin"),
+                           self.OLD: self.entry(witnessed_from=self.FACE)}),
+            ["Tamsin", "Tamsin"])
+
+    def test_they_held_it_blank_and_had_seen_through_it(self):
+        """A look they forgot, or one from before this change."""
+        self.assertEqual(
+            self.known_as({self.FACE: self.entry("Tamsin"),
+                           self.OLD: self.entry(linked_to=self.FACE)},
+                          saw_through=True),
+            ["Tamsin", "Tamsin"])
+
+    def test_they_held_it_blank_and_knew_nothing(self):
+        """The control: the same memory with no see-through."""
+        self.assertEqual(
+            self.known_as({self.FACE: self.entry("Tamsin"),
+                           self.OLD: self.entry(linked_to=self.FACE)}),
+            [None, None])
+
+    def test_the_new_entry_is_linked_as_it_always_was(self):
+        for _composed, now in self.after({self.OLD: self.entry("Tamsin")}):
+            self.assertEqual(now[self.NEW]["linked_to"], self.OLD)
+
+    # -- cell A: they held neither
+    def test_they_had_only_seen_through_the_look_that_went(self):
+        memory = {self.FACE: self.entry("Tamsin")}
+        self.assertEqual(self.known_as(memory, saw_through=True),
+                         ["Tamsin", "Tamsin"])
+        for _composed, now in self.after(memory, saw_through=True):
+            self.assertEqual(now[self.NEW]["linked_to"], self.FACE)
+
+    def test_a_stranger_changing_is_still_a_stranger(self):
+        """The control: nothing is written at all."""
+        memory = {self.FACE: self.entry("Tamsin")}
+        for _composed, now in self.after(memory):
+            self.assertEqual(now, memory)
+
+    # -- cell C: they held the look that came, and not the one that went
+    def test_a_blank_look_arrives_from_one_they_had_seen_through(self):
+        self.assertEqual(
+            self.known_as({self.FACE: self.entry("Tamsin"),
+                           self.NEW: self.entry()}, saw_through=True),
+            ["Tamsin", "Tamsin"])
+
+    def test_a_look_they_had_named_keeps_its_own_name(self):
+        memory = {self.FACE: self.entry("Tamsin"),
+                  self.NEW: self.entry("Ghost")}
+        self.assertEqual(self.known_as(memory, saw_through=True),
+                         ["Ghost", "Ghost"])
+        for _composed, now in self.after(memory, saw_through=True):
+            self.assertIsNone(now[self.NEW].get("witnessed_from"))
+            self.assertIsNone(now[self.NEW]["linked_to"])
+
+    # -- cell D: they held both
+    def test_a_blank_look_arrives_from_one_they_had_named(self):
+        self.assertEqual(
+            self.known_as({self.OLD: self.entry("Tamsin"),
+                           self.NEW: self.entry()}),
+            ["Tamsin", "Tamsin"])
+
+    def test_a_look_that_already_leads_to_a_name_is_left_alone(self):
+        """Mask on, hood up, hood down: the masked look arrives again,
+        from the hood. Pointing it at the hood cut off the face."""
+        memory = {self.FACE: self.entry("Tamsin"),
+                  self.NEW: self.entry(witnessed_from=self.FACE),
+                  self.OLD: self.entry(witnessed_from=self.FACE)}
+        for _composed, now in self.after(memory):
+            self.assertEqual(now[self.NEW]["witnessed_from"], self.FACE)
+            self.assertEqual(resolve_assigned_name(now, self.NEW)[0],
+                             "Tamsin")
+
+    def test_and_keeps_the_name_it_already_answers_to(self):
+        """The look that went had a name of its own. The look that
+        arrives already answers to another, and goes on doing so: who
+        somebody is to the viewer does not flip with each change."""
+        memory = {self.FACE: self.entry("Tamsin"),
+                  self.NEW: self.entry(witnessed_from=self.FACE),
+                  self.OLD: self.entry("Hood")}
+        self.assertEqual(self.known_as(memory), ["Tamsin", "Tamsin"])
+
+    def test_a_forgotten_look_keeps_the_link_it_had(self):
+        """`forget` leaves the link on purpose: it may be all that
+        joins two names the viewer kept. The look is known again, by
+        the name of what it was just watched to come from, and its
+        link is as it was."""
+        memory = {self.OTHER: self.entry("Bruce"),
+                  self.NEW: self.entry(linked_to=self.OTHER),
+                  self.OLD: self.entry("Knight", linked_to=self.NEW)}
+        for _composed, now in self.after(memory):
+            self.assertEqual(now[self.NEW]["linked_to"], self.OTHER)
+            self.assertEqual(resolve_assigned_name(now, self.NEW),
+                             ("Knight", self.OLD))
+
+    def test_a_named_look_arriving_is_treated_as_it_always_was(self):
+        """The control: a missing link is set, a link is never
+        rewritten, and nothing else is touched."""
+        linked = {self.OLD: self.entry("Tamsin"),
+                  self.NEW: self.entry("Ghost", linked_to=self.OTHER),
+                  self.OTHER: self.entry("Other")}
+        for _composed, now in self.after(linked):
+            self.assertEqual(now[self.NEW]["linked_to"], self.OTHER)
+            self.assertIsNone(now[self.NEW].get("witnessed_from"))
+        bare = {self.OLD: self.entry("Tamsin"),
+                self.NEW: self.entry("Ghost")}
+        for _composed, now in self.after(bare):
+            self.assertEqual(now[self.NEW]["linked_to"], self.OLD)
+            self.assertIsNone(now[self.NEW].get("witnessed_from"))
+
+    def test_the_face_itself_arriving_is_not_pointed_at_itself(self):
+        memory = {self.NEW: self.entry("Tamsin"),
+                  self.OLD: self.entry(witnessed_from=self.NEW)}
+        for _composed, now in self.after(memory):
+            self.assertIsNone(now[self.NEW].get("witnessed_from"))
+            self.assertEqual(resolve_assigned_name(now, self.NEW)[0],
+                             "Tamsin")
 
