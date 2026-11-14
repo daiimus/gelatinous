@@ -2418,7 +2418,7 @@ def _send_unmasking_message(
         return
 
 
-def _witness_known_look(new_entry: dict, old_uid: str) -> None:
+def _witness_known_look(memory: dict, new_uid: str, old_uid: str) -> None:
     """Cell D's link: the observer already held an entry for the look
     that has just arrived, and watched it arrive.
 
@@ -2426,16 +2426,25 @@ def _witness_known_look(new_entry: dict, old_uid: str) -> None:
     rewritten. A forgotten look keeps its link on purpose, and it may
     be all that joins two names the observer did not forget.
 
-    New (#3811): an entry with NO name of its own records the look it
-    was just seen to come from (``witnessed_from``). That is somebody
-    the observer forgot, or named on a guess and forgot, standing in
-    front of them and changing: they are an eyewitness again, to THIS
-    change, whatever the entry's link says. A named entry is left
-    alone; its own name is what the room shows.
+    New (#3811): an entry the observer holds NO name for, by any
+    route, records the look it was just seen to come from
+    (``witnessed_from``). That is somebody the observer forgot, or
+    named on a guess and forgot, standing in front of them and
+    changing: they are an eyewitness again, to THIS change, whatever
+    the entry's link says. A named entry is left alone; its own name is
+    what the room shows.
+
+    An entry that ALREADY reaches a name through what was watched is
+    left alone too. Mask on, hood up, hood down: the masked look
+    arrives a second time, from the hood, which was itself watched to
+    come from the mask. Recording that would point the two at each
+    other and cut off the face both of them led to, and somebody who
+    watched every change would be sent to the roll.
     """
+    new_entry = memory[new_uid]
     if new_entry.get("linked_to") is None:
         new_entry["linked_to"] = old_uid
-    if not (new_entry.get("assigned_name") or ""):
+    if resolve_assigned_name(memory, new_uid)[0] is None:
         new_entry["witnessed_from"] = old_uid
 
 
@@ -2549,7 +2558,7 @@ def _broadcast_unmasking(
         new_entry["lost_contact"] = False
         if hasattr(char, "get_sdesc"):
             new_entry["sdesc_at_last_encounter"] = char.get_sdesc()
-        _witness_known_look(new_entry, old_uid)
+        _witness_known_look(memory, new_uid, old_uid)
         # Lazy backfill of `real_sleeve_uid` on both entries; cell D
         # touches both, so backfill both opportunistically.
         real_sleeve_uid = getattr(char, "sleeve_uid", None)
@@ -2642,9 +2651,14 @@ def _broadcast_unmask_with_action(
             first_placeholder = placeholder
 
     for observer in _collect_unmasking_observers(char):
-        if observer in exclude_set:
-            continue
-
+        # `action_exclude` names who is not SENT this line, because the
+        # command gives them one of their own. It is not who did not
+        # watch (#3811): `dress <somebody> in <a mask>` excludes the
+        # dresser, who put the mask on with their own hands. The skip
+        # sat here, before the memory was touched, so the dresser got
+        # no entry for the new look and was sent to the see-through
+        # roll about somebody they had just masked. Their memory is
+        # written like anybody's; only the line is withheld, below.
         memory = getattr(observer, "recognition_memory", None)
         if memory is None:
             memory = {}
@@ -2705,7 +2719,7 @@ def _broadcast_unmask_with_action(
             new_entry["lost_contact"] = False
             if hasattr(char, "get_sdesc"):
                 new_entry["sdesc_at_last_encounter"] = char.get_sdesc()
-            _witness_known_look(new_entry, old_uid)
+            _witness_known_look(memory, new_uid, old_uid)
             sleeve_uid = getattr(char, "sleeve_uid", None)
             if sleeve_uid:
                 if new_entry.get("real_sleeve_uid") is None:
@@ -2713,6 +2727,9 @@ def _broadcast_unmask_with_action(
                 if memory[old_uid].get("real_sleeve_uid") is None:
                     memory[old_uid]["real_sleeve_uid"] = sleeve_uid
             observer.recognition_memory = memory
+
+        if observer in exclude_set:
+            continue                    # watched, and has their own line
 
         # Render action template with per-observer character names.
         # Use the snapshot's pre-mutation display name so the actor

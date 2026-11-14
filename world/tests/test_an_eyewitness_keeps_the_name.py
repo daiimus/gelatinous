@@ -556,7 +556,7 @@ class TestWhatForgetLeavesAlone(TestCase):
         the look it was just watched to come from, and its link is as
         it was: rewriting it here left "Bruce" joined to nobody."""
         from world.identity import _witness_known_look, get_linked_aliases
-        _witness_known_look(self.memory["mask"], "helm")
+        _witness_known_look(self.memory, "mask", "helm")
         self.assertEqual(self.memory["mask"]["linked_to"], "face")
         self.assertEqual(resolve_assigned_name(self.memory, "mask"),
                          ("Knight", "helm"))
@@ -567,12 +567,77 @@ class TestWhatForgetLeavesAlone(TestCase):
         """The control: cell D on an entry with its own name sets a
         missing link and nothing else."""
         from world.identity import _witness_known_look
-        linked = {"assigned_name": "Ghost", "linked_to": "x"}
-        _witness_known_look(linked, "y")
-        self.assertEqual(linked, {"assigned_name": "Ghost", "linked_to": "x"})
-        bare = {"assigned_name": "Ghost", "linked_to": None}
-        _witness_known_look(bare, "y")
-        self.assertEqual(bare, {"assigned_name": "Ghost", "linked_to": "y"})
+        memory = {"a": {"assigned_name": "Ghost", "linked_to": "x"},
+                  "b": {"assigned_name": "Ghost", "linked_to": None}}
+        _witness_known_look(memory, "a", "y")
+        self.assertEqual(memory["a"],
+                         {"assigned_name": "Ghost", "linked_to": "x"})
+        _witness_known_look(memory, "b", "y")
+        self.assertEqual(memory["b"],
+                         {"assigned_name": "Ghost", "linked_to": "y"})
+
+
+class TestAThirdLook(TestCase):
+    """Mask on, hood up, hood down, all in front of one viewer. The
+    masked look arrives a second time, from the hood, which was itself
+    watched to come from the mask."""
+
+    def setUp(self):
+        self.memory = {
+            "face": {"assigned_name": "Tamsin"},
+            "mask": {"assigned_name": "", "linked_to": "face",
+                     "witnessed_from": "face"},
+            "hood": {"assigned_name": "", "linked_to": "mask",
+                     "witnessed_from": "mask"},
+        }
+
+    def test_the_mask_still_leads_to_the_face(self):
+        """Recording the hood here pointed the two at each other and
+        cut the face off: an eyewitness to every change, sent to the
+        roll."""
+        from world.identity import _witness_known_look
+        _witness_known_look(self.memory, "mask", "hood")
+        self.assertEqual(self.memory["mask"]["witnessed_from"], "face")
+        self.assertEqual(resolve_assigned_name(self.memory, "mask"),
+                         ("Tamsin", "face"))
+        self.assertEqual(resolve_assigned_name(self.memory, "hood"),
+                         ("Tamsin", "face"))
+
+    def test_a_look_that_reaches_no_name_takes_the_new_one(self):
+        """The control: the same arrival when the mask was forgotten.
+        It leads nowhere, so what was just watched is recorded."""
+        from world.identity import _witness_known_look
+        self.memory["mask"]["witnessed_from"] = None
+        self.memory["hood"]["assigned_name"] = "Hood"
+        _witness_known_look(self.memory, "mask", "hood")
+        self.assertEqual(resolve_assigned_name(self.memory, "mask"),
+                         ("Hood", "hood"))
+
+
+class TestWhoeverPutsTheMaskOn(_MaskCase):
+    """`dress <somebody> in <a mask>`: the dresser is not sent the
+    room's line, because the command gives them one of their own. They
+    still watched."""
+
+    def setUp(self):
+        super().setUp()
+        self.no_dice()
+        mask = next(o for o in self.them.contents)
+        self.heard[self.viewer].clear()
+        self.them.wear_item(
+            mask,
+            action_template="{actor} dresses {target} in a wool ski mask.",
+            action_char_refs={"actor": self.viewer, "target": self.them},
+            action_pre_resolved_refs={},
+            action_exclude=[self.viewer, self.them])
+
+    def test_they_are_not_sent_the_rooms_line(self):
+        self.assertEqual(self.heard[self.viewer], [])
+
+    def test_and_go_on_knowing_them(self):
+        self.assertIn("Tamsin", self.roster())
+        self.assertEqual(self.first(self.do("look tamsin")),
+                         f"Tamsin ({MASKED})")
 
 
 class TestAMemoryFromBeforeThisChange(_MaskCase):
