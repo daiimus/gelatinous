@@ -1392,10 +1392,29 @@ The existing `CmdAttack` manual substring search (`core_actions.py:110-120`) mus
 
 When a command resolves a **character** target from player input, it MUST go through the identity pipeline. There are exactly two acceptable paths:
 
-1. **Plain caller search** — `caller.search(name)` with **no** scope-narrowing kwargs (no `global_search=`, no `candidates=`, no `location=`, no `attribute_name=`). The `Character.search` override (`typeclasses/characters.py:1176`) applies the identity filter only on this code path. Any scope kwarg causes Evennia's base `ObjectDB.search` to be called and the filter is bypassed (documented at `characters.py:1201–1206`, bypass at `:1251`).
+1. **Plain caller search** — `caller.search(name)` with no scope-narrowing kwargs. This is the path that MATCHES people: by a name the searcher knows them by, then by description, then ordinals.
 2. **Explicit identity helper** — `world.search.identity_match_characters(searcher, query, candidates)` when you must pre-narrow the candidate set (e.g. cross-room scans, combat handler-managed rooms, victim resolution within a grapple). Validate a single candidate with `world.search.is_identity_match(searcher, target, query)`.
 
 A thin wrapper, `commands._identity_targeting.resolve_character_target(caller, query, candidates=None)`, encapsulates the common cases (same-room targeting with Builder-by-key fallback, ambiguity messaging) and SHOULD be preferred by new commands.
+
+#### The rule is in the pool, not in the author's care (#3816)
+
+The first version of this section made the rule a convention: "any scope kwarg ... the filter is bypassed", so do not pass one when you mean a person. It failed in a way a convention cannot catch. Ten commands passed a pool while looking for a THING (`get`, `get ... from`, `get ... from here`, `inspect`, `sever`, `buy ... from`, `jump on`, the two edge jumps, `throw ... to`), the pool was the room, the room holds people, and Evennia matched those people by real key. Each command then refused to act on a person, and the refusal was the leak: it differed from "nothing matched" and named the figure the guessed name belonged to.
+
+So the rule is enforced where no caller can step around it, in `Character.get_search_candidates`, the hook Evennia calls to build the pool of every local search:
+
+**For a searcher who is not staff, a person whose real name is not what they are seen as (`world.search.name_is_hidden`) is not in the pool.** Evennia's match by key and alias never sees them. People are reached only through the identity matcher, which matches a name the searcher knows them by or their description and never reads a key.
+
+| The call | What happens |
+|---|---|
+| `caller.search(name)` | The identity matcher over the people present; then Evennia over the pool, which holds things, the searcher, the room, and any body that is SEEN as its key (a mob, an NPC with no description of its own). |
+| `caller.search(name, candidates=...)` or `location=...` | Evennia over the pool it was handed, less the same people. Such a search finds things. It does not find people, by name or by description: a command that means a person uses one of the two paths above. |
+| `global_search=True`, a `#dbref` | No pool: plain Evennia, staff tooling. `world/tests/test_a_real_name_opens_no_door.py` fails if a `global_search=True` appears in a command whose lock names no permission, and Evennia refuses a `#dbref` to anybody below Builder. |
+| Staff | The pool keeps everybody, so a real name reaches them. |
+
+**It has to be the pool and not the results.** The first attempt at this fix let Evennia match and then dropped the people it had found. Review found the real name still steering the answer three ways: an NPC's surname alias (`brown`) was an exact match that hid the partial match on the `brown wig` beside them, so `get brown` failed only while they were in the room; `get man` found only the man whose real name began with "man", which said which man that was; and `remember gaunt man as <guess>` followed by `get <guess>` answered differently when the guess was his real name. It is the same lesson as the presence gate (#3637), which sits in the same hook for the same reason: exact-before-partial and ordinals are decided inside the match, so anything that must not influence the answer has to be gone before it.
+
+**The invariant, in one sentence:** for a searcher who is not staff, no local search answers differently because of what somebody's real name or alias is. The test for it asks every question at every door, renames everybody, and asks again.
 
 #### Anti-patterns (forbidden for character targets)
 
@@ -1406,7 +1425,8 @@ for char in caller.location.contents:
         target = char
         break
 
-# WRONG — passing candidates= or location= bypasses the identity filter.
+# WRONG — a handed-over pool holds no people for a player (#3816), so
+# this finds nobody. It no longer leaks; it just does not work.
 target = caller.search(name, candidates=caller.location.contents)
 target = caller.search(name, location=room)
 

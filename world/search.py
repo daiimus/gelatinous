@@ -152,6 +152,20 @@ def _has_identity(obj: object) -> bool:
     return callable(getattr(obj, "get_sdesc", None))
 
 
+def name_is_hidden(obj: object) -> bool:
+    """True for a person whose real name is not what they are seen as.
+
+    That is everybody with a composed description: their key is known
+    only to themselves and to staff, and nothing a player types may be
+    matched against it (#3816). A body with no description of its own
+    (a mob, an NPC with no height or build) is SEEN as its key, so its
+    key is no secret and it stays reachable by it.
+    """
+    if not _has_identity(obj):
+        return False
+    return obj.get_sdesc() != getattr(obj, "key", "")
+
+
 def _match_assigned_name(
     searcher: "Character", target: object, query: str
 ) -> bool:
