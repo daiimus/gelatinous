@@ -256,9 +256,9 @@ flowchart TD
     Self -->|Yes| Own["Your own name"]
     Self -->|No| Entry{"Do you hold a memory entry<br/>for the look they wear NOW?"}
     Entry -->|"Yes, and you named it<br/>(remember)"| Named["That name"]
-    Entry -->|"Yes, unnamed, and it records<br/>the look you WATCHED<br/>it come from"| Link{"Follow that back.<br/>Is a named look found?"}
+    Entry -->|"Yes, unnamed, and it records<br/>whose name it answers to,<br/>because you WATCHED it arrive"| Link{"Does the entry it<br/>points at hold a name?"}
     Link -->|Yes| Witness["That name.<br/>No roll. Yours alone."]
-    Link -->|"No: never named, or forgotten"| Sleeve
+    Link -->|No| Sleeve
     Entry -->|"Yes, unnamed, nothing recorded:<br/>a look you forgot"| Sleeve
     Entry -->|No| Sleeve{"Do you hold a NAMED entry for<br/>the same body under another look?"}
     Sleeve -->|No| Stranger["Their description"]
@@ -277,7 +277,7 @@ What writes each thing the chart reads:
 | the chart reads | written by | cleared by |
 |---|---|---|
 | a name on a look | `remember <them> as <name>` | `forget` |
-| what you watched a look come from (`witnessed_from`, on the entry for the look that arrived) | being in the room, conscious, when their look changes, if you held a name for the look that went (§Unmasking Moments) | `forget`: on the entry that loses its name, and on every entry that pointed at it |
+| whose name a look answers to because you watched it arrive (`witnessed_from`, on the entry for that look; it holds the uid of the NAMED entry, which is the look that went only when that look carried the name itself) | being in the room, conscious, when their look changes, if you held a name for the look that went (§Unmasking Moments) | `forget`: on the entry that loses its name, and on every entry that pointed at it |
 | the link (`linked_to`) | the same hook; also `remember` on a new look of a body you already hold, and matching papers | never. It is not read for a name. `recall` and an NPC's memories use it to hold several names for one person together |
 | a see-through verdict (`disguise_pierce_cache`) | the first time you LOOK at a look you hold no name for (no entry, or an entry that leads to none), on a body you have named under another (§Disguise Piercing) | `forget`, for every look of that body, whether or not you hold an entry for the look (the verdict is keyed by the body's dbref) |
 
@@ -954,7 +954,7 @@ A disguised character (overrides: `tall man` + essential cowl + non-essential ca
 
 - **Stranger meets disguised character:** Observer sees the disguised sdesc; no auto-recognition. Observer can `remember` them by a name, which binds to the current Apparent UID.
 - **Observer who knew real identity meets the disguised character:** The observer's recognition entry was keyed on the Apparent UID of the *undisguised* signature (real `sleeve_uid` + no overrides + no essential items). The disguise produces a *different* Apparent UID; no auto-recognition. The observer sees the disguised sdesc as a stranger.
-- **Observer WATCHES a character they know change their look** (the mask goes on in front of them): they go on knowing them. The unmasking hook gives the observer an unnamed entry for the new look that records the look they watched it come from (`witnessed_from`), and the name is read through that record (#3811; §Who is this to me?). The entry's `linked_to` is set as it always was and is not what the name is read through. No roll is made. It works the same the other way round: an observer who has named only the masked figure and watches the mask come off keeps that name for the face.
+- **Observer WATCHES a character they know change their look** (the mask goes on in front of them): they go on knowing them. The unmasking hook gives the observer an unnamed entry for the new look that records whose name it now answers to (`witnessed_from`: the named entry that the look which went resolved to), and the name is read through that record (#3811; §Who is this to me?). The entry's `linked_to` is set as it always was and is not what the name is read through. No roll is made. It works the same the other way round: an observer who has named only the masked figure and watches the mask come off keeps that name for the face.
 - **Observer meets the same disguised character a second time, same signature:** Auto-recognition fires (same Apparent UID); observer sees the previously-assigned name.
 - **Observer meets the same disguised character a second time, different signature** (e.g., one essential item swapped): Different Apparent UID; observer sees a stranger.
 - **Two characters wearing identical overrides + items:** Visual collision (sdesc strings match), but Apparent UIDs differ (different salts). Each observer's recognition is per-UID; impersonation is *visual*, not *systemic*. An impostor *looks* the same but does not auto-resolve to the original's assigned name. Successful name-fooling requires either acquiring the original's salt (future adversarial-identity mechanic — e.g., through stolen contact cards) or the observer manually `remember`ing the same name onto the impostor's distinct UID.
@@ -1019,6 +1019,8 @@ This is the bridge that keeps disguise legible after the fact. Without it, a sig
 > the conclusion a witnessed unmasking reaches by eye. `_link_by_papers` is
 > deliberately narrow: it refuses to link when either entry already has a
 > `linked_to`, and weaker tiers or unverified protocols never link at all.
+>
+> *Since #3811 a fourth:* `world/identity.py:_keep_knowing`, for the one entry it creates when an observer who had only SEEN THROUGH the old look watches it change. The cell made no entry for the look that arrives, so the rule makes one, linked to the entry the see-through led to (§Who is this to me?). No other writer changed, and `linked_to` is still never read for a name.
 
 **Per-cell narrative flavor.** `_send_unmasking_message` emits per-observer prose, dispatched as a direct `.msg()` call rather than through `msg_room_identity` (the recipient list is already narrowed by `_collect_unmasking_observers`, and the prose is tailored to what *this* observer knew going in). The cell-B and cell-D templates follow the same noir, recognition-centric voice as the wear/remove emote pipeline:
 
