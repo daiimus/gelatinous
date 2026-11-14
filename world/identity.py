@@ -1866,7 +1866,8 @@ def invalidate_pierce_cache_for_sleeve(
     next display found no verdict and rolled afresh; a mask that had
     held was seen through on the fourth try in play. Forgetting takes
     away a recognition the player disowns. It never hands back a
-    chance they have already used.
+    chance they have already used. The voice cache keeps the same rule
+    (`world.voice.invalidate_voice_discern_cache_for_sleeve`).
 
     Pre-schema memory entries (missing ``real_sleeve_uid``) are
     silently skipped — same contract as

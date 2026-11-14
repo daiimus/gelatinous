@@ -511,6 +511,11 @@ def invalidate_voice_discern_cache_for_sleeve(observer, real_sleeve_uid):
     Voice parallel to ``world.identity.invalidate_pierce_cache_for_sleeve`` —
     called on forget so the cognitive act of forgetting a person also discards
     every cached discernment for any voice presentation they have used.
+
+    Only WON verdicts, as there (#3817). A lost placement is the one that is
+    "permanently cached ... so one determination sticks"; dropping it let a
+    listener place a voice again at will by forgetting the name and giving
+    it back.
     """
     if not real_sleeve_uid:
         return 0
@@ -526,7 +531,8 @@ def invalidate_voice_discern_cache_for_sleeve(observer, real_sleeve_uid):
     removed = 0
     for key in list(cache.keys()):
         # key == (target_dbref, voice_uid)
-        if isinstance(key, tuple) and len(key) == 2 and key[1] in uids:
+        if (isinstance(key, tuple) and len(key) == 2 and key[1] in uids
+                and cache[key]):            # a lost verdict is for good
             del cache[key]
             removed += 1
     if removed:
