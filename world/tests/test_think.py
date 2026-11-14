@@ -29,7 +29,12 @@ class TestRenderThink(BaseEvenniaTest):
     def _spy(self, char, is_builder):
         """Replace .msg with a recorder and stub the perm check."""
         char.msg = MagicMock()
+        # Two staff checks are live here: the display gate in
+        # `world/emote.py` still reads `check_permstring`, and the real-name
+        # doors ask `world.search.may_use_real_names` (#3818), which reads
+        # the lock handler.
         char.check_permstring = MagicMock(return_value=is_builder)
+        char.locks.check_lockstring = MagicMock(return_value=is_builder)
         return char.msg
 
     def test_actor_sees_own_thought(self):

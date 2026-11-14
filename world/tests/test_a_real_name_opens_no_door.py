@@ -35,6 +35,7 @@ Real commands on fresh bodies. What is pinned:
 import ast
 import re
 from pathlib import Path
+from unittest import mock
 
 from evennia import create_object
 from evennia.utils.test_resources import EvenniaTest
@@ -114,6 +115,13 @@ class _Strangers(EvenniaTest):
         char.recognition_memory = {}
         char.db.disguise_pierce_cache = None
         return char
+
+    def make_staff(self):
+        """The viewer answers yes to the one staff question (#3818)."""
+        asked = mock.patch("world.search.may_use_real_names",
+                           side_effect=lambda who: who is self.viewer)
+        asked.start()
+        self.addCleanup(asked.stop)
 
     def thing(self, key):
         return create_object("typeclasses.items.Item", key=key,
@@ -291,7 +299,7 @@ class TestWhatIsStillFound(_Strangers):
                          "You can't pick up scrawny rat.")
 
     def test_staff(self):
-        self.viewer.check_permstring = lambda perm: True
+        self.make_staff()
         self.assertEqual(self.do(f"get {REAL.lower()}"),
                          f"You can't pick up a {SDESC}.")
 
@@ -336,7 +344,7 @@ class TestThePool(_Strangers):
         self.assertNotIn(self.them, pool)
 
     def test_staff_keep_everybody(self):
-        self.viewer.check_permstring = lambda perm: True
+        self.make_staff()
         self.assertIn(self.them, self.pool(location=self.room1))
 
     def test_a_search_of_the_whole_game_has_no_pool(self):

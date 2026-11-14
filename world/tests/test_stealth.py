@@ -494,7 +494,7 @@ class TestLeakSweep(TestCase):
     def test_identity_targeting_refuses_hidden(self):
         from commands._identity_targeting import resolve_character_target
         caller = _char()
-        caller.check_permstring.return_value = False
+        caller.locks.check_lockstring.return_value = False
         hidden = self._hidden_char()
         with _uid_for(None), \
                 patch("commands._identity_targeting."

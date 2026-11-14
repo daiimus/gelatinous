@@ -2692,7 +2692,7 @@ class TestForgetRecallMeAreHarmless(TestCase):
         from typeclasses.characters import Character
 
         char.search = lambda *a, **kw: Character.search(char, *a, **kw)
-        char.check_permstring = MagicMock(return_value=False)
+        char.locks.check_lockstring = MagicMock(return_value=False)
 
     def test_forget_me_is_harmless(self):
         """``forget me`` reports no-name-remembered, mutates nothing."""

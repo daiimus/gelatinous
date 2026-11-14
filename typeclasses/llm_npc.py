@@ -518,12 +518,10 @@ class LLMNpcMixin:
             return False
 
         # The spec's Builder carve-out for real keys.
-        try:
-            if speaker.locks.check_lockstring(speaker, "dummy:perm(Builder)"):
-                if self.key and self.key.lower() in low:
-                    return True
-        except Exception:  # noqa: BLE001 — a lock fault is not an identity
-            pass
+        from world.search import may_use_real_names
+        if may_use_real_names(speaker):
+            if self.key and self.key.lower() in low:
+                return True
 
         from world.search import is_identity_match
         return any(is_identity_match(speaker, self, cand)

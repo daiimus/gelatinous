@@ -577,8 +577,11 @@ class TestCharacterSearchBuilderBypass(TestCase):
         self.searcher.msg = MagicMock()
 
     def _set_builder(self, is_builder: bool):
-        """Configure the searcher's permission check."""
-        self.searcher.check_permstring = MagicMock(return_value=is_builder)
+        """Configure the searcher's answer to the one staff question
+        the doors ask (`world.search.may_use_real_names`, #3818), which
+        reads the lock handler."""
+        self.searcher.locks.check_lockstring = MagicMock(
+            return_value=is_builder)
 
     def _mock_super_search(self, results):
         """Patch DefaultObject.search to return *results* in quiet mode."""
@@ -764,7 +767,7 @@ class TestCharacterSearchMagicKeywords(TestCase):
         )
         self.searcher.msg = MagicMock()
         # Default: not a builder (the bug only manifests for non-builders)
-        self.searcher.check_permstring = MagicMock(return_value=False)
+        self.searcher.locks.check_lockstring = MagicMock(return_value=False)
 
     # -- "me" --
 
@@ -834,7 +837,8 @@ class TestCharacterSearchMagicKeywords(TestCase):
         that regression.
         """
         # Explicitly assert we're testing the non-builder path
-        self.assertFalse(self.searcher.check_permstring("Builder"))
+        from world.search import may_use_real_names
+        self.assertFalse(may_use_real_names(self.searcher))
         result = self.searcher.search("me")
         self.assertIs(result, self.searcher)
         # No "Could not find" message should fire

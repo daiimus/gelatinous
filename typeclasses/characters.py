@@ -802,10 +802,9 @@ class Character(
         from world.perception import can_perceive
         pool = [obj for obj in candidates
                 if obj is self or can_perceive(self, obj)]
-        from world.combat.constants import PERM_BUILDER
-        if self.check_permstring(PERM_BUILDER):
+        from world.search import may_use_real_names, name_is_hidden
+        if may_use_real_names(self):
             return pool         # staff may reach anybody by real name
-        from world.search import name_is_hidden
         return [obj for obj in pool
                 if obj is self or not name_is_hidden(obj)]
 
@@ -1925,7 +1924,6 @@ class Character(
         the full specification.
         """
         from evennia.utils.utils import make_iter
-        from world.combat.constants import PERM_BUILDER
         from world.search import identity_match_characters, is_identity_match
 
         # ----------------------------------------------------------
@@ -1989,9 +1987,8 @@ class Character(
         # identity pipeline still runs first (sdesc/assigned-name
         # matching works for Builders too), but the fallback filter
         # allows .key results through instead of blocking them.
-        is_builder = (
-            not bypass and self.check_permstring(PERM_BUILDER)
-        )
+        from world.search import may_use_real_names
+        is_builder = not bypass and may_use_real_names(self)
 
         # Dbref query — full bypass
         if (

@@ -35,7 +35,6 @@ from typing import Iterable, Optional
 
 from evennia.utils.utils import inherits_from  # noqa: F401  (kept for future)
 
-from world.combat.constants import PERM_BUILDER
 from world.search import identity_match_characters
 
 _CHARACTER_PATH = "typeclasses.characters.Character"
@@ -138,8 +137,10 @@ def resolve_character_target(
 
     matches = identity_match_characters(caller, stripped, candidates)
 
-    if not matches and caller.check_permstring(PERM_BUILDER):
-        matches = _builder_key_matches(caller, stripped, candidates)
+    if not matches:
+        from world.search import may_use_real_names
+        if may_use_real_names(caller):
+            matches = _builder_key_matches(caller, stripped, candidates)
 
     if not matches:
         return None
@@ -188,7 +189,8 @@ def resolve_character_in_rooms(
     if _is_self_token(stripped):
         return caller if allow_self else None
 
-    is_builder = caller.check_permstring(PERM_BUILDER)
+    from world.search import may_use_real_names
+    is_builder = may_use_real_names(caller)
 
     for room in rooms:
         if not room:

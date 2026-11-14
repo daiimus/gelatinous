@@ -100,7 +100,8 @@ def _make_character(
     char.aliases.all = lambda: alias_list
 
     # Permission check (Builder gate for the helper's key fallback)
-    char.check_permstring = lambda perm: is_builder
+    # The one staff question the doors ask now (#3818): `world.search.may_use_real_names` reads the lock handler.
+    char.locks.check_lockstring = lambda obj, lockstring: is_builder
 
     # msg sink (helpers send disambiguation messages here)
     char.msg = MagicMock()
@@ -177,7 +178,7 @@ class TestResolveCharacterTarget(TestCase):
 
     def test_real_key_allowed_for_builder(self):
         """Builders fall back to .key matching."""
-        self.caller.check_permstring = lambda perm: True
+        self.caller.locks.check_lockstring = lambda obj, lockstring: True
         result = resolve_character_target(self.caller, "jackson")
         self.assertIs(result, self.jorge)
 
@@ -336,7 +337,7 @@ class TestResolveCharacterInRooms(TestCase):
 
     def test_builder_key_fallback_works_cross_room(self):
         """Builder caller can match by .key in an adjacent room."""
-        self.caller.check_permstring = lambda perm: True
+        self.caller.locks.check_lockstring = lambda obj, lockstring: True
         result = resolve_character_in_rooms(
             self.caller, "kozlov", [self.local_room, self.adjacent_room]
         )
