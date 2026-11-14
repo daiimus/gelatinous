@@ -937,7 +937,13 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     def _bind_memory(self, b):
         b._hist_key = llmnpc.LLMNpc._hist_key            # staticmethods
         b._reconstruct_reply = llmnpc.LLMNpc._reconstruct_reply
-        for name in ("_recent_history", "_remember_turn"):
+        # The thread is filed under the SUBJECT (the look), found through
+        # the looks the NPC has connected to it (#3820). For these fakes
+        # the subject is the id, and nothing is connected.
+        b._memory_subject = llmnpc.LLMNpc._hist_key
+        b.recognition_memory = {}
+        for name in ("_recent_history", "_remember_turn", "_memory_scope",
+                     "_thread_keys"):
             setattr(b, name,
                     getattr(llmnpc.LLMNpc, name).__get__(b, llmnpc.LLMNpc))
 
@@ -977,9 +983,11 @@ class TestBartenderLLMRouting(BaseEvenniaTest):
     def _bind_loop(self, b):
         b._hist_key = llmnpc.LLMNpc._hist_key
         b._reconstruct_reply = llmnpc.LLMNpc._reconstruct_reply
+        b._memory_subject = llmnpc.LLMNpc._hist_key     # see _bind_memory
+        b.recognition_memory = {}
         for name in ("_on_turn", "_run_context_tool", "_render_llm_reply",
                      "_handle_action_tool", "_remember_turn", "_recent_history",
-                     "_repeats_self"):
+                     "_repeats_self", "_memory_scope", "_thread_keys"):
             setattr(b, name,
                     getattr(llmnpc.LLMNpc, name).__get__(b, llmnpc.LLMNpc))
         b.ndb.llm_history = {}

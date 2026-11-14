@@ -414,7 +414,8 @@ class LLMNpcMixin:
         """Whether the conversation hold is active AND held for this speaker."""
         until = self.ndb.llm_engaged_until
         return bool(until and monotonic() < until
-                    and self.ndb.llm_engaged_with == self._hist_key(speaker))
+                    and self.ndb.llm_engaged_with in self._thread_keys(
+                        self._memory_subject(speaker)))
 
     def _is_alone_with(self, speaker):
         """True when no other character THIS NPC PERCEIVES shares the room — so
@@ -584,7 +585,9 @@ class LLMNpcMixin:
             # `release` tool. Keyed to the partner so their lines stay
             # directed without re-naming us each turn.
             self.ndb.llm_engaged_until = now + LLM_ENGAGE_HOLD
-            self.ndb.llm_engaged_with = self._hist_key(patron)
+            self.ndb.llm_engaged_with = (
+                self._radio_subject(patron) if radio
+                else self._memory_subject(patron))
 
         # Capture everything reactor-side BEFORE threading (SQLite/Evennia-thread
         # contract). The agentic loop re-calls from the reactor-side callback.
@@ -595,9 +598,9 @@ class LLMNpcMixin:
         speaker_name = (self._radio_voice_handle(patron) if radio
                         else self._address_handle(patron))
         perception = None if radio else self._perceive(patron)
-        history = self._recent_history(patron)
         subject = (self._radio_subject(patron) if radio
                    else self._memory_subject(patron))
+        history = self._recent_history(patron, subject=subject)
         relationship = self._relationship_line(subject, patron)
         events = self._drain_actions()  # what we've witnessed since last reply
         present = self._present_others(patron)  # who else is in the room now
@@ -1159,10 +1162,53 @@ class LLMNpcMixin:
         # was the mystery NoneType that ticked in the log for weeks
         return f"#{patron.id}" if patron is not None else "#ambient"
 
-    def _recent_history(self, patron):
+    def _thread_keys(self, subject):
+        """Where a short-term thread may be filed: under *subject*, then
+        under any other look this NPC has CONNECTED to it.
+
+        The thread used to be filed under the object (`_hist_key`), while
+        long-term memory is filed under the look (`_memory_subject`), "so a
+        disguise reads as a stranger". The two disagreed exactly when a
+        disguise went on out of sight (#3820): somebody talked bare-faced,
+        masked up in another room and came back, and the prompt held the
+        earlier turns under the old name beside the new ones under the
+        masked description, with the masked speaker's lines still treated
+        as addressed to the NPC. The object knew who it was; the NPC did
+        not.
+
+        A change the NPC WATCHED, or a disguise it saw through, is in its
+        recognition memory as a link, and `_memory_scope` follows that:
+        the conversation carries on across it, as it should.
+        """
+        scope = self._memory_scope(subject)
+        if isinstance(scope, (list, tuple)):
+            return [subject] + [key for key in scope if key != subject]
+        return [subject]
+
+    def _recent_history(self, patron, subject=None):
         """The recent turns with this interlocutor — fed back into the prompt so
-        the model sees what it just said and stops repeating itself."""
-        return (self.ndb.llm_history or {}).get(self._hist_key(patron), [])
+        the model sees what it just said and stops repeating itself.
+
+        Filed by *subject* (the look, or the voice on the air), not by the
+        object: see `_thread_keys`."""
+        if subject is None:
+            subject = (self._hist_key(None) if patron is None
+                       else self._memory_subject(patron))
+        history = self.ndb.llm_history or {}
+        threads = [history[key] for key in self._thread_keys(subject)
+                   if history.get(key)]
+        if len(threads) < 2:
+            return threads[0] if threads else []
+        # Two looks that each had a thread, and the NPC has since
+        # connected them (talked to the face, talked to the mask as a
+        # stranger, then watched the mask come off). One conversation
+        # now, in the order it was said: every turn carries the number
+        # `_remember_turn` gave it. Taking the thread of whichever look
+        # is speaking kept the OLDER half and dropped the one that had
+        # just ended.
+        merged = sorted((turn for thread in threads for turn in thread),
+                        key=lambda turn: turn.get("n", 0))
+        return merged[-LLM_HISTORY_TURNS:]
 
     # --- the agentic tool loop (constrained turn → context tools → reply) ----
 
@@ -1236,7 +1282,8 @@ class LLMNpcMixin:
         self._handle_action_tool(tool, arg, patron)
         if patron is not None:            # broadcasts have no caller
             self._remember_turn(patron, line, speaker_name, said,
-                                turn["action"], turn["thought"])
+                                turn["action"], turn["thought"],
+                                subject=subject)
         # Long-term memory: persist what was learned (async, post-render).
         self._store_memory(patron, speaker_name, line, said,
                            subject=subject)
@@ -1469,18 +1516,36 @@ class LLMNpcMixin:
             pass
 
     def _remember_turn(self, patron, line, speaker_name, speech, action,
-                       thought=None):
-        """Append the rendered turn to short-term memory (anti-repetition)."""
+                       thought=None, subject=None):
+        """Append the rendered turn to short-term memory (anti-repetition).
+
+        Filed under *subject*, as `_recent_history` reads it. A thread
+        that began under a look this NPC has since connected to this one
+        is MOVED here, not copied: one thread for the looks the NPC holds
+        to be one person, under whichever of them spoke last. A copy left
+        behind was read first the moment they went back to that look, and
+        the NPC lost its latest turns each time a mask came off in front
+        of it."""
         reply = self._reconstruct_reply(speech, action, thought)
         if not reply:
             return
+        if subject is None:
+            subject = (self._hist_key(None) if patron is None
+                       else self._memory_subject(patron))
         hist = self.ndb.llm_history or {}
-        key = self._hist_key(patron)
-        turns = list(hist.get(key, []))
+        key = subject
+        turns = list(self._recent_history(patron, subject=subject))
+        # Numbered, so threads that are joined later can be put in the
+        # order they were said (see `_recent_history`).
+        said = (self.ndb.llm_turn_count or 0) + 1
+        self.ndb.llm_turn_count = said
         turns.append({
             "user": f'{speaker_name} says to you: "{line}"',
             "assistant": reply,
+            "n": said,
         })
+        for other in self._thread_keys(subject):
+            hist.pop(other, None)
         hist[key] = turns[-LLM_HISTORY_TURNS:]
         self.ndb.llm_history = hist
 
