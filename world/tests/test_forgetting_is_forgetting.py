@@ -105,6 +105,22 @@ class TestTheEntryGoes(TestCase):
         self.assertIn("mask", memory)
         self.assertEqual(resolve_assigned_name(memory, "mask")[0], "Bruce")
 
+    def test_a_look_the_observer_has_read_papers_about_stays(self):
+        """Review round one. A wanted poster told the observer something
+        about the masked look. That did not come through the name being
+        forgotten, and reading the poster again would not bring it back."""
+        papers = [{"name": "The Ghost", "issuer": "colony"}]
+        memory = {
+            "face": {"assigned_name": "Tamsin"},
+            "mask": {"assigned_name": "", "witnessed_from": "face",
+                     "linked_to": "face", "attested": papers},
+        }
+        _erase(_observer(memory), "face")
+        self.assertEqual(list(memory), ["mask"])
+        self.assertEqual(memory["mask"]["attested"], papers)
+        self.assertIsNone(memory["mask"]["witnessed_from"])
+        self.assertIsNone(memory["mask"]["linked_to"])
+
     def test_an_unnamed_entry_that_had_nothing_to_do_with_it_stays(self):
         """Memories written before this change hold blank entries. They
         are not swept up by forgetting somebody else."""
@@ -116,44 +132,92 @@ class TestTheEntryGoes(TestCase):
         self.assertEqual(list(memory), ["old"])
 
 
-class TestOnlyWhatTheObserverConnected(TestCase):
-    """The owner's question about the example: the other name stays."""
+class TestTheVoiceLearnedWithTheLook(TestCase):
+    """A voice is named in one place, `remember` on somebody in front of
+    you, and its entry records the look it was named with."""
 
-    def voices(self):
-        return {
-            "voice-1": {"assigned_name": "Ghost",
-                        "real_sleeve_uid": "sleeve-a", "times_heard": 2},
-            "voice-2": {"assigned_name": "Alder",
-                        "real_sleeve_uid": "sleeve-a", "times_heard": 1},
-            "voice-3": {"assigned_name": "alder",
-                        "real_sleeve_uid": "sleeve-b", "times_heard": 1},
-        }
+    FACE = {"assigned_name": "Alder", "real_sleeve_uid": "sleeve-a"}
 
-    def test_a_voice_under_the_same_name_goes(self):
-        voices = self.voices()
-        memory = {"face": {"assigned_name": "Alder",
-                           "real_sleeve_uid": "sleeve-a"}}
+    def forget_the_face(self, voices, face=None):
+        memory = {"face": dict(face or self.FACE)}
         _erase(_observer(memory, voices), "face")
-        self.assertNotIn("voice-2", voices)
-        self.assertNotIn("voice-3", voices, "the name is what joins them")
+        return voices
 
-    def test_a_voice_of_the_same_body_under_another_name_stays(self):
-        """It was blanked, because underneath it is the same person."""
-        voices = self.voices()
-        memory = {"face": {"assigned_name": "Alder",
-                           "real_sleeve_uid": "sleeve-a"}}
-        _erase(_observer(memory, voices), "face")
-        self.assertEqual(voices["voice-1"]["assigned_name"], "Ghost")
-        self.assertEqual(voices["voice-1"]["times_heard"], 2)
+    def test_the_voice_named_with_the_look_goes(self):
+        voices = self.forget_the_face({
+            "v": {"assigned_name": "Alder", "named_with": "face",
+                  "real_sleeve_uid": "sleeve-a"}})
+        self.assertEqual(voices, {})
+
+    def test_it_goes_whatever_papers_have_since_called_the_face(self):
+        """Review round one, and #2652 again: named "Big J" in person,
+        the face renamed "Jorge Ruiz" from his papers, then forgotten.
+        Matching names left "Big J" naming him on the radio."""
+        voices = self.forget_the_face(
+            {"v": {"assigned_name": "Big J", "named_with": "face",
+                   "real_sleeve_uid": "sleeve-a"}},
+            face={"assigned_name": "Jorge Ruiz",
+                  "real_sleeve_uid": "sleeve-a"})
+        self.assertEqual(voices, {})
+
+    def test_the_same_voice_named_again_with_another_look_stays(self):
+        """The owner's question about the example: name him Alder
+        bare-faced, then name the same man masked, as Ghost. The one
+        voice is Ghost's now. Forgetting Alder leaves it."""
+        voices = self.forget_the_face({
+            "v": {"assigned_name": "Ghost", "named_with": "mask",
+                  "real_sleeve_uid": "sleeve-a", "times_heard": 2}})
+        self.assertEqual(voices["v"]["assigned_name"], "Ghost")
+        self.assertEqual(voices["v"]["times_heard"], 2)
+
+    def test_somebody_else_under_the_same_name_keeps_their_voice(self):
+        """Review round one: papers can give two faces one name."""
+        voices = self.forget_the_face({
+            "v": {"assigned_name": "Alder", "named_with": "other-face",
+                  "real_sleeve_uid": "sleeve-b"}})
+        self.assertIn("v", voices)
+
+    def test_an_older_entry_goes_by_its_name(self):
+        """No record of the look it was named with."""
+        voices = self.forget_the_face({
+            "same": {"assigned_name": "alder", "real_sleeve_uid": "sleeve-a"},
+            "no-body": {"assigned_name": "Alder", "real_sleeve_uid": None},
+            "other-name": {"assigned_name": "Ghost",
+                           "real_sleeve_uid": "sleeve-a"},
+            "other-body": {"assigned_name": "Alder",
+                           "real_sleeve_uid": "sleeve-b"},
+        })
+        self.assertEqual(sorted(voices), ["other-body", "other-name"])
 
     def test_the_voice_helper_reports_what_it_erased(self):
         erase = getattr(voice_mod, "erase_voices_named", None)
         self.assertIsNotNone(erase, "world.voice.erase_voices_named is missing")
-        observer = _observer({}, self.voices())
-        self.assertEqual(erase(observer, "ALDER"), 2)
+        voices = {"a": {"assigned_name": "Alder"},
+                  "b": {"assigned_name": "ALDER"},
+                  "c": {"assigned_name": "Wren"}}
+        observer = _observer({}, voices)
+        self.assertEqual(erase(observer, "alder"), 2)
         self.assertEqual(erase(observer, "Alder"), 0)
         self.assertEqual(erase(observer, ""), 0)
         self.assertEqual(erase(observer, None), 0)
+
+    def test_remember_records_the_look(self):
+        """The writer: `remember` hands the voice the look it is naming."""
+        import inspect
+        from commands import CmdCharacter
+        self.assertIn("look_uid=apparent_uid",
+                      inspect.getsource(CmdCharacter))
+        heard = SimpleNamespace(voice_memory={}, db=SimpleNamespace())
+        with_voice = SimpleNamespace(sleeve_uid="sleeve-a")
+        from unittest import mock
+        with mock.patch.object(voice_mod, "can_hear", return_value=True), \
+                mock.patch.object(voice_mod, "get_apparent_voice_uid",
+                                  return_value="v"), \
+                mock.patch.object(voice_mod, "voice_phrase",
+                                  return_value="a low voice"):
+            voice_mod.remember_voice(heard, with_voice, "Alder",
+                                     look_uid="face")
+        self.assertEqual(heard.voice_memory["v"]["named_with"], "face")
 
 
 class TestForgettingInPlay(_MaskCase):

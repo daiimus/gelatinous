@@ -1185,10 +1185,10 @@ def resolve_assigned_name(memory: Any, uid: str | None) -> tuple:
     watched anything: the `remember` command links a newly named look
     to the entry the observer saw THROUGH to (and until #3813 linked it
     to any entry for the same body, seen through or not, so memories
-    written before then carry such links); `forget` clears a name and
-    leaves the link,
-    because the link is what holds several names for one person
-    together; and papers link two faces. Following it would have named,
+    written before then carry such links); `forget` used to clear a
+    name and leave the link (it erases the entry now, #3825, and
+    memories written before then still hold such blank, linked
+    entries); and papers link two faces. Following it would have named,
     on the day this loaded, every look anybody had ever forgotten. So
     the two are kept apart: ``linked_to`` is what `recall` reads, and
     ``witnessed_from`` is what the room reads. An entry from before
@@ -1883,6 +1883,14 @@ def _named(entry: Any) -> bool:
     return bool(str((entry or {}).get("assigned_name") or "").strip())
 
 
+def _stands_alone(entry: Any) -> bool:
+    """True for an entry that holds something of its own: a name, or
+    papers. What an observer read on a document about a look
+    (``attested``) did not come to them through any other name, so
+    forgetting that name does not take it."""
+    return _named(entry) or bool((entry or {}).get("attested"))
+
+
 def _points_at(entry: Any) -> list:
     """The looks a recognition entry points at: the one it was watched
     to come from, and the one it is linked to."""
@@ -1959,14 +1967,15 @@ def erase_look(observer: Any, uid: str) -> str:
     * **every pointer to it**: a look the observer watched come from
       it no longer answers to its name, and a name that was joined to
       another only through it stands alone again;
-    * **the unnamed entries known only through it**: a look with no
-      name of its own that was joined to this one, once nothing it is
-      still joined to has a name. One that another name still reaches
-      stays;
-    * **the voice entries that carry the same name**: a voice is only
-      ever named together with the person in front of you
-      (``remember``), so the same name on a voice is the observer's
-      own connection;
+    * **the unnamed entries known only through it**: a look with
+      neither a name nor papers of its own that was joined to this
+      one, once nothing it is still joined to has either. One that
+      another name still reaches stays, and so does one the observer
+      has read papers about (:func:`_stands_alone`);
+    * **the voice learned with it**: a voice is only ever named
+      together with the person in front of you (``remember``), and
+      the voice entry records the look it was named with
+      (:func:`world.voice.erase_voices_named`);
     * **the see-throughs won by way of it**
       (:func:`_won_verdicts_standing_on`).
 
@@ -1986,14 +1995,15 @@ def erase_look(observer: Any, uid: str) -> str:
 
     # Worked out while the entry is still there to be found.
     doomed_verdicts = _won_verdicts_standing_on(observer, uid)
+    sleeve = memory[uid].get("real_sleeve_uid")
     kin = {other for other in _memory_component(memory, uid)
-           if other != uid and not _named(memory.get(other))}
+           if other != uid and not _stands_alone(memory.get(other))}
 
     del memory[uid]
     gone = {uid}
     for other in kin:
         if other in memory and not any(
-                _named(memory.get(joined))
+                _stands_alone(memory.get(joined))
                 for joined in _memory_component(
                     {k: v for k, v in memory.items() if k not in gone},
                     other)):
@@ -2014,9 +2024,8 @@ def erase_look(observer: Any, uid: str) -> str:
                 del cache[key]
         observer.db.disguise_pierce_cache = cache
 
-    if name:
-        from world.voice import erase_voices_named
-        erase_voices_named(observer, name)
+    from world.voice import erase_voices_named
+    erase_voices_named(observer, name, look_uid=uid, real_sleeve_uid=sleeve)
     return name
 
 

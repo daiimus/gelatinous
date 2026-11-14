@@ -2444,7 +2444,7 @@ class CmdRemember(Command):
         # chain (2c); the speaker-garble gate is correct now.
         from world.voice import remember_voice, is_voice_garbled
         if not is_voice_garbled(target):
-            remember_voice(caller, target, name)
+            remember_voice(caller, target, name, look_uid=apparent_uid)
 
         # Provide feedback using the newly assigned name
         if old_name and old_name != name:
@@ -2895,8 +2895,8 @@ class CmdMemory(Command):
     Renders a subject report of everyone you've remembered by name
     (most recently seen first) and your registered residence —
     building, street of origin, registration age, and any live
-    relocation handover.  People you've forgotten (cleared with
-    |wforget|n) are not listed, even though their record is preserved.
+    relocation handover.  People you've forgotten (with |wforget|n)
+    are gone from this list and from your memory.
 
     Use |wrecall <name>|n to inspect a specific entry.
     """

@@ -271,7 +271,8 @@ def get_assigned_voice_name(observer: Any, target: Any) -> str | None:
     return assigned or None
 
 
-def remember_voice(observer: Any, target: Any, name: str) -> bool:
+def remember_voice(observer: Any, target: Any, name: str,
+                   look_uid: str | None = None) -> bool:
     """Record *name* for *target*'s current voice in *observer*'s voice memory.
 
     The voice parallel to the recognition-memory writer in ``CmdRemember``.
@@ -302,6 +303,13 @@ def remember_voice(observer: Any, target: Any, name: str) -> bool:
     entry["assigned_name"] = name
     entry["voice_phrase_at_encounter"] = voice_phrase(target)
     entry["real_sleeve_uid"] = getattr(target, "sleeve_uid", None)
+    # The look this voice was named together with (#3825). `forget`
+    # erases a voice by the look the observer learned it with. Not by
+    # its name: papers can rename the face and leave the voice as it
+    # was, and two different people can end up under one name. It is
+    # overwritten when the same voice is named again under another
+    # look, so the voice goes with the look it was last named with.
+    entry["named_with"] = look_uid
     # Familiarity: how many times this voice has been remembered, feeding the
     # discernment determination (mirrors recognition ``times_seen``).
     entry["times_heard"] = int(entry.get("times_heard", 0) or 0) + 1
@@ -348,16 +356,32 @@ def _won_voice_verdicts_standing_on(observer: Any, uids: Any) -> list:
     return standing
 
 
-def erase_voices_named(observer: Any, name: str) -> int:
-    """Erase every voice entry *observer* holds under *name*.
+def erase_voices_named(observer: Any, name: str, *,
+                       look_uid: str | None = None,
+                       real_sleeve_uid: str | None = None) -> int:
+    """Erase the voice entries *observer* learned together with one look.
 
     The voice half of forgetting (#3825), called by
     :func:`world.identity.erase_look`. A voice is given a name in one
-    place only, ``remember <somebody in front of you> as <name>``, so
-    a voice that carries the forgotten name is one the observer
-    connected to it themselves. The entries go, not just their names,
-    and so do the voices placed by way of them; a failed attempt to
-    place a voice stays (#3817).
+    place only, ``remember <somebody in front of you> as <name>``, and
+    :func:`remember_voice` records the look it was named with
+    (``named_with``). That record is the observer's own connection,
+    and it is what is matched: a voice named with the look being
+    forgotten goes, whatever either is called by now.
+
+    Not by name alone. Papers can rename a face and leave its voice
+    under the old name, so matching names missed the voice of the very
+    person being forgotten (#2652 again); and two different people can
+    carry one name, so matching names took a stranger's voice.
+
+    An entry written before the look was recorded has no
+    ``named_with``. For those the name is all there is to go on, and
+    the true body is read only to tell two people under one name
+    apart: such an entry goes when its name matches *name* and it does
+    not belong to a different body from *real_sleeve_uid*.
+
+    The entries go, not just their names, and so do the voices placed
+    by way of them; a failed attempt to place a voice stays (#3817).
 
     It used to be done by true body: forgetting somebody by name
     blanked every named voice of the same body, whatever the observer
@@ -368,11 +392,24 @@ def erase_voices_named(observer: Any, name: str) -> int:
     """
     wanted = str(name or "").strip().lower()
     memory = getattr(observer, "voice_memory", None)
-    if not wanted or not memory:
+    if not memory or not (wanted or look_uid):
         return 0
-    doomed = [uid for uid, entry in memory.items()
-              if str((entry or {}).get("assigned_name") or "").strip().lower()
-              == wanted]
+    doomed = []
+    for uid, entry in memory.items():
+        entry = entry or {}
+        learned_with = entry.get("named_with")
+        if learned_with:
+            if look_uid and learned_with == look_uid:
+                doomed.append(uid)
+            continue
+        if (not wanted
+                or str(entry.get("assigned_name") or "").strip().lower()
+                != wanted):
+            continue
+        theirs = entry.get("real_sleeve_uid")
+        if theirs and real_sleeve_uid and theirs != real_sleeve_uid:
+            continue
+        doomed.append(uid)
     if not doomed:
         return 0
     verdicts = _won_voice_verdicts_standing_on(observer, doomed)
