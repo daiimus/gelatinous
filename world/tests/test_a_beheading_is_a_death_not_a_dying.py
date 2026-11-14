@@ -211,6 +211,23 @@ class TestWhatReviewFound(_TheBlow):
             self.assertFalse(_fixed("has_no_face")(self.dead))
             self.assertEqual(self.dead.get_display_name(self.friend), "Jorge")
 
+    def test_a_reset_in_the_middle_of_a_beheading_leaves_one_head(self):
+        """Round three. `@resetmedical` reaches the same door for any
+        character. Clearing one flag and not the other let the death
+        complete as a beheading with no head on record, and a second
+        head was spawned off the corpse."""
+        from typeclasses.items import SeveredHead
+        from world.medical.procedures import reset_body_preserving_augments
+        self.behead()
+        death_progression.start_death_progression(self.dead)
+        reset_body_preserving_augments(self.dead)
+        self.assertFalse(self.dead.db.head_severed_at_decap)
+        self.assertFalse(self.dead.db.decapitation_pending)
+        self.assertFalse(_fixed("complete_a_beheading")(self.dead))
+        self.assertEqual(self.corpses(), [])
+        heads = [o for o in self.room1.contents if isinstance(o, SeveredHead)]
+        self.assertEqual(len(heads), 1)
+
     def sighting(self):
         """The friend walks in on the body; what their entry for the
         bare look then says about where they last saw Jorge."""

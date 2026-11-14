@@ -3351,6 +3351,20 @@ def reset_body_preserving_augments(char) -> int:
     # the body its flesh back, so this door says the head is on:
     # `world.identity.has_no_face` asks the flag first, and
     # `spawn_severed_head_for_living` returns early on it.
-    if char.db.head_severed_at_decap:
-        char.db.head_severed_at_decap = False
+    #
+    # Both flags, or neither. A reset in the seconds between the blow
+    # and the corpse (`@resetmedical` reaches this for any character)
+    # that cleared only the first left `decapitation_pending` set: the
+    # death then completed as a beheading, found no head recorded, and
+    # spawned a second one off the corpse. With both cleared the body
+    # is simply no longer dead, and the death script revives it as it
+    # does any other body reset while dying.
+    #
+    # Read with a default: this function is run over fixtures with a
+    # plain namespace for `db`, and must not raise on one
+    # (`test_dead_keeper_frees_the_post`).
+    db = getattr(char, "db", None)
+    for flag in ("head_severed_at_decap", "decapitation_pending"):
+        if getattr(db, flag, None):
+            setattr(db, flag, False)
     return len(preserved)
