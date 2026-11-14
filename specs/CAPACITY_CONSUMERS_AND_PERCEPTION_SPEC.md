@@ -546,7 +546,8 @@ is the content lift) → per-effector resolver (manipulation/moving).
      deployed jaw module, not a character flag, #2484),
      `get_apparent_voice_uid`, and a `voice_memory` AttributeProperty on the
      Character with `remember_voice`/`erase_voices_named`/`get_assigned_voice_name`
-     (a voice is forgotten by the name it carries, and the entry goes: #3825).
+     (a voice is forgotten with the look it was named with, and the entry goes: #3825; see
+     IDENTITY_RECOGNITION_SPEC, the `forget` command).
      `remember <target>`/`forget <target>` now teach/clear the voice alongside
      the face (skipping garbled speakers). Tests in `test_voice_identity.py`.
      *Not yet consumed by display* — that's 2c.

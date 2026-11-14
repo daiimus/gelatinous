@@ -2381,6 +2381,16 @@ class CmdRemember(Command):
 
         if apparent_uid in memory:
             entry = memory[apparent_uid]
+            # This face may be about to get another name while its voice
+            # keeps the old one: the voice is not renamed when it is
+            # garbled, or when the caller cannot hear (below). So write
+            # down, on voice entries from before that was recorded, the
+            # look they were named with, while the name can still say
+            # (#3825). The papers door does the same before it renames.
+            from world.voice import note_voices_named_with
+            note_voices_named_with(
+                caller, apparent_uid, entry.get("assigned_name", ""),
+                entry.get("real_sleeve_uid") or real_sleeve_uid)
             entry["assigned_name"] = name
             entry["last_seen"] = now
             entry["times_seen"] = entry.get("times_seen", 0) + 1
@@ -2676,8 +2686,7 @@ class CmdForget(Command):
         if not memory or not old_name or source_uid not in memory:
             caller.msg("You don't have a name remembered for them.")
             return
-        erase_look(caller, source_uid,
-                   real_sleeve_uid=getattr(target, "sleeve_uid", None))
+        erase_look(caller, source_uid)
         caller.msg(
             f"You forget the name '{old_name}'. "
             f"They will now appear as their description."

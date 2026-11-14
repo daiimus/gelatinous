@@ -231,21 +231,18 @@ class TestTheVoiceLearnedWithTheLook(TestCase):
                                            "real_sleeve_uid": "sleeve-a"})
         self.assertEqual(list(voices), ["other"])
 
-    def test_the_door_with_the_person_in_front_of_it_passes_their_body(self):
-        """An entry from before the body tag was recorded has none. The
-        removed code fell back to the person standing there."""
+    def test_nobody_lends_their_body_to_an_entry_that_has_none(self):
+        """Review round three. Round two had the door with the person in
+        front of it pass their body for an entry with no tag. Only a
+        face made from papers has no tag, so all that did was let it
+        take a voice named with another look of the man standing there."""
         import inspect
         from commands import CmdCharacter
-        self.assertIn("real_sleeve_uid=getattr(target, \"sleeve_uid\", None)",
-                      inspect.getsource(CmdCharacter.CmdForget._forget_visible))
-        memory = {"face": {"assigned_name": "Alder"}}
-        voices = {"same": {"assigned_name": "Alder",
-                           "real_sleeve_uid": "sleeve-a"},
-                  "other": {"assigned_name": "Alder",
-                            "real_sleeve_uid": "sleeve-b"}}
-        identity.erase_look(_observer(memory, voices), "face",
-                            real_sleeve_uid="sleeve-a")
-        self.assertEqual(list(voices), ["other"])
+        self.assertNotIn(
+            "real_sleeve_uid",
+            inspect.getsource(CmdCharacter.CmdForget._forget_visible))
+        self.assertNotIn("real_sleeve_uid",
+                         str(inspect.signature(identity.erase_look)))
 
     def test_the_voice_helper_reports_what_it_erased(self):
         erase = getattr(voice_mod, "erase_voices_named", None)
@@ -276,6 +273,30 @@ class TestTheVoiceLearnedWithTheLook(TestCase):
             voice_mod.remember_voice(heard, with_voice, "Alder",
                                      look_uid="face")
         self.assertEqual(heard.voice_memory["v"]["named_with"], "face")
+
+
+class TestRenamingSomebodyWhoCannotBeHeard(_MaskCase):
+    """Review round three. Naming in person renames the face always and
+    the voice only when it is heard: not when it is garbled, and not
+    when the caller is deaf. Every voice in the game today was written
+    before a voice recorded its look, so after such a rename the voice
+    kept the old name and nothing tied it to the face."""
+
+    def test_an_older_voice_is_marked_before_the_face_is_renamed(self):
+        from unittest import mock
+        heard = voice_mod.get_apparent_voice_uid(self.them)
+        voices = self.viewer.voice_memory
+        self.assertEqual(voices[heard]["assigned_name"], "Tamsin")
+        del voices[heard]["named_with"]     # as every voice was written
+        self.viewer.voice_memory = voices
+        with mock.patch.object(voice_mod, "can_hear", return_value=False):
+            self.do("remember tamsin as Robert")
+        row = dict(self.viewer.voice_memory)[heard]
+        self.assertEqual(row["assigned_name"], "Tamsin",
+                         "fixture check: the voice was not renamed")
+        self.assertEqual(row["named_with"], get_apparent_uid(self.them))
+        self.assertIn("forget the name", self.do("forget robert"))
+        self.assertNotIn(heard, dict(self.viewer.voice_memory))
 
 
 class TestForgettingInPlay(_MaskCase):

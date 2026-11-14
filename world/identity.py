@@ -1951,8 +1951,7 @@ def _won_verdicts_standing_on(observer: Any, uid: str) -> list:
     return standing
 
 
-def erase_look(observer: Any, uid: str, *,
-               real_sleeve_uid: str | None = None) -> str:
+def erase_look(observer: Any, uid: str) -> str:
     """Erase one look from *observer*'s memory. Returns the name it had.
 
     This is what forgetting is (#3825). Owner, 2026-11-14: "If the
@@ -1984,6 +1983,12 @@ def erase_look(observer: Any, uid: str, *,
     observer never connected to this name. Nothing is cleared because
     the game knows two things are one body.
 
+    Not covered: an AI NPC also keeps its own records keyed by look
+    (dossier aliases, long-term memories, the conversation thread, in
+    ``typeclasses.llm_npc``). They are not erased here, so an NPC that
+    forgets a name is still handed it. Undecided what it should lose
+    (#3841).
+
     It used to blank the name and keep the entry, so naming the look
     again brought back its links and carried on its seen-count; and it
     cleared every named voice and every won verdict of the same true
@@ -1997,10 +2002,12 @@ def erase_look(observer: Any, uid: str, *,
     # Worked out while the entry is still there to be found.
     doomed_verdicts = _won_verdicts_standing_on(observer, uid)
     # The body tag is used only to tell older voice entries of two
-    # people under one name apart. An entry from before the tag was
-    # recorded has none; the door that has the person in front of it
-    # passes theirs.
-    sleeve = memory[uid].get("real_sleeve_uid") or real_sleeve_uid
+    # people under one name apart. It is the ENTRY's tag and nothing
+    # else. An entry with none was made from papers and never named in
+    # person, so no voice was named with it; lending it the body of
+    # whoever stands in front of the caller let it take a voice named
+    # with another look of that body (review round three).
+    sleeve = memory[uid].get("real_sleeve_uid")
     kin = {other for other in _memory_component(memory, uid)
            if other != uid and not _stands_alone(memory.get(other))}
 
