@@ -89,17 +89,31 @@ class IdentityBearerMixin:
         """
         del kwargs  # Evennia passes look context we don't need.
         decay_name = self._decay_display_name()
-        stage = self.get_decay_stage()
+        assigned = self.recognised_as(looker)
+        if assigned:
+            return f"{decay_name} ({assigned})"
+        return decay_name
 
+    def recognised_as(self, looker):
+        """The name *looker* knows these remains by, or ``None``.
+
+        The recognition half of :meth:`get_display_name`, on its own
+        (#3821), for text that names the dead inside a sentence: the
+        ``{name}`` token of a preserved description, where "rotting
+        corpse (Jorge)" does not fit and the real key must not go. Same
+        two passes, same forensic roll and the same stored verdict, so
+        the name in the prose and the name in the header cannot
+        disagree.
+        """
         if looker is None:
-            return decay_name
-
+            return None
+        stage = self.get_decay_stage()
         if stage == "skeletal":
-            return decay_name
+            return None
 
         memory = getattr(looker, "recognition_memory", None)
         if not memory:
-            return decay_name
+            return None
 
         # Pass 1: natural recognition against the decay-degraded UID.
         try:
@@ -119,7 +133,7 @@ class IdentityBearerMixin:
         if degraded_uid is not None and degraded_uid in memory:
             assigned = resolve_assigned_name(memory, degraded_uid)[0]
             if assigned:
-                return f"{decay_name} ({assigned})"
+                return assigned
 
         # Pass 2: forensic recovery against the fresh-equivalent UID.
         try:
@@ -135,9 +149,9 @@ class IdentityBearerMixin:
             if self._attempt_forensic_recognition(looker, stage):
                 assigned = resolve_assigned_name(memory, fresh_uid)[0]
                 if assigned:
-                    return f"{decay_name} ({assigned})"
+                    return assigned
 
-        return decay_name
+        return None
 
     def _attempt_forensic_recognition(self, looker, stage):
         """Resolve (and cache) a forensic-recognition Intellect roll.

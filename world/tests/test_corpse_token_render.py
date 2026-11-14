@@ -45,6 +45,13 @@ class _CorpseStub:
     worn_garments = Corpse.worn_garments
     worn_stack = Corpse.worn_stack          # the builder reads it (#3577)
     _build_decay_desc_paragraph = Corpse._build_decay_desc_paragraph
+    # The `{name}` token is filled for the reader (#3821). These tests
+    # are about pronouns, nouns and verbs and pass no reader, so the
+    # stub is a body nobody recognises.
+    _name_for = Corpse._name_for
+
+    def recognised_as(self, looker):
+        return None
     get_preserved_wound_descriptions = Corpse.get_preserved_wound_descriptions
     get_decay_stage = Corpse.get_decay_stage
     get_time_since_death = Corpse.get_time_since_death
