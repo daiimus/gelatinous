@@ -2495,18 +2495,28 @@ def _forget_entry(memory, uid):
     the figure showing as "Tamsin" under a message saying they would
     now appear as their description.
 
-    After `forget`, the look that carried the name names nobody: what
-    it was watched to come from (``witnessed_from``), which is what a
-    name is read through, goes with the name. The LINK (``linked_to``)
-    stays, as it always has. It is what `recall` and an NPC's memories
-    use to hold several names for one person together, and the
-    forgotten look may be the only thing joining two names the caller
-    did not forget. The other look keeps its own name: forgetting
-    "Batman" leaves "Bruce" alone.
+    After `forget`, the look that carried the name names nobody, and
+    neither does any look the caller knew THROUGH it. So two things go
+    with the name: this entry's own ``witnessed_from``, and the
+    ``witnessed_from`` of every entry that pointed here. Without the
+    second, forgetting only switched the knowledge off: the masked look
+    went on recording the face it was watched to come from, and the
+    day the face was given a name again, any name, the mask answered
+    to it at once, with no roll, for somebody who had not watched it go
+    on that time and had said they no longer knew who it was.
+
+    The LINK (``linked_to``) stays, as it always has. It is what
+    `recall` and an NPC's memories use to hold several names for one
+    person together, and the forgotten look may be the only thing
+    joining two names the caller did not forget. The other look keeps
+    its own name: forgetting "Batman" leaves "Bruce" alone.
     """
     entry = memory[uid]
     entry["assigned_name"] = ""
     entry["witnessed_from"] = None
+    for other in memory.values():
+        if other.get("witnessed_from") == uid:
+            other["witnessed_from"] = None
 
 
 def _find_remembered_uid_by_name(caller, name):

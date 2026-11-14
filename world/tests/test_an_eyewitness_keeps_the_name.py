@@ -611,6 +611,22 @@ class TestWhatForgetLeavesAlone(TestCase):
         self.assertEqual(get_linked_aliases(self.memory, "face"), ["Knight"])
         self.assertEqual(get_linked_aliases(self.memory, "helm"), ["Bruce"])
 
+    def test_what_was_known_through_it_is_forgotten_with_it(self):
+        """Forget the face, and a look that recorded the face records
+        nothing: giving the face a name again must not bring it back."""
+        from commands.CmdCharacter import _forget_entry
+        memory = {"face": {"assigned_name": "Tamsin"},
+                  "mask": {"assigned_name": "", "witnessed_from": "face"},
+                  "hood": {"assigned_name": "", "witnessed_from": "face"},
+                  "else": {"assigned_name": "", "witnessed_from": "other"},
+                  "other": {"assigned_name": "Somebody"}}
+        _forget_entry(memory, "face")
+        memory["face"]["assigned_name"] = "Jane"
+        self.assertEqual(resolve_assigned_name(memory, "mask"), (None, None))
+        self.assertEqual(resolve_assigned_name(memory, "hood"), (None, None))
+        self.assertEqual(resolve_assigned_name(memory, "else")[0],
+                         "Somebody")
+
     def test_and_each_keeps_its_own(self):
         self.assertEqual(resolve_assigned_name(self.memory, "face")[0],
                          "Bruce")
@@ -642,6 +658,50 @@ class TestWhoeverPutsTheMaskOn(_MaskCase):
         self.assertIn("Tamsin", self.roster())
         self.assertEqual(self.first(self.do("look tamsin")),
                          f"Tamsin ({MASKED})")
+
+
+class TestForgettingIsForGood(_MaskCase):
+    """The viewer watched the mask go on, then forgot the name. Naming
+    the face again later is new knowledge about the face. It is not
+    having watched the mask go on."""
+
+    def setUp(self):
+        super().setUp()
+        self.rolled = self.dice(LOST)
+        self.they("wear ski mask")
+        self.do("forget tamsin")
+
+    def come_back(self, command):
+        """They step out, do *command* unseen, and step back in."""
+        self.them.move_to(self.room2, quiet=True, move_hooks=False)
+        self.them.execute_cmd(command)
+        self.them.move_to(self.room1, quiet=True, move_hooks=False)
+
+    def test_the_masked_look_records_nothing_any_more(self):
+        entry = dict(self.viewer.recognition_memory)[
+            get_apparent_uid(self.them)]
+        self.assertIsNone(entry["witnessed_from"])
+
+    def test_naming_the_face_again_does_not_name_the_mask(self):
+        """The mask's record of the face was left in place, switched
+        off only for as long as the face had no name."""
+        self.come_back("remove ski mask")
+        self.do("remember man as Jane")
+        self.assertIn("Jane", self.roster())
+        self.come_back("wear ski mask")
+        before = self.rolled.call_count
+        self.assertIn("gaunt masked man", self.roster())
+        self.assertNotIn("Jane", self.roster())
+        self.assertEqual(self.do("look jane"), "Could not find 'jane'.")
+        self.assertEqual(self.rolled.call_count, before + 1,
+                         "they are owed the roll anybody would get")
+
+    def test_watching_it_go_on_again_is_watching(self):
+        """The control: the same, but this time they see it go on."""
+        self.come_back("remove ski mask")
+        self.do("remember man as Jane")
+        self.they("wear ski mask")
+        self.assertIn("Jane", self.roster())
 
 
 class TestAMemoryFromBeforeThisChange(_MaskCase):
