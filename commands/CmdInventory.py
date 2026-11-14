@@ -799,6 +799,8 @@ class CmdGet(Command):
         for hand, held in hands_snapshot.items():
             if held:
                 held_name = held.get_display_name(caller)
+                # The room is told what was shifted, too: remains per reader (#3821).
+                room_held = named_for_each(held, caller, "held", refs)
                 held.move_to(caller, quiet=True)  # move to inventory
                 hands_snapshot[hand] = item
                 caller.hands = hands_snapshot
@@ -813,7 +815,7 @@ class CmdGet(Command):
                     )
                     msg_room_identity(
                         location=caller.location,
-                        template=f"{{actor}} takes {room_item} from {room_container}, shifting {held_name} to inventory.",
+                        template=f"{{actor}} takes {room_item} from {room_container}, shifting {room_held} to inventory.",
                         char_refs=refs,
                         exclude=[caller],
                     )
@@ -825,7 +827,7 @@ class CmdGet(Command):
                     )
                     msg_room_identity(
                         location=caller.location,
-                        template=f"{{actor}} picks up {room_item}, shifting {held_name} to inventory.",
+                        template=f"{{actor}} picks up {room_item}, shifting {room_held} to inventory.",
                         char_refs=refs,
                         exclude=[caller],
                     )

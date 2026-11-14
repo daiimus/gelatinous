@@ -162,5 +162,16 @@ class TestTheRoomsLine(_AtTheBody):
                 self.assertIn("named_for_each(", source)
                 for line in source.splitlines():
                     if "template=f" in line:
-                        self.assertNotIn("{item_name}", line)
-                        self.assertNotIn("{container_name}", line)
+                        # Any name written from the actor's point of
+                        # view: the thing, where it came from, and what
+                        # was shifted out of a full hand to take it.
+                        self.assertNotRegex(line, r"\{\w+_name\}")
+
+    def test_the_thing_shifted_out_of_a_full_hand_is_named_per_reader(self):
+        """`get` with both hands full says what went to the inventory.
+        A severed head in that hand was still written as the actor sees
+        it."""
+        from commands import CmdInventory as inv
+        source = inspect.getsource(inv.CmdGet._give_item_to_character)
+        self.assertIn('named_for_each(held, caller, "held", refs)', source)
+        self.assertEqual(source.count("shifting {room_held} to inventory"), 2)
