@@ -19,7 +19,8 @@ Two structural facts shape everything you do here:
 
 - **Evennia is not a Django project.** The gamedir overlays the Evennia library.
   There is no `manage.py` (the `evennia` launcher replaces it), and you extend
-  the game with *typeclasses*, not custom Django models.
+  the game with *typeclasses*, not custom Django models. The one custom model
+  is `KeywordEvent` in `world/models.py`, an audit-log table; do not add another.
 - **The dev repo is not the live game.** You edit in one checkout and deploy to a
   separate one running inside Docker. See *Project Layout & Deployment* below —
   changes are invisible to the running game until you sync them across.
@@ -151,6 +152,9 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 - **No magic strings.** Combat constants come from `world/combat/constants.py`;
   most other strings are centralized too — grep for the constant before hardcoding.
 - **No broad `except Exception`.** Catch specific exceptions; let the unexpected surface.
+  The one allowed use is a boundary where a failure in something optional must
+  not break the thing that matters (a flavour line must not block a mechanic).
+  There the catch is marked `# noqa: BLE001`, with the reason on the same line.
 - **Style.** PEP 8, 88-char lines, type hints on new functions.
 - **Specs track code.** Update the relevant `specs/*.md` in the same PR as the change.
 - **Per-observer rendering.** Any room broadcast that *names a character* must
@@ -171,7 +175,10 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
   ```
 - **`db.desc` rendering contract.** To give an item description, populate
   `self.db.desc` and let Evennia's default `return_appearance` slot it in — the
-  Evennia-standard way. **Do not override `return_appearance`** to inject text.
+  Evennia-standard way. **Do not override `return_appearance` to supply the
+  description.** A typeclass whose appearance is more than a description (a
+  character's body, a corpse, a room, what a locker holds) overrides it to
+  build that; an item's description text still comes from `db.desc`.
   (`Organ.configure_from_harvest` / `Appendage.configure_from_sever` follow this;
   enforced by `world/tests/test_organ_display.py` and
   `world/tests/test_severed_part_descriptions.py`.)
@@ -227,7 +234,7 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 - Need search? `caller.search` in a command, else `evennia.utils.search.*`.
 - Need an interactive menu? `evmenu`. Need custom layout? `evform`.
 - Naming a character in a room broadcast? `msg_room_identity`, not `msg_contents`.
-- Giving an item a description? Set `db.desc`; never override `return_appearance`.
+- Giving an item a description? Set `db.desc`; do not override `return_appearance` to supply it.
 - Running tests? `docker exec <CONTAINER> evennia test --settings settings.py world`.
 - Deploying? issue → branch → PR → squash-merge → hard-reset live → `@reload` from
   inside the game (code only) → check `evennia status`.
