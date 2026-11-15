@@ -2383,8 +2383,31 @@ def official_name(observer: Any, uid: str) -> str | None:
     return None
 
 
-def _collect_unmasking_observers(char: Any) -> list:
+#: How far :func:`_room_holding` climbs. A thing in a hand is one step
+#: from its room; the cap is for stored data that loops.
+_ROOM_CLIMB_MAX_HOPS = 8
+
+
+def _room_holding(thing: Any) -> Any:
+    """The room *thing* is in, however it is held: the outermost
+    location. A severed head on the floor is in its room; one in
+    somebody's hand is in the room that person stands in, and the
+    people there are who can watch what is done to it (#3833)."""
+    place = getattr(thing, "location", None)
+    for _hop in range(_ROOM_CLIMB_MAX_HOPS):
+        outer = getattr(place, "location", None)
+        if outer is None:
+            break
+        place = outer
+    return place
+
+
+def _collect_unmasking_observers(char: Any, location: Any = None) -> list:
     """Return the list of characters eligible to witness an unmasking.
+
+    *location* is where to look for them when that is not
+    ``char.location``: remains in somebody's hand are watched from the
+    room the holder stands in (:func:`_room_holding`).
 
     Filters in this order:
 
@@ -2421,7 +2444,8 @@ def _collect_unmasking_observers(char: Any) -> list:
         List of observer characters, in iteration order of
         ``char.location.contents`` (stable per Evennia's storage).
     """
-    location = getattr(char, "location", None)
+    if location is None:
+        location = getattr(char, "location", None)
     if location is None:
         return []
     contents = getattr(location, "contents", None) or []
@@ -3111,6 +3135,169 @@ class apply_signature_change:
             _broadcast_unmasking(
                 self.char, self._old_uid, new_uid, source=self.source
             )
+        return False
+
+
+def _remains_name_source(observer: Any, remains: Any) -> str | None:
+    """The uid of the entry that names *remains* for *observer* as the
+    remains are shown to them now, or ``None``.
+
+    Whether they are shown a name at all is the remains' own answer
+    (``recognised_as``), and it has to be: a body without its head, one
+    too far gone, or one the observer cannot work out names nobody,
+    whatever their memory holds for the look underneath. Asking the
+    memory alone would hand a name on to somebody who watched a mask go
+    onto a body they could not have told from any other.
+
+    It is asked the way a look asks it. For a body a day or more dead
+    that is the observer's one roll, made now if they had not made it,
+    and that is deliberate. `dress` and `undress` name the remains to
+    every bystander in their own line before the garment moves, which
+    is that same roll, so the bystanders have made it by this point and
+    whoever does the dressing makes it here. `get ... from` names the
+    remains to the taker before the move and to the room after it.
+    Asked any other way, the same act would leave somebody knowing
+    through one door and not through another.
+
+    The entry the name is on is then read the way the remains read it:
+    the look as decay leaves it, then the look beneath.
+    """
+    if not remains.recognised_as(observer):
+        return None
+    memory = getattr(observer, "recognition_memory", None)
+    for uid in (
+        get_apparent_uid_for_decay(remains, remains.get_decay_stage()),
+        get_apparent_uid(remains),
+    ):
+        source = resolve_assigned_name(memory, uid)[1]
+        if source is not None:
+            return source
+    return None
+
+
+class apply_remains_change:
+    """Context manager around anything that changes what remains wear.
+
+    Somebody who watches a corpse or a severed head being dressed or
+    stripped goes on knowing whose it is (#3833). Owner, 2026-11-15,
+    asked whether they should: *"They should. That's just Scooby-doo
+    but backwards. We already account for that with someone living,
+    don't we?"*
+
+    Half of it was already there. Remains take their look from what
+    they wear, and the name after a corpse or a head is read through
+    ``witnessed_from`` like any other (:func:`resolve_assigned_name`),
+    so somebody who watched a living person pull a mask on still knows
+    the body they leave. What was missing is the writing: the doors
+    that dress and strip remains moved the garment and told nobody's
+    memory, so a mask pulled over a face in front of you took the name
+    off the body, for you and for whoever did it, and a mask pulled off
+    somebody known only masked did the same.
+
+    This is :func:`_keep_knowing`, the eyewitness rule itself, and
+    nothing else of the living hook. Before the change it asks each
+    person in the room who the remains are to them, as a look would
+    (:func:`_remains_name_source`); after it, whoever held a name and
+    holds none for the look that arrived has that look point at the
+    entry the name is on. Whoever does the dressing is in the room and
+    is asked like anybody. Nobody is told anything: the room's line is
+    the command's own.
+
+    A roll about a decayed body is filed under its look, so a watcher
+    who had worked out whose it was would be sent to roll again about
+    the look that arrived. Their roll is filed under that too
+    (:func:`world.forensics.carry_forensic_roll`).
+
+    What this lets somebody do on purpose is what the living rule
+    already lets them do with a captive: a look learned here is the
+    look of that body in that mask, and a person brought back in the
+    same body wears the same looks.
+
+    Not remains, or remains with no look to know (a limb, an organ):
+    nothing happens, so a door that takes things out of anything may
+    wrap what it does in this without asking what it holds. ``isinstance``
+    and not a duck-type: a stand-in built from ``MagicMock`` answers to
+    every name.
+
+    *item* is the one thing the door moves, when it moves one. A thing
+    that is no part of a disguise cannot change a look, so nothing
+    happens for it either, and nobody in the room is asked who the body
+    is because a wallet was lifted off it. A door that moves several
+    things gives none and the room is always asked.
+
+    Usage::
+
+        with apply_remains_change(corpse, mask):
+            mask.move_to(caller, quiet=True)
+    """
+
+    def __init__(self, remains: Any, item: Any = None) -> None:
+        self.remains = remains
+        self.item = item
+        self._old_uid: str | None = None
+        self._old_evidence_uid: str | None = None
+        #: (observer, uid of the entry that named the remains for them)
+        self._knew: list = []
+
+    def _evidence_uid(self) -> str | None:
+        """The slot a roll about these remains is filed under, or
+        ``None`` when the death-time record cannot be read. Only the
+        carrying of a roll hangs on it, and a record that is not what
+        it should be is no reason to stop the garment moving."""
+        from world.forensics import evidence_uid, extract_subject_from_corpse
+        try:
+            return evidence_uid(extract_subject_from_corpse(self.remains))
+        except (AttributeError, TypeError, ValueError, IndexError, KeyError):
+            return None
+
+    def __enter__(self) -> "apply_remains_change":
+        from typeclasses.identity_bearer import IdentityBearerMixin
+        if not isinstance(self.remains, IdentityBearerMixin):
+            return self
+        if (self.item is not None
+                and not getattr(self.item, "disguise_essential", False)):
+            return self
+        self._old_uid = get_apparent_uid(self.remains)
+        if self._old_uid is None:
+            return self
+        watchers = _collect_unmasking_observers(
+            self.remains, location=_room_holding(self.remains))
+        for observer in watchers:
+            known_from = _remains_name_source(observer, self.remains)
+            if known_from is not None:
+                self._knew.append((observer, known_from))
+        if self._knew:
+            self._old_evidence_uid = self._evidence_uid()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        if exc_type is not None or not self._knew:
+            return False
+        new_uid = get_apparent_uid(self.remains)
+        if new_uid is None or new_uid == self._old_uid:
+            return False
+        from world.forensics import carry_forensic_roll
+        now_iso = _recognition_now_iso()
+        new_evidence_uid = self._evidence_uid()
+        for observer, known_from in self._knew:
+            memory = getattr(observer, "recognition_memory", None)
+            if memory is None:
+                memory = {}
+            made = new_uid not in memory
+            if _keep_knowing(
+                    observer, self.remains, memory, new_uid, known_from,
+                    now_iso):
+                entry = memory[new_uid]
+                if made and not entry.get("sdesc_at_first_encounter"):
+                    # Remains have no short description of their own;
+                    # what was seen is what they are called.
+                    seen_as = self.remains._decay_display_name()
+                    entry["sdesc_at_first_encounter"] = seen_as
+                    entry["sdesc_at_last_encounter"] = seen_as
+                observer.recognition_memory = memory
+            carry_forensic_roll(
+                observer, self.remains,
+                self._old_evidence_uid, new_evidence_uid)
         return False
 
 
