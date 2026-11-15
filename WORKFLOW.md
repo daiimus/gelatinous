@@ -79,7 +79,8 @@ Two different things are asked of the owner:
   right answer is.
 - A **go** is leave to start. Any change to how the game behaves waits for
   one, a defect fix included. A go given for a named list of work covers that
-  list and nothing added to it later.
+  list and nothing added to it later. It does not cover the reloads that work
+  leads to: each reload is asked for when it is due (below).
 
 Whether code is correct is neither of these. It is settled by following the
 code against the running game, with a control, and reporting what was
@@ -87,14 +88,14 @@ checked. Do not hold a pull request waiting for the owner to review its code.
 
 **Asking.**
 
-- Propose before starting. Say what will change and what a player will see,
-  then wait for the go.
+- Propose before starting: say what will change and what a player will see.
+  Wait for the go on anything that changes how the game behaves.
 - One decision at a time, in plain words.
 - Ask before anything that cannot be undone or that takes the game away from
   the people in it: deleting live data, a reload, a restart, stopping the
   server. An earlier or general go-ahead does not cover the next one.
-  Removing what a test itself created, in that test's own teardown, is not
-  this: it needs a dry run and a line in the report (see
+  Removing what a test itself created or caused, in that test's own teardown,
+  is not this: it needs a dry run and a line in the report (see
   `DEVELOPMENT_GUIDE.md`, Testing Inside the Live Game).
 - "I do not know yet" is an answer. Say it rather than force a verdict the
   evidence does not support.

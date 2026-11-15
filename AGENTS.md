@@ -98,8 +98,8 @@ A reload pauses the game for everyone in it and clears the `ndb` state on
 every object, so each one needs the owner's go (see `WORKFLOW.md`, Rulings).
 
 **A reload restarts the Server, not the Portal.** A setting the Portal reads
-(for example the secret key, ports and interfaces, `UPSTREAM_IPS`) takes
-effect only when the Portal itself is restarted, and that disconnects
+(for example Django's `SECRET_KEY`, ports and interfaces, `UPSTREAM_IPS`)
+takes effect only when the Portal itself is restarted, and that disconnects
 everyone. Count the restart as part of such a change, and get the owner's go
 for it.
 
