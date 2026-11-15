@@ -62,13 +62,27 @@ gh pr merge <n> --squash --delete-branch
 # hard-reset the live checkout to the merged master (git runs on the host)
 git -C <LIVE_DIR> fetch origin --quiet
 git -C <LIVE_DIR> reset --hard origin/master --quiet
-# reload only when code changed (skip for docs-only)
-docker exec <CONTAINER> evennia reload --settings settings.py
+# reload only when code changed (skip for docs-only): from a developer
+# character logged in to the game, type   @reload   (see below), then
 docker exec <CONTAINER> evennia status --settings settings.py   # Portal + Server RUNNING
 ```
 
 Rules: **never force-push to `master`.** `gh` must be authenticated for the
 repo. Every change — including docs — goes issue → branch → PR → squash-merge.
+
+**Reload from inside the game.** The preferred reload is `@reload`, typed by a
+developer character that is logged in. It asks the Portal for the same restart
+the command line does, and nothing outside the game waits on it. The
+command-line `evennia reload` starts a launcher process that waits for the
+restart; run from an agent's shell it has been chained, piped and cut off by a
+timeout mid-restart, and each time the Server stayed down. Use it only when
+there is no session to reload from, and then as the only command in its call.
+
+Being logged in does not make a reload safe by itself. Before it, look at who
+is connected, and do not reload while a model call is in flight: that fails
+whichever way the reload is sent (#3815). After it, check `evennia status`
+within 30 seconds; if the Server is not running, read `server/logs/server.log`
+and run `evennia start`.
 
 ## Typeclasses and Attributes
 
@@ -215,4 +229,5 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 - Naming a character in a room broadcast? `msg_room_identity`, not `msg_contents`.
 - Giving an item a description? Set `db.desc`; never override `return_appearance`.
 - Running tests? `docker exec <CONTAINER> evennia test --settings settings.py world`.
-- Deploying? issue → branch → PR → squash-merge → hard-reset live → reload (code only).
+- Deploying? issue → branch → PR → squash-merge → hard-reset live → `@reload` from
+  inside the game (code only) → check `evennia status`.
