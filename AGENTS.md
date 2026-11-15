@@ -154,7 +154,8 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 - **No broad `except Exception`.** Catch specific exceptions; let the unexpected surface.
   The one allowed use is a boundary where a failure in something optional must
   not break the thing that matters (a flavour line must not block a mechanic).
-  There the catch is marked `# noqa: BLE001`, with the reason on the same line.
+  A new one is marked `# noqa: BLE001` and says why on the same line. Older
+  code has broad catches with no mark or no reason; that is debt, not a pattern.
 - **Style.** PEP 8, 88-char lines, type hints on new functions.
 - **Specs track code.** Update the relevant `specs/*.md` in the same PR as the change.
 - **Per-observer rendering.** Any room broadcast that *names a character* must
@@ -176,9 +177,10 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 - **`db.desc` rendering contract.** To give an item description, populate
   `self.db.desc` and let Evennia's default `return_appearance` slot it in — the
   Evennia-standard way. **Do not override `return_appearance` to supply the
-  description.** A typeclass whose appearance is more than a description (a
-  character's body, a corpse, a room, what a locker holds) overrides it to
-  build that; an item's description text still comes from `db.desc`.
+  description.** Overrides exist, and each has a reason other than that: it
+  adds to what is shown (what is worn or held, a state) on top of `super()`,
+  or the whole appearance is computed (a character's body, a corpse, a room,
+  graffiti, a blood pool). A new override needs a reason of that kind.
   (`Organ.configure_from_harvest` / `Appendage.configure_from_sever` follow this;
   enforced by `world/tests/test_organ_display.py` and
   `world/tests/test_severed_part_descriptions.py`.)

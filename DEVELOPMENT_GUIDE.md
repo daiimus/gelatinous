@@ -141,7 +141,7 @@ except SpecificException as e:
 **Debug Logging**
 - Use consistent debug prefixes for different systems
 - Include relevant context in log messages
-- Keep `SPLATTERCAST_LIVE` off in production; the combat audit log itself is always on
+- Keep the opt-in verbose outputs off in production (`SPLATTERCAST_LIVE`, `LLM_GM_DECISION_LOG`, Django's `DEBUG`); the combat audit log itself is always on
 
 ### Utility Functions
 
@@ -223,7 +223,7 @@ class CmdExample(Command):
 
 **Combat System Organization**
 
-The File → Concept Map in `AGENTS.md` says which module of `world/combat/` holds what.
+Each module of `world/combat/` opens with a docstring saying what it holds. The File → Concept Map in `AGENTS.md` names the ones changed most often.
 
 **Handler Pattern**
 ```python
@@ -292,6 +292,7 @@ class TestCombatUtils(unittest.TestCase):
 **Test Scenarios**
 - Create comprehensive test scenarios for combat features
 - Test edge cases and error conditions
+- Test against objects that already exist in the game, not only freshly created ones
 - Test with multiple players and complex scenarios
 
 ## Contribution Guidelines
@@ -303,7 +304,8 @@ class TestCombatUtils(unittest.TestCase):
 2. Update documentation for any changes
 3. Follow the established code style
 4. Add appropriate debug logging
-5. When something is moved or renamed, repoint every caller and delete the old name in the same PR: no aliases, wrappers or compatibility shims
+5. When code is moved or renamed, repoint every caller and delete the old name in the same PR: no aliases, wrappers or re-exports left for callers (the ones already in the code are debt, not a pattern)
+6. A name the database stores (a typeclass path, a prototype key, an attribute name) is still carried by live objects: migrate them in the same change, or keep the name and say why beside it
 
 **Pull Request Description**
 - Clearly describe what the PR does
@@ -345,7 +347,7 @@ log_debug(DEBUG_PREFIX_ATTACK, DEBUG_SUCCESS, "resolved against cover", characte
 
 **Stale NDB State**
 - Problem: An `ndb` attribute set by one action is still there when the next one runs
-- Solution: Delete it when the action ends (`delattr(obj.ndb, name)`), as most of the code does
+- Solution: Clear it when the action ends: delete it (`delattr(obj.ndb, name)`) or set it to `None`. The code does both
 - Best Practice: Always validate NDB state before use
 
 **SaverList Corruption**
@@ -375,7 +377,7 @@ log_debug(DEBUG_PREFIX_ATTACK, DEBUG_SUCCESS, "resolved against cover", characte
 
 ### Monitoring and Profiling
 
-Measure when there is a question to answer, and take the measurement out once it is answered. Diagnostic instrumentation is not left running in the game.
+Measure when there is a question to answer, and take the measurement out once it is answered: timers, memory probes and fault-handler hooks added to chase a problem do not stay in the game. The combat audit log is not that kind of instrumentation; it is always on.
 
 ## Future Development
 

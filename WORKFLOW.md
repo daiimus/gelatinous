@@ -26,9 +26,9 @@ it"). New roadmaps should copy its shape.
 ## Issue labels — three axes
 
 Every open issue carries exactly one `type:` label and one `area:` label. A
-`status:` label is added only while something is holding the issue up, and
-comes off when it stops. If you cannot pick a type, the issue is not yet
-understood well enough to file.
+`status:` label is added only while one of the three below applies, and
+comes off when it no longer does. If you cannot pick a type, the issue is not
+yet understood well enough to file.
 
 ### `type:` — what kind of work is this
 
