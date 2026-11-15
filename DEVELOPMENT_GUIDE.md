@@ -65,7 +65,7 @@ def example_function(param1: str, param2: int) -> bool:
 ```
 
 **Type Hints**
-- Use type hints for all function parameters and return values
+- Use type hints on new functions: parameters and return values
 - Import types from `typing` module when needed
 - Use `Optional` for parameters that can be None
 - Document complex types clearly
@@ -120,11 +120,11 @@ if roll_result >= constants.FALL_EDGE_DIFFICULTY_DEFAULT:
 
 ### Error Handling
 
-**Comprehensive Error Handling**
-- Use try-except blocks for operations that might fail
-- Log errors with appropriate detail level
+**Error Handling**
+- Catch the specific exceptions an operation can raise, and let the unexpected surface
+- A broad `except Exception` is only for a boundary where a failure in something optional must not break the thing that matters; mark it `# noqa: BLE001` with the reason on the same line (see `AGENTS.md`, Project Conventions)
+- Log what was caught with enough context to find it
 - Provide meaningful error messages to users
-- Fail gracefully without breaking the system
 
 ```python
 from world.combat.constants import DEBUG_ERROR, DEBUG_TEMPLATE
@@ -141,8 +141,7 @@ except SpecificException as e:
 **Debug Logging**
 - Use consistent debug prefixes for different systems
 - Include relevant context in log messages
-- Use appropriate logging levels (DEBUG, INFO, WARNING, ERROR)
-- Disable verbose logging in production
+- Keep the opt-in verbose outputs off in production (`SPLATTERCAST_LIVE`, `LLM_GM_DECISION_LOG`, Django's `DEBUG`); the combat audit log itself is always on
 
 ### Utility Functions
 
@@ -175,14 +174,8 @@ def get_numeric_stat(character, stat_name: str, default: int = 1) -> int:
 ### Combat Commands Structure
 
 **File Organization**
-```
-commands/combat/
-├── core_actions.py      # Fundamental combat actions
-├── movement.py          # Movement and positioning
-├── special_actions.py   # Advanced tactical actions
-├── jump.py              # Jumping and edge descent
-└── cmdset_combat.py     # Command set definition
-```
+
+`commands/combat/README.md` lists the command modules and what each one holds.
 
 **Command Class Structure**
 ```python
@@ -229,15 +222,8 @@ class CmdExample(Command):
 ### World Systems Structure
 
 **Combat System Organization**
-```
-world/combat/
-├── constants.py         # All combat constants
-├── utils.py            # Utility functions
-├── handler.py          # Main combat handler
-├── proximity.py        # Proximity management
-├── grappling.py        # Grappling system
-└── messages/           # Message templates
-```
+
+Each module of `world/combat/` opens with a docstring saying what it holds. The File → Concept Map in `AGENTS.md` names the ones changed most often.
 
 **Handler Pattern**
 ```python
@@ -291,6 +277,10 @@ class TestCombatUtils(unittest.TestCase):
         self.assertEqual(result, 1)
 ```
 
+**Which Base Class**
+- Pure logic with mocks, as above: `unittest.TestCase`
+- Anything that creates or saves an object, account or script: `EvenniaTest` (or `django.test.TestCase`), which undoes its writes after each test. A plain `unittest.TestCase` does not: rows it writes stay for the rest of the run
+
 **Test Coverage**
 - Aim for >80% test coverage on critical systems
 - Test both success and failure paths
@@ -302,7 +292,7 @@ class TestCombatUtils(unittest.TestCase):
 **Test Scenarios**
 - Create comprehensive test scenarios for combat features
 - Test edge cases and error conditions
-- Verify backward compatibility after changes
+- Test against objects that already exist in the game, not only freshly created ones
 - Test with multiple players and complex scenarios
 
 ## Contribution Guidelines
@@ -314,7 +304,8 @@ class TestCombatUtils(unittest.TestCase):
 2. Update documentation for any changes
 3. Follow the established code style
 4. Add appropriate debug logging
-5. Verify backward compatibility
+5. When code is moved or renamed, repoint every caller and delete the old name in the same PR: no aliases, wrappers or re-exports left for callers (the ones already in the code are debt, not a pattern)
+6. A name the database stores (a typeclass path, a prototype key, an attribute name) is still carried by live objects: migrate them in the same change, or keep the name and say why beside it
 
 **Pull Request Description**
 - Clearly describe what the PR does
@@ -354,15 +345,14 @@ log_debug(DEBUG_PREFIX_ATTACK, DEBUG_SUCCESS, "resolved against cover", characte
 
 ### Common Issues and Solutions
 
-**NDB Attribute Persistence**
-- Problem: NDB attributes persisting between sessions
-- Solution: Use force-clearing with explicit False assignment
+**Stale NDB State**
+- Problem: An `ndb` attribute set by one action is still there when the next one runs
+- Solution: Clear it when the action ends: delete it (`delattr(obj.ndb, name)`) or set it to `None`. The code does both
 - Best Practice: Always validate NDB state before use
 
 **SaverList Corruption**
 - Problem: SaverList objects becoming corrupted
 - Solution: Use defensive copying and validation
-- Best Practice: Implement data access layer for SaverList operations
 
 **Handler Cleanup**
 - Problem: Combat handlers not cleaning up properly
@@ -387,61 +377,11 @@ log_debug(DEBUG_PREFIX_ATTACK, DEBUG_SUCCESS, "resolved against cover", characte
 
 ### Monitoring and Profiling
 
-**Performance Metrics**
-- Track combat handler creation/destruction
-- Monitor memory usage over time
-- Measure response times for complex operations
-- Log performance warnings for slow operations
+Measure when there is a question to answer, and take the measurement out once it is answered: timers, memory probes and fault-handler hooks added to chase a problem do not stay in the game. The combat audit log is not that kind of instrumentation; it is always on.
 
 ## Future Development
 
-### Planned Features
-
-**Short-Term Goals**
-- Enhanced error handling and recovery
-- Comprehensive test suite
-- Performance optimization
-- Additional combat actions
-
-**Long-Term Vision**
-- Service layer architecture
-- Event-driven system
-- Plugin architecture
-- Advanced AI behaviors
-
-### Architecture Evolution
-
-**Service Layer**
-```python
-# Future service layer example
-class CombatService:
-    def __init__(self, handler):
-        self.handler = handler
-        
-    def initiate_attack(self, attacker, target):
-        """High-level attack initiation."""
-        # Validation, setup, execution
-        pass
-        
-    def process_grapple(self, grappler, target):
-        """Complex grappling logic."""
-        # Grapple mechanics
-        pass
-```
-
-**Event System**
-```python
-# Future event system example
-class CombatEvent:
-    def __init__(self, event_type, data):
-        self.event_type = event_type
-        self.data = data
-        
-class CombatEventBus:
-    def publish(self, event):
-        # Notify all subscribers
-        pass
-```
+Plans are not kept in this guide. What is built and in what order is in `specs/roadmaps/`; proposals are in `specs/proposals/`. `WORKFLOW.md` says which document may claim what.
 
 ## Resources and References
 

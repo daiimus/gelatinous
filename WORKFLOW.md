@@ -23,10 +23,12 @@ ledger mapping unconsumed flags to the substrate that will consume them, and
 an explicit sequencing rule ("build the substrate before wiring schema to
 it"). New roadmaps should copy its shape.
 
-## Issue labels — three axes, always all three
+## Issue labels — three axes
 
-Every open issue carries exactly one label from each axis. If you cannot
-pick a type, the issue is not yet understood well enough to file.
+Every open issue carries exactly one `type:` label and one `area:` label. A
+`status:` label is added only while one of the three below applies, and
+comes off when it no longer does. If you cannot pick a type, the issue is not
+yet understood well enough to file.
 
 ### `type:` — what kind of work is this
 
@@ -74,8 +76,8 @@ Fields, and what each is for:
 | field | values | why it exists |
 |---|---|---|
 | **Status** | Needs decision · Parked · Blocked · Ready · In progress · Done | the execution pipeline. `Ready` is the one that matters — decided *and* scoped, so it can be picked up without asking anything. |
-| **Area** | the nine subsystems | grouping. `souls` is the densest by a wide margin. |
-| **Work type** | defect · enhancement · design · question · debt | filtering. "show me defects in souls" is the query that turns 51 into a sitting. |
+| **Area** | the nine subsystems | grouping. |
+| **Work type** | defect · enhancement · design · question · debt | filtering. "show me defects in souls" is the query that turns a backlog into a sitting. |
 | **Effort** | S · M · L · XL | unset by default; fill in when scoping, not when filing. |
 | **Roadmap phase** | free text | the link back to a spec phase. This is the anti-drift hook below. |
 
