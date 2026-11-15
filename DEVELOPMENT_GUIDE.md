@@ -287,6 +287,20 @@ class TestCombatUtils(unittest.TestCase):
 - Mock external dependencies appropriately
 - Write integration tests for complex workflows
 
+**When a Green Run Means Nothing**
+
+Each of these makes a test pass, or fail, for a reason that has nothing to do with the code under test:
+
+- **A command typed for the test class's own characters does nothing.** Under `evennia test`, `self.char1.execute_cmd("get coin")` prints nothing, changes nothing and raises nothing. Drive a command with `EvenniaCommandTest.call(CmdFoo(), "args")`, or type it as a character the test creates itself with no account, which does run
+- **The reply to a command that matched nothing repeats what was typed** (`Command 'wave slowly' is not available.`), so `assertIn("wave", out)` passes for a command that never ran. Assert on words the input did not contain
+- **A bystander in a test hears no room broadcast.** `msg_room_identity` skips an observer that has no connected session and no `at_msg_receive` override, and the characters a test class provides have no session. Assert on the arguments handed to the broadcast, not on what a second character received
+- **A `MagicMock` iterates as empty, and every attribute of it is truthy.** A fixture that sets the wrong attribute name still runs: the loop finds nothing and the flag reads as set. After repairing a mock fixture, break the code it covers and see the test fail
+- **`mock.patch.object(settings, NAME, value, create=True)` can delete the setting for the rest of the run.** It did when nothing had read the setting before the patch. Use `django.test.override_settings` for settings
+- **A command that belongs to an object in the room can go stale between tests.** Test objects reuse database ids, and the command can resolve against the object of an earlier test: the first test in a process passes and later ones are refused. `world/tests/test_a_keeper_eats_from_their_own_board.py` shows a way round it
+- **An empty list of test modules runs the whole suite.** Check that the list is not empty before the run starts
+
+The rule behind all of them: when a test shows that something does *not* happen, make sure the matching test that it *does* happen can fail.
+
 ### Manual Testing
 
 **Test Scenarios**
@@ -294,6 +308,27 @@ class TestCombatUtils(unittest.TestCase):
 - Test edge cases and error conditions
 - Test against objects that already exist in the game, not only freshly created ones
 - Test with multiple players and complex scenarios
+
+### Proving a Change Works
+
+A passing test run shows that the tests pass. These show that the change works:
+
+1. **Play it.** A change a player can see or type is played in the running game before it is called done: the command typed, the result read as a player reads it
+2. **Use the route a player uses.** Check through the command and what it prints, not by calling the function underneath. A helper's default argument is not what its callers pass; a unit test builds the command class directly and never passes through the cmdset, where a clashing key or alias can replace a whole command; and most acts have more than one door (see `AGENTS.md`, Before Changing Code)
+3. **A bug seen in the running game is fixed when the running game stops showing it.** Watch it across the time the bug took to show. Tests passing is not that
+4. **No measurement without a control.** Before reporting what a probe found, show that the same probe reports the opposite on a case where the opposite is known to be true. A number that looks impossible means a broken probe, not a finding
+5. **Say what a change touches.** A change to a test, a fixture or a harness says "test only, the game is unchanged". A change to the game says what a player will notice
+6. **Take test files back out.** Files copied into the live folder for a test run are restored or removed when the run ends (see `AGENTS.md`, Project Layout & Deployment)
+
+### Testing Inside the Live Game
+
+The game a change is played in is the one people are playing. A test there is a guest:
+
+- **Play in rooms that exist.** Do not dig rooms for a test
+- **Bring your own cast.** Create throwaway characters and objects for the test. Never move, change or kill the world's own NPCs, and never touch another person's character
+- **Find out what the test will set off before staging it.** A fight is reported as a crime: a witness may call it in on a radio band players listen to, and a security unit is sent. A death writes a world signal. Read the code path first, and get the owner's go for anything players would see or hear
+- **Leave nothing behind.** Tear down by explicit id, after a dry run that lists what will go; never by name or prefix. That includes what the test caused elsewhere: signals, incident records, memories written on other characters. Then log the test client out
+- **A look at somebody else's state must not write.** Some reads decide something and store it: `get_display_name(looker)` can roll whether the looker sees through a disguise, and keeps the verdict. Pass `decided_only=True` to read without rolling, or do not look
 
 ## Contribution Guidelines
 

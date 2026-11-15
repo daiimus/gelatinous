@@ -49,7 +49,15 @@ docker exec <CONTAINER> evennia test --settings settings.py world
 docker exec <CONTAINER> evennia test --settings settings.py world.tests.test_foo
 # 3. Run Django-dependent Python via the container shell
 docker exec <CONTAINER> evennia shell --settings settings.py -c "..."
+# 4. When the run ends, put the live dir back: restore the files you copied,
+#    delete the ones that are new, and check that status prints nothing
+git -C <LIVE_DIR> checkout -- commands/CmdFoo.py
+git -C <LIVE_DIR> status --short
 ```
+
+Step 4 is not optional. The live dir is what the game loads at its next
+reload, whoever asks for that reload; an unmerged file left there goes live
+with it.
 
 **Deploy cycle (every change, even docs):**
 ```bash
@@ -85,6 +93,38 @@ whichever way the reload is sent (#3815). After it, check `evennia status`
 within 30 seconds; if the Server is not running, read `server/logs/server.log`
 and run `evennia start`.
 
+A reload pauses the game for everyone in it and wipes all `ndb` state, so
+each one needs the owner's go (see `WORKFLOW.md`, Rulings).
+
+**A reload restarts the Server, not the Portal.** A setting the Portal reads
+(the secret key, session settings, ports and interfaces, proxy addresses)
+takes effect only when the Portal itself is restarted, and that disconnects
+everyone. Count the restart as part of such a change, and get the owner's go
+for it.
+
+**The repository is public.** An issue, a pull request and a commit are all
+published the moment they are written:
+
+- No player names, account names or network addresses in any of them. Say who
+  in general terms ("a player character", "an NPC at the bar").
+- No session links and no tool-generated footers in commits or pull requests.
+  Commits are authored with a GitHub no-reply address.
+- Never ask for a third-party key or token in conversation, and do not use one
+  that is offered there. Secrets live in `server/conf/secret_settings.py`,
+  which is not in git.
+
+**Before merging:**
+
+- Every check on the pull request has passed. Wait for them; do not merge
+  while one is pending.
+- A change to how the game behaves has been read by an independent reviewer
+  whose job is to refute it, not to approve it, and what they found is fixed
+  or answered. For a docs-only or test-only change this may be skipped by
+  stated judgment: say so in the pull request.
+- New files are in the commit. Stage with `git add -A` or explicit paths;
+  `git add -u` leaves a new file out without a word, and local tests still
+  pass because the file is in the working tree.
+
 ## Typeclasses and Attributes
 
 Evennia hinges on *typeclass inheritance* and *attribute access*. Typeclasses are
@@ -110,8 +150,14 @@ if obj.db.attrname is None:
 ```
 
 For simple booleans, prefer the **Tag** system (`obj.tags`) over attributes. For
-non-persistent arbitrary data, use the parallel `obj.ndb`/`obj.nattributes`
-(regular Python attributes — `hasattr` is fine on `ndb`).
+non-persistent arbitrary data, use the parallel `obj.ndb`/`obj.nattributes`.
+
+`ndb` answers the same way `db` does: a name that was never set reads as
+`None`. So `hasattr(obj.ndb, name)` is true for every name, and the default in
+`getattr(obj.ndb, name, default)` is never returned. Test `is None` there
+too. (`world/tests/test_ndb_guards_are_not_guards.py` pins this. Older code
+still has `hasattr` guards and `getattr` defaults on `ndb`; they are debt, not
+a pattern.)
 
 ## Prototypes and Spawning
 
@@ -146,6 +192,42 @@ Evennia ships a large utility suite in `evennia.utils` — `create` (persistent
 entities), `search` (finding entities), `evform`/`evmenu` (formatting and
 interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 `evennia.utils` before writing your own helper.**
+
+## Before Changing Code
+
+- **Read before judging.** Before calling code dead, or changing what a
+  function does, read its spec, the whole function, every caller and the tests
+  that pin it. A search that finds no caller is not proof: commands are reached
+  by their `key` and aliases, hooks by Evennia, typeclasses by a path stored in
+  the database. Read the spec before designing too; the thought has usually
+  been had (`grep` the concept in `specs/`).
+- **Search for the mechanism, not the name.** Before writing a helper, or
+  saying something does not exist, search for the primitive it would use (the
+  query, the attribute, the Evennia call, the alias list). The thing usually
+  exists under a name you would not have guessed.
+- **List every caller before adding a check.** When the fix is "send every
+  caller through this check", list the callers across the whole repo first,
+  and prefer to put the check in the shared function beneath them. A test
+  that only scans the file being edited cannot find the caller in another
+  file.
+- **Most acts have more than one door.** An umbrella command and a standalone
+  verb (`operate` and `harvest`), or a menu and a typed argument. They tend to
+  share a resolver and not their checks, so they drift apart unnoticed: the
+  working door gets used and the broken one does not. A fix covers every door,
+  and is played through each.
+- **Do not pick out people by typeclass.** Many of the colony's people are
+  `typeclasses.llm_npc.LLMNpc`, so a filter on a path containing "character"
+  finds only some of them and looks as if it found all. A body is whatever
+  owns a `longdesc` attribute in the `appearance` category. And an attribute
+  stored with a category is read with it: `obj.attributes.get("longdesc")`
+  returns `None` for a character that has one.
+- **Stay on plain Evennia.** Call its APIs and use its settings. Do not wrap,
+  replace or patch what is underneath them (loggers, launchers, the server
+  lifecycle), even to fix a real fault. Its ordinary behaviour is not a defect
+  to file here, and reporting anything upstream is the owner's call.
+- **One issue, one fix.** Use the simplest mechanism the code already has. A
+  remark about what might come later is not scope; record it on the issue and
+  leave it there.
 
 ## Project Conventions
 
@@ -184,6 +266,33 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
   (`Organ.configure_from_harvest` / `Appendage.configure_from_sever` follow this;
   enforced by `world/tests/test_organ_display.py` and
   `world/tests/test_severed_part_descriptions.py`.)
+
+## Design Laws
+
+Rulings the owner has already made. Do not propose against them. The spec
+named after each one holds the detail.
+
+- **No carried containers.** Inventory is flat: what is in the hands and what
+  is carried loose. Fixtures can hold things (a counter, a locker bank);
+  nothing a person carries does, apart from the plates in a plate carrier. Do
+  not propose a bag, a satchel or a backpack.
+  (`specs/MODULAR_ARMOR_SYSTEM_SPEC.md`)
+- **Everything sold or made carries a brand.** The exceptions are handmade
+  goods, generics so common they are everywhere, and a deliberate anti-brand.
+  (`specs/BUILDING_PLAYBOOK.md`)
+- **Sky cells are part of the world.** They are deliberate negative space
+  (fall lanes now, flight later) and every one is keyed "In the Air". A cell
+  that no exit points at is not clutter; do not propose removing it.
+  (`specs/BUILDING_PLAYBOOK.md`,
+  `specs/proposals/VERTICALITY_AND_BUILDINGS_SPEC.md`)
+- **AI NPCs act only through real commands.** What an NPC does goes through
+  `execute_cmd`, the command a player would type, and a refusal from that
+  command stands. No Python shortcut gives an NPC what the command refused.
+  (`specs/proposals/LLM_GAMEMASTER_SPEC.md`, Principle 2)
+- **The game does not depend on one model or one backend.** It speaks a
+  standard chat-completions protocol to a configurable endpoint
+  (`settings.LLM_GM_URL`); nothing in the repo assumes a particular model or
+  serving stack. (`specs/proposals/LLM_GAMEMASTER_SPEC.md`)
 
 ## File → Concept Map
 
@@ -232,7 +341,8 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 - Need data variation? Prototype, not a new typeclass.
 - Need a persistent flag? Tag (attribute for complex data).
 - Need a persistent object? `evennia.utils.create.*` or `evennia.prototypes.spawner.spawn`.
-- Need persistent attributes? `obj.db.attr` (check `is None`, never `hasattr`).
+- Need persistent attributes? `obj.db.attr` (check `is None`, never `hasattr`;
+  the same goes for `obj.ndb`).
 - Need search? `caller.search` in a command, else `evennia.utils.search.*`.
 - Need an interactive menu? `evmenu`. Need custom layout? `evform`.
 - Naming a character in a room broadcast? `msg_room_identity`, not `msg_contents`.
@@ -240,3 +350,7 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 - Running tests? `docker exec <CONTAINER> evennia test --settings settings.py world`.
 - Deploying? issue → branch → PR → squash-merge → hard-reset live → `@reload` from
   inside the game (code only) → check `evennia status`.
+- Changing what a player sees or how the game behaves? It needs the owner's
+  ruling first: `WORKFLOW.md`, Rulings.
+- Proving a change works, or testing in the running game? `DEVELOPMENT_GUIDE.md`,
+  Testing Guidelines.

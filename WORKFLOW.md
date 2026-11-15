@@ -67,6 +67,38 @@ owner has already decided to defer is *not* homework, and filing it as
 made, the issue moves to `parked` or loses its status label entirely — it
 does not stay in `needs-decision` because it is still open.
 
+## Rulings — what the owner decides, and how
+
+**What needs a ruling.** A choice about how the game behaves, or about what a
+player reads, is the owner's to make. That is what `type: design` marks.
+Where a spec or an earlier ruling already gives the answer, the fix needs no
+new ruling, but it is still proposed first (below). Whether code is correct
+is never a ruling: it is settled by following the code against the running
+game, with a control, and reporting what was checked. Do not hold a pull
+request waiting for the owner to review its code.
+
+**Asking.**
+
+- Propose before starting. Say what will change and what a player will see,
+  and wait for a go on anything that changes behaviour.
+- One decision at a time, in plain words.
+- Ask before anything that cannot be undone or that takes the game away from
+  the people in it: deleting live data, a reload, a restart, stopping the
+  server. An earlier or general go-ahead does not cover the next one.
+- "I do not know yet" is an answer. Say it rather than force a verdict the
+  evidence does not support.
+
+**Recording.**
+
+- A ruling goes on its issue in the owner's own words, quoted, with the date.
+  Then the labels change (see `status:` above).
+- A remark is not a decision. What has not been decided is open, and is
+  listed as open.
+- "Observed, and fine as it is" is a valid outcome. Not every finding is a
+  defect, and an issue may be closed on those words.
+- A report on a batch of work says what it did not touch, so that silence is
+  never read as "checked".
+
 ## The board
 
 **https://github.com/users/daiimus/projects/1** — *Gelatinous Roadmap*.
