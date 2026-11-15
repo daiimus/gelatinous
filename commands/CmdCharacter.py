@@ -2284,6 +2284,13 @@ class CmdRemember(Command):
         memory = caller.recognition_memory or {}
         now = _recognition_now_iso()
         where = caller.location.key if caller.location else "unknown"
+        # Before papers add a face or rename one, settle the voices
+        # named before a voice recorded its look (#3825): papers never
+        # rename a voice, and can put a second face under a name
+        # already in use, and after either the name no longer says
+        # which look a voice belongs with.
+        from world.voice import settle_older_voices
+        settle_older_voices(caller)
         new_face = uid not in memory
         if new_face:
             # Known BY PAPER, not by sight: first_seen records the document,
@@ -2371,6 +2378,14 @@ class CmdRemember(Command):
         location_name = caller.location.key if caller.location else "unknown"
         real_sleeve_uid = getattr(target, "sleeve_uid", None)
 
+        # Before any name is written, settle the voices named before a
+        # voice recorded its look (#3825). A face can get another name
+        # here while its voice keeps the old one: the voice is not
+        # renamed when it is garbled, or when the caller cannot hear
+        # (below).
+        from world.voice import settle_older_voices
+        settle_older_voices(caller)
+
         if apparent_uid in memory:
             entry = memory[apparent_uid]
             entry["assigned_name"] = name
@@ -2444,7 +2459,7 @@ class CmdRemember(Command):
         # chain (2c); the speaker-garble gate is correct now.
         from world.voice import remember_voice, is_voice_garbled
         if not is_voice_garbled(target):
-            remember_voice(caller, target, name)
+            remember_voice(caller, target, name, look_uid=apparent_uid)
 
         # Provide feedback using the newly assigned name
         if old_name and old_name != name:
@@ -2459,70 +2474,10 @@ class CmdRemember(Command):
                 f"{target.get_sdesc()} as |w{name}|n."
             )
 
-    def _clear_assignment(self, caller, target, apparent_uid):
-        """Remove a name assignment from recognition memory.
-
-        Retained for backward-compatible internal use; player-facing clear
-        is now the |wforget|n command (:class:`CmdForget`).
-        """
-        memory = caller.recognition_memory
-        if not memory or apparent_uid not in memory:
-            caller.msg("You don't have a name assigned to them.")
-            return
-
-        old_name = memory[apparent_uid].get("assigned_name", "")
-        # Clear the assigned name but keep the memory entry
-        memory[apparent_uid]["assigned_name"] = ""
-        caller.recognition_memory = memory
-
-        sdesc = target.get_sdesc()
-        if old_name:
-            caller.msg(
-                f"Cleared name '{old_name}'. "
-                f"They will now appear as their description."
-            )
-        else:
-            caller.msg("No name was assigned to clear.")
-
 
 # ===================================================================
 # forget / recall / memory — observer-memory verb cluster
 # ===================================================================
-
-
-def _forget_entry(memory, uid):
-    """Take the name off one recognition entry, and its standing as a
-    look the caller watched arrive.
-
-    A name can be read THROUGH a link (#3811): a look with no name of
-    its own, which the caller watched come from one they had named,
-    answers to that name. So clearing only the name was no longer
-    enough. Forgetting "Ghost", the name given to a masked figure, left
-    the figure showing as "Tamsin" under a message saying they would
-    now appear as their description.
-
-    After `forget`, the look that carried the name names nobody, and
-    neither does any look the caller knew THROUGH it. So two things go
-    with the name: this entry's own ``witnessed_from``, and the
-    ``witnessed_from`` of every entry that pointed here. Without the
-    second, forgetting only switched the knowledge off: the masked look
-    went on recording the face it was watched to come from, and the
-    day the face was given a name again, any name, the mask answered
-    to it at once, with no roll, for somebody who had not watched it go
-    on that time and had said they no longer knew who it was.
-
-    The LINK (``linked_to``) stays, as it always has. It is what
-    `recall` and an NPC's memories use to hold several names for one
-    person together, and the forgotten look may be the only thing
-    joining two names the caller did not forget. The other look keeps
-    its own name: forgetting "Batman" leaves "Bruce" alone.
-    """
-    entry = memory[uid]
-    entry["assigned_name"] = ""
-    entry["witnessed_from"] = None
-    for other in memory.values():
-        if other.get("witnessed_from") == uid:
-            other["witnessed_from"] = None
 
 
 def _find_remembered_uid_by_name(caller, name):
@@ -2642,11 +2597,29 @@ class CmdForget(Command):
 
         # Try visible-target resolution first (silent on failure so we can
         # fall back to remembered-name lookup).
-        target = caller.search(args, quiet=True)
-        if target:
-            # caller.search with quiet=True returns a list
-            if isinstance(target, list):
-                target = target[0] if target else None
+        found = caller.search(args, quiet=True)
+        if found and not isinstance(found, list):
+            found = [found]
+        # PEOPLE only. When nobody present answers to the word, the
+        # search falls back to things: items in the room and in the
+        # caller's hands. Those are not what `forget` forgets, and a
+        # name remembered for somebody who has left can also be the
+        # start of two things within reach ("Red", a red apple, a red
+        # jacket). Counting them stopped the caller from forgetting an
+        # absent person at all (review round six).
+        people = [obj for obj in (found or []) if isinstance(obj, Character)]
+        if len(people) > 1:
+            # ASK, do not pick, as `remember` does. This took the first
+            # body that answered to the typed word. That used to blank
+            # a name. It now erases the entry, its links, its voice and
+            # the see-throughs won by way of it, none of which naming
+            # them again brings back (#3825), so a guess must not be
+            # made for the player. When anybody present matches, the
+            # search returns people only, so re-running it aloud prints
+            # the ordinary "which one" list of them.
+            caller.search(args)
+            return
+        target = people[0] if people else None
 
         if target and isinstance(target, Character):
             from world.identity import get_recognisable_uid
@@ -2705,55 +2678,31 @@ class CmdForget(Command):
     def _forget_visible(self, caller, target, apparent_uid):
         """Forget a target who is currently present.
 
-        Takes away the name the caller has for the target AS THEY STAND
-        (`world.identity.known_name_source`). A look the caller has
-        named for itself loses that name and nothing else: forgetting
-        "Batman" leaves "Bruce" alone. A look with no name of its own,
-        which the caller knows because they watched it come from one
-        they had named, or because they saw through it, loses the name
-        at its source: that is the only name there is to forget (#3811).
+        Erases the look that carries the name the caller has for the
+        target AS THEY STAND (`world.identity.known_name_source`). A
+        look the caller has named for itself is erased and nothing
+        else is: forgetting "Batman" leaves "Bruce" alone. A look with
+        no name of its own, which the caller knows because they watched
+        it come from one they had named, or because they saw through
+        it, is forgotten at its source: that is the only name there is
+        to forget (#3811).
 
-        Also invalidates every cached pierce verdict for any
-        presentation of the target's sleeve (issue #210): without this,
-        a cached ``True`` in ``observer.db.disguise_pierce_cache``
-        survives forget and the rendering pipeline keeps surfacing the
-        forgotten name through any disguise.
+        Forgetting is erasing (#3825). `world.identity.erase_look` is
+        the one function that does it: the entry, every pointer to it,
+        the voice that was named with it (whatever either is called by
+        now) and the see-throughs won by way of it. Nothing goes
+        because the game knows two things are one body, and a lost
+        see-through stays lost (#3817).
         """
-        # The name the room shows them, and the entry it is stored on
-        # (#3811): this look's own entry, or the look the caller watched
-        # it come from, or one they have seen through to. This cleared
-        # only the first, so an eyewitness was told "You don't have a
-        # name remembered for them" about somebody the room went on
-        # naming.
-        from world.identity import known_name_source
+        del apparent_uid  # the name's SOURCE is what is erased, below
+        from world.identity import erase_look, known_name_source
+
         memory = caller.recognition_memory
         old_name, source_uid = known_name_source(caller, target)
         if not memory or not old_name or source_uid not in memory:
             caller.msg("You don't have a name remembered for them.")
             return
-
-        _forget_entry(memory, source_uid)
-        caller.recognition_memory = memory
-
-        # Forget their voice too (CAPACITY_CONSUMERS spec §4.2) — the visible
-        # and audible channels are forgotten together when you forget a present
-        # target. A modulated voice keys to its own entry and is untouched.
-        from world.voice import forget_voice
-        forget_voice(caller, target)
-
-        # Drop stale pierce-cache verdicts for this sleeve so the next
-        # look re-evaluates against the now-nameless memory.  Prefer
-        # the entry's stored ``real_sleeve_uid`` (covers all backfilled
-        # presentations); fall back to the target's live sleeve_uid
-        # for pre-schema entries.
-        from world.identity import invalidate_pierce_cache_for_sleeve
-
-        entry_sleeve = memory[source_uid].get("real_sleeve_uid")
-        live_sleeve = getattr(target, "sleeve_uid", None)
-        sleeve_uid = entry_sleeve or live_sleeve
-        if sleeve_uid:
-            invalidate_pierce_cache_for_sleeve(caller, sleeve_uid)
-
+        erase_look(caller, source_uid)
         caller.msg(
             f"You forget the name '{old_name}'. "
             f"They will now appear as their description."
@@ -2764,46 +2713,17 @@ class CmdForget(Command):
 
         ``apparent_uid`` is the recognition_memory dict key (an Apparent
         UID derived from the target's signature at recording time).
-
-        Also invalidates pierce-cache entries for the sleeve (issue
-        #210); pre-schema entries (no ``real_sleeve_uid``) skip
-        invalidation since there is no other handle on the sleeve when
-        the target is absent.  The pierce candidate filter in
-        :func:`world.identity.attempt_display_pierce` still guards
-        rendering correctness in that degraded case — it requires a
-        truthy ``assigned_name``, which the forget just cleared.
+        What the closing line says is read from the entry first, and
+        then `world.identity.erase_look` erases it (#3825), as for
+        somebody present.
         """
         old_name = entry.get("assigned_name", "")
         sdesc = entry.get("sdesc_at_last_encounter", "someone")
         location = entry.get("location_last_seen", "somewhere")
-        last_seen = entry.get("last_seen", "")
-        when = _format_relative_time(last_seen)
+        when = _format_relative_time(entry.get("last_seen", ""))
 
-        memory = caller.recognition_memory
-        _forget_entry(memory, apparent_uid)
-        caller.recognition_memory = memory
-
-        from world.identity import invalidate_pierce_cache_for_sleeve
-        from world.voice import forget_voice, forget_voices_for_sleeve
-
-        sleeve_uid = entry.get("real_sleeve_uid")
-        if sleeve_uid:
-            invalidate_pierce_cache_for_sleeve(caller, sleeve_uid)
-
-        # Forget their voice too, as the visible door does (#2652).  That
-        # door reads the current voice UID off the target; here there is no
-        # target, so the handle is the entry's sleeve — which every
-        # voice-memory entry carries.  Without this, `forget marcus` for
-        # someone who has walked out cleared the face and kept the voice,
-        # and they went on being named over the radio: the one channel
-        # where you cannot see the speaker, so voice attribution is the
-        # whole mechanism.
-        if sleeve_uid:
-            forget_voices_for_sleeve(caller, sleeve_uid)
-        elif old_name:
-            # Pre-schema entry with no sleeve recorded.  `remember` teaches
-            # both axes under one name, so the name is the surviving handle.
-            forget_voice(caller, name=old_name)
+        from world.identity import erase_look
+        erase_look(caller, apparent_uid)
 
         caller.msg(
             f"You forget the name '{old_name}'. "
@@ -2984,8 +2904,8 @@ class CmdMemory(Command):
     Renders a subject report of everyone you've remembered by name
     (most recently seen first) and your registered residence —
     building, street of origin, registration age, and any live
-    relocation handover.  People you've forgotten (cleared with
-    |wforget|n) are not listed, even though their record is preserved.
+    relocation handover.  People you've forgotten (with |wforget|n)
+    are gone from this list and from your memory.
 
     Use |wrecall <name>|n to inspect a specific entry.
     """

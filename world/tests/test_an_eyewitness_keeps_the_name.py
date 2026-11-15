@@ -587,12 +587,23 @@ class TestOtherSurfaces(TestCase):
             "Tamsin")
 
 
-class TestWhatForgetLeavesAlone(TestCase):
-    """`forget` takes the name and the mark, and leaves the link: the
-    forgotten look may be all that joins two names the caller kept."""
+class TestWhatForgetTakesWithIt(TestCase):
+    """`forget` erases the look (#3825). This class used to pin the
+    opposite for one case: the link was kept, "the forgotten look may
+    be all that joins two names the caller kept". The owner ruled that
+    forgetting is forgetting, and two names joined only through the
+    forgotten one stand alone again. The rest is in
+    ``test_forgetting_is_forgetting``."""
+
+    def erase(self, memory, uid):
+        from types import SimpleNamespace
+        from world.identity import erase_look
+        erase_look(SimpleNamespace(
+            recognition_memory=memory, voice_memory={},
+            db=SimpleNamespace(disguise_pierce_cache=None,
+                               voice_discern_cache=None)), uid)
 
     def setUp(self):
-        from commands.CmdCharacter import _forget_entry
         self.memory = {
             "face": {"assigned_name": "Bruce"},
             "mask": {"assigned_name": "Batman", "linked_to": "face",
@@ -600,28 +611,28 @@ class TestWhatForgetLeavesAlone(TestCase):
             "helm": {"assigned_name": "Knight", "linked_to": "mask",
                      "witnessed_from": "mask"},
         }
-        _forget_entry(self.memory, "mask")
+        self.erase(self.memory, "mask")
 
     def test_the_forgotten_look_names_nobody(self):
+        self.assertNotIn("mask", self.memory)
         self.assertEqual(resolve_assigned_name(self.memory, "mask"),
                          (None, None))
 
-    def test_the_names_on_either_side_still_go_together(self):
+    def test_the_names_on_either_side_no_longer_go_together(self):
         from world.identity import get_linked_aliases
-        self.assertEqual(get_linked_aliases(self.memory, "face"), ["Knight"])
-        self.assertEqual(get_linked_aliases(self.memory, "helm"), ["Bruce"])
+        self.assertEqual(get_linked_aliases(self.memory, "face"), [])
+        self.assertEqual(get_linked_aliases(self.memory, "helm"), [])
 
     def test_what_was_known_through_it_is_forgotten_with_it(self):
-        """Forget the face, and a look that recorded the face records
-        nothing: giving the face a name again must not bring it back."""
-        from commands.CmdCharacter import _forget_entry
+        """Forget the face, and a look that recorded the face is gone:
+        giving the face a name again must not bring it back."""
         memory = {"face": {"assigned_name": "Tamsin"},
                   "mask": {"assigned_name": "", "witnessed_from": "face"},
                   "hood": {"assigned_name": "", "witnessed_from": "face"},
                   "else": {"assigned_name": "", "witnessed_from": "other"},
                   "other": {"assigned_name": "Somebody"}}
-        _forget_entry(memory, "face")
-        memory["face"]["assigned_name"] = "Jane"
+        self.erase(memory, "face")
+        memory["face"] = {"assigned_name": "Jane"}
         self.assertEqual(resolve_assigned_name(memory, "mask"), (None, None))
         self.assertEqual(resolve_assigned_name(memory, "hood"), (None, None))
         self.assertEqual(resolve_assigned_name(memory, "else")[0],
@@ -710,9 +721,11 @@ class TestForgettingIsForGood(_MaskCase):
         self.them.move_to(self.room1, quiet=True, move_hooks=False)
 
     def test_the_masked_look_records_nothing_any_more(self):
-        entry = dict(self.viewer.recognition_memory)[
-            get_apparent_uid(self.them)]
-        self.assertIsNone(entry["witnessed_from"])
+        """It was known only through the name that was forgotten, so it
+        goes with it (#3825). It used to be kept with its pointer
+        cleared."""
+        self.assertNotIn(get_apparent_uid(self.them),
+                         dict(self.viewer.recognition_memory))
 
     def test_naming_the_face_again_does_not_name_the_mask(self):
         """The mask's record of the face was left in place, switched
