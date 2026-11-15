@@ -2598,6 +2598,17 @@ class CmdForget(Command):
         # Try visible-target resolution first (silent on failure so we can
         # fall back to remembered-name lookup).
         target = caller.search(args, quiet=True)
+        if target and isinstance(target, list) and len(target) > 1:
+            # ASK, do not pick, as `remember` does. `quiet=True` returns
+            # a LIST, and this took the first body that answered to the
+            # typed word. That used to blank a name. It now erases the
+            # entry, its links, its voice and the see-throughs won by
+            # way of it, none of which naming them again brings back
+            # (#3825), so a guess must not be made for the player.
+            # Re-running the search aloud prints the ordinary "which
+            # one" list.
+            caller.search(args)
+            return
         if target:
             # caller.search with quiet=True returns a list
             if isinstance(target, list):
@@ -2671,9 +2682,10 @@ class CmdForget(Command):
 
         Forgetting is erasing (#3825). `world.identity.erase_look` is
         the one function that does it: the entry, every pointer to it,
-        the voice that carries the same name and the see-throughs won
-        by way of it. Nothing goes because the game knows two things
-        are one body, and a lost see-through stays lost (#3817).
+        the voice that was named with it (whatever either is called by
+        now) and the see-throughs won by way of it. Nothing goes
+        because the game knows two things are one body, and a lost
+        see-through stays lost (#3817).
         """
         del apparent_uid  # the name's SOURCE is what is erased, below
         from world.identity import erase_look, known_name_source

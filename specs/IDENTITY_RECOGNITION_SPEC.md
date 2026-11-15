@@ -502,7 +502,7 @@ You now know Jorge (previously 'Jorge') as Johnny Twoshoes.
 forget <target>
 ```
 
-Erases a look from the caller's memory (#3825, owner ruling 2026-11-14: "If the game still uses it - it doesn't seem like they've been actually forgotten"). Targets resolve against currently-visible characters first, then against previously-remembered names: you can `forget` someone who isn't present. One function does it for both, `world.identity.erase_look(observer, uid)`, and a memory-wipe mechanic is to call the same function.
+Erases a look from the caller's memory (#3825, owner ruling 2026-11-14: "If the game still uses it - it doesn't seem like they've been actually forgotten"). Targets resolve against currently-visible characters first, then against previously-remembered names: you can `forget` someone who isn't present. When the typed word fits more than one person present, `forget` asks which, as `remember` does; it used to take the first, which mattered less when forgetting could be undone by naming them again. One function does it for both, `world.identity.erase_look(observer, uid)`, and a memory-wipe mechanic is to call the same function.
 
 What goes:
 

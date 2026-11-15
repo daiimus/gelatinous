@@ -351,6 +351,25 @@ class TestRenamingSomebodyWhoCannotBeHeard(_MaskCase):
         self.assertNotIn(heard, dict(self.viewer.voice_memory))
 
 
+class TestForgetAsksWhichOne(_MaskCase):
+    """Review round five. `forget` took the first body that answered to
+    the typed word. An erase cannot be undone by naming them again."""
+
+    def setUp(self):
+        super().setUp()
+        self.body("Bystander", "short", "stocky", "man")
+
+    def test_a_word_that_fits_two_people_forgets_neither(self):
+        before = dict(self.viewer.recognition_memory)
+        said = self.do("forget man")
+        self.assertNotIn("forget the name", said)
+        self.assertEqual(dict(self.viewer.recognition_memory), before)
+
+    def test_a_word_that_fits_one_still_works(self):
+        """The control."""
+        self.assertIn("forget the name 'Tamsin'", self.do("forget tamsin"))
+
+
 class TestForgettingInPlay(_MaskCase):
     """Real commands on fresh bodies. The viewer calls the bare face
     Tamsin (the harness does that)."""
