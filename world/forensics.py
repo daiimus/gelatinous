@@ -222,6 +222,66 @@ class RecognitionResult:
     from_cache: bool
 
 
+def evidence_uid(subject: ForensicSubject) -> str | None:
+    """The look a roll about *subject* is filed under, or ``None``.
+
+    The death-time look while the snapshot stands; once it has been
+    cleared (a worn disguise item taken off a corpse), or on a corpse
+    from before the snapshot existed, the look the corpse presents
+    now. :func:`attempt_forensic_recognition` files its roll under
+    this, and :func:`carry_forensic_roll` reads it on either side of a
+    change.
+    """
+    revealed_uid = subject.apparent_uid_at_death
+    if revealed_uid is None and subject.source_kind == "corpse":
+        try:
+            revealed_uid = get_apparent_uid(subject.source_ref)
+        except (AttributeError, TypeError, ValueError):
+            revealed_uid = None
+    return revealed_uid
+
+
+def carry_forensic_roll(
+    looker,
+    cache_owner,
+    old_uid: str | None,
+    new_uid: str | None,
+    *,
+    cache_attr: str = "forensic_recognition_cache",
+) -> bool:
+    """File *looker*'s roll about *old_uid* under *new_uid* as well.
+    True when something was written.
+
+    For somebody who had worked out whose remains these were and then
+    watched their look change (#3833). The roll is filed under the
+    look, so the look that arrives is an empty slot and the next glance
+    would roll again, about a body they had identified and not taken
+    their eyes off. Their roll is filed under the new look too.
+
+    The caller decides whose: `world.identity.apply_remains_change`
+    carries only for somebody the remains were naming. A roll that
+    FAILED is not carried, so somebody who could not work the body out
+    examines the look that arrives afresh, as a changed look always
+    was. Nothing is written over a roll already filed under the new
+    look, and nothing is made up for somebody who never rolled.
+    """
+    if old_uid is None or new_uid is None or old_uid == new_uid:
+        return False
+    looker_dbref = getattr(looker, "dbref", None)
+    cache_db = getattr(cache_owner, "db", None)
+    if looker_dbref is None or cache_db is None:
+        return False
+    cache = getattr(cache_db, cache_attr, None)
+    if not cache:
+        return False
+    old_key, new_key = (looker_dbref, old_uid), (looker_dbref, new_uid)
+    if old_key not in cache or new_key in cache:
+        return False
+    cache[new_key] = cache[old_key]
+    setattr(cache_db, cache_attr, cache)
+    return True
+
+
 def attempt_forensic_recognition(
     looker,
     subject: ForensicSubject,
@@ -281,19 +341,9 @@ def attempt_forensic_recognition(
         and no signature[0]) the call returns
         ``RecognitionResult(False, None, False)`` without rolling.
     """
-    revealed_uid = subject.apparent_uid_at_death
-    if revealed_uid is None:
-        # Fall back to live re-derivation from the source where
-        # possible — kept for parity with the pre-PR-E corpse path
-        # that computed UIDs from the corpse itself rather than the
-        # death-time hash.  Also covers pre-PR-#183 corpses still in
-        # the live DB whose ``apparent_uid_at_death`` / ``signature_at_death``
-        # snapshot fields were never populated.
-        if subject.source_kind == "corpse":
-            try:
-                revealed_uid = get_apparent_uid(subject.source_ref)
-            except (AttributeError, TypeError, ValueError):
-                revealed_uid = None
+    # The death-time look, or the live one where that is gone or was
+    # never taken (a corpse from before the snapshot existed).
+    revealed_uid = evidence_uid(subject)
 
     if revealed_uid is None:
         return RecognitionResult(success=False, revealed_uid=None, from_cache=False)

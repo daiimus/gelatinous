@@ -746,15 +746,31 @@ class CmdGet(Command):
             caller.msg(f"You have no hands to pick up {item_name} with.")
             return
 
-        # A garment taken off a severed limb leaves that limb's ledger
-        # (#2456). `undress <limb> <item>` prunes `db.worn_items`; this
-        # door reaches the same physical contents through a resolver
-        # that knows nothing about it, so the limb went on describing a
-        # glove that was gone — and once the glove was deleted the
-        # dangling entry crashed `look` on the limb. `worn_garments()`
-        # now prunes as it reads (#3575) and the part renders from it
-        # (#3578); releasing here keeps the ledger honest all the same.
-        _release_from_worn_ledger(from_container, item)
+        def take():
+            """The item leaves where it was and comes to the caller."""
+            # Taking a mask off remains is the same act as `undress`,
+            # by another door: whoever watches goes on knowing whose
+            # they are (#3833). The manager does nothing for anything
+            # that is not remains, nothing with no container, and
+            # nothing for an item that is no part of a disguise. It
+            # opens before the ledger is touched, because a severed
+            # head stops wearing the mask there and not at the move;
+            # and it closes before the room's line is sent, so the line
+            # names the remains as each reader will go on seeing them.
+            from world.identity import apply_remains_change
+            with apply_remains_change(from_container, item):
+                # A garment taken off a severed limb leaves that limb's
+                # ledger (#2456). `undress <limb> <item>` prunes
+                # `db.worn_items`; this door reaches the same physical
+                # contents through a resolver that knows nothing about
+                # it, so the limb went on describing a glove that was
+                # gone, and once the glove was deleted the dangling
+                # entry crashed `look` on the limb. `worn_garments()`
+                # now prunes as it reads (#3575) and the part renders
+                # from it (#3578); releasing here keeps the ledger
+                # honest all the same.
+                _release_from_worn_ledger(from_container, item)
+                item.move_to(caller, quiet=True)
 
         # A found item stops being a stash (#2476). `active_search`
         # clears `hidden` for everyone when the roll beats it, but
@@ -772,7 +788,7 @@ class CmdGet(Command):
             if held is None:
                 hands_snapshot[hand] = item
                 caller.hands = hands_snapshot
-                item.move_to(caller, quiet=True)
+                take()
 
                 hand_display = hand.replace("_", " ")
                 if from_container:
@@ -805,7 +821,7 @@ class CmdGet(Command):
                 held.move_to(caller, quiet=True)  # move to inventory
                 hands_snapshot[hand] = item
                 caller.hands = hands_snapshot
-                item.move_to(caller, quiet=True)
+                take()
                 
                 hand_display = hand.replace("_", " ")
                 if from_container:

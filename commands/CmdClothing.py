@@ -864,8 +864,12 @@ class CmdDress(Command):
                 f"{item.get_display_name(target)}."
             )
         if not broadcast_done:
-            # Appendages and corpses have no `wear_item` and no identity
-            # to shift, so they broadcast here as before.
+            # Appendages and corpses have no `wear_item`, so they
+            # broadcast here as before. A corpse and a severed head do
+            # have a look that shifts with what they wear; who goes on
+            # knowing them is settled where the garment moves
+            # (`apply_remains_change`, #3833), and the room's line is
+            # this one.
             _broadcast_action()
         # LLM NPC perception (#954): being dressed is tactile and personal.
         try:
@@ -915,14 +919,18 @@ class CmdDress(Command):
         while the command's own help offered `dress corpse in burial
         shroud` as an example.
         """
-        item.move_to(target, quiet=True)
-        # Tell the corpse this one is WORN (#2460). The coverage map is
-        # filtered by `worn_at_death` now, so a corpse carrying that
-        # record would render a freshly-dressed shroud as loose loot
-        # and show the body underneath it.
-        marker = getattr(target, "mark_worn", None)
-        if callable(marker):
-            marker(item)
+        # Whoever is watching, the dresser included, goes on knowing
+        # whose body it is when a mask goes over the face (#3833).
+        from world.identity import apply_remains_change
+        with apply_remains_change(target, item):
+            item.move_to(target, quiet=True)
+            # Tell the corpse this one is WORN (#2460). The coverage map
+            # is filtered by `worn_at_death` now, so a corpse carrying
+            # that record would render a freshly-dressed shroud as loose
+            # loot and show the body underneath it.
+            marker = getattr(target, "mark_worn", None)
+            if callable(marker):
+                marker(item)
         return True, ""
 
     def _dress_appendage(self, target, item):
@@ -959,24 +967,29 @@ class CmdDress(Command):
                 f"{target.get_display_name(self.caller)}."
             )
 
-        item.move_to(target, quiet=True)
-        appendage_worn = dict(target.db.worn_items or {})
-        for loc in applicable:
-            existing = list(appendage_worn.get(loc) or ())
-            if item not in existing:
-                # Outermost first, the living stack's order (#3578): the
-                # renderer takes the first entry at each location, so a
-                # higher layer goes in front of every lower one, the way
-                # ClothingMixin.wear_item inserts.
-                index = 0
-                for i, worn in enumerate(existing):
-                    if (getattr(item, "layer", 0) or 0) <= (getattr(worn, "layer", 0) or 0):
-                        index = i + 1
-                    else:
-                        break
-                existing.insert(index, item)
-                appendage_worn[loc] = existing
-        target.db.worn_items = appendage_worn
+        # A severed head is known by its face, and a mask put on it in
+        # front of somebody does not take the name from them (#3833). A
+        # limb has no look to know and the manager does nothing for it.
+        from world.identity import apply_remains_change
+        with apply_remains_change(target, item):
+            item.move_to(target, quiet=True)
+            appendage_worn = dict(target.db.worn_items or {})
+            for loc in applicable:
+                existing = list(appendage_worn.get(loc) or ())
+                if item not in existing:
+                    # Outermost first, the living stack's order (#3578):
+                    # the renderer takes the first entry at each
+                    # location, so a higher layer goes in front of every
+                    # lower one, the way ClothingMixin.wear_item inserts.
+                    index = 0
+                    for i, worn in enumerate(existing):
+                        if (getattr(item, "layer", 0) or 0) <= (getattr(worn, "layer", 0) or 0):
+                            index = i + 1
+                        else:
+                            break
+                    existing.insert(index, item)
+                    appendage_worn[loc] = existing
+            target.db.worn_items = appendage_worn
         return True, ""
 
 
@@ -1155,8 +1168,12 @@ class CmdUndress(Command):
             # One named garment, as `_undress_character` (#2517, #3783).
             garments = self.caller.search(
                 item_phrase, candidates=garments, quiet=True)[:1]
+        # A mask coming off in front of somebody who knew the body only
+        # masked does not take the name from them (#3833).
+        from world.identity import apply_remains_change
         removed = []
-        for item in garments:
-            item.move_to(self.caller, quiet=True)
-            removed.append(item)
+        with apply_remains_change(target):
+            for item in garments:
+                item.move_to(self.caller, quiet=True)
+                removed.append(item)
         return removed

@@ -42,9 +42,10 @@ class _TheDead(EvenniaTest):
 
     The two of them stand in ANOTHER ROOM throughout. Somebody who
     watches a mask go on keeps the name (#3811), and that carries
-    through to the body; whether watching remains being dressed should
-    do the same is undecided (#3833). These tests are about people who
-    saw none of it.
+    through to the body; so does somebody who watches remains being
+    dressed or stripped (#3833,
+    `test_watching_remains_keeps_the_name`). These tests are about
+    people who saw none of it.
     """
 
     def setUp(self):
