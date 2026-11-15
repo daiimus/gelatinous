@@ -313,7 +313,7 @@ The rule behind all of them: when a test shows that something does *not* happen,
 
 A passing test run shows that the tests pass. These show that the change works:
 
-1. **Play it.** A change a player can see or type is played in the running game before it is called done: the command typed, the result read as a player reads it
+1. **Play it.** A change a player can see or type is played in the running game once it is merged and reloaded, and is not called done before that: the command typed, the result read as a player reads it
 2. **Use the route a player uses.** Check through the command and what it prints, not by calling the function underneath. A helper's default argument is not what its callers pass; a unit test builds the command class directly and never passes through the cmdset, where a clashing key or alias can replace a whole command; and most acts have more than one door (see `AGENTS.md`, Before Changing Code)
 3. **A bug seen in the running game is fixed when the running game stops showing it.** Watch it across the time the bug took to show. Tests passing is not that
 4. **No measurement without a control.** Before reporting what a probe found, show that the same probe reports the opposite on a case where the opposite is known to be true. A number that looks impossible means a broken probe, not a finding
@@ -325,9 +325,9 @@ A passing test run shows that the tests pass. These show that the change works:
 The game a change is played in is the one people are playing. A test there is a guest:
 
 - **Play in rooms that exist.** Do not dig rooms for a test
-- **Bring your own cast.** Create throwaway characters and objects for the test. Never move, change or kill the world's own NPCs, and never touch another person's character
-- **Find out what the test will set off before staging it.** A fight is reported as a crime: a witness may call it in on a radio band players listen to, and a security unit is sent. A death writes a world signal. Read the code path first, and get the owner's go for anything players would see or hear
-- **Leave nothing behind.** Tear down by explicit id, after a dry run that lists what will go; never by name or prefix. That includes what the test caused elsewhere: signals, incident records, memories written on other characters. Then log the test client out
+- **Bring your own cast.** Create throwaway characters and objects for the test. Do not move, change or kill the world's own NPCs to stage it, and never write to another person's character, for any reason
+- **Find out what the test will set off before staging it.** A fight is reported as a crime: a witness may call it in on a radio band players listen to, and a security unit is sent. A death writes a world signal. What the world does in answer is the world's own doing, and players may see or hear it. Read the code path first, and get the owner's go for anything they would
+- **Leave nothing behind.** Tear down by explicit id, after a dry run that lists what will go; never by name or prefix. That includes what the test caused elsewhere: world signals, incident records, and anything it wrote onto a world NPC (a memory of the throwaway character). Removing that residue is the one change to a world NPC a test makes. What a player's character recorded cannot be cleaned up, so stage the test where none will record it. Then log the test client out
 - **A look at somebody else's state must not write.** Some reads decide something and store it: `get_display_name(looker)` can roll whether the looker sees through a disguise, and keeps the verdict. Pass `decided_only=True` to read without rolling, or do not look
 
 ## Contribution Guidelines

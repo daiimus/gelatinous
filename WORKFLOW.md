@@ -69,22 +69,33 @@ does not stay in `needs-decision` because it is still open.
 
 ## Rulings — what the owner decides, and how
 
-**What needs a ruling.** A choice about how the game behaves, or about what a
-player reads, is the owner's to make. That is what `type: design` marks.
-Where a spec or an earlier ruling already gives the answer, the fix needs no
-new ruling, but it is still proposed first (below). Whether code is correct
-is never a ruling: it is settled by following the code against the running
-game, with a control, and reporting what was checked. Do not hold a pull
-request waiting for the owner to review its code.
+Two different things are asked of the owner:
+
+- A **ruling** decides what the game should do. It is needed where there is a
+  real choice about how the game behaves or what a player reads; that is what
+  `type: design` marks. Where a spec or an earlier ruling already gives the
+  answer there is nothing to rule on. That is the sense of "a defect can be
+  fixed by anyone who reads the spec" above: nobody has to decide what the
+  right answer is.
+- A **go** is leave to start. Any change to how the game behaves waits for
+  one, a defect fix included. A go given for a named list of work covers that
+  list and nothing added to it later.
+
+Whether code is correct is neither of these. It is settled by following the
+code against the running game, with a control, and reporting what was
+checked. Do not hold a pull request waiting for the owner to review its code.
 
 **Asking.**
 
 - Propose before starting. Say what will change and what a player will see,
-  and wait for a go on anything that changes behaviour.
+  then wait for the go.
 - One decision at a time, in plain words.
 - Ask before anything that cannot be undone or that takes the game away from
   the people in it: deleting live data, a reload, a restart, stopping the
   server. An earlier or general go-ahead does not cover the next one.
+  Removing what a test itself created, in that test's own teardown, is not
+  this: it needs a dry run and a line in the report (see
+  `DEVELOPMENT_GUIDE.md`, Testing Inside the Live Game).
 - "I do not know yet" is an answer. Say it rather than force a verdict the
   evidence does not support.
 

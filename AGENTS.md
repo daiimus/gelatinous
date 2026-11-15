@@ -71,8 +71,9 @@ gh pr merge <n> --squash --delete-branch
 # hard-reset the live checkout to the merged master (git runs on the host)
 git -C <LIVE_DIR> fetch origin --quiet
 git -C <LIVE_DIR> reset --hard origin/master --quiet
-# reload only when code changed (skip for docs-only): from a developer
-# character logged in to the game, type   @reload   (see below), then
+# reload only when code changed (skip for docs-only), and only with the
+# owner's go: from a developer character logged in to the game, type
+# @reload   (see below), then
 docker exec <CONTAINER> evennia status --settings settings.py   # Portal + Server RUNNING
 ```
 
@@ -93,12 +94,12 @@ whichever way the reload is sent (#3815). After it, check `evennia status`
 within 30 seconds; if the Server is not running, read `server/logs/server.log`
 and run `evennia start`.
 
-A reload pauses the game for everyone in it and wipes all `ndb` state, so
-each one needs the owner's go (see `WORKFLOW.md`, Rulings).
+A reload pauses the game for everyone in it and clears the `ndb` state on
+every object, so each one needs the owner's go (see `WORKFLOW.md`, Rulings).
 
 **A reload restarts the Server, not the Portal.** A setting the Portal reads
-(the secret key, session settings, ports and interfaces, proxy addresses)
-takes effect only when the Portal itself is restarted, and that disconnects
+(for example the secret key, ports and interfaces, `UPSTREAM_IPS`) takes
+effect only when the Portal itself is restarted, and that disconnects
 everyone. Count the restart as part of such a change, and get the owner's go
 for it.
 
@@ -107,8 +108,9 @@ published the moment they are written:
 
 - No player names, account names or network addresses in any of them. Say who
   in general terms ("a player character", "an NPC at the bar").
-- No session links and no tool-generated footers in commits or pull requests.
-  Commits are authored with a GitHub no-reply address.
+- No session links and no "generated with" lines in commits or pull requests.
+  Commits are authored with a GitHub no-reply address; a `Co-Authored-By`
+  trailer that also uses a no-reply address is fine.
 - Never ask for a third-party key or token in conversation, and do not use one
   that is offered there. Secrets live in `server/conf/secret_settings.py`,
   which is not in git.
@@ -221,10 +223,13 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
   owns a `longdesc` attribute in the `appearance` category. And an attribute
   stored with a category is read with it: `obj.attributes.get("longdesc")`
   returns `None` for a character that has one.
-- **Stay on plain Evennia.** Call its APIs and use its settings. Do not wrap,
-  replace or patch what is underneath them (loggers, launchers, the server
-  lifecycle), even to fix a real fault. Its ordinary behaviour is not a defect
-  to file here, and reporting anything upstream is the owner's call.
+- **Stay on plain Evennia.** Extend it the ways it offers: its APIs, hooks and
+  typeclasses, and the classes its settings let a game name (the test runner
+  in `server/conf/test_runner.py` and the websocket protocol are plugged in
+  that way). Do not go beneath those: no patching of Evennia's modules at run
+  time, no replacing its loggers, launcher or server lifecycle, even to fix a
+  real fault. Its ordinary behaviour is not a defect to file here, and
+  reporting anything upstream is the owner's call.
 - **One issue, one fix.** Use the simplest mechanism the code already has. A
   remark about what might come later is not scope; record it on the issue and
   leave it there.
@@ -269,30 +274,40 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
 
 ## Design Laws
 
-Rulings the owner has already made. Do not propose against them. The spec
-named after each one holds the detail.
+Rulings the owner has already made. Do not propose against them. Each names
+where the detail is held.
 
 - **No carried containers.** Inventory is flat: what is in the hands and what
-  is carried loose. Fixtures can hold things (a counter, a locker bank);
-  nothing a person carries does, apart from the plates in a plate carrier. Do
-  not propose a bag, a satchel or a backpack.
+  is carried loose. There is no bag, satchel, backpack or kit that holds
+  whatever is put in it, and `put` refuses everything but a plate into a plate
+  carrier and an item into an open locker. Some things hold their own contents
+  and nothing else (a pack of cigarettes, a plate carrier, a corpse with what
+  was on it, a severed limb with what was fitted to it); they are not an
+  opening for a general container. A character's "kit" is loose items.
   (`specs/MODULAR_ARMOR_SYSTEM_SPEC.md`)
 - **Everything sold or made carries a brand.** The exceptions are handmade
   goods, generics so common they are everywhere, and a deliberate anti-brand.
   (`specs/BUILDING_PLAYBOOK.md`)
 - **Sky cells are part of the world.** They are deliberate negative space
-  (fall lanes now, flight later) and every one is keyed "In the Air". A cell
-  that no exit points at is not clutter; do not propose removing it.
-  (`specs/BUILDING_PLAYBOOK.md`,
-  `specs/proposals/VERTICALITY_AND_BUILDINGS_SPEC.md`)
-- **AI NPCs act only through real commands.** What an NPC does goes through
-  `execute_cmd`, the command a player would type, and a refusal from that
-  command stands. No Python shortcut gives an NPC what the command refused.
+  (fall lanes now, flight later), and every one is keyed "In the Air"
+  (`SkyRoom` in `typeclasses/rooms.py`). A cell that no exit points at is not
+  clutter; do not propose removing it. (`specs/BUILDING_PLAYBOOK.md`)
+- **AI NPCs act only through real commands.** Whatever the language model
+  makes an NPC do goes out through `execute_cmd`, as the command a player
+  would type, and a refusal from that command stands: no fallback gives the
+  NPC what the command refused. The scripted side of an NPC (the planner in
+  `world/souls/`, the director) also moves some objects directly in Python,
+  such as a courier's parcel; this law does not make that a defect, and
+  whether it should change has not been ruled.
   (`specs/proposals/LLM_GAMEMASTER_SPEC.md`, Principle 2)
-- **The game does not depend on one model or one backend.** It speaks a
-  standard chat-completions protocol to a configurable endpoint
-  (`settings.LLM_GM_URL`); nothing in the repo assumes a particular model or
-  serving stack. (`specs/proposals/LLM_GAMEMASTER_SPEC.md`)
+- **The game does not depend on one model or one backend.** It talks to
+  configurable endpoints (`settings.LLM_GM_URL`, `settings.CIVIC_LLM_URL`) in
+  the chat-completions shape, so the model and what serves it can be swapped.
+  Do not propose pinning a model, moving a serving stack into the repo, or
+  prompt tricks only one model understands. One caveat: a request carries a
+  `json_schema` field that only some backends enforce, so on the others the
+  shape of a reply is not guaranteed.
+  (`specs/proposals/LLM_GAMEMASTER_SPEC.md`)
 
 ## File → Concept Map
 
@@ -348,9 +363,10 @@ named after each one holds the detail.
 - Naming a character in a room broadcast? `msg_room_identity`, not `msg_contents`.
 - Giving an item a description? Set `db.desc`; do not override `return_appearance` to supply it.
 - Running tests? `docker exec <CONTAINER> evennia test --settings settings.py world`.
-- Deploying? issue → branch → PR → squash-merge → hard-reset live → `@reload` from
-  inside the game (code only) → check `evennia status`.
-- Changing what a player sees or how the game behaves? It needs the owner's
-  ruling first: `WORKFLOW.md`, Rulings.
+- Deploying? issue → branch → PR → squash-merge → hard-reset live → with the
+  owner's go, `@reload` from inside the game (code only) → check `evennia status`.
+- Changing how the game behaves or what a player reads? Propose it and wait
+  for the owner's go; a real choice needs a ruling first (`WORKFLOW.md`,
+  Rulings).
 - Proving a change works, or testing in the running game? `DEVELOPMENT_GUIDE.md`,
   Testing Guidelines.
