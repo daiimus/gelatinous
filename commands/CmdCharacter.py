@@ -2597,22 +2597,29 @@ class CmdForget(Command):
 
         # Try visible-target resolution first (silent on failure so we can
         # fall back to remembered-name lookup).
-        target = caller.search(args, quiet=True)
-        if target and isinstance(target, list) and len(target) > 1:
-            # ASK, do not pick, as `remember` does. `quiet=True` returns
-            # a LIST, and this took the first body that answered to the
-            # typed word. That used to blank a name. It now erases the
-            # entry, its links, its voice and the see-throughs won by
-            # way of it, none of which naming them again brings back
-            # (#3825), so a guess must not be made for the player.
-            # Re-running the search aloud prints the ordinary "which
-            # one" list.
+        found = caller.search(args, quiet=True)
+        if found and not isinstance(found, list):
+            found = [found]
+        # PEOPLE only. When nobody present answers to the word, the
+        # search falls back to things: items in the room and in the
+        # caller's hands. Those are not what `forget` forgets, and a
+        # name remembered for somebody who has left can also be the
+        # start of two things within reach ("Red", a red apple, a red
+        # jacket). Counting them stopped the caller from forgetting an
+        # absent person at all (review round six).
+        people = [obj for obj in (found or []) if isinstance(obj, Character)]
+        if len(people) > 1:
+            # ASK, do not pick, as `remember` does. This took the first
+            # body that answered to the typed word. That used to blank
+            # a name. It now erases the entry, its links, its voice and
+            # the see-throughs won by way of it, none of which naming
+            # them again brings back (#3825), so a guess must not be
+            # made for the player. When anybody present matches, the
+            # search returns people only, so re-running it aloud prints
+            # the ordinary "which one" list of them.
             caller.search(args)
             return
-        if target:
-            # caller.search with quiet=True returns a list
-            if isinstance(target, list):
-                target = target[0] if target else None
+        target = people[0] if people else None
 
         if target and isinstance(target, Character):
             from world.identity import get_recognisable_uid

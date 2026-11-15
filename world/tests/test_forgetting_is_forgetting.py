@@ -369,6 +369,23 @@ class TestForgetAsksWhichOne(_MaskCase):
         """The control."""
         self.assertIn("forget the name 'Tamsin'", self.do("forget tamsin"))
 
+    def test_things_that_share_the_word_do_not_get_in_the_way(self):
+        """Review round six. He has left, and two things within reach
+        start with the name the viewer gave him. The search falls back
+        to things when nobody present answers; counting those as a
+        choice to be made stopped the viewer forgetting him at all."""
+        from evennia import create_object
+        self.them.move_to(self.room2, quiet=True, move_hooks=False)
+        for key in ("tamsin apple", "tamsin jacket"):
+            create_object("typeclasses.items.Item", key=key,
+                          location=self.room1)
+        things = self.viewer.search("tamsin", quiet=True)
+        self.assertGreater(len(things), 1, "fixture check: two things match")
+        self.assertIn("forget the name 'Tamsin'", self.do("forget tamsin"))
+        self.assertEqual(
+            [e for e in dict(self.viewer.recognition_memory).values()
+             if e.get("assigned_name") == "Tamsin"], [])
+
 
 class TestForgettingInPlay(_MaskCase):
     """Real commands on fresh bodies. The viewer calls the bare face
