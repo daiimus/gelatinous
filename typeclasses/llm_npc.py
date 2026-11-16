@@ -600,7 +600,7 @@ class LLMNpcMixin:
         # Whose name that handle is, when it is a name. Worked out here,
         # with the handle, and not when the turn is filed: the reply can
         # take a minute, and the model may name them anew in it.
-        named_by = self._name_source(patron, radio)
+        named_by = self._name_source(patron, speaker_name, radio)
         perception = None if radio else self._perceive(patron)
         subject = (self._radio_subject(patron) if radio
                    else self._memory_subject(patron))
@@ -928,42 +928,60 @@ class LLMNpcMixin:
         d[subject] = entry
         self.db.llm_dossiers = d
 
-    def _name_source(self, patron, radio=False):
-        """The key of the entry whose NAME this NPC calls *patron* by
-        right now, or None when all it has for them is a description.
+    def _name_source(self, patron, handle, radio=False):
+        """The key of the entry *handle* was read from, when *handle*
+        is a NAME this NPC holds for *patron*; None when it is a
+        description.
 
-        Face to face that is the look the name is stored on, which is
-        not always the look in front of it: a look this NPC watched
-        arrive answers to the name of the one it came from
-        (`world.identity.resolve_assigned_name`). On the air it is the
-        voice entry the name was read from, as ``voice:<uid>``: the
+        *handle* is what `_address_handle` or `_radio_voice_handle` has
+        just returned for them. Face to face a name is stored on a
+        look, which is not always the look in front of the NPC: a look
+        it watched arrive answers to the name of the one it came from
+        (`world.identity.resolve_assigned_name`). On the air a name is
+        read from a voice entry, given here as ``voice:<uid>``: the
         heard voice's own, or another voice of the same body that this
         NPC had named, when it places a disguised voice by it
         (`world.voice.named_voice_entry`).
 
-        It is the question `_address_handle` and `_radio_voice_handle`
-        ask, answered with where the name came from. What a turn files
-        is marked with the answer (`_remember_turn`, `_store_memory`),
-        so that forgetting the name takes what was written under it
-        (`at_looks_erased`).
+        The handle is compared with the name on that entry. So nothing
+        is asked twice and no roll is made here, and a voice the NPC
+        failed to place, or a handle that came from anywhere else, gets
+        None. What a turn files is marked with the answer
+        (`_remember_turn`, `_store_memory`), so that forgetting the
+        name takes what was written under it (`at_looks_erased`).
         """
-        if patron is None:
+        if patron is None or not handle:
             return None
         try:
             if radio:
-                from world.voice import (
-                    attempt_voice_discern, named_voice_entry)
-                if not attempt_voice_discern(self, patron):
-                    return None
-                source = named_voice_entry(self, patron)[0]
-                return f"voice:{source}" if source else None
+                from world.voice import named_voice_entry
+                source, entry = named_voice_entry(self, patron)
+                held = (entry or {}).get("assigned_name")
+                return f"voice:{source}" if held and held == handle else None
             from world.identity import (
                 get_recognisable_uid, resolve_assigned_name)
-            return resolve_assigned_name(
-                self.recognition_memory or {},
-                get_recognisable_uid(patron))[1]
+            held, source = resolve_assigned_name(
+                self.recognition_memory or {}, get_recognisable_uid(patron))
+            return source if held and held == handle else None
         except Exception:  # noqa: BLE001 — never break a reply over bookkeeping
             return None
+
+    def _name_gone(self, named_by):
+        """True when the entry a turn's name was read from (*named_by*,
+        see `_name_source`) has left this NPC's memory since.
+
+        A reply takes time, and the record of it is written when it
+        arrives. An NPC made to forget somebody while its reply to them
+        is still being made must not then write that reply down under
+        the name it has just lost: `at_looks_erased` has been and gone,
+        and could not drop a record that did not exist yet. Both
+        writers ask this at the moment they write.
+        """
+        if not named_by:
+            return False
+        if named_by.startswith("voice:"):
+            return named_by[len("voice:"):] not in (self.voice_memory or {})
+        return named_by not in (self.recognition_memory or {})
 
     def at_looks_erased(self, looks, voices=()):
         """Drop what this NPC wrote down for itself about looks and
@@ -1044,8 +1062,9 @@ class LLMNpcMixin:
         forgotten, or is filed under a forgotten look, is taken apart,
         and what is left of it is filed under the look each turn was
         said under. `_recent_history` joins those again for as long as
-        the NPC still connects the looks. Every other thread is left
-        as it is.
+        the NPC still connects the looks. A thread that holds nothing
+        to forget, and has nothing put back into it, is left exactly as
+        it is.
 
         A turn with no record of its own counts as said under the key
         its thread is filed under: the developer console can put back a
@@ -1103,6 +1122,8 @@ class LLMNpcMixin:
         subject = subject or self._memory_subject(patron)
 
         def _save(vec):
+            if self._name_gone(named_by):
+                return      # forgotten while this was on its way (#3841)
             # `remember`, not append-and-prune: a repeat strengthens the
             # memory it already has instead of cloning it (#2242).
             self.db.llm_memories = mem.remember(
@@ -1694,6 +1715,8 @@ class LLMNpcMixin:
         reply = self._reconstruct_reply(speech, action, thought)
         if not reply:
             return
+        if self._name_gone(named_by):
+            return          # forgotten while the reply was being made (#3841)
         if subject is None:
             subject = (self._hist_key(None) if patron is None
                        else self._memory_subject(patron))

@@ -352,8 +352,9 @@ A record goes for either of two reasons:
 What that means in the cases that matter:
 
 - **Only what was erased.** The looks are the ones `erase_look` removed: the named entry, and the unnamed entries known only through it. A second name the NPC holds for the same person stays, with everything filed under it and written under it: the NPC connected the two (§5), and forgetting one name is not forgetting the other.
-- **A thread is one conversation across looks.** It is filed under whichever look spoke last and holds the turns of every look the NPC had connected. Each turn records the look it was said under, so the forgotten look's turns leave a thread that stays, and the turns of a look that stays are kept out of a thread that goes. A thread that holds nothing to forget is left as it is.
+- **A thread is one conversation across looks.** It is filed under whichever look spoke last and holds the turns of every look the NPC had connected. Each turn records the look it was said under, so the forgotten look's turns leave a thread that stays, and the turns of a look that stays are kept out of a thread that goes. A thread that holds nothing to forget, and has nothing put back into it, is left as it is.
 - **Somebody never named cannot be forgotten**, as for a player: `forget` forgets a name. What an NPC filed under a stranger's look stays.
+- **A reply still being made.** A reply takes time, and the record of it is written when it arrives. If the NPC is made to forget somebody while its reply to them is on its way, that reply is not written down under the name it has just lost: both writers check, as they write, that the entry the name was read from is still there.
 
 What stays:
 

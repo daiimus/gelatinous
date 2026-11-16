@@ -87,13 +87,39 @@ class _AtTheBar(EvenniaTest):
         radio = bool(subject and subject.startswith("voice:"))
         handle = (self.npc._radio_voice_handle(who) if radio
                   else self.npc._address_handle(who))
-        named_by = self.npc._name_source(who, radio)
+        named_by = self.npc._name_source(who, handle, radio)
         self.npc._remember_turn(who, line, handle, "Coming up.", None,
                                 subject=subject, named_by=named_by)
         with mock.patch("typeclasses.llm_npc.request_embedding",
                         _embed_at_once):
             self.npc._store_memory(who, handle, line, "Coming up.",
                                    subject=subject, named_by=named_by)
+
+    def real_turn(self, who, line, reply, while_replying=None,
+                  while_embedding=None, mode="directed"):
+        """The whole turn through `_try_llm_reply` and `_on_turn`, with
+        the model's reply supplied. *while_replying* runs after the
+        prompt is built and before the reply arrives; *while_embedding*
+        runs after the reply is filed and before its long-term record
+        is written."""
+        self.npc.db.llm_driven = True
+        self.npc.ndb.last_llm = None
+
+        def answer(messages, on_turn, on_fail=None, schema=None):
+            if while_replying:
+                while_replying()
+            on_turn(dict(reply))
+
+        def embed(text, on_done, on_fail=None):
+            if while_embedding:
+                while_embedding()
+            on_done(list(VEC))
+
+        with mock.patch("typeclasses.llm_npc.llm_enabled",
+                        return_value=True), \
+                mock.patch("typeclasses.llm_npc.request_embedding", embed), \
+                mock.patch("typeclasses.llm_npc.request_turn", answer):
+            self.assertTrue(self.npc._try_llm_reply(line, who, mode))
 
     def forget(self, words):
         self.npc.execute_cmd(f"forget {words}")
@@ -532,18 +558,7 @@ class TestARealTurnMarksWhatItFiles(_AtTheBar):
     thread and the memory with both."""
 
     def turn(self, who, line, reply):
-        self.npc.db.llm_driven = True
-        self.npc.ndb.last_llm = None
-
-        def answer(messages, on_turn, on_fail=None, schema=None):
-            on_turn(dict(reply))
-
-        with mock.patch("typeclasses.llm_npc.llm_enabled",
-                        return_value=True), \
-                mock.patch("typeclasses.llm_npc.request_embedding",
-                           _embed_at_once), \
-                mock.patch("typeclasses.llm_npc.request_turn", answer):
-            self.assertTrue(self.npc._try_llm_reply(line, who, "directed"))
+        self.real_turn(who, line, reply)
 
     def test_a_stranger_is_filed_with_no_name(self):
         self.turn(self.patron, "a rotgut",
@@ -585,6 +600,101 @@ class TestARealTurnMarksWhatItFiles(_AtTheBar):
         self.assertEqual(self.turns(), [])
         self.assertEqual(self.npc._load_memories(), [])
         self.assertEqual(get_assigned_name(self.npc, self.patron), "Ghost")
+
+
+class TestAForgetWhileTheReplyIsStillBeingMade(_AtTheBar):
+    """A reply takes time, and the record of it is written when it
+    arrives. The handle and whose name it is were worked out before the
+    model was called. If the NPC is made to forget that name in
+    between, the reply is not written down under it."""
+
+    REPLY = {"speech": "Coming up.", "tool": "none"}
+
+    def setUp(self):
+        super().setUp()
+        self.name(self.patron, "Moth")
+        self.name(self.other, "Wren")
+
+    def test_with_no_forget_the_turn_is_written_down(self):
+        """The control."""
+        self.real_turn(self.patron, "a rotgut", self.REPLY)
+        self.assertEqual([turn["user"] for turn in self.turns()],
+                         ['Moth says to you: "a rotgut"'])
+        self.assertEqual(len(self.npc._load_memories()), 1)
+
+    def test_forgotten_before_the_reply_arrives(self):
+        self.real_turn(self.patron, "a rotgut", self.REPLY,
+                       while_replying=lambda: self.forget("moth"))
+        self.assertIsNone(get_assigned_name(self.npc, self.patron))
+        self.assertEqual(self.turns(), [])
+        self.assertEqual(self.npc._load_memories(), [])
+
+    def test_forgotten_while_the_memory_is_on_its_way(self):
+        self.real_turn(self.patron, "a rotgut", self.REPLY,
+                       while_embedding=lambda: self.forget("moth"))
+        self.assertIsNone(get_assigned_name(self.npc, self.patron))
+        self.assertEqual(self.turns(), [])
+        self.assertEqual(self.npc._load_memories(), [])
+
+    def test_forgetting_somebody_else_meanwhile_changes_nothing(self):
+        self.real_turn(self.patron, "a rotgut", self.REPLY,
+                       while_replying=lambda: self.forget("wren"))
+        self.assertEqual([turn["user"] for turn in self.turns()],
+                         ['Moth says to you: "a rotgut"'])
+        self.assertEqual(len(self.npc._load_memories()), 1)
+
+    def test_on_the_air_what_was_heard_is_written_down(self):
+        """The control for the next one: a line heard on the radio from
+        a voice the NPC knows is filed under the voice, marked with the
+        voice entry the name came from."""
+        self.real_turn(self.patron, "copy, on my way", self.REPLY,
+                       mode="radio")
+        (rec,) = self.npc._load_memories()
+        self.assertTrue(rec["text"].startswith('Moth said: "copy'), rec)
+        self.assertEqual(rec["subject"], self.npc._radio_subject(self.patron))
+        self.assertEqual(rec["named_by"], rec["subject"])
+
+    def test_on_the_air_forgotten_before_the_reply_arrives(self):
+        self.real_turn(self.patron, "copy, on my way", self.REPLY,
+                       while_replying=lambda: self.forget("moth"),
+                       mode="radio")
+        self.assertEqual(self.npc._load_memories(), [])
+
+
+class TestWhoseNameAHandleIs(_AtTheBar):
+    def setUp(self):
+        super().setUp()
+        self.name(self.patron, "Moth")
+
+    def test_the_name_it_holds(self):
+        self.assertEqual(self.npc._name_source(self.patron, "Moth"),
+                         self.bare)
+
+    def test_a_handle_that_is_not_that_name_is_nobodys(self):
+        self.assertIsNone(self.npc._name_source(self.patron, "a gaunt man"))
+
+    def test_a_description_of_a_stranger_is_nobodys(self):
+        self.assertIsNone(self.npc._name_source(self.other, "a squat woman"))
+
+    def test_a_voice_it_failed_to_place_is_nobodys(self):
+        """It holds Moth's natural voice. A disguised one comes over
+        the air and it does not place it: the handle is a description,
+        and is marked as nobody's although a named voice of that body
+        is on file."""
+        from world import voice as voice_mod
+        real = voice_mod.get_apparent_voice_uid
+
+        def disguised(char):
+            return "disguised-voice" if char is self.patron else real(char)
+
+        with mock.patch("world.voice.get_apparent_voice_uid", disguised), \
+                mock.patch("world.combat.dice.opposed_roll",
+                           lambda *args, **kwargs: (1, 20, False)):
+            handle = self.npc._radio_voice_handle(self.patron)
+            self.assertNotEqual(handle, "Moth")
+            self.assertIsNone(
+                self.npc._name_source(self.patron, handle, radio=True))
+            self.assertIsNotNone(named_voice_entry(self.npc, self.patron)[0])
 
 
 # ----------------------------------------------------------------------
@@ -684,8 +794,9 @@ class TestADisguisedVoicePlacedByTheForgottenOne(_OnTheAir):
         self.assertEqual(self.voice, "voice:disguised-voice")
         self.assertNotIn("disguised-voice", self.npc.voice_memory)
         self.assertEqual(self.npc._radio_voice_handle(self.patron), "Moth")
-        self.assertEqual(self.npc._name_source(self.patron, radio=True),
-                         f"voice:{self.natural}")
+        self.assertEqual(
+            self.npc._name_source(self.patron, "Moth", radio=True),
+            f"voice:{self.natural}")
         self.assertEqual(self.thread(self.patron, subject=self.voice),
                          ['Moth says to you: "copy, on my way"'])
         self.assertEqual(
