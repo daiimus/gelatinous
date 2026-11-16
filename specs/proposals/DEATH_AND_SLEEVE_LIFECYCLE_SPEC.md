@@ -507,6 +507,10 @@ wants to produce.
   is irreversibility arriving by accident of damage; this is a player choosing
   it. Both say the revival window is meaningless for irrevocable states, and
   they would design better together than separately.
+  **Both cases are ruled.** A beheading has no window (#3835, 2026-11-14). A
+  destroyed brain keeps its window (#3248, 2026-09-26, "Death with a
+  window"): a brain transplant passes through it, so that state is not
+  irrevocable.
 - **#1584** — a downed character no longer takes a defensive stance (shipped).
 
 ---
