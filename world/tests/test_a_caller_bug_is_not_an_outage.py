@@ -1,7 +1,8 @@
 """An exception from the success handler is not a transport failure
 (#2727).
 
-`evennia.utils.run_async` wires the pair as `deferred.addCallback(
+The client's calls are wired as `evennia.utils.run_async` wires them
+(`world.llm.detached.run_detached` keeps that): `deferred.addCallback(
 at_return)` then `deferred.addErrback(at_err)` — sequentially, not as a
 pair. So anything the success callback raises lands in the ERRBACK,
 which records a transport failure against the circuit breaker, logs it
@@ -33,15 +34,15 @@ _shielded = getattr(client_mod, "_shielded", None)
 class TestTheShieldExists(EvenniaTest):
 
     def test_every_success_callback_is_shielded(self):
-        """Structural: four `run_async` sites in this module, and a
+        """Structural: four `run_detached` sites in this module, and a
         handler left unwrapped at any of them puts that lane's caller
         bugs back on the breaker."""
         import inspect
         source = inspect.getsource(client_mod)
         self.assertEqual(
             source.count("at_return=_shielded("),
-            source.count("run_async(_thread_fn"),
-            "a run_async site is dispatching an unshielded handler")
+            source.count("run_detached(_thread_fn"),
+            "a run_detached site is dispatching an unshielded handler")
 
 
 class TestACallerBugIsNotAnOutage(EvenniaTest):
@@ -95,8 +96,8 @@ class TestACallerBugIsNotAnOutage(EvenniaTest):
 
 class TestTheBreakerIsNotTouched(EvenniaTest):
     """The measurable consequence, driven through `request_turn` itself
-    rather than through the helper — the seam is `run_async`, so that is
-    what gets faked, with EVENNIA'S OWN CHAINING:
+    rather than through the helper — the seam is `run_detached`, so that
+    is what gets faked, with the chaining it keeps from Evennia:
 
         deferred.addCallback(at_return)
         deferred.addErrback(at_err)
@@ -109,14 +110,14 @@ class TestTheBreakerIsNotTouched(EvenniaTest):
 
     def drive(self, on_turn, on_fail=lambda: None):
         """Run `request_turn` with a canned successful response."""
-        def fake_run_async(fn, at_return=None, at_err=None, **kw):
+        def fake_run_detached(fn, at_return=None, at_err=None, **kw):
             try:
                 at_return('{"say": "hello"}')
             except Exception as err:  # noqa: BLE001 — Twisted's behaviour
                 if at_err:
                     at_err(_Failure(err))
 
-        with patch.object(client_mod, "run_async", fake_run_async), \
+        with patch.object(client_mod, "run_detached", fake_run_detached), \
                 patch.object(client_mod, "note_transport_failure") as failed, \
                 patch.object(client_mod, "note_transport_success") as ok, \
                 patch.object(client_mod.logger, "log_err"), \

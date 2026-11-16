@@ -756,9 +756,12 @@ MLX, ChromaDB, or Evennia.
     builder, and the reply parser (mixed quotes/asterisks → clean `speech` /
     `action`; OOC/meta stripped; empty/decline → nulls). This travels with the
     game so the backend stays a dumb inference endpoint.
-  - **Game client** (`world/llm/client.py`): off-reactor `run_async` POST to
-    `…/v1/chat/completions` mirroring `CmdBug` (thread does pure network; no
-    Evennia/DB access; render in the reactor callback). Optional Bearer
+  - **Game client** (`world/llm/client.py`): off-reactor POST to
+    `…/v1/chat/completions` (thread does pure network; no Evennia/DB access;
+    render in the reactor callback). The thread is one of the game's own
+    (`world/llm/detached.py`), not one of Evennia's worker pool: a reload
+    waits for every thread in that pool, and a model can take two minutes
+    to answer (#3815). Optional Bearer
     `LLM_GM_API_KEY` for cloud backends. Container reaches a host backend via
     `host.docker.internal`.
   - **MLX sidecar** (`~/llm-gm-spike/sidecar.py`, out-of-repo, native): one valid

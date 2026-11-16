@@ -57,7 +57,7 @@ class _Wire(EvenniaTest):
             seen["body"] = json
             return _Resp()
 
-        # `run_async` would put the work on a thread; run it inline so
+        # `run_detached` would put the work on a thread; run it inline so
         # the body is built and posted within the test.
         def inline(thread_fn, at_return=None, at_err=None):
             try:
@@ -70,7 +70,7 @@ class _Wire(EvenniaTest):
                 at_return(result)
 
         with mock.patch.object(client, "requests") as req, \
-             mock.patch.object(client, "run_async", side_effect=inline):
+             mock.patch.object(client, "run_detached", side_effect=inline):
             req.post.side_effect = fake_post
             fn(*args, **kwargs)
         return seen.get("body")

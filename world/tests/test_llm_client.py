@@ -1,5 +1,5 @@
 """The LLM client transport — pure bits (URL derivation). The networked calls
-(request_turn / request_embedding) run via run_async and are exercised through
+(request_turn / request_embedding) run via run_detached and are exercised through
 the bartender/NPC routing tests."""
 
 from unittest import TestCase
