@@ -89,10 +89,13 @@ timeout mid-restart, and each time the Server stayed down. Use it only when
 there is no session to reload from, and then as the only command in its call.
 
 Being logged in does not make a reload safe by itself. Before it, look at who
-is connected, and do not reload while a model call is in flight: that fails
-whichever way the reload is sent (#3815). After it, check `evennia status`
-within 30 seconds; if the Server is not running, read `server/logs/server.log`
-and run `evennia start`.
+is connected. A reload does not wait for a model call that is in flight: it
+abandons it, so an NPC's reply in progress is lost, and the next replies may
+be slow while the model server finishes the abandoned one (#3815). A reload
+does wait for work on Evennia's own worker pool, and fails if that work takes
+more than a moment; today only the `bug` command puts any there (#3856).
+After it, check `evennia status` within 30 seconds; if the Server is not
+running, read `server/logs/server.log` and run `evennia start`.
 
 A reload pauses the game for everyone in it and clears the `ndb` state on
 every object, so each one needs the owner's go (see `WORKFLOW.md`, Rulings).
@@ -243,6 +246,13 @@ interactive menus), and `evennia.utils.utils` (general helpers). **Always check
   not break the thing that matters (a flavour line must not block a mechanic).
   A new one is marked `# noqa: BLE001` and says why on the same line. Older
   code has broad catches with no mark or no reason; that is debt, not a pattern.
+- **Nothing slow on Evennia's worker pool.** `run_async` and `deferToThread`
+  put work on the reactor's pool, and a reload waits for every thread in it,
+  so one slow call there leaves the game down (#3815). A call that can block
+  for more than a moment (a model, a remote service) goes through
+  `world.llm.detached.run_detached`.
+  `world/tests/test_model_calls_leave_the_worker_pool.py` lists the files
+  still allowed on the reactor's pool.
 - **Style.** PEP 8, 88-char lines, type hints on new functions.
 - **Specs track code.** Update the relevant `specs/*.md` in the same PR as the change.
 - **Per-observer rendering.** Any room broadcast that *names a character* must
