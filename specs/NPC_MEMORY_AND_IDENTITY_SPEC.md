@@ -356,17 +356,27 @@ A record goes for either of two reasons:
 
 This is a second road past the rule in §5 that a grudge cannot be shed by changing faces (#3371). A change of face does not shed it; a memory wipe does. That cost was named when the ruling was asked for.
 
-**Not ruled (#3859).** Two cases sit at the edge of "the looks that were erased". In both, the NPC made a record about a look while it knew that look as the person it later forgets, and the look itself is not erased. Today the record stays in both; that is what the code does, not a ruling.
+**A look the NPC knew through the forgotten name** (#3859). An NPC that knows a person can come to hold records about a disguised look of that person in three ways. The owner was shown all three, with an NPC that is hit by the masked figure and later made to forget the person, and asked whether the second should end as the first does and the third be left. Owner, 2026-11-16: *"Yeah, your assessment is solid."*
 
-- *The look later got a name of its own.* The NPC watched the mask go on, was hit by the masked figure while it still called them by the first name, then named the masked figure and forgot the first name. Its read on the masked figure stays, because a read is filed under the look and has no name in it. What it wrote down under the first name goes, as above.
-- *A look it saw through and never named.* The see-through goes with the forgotten name (`IDENTITY_RECOGNITION_SPEC.md`, the `forget` command), and the disguised look is a stranger again. What the NPC filed under that look stays, its read included: a look known only by a see-through has no entry, so `erase_look` does not report it.
+| How the NPC knows the masked look | After it forgets the person |
+|---|---|
+| It watched the mask go on. The look has an unnamed entry that answers to the person's name. | The entry goes with the name (#3825), unless another name the NPC holds still reaches it, and everything filed under the look goes with it. |
+| It saw through the mask. The look has no entry, only a won see-through. | The see-through goes with the name, and the look is reported to the NPC as forgotten: everything filed under it goes, as in the row above. |
+| It gave the masked look a name of its own. | The look stays, and so does the NPC's read on it, whenever it was earned. What the NPC wrote down while it still called the look by the first name goes, as above; the rest of what is filed under the look stays. To clear it, the NPC forgets that name as well. |
+
+The second row covers everything filed under the look, including what the masked figure did before the NPC saw through it. That was named when the ruling was asked for.
+
+Two things at the edge of the second row:
+
+- *The body the see-through was made on no longer exists.* A see-through is kept per body object, and one whose object has been deleted can no longer be read: nothing shows the NPC that name for that look. So such a look was a stranger's before the forget, and is treated as one: what is filed under it stays. If the NPC sees through the same look again on another body, that is a new see-through, and it goes as in the table.
+- *Voices are not part of this ruling.* A disguised voice the NPC placed by one it had named has no voice entry of its own either. What the NPC filed under it after placing it goes with the name, because it was written under that name. What it filed under it before placing it stays (#3861, not ruled).
 
 What that means in the cases that matter:
 
-- **Only what was erased.** The looks are the ones `erase_look` removed: the named entry, and the unnamed entries known only through it. A second name the NPC holds for the same person stays, with everything filed under it and written under it, its read on them included: the NPC connected the two (§5), and forgetting one name is not forgetting the other.
+- **Only what was forgotten.** The looks are the ones `erase_look` reports: the named entry, the unnamed entries known only through it, and the looks with no entry that were known only by a see-through won through it. A second name the NPC holds for the same person stays, with everything filed under it and written under it, its read on them included: the NPC connected the two (§5), and forgetting one name is not forgetting the other.
 - **A thread is one conversation across looks.** It is filed under whichever look spoke last and holds the turns of every look the NPC had connected. Each turn records the look it was said under, so the forgotten look's turns leave a thread that stays, and the turns of a look that stays are kept out of a thread that goes. A thread that holds nothing to forget, and has nothing put back into it, is left as it is.
-- **Somebody never named cannot be forgotten**, as for a player: `forget` forgets a name. What an NPC filed under a stranger's look stays.
-- **A reply still being made.** A reply takes time, and the record of it is written when it arrives. If the NPC is made to forget somebody while its reply to them is on its way, that reply is not written down under the name it has just lost: both writers check, as they write, that the entry the name was read from is still there.
+- **Somebody never named cannot be forgotten**, as for a player: `forget` forgets a name. What an NPC filed under a stranger's look stays. A look the NPC knew as somebody it had named is not a stranger's look, though it has no name of its own (the table above).
+- **A reply still being made.** A reply takes time, and the record of it is written when it arrives. If the NPC is made to forget somebody while its reply to them is on its way, that reply is not written down under the name it has just lost: both writers check, as they write, that the entry the name was read from is still there. They also check that the look or voice the record is filed under has not been forgotten since the turn began. That second check needs no name, and it was added for the look an NPC saw through (#3859): the NPC calls that masked figure by a description, and the look is forgotten with the person it saw through to. It is not limited to that case. It asks what was forgotten, so it holds for every look and voice the forgetting took, which is the rule above that a record filed under a forgotten look goes (#3841): for one, a look that went with the name through an older entry joined to it by a link alone, which the NPC also calls by a description. Each forgetting is numbered and marks the looks and voices it took (`ndb.llm_forgotten`); a turn notes the number it began at.
 
 What stays:
 

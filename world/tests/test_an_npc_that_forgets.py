@@ -102,7 +102,9 @@ class _AtTheBar(EvenniaTest):
         the model's reply supplied. *while_replying* runs after the
         prompt is built and before the reply arrives; *while_embedding*
         runs after the reply is filed and before its long-term record
-        is written."""
+        is written. (An NPC that already has memories also embeds the
+        line itself, before the prompt is built, to recall by. The hook
+        does not run then: the record's text is told by its "said:".)"""
         self.npc.db.llm_driven = True
         self.npc.ndb.last_llm = None
 
@@ -112,7 +114,7 @@ class _AtTheBar(EvenniaTest):
             on_turn(dict(reply))
 
         def embed(text, on_done, on_fail=None):
-            if while_embedding:
+            if while_embedding and ' said: "' in str(text):
                 while_embedding()
             on_done(list(VEC))
 
