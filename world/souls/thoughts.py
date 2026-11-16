@@ -12,6 +12,8 @@ the voice narrates a state the engine produced.
 """
 
 import time
+from collections.abc import Iterable
+from typing import Any
 
 THOUGHT_CAP = 20
 STACK_CAP = 3                        # same-key thoughts held at once — a
@@ -239,6 +241,40 @@ def add_opinion(soul, uid, key, valence, note="", wound=False,
 
     if mood_share:
         add_thought(soul, key, float(valence) * mood_share, note, wound=wound)
+
+
+def forget_opinions(soul: Any, uids: Iterable[str]) -> None:
+    """Drop this soul's read on each of `uids`: the entries and, with
+    them, the reasons.
+
+    The soul's half of forgetting somebody (#3851). The read on a
+    person is what they DID, entry by entry, each with its reason, and
+    the voice is handed the strongest reason every turn ("your read on
+    them: wary (because they put hands on me)"). A soul that no longer
+    knows a look cannot go on holding against it what it did.
+
+    The share of each event that went into the general mood
+    (`add_opinion`) stays, and so does the general memory a strong mood
+    wrote: neither is filed under anybody. Owner, 2026-11-16, to
+    exactly that ("the read goes too ... Its general mood stays"): "I
+    concur with your recommendation." So a soul made to forget whoever
+    attacked it is still shaken.
+
+    Only the looks it is given. Which looks those are is the caller's
+    business (`LLMNpcMixin.at_looks_erased`).
+
+    This is a second road past #3371 (`opinion_over`): a grudge cannot
+    be shed by changing faces, and can be by a memory wipe. That cost
+    was named when the ruling was asked for.
+    """
+    doomed = {str(uid or "").strip() for uid in (uids or ())}
+    book = _opinions(soul)
+    held = [uid for uid in book if uid in doomed]
+    if not held:
+        return
+    for uid in held:
+        del book[uid]
+    soul.db.soul_opinions = book
 
 
 def opinion_of(soul, uid, now=None):
