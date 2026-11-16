@@ -1029,11 +1029,13 @@ class LLMNpcMixin:
         * everything filed under, and written under the name of, a
           look or a voice that was not erased, whoever it belongs to.
           A second name it holds for the same person keeps its own
-          read on them;
+          read on them. Two cases at this edge are not ruled (#3859):
+          a read earned under a look that later got a name of its own,
+          and what was filed under a look this NPC saw through and
+          never named. Both stay today;
         * what is filed under nobody: a mood, and a general memory a
           mood wrote ("I remember: they put hands on me."). So an NPC
-          made to forget whoever attacked it is still shaken, and no
-          longer knows at whom;
+          made to forget whoever attacked it is still shaken;
         * the lines waiting in the buffer of what it has just seen
           happen. They are already written out, as a player's screen
           is, and can show the name once more, in its next reply;

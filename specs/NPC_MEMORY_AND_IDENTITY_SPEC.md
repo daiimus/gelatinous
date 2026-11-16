@@ -356,6 +356,11 @@ A record goes for either of two reasons:
 
 This is a second road past the rule in §5 that a grudge cannot be shed by changing faces (#3371). A change of face does not shed it; a memory wipe does. That cost was named when the ruling was asked for.
 
+**Not ruled (#3859).** Two cases sit at the edge of "the looks that were erased". In both, the NPC made a record about a look while it knew that look as the person it later forgets, and the look itself is not erased. Today the record stays in both; that is what the code does, not a ruling.
+
+- *The look later got a name of its own.* The NPC watched the mask go on, was hit by the masked figure while it still called them by the first name, then named the masked figure and forgot the first name. Its read on the masked figure stays, because a read is filed under the look and has no name in it. What it wrote down under the first name goes, as above.
+- *A look it saw through and never named.* The see-through goes with the forgotten name (`IDENTITY_RECOGNITION_SPEC.md`, the `forget` command), and the disguised look is a stranger again. What the NPC filed under that look stays, its read included: a look known only by a see-through has no entry, so `erase_look` does not report it.
+
 What that means in the cases that matter:
 
 - **Only what was erased.** The looks are the ones `erase_look` removed: the named entry, and the unnamed entries known only through it. A second name the NPC holds for the same person stays, with everything filed under it and written under it, its read on them included: the NPC connected the two (§5), and forgetting one name is not forgetting the other.
@@ -365,7 +370,7 @@ What that means in the cases that matter:
 
 What stays:
 
-- **What is filed under nobody:** a mood (`db.soul_thoughts`) and the general memory a strong mood writes ("I remember: they put hands on me."). Part of everything a person does to an NPC goes into its general mood as well as into its read on them, and that part stays (#3851). So an NPC made to forget whoever attacked it is still shaken, and no longer knows at whom.
+- **What is filed under nobody:** a mood (`db.soul_thoughts`) and the general memory a strong mood writes ("I remember: they put hands on me."). Part of everything a person does to an NPC goes into its general mood as well as into its read on them, and that part stays (#3851). So an NPC made to forget whoever attacked it is still shaken.
 - **The lines waiting in the buffer of what the NPC has just seen happen.** They are already written out with names in them, as a player's screen is, and can show the forgotten name once more, in the NPC's next reply.
 - **What the model itself said.** A reply that spoke the name while talking to somebody else is kept as it was said.
 - **Records written before a record carried `named_by`**, unless they are filed under a forgotten look.

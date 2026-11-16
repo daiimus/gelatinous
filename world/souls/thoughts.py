@@ -258,11 +258,14 @@ def forget_opinions(soul: Any, uids: Iterable[str]) -> None:
     wrote: neither is filed under anybody. Owner, 2026-11-16, to
     exactly that ("the read goes too ... Its general mood stays"): "I
     concur with your recommendation." So a soul made to forget whoever
-    attacked it is still shaken, and no longer knows at whom.
+    attacked it is still shaken.
+
+    Only the looks it is given. Which looks those are is the caller's
+    business (`LLMNpcMixin.at_looks_erased`).
 
     This is a second road past #3371 (`opinion_over`): a grudge cannot
-    be shed by changing faces, and can be by a memory wipe. That was
-    named when the ruling was asked for; it is what a wipe is for.
+    be shed by changing faces, and can be by a memory wipe. That cost
+    was named when the ruling was asked for.
     """
     doomed = {str(uid or "").strip() for uid in (uids or ())}
     book = _opinions(soul)

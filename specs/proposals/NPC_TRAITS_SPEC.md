@@ -305,6 +305,11 @@ acquaintances — sociability would quietly degrade mood — and person A being
 Caps: 3 per key per person, 6 entries per person, 24 acquaintances, evicting
 the least-recently-*felt-about* rather than the oldest.
 
+**A memory wipe takes it** (owner ruling 2026-11-16, #3851): an NPC made to
+forget somebody loses its read on them, whatever its traits. `grudge_etched`
+is about how a grudge fades, and does not hold against a wipe. The mood share
+below stays. See `NPC_MEMORY_AND_IDENTITY_SPEC.md` §5b.
+
 **Mood coupling** (owner ruling 2026-08-29): an interpersonal event moves
 opinion at full weight and mood at `MOOD_SHARE` of it. Being robbed at
 knifepoint should dent your day, not merely your view of the robber. Pass

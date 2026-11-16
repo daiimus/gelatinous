@@ -20,18 +20,22 @@ So:
   longer knows at whom;
 * only what was erased. A look the NPC still knows keeps its read.
 
-The reads here are written by the two doors the game writes them
-through: `react_to_attack`, which combat calls for whoever was hit, and
-`_note_courtesy`, which hearing thanks calls. The NPC types the real
-`forget`. Every "is gone" below has a control beside it: the same thing
-is shown to be there before, and the same thing held about ANOTHER
-person is shown to be there after.
+The reads here are written by the two functions the game writes them
+with: `react_to_attack`, which combat calls for whoever was hit, and
+`_note_courtesy`, which hearing thanks calls. The tests call those two
+directly; they do not stage a fight or speak a line. The NPC types the
+real `forget`. Every "is gone" below has a control beside it: the same
+thing is shown to be there before, and the same thing held about
+ANOTHER person is shown to be there after.
+
+Two cases at the edge are not ruled (#3859). One of them is pinned
+here as what the code does today, and says so.
 """
 from types import SimpleNamespace
 from unittest import TestCase, mock
 
 from world.director.civilians import react_to_attack
-from world.identity import erase_look, get_apparent_uid, get_assigned_name
+from world.identity import get_apparent_uid, get_assigned_name
 from world.souls import engine, thoughts
 from world.tests.test_an_npc_that_forgets import _AtTheBar, _embed_at_once
 
@@ -228,19 +232,32 @@ class TestTheGeneralMemoryOfTheBlowStays(_SullyHasASoul):
 class TestTheReadOnSomebodyNeverNamedStays(_SullyHasASoul):
     """As for a player: `forget` forgets a name. A stranger who hit the
     NPC has no name to forget, and the NPC keeps what it holds against
-    that look."""
+    that look, also when it forgets somebody else."""
 
     def setUp(self):
         super().setUp()
         self.attacked_by(self.patron)
+        self.name(self.other, "Wren")
+        self.wren = get_apparent_uid(self.other)
+        self.thanked_by(self.other)
+        self.npc.msg = mock.MagicMock()
 
-    def test_the_command_finds_nothing_to_forget(self):
-        self.forget("lean man")
+    def told(self):
+        return " | ".join(str(call.args[0]) for call in
+                          self.npc.msg.call_args_list if call.args)
+
+    def test_there_is_no_name_to_forget(self):
+        self.forget("gaunt man")
+        self.assertIn("You don't have a name remembered for them.",
+                      self.told())
         self.assertIn(HOSTILE, self.who_line(self.patron))
 
-    def test_erasing_a_look_it_has_no_entry_for_does_nothing(self):
-        self.assertEqual(erase_look(self.npc, self.bare), "")
+    def test_forgetting_somebody_else_leaves_it(self):
+        self.forget("wren")
+        self.assertIn("You forget the name 'Wren'.", self.told())
+        self.assertNotIn(self.wren, thoughts._opinions(self.npc))
         self.assertEqual(self.reasons(self.bare), ["they put hands on me"])
+        self.assertIn(HOSTILE, self.who_line(self.patron))
 
 
 # ----------------------------------------------------------------------
@@ -331,8 +348,9 @@ class TestForgettingTheNameThatDidItClearsBothFaces(_MothAndGhostAndABlow):
     """The cost that was named when the ruling was asked for. Sully had
     connected the two looks, so the face carried what the mask did
     (#3371). With Ghost forgotten, the masked figure is a stranger he
-    holds nothing against, and the face he still calls Moth reads
-    clean."""
+    holds nothing against: that is this change. The face he still calls
+    Moth reads clean as well, and did before it, because erasing the
+    masked entry already took the two looks apart (#3825)."""
 
     def setUp(self):
         super().setUp()
@@ -350,17 +368,22 @@ class TestForgettingTheNameThatDidItClearsBothFaces(_MothAndGhostAndABlow):
         self.assertEqual(self.who_line(self.patron), "")
 
     def test_the_face_no_longer_carries_it(self):
+        """True before this change too. Kept as the other half of the
+        picture; the test above is the one the change answers for."""
         line = self.face_line()
         self.assertIn("you know them as 'Moth'", line)
         self.assertNotIn("your read on them", line)
 
 
 class TestAReadEarnedBeforeTheLookHadItsOwnName(_MothPutsTheMaskOn):
-    """The masked figure hits Sully while he still calls it Moth, and
-    only then gets a name of its own. A read is filed under the look
-    and has no name in it, so it stays with the look he still knows
-    when he forgets Moth. (What he WROTE DOWN while he called it Moth
-    has the name in it, and goes: #3841.)"""
+    """NOT RULED (#3859). This is what the code does today, pinned so
+    that a change to it is made on purpose.
+
+    The masked figure hits Sully while he still calls it Moth, and only
+    then gets a name of its own. A read is filed under the look and has
+    no name in it, so it stays with the look he still knows when he
+    forgets Moth. (What he WROTE DOWN while he called it Moth has the
+    name in it, and goes: #3841.)"""
 
     def setUp(self):
         super().setUp()

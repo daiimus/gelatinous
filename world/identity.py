@@ -1987,12 +1987,12 @@ def erase_look(observer: Any, uid: str) -> str:
     looks and voices. An AI NPC does: the names it knew somebody by,
     what was said between them, the conversation thread and its read
     on them (``typeclasses.llm_npc``). Those go at this door too
-    (#3841, and #3851 for the read). Owner, 2026-11-15: "This should be identical to what a
-    player loses. Their behavior is ideally identical to avoid
-    cheating/hacking." This function does not know what those records
-    are. It tells the observer which looks and which voices have just
-    left its memory (``at_looks_erased``), and the observer drops what
-    it filed under them.
+    (#3841, and #3851 for the read). Owner, 2026-11-15: "This should
+    be identical to what a player loses. Their behavior is ideally
+    identical to avoid cheating/hacking." This function does not know
+    what those records are. It tells the observer which looks and
+    which voices have just left its memory (``at_looks_erased``), and
+    the observer drops what it filed under them.
 
     It used to blank the name and keep the entry, so naming the look
     again brought back its links and carried on its seen-count; and it

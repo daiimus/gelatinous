@@ -33,7 +33,7 @@ The decisions this system rests on, in the owner's words, newest last. Each row 
 | 2026-11-15 | "They should. That's just Scooby-doo but backwards. We already account for that with someone living, don't we?" | Somebody who watches a corpse or a severed head being dressed or stripped goes on knowing whose it is, as a witness to a living change does. So does whoever does it. | #3833 | Identity Across Surfaces, "What a body wears, for identity" |
 | 2026-11-16 | "I concur with your recommendation." (The recommendation: "the read goes too. An NPC that is still told why it dislikes somebody has not forgotten them [...] Its general mood stays, because that is not filed under anybody.") | When an AI NPC forgets somebody, its read on them goes with the looks that were erased: the score and the reason behind it. Its general mood stays. | #3851 | `NPC_MEMORY_AND_IDENTITY_SPEC.md` §5b |
 
-**Not ruled yet:** whether naming somebody in person may overwrite a name already given to that voice; whether a forced memory wipe earns a fresh see-through roll.
+**Not ruled yet:** whether naming somebody in person may overwrite a name already given to that voice; whether a forced memory wipe earns a fresh see-through roll; what becomes of the records an AI NPC made about a look it knew through a forgotten name, when that look is not itself erased (#3859).
 
 ## Core Concepts
 
