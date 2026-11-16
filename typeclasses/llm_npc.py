@@ -56,6 +56,30 @@ _PATRON_WORDS = frozenset({
 })
 
 
+def _name_gone(npc, named_by):
+    """True when the entry a turn's name was read from (*named_by*, see
+    `LLMNpcMixin._name_source`) has left *npc*'s memory since.
+
+    A reply takes time, and the record of it is written when it
+    arrives. An NPC made to forget somebody while its reply to them is
+    still being made must not then write that reply down under the name
+    it has just lost: `at_looks_erased` has been and gone, and could
+    not drop a record that did not exist yet. Both writers ask this at
+    the moment they write (`_remember_turn`, `_store_memory`).
+
+    A mark that is not a key (None, or anything that is not a string)
+    names nothing, so nothing has been forgotten. It is a function and
+    not a method for the same reason: many tests stand a `MagicMock` in
+    for the NPC, and a mock asked this as a method says yes to it, so
+    every write was skipped without a word.
+    """
+    if not named_by or not isinstance(named_by, str):
+        return False
+    if named_by.startswith("voice:"):
+        return named_by[len("voice:"):] not in (npc.voice_memory or {})
+    return named_by not in (npc.recognition_memory or {})
+
+
 class LLMNpcMixin:
     """The reusable LLM brain. Mix into a Character (before it in the MRO)."""
 
@@ -966,23 +990,6 @@ class LLMNpcMixin:
         except Exception:  # noqa: BLE001 — never break a reply over bookkeeping
             return None
 
-    def _name_gone(self, named_by):
-        """True when the entry a turn's name was read from (*named_by*,
-        see `_name_source`) has left this NPC's memory since.
-
-        A reply takes time, and the record of it is written when it
-        arrives. An NPC made to forget somebody while its reply to them
-        is still being made must not then write that reply down under
-        the name it has just lost: `at_looks_erased` has been and gone,
-        and could not drop a record that did not exist yet. Both
-        writers ask this at the moment they write.
-        """
-        if not named_by:
-            return False
-        if named_by.startswith("voice:"):
-            return named_by[len("voice:"):] not in (self.voice_memory or {})
-        return named_by not in (self.recognition_memory or {})
-
     def at_looks_erased(self, looks, voices=()):
         """Drop what this NPC wrote down for itself about looks and
         voices it has just forgotten (#3841).
@@ -1122,7 +1129,7 @@ class LLMNpcMixin:
         subject = subject or self._memory_subject(patron)
 
         def _save(vec):
-            if self._name_gone(named_by):
+            if _name_gone(self, named_by):
                 return      # forgotten while this was on its way (#3841)
             # `remember`, not append-and-prune: a repeat strengthens the
             # memory it already has instead of cloning it (#2242).
@@ -1715,7 +1722,7 @@ class LLMNpcMixin:
         reply = self._reconstruct_reply(speech, action, thought)
         if not reply:
             return
-        if self._name_gone(named_by):
+        if _name_gone(self, named_by):
             return          # forgotten while the reply was being made (#3841)
         if subject is None:
             subject = (self._hist_key(None) if patron is None

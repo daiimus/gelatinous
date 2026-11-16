@@ -661,6 +661,21 @@ class TestAForgetWhileTheReplyIsStillBeingMade(_AtTheBar):
         self.assertEqual(self.npc._load_memories(), [])
 
 
+class TestAMarkThatIsNotAKey(TestCase):
+    """Names nothing, so nothing has been forgotten. Many older tests
+    stand a `MagicMock` in for the NPC; asked as a method, a mock said
+    yes to "has this name gone?", and every write was skipped without a
+    word (`test_bar`, `test_llm_npc`)."""
+
+    def test_no_mark(self):
+        from typeclasses.llm_npc import _name_gone
+        self.assertFalse(_name_gone(mock.MagicMock(), None))
+
+    def test_a_mock_for_a_mark(self):
+        from typeclasses.llm_npc import _name_gone
+        self.assertFalse(_name_gone(mock.MagicMock(), mock.MagicMock()))
+
+
 class TestWhoseNameAHandleIs(_AtTheBar):
     def setUp(self):
         super().setUp()
