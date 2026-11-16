@@ -1983,6 +1983,19 @@ def erase_look(observer: Any, uid: str) -> str:
     observer never connected to this name. Nothing is cleared because
     the game knows two things are one body.
 
+    A look the observer knew ONLY by one of those see-throughs has
+    left its memory too (#3859). There is no entry for it to delete:
+    it was never named, and nobody watched it arrive. It is a
+    stranger's look again, as a look the observer watched arrive is
+    once its entry has gone. A look that still has an entry after the
+    erase is not one of these. It is still known, by a name or papers
+    of its own or through another name. The one exception is an entry
+    the ``forget`` of before #3825 left blank and that is not joined
+    to the name being erased: it tells the observer nothing, and it
+    is left alone, with what is filed under its look. (One that is
+    joined to this name goes with it, like any unnamed entry known
+    only through it.)
+
     An observer may keep records of its own, filed under the same
     looks and voices. An AI NPC does: the names it knew somebody by,
     what was said between them, the conversation thread and its read
@@ -1992,7 +2005,14 @@ def erase_look(observer: Any, uid: str) -> str:
     identical to avoid cheating/hacking." This function does not know
     what those records are. It tells the observer which looks and
     which voices have just left its memory (``at_looks_erased``), and
-    the observer drops what it filed under them.
+    the observer drops what it filed under them. The looks are the
+    entries that were erased and the looks known only by a see-through
+    that went with them. Owner, 2026-11-16, asked whether what an NPC
+    holds against a mask it saw through goes when it forgets who was
+    under it, as it does for a mask it watched go on: "Yeah, your
+    assessment is solid." The voices are the voice entries that were
+    erased and no others: a disguised voice the observer had placed
+    by one of them is not reported (#3861, not ruled).
 
     It used to blank the name and keep the entry, so naming the look
     again brought back its links and carried on its seen-count; and it
@@ -2045,6 +2065,10 @@ def erase_look(observer: Any, uid: str) -> str:
             if key in cache:
                 del cache[key]
         observer.db.disguise_pierce_cache = cache
+    # Asked of the memory as it now stands: a look that still has an
+    # entry is still known for another reason, and is not reported.
+    strangers_again = {look for _dbref, look in doomed_verdicts
+                       if look not in memory}
 
     voices_before = set(getattr(observer, "voice_memory", None) or {})
     erase_voices_named(observer, name, look_uid=uid, real_sleeve_uid=sleeve)
@@ -2055,7 +2079,7 @@ def erase_look(observer: Any, uid: str) -> str:
     # goes with them (#3841). Only the observer knows what that is.
     drop_own_records = getattr(observer, "at_looks_erased", None)
     if callable(drop_own_records):
-        drop_own_records(gone, gone_voices)
+        drop_own_records(gone | strangers_again, gone_voices)
     return name
 
 

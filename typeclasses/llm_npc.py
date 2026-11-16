@@ -67,6 +67,9 @@ def _name_gone(npc, named_by):
     not drop a record that did not exist yet. Both writers ask this at
     the moment they write (`_remember_turn`, `_store_memory`).
 
+    That is a record written under a forgotten NAME. A record filed
+    under a forgotten LOOK is the other half: `_forgotten_since`.
+
     A mark that is not a key (None, or anything that is not a string)
     names nothing, so nothing has been forgotten. It is a function and
     not a method for the same reason: many tests stand a `MagicMock` in
@@ -78,6 +81,55 @@ def _name_gone(npc, named_by):
     if named_by.startswith("voice:"):
         return named_by[len("voice:"):] not in (npc.voice_memory or {})
     return named_by not in (npc.recognition_memory or {})
+
+
+def _forgets_so_far(npc):
+    """How many forgettings *npc* has been through since it was loaded
+    (`LLMNpcMixin.at_looks_erased` counts them)."""
+    count = npc.ndb.llm_forgets
+    if isinstance(count, bool) or not isinstance(count, int):
+        return 0
+    return count
+
+
+def _forgotten_since(npc, subject, forgets_before):
+    """True when *npc* has forgotten the look or voice *subject* since
+    a turn that began when it had been through *forgets_before*
+    forgettings.
+
+    The other half of `_name_gone`. A record goes when it was written
+    under a forgotten name, and also when it is filed under a forgotten
+    look (`LLMNpcMixin.at_looks_erased`). The second needs no name. An
+    NPC that saw through a mask calls the masked figure by a
+    description, and what it files about them is filed under a look it
+    forgets together with the person it saw through to (#3859). A reply
+    to that figure which is still being made when the NPC forgets must
+    not be written down afterwards under the look it has just
+    forgotten.
+
+    `at_looks_erased` numbers each forgetting and marks every look and
+    voice it was told about with that number (`ndb.llm_forgotten`). A
+    turn notes the count it began at (`_forgets_so_far`), and both
+    writers ask this as they write. A turn that begins after the
+    forgetting is written down as a stranger's is.
+
+    It asks what WAS forgotten and guesses nothing, so it cannot
+    disagree with `world.identity.erase_look` about which looks went.
+
+    Like `_name_gone` it is a function and takes nothing on trust: a
+    count that is not a number, a subject that is not a key or a note
+    that is not a dict says nothing was forgotten, so a test that
+    stands a `MagicMock` in for the NPC does not lose its writes.
+    """
+    if isinstance(forgets_before, bool) or not isinstance(forgets_before, int):
+        return False
+    if not subject or not isinstance(subject, str):
+        return False
+    marks = npc.ndb.llm_forgotten
+    if not isinstance(marks, dict):
+        return False
+    at = marks.get(subject)
+    return isinstance(at, int) and at > forgets_before
 
 
 class LLMNpcMixin:
@@ -625,6 +677,10 @@ class LLMNpcMixin:
         # with the handle, and not when the turn is filed: the reply can
         # take a minute, and the model may name them anew in it.
         named_by = self._name_source(patron, speaker_name, radio)
+        # How many forgettings this NPC had been through when the turn
+        # began: what the turn files must not be written under a look
+        # it forgets while the reply is being made (`_forgotten_since`).
+        forgets_before = _forgets_so_far(self)
         perception = None if radio else self._perceive(patron)
         subject = (self._radio_subject(patron) if radio
                    else self._memory_subject(patron))
@@ -647,7 +703,8 @@ class LLMNpcMixin:
             self._agentic_round(messages, persona, patron, line or "",
                                 speaker_name, on_fail, rounds=0,
                                 subject=subject, mode=mode,
-                                named_by=named_by)
+                                named_by=named_by,
+                                forgets_before=forgets_before)
 
         def _with_query_vec(vec):
             # reactor-side: score this NPC's memories against the line, inject.
@@ -996,7 +1053,9 @@ class LLMNpcMixin:
 
         Called by `world.identity.erase_look`, the one door forgetting
         goes through, with the looks and the voices that have just left
-        this NPC's recognition and voice memory. Owner, 2026-11-15:
+        this NPC's recognition and voice memory. A look it held no
+        entry for, and knew only because it saw through it to the
+        forgotten person, is one of them (#3859). Owner, 2026-11-15:
         "This should be identical to what a player loses. Their
         behavior is ideally identical to avoid cheating/hacking." A
         player who forgets a look is left with no memory of it. An NPC
@@ -1029,10 +1088,8 @@ class LLMNpcMixin:
         * everything filed under, and written under the name of, a
           look or a voice that was not erased, whoever it belongs to.
           A second name it holds for the same person keeps its own
-          read on them. Two cases at this edge are not ruled (#3859):
-          a read earned under a look that later got a name of its own,
-          and what was filed under a look this NPC saw through and
-          never named. Both stay today;
+          read on them, whenever that read was earned (#3859; owner,
+          2026-11-16: "Yeah, your assessment is solid.");
         * what is filed under nobody: a mood, and a general memory a
           mood wrote ("I remember: they put hands on me."). So an NPC
           made to forget whoever attacked it is still shaken;
@@ -1047,11 +1104,22 @@ class LLMNpcMixin:
         The conversation hold is attention, not memory: an NPC made to
         forget the person it is talking to goes on listening to them
         until the hold runs out.
+
+        A reply that is still being made cannot be dropped here: its
+        record does not exist yet. So each forgetting is numbered, and
+        the looks and voices it took are marked with the number, for
+        the two writers to ask about when the reply arrives
+        (`_forgotten_since`).
         """
         keys = {str(look) for look in (looks or ()) if look}
         keys |= {f"voice:{voice}" for voice in (voices or ()) if voice}
         if not keys:
             return
+        count = _forgets_so_far(self) + 1
+        marks = self.ndb.llm_forgotten
+        marks = dict(marks) if isinstance(marks, dict) else {}
+        marks.update(dict.fromkeys(keys, count))
+        self.ndb.llm_forgets, self.ndb.llm_forgotten = count, marks
         dossiers = self._dossiers()
         if keys.intersection(dossiers):
             self.db.llm_dossiers = {
@@ -1124,14 +1192,16 @@ class LLMNpcMixin:
     # think for anyone reviewing the transition.
 
     def _store_memory(self, patron, speaker_name, line, speech, subject=None,
-                      named_by=None):
+                      named_by=None, forgets_before=None):
         """Remember this exchange: embed it off-reactor, then write a record
         (scoped to the interlocutor) and prune. Fire-and-forget — runs after the
         reply has already rendered, so it never delays the NPC. ``subject``
         overrides the scoping identity (voice-scoped on radio turns) so
         storage always matches what retrieval will look under. ``named_by``
         is whose name ``speaker_name`` is, when it is a name
-        (`_name_source`); the record keeps it."""
+        (`_name_source`); the record keeps it. ``forgets_before`` is the
+        count of forgettings the turn began at (`_forgotten_since`); it
+        is asked about as the record is written, and is not kept."""
         if not line:
             return
         text = f'{speaker_name} said: "{line}"'
@@ -1140,7 +1210,8 @@ class LLMNpcMixin:
         subject = subject or self._memory_subject(patron)
 
         def _save(vec):
-            if _name_gone(self, named_by):
+            if (_name_gone(self, named_by)
+                    or _forgotten_since(self, subject, forgets_before)):
                 return      # forgotten while this was on its way (#3841)
             # `remember`, not append-and-prune: a repeat strengthens the
             # memory it already has instead of cloning it (#2242).
@@ -1408,24 +1479,27 @@ class LLMNpcMixin:
 
     def _agentic_round(self, messages, persona, patron, line, speaker_name,
                        on_fail, rounds, subject=None, mode="directed",
-                       named_by=None):
+                       named_by=None, forgets_before=None):
         """One constrained generation; the reactor-side callback either runs a
         context tool and loops, or renders the final reply + any action tool.
         ``subject`` is the memory-scoping identity for this turn (voice-scoped
         on radio turns) — threaded through so storage matches retrieval.
         ``named_by`` is whose name ``speaker_name`` is (`_name_source`),
-        threaded through the same way to what the turn files."""
+        threaded through the same way to what the turn files, and so is
+        ``forgets_before`` (`_forgotten_since`)."""
         request_turn(
             messages,
             on_turn=partial(self._on_turn, messages, persona, patron, line,
                             speaker_name, on_fail, rounds, subject, mode,
-                            named_by=named_by),
+                            named_by=named_by,
+                            forgets_before=forgets_before),
             on_fail=on_fail,
             schema=schema_for(persona),  # tool enum scoped to the archetype
         )
 
     def _on_turn(self, messages, persona, patron, line, speaker_name, on_fail,
-                 rounds, subject, mode, raw, named_by=None):
+                 rounds, subject, mode, raw, named_by=None,
+                 forgets_before=None):
         turn = parse_turn(raw, persona, tool_names(persona))
         # Echo guard: a pose aimed at the NPC sometimes comes straight back
         # as its "own" action (or speech). Parroting reads broken — drop it.
@@ -1449,7 +1523,8 @@ class LLMNpcMixin:
             ]
             self._agentic_round(extended, persona, patron, line, speaker_name,
                                 on_fail, rounds + 1, subject=subject,
-                                mode=mode, named_by=named_by)
+                                mode=mode, named_by=named_by,
+                                forgets_before=forgets_before)
             return
         # Terminal: render speech/action/thought, route any action tool, remember.
         # A radio turn answers ON THE AIR (§7.3): the reply speech goes to
@@ -1481,10 +1556,12 @@ class LLMNpcMixin:
         if patron is not None:            # broadcasts have no caller
             self._remember_turn(patron, line, speaker_name, said,
                                 turn["action"], turn["thought"],
-                                subject=subject, named_by=named_by)
+                                subject=subject, named_by=named_by,
+                                forgets_before=forgets_before)
         # Long-term memory: persist what was learned (async, post-render).
         self._store_memory(patron, speaker_name, line, said,
-                           subject=subject, named_by=named_by)
+                           subject=subject, named_by=named_by,
+                           forgets_before=forgets_before)
 
     def _run_context_tool(self, tool, arg, patron):
         """Run a read-only context tool and return its result for the model.
@@ -1714,7 +1791,8 @@ class LLMNpcMixin:
             pass
 
     def _remember_turn(self, patron, line, speaker_name, speech, action,
-                       thought=None, subject=None, named_by=None):
+                       thought=None, subject=None, named_by=None,
+                       forgets_before=None):
         """Append the rendered turn to short-term memory (anti-repetition).
 
         Filed under *subject*, as `_recent_history` reads it. A thread
@@ -1729,7 +1807,9 @@ class LLMNpcMixin:
         the speaker was called by when that was a name (*named_by*,
         see `_name_source`), so that the turns of a look this NPC later
         forgets can be taken out of a thread that has moved on to
-        another look (`_drop_turns_said_under`)."""
+        another look (`_drop_turns_said_under`). *forgets_before* is
+        the count of forgettings the turn began at (`_forgotten_since`);
+        it is asked about here and is not kept on the turn."""
         reply = self._reconstruct_reply(speech, action, thought)
         if not reply:
             return
@@ -1738,6 +1818,8 @@ class LLMNpcMixin:
         if subject is None:
             subject = (self._hist_key(None) if patron is None
                        else self._memory_subject(patron))
+        if _forgotten_since(self, subject, forgets_before):
+            return          # its look was forgotten meanwhile (#3859)
         hist = self.ndb.llm_history or {}
         key = subject
         turns = list(self._recent_history(patron, subject=subject))

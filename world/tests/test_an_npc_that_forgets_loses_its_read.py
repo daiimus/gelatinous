@@ -27,8 +27,9 @@ real `forget`. Every "is gone" below has a control beside it: the same
 thing is shown to be there before, and the same thing held about
 ANOTHER person is shown to be there after.
 
-Two cases at the edge are not ruled (#3859). One of them is pinned
-here as what the code does today, and says so.
+A read earned under a look that later got a name of its own stays
+with that look (#3859). A look the NPC saw through and never named is
+in `test_an_npc_forgets_a_look_it_saw_through`.
 """
 from types import SimpleNamespace
 from unittest import TestCase, mock
@@ -378,14 +379,14 @@ class TestForgettingTheNameThatDidItClearsBothFaces(_MothAndGhostAndABlow):
 
 
 class TestAReadEarnedBeforeTheLookHadItsOwnName(_MothPutsTheMaskOn):
-    """NOT RULED (#3859). This is what the code does today, pinned so
-    that a change to it is made on purpose.
+    """Ruled (#3859; owner, 2026-11-16: "Yeah, your assessment is
+    solid."): a look the NPC has given a name of its own stays, and
+    its read on that look stays with it, whenever it was earned.
 
     The masked figure hits Sully while he still calls it Moth, and only
-    then gets a name of its own. A read is filed under the look and has
-    no name in it, so it stays with the look he still knows when he
-    forgets Moth. (What he WROTE DOWN while he called it Moth has the
-    name in it, and goes: #3841.)"""
+    then gets a name of its own. The read stays with the look he still
+    knows when he forgets Moth. (What he WROTE DOWN while he called it
+    Moth has the name in it, and goes: #3841.)"""
 
     def setUp(self):
         super().setUp()
