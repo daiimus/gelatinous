@@ -71,8 +71,9 @@ pathfinding alone; path caching (re-path only on move failure) plus
 **shift jitter** (each soul carries a personal ±15 min offset on its
 schedule blocks — staggers the commute *and* reads better in the fiction)
 moves to P2; (c) LLM voice calls verified non-blocking (`requests.post`
-inside `run_async`'s thread pool, HTTP only in the thread — the reactor
-never waits on the sidecar).
+on a thread, HTTP only in the thread — the reactor never waits on the
+sidecar; since #3815 the thread is one of the game's own, so a reload
+does not wait on the sidecar either).
 
 ## 2 · How Evennia actually schedules
 

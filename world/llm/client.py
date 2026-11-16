@@ -5,11 +5,12 @@ The game speaks the standard chat-completions protocol to a configurable endpoin
 ``TURN_SCHEMA`` so the backend (our MLX sidecar via ``outlines``) returns output
 **guaranteed valid** against the unified ``{speech, action, tool}`` schema.
 
-Calls never block the Twisted reactor: the blocking ``requests.post`` runs in
-Evennia's async thread pool via ``run_async`` (the ``CmdBug`` pattern). The thread
-does pure network — NO Evennia/DB access. The caller builds the ``messages`` (and
-extends them across the agentic loop, §5.3) and orchestrates on the reactor in the
-callbacks.
+Calls never block the Twisted reactor: the blocking ``requests.post`` runs on a
+thread, through ``run_detached`` (``world/llm/detached.py``). Not on Evennia's own
+worker pool: a reload waits for every thread in that one, and a model can take
+two minutes to answer (#3815). The thread does pure network — NO Evennia/DB
+access. The caller builds the ``messages`` (and extends them across the agentic
+loop, §5.3) and orchestrates on the reactor in the callbacks.
 """
 
 import json
@@ -17,8 +18,8 @@ import json
 import requests
 from django.conf import settings
 from evennia.utils import logger
-from evennia.utils.utils import run_async
 
+from world.llm.detached import run_detached
 from world.llm.prompt import TURN_SCHEMA
 
 _DEFAULT_URL = "http://host.docker.internal:8765/v1/chat/completions"
@@ -57,7 +58,7 @@ _breaker = {}          # lane -> {"fails": int, "until": float}
 def _shielded(handler, on_fail, what):
     """Keep a CALLER's exception out of the transport errback.
 
-    `evennia.utils.run_async` wires the pair as
+    `run_detached` wires the pair as Evennia's `run_async` does:
     `deferred.addCallback(at_return)` then `deferred.addErrback(at_err)`
     — sequentially, not as a pair. So anything the success callback
     raises lands in the errback, which then records a transport failure
@@ -76,8 +77,8 @@ def _shielded(handler, on_fail, what):
     * a real outage is invisible in a log that is 83% noise;
     * `on_fail()` runs after `on_turn()` already produced a reply.
 
-    NOT a patch to `run_async`. The chain is Evennia's and the fix is to
-    hand it a callback that does not raise.
+    The chain is kept as Evennia's was, and the fix is to hand it a
+    callback that does not raise.
 
     A handler that already called `on_fail` and THEN threw would see it
     called twice. That is the pre-existing shape of every one of these
@@ -283,9 +284,9 @@ def request_turn(messages, on_turn, on_fail, schema=None):
                 pass
         on_fail()
 
-    run_async(_thread_fn,
-              at_return=_shielded(_at_return, on_fail, "LLM turn"),
-              at_err=_at_err)
+    run_detached(_thread_fn,
+                 at_return=_shielded(_at_return, on_fail, "LLM turn"),
+                 at_err=_at_err)
 
 
 def _embed_url():
@@ -328,9 +329,9 @@ def request_embedding(text, on_done, on_fail):
         logger.log_err(f"LLM embedding call failed: {failure}")
         on_fail()
 
-    run_async(_thread_fn,
-              at_return=_shielded(_at_return, on_fail, "LLM embedding"),
-              at_err=_at_err)
+    run_detached(_thread_fn,
+                 at_return=_shielded(_at_return, on_fail, "LLM embedding"),
+                 at_err=_at_err)
 
 
 # --------------------------------------------------------------------------
@@ -389,9 +390,9 @@ def request_civic_line(instructions, prompt, on_reply, on_fail):
         logger.log_err(f"Civic LLM call failed: {failure}")
         on_fail()
 
-    run_async(_thread_fn,
-              at_return=_shielded(_at_return, on_fail, "Civic LLM"),
-              at_err=_at_err)
+    run_detached(_thread_fn,
+                 at_return=_shielded(_at_return, on_fail, "Civic LLM"),
+                 at_err=_at_err)
 
 
 def request_civic_verdict(instructions, prompt, schema, on_verdict, on_fail):
@@ -443,6 +444,6 @@ def request_civic_verdict(instructions, prompt, schema, on_verdict, on_fail):
         logger.log_err(f"Civic verdict call failed: {failure}")
         on_fail()
 
-    run_async(_thread_fn,
-              at_return=_shielded(_at_return, on_fail, "Civic verdict"),
-              at_err=_at_err)
+    run_detached(_thread_fn,
+                 at_return=_shielded(_at_return, on_fail, "Civic verdict"),
+                 at_err=_at_err)

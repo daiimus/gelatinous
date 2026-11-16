@@ -403,7 +403,7 @@ def consider_radio_report(operator, speaker, speech, on_result=None):
 
 def apply_verdict(verdict, speaker, speech):
     """The deterministic half: gate, resolve, debounce, dispatch.
-    Runs on the reactor (run_async at_return). Returns the dispatched
+    Runs on the reactor (the client's success callback). Returns the dispatched
     list, or None when nothing rolled."""
     try:
         if not isinstance(verdict, dict):

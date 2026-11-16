@@ -11,7 +11,7 @@ game — and prints what the puppet PC *receives back*. That is the player
 experience, reproduced.
 
 The reactor is not running here, so the two async seams are run INLINE:
-`run_async` (the sidecar call) executes in-thread and fires its callback at once,
+`run_detached` (the sidecar call) executes in-thread and fires its callback at once,
 and `delay(...)` runs immediately. Everything else is the untouched game code.
 
 This is an OBSERVATION tool (the model is non-deterministic) — it shows real
@@ -64,11 +64,11 @@ def bootstrap():
 # Collapse the two async seams so the whole pipeline completes in-call.
 # --------------------------------------------------------------------------
 def make_synchronous():
-    """Patch `run_async` (sidecar call) and `delay` (scheduling) to run inline,
+    """Patch `run_detached` (sidecar call) and `delay` (scheduling) to run inline,
     so a single `say` drives the NPC's reply to completion before we return."""
     from twisted.python.failure import Failure
 
-    def inline_run_async(func, at_return=None, at_err=None, **kwargs):
+    def inline_run_detached(func, at_return=None, at_err=None, **kwargs):
         try:
             result = func()
         except Exception:  # noqa: BLE001 — mirror the reactor's at_err path
@@ -84,7 +84,7 @@ def make_synchronous():
     import world.llm.client as client
     import typeclasses.llm_npc as llm_npc
     import typeclasses.bar as bar
-    client.run_async = inline_run_async
+    client.run_detached = inline_run_detached
     llm_npc.delay = inline_delay
     bar.delay = inline_delay
 
