@@ -12,7 +12,8 @@ own with a real reactor and a real POST to a socket that never answers:
 once with the call on the reactor's pool (the control, which must wait)
 and once on ours (which must not). The rest
 pin how results come back, the ceiling on calls in flight, and that
-every door of the client goes through the one seam.
+every door of the client goes through the one seam, and that outside a
+running reactor nothing is sent at all.
 """
 import ast
 import json
@@ -70,7 +71,10 @@ def shutdown_with_a_call_in_flight():
         out["worker_is_daemon"] = threading.current_thread().daemon
         session = requests.Session()
         session.trust_env = False          # no proxy between us and 127.0.0.1
-        session.post(URL, json={"messages": []}, timeout=seconds)
+        try:
+            session.post(URL, json={"messages": []}, timeout=seconds)
+        finally:
+            out["call_ended"] = True
         return "too late"
 
     if mode == "ours":
@@ -153,12 +157,40 @@ def ceiling():
     reactor.callLater(12, reactor.stop)    # never hang the test
 
 
-reactor.callWhenRunning({"ours": shutdown_with_a_call_in_flight,
+def a_call_that_ends_after_the_reactor_stopped():
+    def work():
+        time.sleep(seconds)
+        out["call_ended"] = True
+        return "nobody is listening"
+
+    detached.run_detached(work, lambda result: None, lambda fail: None)
+    reactor.callLater(0.3, reactor.stop)
+
+
+def no_reactor():
+    """Never runs the reactor: what a test run or a shell is."""
+    def work():
+        out["sent"] = True
+
+    detached.run_detached(work, lambda result: None, lambda fail: None)
+    time.sleep(seconds)
+    say(sent=out.get("sent", False), pool_started=detached._pool.started)
+
+
+if mode == "no_reactor":
+    no_reactor()
+    sys.exit(0)
+# A moment after startup, as in the game: a reactor already running.
+reactor.callLater(0.05, {"ours": shutdown_with_a_call_in_flight,
                          "reactor": shutdown_with_a_call_in_flight,
+                         "late": a_call_that_ends_after_the_reactor_stopped,
                          "deliver": deliver, "ceiling": ceiling}[mode])
 reactor.run()
 if "stop_asked" in out:
     say(reactor_returned_after=round(time.monotonic() - out["stop_asked"], 2))
+if mode == "late":
+    time.sleep(seconds + 1.0)              # the call ends; its result has nowhere to go
+    say(still_standing=True)
 '''
 
 
@@ -195,6 +227,8 @@ class TestAShutdownWithACallInFlight(TestCase):
         report, wall, code = run_scenario("reactor", seconds=4)
         self.assertTrue(report.get("call_started"), report)
         self.assertIs(report.get("worker_is_daemon"), False, report)
+        self.assertTrue(report.get("call_ended"),
+                        f"the reactor got out before the call ended: {report}")
         self.assertGreaterEqual(report["reactor_returned_after"], 2.0, report)
         self.assertGreaterEqual(wall, 4.0)
         self.assertEqual(code, 0, report)
@@ -206,16 +240,56 @@ class TestAShutdownWithACallInFlight(TestCase):
         self.assertTrue(report.get("call_started"),
                         f"the call never started, so nothing was shown: {report}")
         self.assertIs(report.get("worker_is_daemon"), True, report)
+        self.assertNotIn("call_ended", report,
+                         "the call was over before the reactor stopped, so "
+                         "nothing was in flight")
         self.assertLess(report["reactor_returned_after"], 2.0, report)
         self.assertLess(wall, 8.0, report)
         self.assertEqual(code, 0, report)
 
+    def test_a_call_that_ends_after_the_reactor_stopped_harms_nothing(self):
+        """Its result is handed to a reactor that is no longer running.
+        Nothing raises and the process still exits cleanly."""
+        report, _wall, code = run_scenario("late", seconds=1.0)
+        self.assertTrue(report.get("call_ended"), report)
+        self.assertTrue(report.get("still_standing"), report)
+        self.assertEqual(code, 0, report)
+        self.assertNotIn("Traceback", report["stderr"])
+        self.assertNotIn("Unhandled", report["stderr"])
+
+
+class TestOutsideARunningReactor(TestCase):
+    """A test run and `evennia shell` never run the reactor. On the
+    reactor's pool a model call made there was held and never sent, and
+    the settings a test run loads have the model lanes switched on. It
+    has to stay that way, or a test that forgets to fake the client
+    talks to the real model server."""
+
+    def test_the_test_runner_has_no_running_reactor(self):
+        """The premise: what the test below shows applies to this run."""
+        from twisted.internet import reactor
+        self.assertFalse(reactor.running)
+
+    def test_nothing_is_sent(self):
+        report, _wall, code = run_scenario("no_reactor", seconds=1.0)
+        self.assertEqual(code, 0, report)
+        self.assertIs(report.get("sent"), False, report)
+        self.assertIs(report.get("pool_started"), False, report)
+
 
 class TestWhatComesBack(TestCase):
+    """Under a running reactor the work does run (which is also the
+    control for `TestOutsideARunningReactor`), and its outcome comes
+    back on the reactor's thread."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.report, _wall, cls.code = run_scenario("deliver")
 
     def test_results_and_failures_arrive_on_the_reactor(self):
-        report, _wall, code = run_scenario("deliver")
-        self.assertEqual(code, 0, report)
+        report = self.report
+        self.assertEqual(self.code, 0, report)
         self.assertEqual(report.get("returned"), ["answer", True], report)
         self.assertEqual(report.get("failed"), ["ValueError", True], report)
 
@@ -223,24 +297,27 @@ class TestWhatComesBack(TestCase):
         """Evennia's `run_async` chained them that way, and `_shielded`
         in the client exists because of it. Kept the same on purpose:
         only the pool changed."""
-        report, _wall, _code = run_scenario("deliver")
-        self.assertEqual(report.get("chained"), ["KeyError", True], report)
+        self.assertEqual(self.report.get("chained"), ["KeyError", True],
+                         self.report)
 
 
 class TestTheCeiling(TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.report, _wall, cls.code = run_scenario("ceiling")
+
     def test_no_more_run_at_once_than_the_reactors_pool_allowed(self):
-        report, _wall, code = run_scenario("ceiling")
-        self.assertEqual(code, 0, report)
+        report = self.report
+        self.assertEqual(self.code, 0, report)
         self.assertEqual(report.get("limit"), 10, report)
         self.assertEqual(report.get("asked"), 13, report)
         self.assertEqual(report.get("in_flight_while_held"), 10, report)
 
     def test_the_ones_that_waited_run_afterwards(self):
-        """The control for the test above: the three past the ceiling
-        were held back, not dropped."""
-        report, _wall, _code = run_scenario("ceiling")
-        self.assertEqual(report.get("finished"), 13, report)
+        """The three past the ceiling were held back, not dropped."""
+        self.assertEqual(self.report.get("finished"), 13, self.report)
 
 
 class TestEveryDoorOfTheClient(TestCase):
@@ -285,13 +362,17 @@ STILL_ON_THE_REACTORS_POOL = {
     # The same fault in small; filed as #3856, not changed here.
     "commands/CmdBug.py",
 }
-BORROWS = {"run_async", "deferToThread", "callInThread"}
+BORROWS = {"run_async", "deferToThread", "callInThread",
+           "callInThreadWithCallback", "getThreadPool"}
 
 
 def borrowers(root):
-    """Game files that call something which runs on the reactor's pool."""
+    """Game files that reach for the reactor's pool: any import of, or
+    reference to, one of the names that put work on it. A reference is
+    enough (not only a call), so an alias or a `partial` is seen too."""
     found = set()
-    for folder in ("commands", "typeclasses", "world", "server", "web"):
+    for folder in ("commands", "typeclasses", "world", "server", "web",
+                   "scripts"):
         for here, dirs, files in os.walk(os.path.join(root, folder)):
             dirs[:] = [d for d in dirs if d not in ("tests", "__pycache__")]
             for name in files:
@@ -301,11 +382,15 @@ def borrowers(root):
                 with open(path, encoding="utf-8") as handle:
                     tree = ast.parse(handle.read())
                 for node in ast.walk(tree):
-                    if not isinstance(node, ast.Call):
-                        continue
-                    called = getattr(node.func, "id", None) or getattr(
-                        node.func, "attr", None)
-                    if called in BORROWS:
+                    names = ()
+                    if isinstance(node, ast.Name):
+                        names = (node.id,)
+                    elif isinstance(node, ast.Attribute):
+                        names = (node.attr,)
+                    elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                        names = tuple(alias.name.rsplit(".", 1)[-1]
+                                      for alias in node.names)
+                    if BORROWS.intersection(names):
                         found.add(os.path.relpath(path, root))
     return found
 
@@ -318,6 +403,28 @@ class TestNothingElseBorrowsThePool(TestCase):
     def test_the_scan_can_see_a_borrower(self):
         """The control: the one known borrower is found."""
         self.assertIn("commands/CmdBug.py", borrowers(self.ROOT))
+
+    def test_the_scan_sees_an_alias_and_a_reference(self):
+        """The control for the spellings a search for calls would miss."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "world"))
+            samples = {
+                "alias.py": "from evennia.utils.utils import run_async as ra\n",
+                "handed_on.py": "from functools import partial\n"
+                                "import x\nf = partial(x.deferToThread, len)\n",
+                "reactors_own.py": "def f(reactor):\n"
+                                   "    return reactor.getThreadPool()\n",
+                "innocent.py": "# run_async, in a comment\n"
+                               "TEXT = 'deferToThread'\n",
+            }
+            for name, text in samples.items():
+                with open(os.path.join(root, "world", name), "w") as handle:
+                    handle.write(text)
+            self.assertEqual(
+                borrowers(root),
+                {"world/alias.py", "world/handed_on.py",
+                 "world/reactors_own.py"})
 
     def test_only_the_listed_files_use_the_reactors_pool(self):
         self.assertEqual(borrowers(self.ROOT), STILL_ON_THE_REACTORS_POOL)

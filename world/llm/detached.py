@@ -11,10 +11,14 @@ old process, and its pid file, until the model answered. The replacement
 found the pid file and quit, and the game stayed down.
 
 So calls that may block for long run here: on a pool of our own whose
-workers are daemon threads and which nothing stops. The old Server exits
-at once whatever they are doing. The call it abandons is harmless as
-long as the work keeps to the rule below; its callbacks are never run,
-which is also what happened to them before.
+workers are daemon threads and which nothing stops. The old Server does
+not wait for them, whatever they are doing. The call it abandons is
+harmless as long as the work keeps to the rule below; its callbacks are
+never run, which is also what happened to them before.
+
+Like the reactor's own pool, this one starts when the reactor is
+running. In a process that never runs one (a test run, `evennia shell`)
+the work is held and nothing is sent, as it was on the reactor's pool.
 
 The rule for ``work``: network and parsing only. No Evennia objects and
 no database. The callbacks run on the reactor, where both are safe.
@@ -69,7 +73,10 @@ def run_detached(work, at_return, at_err):
     from twisted.internet import reactor
 
     if not _pool.started:
-        _pool.start()
+        # As the reactor starts its own pool: once it is running, which
+        # is now if it already is. Until then a pool hands out no work,
+        # so a process that never runs a reactor never sends anything.
+        reactor.callWhenRunning(_pool.start)
     deferred = threads.deferToThreadPool(reactor, _pool, work)
     deferred.addCallback(at_return)
     deferred.addErrback(at_err)
