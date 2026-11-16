@@ -15,6 +15,11 @@ A record is a plain JSON/Attribute-safe dict::
 
 ``subject`` scopes a memory to an interlocutor (e.g. their stable uid/key); an
 empty subject is a general memory available to everyone.
+
+A record whose text calls somebody by a NAME may also carry ``named_by``: the
+key of the entry that name was read from, which is not always the subject (a
+look can answer to the name of another). It is there so that forgetting the
+name can take the record (``typeclasses.llm_npc``, ``at_looks_erased``).
 """
 
 import math
@@ -28,10 +33,10 @@ RECENCY_HALFLIFE = 7 * 24 * 3600.0
 DEFAULT_CAP_PER_SUBJECT = 30
 
 
-def make_record(text, embedding, subject="", now=None):
+def make_record(text, embedding, subject="", now=None, named_by=None):
     """Build a fresh memory record (plain dict)."""
     now = time.time() if now is None else now
-    return {
+    record = {
         "text": text,
         "embedding": list(embedding or []),
         "subject": subject or "",
@@ -39,6 +44,9 @@ def make_record(text, embedding, subject="", now=None):
         "last_seen": now,
         "uses": 0,
     }
+    if named_by:
+        record["named_by"] = named_by
+    return record
 
 
 def _dot(a, b):
@@ -116,7 +124,7 @@ def retrieve(query_vec, records, k=3, subject=None, now=None):
     return hits
 
 
-def remember(records, text, embedding, subject="", now=None):
+def remember(records, text, embedding, subject="", now=None, named_by=None):
     """Add *text* to *records* — or, if it is already remembered, remember
     it HARDER.
 
@@ -130,6 +138,9 @@ def remember(records, text, embedding, subject="", now=None):
     Recall bumps `last_seen`/`uses`, which is exactly what `salience`
     rewards, so a thing that keeps happening becomes a strong memory
     rather than a crowd of weak identical ones.
+
+    *named_by* is kept on a new record (see the module docstring), and
+    written on a remembered one that has none.
     """
     now = time.time() if now is None else now
     key = " ".join(str(text or "").split())
@@ -139,8 +150,11 @@ def remember(records, text, embedding, subject="", now=None):
                 and " ".join(str(rec.get("text") or "").split()) == key):
             rec["last_seen"] = now
             rec["uses"] = rec.get("uses", 0) + 1
+            if named_by and not rec.get("named_by"):
+                rec["named_by"] = named_by
             return prune(records, now=now)
-    records.append(make_record(text, embedding, subject=subject, now=now))
+    records.append(make_record(text, embedding, subject=subject, now=now,
+                               named_by=named_by))
     return prune(records, now=now)
 
 

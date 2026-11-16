@@ -530,6 +530,30 @@ VOICE_DISCERN_MODULATION_PENALTY = 3
 GENERIC_UNSEEN_SPEAKER = "someone"
 
 
+def named_voice_entry(observer: Any, target: Any) -> tuple:
+    """``(voice uid, entry)``: the named voice entry *observer* would
+    place *target*'s current voice by, or ``(None, None)``.
+
+    The heard voice's own entry when it has a name. Otherwise the first
+    named voice the observer holds for that body: they know the natural
+    voice, and it is disguised now. :func:`attempt_voice_discern` reads
+    the name from this entry; whether the observer DOES place the voice
+    is that function's roll, not this one's.
+    """
+    voice_uid = get_apparent_voice_uid(target)
+    real_sleeve = getattr(target, "sleeve_uid", None)
+    if voice_uid is None or not real_sleeve:
+        return None, None
+    named = [
+        (uid, entry)
+        for uid, entry in find_voice_entries_by_real_sleeve_uid(observer, real_sleeve)
+        if (entry.get("assigned_name") or "")
+    ]
+    if not named:
+        return None, None
+    return next((pair for pair in named if pair[0] == voice_uid), named[0])
+
+
 def attempt_voice_discern(observer: Any, target: Any) -> str | None:
     """Resolve (and cache) whether *observer* places *target*'s voice by name.
 
@@ -544,23 +568,12 @@ def attempt_voice_discern(observer: Any, target: Any) -> str | None:
         return None
 
     voice_uid = get_apparent_voice_uid(target)
-    real_sleeve = getattr(target, "sleeve_uid", None)
-    if voice_uid is None or not real_sleeve:
+    # Have we named this person's voice under any presentation? The
+    # entry for the *current* presentation first; otherwise any named
+    # one (you know their natural voice, they are modulated now).
+    _source, bare_entry = named_voice_entry(observer, target)
+    if bare_entry is None:
         return None
-
-    # Have we named this person's voice under any presentation?
-    named = [
-        (uid, entry)
-        for uid, entry in find_voice_entries_by_real_sleeve_uid(observer, real_sleeve)
-        if (entry.get("assigned_name") or "")
-    ]
-    if not named:
-        return None
-    # Prefer the entry for the *current* voice presentation; otherwise any named
-    # presentation (you know their natural voice, they are modulated now).
-    bare_entry = next(
-        (entry for uid, entry in named if uid == voice_uid), named[0][1]
-    )
     assigned_name = bare_entry["assigned_name"]
 
     observer_dbref = getattr(observer, "dbref", None)
