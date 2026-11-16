@@ -311,7 +311,7 @@ def _strip_color_codes(text):
 
 ## Death Progression Configuration
 
-> **A beheading has no death window (#3835, owner ruling 2026-11-14).** "Is someone really dying if there head is missing? They should be a corpse." When the death is a beheading, the curtain plays for the dying player and tells the room the cause as for any death, and then the progression completes at once: no revival check, none of the dying messages, the two closing lines, and the corpse. The script's next tick is the backstop if that did not happen. Every other death keeps the window described here. A destroyed brain, the other case #330 lists, is not decided.
+> **A beheading has no death window (#3835, owner ruling 2026-11-14).** "Is someone really dying if there head is missing? They should be a corpse." When the death is a beheading, the curtain plays for the dying player and tells the room the cause as for any death, and then the progression completes at once: no revival check, none of the dying messages, the two closing lines, and the corpse. The script's next tick is the backstop if that did not happen. Every other death keeps the window described here. That includes a destroyed brain, the other case #330 listed: the owner ruled it a "Death with a window" (#3248, 2026-09-26). The body is dead on the blow, and a new brain put in during the window is the one thing that brings it back, so a brain transplant needs the window.
 
 The death system consists of two parts: the death curtain animation (~5-10 seconds — **measured 2026-09-12: ~2.3-3.1 s**, 33-41 frames at `frame_delay` 0.05 × 1.02ⁿ, `curtain_of_death.py:256-257`) followed by a configurable death progression timer.
 
