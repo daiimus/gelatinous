@@ -1007,7 +1007,12 @@ class LLMNpcMixin:
           `_relationship_line` hands back as "you know them as ...";
         * what was said between them (`db.llm_memories`);
         * the turns of the conversation (`ndb.llm_history`, see
-          `_drop_turns_said_under`).
+          `_drop_turns_said_under`);
+        * its read on them (`db.soul_opinions`), which
+          `_relationship_line` hands back with the reason: "your read
+          on them: wary (because they put hands on me)". The owner
+          ruled on this one by itself (#3851, 2026-11-16, see
+          `world.souls.thoughts.forget_opinions`).
 
         A record goes when it is FILED UNDER a forgotten look or voice
         (its ``subject``; a voice on the air is ``voice:<uid>``), and
@@ -1022,11 +1027,13 @@ class LLMNpcMixin:
         What stays:
 
         * everything filed under, and written under the name of, a
-          look or a voice that was not erased, whoever it belongs to;
-        * its read on the person (`db.soul_opinions`). Whether that
-          goes with the look is not ruled (#3851);
+          look or a voice that was not erased, whoever it belongs to.
+          A second name it holds for the same person keeps its own
+          read on them;
         * what is filed under nobody: a mood, and a general memory a
-          mood wrote ("I remember: they put hands on me.");
+          mood wrote ("I remember: they put hands on me."). So an NPC
+          made to forget whoever attacked it is still shaken, and no
+          longer knows at whom;
         * the lines waiting in the buffer of what it has just seen
           happen. They are already written out, as a player's screen
           is, and can show the name once more, in its next reply;
@@ -1054,6 +1061,8 @@ class LLMNpcMixin:
         if len(kept) != len(memories):
             self.db.llm_memories = kept
         self._drop_turns_said_under(keys)
+        from world.souls import thoughts
+        thoughts.forget_opinions(self, keys)
 
     def _drop_turns_said_under(self, keys):
         """Take the turns spoken under *keys*, or written under their

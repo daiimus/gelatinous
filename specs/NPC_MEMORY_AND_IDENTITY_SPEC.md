@@ -245,6 +245,8 @@ The `feel` tool is **retired**. The WHO line hands the voice the band *and the
 reason*, so an NPC narrates the grievance the engine actually holds instead of
 inventing one.
 
+An NPC that forgets somebody loses its read on them with the rest (§5b, #3851).
+
 **The original intent survives, by other means.** This section wanted
 persona-weighted reactions — *"Sully shrugs off what makes Vesper cold."* That
 is trait **repricing** (`NPC_TRAITS_SPEC`), applied to opinion rather than to
@@ -343,23 +345,27 @@ Owner ruling, 2026-11-15 (#3841): *"This should be identical to what a player lo
 | the names it knew them by | `db.llm_dossiers[uid]` | the WHO line: "you know them as ..." |
 | what was said between them | `db.llm_memories` | the MEMORY block |
 | the turns of the conversation | `ndb.llm_history` | the recent turns |
+| its read on them, with the reason | `db.soul_opinions[uid]` | the WHO line: "your read on them: wary (because they put hands on me)" |
 
 A record goes for either of two reasons:
 
 - **It is filed under a forgotten look or voice** (its `subject`). A voice on the air is filed as `voice:<uid>`; when a voice entry goes with the look it was named with, what was filed under that voice goes too.
 - **It was written under a forgotten name** (its `named_by`). The text of a memory and of a turn calls the speaker by the name the NPC had for them, and that name is not always the name of the look they are filed under: a look the NPC watched arrive answers to the name of the one it came from, and a disguised voice the NPC places answers to the name of the natural one. So each memory and each turn records the entry its name was read from, worked out together with the name and before the model is called. An NPC that served a masked figure as "Moth", later gave that figure a name of its own and then forgot Moth, loses what it wrote down while it called them Moth, and keeps what it wrote down after.
 
+**The read on a person** went in by a ruling of its own. Owner, 2026-11-16 (#3851), to the recommendation that the read goes and the general mood stays: *"I concur with your recommendation."* The read is the entries of what the person did, each with its reason, filed under the look they wore (`world.souls.thoughts`, §3). It carries no name, so the first reason is the only one that applies to it: it goes when the look it is filed under was erased (`thoughts.forget_opinions`). An NPC that was still told "because they put hands on me" had not forgotten them.
+
+This is a second road past the rule in §5 that a grudge cannot be shed by changing faces (#3371). A change of face does not shed it; a memory wipe does. That cost was named when the ruling was asked for.
+
 What that means in the cases that matter:
 
-- **Only what was erased.** The looks are the ones `erase_look` removed: the named entry, and the unnamed entries known only through it. A second name the NPC holds for the same person stays, with everything filed under it and written under it: the NPC connected the two (§5), and forgetting one name is not forgetting the other.
+- **Only what was erased.** The looks are the ones `erase_look` removed: the named entry, and the unnamed entries known only through it. A second name the NPC holds for the same person stays, with everything filed under it and written under it, its read on them included: the NPC connected the two (§5), and forgetting one name is not forgetting the other.
 - **A thread is one conversation across looks.** It is filed under whichever look spoke last and holds the turns of every look the NPC had connected. Each turn records the look it was said under, so the forgotten look's turns leave a thread that stays, and the turns of a look that stays are kept out of a thread that goes. A thread that holds nothing to forget, and has nothing put back into it, is left as it is.
 - **Somebody never named cannot be forgotten**, as for a player: `forget` forgets a name. What an NPC filed under a stranger's look stays.
 - **A reply still being made.** A reply takes time, and the record of it is written when it arrives. If the NPC is made to forget somebody while its reply to them is on its way, that reply is not written down under the name it has just lost: both writers check, as they write, that the entry the name was read from is still there.
 
 What stays:
 
-- 📋 **Its read on the person** (`db.soul_opinions`, §3), and with it the reason the WHO line cites: "your read on them: wary (because they put hands on me)". Whether that goes with the look is not ruled (#3851).
-- **What is filed under nobody:** a mood (`db.soul_thoughts`) and the general memory a strong mood writes ("I remember: they put hands on me.").
+- **What is filed under nobody:** a mood (`db.soul_thoughts`) and the general memory a strong mood writes ("I remember: they put hands on me."). Part of everything a person does to an NPC goes into its general mood as well as into its read on them, and that part stays (#3851). So an NPC made to forget whoever attacked it is still shaken, and no longer knows at whom.
 - **The lines waiting in the buffer of what the NPC has just seen happen.** They are already written out with names in them, as a player's screen is, and can show the forgotten name once more, in the NPC's next reply.
 - **What the model itself said.** A reply that spoke the name while talking to somebody else is kept as it was said.
 - **Records written before a record carried `named_by`**, unless they are filed under a forgotten look.

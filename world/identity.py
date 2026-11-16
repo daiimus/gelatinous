@@ -1985,9 +1985,9 @@ def erase_look(observer: Any, uid: str) -> str:
 
     An observer may keep records of its own, filed under the same
     looks and voices. An AI NPC does: the names it knew somebody by,
-    what was said between them and the conversation thread
-    (``typeclasses.llm_npc``). Those go at this door too
-    (#3841). Owner, 2026-11-15: "This should be identical to what a
+    what was said between them, the conversation thread and its read
+    on them (``typeclasses.llm_npc``). Those go at this door too
+    (#3841, and #3851 for the read). Owner, 2026-11-15: "This should be identical to what a
     player loses. Their behavior is ideally identical to avoid
     cheating/hacking." This function does not know what those records
     are. It tells the observer which looks and which voices have just

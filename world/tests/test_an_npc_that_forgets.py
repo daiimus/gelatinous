@@ -22,8 +22,9 @@ A record goes when it is FILED UNDER a forgotten look or voice, and
 also when it was WRITTEN UNDER A FORGOTTEN NAME: a look the NPC keeps
 may once have answered to the name it loses.
 
-The NPC's read on a person (`db.soul_opinions`) is not touched here.
-Whether it goes with the look is not ruled (#3851).
+The NPC's read on a person (`db.soul_opinions`) goes at the same door,
+by a ruling of its own (#3851). That is shown in
+`test_an_npc_that_forgets_loses_its_read`.
 
 The NPC here is made by the test and types the real `remember` and
 `forget` commands. Every "is gone" below has a control beside it: the
