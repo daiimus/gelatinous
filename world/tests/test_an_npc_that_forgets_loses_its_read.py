@@ -16,8 +16,7 @@ So:
 
 * the read goes with the looks that were erased;
 * the mood stays, and so does the general memory a strong mood wrote:
-  neither is filed under anybody. The NPC is still shaken, and no
-  longer knows at whom;
+  neither is filed under anybody. The NPC is still shaken;
 * only what was erased. A look the NPC still knows keeps its read.
 
 The reads here are written by the two functions the game writes them
@@ -251,6 +250,9 @@ class TestTheReadOnSomebodyNeverNamedStays(_SullyHasASoul):
         self.assertIn("You don't have a name remembered for them.",
                       self.told())
         self.assertIn(HOSTILE, self.who_line(self.patron))
+        # And nobody else was forgotten in the stranger's place.
+        self.assertEqual(get_assigned_name(self.npc, self.other), "Wren")
+        self.assertIn(self.wren, thoughts._opinions(self.npc))
 
     def test_forgetting_somebody_else_leaves_it(self):
         self.forget("wren")

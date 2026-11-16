@@ -307,7 +307,8 @@ the least-recently-*felt-about* rather than the oldest.
 
 **A memory wipe takes it** (owner ruling 2026-11-16, #3851): an NPC made to
 forget somebody loses its read on them, whatever its traits. `grudge_etched`
-is about how a grudge fades, and does not hold against a wipe. The mood share
+is a voice line and a pose today; the slower fade the table above proposes for
+it is not built, and would be about fading, not about a wipe. The mood share
 below stays. See `NPC_MEMORY_AND_IDENTITY_SPEC.md` §5b.
 
 **Mood coupling** (owner ruling 2026-08-29): an interpersonal event moves
