@@ -1983,11 +1983,16 @@ def erase_look(observer: Any, uid: str) -> str:
     observer never connected to this name. Nothing is cleared because
     the game knows two things are one body.
 
-    Not covered: an AI NPC also keeps its own records keyed by look
-    (dossier aliases, long-term memories, the conversation thread, in
-    ``typeclasses.llm_npc``). They are not erased here, so an NPC that
-    forgets a name is still handed it. Undecided what it should lose
-    (#3841).
+    An observer may keep records of its own, filed under the same
+    looks and voices. An AI NPC does: the names it knew somebody by,
+    what was said between them, the conversation thread and its read
+    on them (``typeclasses.llm_npc``). Those go at this door too
+    (#3841). Owner, 2026-11-15: "This should be identical to what a
+    player loses. Their behavior is ideally identical to avoid
+    cheating/hacking." This function does not know what those records
+    are. It tells the observer which looks and which voices have just
+    left its memory (``at_looks_erased``), and the observer drops what
+    it filed under them.
 
     It used to blank the name and keep the entry, so naming the look
     again brought back its links and carried on its seen-count; and it
@@ -2041,7 +2046,16 @@ def erase_look(observer: Any, uid: str) -> str:
                 del cache[key]
         observer.db.disguise_pierce_cache = cache
 
+    voices_before = set(getattr(observer, "voice_memory", None) or {})
     erase_voices_named(observer, name, look_uid=uid, real_sleeve_uid=sleeve)
+    gone_voices = voices_before - set(
+        getattr(observer, "voice_memory", None) or {})
+
+    # What the observer filed for itself under those looks and voices
+    # goes with them (#3841). Only the observer knows what that is.
+    drop_own_records = getattr(observer, "at_looks_erased", None)
+    if callable(drop_own_records):
+        drop_own_records(gone, gone_voices)
     return name
 
 

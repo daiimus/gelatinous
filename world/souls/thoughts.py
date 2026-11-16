@@ -241,6 +241,27 @@ def add_opinion(soul, uid, key, valence, note="", wound=False,
         add_thought(soul, key, float(valence) * mood_share, note, wound=wound)
 
 
+def forget_opinions(soul, uids):
+    """Drop what `soul` holds against each of `uids`. Returns how many
+    people that was.
+
+    The soul's half of forgetting somebody (#3841). The read on a
+    person is what they DID, entry by entry, each with its reason, and
+    a soul that no longer knows a look cannot go on holding what that
+    look did against it. The share of each event that went into the
+    general mood (`add_opinion`) stays: a mood is not filed under
+    anybody.
+    """
+    doomed = {str(uid or "").strip() for uid in (uids or ())}
+    book = _opinions(soul)
+    hit = [uid for uid in book if uid in doomed]
+    for uid in hit:
+        del book[uid]
+    if hit:
+        soul.db.soul_opinions = book
+    return len(hit)
+
+
 def opinion_of(soul, uid, now=None):
     """Clamped, decayed sum of what `uid` has done to this soul. Pure read —
     no attribute holds it, exactly as with mood."""

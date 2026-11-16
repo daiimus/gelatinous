@@ -923,6 +923,91 @@ class LLMNpcMixin:
         d[subject] = entry
         self.db.llm_dossiers = d
 
+    def at_looks_erased(self, looks, voices=()):
+        """Drop what this NPC filed for itself under looks and voices it
+        has just forgotten (#3841).
+
+        Called by `world.identity.erase_look`, the one door forgetting
+        goes through, with the looks and the voices that have just left
+        this NPC's recognition and voice memory. Owner, 2026-11-15:
+        "This should be identical to what a player loses. Their
+        behavior is ideally identical to avoid cheating/hacking." A
+        player who forgets a look is left holding nothing about it. An
+        NPC also files four things of its own under a look, and each
+        of them is put back in front of the model, so each goes:
+
+        * the names it knew them by (`db.llm_dossiers`), which
+          `_relationship_line` hands back as "you know them as ...";
+        * what was said between them (`db.llm_memories` with that
+          subject);
+        * the turns of the conversation spoken under that look
+          (`ndb.llm_history`, see `_drop_turns_said_under`);
+        * its read on them (`db.soul_opinions`), which
+          `_relationship_line` hands back as "your read on them: wary
+          (because ...)". The reason is a memory of what they did.
+
+        A voice on the air is filed as ``voice:<uid>``
+        (`_radio_subject`).
+
+        What stays: everything filed under a look or a voice that was
+        not erased, whoever it belongs to. So does what is filed under
+        nobody: a mood, a general memory that a mood wrote ("I
+        remember: they put hands on me."), and the lines waiting in
+        the buffer of what the NPC has just seen happen. And the
+        conversation hold is attention, not memory: an NPC made to
+        forget the person it is talking to goes on listening to them
+        until the hold runs out.
+        """
+        keys = {str(look) for look in (looks or ()) if look}
+        keys |= {f"voice:{voice}" for voice in (voices or ()) if voice}
+        if not keys:
+            return
+        dossiers = self._dossiers()
+        if keys.intersection(dossiers):
+            self.db.llm_dossiers = {
+                uid: row for uid, row in dossiers.items() if uid not in keys}
+        memories = self._load_memories()
+        kept = [rec for rec in memories if rec.get("subject") not in keys]
+        if len(kept) != len(memories):
+            self.db.llm_memories = kept
+        self._drop_turns_said_under(keys)
+        from world.souls import thoughts
+        thoughts.forget_opinions(self, keys)
+
+    def _drop_turns_said_under(self, keys):
+        """Take the turns spoken under *keys* out of the short-term
+        threads.
+
+        A thread is filed under whichever look of a person spoke last,
+        and holds the turns of every look this NPC had connected to it
+        (`_remember_turn`). So the turns of a forgotten look can sit in
+        a thread filed under a look that stays, and the turns of a look
+        that stays can sit in a thread filed under the forgotten one.
+        Each turn records the look it was said under. A thread that
+        held a forgotten turn, or was filed under a forgotten look, is
+        taken apart, and what is left of it is filed under the look
+        each turn was said under. `_recent_history` joins those again
+        for as long as the NPC still connects the looks.
+        """
+        history = self.ndb.llm_history or {}
+        rebuilt = {}
+        changed = False
+        for key, turns in history.items():
+            said_under = [turn.get("subject") or key for turn in turns]
+            if key not in keys and not keys.intersection(said_under):
+                rebuilt.setdefault(key, []).extend(turns)
+                continue
+            changed = True
+            for turn, subject in zip(turns, said_under):
+                if subject not in keys:
+                    rebuilt.setdefault(subject, []).append(turn)
+        if not changed:
+            return
+        self.ndb.llm_history = {
+            key: sorted(turns, key=lambda turn: turn.get("n", 0))[
+                -LLM_HISTORY_TURNS:]
+            for key, turns in rebuilt.items()}
+
     # `_set_valence` is GONE (#2388). The NPC's read on a person is derived
     # from `souls.thoughts.opinion_of` now — see `_relationship_line`. The old
     # method let the model write a free-text state that the game then stored
@@ -1525,7 +1610,12 @@ class LLMNpcMixin:
         to be one person, under whichever of them spoke last. A copy left
         behind was read first the moment they went back to that look, and
         the NPC lost its latest turns each time a mask came off in front
-        of it."""
+        of it.
+
+        Each turn keeps the subject it was said under, so that the
+        turns of a look this NPC later forgets can be taken out of a
+        thread that has moved on to another look
+        (`_drop_turns_said_under`)."""
         reply = self._reconstruct_reply(speech, action, thought)
         if not reply:
             return
@@ -1543,6 +1633,7 @@ class LLMNpcMixin:
             "user": f'{speaker_name} says to you: "{line}"',
             "assistant": reply,
             "n": said,
+            "subject": subject,
         })
         for other in self._thread_keys(subject):
             hist.pop(other, None)

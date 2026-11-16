@@ -332,6 +332,28 @@ mechanical payoff.
 
 > **Shipped 2026-09-13 (#3371, owner ruling option A).** The WHO line now reads the whole `linked_family`: aliases are the UNION across every connected face, opinion is the SUM of the decayed opinion held against each face (`souls.thoughts.opinion_over`) -- connecting two faces is a full merge, so a grudge earned as face A reads on face B and cannot be laundered by changing faces -- and papers something vouched for (`identity.attestations`) are surfaced, the NPC-side twin of `recall`'s `Papers:` rows. Memory retrieval had followed the chain since #2410; this was the other half.
 
+## 5b · Forgetting
+
+Owner ruling, 2026-11-15 (#3841): *"This should be identical to what a player loses. Their behavior is ideally identical to avoid cheating/hacking."*
+
+`forget` is a real erase of one look from one observer (`IDENTITY_RECOGNITION_SPEC.md`, the `forget` command). An NPC is an observer like any other, so the recognition entry, every pointer to it, the voice named with it and the see-throughs won through it go for an NPC as they do for a player. An NPC also files things of its own under each look, and each of them is put back in front of the model on the next turn. They go at the same door, `world.identity.erase_look`, which tells the observer which looks and which voices have just left its memory (`at_looks_erased`):
+
+| What the NPC filed | Where | How the model was handed it |
+|---|---|---|
+| the names it knew them by | `db.llm_dossiers[uid]` | the WHO line: "you know them as ..." |
+| what was said between them | `db.llm_memories`, the records with that `subject` | the MEMORY block |
+| the turns spoken under that look | `ndb.llm_history` | the recent turns |
+| its read on them, with the reason | `db.soul_opinions[uid]` | the WHO line: "your read on them: wary (because ...)" |
+
+A voice on the air is filed as `voice:<uid>`. When a voice entry goes with the look it was named with, what was filed under that voice goes too.
+
+- **Only what was erased.** The looks are the ones `erase_look` removed: the named entry, and the unnamed entries known only through it. A second name the NPC holds for the same person stays, with everything filed under it: the NPC connected the two (§5), and forgetting one name is not forgetting the other.
+- **A thread is one conversation across looks.** It is filed under whichever look spoke last and holds the turns of every look the NPC had connected. Each turn records the look it was said under, so the forgotten look's turns leave a thread that stays, and the turns of a look that stays are kept out of a thread that goes.
+- **The read on a person is memory** (§3), and the reason the WHO line cites is a memory of what they did, so it goes with the look. The issue that carried the ruling listed the first three rows of the table; the fourth is the agent's application of the ruling, recorded as such on #3841.
+- **What stays** is what is filed under nobody: a mood (`db.soul_thoughts`), the general memory a strong mood writes ("I remember: they put hands on me."), and the lines waiting in the buffer of what the NPC has just seen happen. The conversation hold is attention, not memory: an NPC made to forget the person it is talking to goes on listening to them until the hold runs out.
+- **Somebody never named cannot be forgotten**, as for a player: `forget` forgets a name. What an NPC filed under a stranger's look stays.
+- **Nothing an NPC does today makes it forget.** The model has a `remember` tool and no `forget` tool, and the command reaches an NPC only when staff type it for one. The door is there for the memory wipe §6 describes.
+
 ## 6 · Memory as substrate — affordance roadmap
 
 Once memory hangs on the identity spine it stops being an NPC attribute and
