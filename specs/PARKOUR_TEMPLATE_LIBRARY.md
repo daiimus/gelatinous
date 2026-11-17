@@ -17,10 +17,19 @@ a number reopens the templates.
 
 - **Jump across**: one cell, ever (including diagonals). Owner-locked:
   multi-cell leaps add complexity for us and the player and are out.
-  Motorics roll vs `gap_difficulty` (default 10); failure is a fall.
+  Motorics roll vs `gap_difficulty` (default 10); failure is a fall
+  down the air cell's column, or, where the gap has no air cell, a slip
+  in place for one storey's damage (`handle_gap_jump` in
+  `commands/combat/jump.py`). The code does not check the span: the leap
+  lands wherever `gap_destination` names, so the one-cell rule is kept by
+  how things are built.
 - **Falls**: gravity walks sky cells to ground at **5 damage/story**.
   Risk therefore scales with height automatically — the same gap is a
-  scraped knee at z2 and a death sentence at z14.
+  scraped knee at z2 and 70 damage at z14. Fall damage lands on the legs
+  first: `apply_fall_damage` in `world/gravity.py` fills the feet, then
+  the shins, then the thighs, then the other limbs, then the rest, so a
+  long fall smashes the legs before it reaches anything vital. How lethal
+  a fall is has not been tuned (`specs/roadmaps/BALANCE_LEDGER.md`).
   *(Correction 2026-09-12, **resolved 2026-09-16 by the gravity layer,
   #3579** — the drop was brought to the kernel, as that correction said
   it should be. Each finding and its disposition:*
@@ -34,7 +43,13 @@ a number reopens the templates.
   and 20 if you jumped off the same edge. There is now **one constant and
   both verbs use it**: `FALL_DAMAGE_PER_STORY` (5) × cells actually
   passed, charged by `world/gravity.py` at the bottom of whatever column
-  the body fell down. No verb carries a damage number any more.*
+  the body fell down. No exit carries a damage number any more. Two
+  cases have no column, and the jump verb charges them itself, a flat
+  one storey (5) with no landing roll: `jump off` an edge whose
+  destination is not an air cell (`handle_edge_descent` in
+  `commands/combat/jump.py`), and a missed `jump across` with no air cell
+  between the two roofs, where the jumper slips and stays put
+  (`handle_fall_failure`).*
 
   *__(b) "The gravity walk only walks where a `down` chain exists" —
   HALF-RESOLVED.__ The CODE half is fixed: a cell with no `down`, a
@@ -69,8 +84,10 @@ a number reopens the templates.
   relevant." Geometry is the base; per-exit damage numbers were the thing
   standing in its way. `fall_damage`, `fall_distance` and `sky_room` have
   no runtime reader left; `is_edge`, `edge_difficulty`, `is_gap`,
-  `gap_difficulty`, `gap_destination` and `gap_width` survive as the
-  authored surface.*
+  `gap_difficulty` and `gap_destination` are the authored surface.
+  `gap_width` is still written by a few build scripts and by
+  `CraneContainer._set_door` in `typeclasses/rooms.py`, but nothing
+  reads it.*
 
   *__The kernel itself is unchanged.__ Falls still cost 5/story and risk
   still scales with height automatically — what changed is that the code
@@ -96,7 +113,7 @@ a number reopens the templates.
   superseded; the fire-escape sentence still stands. **`sky_room` is not required and no
   longer exists**: the edge's own `destination` is the air cell and the
   authored set is now exactly is_edge / edge_difficulty (+ is_gap /
-  gap_difficulty / gap_destination / gap_width on a gap) — `fall_room`
+  gap_difficulty / gap_destination on a gap) — `fall_room`
   is off the list too, **retired (#3580, 2026-09-16)** with no reader
   left, the map exporter included. There is no degraded plain-walk
   fallback to guard against. **Walking into a sky room DOES trigger
@@ -138,6 +155,13 @@ a number reopens the templates.
 | Jump | fast | fall damage (5×height) | Motorics | a moment |
 | Hook | slow | stamina only | gear length + Motorics | a visible line others can use or cut |
 
+A jumper who holds someone in a grapple drags them off an edge too.
+The held body cushions the landing and takes most of the damage (the
+`FALL_BODYSHIELD_*` shares in `world/combat/constants.py`, applied by
+`_land_with_bodyshield` in `world/gravity.py` and by the direct-drop
+branch of `handle_edge_descent`). A `jump across` lets go of the hold
+instead.
+
 Jumping is the free, dangerous, kinetic verb. Hooking is the safe,
 paid, social verb. Amazing parkour keeps both honest: every corridor
 must be solvable by jumps-plus-built-ascents alone (no pay-to-climb),
@@ -161,7 +185,11 @@ and hooks buy *shortcuts, safety, and rescue* — never the only path.
    in the only roll that altitude should touch. An author who also loads
    altitude into `gap_difficulty` is **double-counting it** — the takeoff
    roll is about the span, the landing roll is about the drop. Keep
-   `gap_difficulty` about how far the gap is.)*
+   `gap_difficulty` about how far the gap is. An edge that authors no
+   `edge_difficulty` rolls against 8 (`FALL_EDGE_DIFFICULTY_DEFAULT`),
+   and every `@airfill` edge is bare. Only a `jump off` into an air
+   column rolls to land; a shove, a throw, a missed leap or a direct drop
+   does not.)*
 3. **Soft-fail low, hard-fail high.** Learning sections route over
    fall interceptors (terraces/awnings 1–2 stories below the gap,
    capping a botch at ≤10 damage). The climax near the rim earns its
@@ -238,8 +266,15 @@ heights, stitched by furniture. The law of the mesh:
   So nobody can be chased onto such a roof and nobody can back off it —
   the only way out is the jump, and the jump costs what fleeing costs —
   the aim contest and the melee disengage roll both, each with an
-  opportunity attack waiting on a lost roll (#3583, #3591) — though it is
-  never refused and never costs a round. Owner: *"It would be
+  opportunity attack waiting on a lost roll (#3583, #3591). A lost roll
+  does not stop the jump; only an attack that leaves the jumper dead or
+  unconscious does (`pay_the_price_of_leaving` in
+  `commands/combat/jump.py`). A jump that cannot happen is refused before
+  any roll and costs nothing (#3685): a jumper who is being grappled, who
+  is channeling, or whose escortee cannot follow over the edge. A missed
+  `jump across` with no air cell under the gap slips in place and sets
+  the jumper to skip their next combat round (`handle_fall_failure`).
+  Owner: *"It would be
   refused at the edge… Ideally, very few rooftops will exist without
   exits though — so ending up on one where all you can do is jump is a
   tactical challenge."* Read that as a **budget, not a ban**: build the
@@ -247,7 +282,7 @@ heights, stitched by furniture. The law of the mesh:
   commits the player, and give every other plate a walkable way off per
   invariant 5. The stakes come free — the drop below is already the
   price — but only if the column beneath it is wired (see the wiring
-  requirement below).
+  requirement above).
 
 **Street width is a design tool.** One cell wide = the roof city can
 cross it (span-1 law). Two wide = a wall at roof level. Widen streets
@@ -408,7 +443,12 @@ two pieces per building is plenty.
   (ascent from below waits for the crank/grapple era); it can end on
   a ROOF or HULL rather than the ground, feeding the second city
   directly. Egress always; ingress is the future hidden-exit
-  mechanic. Copy the exemplar, not this paragraph.
+  mechanic. Copy the exemplar, not this paragraph. Copy its rooms and
+  exits, not its East Roof edge block: that block still writes the
+  retired `sky_room` / `fall_room` / `fall_distance` / `fall_damage`
+  (#3579, #3580), with a comment calling `sky_room` required. An edge
+  needs only `is_edge` and `edge_difficulty`, and its destination is the
+  air cell.
 - **F2 · The water tower** — the step-stone crown. Ladder up a leg,
   tank-top platform +1..+2 above its roof with its own edge set: it
   takes a roof HIGHER without a new building, bridges to the taller

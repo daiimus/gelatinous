@@ -41,7 +41,8 @@ room is in space** — and a growing list of systems all want exactly that:
 * **NPC dispatch & auto-walk** — responders, couriers, and gangers routing
   across the city via shortest-path.
 * **Verticality & gravity** — sky rooms you fall *through* along a vertical
-  axis (the `jump` command already models a first version — see §6).
+  axis (falling already exists without coordinates, in `world/gravity.py`; see
+  §6).
 * **Pie-in-the-sky** — room destruction/repair and procedurally-generated mines
   that can be blown open and tunnelled.
 
@@ -93,7 +94,7 @@ coordinate lookups are DB-indexed and a future builder could interoperate with
 contrib tooling. We do **not** inherit `XYZRoom` wholesale: its
 `return_appearance` injects the contrib minimap and would fight our
 `get_display_desc` sense-layer composition. We take the tag/query mixin, not the
-display. (Open question §10.)
+display.
 
 ## 3 · The coordinate model
 
@@ -136,13 +137,20 @@ present" and fails open, never raising.
 
 ### Warp exits — the non-Euclidean escape hatch
 
-Coordinates are **authoritative geometry**: a cardinal exit whose direction
-disagrees with the coordinates of its rooms is a *build bug* (logged and fixed
-during seeding, §4). But deliberate non-Euclidean links — elevators, maglev,
-teleporters, a story warp — are legitimate. Those carry a
+Coordinates are **authoritative geometry** (for the seed walk; whether the walk
+overrides hand-placed coordinates is open, §10): a cardinal exit whose direction
+disagrees with the coordinates of its rooms is a *build bug* (listed by
+`@coordseed` and fixed during seeding, §4). Elevator cars and the crane
+container are not such links: they are moving rooms that rewrite their own
+`db.xyz` as they travel (`typeclasses/elevator.py`; `CraneCarRoom.move_to_level`
+in `typeclasses/rooms.py`), and `@coordseed` names them in its report. Other
+deliberate non-Euclidean links — maglev, teleporters, a story warp — are
+legitimate. Those carry a
 **`("warp", "exit_type")` tag**: excluded from coordinate propagation, ignored
-by radar/gravity geometry, still fully walkable and still a valid edge for the
-dispatch pathfinder. This is the line between "a bug" and "a deliberate
+from coordinate seeding (`seed_coordinates`), still fully walkable and still a
+valid edge for the pathfinder. Radar ignoring them is 📋 UNBUILT (no issue; no
+radar exists), and the fall in `world/gravity.py` does not read the tag: it
+follows a cell's `down` exit whatever its tags. This is the line between "a bug" and "a deliberate
 teleporter," and it keeps the ranged/gravity systems trustworthy.
 
 ## 4 · Seeding coordinates onto the existing world
@@ -157,10 +165,21 @@ exit graph** outward from a chosen origin room:
 3. **`warp`-tagged exits are skipped** (no coordinate inferred across them).
 4. **Contradiction handling (authoritative):** if a room is reached twice with
    conflicting coordinates, that is a geometry bug in the build (e.g. a "north"
-   that doesn't come back "south"). The tool **logs it** — room, the two paths,
-   the conflicting coordinates — and the builder corrects the exit (or tags it
-   `warp` if the weirdness is intentional). Coordinates are not silently
+   that doesn't come back "south"). The tool **lists it to the builder** — the room
+   the exit leaves, the direction, the destination, the coordinate it already
+   has and the one this path expects (up to 40 shown) — and the builder corrects
+   the exit, or tags it `warp` if the weirdness is intentional, or
+   `slope_down`/`slope_up` if it is honest split-level geometry. Coordinates are not silently
    averaged.
+
+Switches: `/check` (dry run), `/origin` (pin the current room), `/force` (write
+even onto occupied cells), `/clear` (preview only: how many rooms would be
+stripped, how many the walk could restore, how many it could not) and
+`/clear/confirm` (strip every coordinate). Switches are matched without regard
+to case, and an unrecognised switch aborts and changes nothing. Each run lists
+rooms whose coordinate would change, rooms that would land on an occupied cell,
+any elevator or crane car in the walk, and the contradictions. The command is
+locked to Builders or Developers.
 
 This is a one-time backfill plus an incremental tool builders run as they extend
 the world. Per the design decision: *if we build correctly, contradictions are
@@ -186,11 +205,17 @@ see the storage note in §3.
 A\*/Dijkstra over the **live exit graph** (rooms = nodes, exits = edges), in a
 new `world/spatial/pathfind.py`:
 
-* **Edges = real exits**, so locked doors, `warp` links, and (future) collapsed
-  tunnels are honoured automatically — connectivity always reflects the world as
-  it actually is.
-* **Heuristic = coordinate straight-line distance** (Manhattan or Euclidean),
-  making A\* fast and directed. Off-grid rooms fall back to Dijkstra (zero
+* **Edges = real exits, with rules on which ones a walker may use**
+  (`_neighbors` in `world/spatial/pathfind.py`): an exit into an air cell
+  (`db.is_sky_room is True`) is never an edge, for anyone; a drop (an exit
+  flagged `is_edge` but not `is_gap`) is never an edge; a gap is an edge only for
+  a traverser with `db.route_taste`, and the travel layer then issues
+  `jump across`; when a traverser is given, exits it cannot pass (access locks,
+  `door_blocks`) are skipped, and with no traverser every other exit counts; an
+  elevator car links to every floor the traverser may press (`_floor_permitted`),
+  not just the floor it is parked at. `warp` exits are ordinary edges.
+* **Heuristic = estimated steps from the coordinates**: `max(|dx|, |dy|) + |dz|`
+  (a diagonal moves x and y in one step), making A\* fast and directed. Off-grid rooms fall back to Dijkstra (zero
   heuristic) transparently.
 * **Edge weights** default to 1 per step; reserved for terrain cost, hazard
   avoidance, and lock/traversal penalties later.
@@ -206,9 +231,10 @@ new `world/spatial/pathfind.py`:
     means to dispatch) while the search minimises **cost**, and `max_steps` is a
     budget in steps.
 
-Consumers: the **NPC dispatch system** (route an NPC toward an event/target),
-**auto-walk** (`goto`/`path` style player movement), and any "is B reachable
-from A, and how far by travel?" query. Pathfinding answers *travel* distance;
+Consumers: NPC movement and reachability checks (`world/director/travel.py`,
+`world/director/courier.py`, `world/souls/posts.py`, `world/souls/actions.py`),
+and any "is B reachable from A, and how far by travel?" query. Player
+**auto-walk** (`goto`-style movement) is 📋 UNBUILT (no issue). Pathfinding answers *travel* distance;
 §7 answers *line-of-sight* distance — they are different and both needed.
 
 ## 6 · Verticality & gravity
@@ -229,7 +255,8 @@ axis** rather than inventing a parallel one:
 > deleted (items fall through the same room hook as bodies);
 > `exit.db.sky_room` and `exit.db.fall_damage` are retired — the exit's
 > `destination` IS the air cell, the column of cells below it IS the
-> distance, and `FALL_DAMAGE_PER_STORY` × cells passed IS the damage.
+> distance, and `FALL_DAMAGE_PER_STORY` × cells passed is the damage, before the
+> landing roll and bodyshield adjustments in `_land`.
 > Read the three bullets below against that: the second one is now a
 > **description of shipped behaviour** rather than a proposal, minus the
 > coordinates.)_
@@ -249,7 +276,9 @@ axis** rather than inventing a parallel one:
   not an air cell — except that it walks the cell's authored `down` exit
   rather than decrementing a coordinate, and the damage is
   `FALL_DAMAGE_PER_STORY` × cells passed rather than the retired
-  `fall_damage`. What this spec would add is the ability to fall where no
+  `fall_damage`, less `FALL_LANDING_ABSORBED_CELLS` on a made motorics landing
+  roll (deliberate edge descents only), and shared with a grappled companion
+  used as a bodyshield (`_land` in `world/gravity.py`). What this spec would add is the ability to fall where no
   `down` exit was authored: today a cell with no `down` stops the fall
   cleanly where it is (the parked impasse, #3581) and the missing columns
   are world data (#2945). A coordinate substrate would make the column
@@ -275,8 +304,10 @@ two-truths split, so the model names it explicitly. Each room **face** (±X, ±Y
 | **solid** | **no** room at the neighbour coordinate | rock / the unbuilt void |
 
 This unifies walls with the gravity model: **a wall is the horizontal analogue
-of a floor** — both are *barrier* faces. The −Z barrier is already special-cased
-by `has_floor`/`passable` (§6); an X/Y barrier is a wall. One concept covers
+of a floor** — both are *barrier* faces. On the −Z face, the floor
+that stops a fall is any room that is not an air cell (`db.is_sky_room` is not
+`True`; `is_sky` in `world/gravity.py`); a separate `has_floor`/`passable` flag
+is 📋 UNBUILT (no issue), and its naming is open (§10). An X/Y barrier is a wall. One concept covers
 walls, floors, and ceilings.
 
 "Through the wall" then decomposes cleanly, and each path is already a seam
@@ -363,9 +394,9 @@ Designed-for now so we don't paint into a corner; implemented later.
 
 | Phase | Scope | Unblocks |
 |---|---|---|
-| **1 — Substrate** | ✅ **SHIPPED** (#847): `room.db.xyz` + `.xyz` property + `distance`/`rooms_within`/`bearing` + `@coordseed` (world seeded, 0 contradictions) + warp-exit tag. (Storage is `db.xyz`, not tags — see §10.) **[Stale as of 2026-09-12: the live grid reports **11** geometry contradictions, not 0 (#3245, open) — see the note under the header's "Live" block. Also, the "see §10" pointer does not resolve: §10 carries no storage note; the `db.xyz`-vs-tags deviation is annotated in §3 instead.]** | Ranged systems; everything downstream |
+| **1 — Substrate** | ✅ **SHIPPED** (#847): `room.db.xyz` + `.xyz` property + `distance`/`rooms_within`/`bearing` + `@coordseed` (world seeded, 0 contradictions) + warp-exit tag. (Storage is `db.xyz`, not tags — see §3.) **[Stale as of 2026-09-12: the live grid reports **11** geometry contradictions, not 0 (#3245, open) — see the note under the header's "Live" block.]** | Ranged systems; everything downstream |
 | **2 — Pathfinder** | ✅ **SHIPPED** (#851): A\* over the exit graph w/ coordinate heuristic (`world/spatial/pathfind.py`); `@path` (removed 2026-10-09, #3728) inspector | NPC dispatch ✅; auto-walk |
-| **3 — Verticality** | Generalize jump/sky-room gravity onto Z; `passable`/floor flags | Vertical content; falling |
+| **3 — Verticality** | Fall where no `down` exit is authored, by deriving the column from coordinates (#3581, #2945); floor flag naming (§10) | Vertical content without hand-wired columns |
 | **— Parallel —** | Vehicle combat + radar (consume Phase 1 distance/bearing) | — |
 | **Reserved** | Destruction/repair · procedural mines · GPS/quiverbloom minimap | Pie-in-the-sky roadmap |
 
@@ -374,21 +405,34 @@ consumer of Phase 2 and gets its own spec.
 
 ## 10 · Risks & open questions
 
-* **`XYZRoom` inheritance vs. lightweight mixin.** Inheriting the contrib room
-  pulls in `return_appearance` (its minimap) which collides with
-  `get_display_desc`. **Lean:** lift only the coordinate-tag/query mixin + `.xyz`
-  property; do not inherit the display. Confirm before Phase 1.
+* **`XYZRoom` is not inherited, and there is no tag mixin.** As built, rooms
+  carry a `db.xyz` Attribute and a `.xyz` property that reads it
+  (`typeclasses/rooms.py`, `world/spatial/coordinates.py` `get_xyz`); nothing
+  from the contrib is used, so its `return_appearance` minimap never meets
+  `get_display_desc`.
 * **Coordinate truth under destruction/tunnelling.** When space is created or
   destroyed at runtime, coordinate assignment must stay collision-free. The
   signed lattice gives unique addresses; the open question is reclamation of
   addresses for destroyed-then-different rebuilt rooms.
-* **Tag-read cost in hot loops.** Distance math in combat/radar shouldn't hit
-  the tag store per call. **Lean:** cache `.xyz` on `ndb`, invalidate on move.
+* **Attribute-read cost in hot loops.** `distance()` reads `db.xyz` on each
+  call, and `rooms_within()` and `coordinate_index()` query and decode every
+  on-grid room on each call. **Lean:** cache `.xyz` on `ndb`, invalidate on move
+  (📋 UNBUILT (no issue)); build `coordinate_index()` once per action.
+* **Who owns `db.xyz` — open (#3245).** Four things write it: the `@coordseed`
+  walk, `@airfill`, the build scripts that place vertical geometry by hand, and
+  the elevator and crane cars, which rewrite their own coordinate as they move.
+  Where a room can be reached both ways, the walk and the hand placement can
+  disagree. The owner has not decided whether the walk wins (hand-placed rooms
+  get `warp` tags or are excluded from the walk) or hand placement wins (the
+  walk skips any coordinate it did not derive itself). Until then, `@coordseed`
+  refuses to write when a room would land on an occupied cell, unless `/force`
+  is given.
 * **Seeding a partially-inconsistent live world.** The first backfill will
   surface existing geometry bugs. That is a feature (they're real), but the
   initial run may produce a meaningful contradiction log to work through.
-* **`passable`/`has_floor` naming** must reconcile with the existing `sky_room`
-  flagging in `jump.py` so we don't end up with two vocabularies for "you fall
+* **Floor naming.** Any new floor flag must reconcile with `db.is_sky_room`
+  (rooms) and `db.stays_aloft` (things that do not fall), both read in
+  `world/gravity.py`, so we don't end up with two vocabularies for "you fall
   through this."
 * **Scipy dependency.** XYZGrid's pathfinder needs `scipy`; our own A\* over the
   exit graph can be pure-Python (`heapq`) and avoid the dependency — preferred

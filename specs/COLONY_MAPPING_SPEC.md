@@ -26,7 +26,8 @@
 > (SimCity/Monument Valley register, not CAD), then a THIN superuser-gated
 > website view reusing the same renderer (§M2.5 — Evennia's web extension
 > surface is first-class, so the vanilla mandate holds; the renderer must
-> stay self-contained so the served page is a shim, not a commitment). The
+> stay self-contained so the served page is a shim, not a commitment). (Superseded: the served atlas is public, with
+no login; see the banner and §7.) The
 > colony has a true voxel substrate (`db.xyz`, the spatial layer shipped in
 > SPATIAL_COORDINATE_SYSTEM_SPEC) and a day of vertical building proved the
 > gap: every build this session began with a hand-written recon script
@@ -65,11 +66,12 @@ Evennia layering — it reads what the substrate already stores.
 
 ```
 export_map() -> {
-  "generated": <caller supplies stamp>,      # exporter itself is pure
   "cells": [
     {"xyz": [x, y, z], "dbref": "#123", "key": "...",
      "type": "street|market|rooftop|sky|tenement|...",
-     "flags": ["outside", "sky", "ground"]},   # is_sky_room / is_ground
+     "skin": "<db.atlas_skin or ''>",
+     "flags": ["outside", "sky", "ground"],   # outside / is_sky_room / is_ground
+     "crowd": n},   # crowd_base_level; drives the street-life layer in both renderers
     ...
   ],
   "links": [
@@ -90,7 +92,7 @@ export_map() -> {
      #     with #3579: the exit's destination IS the air cell, the column
      #     below it IS the distance, and the damage is a constant
      #     (FALL_DAMAGE_PER_STORY), so none of the three has a writer or
-     #     a reader left. fall_room went with #3580, on the owner ruling
+     #     a reader left. fall_room went with #3580, on the owner ruling of 2026-09-16
      #     that a fall "would always follow gravity straight down": in a
      #     sky room, proceed down; the fall ends at the first room that
      #     is not a sky room. There is no authored landing, so there is
@@ -107,26 +109,31 @@ export_map() -> {
      #     typed `kind: "door"`; a staff map that wants lock state must
      #     read the exits directly rather than route it through this
      #     payload.
-     "edge": {"sky_room": ..., "fall_room": ..., "distance": n,
-              "damage": n, "difficulty": n} | null,
-     #     ^ 2026-09-16 (#3579, #3580): illustrative and now wrong in
-     #     every key. The shipped shape is
-     #     {"edge_difficulty": n, "gap_difficulty": n,
-     #      "gap_destination": n}, each present only when set.
-     "door": {"locked": bool} | null},
+     "edge": {"edge_difficulty": n, "gap_difficulty": n,
+              "gap_destination": n}},
+     #   ^ "edge" is present only on edge/gap links, and each of its
+     #     keys only when that exit attribute is set. A door link
+     #     carries no lock state (#2682).
     ...
   ],
 }
 ```
 
-Classification rules (all derivable today): `fall` = one-way down exits
-from sky cells; `edge`/`gap` from the is_edge/is_gap flags with the §190
-flight-plan attributes attached; `door` from is_door with lock state
-(never grants — state only). Off-grid rooms are simply absent, which is
+Classification rules, most specific first (`_link_kind` in
+`world/mapping.py`): `door` from is_door; then `gap` from is_gap, tested
+before is_edge because every gap also carries is_edge (#2789); then
+`edge` from is_edge; then `fall` for a `down`/`d` exit out of a sky cell;
+anything else is `walk`. Only a literal True counts. Edge and gap links
+carry their flight-plan attributes (`edge_difficulty`, `gap_difficulty`,
+`gap_destination`); a door link carries no lock state (removed in #2682,
+because the payload feeds the public atlas). Off-grid rooms are simply absent, which is
 itself information the builder view surfaces.
 
-Tests pin: determinism (two exports, same world → identical output),
-classification of each link kind, and the flight-plan passthrough.
+Tests pin: determinism (two exports, same world → identical output);
+classification of each link kind and its precedence
+(`test_link_kind_precedence.py`); the flight-plan passthrough; and that
+no door lock state and none of the retired edge attributes are sent
+(`test_mapping.py`, `test_atlas_withholds_lock_state.py`).
 
 ## 2 · The builder map — isometric volume, generated on demand
 
@@ -143,12 +150,14 @@ isometric renderer, no external assets, openable anywhere.
   - *Edges*: bright arcs for edge/gap/fall links, colored by kind —
     the edge audit, drawn.
   - *Open columns*: ground-occupied cells with empty sky above (sky-lane
-    and mast-site candidates).
-  - *Ground coverage*: `is_ground` cells (fall-termination audit).
+    and mast-site candidates). 📋 UNBUILT (no issue)
+  - *Ground coverage*: `is_ground` cells. 📋 UNBUILT (no issue; not
+    decided whether still wanted: a fall ends at the first room in the
+    column that is not a sky room, whatever its `is_ground`).
   - *Radio coverage*: crisp/fuzzy/static rings per mast from the live
     constants — the Birdhouse's actual footprint drawn on the district.
   - *Collision candidates*: cells adjacent to occupied space (tunnel
-    planning).
+    planning). 📋 UNBUILT (no issue)
   - **Status of this list (2026-09-11 audit)** — the shipped plate
     (`scripts/atlas/template.html`) carries three staff toggles: *jump
     routes* (the Edges overlay), *radio coverage*, and an *air lattice*
@@ -158,7 +167,9 @@ isometric renderer, no external assets, openable anywhere.
     adjacency pass. The two that did ship are also narrower than
     described above: the Edges overlay filters `edge` and `gap` links
     only — `fall` links are never drawn — and strokes them all in one
-    cyan rather than "colored by kind"; radio coverage draws two rings
+    cyan rather than "colored by kind", and a gap arc ends on its far
+    perch (`gap_destination`), not in the air the leap passes through
+    (#3643), while an edge arc ends in its air cell; radio coverage draws two rings
     per mast, crisp (solid) and full reach (dashed), not the
     crisp/fuzzy/static three. The banner's "SHIPPED through §M2.5" is
     earned by the plate itself, not by this overlay set; the three
@@ -167,7 +178,7 @@ isometric renderer, no external assets, openable anywhere.
 - **Builder-only artifact**: a generated file, never served by the game.
   Regenerate after builds; stale is fine, truth is one command away.
 
-## 3 · The player map — vague, not false
+## 3 · The player map — vague, not false (📋 UNBUILT, §M3, no issue)
 
 The chart a colonist could actually hold. Owner doctrine: the colony's
 maps do not lie — they are **imprecise**. Districts, not cells; names for
@@ -191,7 +202,7 @@ streets and landmarks, smears for everything else.
   exactly this, gated to visited rooms by construction (you only ever
   receive rooms you enter). The webclient can consume the same package
   later; nothing else is built for it now.
-- **Paper maps as flavor tier (later, cheap)**: branded printed charts
+- **Paper maps as flavor tier (later, cheap)** 📋 UNBUILT (§M4, no issue): branded printed charts
   sold as items — a cartography imprint whose district sheets are
   authored prose-maps (a look-at item rendering a stylized district
   summary), vague by profession. Slots into the shop system as pure
@@ -262,8 +273,8 @@ the live style study beside procedural cells for an A/B.
 "One export, many renderers" held; the renderers just outgrew the plan.
 Two consumers exist today, both fed by `export_map()`:
 
-- **The served atlas** (`/atlas/`, login-only, linked in the account
-  dropdown) is a **live 3D render**, embedded in the site page in the
+- **The served atlas** (`/atlas/`, public, no login needed; linked as "Colony Atlas" in
+  the account dropdown) is a **live 3D render**, embedded in the site page in the
   same plate chrome the sprite atlas wore (`web/templates/website/
   atlas.html` fragment mode; STYLING_SPEC addendum). The stage is a
   three.js orthographic free camera over models captured from the *same
@@ -279,19 +290,15 @@ Two consumers exist today, both fed by `export_map()`:
   altitude tape driving the z-slice clipping plane, and a sky-instrument
   toggle (crescent/sun glyph). Rotation is gestural (twist, shift-drag,
   bracket keys). Hover/tap raycasts to the room readout.
-- **'You are here'**: `player_positions(account)` rides the logged-in
-  account's character positions into the page [SUPERSEDED — 2026-09-11
-  audit: when the plate went public it also went cached, and the cache is
-  account-neutral BY DESIGN. `web/website/views/atlas.py` builds it once
-  with `account=None` and says why — "empty beacon seed — the client's
-  ?feed=here poll fills beacons within one tick for logged-in players" —
-  so the served HTML seeds no beacons at all.
-  `build_atlas3d_html(account=...)` still honors an account, but nothing
-  passes one, which leaves the poll below as the only live path] and a
-  5-second poll of
-  `?feed=here` (same allowlisted path; query strings pass the edge)
-  keeps the pulsing beacons honest while you play. Characters without a
-  place in the world simply don't report.
+- **'You are here'**: the served page carries no positions. `atlas_view`
+  (`web/website/views/atlas.py`) builds it once with `account=None`,
+  caches it, and serves the same page to every viewer. In the browser, a
+  5-second poll of `?feed=here` (same allowlisted path; query strings
+  pass the edge) returns `player_positions(request.user)`, the grid
+  positions of the viewer's own characters, and keeps the pulsing
+  beacons honest while you play. Anonymous viewers get none. The poll
+  skips while the tab is hidden and stops after three failures in a row.
+  Characters without a place in the world simply don't report.
 - **The builder instrument** is still the §M2/§3.5 sprite plate:
   `scripts/atlas/generate.py` (staff=True) writes the standalone file,
   and the staff overlays — air lattice, jump routes, radio coverage —

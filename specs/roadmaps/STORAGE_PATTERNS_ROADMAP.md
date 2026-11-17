@@ -6,8 +6,8 @@
 > A **forward roadmap**: the survey is done, the §5 remediation plan is
 > drafted and not yet executed.
 
-**Status**: Survey complete · remediation roadmap drafted · no code
-changes yet.
+**Status**: Survey complete · remediation roadmap drafted · the §5
+items were tried in PRs #451–#453 and closed unmerged (see §5).
 
 ## 0 · The architectural principle
 
@@ -66,20 +66,21 @@ Three characteristics of Gelatinous amplify the cost of the
 
    > **Correction 2026-09-12.** It writes back on every cache *miss*,
    > not every attempt. `attempt_disguise_pierce`
-   > (`world/identity.py:1683`) reads the cache at `:1747` and
-   > returns early on a hit (`:1751-1752`); the write at `:1771` is
+   > (`world/identity.py`) reads the cache and
+   > returns early on a hit; the write is
    > only reached after the opposed roll. §3.3 and §4.1 state this
    > correctly — this bullet overstates the hot-path write cost, and
    > it is the overstatement §5's measured deferral later deflated
-   > (0.8 % common-case). The read is still on the hot path. Same
-   > shape in the reverse-lookup path (`:1820` read, `:1842` write).
-2. **Ticker-driven mutation.** `MedicalScript` ticks every 12s
-   (`world/medical/script.py:96`) and mutates `_medical_state` in
+   > (0.8 % common-case). The read is still on the hot path.
+   > `attempt_display_pierce` reaches the cache only through
+   > `attempt_disguise_pierce`.
+2. **Ticker-driven mutation.** `MedicalScript` ticks every 60 s
+   (`MEDICAL_TICK_INTERVAL`) and mutates `_medical_state` in
    place — blood loss, pain accumulation, consciousness drift,
-   healing. The script does **not** call `save_medical_state` per
-   tick; saves happen at meaningful events only (procedure
-   complete, admin change, organ swap, damage application). This
-   is already the right shape — preserve it.
+   healing. Its `at_repeat` calls `save_medical_state` at the end
+   of every tick (#2418, PR #2937): without that, a reload undid
+   bleeding and lost dressings. Other saves happen at events
+   (procedure complete, admin change, organ swap, damage application).
 3. **Dict-shaped state on `db`.** `db.surgical_state`,
    `db.medical_chart`, `db.diagnose_cache`, `db.wounds_at_death`,
    `db.signature_at_death`. Reads cost a descriptor lookup plus
@@ -108,17 +109,17 @@ will drift; the *patterns* are stable.
 ### 3.1 · The runtime/persistence split (gold standard)
 
 The exemplar in our codebase is `MedicalState`
-(`world/medical/core.py:519` onward):
+(`world/medical/core.py`):
 
 * Runtime object lives at `self._medical_state` — a plain Python
   attribute on the `Character`. Holds `organs` (dict of `Organ`
   objects), `conditions` (list), `blood_level`, `pain_level`,
   `consciousness`. Reads are free.
-* The `@property medical_state` accessor at
-  `typeclasses/characters.py:188` lazy-loads from `db.medical_state`
+* The `@property medical_state` accessor in
+  `typeclasses/characters.py` lazy-loads from `db.medical_state`
   (the serialised dict) into `_medical_state` on first access via
   `load_medical_state`.
-* `save_medical_state` (`world/medical/utils.py:596`) calls
+* `save_medical_state` (`world/medical/utils.py`) calls
   `to_dict()` and writes the serialised form to `db.medical_state`.
   Call sites: `core.py:879`, `procedures.py:1268`, `items.py:1956`
   and `:2359`, `armor_mixin.py:77`, `CmdAdmin` (7 sites), and the
@@ -127,27 +128,16 @@ The exemplar in our codebase is `MedicalState`
   consciousness drift) are intentionally volatile.
 
   > **Stale 2026-09-12.** `at_repeat` DOES call it now, every tick
-  > and unconditionally (`world/medical/script.py:409-410`, #2418 →
-  > PR #2937) — see the §1.2 note. The call-site list has also moved
-  > and grown well past the five names above. Full production set
-  > (excluding `world/tests/` and `scripts/builds/`):
-  > `world/medical/core.py:1265/1291`;
-  > `world/medical/script.py:410` (the tick, new);
-  > `world/medical/treatments.py:301/331/452`;
-  > `world/medical/utils.py:1395`;
-  > `world/medical/augments.py:500`;
-  > `world/substances/registry.py:634`;
-  > `world/director/population.py:109/123` (NPC spawn, new);
-  > six `getattr(target, "save_medical_state")` sites in
-  > `world/medical/procedures.py` (`:1942/2188/2260/2459/2566/2903`);
-  > `typeclasses/characters.py:286/688`;
-  > `typeclasses/items.py:2553/3011`;
-  > `typeclasses/armor_mixin.py:96`; and `CmdAdmin` — still exactly 7
-  > sites (`commands/CmdAdmin.py:222/263/292/405/493/635/662`).
+  > and unconditionally (`MedicalScript.at_repeat`, #2418 →
+  > PR #2937) — see §1 item 2. The call-site list has also moved
+  > and grown well past the five names above. `save_medical_state`
+  > is called from many places (grep `save_medical_state` for the
+  > current set): the medical tick, treatments, procedures,
+  > augments, substances, NPC spawn (`world/director/population.py`),
+  > soul posts (`world/souls/posts.py`), armor, items, characters,
+  > and three `CmdAdmin` paths.
   > `_resolve_suture` no longer flushes directly: it flushes through
-  > `apply_vital_consequences` (`world/medical/procedures.py:2526`,
-  > the save at `:2566`), and `procedures.py:1268` is now organ-HP
-  > code inside `_resolve_install` (`:1105`).
+  > `apply_vital_consequences` (`world/medical/procedures.py`).
 
 This pattern: runtime tier is canonical, persistence tier is a
 snapshot of the runtime, writes happen at named boundaries.
@@ -155,12 +145,15 @@ snapshot of the runtime, writes happen at named boundaries.
 ### 3.2 · AttributeProperty (Evennia-native persistent attribute)
 
 92 uses across the codebase, concentrated on `Character`
-(`typeclasses/characters.py:86–102`):
+(`typeclasses/characters.py`):
 
 * `grit`, `resonance`, `intellect`, `motorics`
 * `sex`, `sleeve_uid`, `height`, `build`, `hair_color`,
   `hair_style`, `sdesc_keyword`
-* `species`, `recognition_memory`
+* `recognition_memory`, `voice_memory`
+
+`species` is not an `AttributeProperty`: it is a property over
+`db.species` (#2205).
 
 These are values that:
 
@@ -243,36 +236,31 @@ on first touch; not worth a sweeping migration PR.
 > flags to Tags") was closed unmerged with the rest of the §5 stack,
 > but `archived` landed later on its own terms — and *not*
 > mechanically. The Tag is now the query index
-> (`typeclasses/characters.py:591`, read at `:552`, cleared at
-> `:559`, queried in one pass at `typeclasses/accounts.py:157-165`)
+> (added in `archive_character`, read in `is_archived`, cleared in
+> `unarchive_character`, queried in one pass in `typeclasses/accounts.py`)
 > while `db.archived` is deliberately RETAINED as the display/audit
 > record and as the fallback for sleeves archived before the Tag
-> existed (comment at `typeclasses/characters.py:585-588`). Both
-> stores, kept in sync in one place —
-> `Character.archive_character` (`:561`) and
-> `unarchive_character` (`:555`) are the only writers. The table's
+> existed (comment in `archive_character`). Both
+> stores are kept in sync by
+> `Character.archive_character` and
+> `unarchive_character`; the one other writer, the failed-return undo
+> in `world/souls/posts.py`, sets both by hand. The table's
 > site column points at a *caller*, not the write:
 > `web/website/views/characters.py` calls
-> `character.archive_character(reason="manual")` (`:570`) and
-> `old_character.unarchive_character()` (`:110`, after reading
-> `db.archived` at `:108`).
+> `character.archive_character(reason="manual", owner=request.user)` and
+> `old_character.unarchive_character()` (after reading
+> `db.archived`).
 >
-> The other five rows are unconverted and still accurate, though two
-> site columns under-count: `combat_is_running` 4 writes
-> (`world/combat/handler.py:218/247/338/547`); `pin_pulled` 11
-> writes — `commands/explosion_utils.py` ×7
-> (`:122/197/255/591/767/933/1018`), `commands/CmdExplosives.py` ×3
-> (`:512/905/989`), `commands/CmdThrow.py:605`, and read-only at
-> `commands/combat/jump.py:186`; `is_infinite`
-> (`typeclasses/shopkeeper.py:56/102`, now also
-> `typeclasses/butcher.py:53/90`, plus 5 build scripts);
-> `integrate` — far wider than the one file listed, at
-> `typeclasses/objects.py:358/519/588`, `typeclasses/bar.py:422`,
-> `typeclasses/lockers.py:135/156`, `typeclasses/butcher.py:58`,
-> `commands/CmdExplosives.py:190/595/599`, plus 13 build scripts, so
-> its "audit tax across read sites" is the largest of the five;
-> `head_severed` (`typeclasses/corpse.py:68`,
-> `typeclasses/items.py:2370`).
+> The other five flags are still `db` attributes, not Tags. Several
+> site columns under-count: `pin_pulled` is also written in
+> `commands/CmdExplosives.py` (and read in `commands/combat/jump.py`);
+> `is_infinite` is also written in `typeclasses/butcher.py` and build
+> scripts; `integrate` is written far more widely than the one file
+> listed — `typeclasses/objects.py`, `typeclasses/bar.py`,
+> `typeclasses/lockers.py`, `typeclasses/butcher.py`,
+> `commands/CmdExplosives.py` and many build scripts — so its "audit
+> tax across read sites" is the largest of the five; `head_severed` is
+> written in `typeclasses/corpse.py` and `typeclasses/items.py`.
 
 ### 3.5 · `ndb` scratch state (transient by design)
 
@@ -325,23 +313,23 @@ attribute-soup access pattern.
 ### 4.1 · Identity / recognition
 
 **Good shapes:**
-* `get_apparent_uid(char)` (`world/identity.py:914`) — pure
+* `get_apparent_uid(char)` (`world/identity.py`) — pure
   computation from a 5-tuple signature, no caching. Free reads.
   Called on every render of every character; the perf hit is real
   but the cost is bounded (one tuple hash).
 
   > **Understated 2026-09-12.** "Free reads" and "one tuple hash"
   > are both wrong about the cost, though the no-cache verdict
-  > (§8) is still the right call. `get_apparent_uid` is now at
-  > `world/identity.py:1032` and per call it: reads three
+  > (§8) is still the right call. `get_apparent_uid` in
+  > `world/identity.py`, per call: reads three
   > descriptor-backed attributes (`db.height_override`,
   > `db.build_override`, `db.keyword_override` —
-  > `get_identity_signature`, `:953`), calls
-  > `get_essential_item_type_ids` (`:904`) which walks
-  > `get_worn_items()` (`typeclasses/clothing_mixin.py:536`, itself
+  > `get_identity_signature`), calls
+  > `get_essential_item_type_ids` which walks
+  > `get_worn_items()` (`typeclasses/clothing_mixin.py`, itself
   > reading the `worn_items` AttributeProperty) and inspects two
   > attributes per worn item, then `repr()`s the 5-tuple and runs
-  > `blake2b` over it (`:1055-1058`). None of that is a plain-dict
+  > `blake2b` over it. None of that is a plain-dict
   > read in this document's sense, and it scales with worn-item
   > count. It is still cacheless by design — see §8 — and
   > invalidation really would be hell; the honest framing is
@@ -352,7 +340,7 @@ attribute-soup access pattern.
 
 **Problem shape:**
 * `observer.db.disguise_pierce_cache`
-  (`world/identity.py:1525`) — `dict` keyed on
+  (`world/identity.py`, `attempt_disguise_pierce`) — `dict` keyed on
   `(target.dbref, apparent_uid)`. Read on every
   `attempt_display_pierce` call (which fires from every
   `get_display_name` where the looker doesn't directly know the
@@ -383,21 +371,20 @@ The one subtlety: `Organ` objects live inside the in-memory
 "treated"`, `organ.injury_type = "bullet"`), the change is to
 the in-memory tree. The persistence flush happens only when
 something calls `save_medical_state`. Currently those flushes
-fire on:
+fire on (among others; grep `save_medical_state` for the full set):
 
+* Every medical tick (`MedicalScript.at_repeat`).
 * Damage application (the procedure-resolve and combat paths).
 * Organ harvest/install (`items.py`).
 * Admin overrides (`CmdAdmin`).
-* Suturing (`procedures.py:1268` in `_resolve_suture`).
+* Suturing (through `apply_vital_consequences` in
+  `world/medical/procedures.py`).
 
 **Question to interrogate:** does every wound-stage mutation
-have a flush? `sync_severance_wound_stages` (PR #437) writes
-into `wound_data['stage']` on the in-memory snapshot. It does
-not directly call `save_medical_state`. The mutation is durable
-because the next damage application or procedure will flush.
-That's probably fine — but it's worth confirming the worst-case
-"restart between two procedures" doesn't lose stump-stage
-progression.
+have a flush? `sync_severance_wound_stages` (PR #437) needs none:
+it does not touch `MedicalState`. It writes the refreshed stages
+straight back to `corpse.db.wounds_at_death`, so they persist at
+once.
 
 ### 4.3 · Surgical / chart procedures
 
@@ -501,7 +488,7 @@ No action recommended.
 ### 4.7 · Crowd / room
 
 Rooms have `db.crowd_base_level`, `db.is_sky_room`,
-`db.outside`, `db.archived`. All low-volume, all write-rare.
+`db.outside`. All low-volume, all write-rare.
 
 No action recommended.
 
@@ -596,12 +583,17 @@ helper module.
 
 **Migration steps:**
 1. Add the runtime-cache attribute pattern on `Character`.
-2. Rewrite the four `attempt_*_recognition` /
+2. Rewrite the four `attempt_forensic_recognition` /
    `attempt_disguise_pierce` / `perform_diagnose` /
-   `_resolve_autopsy` call sites to use the runtime dict.
+   `_resolve_autopsy` call sites to use the runtime dict. The
+   forensic cache is also kept under per-UID names
+   (`forensic_recognition_cache_<uid>`, passed from
+   `commands/forensics.py`).
 3. Wire the flush into `at_server_shutdown`,
    `at_post_unpuppet`, and any invalidation paths
-   (`world.identity.erase_look` drops verdicts when a name is forgotten).
+   (`world.identity.erase_look` drops the won see-through verdicts
+   that rest on a forgotten name; lost verdicts stay, so a roll
+   cannot be bought again, #3817/#3825).
 4. Tests: add a "cache survives restart" integration test that
    forces a flush and reload.
 
@@ -614,8 +606,9 @@ For forensic/diagnose/autopsy caches stored on the *target*
 within the same scene won't see a fresh-this-session miss
 recorded. Acceptable for the gameplay loop.
 
-**Expected gain:** the largest single win in the codebase.
-Removes a `db` write from the inner loop of `get_display_name`.
+**Expected gain (measured, see the head of §5):** 0.8 % on a
+common render and 5.7 % when the pierce path runs. The write
+happens only on a cache miss.
 
 ### 5.2 · `surgical_state` partial separation (P1)
 
@@ -634,11 +627,11 @@ already a half-truth that gets cleared on
 
   > **Correction 2026-09-12.** `sutured_stumps` was never inside
   > `db.surgical_state`. It is its own top-level attribute:
-  > written at `world/medical/procedures.py:1408`
-  > (`target.db.sutured_stumps = sutured`) and read through
-  > `normalize_sutured_stumps` (`world/medical/severance.py:30-47`).
+  > written in `_resolve_suture` (`world/medical/procedures.py`,
+  > `target.db.sutured_stumps = sutured`) and read through
+  > `normalize_sutured_stumps` (`world/medical/severance.py`).
   > Only `incisions` and `active_procedure` live in
-  > `surgical_state` (`world/medical/procedures.py:204-205`). The
+  > `surgical_state` (`world/medical/procedures.py`). The
   > migration's actual scope is therefore narrower than this bullet
   > implies — `sutured_stumps` needs no change either way.
 
@@ -735,10 +728,9 @@ Hook points worth knowing:
 > does not exist: `grep -rn "_finalize_combat"` finds nothing in the
 > repo. The real combat-teardown entry point is
 > `CombatHandler.stop_combat_logic`
-> (`world/combat/handler.py:255`), with per-combatant cleanup at
-> `_cleanup_all_combatants` (`:353`) /
-> `_cleanup_combatant_state` (`:489`) and
-> `world/combat/utils.py:988`. Copy against those names. The other
+> (`world/combat/handler.py`), with per-combatant cleanup at
+> `_cleanup_all_combatants` /
+> `_cleanup_combatant_state`. Copy against those names. The other
 > four rows check out (`at_server_shutdown`, `at_post_unpuppet` and
 > the death pipeline are all real; note §5.1 step 3 says
 > `at_server_shutdown` while the §5 deferral note above says
@@ -796,21 +788,22 @@ Worth folding into onboarding.
 * **`MedicalState`'s hybrid pattern.** Already the gold
   standard. Don't second-guess.
 * **`AttributeProperty` for chargen-baseline attributes.**
-  `sleeve_uid`, `species`, `grit`/`resonance`/`intellect`/`motorics`,
+  `sleeve_uid`, `grit`/`resonance`/`intellect`/`motorics`,
   `sex`, etc. These persist by design and have near-zero
   write rate. Refactoring would add risk for no gain.
 * **EvMenu scratch state on ndb.** `_operate_target`,
   `_operate_pickable`, `charcreate_data`. Correct usage of
   ndb — leave alone.
 * **`get_apparent_uid`'s no-cache stance.** Adding caching
-  would create invalidation hell. The computation is cheap
-  and free reads dominate.
+  would create invalidation hell. The per-render cost is real
+  (db reads, a worn-items walk, a blake2b hash), but it stays
+  uncached on purpose.
 
 ## 9 · Suggested PR sequence
 
 1. **Pierce cache runtime tier** — establish the pattern,
-   ship it for one cache. Smallest blast radius, biggest
-   measurable win.
+   ship it for one cache. Smallest blast radius; the measured
+   gain was 5.7 % on the pierce path (§5).
 2. **Forensic + diagnose + autopsy caches** — apply the same
    pattern, possibly extracted into a small mixin or helper.
 3. **`surgical_state.active_procedure` runtime-only.**
@@ -818,8 +811,9 @@ Worth folding into onboarding.
 5. **Decision point**: recognition_memory runtime tier
    (depends on how the cache work shakes out).
 
-Stage 1 alone is worth doing this quarter; the rest can land
-opportunistically.
+Shelved (see the §5 deferral note). Do not start this sequence
+without profile data showing one of these surfaces is a
+bottleneck; if that happens, this is the order.
 
 ## 10 · Open questions
 
@@ -846,24 +840,22 @@ opportunistically.
    > passes have happened since, all ad-hoc through `evennia shell`:
    > the §5 Pepsi-challenge run documented at the head of §5; #462 /
    > #465's `get_display_name` profile, whose numbers shipped
-   > `world/grammar.py:465`, `MedicalState._cached_is_dead`
-   > (`world/medical/core.py:532/577/595`) and the session-gated
+   > a change in `world/grammar.py`, `MedicalState._cached_is_dead`
+   > (`world/medical/core.py`) and the session-gated
    > broadcast; and #3077's bleeding-tick profile (a blood-pool
    > flush was 72 % of the tick) which shipped
-   > `BLOOD_POOL_FLUSH_TICKS` (`world/medical/constants.py:195`,
-   > consumed at `world/medical/script.py:619-620`). So wins on this
+   > `BLOOD_POOL_FLUSH_TICKS` (`world/medical/constants.py`,
+   > consumed in `world/medical/script.py`). So wins on this
    > codebase are no longer theoretical, and "shipping blind is
    > defensible" is withdrawn — the discipline rule at the foot of
    > this document now says the opposite. The standing gap is that
    > every one of those profiles was thrown away after use; nothing
    > is repeatable.
-3. **Tick-vs-flush invariants.** The medical script's
-   no-save-per-tick policy assumes that any persistence-worthy
-   tick-state change (e.g. a wound stage progressing past a
-   threshold) is followed by an event-driven flush before
-   anything could cause restart-loss. Worth a deliberate audit
-   when remediation work begins — particularly around
-   `sync_severance_wound_stages` and condition tick effects.
+3. **Tick-vs-flush invariants.** Answered by #2418: the medical
+   tick calls `save_medical_state` at the end of every tick, so a
+   tick-state change is lost on restart only if the restart falls
+   inside that tick. `sync_severance_wound_stages` writes
+   `db.wounds_at_death` directly and needs no flush.
 
 ---
 

@@ -24,8 +24,13 @@
 >    here at 6; The Halcyon (builds 014/016/017 — #1766/#1770/#1772) now
 >    stands as a z12 liner hull on and beside Kaspar Pawn & Salvage, over
 >    tiles this table still offers as a fresh z2 workshop (x-8..-7
->    y-15..-13, which contains the sun-deck corner at -7,-15); and the
->    Greenhaus verticals and cisterns (builds 055–065) appear nowhere.
+>    y-15..-13, which contains the sun-deck corner at -7,-15); and later
+>    builds stand on tiles this table gives to other buildings: Rust Acre
+>    (build 042, x-11..-8 y-15..-13), The Kettle (049, x-8..-7
+>    y-11..-9), the Escallier Snailery (066, -5..-4,-11), the Marlowe Lot
+>    tower crane on the x-1 column beside Kaspar Urgent Care (030–038),
+>    and the three Greenhaus verticals with their cisterns (055–065,
+>    x7/9/11 y-19..-17, roofs at z10). None of them is in the table.
 >    Read KEEP as "existed on 2026-08-05", and re-export before using it.
 > 3. **`Roof z` on a KEEP row is generated, not as-built.** Outside the
 >    mesa/pad/dome cases the generator synthesizes a datum from its zone
@@ -36,11 +41,14 @@
 >    Laundromat→Market crossing over Braddock rides it — while Hammett's
 >    Boot, one building, appears at 6, 4, 4 and 2 across its four chunks.
 >
-> Re-deriving is also not the one-command job the banner implies: both
-> generators read `city.json` / `scaffold_blocks.json` from a hardcoded
-> session scratchpad path that no longer exists (the committed blocks
-> file sits in `scripts/planning/`, where nothing reads it), so a fresh
-> `export_map()` dump and a path fix come first.
+> Re-deriving is also not the one-command job the banner implies.
+> `scaffold.py` reads `city.json` and writes `scaffold_blocks.json`, and
+> `manifest.py` reads both, in the folder named by the `SP` variable at
+> the top of each script (see `scripts/planning/README.md`). `SP` holds
+> a temporary folder from the session that wrote the scripts, and that
+> folder holds neither file; the committed blocks file in
+> `scripts/planning/` is not read by anything. So a fresh
+> `world.mapping.export_map()` dump and a new `SP` come first.
 
 **Method**: buildings are 2×3-max chunks of the buildable tiles;
 each holds ONE flat roof datum (bi-directional 1:1 fabric); ±1
