@@ -139,38 +139,46 @@ Phasing routes each path through `filter_present` / `co_present`:
 
 | Path | Today | Phase insertion |
 |---|---|---|
-| **Room display** | `Room.get_display_characters` / `get_display_things` loop `self.contents` gated by `obj.access(looker, "view")` | filter contents through `filter_present(looker, …)` |
+| **Room display** | `Room.get_display_characters` loops `self.contents`, gated by `obj.access(looker, "view")`, by sight (`can_perceive_sense`) and by stealth through a direct `is_hidden_from` call, not `can_perceive`; `get_display_things` gates by sight and `obj.access(looker, "view")` and skips `db.hidden` objects | route both through `filter_present(looker, …)` (or `can_perceive`) so the phase clause reaches them |
 | **Broadcasts** | Evennia `msg_contents` → all `.contents` | override `Room.msg_contents` to drop recipients not `co_present` with the source phase |
 | **Combat / proximity** | `world/combat/proximity.py` `establish_proximity` / `is_in_proximity` (an `ndb` set) | a same-phase guard in `establish_proximity` → cross-phase proximity never forms → combat can't target across phase |
 
 > **Note (2026-09-12).** Two corrections to the audit above.
 >
 > 1. **Enumeration is now partly centralized.** `filter_present` landed in
->    2026-07 and these paths route through it: identity targeting
->    (`commands/_identity_targeting.py`), adjacent-room sightings and the LLM
->    PRESENT roster (`typeclasses/characters.py`), and since #3637 the pool of
->    every local name search (`Character.get_search_candidates`, which also
->    covers whisper/`to`). The three rows above are still
+>    2026-07 and these paths route through it or through `can_perceive`:
+>    identity targeting (`commands/_identity_targeting.py`, `filter_present`),
+>    adjacent-room sightings (`typeclasses/rooms.py:get_adjacent_character_sightings`)
+>    and the LLM PRESENT roster (`typeclasses/llm_npc.py`), both through
+>    `can_perceive`, and since #3637 the pool of every local name search
+>    (`Character.get_search_candidates` in `typeclasses/characters.py`, which
+>    also covers whisper/`to`). The three rows above are still
 >    un-routed, so their insertion points stand — the helper simply already
 >    exists to insert into.
 > 2. **The Broadcasts row names the wrong seam.** Overriding `Room.msg_contents`
 >    would miss the path the game actually broadcasts on:
->    `world/identity_utils.py:msg_room_identity` (~461 call sites, against ~47
->    direct `msg_contents` calls) iterates `location.contents` itself and calls
+>    `world/identity_utils.py:msg_room_identity` (about 230 call sites outside
+>    tests, against about 40 direct `msg_contents` calls) iterates `location.contents` itself and calls
 >    `observer.msg()` per observer, never reaching `Room.msg_contents`. Its only
 >    recipient filter is `_hears_broadcasts` (connected session or an
 >    `at_msg_receive` override) — a cost optimisation, not a perception gate. A
->    phase clause has to go there too, which makes this a bounded surface of
->    **four** subsystems + the director, not three.
+>    phase clause has to go there too. So does a third broadcast path:
+>    `world/perception.py:perceivers(location, exclude_set)` picks the
+>    recipients for say/`to`, poses and emotes, whispers, radio grilles and
+>    clothing broadcasts. It keeps every character-shaped object in
+>    `location.contents` (`perceives`) and has no perception gate, so it needs
+>    the phase clause as well. That makes this a bounded surface of **five**
+>    subsystems + the director, not three.
 
 Plus the **dispatch director** (`NPC_DISPATCH_AND_SIMULATION_SPEC`): LOD
 materialization must be phase-scoped — never render `phase = net` NPCs to a
 `phase = meat` player, and vice-versa.
 
-This is a **bounded** surface (three subsystems + the director), not a
+This is a **bounded** surface (five subsystems + the director: room display,
+`msg_contents`, `msg_room_identity`, `perceivers`, proximity), not a
 whack-a-mole — *provided* all future enumeration is disciplined to go through
-`filter_present`. Establishing that helper is therefore the first build step, and
-it pays down the latent `filter_visible` debt at the same time.
+`filter_present`. That helper already exists (§3 note); the first build step is
+the phase clause inside `can_perceive`, which `filter_present` calls.
 
 ---
 
@@ -186,7 +194,7 @@ it pays down the latent `filter_visible` debt at the same time.
   access, and nothing in `world/spatial/` caches or invalidates; the `ndb` cache
   is a still-unbuilt "Lean" in `SPATIAL_COORDINATE_SYSTEM_SPEC` §10. The indexed
   **tag** mirror above also inherits a storage model that spec retreated from:
-  its §9 ladder records "Storage is `db.xyz`, not tags — see §10", so `phase`
+  its §9 ladder records "Storage is `db.xyz`, not tags — see §3", so `phase`
   storage needs deciding here rather than inherited by analogy.
 * **Perception window** — a structured grant (§7), stored on the *device* or the
   *room* that mediates it.
@@ -331,7 +339,10 @@ class PerceptionWindow:
   in meat that fries net nodes.
 * **Trust & consent.** Acting across a phase is impossible (windows are
   perceive-only), so consent never spans phases. The jacked-in body (§5.3) is the
-  notable interaction: it's a free-action target in meat while its owner is away.
+  notable interaction: it becomes a free-action target in meat only if jacking in
+  sets an affirmative helplessness state (unconscious-equivalent or
+  restraint-equivalent); the consent predicate does not deliver it alone (§5.3
+  note).
 * **Stealth & detection (`STEALTH_AND_DETECTION_SPEC`).** Phase's **graded
   sibling**: phase is binary co-presence, stealth is a per-observer *awareness*
   contest *within* a phase. Both resolve through the same `can_perceive` /
@@ -368,23 +379,24 @@ system honors it as an intentional bridge.
 
 | Phase | Scope | Notes |
 |---|---|---|
-| **1 — The gate** | `db.phase` (+ tag) on entities; `co_present` / `can_perceive` / `filter_present` in `world/perception.py`; route the three choke points (room display, `msg_contents`, proximity) + dispatch materialization through it | Default `phase=0` → zero regression; pays down the `filter_visible` debt |
+| **1 — The gate** | `db.phase` on entities (storage to decide, §4 note); `co_present` and the phase clause inside the existing `can_perceive` / `filter_present` in `world/perception.py`; route the five choke points (room display, `msg_contents`, `msg_room_identity`, `perceivers`, proximity) + dispatch materialization through it | Default `phase=0` → zero regression |
 | **2 — Net presence** | Jack in/out; the two-body model (§5.3); net combat via the proximity guard | (A) single-object as v1 fallback, (B) two-body as target |
 | **3 — Net rendering** | Phase-specific `get_display_desc` overlay; phase-tagged exits; net ambient layer; quiverbloom net relief | Reuses sense-layer composition |
 | **4 — Perception windows** | The `PerceptionWindow` model; cameras / bugs / ghost eavesdropping; window clause in `co_present` | Default-deny, perceive-only |
 | **5 — Cross-phase causation** | Explicit `crosses_phase` effect bridges (EMP, collapse, body-death disconnect) | Reserved; via dispatch bus |
 
 > **Note (2026-09-12):** Phase 1 is partly done — from the stealth side.
-> `can_perceive` and `filter_present` exist in `world/perception.py` and about a
-> dozen enumeration paths route through them. What Phase 1 still owes: `db.phase`
+> `can_perceive` and `filter_present` exist in `world/perception.py` and about twenty
+> call sites across commands, typeclasses, the director, combat throwing and souls
+> route through them. What Phase 1 still owes: `db.phase`
 > (plus the storage decision, §4 note), `co_present`, the phase clause inside
-> `can_perceive`, and **four** insertions — room display, `msg_contents`,
-> `msg_room_identity` (§3.1 note), proximity — plus director materialization. The
-> `filter_visible` line in the Notes column is void: that method is real Evennia
-> code, not a debt (§3 note).
+> `can_perceive`, and **five** insertions — room display, `msg_contents`,
+> `msg_room_identity` (§3.1 note), `perceivers` (§3.1 note), proximity — plus
+> director materialization. `filter_visible` is real Evennia code, not a debt
+> (§3 note).
 
-Phase 1 is the whole feasibility bet: if `filter_present` cleanly gates the three
-choke points, everything else is incremental.
+Phase 1 is the whole feasibility bet: if `filter_present` / `can_perceive` cleanly
+gates the five choke points (§3.1 and its note), everything else is incremental.
 
 ---
 

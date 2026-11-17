@@ -71,6 +71,11 @@ DISCOURSE_URL = "https://forum.yourgame.com"      # Your forum URL
 DISCOURSE_API_KEY = "your-discourse-api-key"      # For logout sync (optional)
 ```
 
+Two more settings are optional. `DISCOURSE_INTERNAL_URL` is the forum address
+used for the server-to-server logout API calls; it falls back to
+`DISCOURSE_URL`. `DISCOURSE_LOGOUT_REDIRECT` (default `/`) is where the game
+sends a user after the forum logs them out.
+
 ### 1.2 Generate Shared Secret
 
 ```bash
@@ -94,6 +99,14 @@ evennia reload
 - `/sso/discourse/session-sync/` - Session sync
 - `/header-only/` - Header iframe endpoint
 
+Not everything follows `DISCOURSE_URL`. The forum origin is also written by
+hand into the header page's CSP `frame-ancestors` (`_HEADER_ONLY_CSP` in
+`web/utils/security_middleware.py`), the iframe menu's Forum link
+(`web/templates/website/_menu_iframe.html`) and the skin messages in
+`web/static/website/js/skins.js`. The game-site origin is written by hand as
+`SITE_ORIGIN` in the forum component's `skins.gjs`. Change all of these if the
+forum or the site moves.
+
 ---
 
 ## Step 2: Configure Discourse SSO
@@ -115,6 +128,9 @@ sso overrides email = true           # Trust Django email
 sso overrides name = true            # Use Django display name
 ```
 
+The game sends only email, external id, username and name. It sends no avatar
+and no bio, so the avatar and bio overrides have nothing to apply.
+
 > **Re-checked against the installed forum (Discourse 2026.8.0) on 2026-10-10 (#3743):**
 > the four `sso overrides ...` names above no longer exist in Discourse. Rows written
 > under them on 2025-10-18 are dead; only `discourse_connect_overrides_avatar` is in
@@ -129,7 +145,9 @@ sso overrides name = true            # Use Django display name
 >   with it**, or a freed address can be registered by someone else and matched to
 >   the old forum account.
 > - **Deleting a game account must also retire its forum account**, for the same
->   reason (one orphan was deleted on 2026-10-10). Role sync is #3744.
+>   reason (one orphan was deleted on 2026-10-10). 📋 UNBUILT (no issue): no
+>   game code calls the forum when an account is deleted. Role sync is
+>   📋 UNBUILT, #3744.
 >
 > The forum's developer-address list (`DISCOURSE_DEVELOPER_EMAILS`, compose file in
 > the infra repo) names the two root game accounts; it promotes a matching user to
@@ -149,7 +167,7 @@ enable local logins = false          # Force SSO only
 
 1. Go to **Admin** → **Customize** → **Colors**
 2. Click **+ New Color Scheme**
-3. Name it: "Gelatinous Dark"
+3. Name it: "Domino's Gambit". The skins script finds palettes by name, so the name must match exactly.
 
 ### 3.2 Set Color Values
 
@@ -158,7 +176,7 @@ Use these values (matching the live site palette in `STYLING_SPEC.md` /
 
 ```
 Primary (text):           #d8d3c4   (bone)
-Primary-medium:           #a9a49a
+Primary-medium:           #a9a49a   (live: #8f8d82, see note)
 Primary-low-mid:          #6b6f78
 Secondary (background):   #0b0e14   (ink)
 Tertiary (accent):        #e0a86f   (amber)
@@ -177,7 +195,7 @@ If the scheme you are replacing had a `tertiary-med-or-tertiary` override, set
 it too — otherwise the old accent bleeds through in a handful of places.
 
 > **Checked against the live scheme 2026-09-11** (Discourse colour scheme id
-> 21, "Domino's Gambit" — *not* "Gelatinous Dark"; see the note in 3.1).
+> 21, "Domino's Gambit").
 > Thirteen of the fourteen values above are exactly what production carries,
 > and the `tertiary-med-or-tertiary` override is indeed set, to `#e0a86f`.
 > The exception is **`primary-medium`, which is `#8f8d82` live, not
@@ -203,8 +221,9 @@ it too — otherwise the old accent bleeds through in a handful of places.
 > looks *exactly* like the change never applied — the old palette keeps showing,
 > accent and all.
 >
-> This palette is already dark, so put it in **both** slots unless you have
-> built a genuine light variant.
+> ~~This palette is already dark, so put it in **both** slots unless you have
+> built a genuine light variant.~~ **Superseded 2026-09-11: leave the dark
+> slot empty (see the correction below).**
 >
 > **CORRECTION 2026-09-11 — do NOT fill the dark slot.** The advice above was
 > written to fix the 2026-08-02 stale-dark bug (a dark slot still pointing at
@@ -237,6 +256,11 @@ it too — otherwise the old accent bleeds through in a handful of places.
 ---
 
 ## Step 4: Create Theme Component
+
+The typography, palette and skin switching are in the component tracked at
+`web/discourse-theme/`. Install and update it as its `README.md` says. The
+header iframe script (`theme-initializer.gjs`) lives only on the forum and is
+not tracked in this repository.
 
 ### 4.1 Create Component
 
@@ -527,6 +551,14 @@ window.parent.postMessage({ type: 'gel-header-height', height: measuredHeight() 
                           TARGET_ORIGIN);
 ```
 
+The same message also carries `skin` (the header's `data-skin`, default
+`atlas`), and the header sends it again whenever its skin changes. The forum
+component's `skins.gjs` reads it, and also sends `gel-skin` and
+`gel-skin-query` messages into the iframe, which the header's `skins.js`
+answers. The header page picks its first-paint ground colour on the server
+from the `gel_skin` cookie (`SKIN_INK` in `web/website/views/header_only.py`,
+which must match each skin's `--terminal-bg-dark` in `custom.css`).
+
 **Forum side** (the theme component's `theme-initializer.gjs`) listens, checks
 the origin, and sets **both** the iframe and its container:
 
@@ -616,11 +648,9 @@ game site showed the brand mark. They are uploads, not URLs — set them in
 1. **View forum on mobile device or narrow browser**
 2. Header should show hamburger menu
 3. Menu should collapse properly
-4. Same 80px height as desktop
-   <!-- 2026-09-11: not what ships. The live component's mobile media query is
-        60px, not 80px — see the Mobile Layout Issues note under
-        Troubleshooting, which also explains why this is an open question
-        rather than a one-line fix. -->
+4. Height on mobile: open question. This document says 80px; the live
+   component was measured at 60px on 2026-09-11. See the Mobile Layout Issues
+   note under Troubleshooting; settle it on a real device.
 
 ---
 
@@ -638,10 +668,15 @@ game site showed the brand mark. They are uploads, not URLs — set them in
 
 **Debug**:
 ```bash
-# Test SSO endpoint (should show error - that's good!)
-curl https://yourgame.com/sso/discourse/
-# Output: "Missing SSO parameters" = endpoint is working
+# Test SSO endpoint while not signed in
+curl -i https://yourgame.com/sso/discourse/
+# Output: a redirect to the game's login page = the route exists
 ```
+
+The endpoint requires a signed-in game session, so a plain `curl` never reaches
+the SSO checks. Signed in, with no `sso`/`sig` parameters, it answers "Missing
+SSO parameters". If no shared secret is set, it answers "SSO is not
+configured".
 
 ### Header Not Showing
 
@@ -651,7 +686,7 @@ curl https://yourgame.com/sso/discourse/
 1. Theme component is activated
 2. JavaScript has no errors (check browser console: F12)
 3. `/header-only/` endpoint is accessible
-4. Correct domain in JavaScript `iframe.src`
+4. Correct domain in the iframe `src` in the component's head markup (Step 5)
 
 **Debug**:
 ```bash
@@ -659,6 +694,16 @@ curl https://yourgame.com/sso/discourse/
 curl https://yourgame.com/header-only/
 # Should return HTML with navbar
 ```
+
+### Forum Logout Shows "Invalid logout request"
+
+**Symptom**: Logging out on the forum lands on a 403 page
+
+**Check**: the game only accepts the forum's logout redirect from a signed-in
+user when the browser sends a Referer whose host is the `DISCOURSE_URL` host.
+A missing or different Referer is refused with 403. If `DISCOURSE_URL` is not
+set, every signed-in logout through this route is refused with 403. A visitor
+who is not signed in is simply redirected.
 
 ### Colors Wrong
 
@@ -676,7 +721,7 @@ curl https://yourgame.com/header-only/
 **Check**:
 1. CSS has `.d-header { display: none !important; }`
 2. Theme component is included in main theme
-3. JavaScript `iframeCreated` flag is working
+3. The component's head markup holds exactly one `#gel-django-header-iframe`
 
 ### Mobile Layout Issues
 
@@ -713,7 +758,7 @@ curl https://yourgame.com/header-only/
 
 The integration includes several optimizations:
 
-- **Caching**: Header endpoint cached for 5 minutes (`@cache_control`)
+- **No caching**: the header endpoint is sent with `no-store`. It shows who is signed in, so it must never be cached (see "The header must never be cached").
 - **Preconnect**: Browser establishes connection early
 - **CSS Containment**: Isolates iframe rendering (`contain: layout style`)
 - **Fixed Height**: Prevents layout reflow (80px pre-allocated)
@@ -732,7 +777,7 @@ The integration includes several optimizations:
 When you update Django header CSS:
 1. Changes automatically apply to forum iframe
 2. No theme updates needed
-3. Cache clears after 5 minutes
+3. The header is never cached, so changes show on the next page load.
 
 ### Discourse Updates
 
@@ -790,10 +835,15 @@ The integration is production-ready and handles edge cases gracefully. If you sk
 - `DISCOURSE_SSO_SECRET` - Shared secret
 - `DISCOURSE_URL` - Forum URL
 - `DISCOURSE_API_KEY` - API key (optional, for logout sync)
+- `DISCOURSE_INTERNAL_URL` - forum address for the logout API calls (optional; falls back to `DISCOURSE_URL`)
+- `DISCOURSE_LOGOUT_REDIRECT` - where to send a user after forum logout (optional, default `/`)
 
 **Django Endpoints**:
 - `/sso/discourse/` - SSO authentication
 - `/sso/discourse/logout/` - Logout handler
+- `/sso/discourse/session-sync/` - sends a signed-in user to the forum's own sign-in, so they arrive signed in
+- `/auth/logout/` - game logout (POST); with `DISCOURSE_API_KEY` set it also ends the forum session through the forum API
+- `/forum/` - redirects to `DISCOURSE_URL`, or to `/` if that is unset
 - `/header-only/` - Header iframe
 
 **Discourse Settings**:

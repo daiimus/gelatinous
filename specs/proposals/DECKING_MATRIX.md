@@ -2,8 +2,8 @@
 
 > **Status:** 📋 **DESIGN DRAFT — spec-first, build-later.** The net's
 > *substrate* is `PHASE_LAYER_SPEC` (net = a phase over the same geography;
-> the two-body model; the single perception gate), which is itself unbuilt and
-> depends on the vertical/coordinate world. So this whole system is
+> the two-body model; the single perception gate), which is itself unbuilt.
+> The coordinate volume it rides on (`world/spatial/`) and the towers exist. So this whole system is
 > **deliberately spec-now, build-when-the-world-is-ready** — the solution and
 > the vibes sharpen as the colony fills in.
 >
@@ -27,8 +27,11 @@ that map straight onto a MUD:
    tracing, mail/jobs/boards, hardware & software acquisition. The GUI was
    always incidental to the loop.
 2. **Timed async operations are the tension.** Cracks and copies take real
-   seconds while a trace advances — tension without twitch. Evennia's `delay`
-   and the director heartbeat already run this shape.
+   seconds while a trace advances — tension without twitch. The game already
+   has this shape: a channeled act (`world/channeled.py` `begin_channel`,
+   which `sabotage` uses) runs for a set time, shows a visible tell, can be
+   broken off, and reports how far it got. The director heartbeat ticks the
+   deterministic side.
 3. **Layered navigation** (map → node → console) mirrors rooms → objects →
    commands. The MUD *is* the interface metaphor; nothing to invent.
 4. **Jobs close the loop** (accept → run → deliver → get paid) — which is
@@ -52,7 +55,10 @@ the world**, and in that layer *everything is a file*:
 * The **wanted record** is a file. `world/director/intel.py` already stores it;
   a decker who cracks the right host can **clear their own wanted flag** or
   **frame an enemy** by writing one in. Crime and reputation gain a digital
-  attack surface.
+  attack surface. The record today is one entry per apparent UID (a count of
+  offences and the last crime), and a bot carries its own unsynced sightings
+  (`db.local_sightings`) until it returns to its post, so an edit to the
+  force-wide record leaves those in place.
 * **Currency, logs, mail, door/camera ACLs, a bot's directive table** — files.
 
 Two consequences that make this a first-class play space:
@@ -82,7 +88,8 @@ phase-gated; changing it goes through the same validation the meat systems use.
 
 | Layer | Owner | Status |
 |---|---|---|
-| Net as a phase; two-body model; perception gate | `PHASE_LAYER_SPEC` | specced, unbuilt |
+| Net as a phase; two-body model | `PHASE_LAYER_SPEC` | 📋 UNBUILT (no issue) |
+| Perception gate (`can_perceive` / `filter_present`, which stealth uses today) | `world/perception.py` ← `PHASE_LAYER_SPEC` | its phase clause is 📋 UNBUILT (no issue) |
 | Everything-is-a-file doctrine (§2) | this spec | draft |
 | Net topology over real geography (§4) | this spec | draft |
 | The run loop: bounce, intrusion, logs (§5) | this spec | draft |
@@ -116,9 +123,13 @@ free.
 ## 5 · The run loop
 
 1. **Jack in** — from a fixed terminal or a portable **deck**. The body slumps
-   in meat-space: a **free-action target** (the trust spec's `can_contest`
-   predicate already covers this — guard your meat, or someone frisks/knifes
-   it while you're under).
+   in meat-space. For it to be a **free-action target**, jacking in must set a
+   state the trust check reads as helpless: an unconscious-equivalent medical
+   flag or a restraint-equivalent. `can_contest` (`world/consent.py`) returns
+   False only for the dead, the unconscious and the restrained (grappled, or in
+   restraint furniture); a slumped decker who is medically awake and not
+   grappled can contest (`PHASE_LAYER_SPEC` §5.3). 📋 UNBUILT (no issue).
+   Guard your meat, or someone frisks or knifes it while you're under.
 2. **Bounce** — route your entry through public/compromised nodes before the
    target. Your bounce path is *real* — the literal sequence of net-rooms your
    connection traverses — and **the trace walks it back**. More hops = longer
@@ -176,9 +187,9 @@ Two gates decide what you can write and run (user-decided 2026-07-03):
   named: **`systems`**, Intellect-governed — "everything done through a
   machine's interface: decking, consoles, radio & broadcast procedure,
   electronic locks". What remains unbuilt is the XP/dice layer above the
-  snapshot, so the Intellect-now/skill-later seam still holds — but the later
-  gate is `systems`, not a skill still to be invented. §13's first risk bullet
-  is answered to that extent.)*
+  snapshot, so the Intellect-now/skill-later seam still holds. Whether
+  `systems` is the later decking gate, or a separate decking rating is still
+  wanted, is OPEN (#3335).)*
 * **What your deck can run** — the **hardware axis** (§9): CPU sets execution
   speed, memory sets program size, and the rig's grade sets how much **heat**
   (trace pressure) it can absorb before it cooks. **Better rigs handle more
@@ -251,8 +262,10 @@ Because everything is a file (§2), a run's objective is concrete and varied:
 
 * **Steal data** — `copy` a schematic (→ print the object), a dossier (→
   intel/blackmail), a gig, a password file.
-* **Steal hardware** — the meat-space route: rip the component out (stealth
-  §6.2). Two paths, one prize.
+* **Steal hardware** — the meat-space route: rip the component out of the
+  machine. 📋 UNBUILT (no issue): no verb does this; `STEALTH_AND_DETECTION_SPEC`
+  §6.2 theft is person-to-person only (open question, §13). Two paths, one
+  prize.
 * **Edit the crime database** — clear your own wanted flag, forge an enemy's
   (`intel.py` is the file). High-value, high-ICE — the marquee corp-host run.
 * **Sabotage** — flip a door/camera ACL, corrupt a printer queue, brick a
@@ -274,19 +287,20 @@ a deck.
 |---|---|
 | **Phase** (`PHASE_LAYER_SPEC`) | The substrate: net = phase, two-body model, perception gate. Build FIRST. |
 | **Hunt** (`world/director/hunt.py`) | Trace is a parallel, same-idiom re-implementation (§7). |
-| **Trust** (`TRUST_AND_CONSENT_SPEC`) | The slumped meat body is a `can_contest`-false free-action target — already covered. |
+| **Trust** (`TRUST_AND_CONSENT_SPEC`) | The slumped meat body should be a free-action target. 📋 UNBUILT (no issue): jacking in must set a helpless state that `can_contest` reads (`PHASE_LAYER_SPEC` §5.3). |
 | **Intel / wanted** (`world/director/intel.py`) | The wanted record IS a hackable file (§10) — clear/forge flags. |
 | **Stealth / theft** (`STEALTH_AND_DETECTION_SPEC`) | Hardware theft is the meat route to a net prize (§2); net "noise" mirrors stealth's contest. |
 | **Identity** | Net actions key on apparent-UID; a decker can be traced-as-presence without being named (voice/face parallel). |
 | **Crafting / 3-D printer** | Schematics are stealable/printable files (§2, §10). |
-| **Radio** (`RADIO_COMMS_SPEC`) | Reserved cross-phase tap: a decker reads/spoofs radio traffic from the net. **The security intel-sync is NET-driven, not radio** (decided 2026-07-03): the wanted/intel database is a hosted file — radio carries voices, the net carries databases. |
-| **Coordinates / verticality** | Hosts live at real coords in towers — the shared high-rise dependency that gates the build. |
+| **Radio** (`RADIO_COMMS_SPEC`) | Reserved cross-phase tap: a decker reads/spoofs radio traffic from the net. **The security intel-sync is NET-driven, not radio** (decided 2026-07-03): the wanted/intel database is a hosted file — radio carries voices, the net carries databases. Today the sync is physical: a bot's sightings (`db.local_sightings`) merge into the force-wide record (one `ServerConfig` row holding an entry per apparent UID, with a count and the last crime) only when the bot stands in its post room (`world/director/intel.py` `sync_bot_intel`). Moving that record onto a net host is 📋 UNBUILT (no issue). |
+| **Coordinates / verticality** | Hosts live at real coords in towers. The coordinate volume and the towers exist, so this no longer gates the build. |
 
 ## 13 · Risks & open questions
 
 * **Skill-vs-Intellect timing.** Intellect gates the palette now; confirm the
   additive path to a real decking skill so the later swap doesn't rewrite
-  content.
+  content. OPEN (#3335): is `systems` that skill, or is a separate decking
+  rating still wanted?
 * **Program-noise tuning.** How much does instruction quality vs. deck grade
   vs. hop count each weight the trace? The fun is in that curve; tune in play.
 * **Griefing via the crime DB.** Forging wanted flags is powerful — needs
@@ -298,12 +312,20 @@ a deck.
 * **Offline/async.** Do hosts persist state between runs (a deleted file stays
   deleted, a planted backdoor waits)? Lean: yes — the world-as-database only
   matters if edits stick.
+* **Hardware theft verb (OPEN, #3335).** Does ripping a component out of a
+  fixed machine grow out of the stealth theft contest
+  (`STEALTH_AND_DETECTION_SPEC` §6.2), or get its own verb? Nothing does it
+  today: `steal` and `pickpocket` (`commands/CmdTheft.py`) refuse any target
+  without `get_sdesc`. 📋 UNBUILT (no issue)
+* **Phase 1 timing (OPEN, #3335).** Is the program layer still to be
+  prototyped ahead of the net (§14), or is the document dormant until the
+  phase layer?
 
 ## 14 · Build ladder (all gated on the phase layer)
 
 | Phase | Scope | Depends on |
 |---|---|---|
-| **0** | `PHASE_LAYER_SPEC` built (net phase, two-body, gate) | vertical/coordinate world |
+| **0** | `PHASE_LAYER_SPEC` built (net phase, two-body, gate) | — |
 | **1** | The program layer standalone: composer (`operate`-style) + hand-typed authoring, instruction palette, Intellect/library unlock, deck size/speed budget — **authorable and dry-runnable before the net exists** | — (can prototype ahead) |
 | **2** | Topology + run loop: hosts, bounce, connect/crack/navigate/files/copy/logs | phase 0 |
 | **3** | Trace (the net hunt) + ICE | phase 2, hunt.py |
@@ -312,9 +334,9 @@ a deck.
 
 Phase 1 is the one piece that can be **prototyped now** — the programming
 model doesn't need the net to exist to be authored and tested. Everything else
-waits for the vertical world.
+waits for the phase layer.
 
-*(Note 2026-09-12: "waits for the vertical world" has largely been overtaken.
+*(Note 2026-09-12: the vertical world is no longer the gate.
 `SPATIAL_COORDINATE_SYSTEM_SPEC` Phases 1–2 are SHIPPED & LIVE (2026-06-27,
 #847/#851 — the (X,Y,Z) volume, A* pathing, jump/fall gravity, 309 rooms
 seeded), and `VERTICALITY_AND_BUILDINGS_SPEC` now reads "PARTIALLY SHIPPED":
@@ -331,7 +353,11 @@ no longer the thing being waited on.)*
 ordinary `press`/`push` grammar (`press rent on kiosk`), sharing the
 `at_press(presser, arg)` contract with elevator panels and call
 buttons. First citizen: the Queen of Cups rental terminal (housing
-records = the grant files on cube doors, §2.2 shape). When this spec
+records = the grant files on cube doors, §2.2 shape). The same module
+holds the decant jumpsuit dispenser (`SleeveDispenser`) and the
+sleeve-policy terminal (`InsuranceTerminal`), whose policy records live
+in `world/insurance.py`, one `ServerConfig` row per sleeve UID: a second
+record that becomes a net file when this spec builds. When this spec
 builds, these are the boxes whose records become net-visible files —
 the buttons remain the street-level interface; the truth moves to the
 host.

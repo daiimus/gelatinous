@@ -13,7 +13,7 @@ The `@bug` command allows players and staff to submit bug reports directly to th
 - **@bug**: Interactive workflow for creating detailed bug reports with title, category, and description
 - **@bug/list**: View the 10 most recent bug reports from GitHub
 - **@bug/show <number>**: View full details of a specific bug including all comments (supports `#15` format)
-- **Rate Limiting**: 30 reports per player per day
+- **Rate Limiting**: a daily cap per account (`BUG_REPORT_DAILY_LIMIT`, default 30), shared by all of that account's characters
 - **Privacy-Conscious**: No email addresses or sensitive player data exposed
 - **GitHub Integration**: Issues automatically created with proper formatting and labels
 
@@ -38,11 +38,13 @@ Opens an interactive workflow for creating detailed bug reports:
 2. Select a category from a menu
 3. Write detailed description in a multi-line editor
 
+`bug` (without the @) works too. A plain `@bug` takes no text: `@bug <text>` only prints the usage line. A blank title cancels the report. Every GitHub call runs in a background thread, so a slow GitHub does not freeze the game (#460); `/list` and `/show` first print a "Fetching..." line.
+
 ### List Recent Bugs
 ```
 @bug/list
 ```
-Shows the 10 most recent bug reports from GitHub (open and closed).
+Shows the 10 most recent bug reports from GitHub (open and closed). Only issues labelled `player-reported` (those filed with `@bug`) are listed. `@bug/show` displays any issue number in the repository, not only player reports.
 
 ### View Bug Details
 ```
@@ -70,7 +72,7 @@ The player's title input is used directly as the issue title (no [BUG] prefix).
 ### Issue Labels
 - `bug` (always applied)
 - `player-reported` (always applied)
-- `<category>` (if specified, e.g., `combat`, `medical`)
+- `<category>`: always one of `combat`, `medical`, `movement`, `items`, `commands`, `web`, `world`, `social`, `system`, `other`. At the menu the digit or the word picks a category, and anything else picks `other`.
 
 ### Issue Body Template
 ```markdown
@@ -92,6 +94,7 @@ The player's title input is used directly as the issue title (no [BUG] prefix).
 - **Server:** play.gel.monster
 - **Commit:** <git commit hash>
 ```
+The commit is the short (7-character) hash of `master`, read once per server process from the git checkout, or from `git rev-parse --short HEAD` if that file cannot be read; it is "unknown" if neither works.
 
 ### Privacy Considerations
 
@@ -121,7 +124,7 @@ commands/
   default_cmdsets.py # Add CmdBug to default cmdset
 
 server/conf/
-  secret_settings.py # Store GITHUB_TOKEN (gitignored)
+  secret_settings.py # Store GITHUB_TOKEN and GITHUB_REPO (gitignored)
 ```
 
 ### GitHub API Integration
@@ -130,6 +133,7 @@ server/conf/
 ```
 POST https://api.github.com/repos/daiimus/gelatinous/issues
 ```
+The `owner/repo` part comes from `settings.GITHUB_REPO`.
 
 **Authentication:**
 - Personal Access Token (PAT) stored in `secret_settings.py`
@@ -149,16 +153,17 @@ POST https://api.github.com/repos/daiimus/gelatinous/issues
 **Request Payload:**
 ```python
 {
-    "title": f"[BUG] {player_description}",
+    "title": sanitize_title(player_title),  # the player's title, @/# escaped, max 100 characters, no prefix
     "body": formatted_issue_body,
-    "labels": ["bug", "player-reported", category]
+    "labels": ["bug", "player-reported", category]  # get_labels adds the category only if it is one of the ten known ones
 }
 ```
 
 ### Dependencies
 - `requests` library (HTTP client for GitHub API)
 - `json` (standard library, payload formatting)
-- `datetime` (standard library, timestamps)
+- `datetime` (standard library: the UTC date for the daily cap and the time until it resets)
+- `django.conf.settings` (token, repository and daily limit)
 - `git` command line (to get current commit hash)
 
 > **Correction 2026-09-11:** `json` is not imported — see the corrections
@@ -171,30 +176,31 @@ POST https://api.github.com/repos/daiimus/gelatinous/issues
 ## Rate Limiting
 
 ### Per-Player Limits
-- **Daily Limit:** 30 bug reports per account per day (resets at midnight UTC)
+- **Daily Limit:** `settings.BUG_REPORT_DAILY_LIMIT` (default 30) bug reports per account per day (resets at midnight UTC). The cap is checked twice: when `@bug` is typed, so a capped player is refused before the editor opens (#3367), and again at save (`_save_callback`), which takes the slot at once, before GitHub is called (#2526). If GitHub then fails, the slot is given back, unless the count has already rolled over to a new day.
 - **Cooldown:** None (no delay between reports)
-- **Storage:** Track in `account.db.bug_reports_today` with date stamp
+- **Storage:** `account.db.bug_report_count` (reports today) and `account.db.bug_report_date` (the UTC date of that count)
 
 ### Rate Limit Messages
 
 > **Correction 2026-09-11:** neither string is what a player sees.
 > The refusal is two lines and does not say "try again tomorrow" —
 > "You've reached the daily limit of 30 bug reports." then "The limit
-> resets in {time}." (`commands/CmdBug.py:730-731`), which is what the
+> resets in {time}." (`func` and `_save_callback` in `commands/CmdBug.py`), which is what the
 > "Rate Limit Reached" flow further down shows. The remaining-count line
 > is not conditional on the limit being "approached": it is sent after
-> **every** successful report (`CmdBug.py:758-764`), as "You have N bug
+> **every** successful report (`_on_created`), as "You have N bug
 > reports remaining today.", merely highlighted in yellow when N ≤ 5.
 > The "30" in the refusal was a hardcoded literal while the limit itself
 > read `BUG_REPORT_DAILY_LIMIT` — fixed under #3408 (2026-09-15): the
 > tracked `settings.py` now declares the default, every read is a plain
 > settings lookup, the refusal interpolates it and the help names no number.
 ```python
-# When limit reached
-"You've reached the daily limit of 30 bug reports. Please try again tomorrow."
+# When the limit is reached (on typing @bug, and again at save)
+f"You've reached the daily limit of {limit} bug reports."
+f"The limit resets in {time}."
 
-# When limit approaching
-"Bug report submitted! (You have {remaining} reports remaining today.)"
+# After every successful report (the number is yellow when it is 5 or less)
+f"You have {remaining} bug reports remaining today."
 ```
 
 ### Reset Logic
@@ -209,7 +215,7 @@ def check_rate_limit(account):
         account.db.bug_report_date = today
     
     count = account.db.bug_report_count or 0
-    return count < 30
+    return count < settings.BUG_REPORT_DAILY_LIMIT
 ```
 
 ---
@@ -306,7 +312,7 @@ Showing 10 most recent reports. Visit GitHub for full history.
 > @bug/show 44
 
 ======================================================================
-Issue #44 OPEN
+Issue #44 [OPEN]
 ======================================================================
 
 Title: Grenades don't explode when rigged to exits
@@ -319,11 +325,13 @@ URL: https://github.com/daiimus/gelatinous/issues/44
 Description:
 
 **Reported By:** PlayerName
-**Location:** Room #123
+**Location:** #123
 
 **Category:** Combat
 
-**Description:**
+---
+
+## Description
 
 I tried to rig a grenade to the north exit.
 I expected it to explode when someone walked through.
@@ -334,6 +342,13 @@ Steps:
 2. Type "rig grenade to north"
 3. Command succeeds but grenade disappears
 4. Someone walks through exit - no explosion
+
+---
+
+## Technical Environment
+
+- **Server:** play.gel.monster
+- **Commit:** <short commit hash>
 
 ----------------------------------------------------------------------
 
@@ -395,7 +410,7 @@ Bug report cancelled.
 
 Creating detailed bug report (category: combat)...
 
-Failed to create bug report: Connection timeout.
+Failed to create bug report: Request timed out. Please try again.
 Please try again in a moment. If the problem persists, contact staff.
 ```
 
@@ -413,7 +428,7 @@ The command uses Evennia's EvMenu system for the interactive workflow:
 **Key Settings:**
 - `cmd_on_exit=None` - Prevents default "look" command when menu exits
 - Uses goto callables instead of node functions for validation steps
-- EvEditor opens with 0.1s delay after menu closes to avoid input capture
+- The editor opens inside the last menu node (`node_open_editor`), which then returns `None, None` to close the menu. There is no delay.
 
 ### EvEditor Integration
 Multi-line editor for bug descriptions. **The editor is stock Evennia
@@ -447,64 +462,50 @@ mean overriding a core Evennia class, which this project does not do.
 - `evennia.utils.eveditor.EvEditor` - Multi-line text editor
 - `requests` library (HTTP client for GitHub API)
 - `json` (standard library, payload formatting)
-- `datetime` (standard library, timestamps)
+- `datetime` (standard library: the UTC date for the daily cap and the time until it resets)
+- `django.conf.settings` (token, repository and daily limit)
 - `git` command line (to get current commit hash)
 
 > **Corrections 2026-09-11** (apply to both Dependencies lists in this
 > file — this one and the one under "GitHub API Integration"): `json` is
 > **not** imported. `requests` handles serialisation through its `json=`
-> kwarg and `.json()` (`commands/CmdBug.py:368, 375`); the import block is
-> `CmdBug.py:9-14`. Two real dependencies are missing from both lists:
-> `evennia.utils.utils.run_async` (`CmdBug.py:10`), which carries every
-> GitHub call off the reactor thread (#460), and `re` (`:13`), which the
+> kwarg and `.json()` (`create_github_issue` in `commands/CmdBug.py`); the imports are at the
+> top of that file. Two real dependencies are missing from both lists:
+> `evennia.utils.utils.run_async`, which carries every
+> GitHub call off the reactor thread (#460), and `re`, which the
 > mention/xref sanitizer needs (#2527). The `git` command line is a
 > *fallback* only: the hash is read from `.git/refs/heads/master` first
-> and cached for the process lifetime (`CmdBug.py:215-277`).
+> and cached for the process lifetime (`get_git_commit_hash` and `_compute_git_commit_hash`).
 
 ### Network Failures
-```python
-try:
-    response = requests.post(url, headers=headers, json=payload, timeout=10)
-    response.raise_for_status()
-except requests.exceptions.Timeout:
-    caller.msg("|rBug report timed out. Please try again.|n")
-except requests.exceptions.ConnectionError:
-    caller.msg("|rUnable to connect to GitHub. Please try again later.|n")
-except requests.exceptions.HTTPError as e:
-    if e.response.status_code == 401:
-        caller.msg("|rGitHub authentication failed. Please contact staff.|n")
-    elif e.response.status_code == 403:
-        caller.msg("|rRate limited by GitHub. Please try again later.|n")
-    else:
-        caller.msg(f"|rGitHub API error: {e.response.status_code}|n")
-```
+`create_github_issue` does not message the player. It returns `(False, message)`, with one of these messages:
+- timeout: "Request timed out. Please try again."
+- no connection: "Unable to connect to GitHub. Please try again later."
+- HTTP 401: "GitHub authentication failed. Please contact staff."
+- HTTP 403: "Rate limited by GitHub. Please try again later."
+- HTTP 422: "Invalid request data. Please contact staff."
+- any other HTTP error: "GitHub API error (status N)"
+- anything else: "Unexpected error: ..."
+
+`_on_created` then shows "Failed to create bug report: <message>" and "Please try again in a moment. If the problem persists, contact staff.", and gives the daily slot back (#2526).
 
 ### Input Validation
-```python
-def sanitize_bug_description(text):
-    """Sanitize user input to prevent markdown injection or excessive content."""
-    # Limit length
-    if len(text) > 5000:
-        return text[:5000] + "\n\n[Description truncated at 5000 characters]"
-    
-    # Escape potential markdown injection (but allow basic formatting)
-    # Keep newlines, basic formatting, but escape potentially malicious patterns
-    
-    return text.strip()
-```
+`sanitize_description` cuts the text at 5000 characters (adding "[Description truncated at 5000 characters]"), strips it, and puts a zero-width space after `@` in `@name` and after `#` in `#123`, so the public issue pings no one and links to no other issue (#2527). Markdown and HTML are left as typed. `sanitize_title` gives the title the same treatment and caps it at 100 characters.
 
 ### Missing Configuration
 
 > **Correction 2026-09-11:** the block below is close but not the live
 > code. There are **two** gates, not one — `GITHUB_TOKEN` and then
-> `GITHUB_REPO` (`commands/CmdBug.py:93-102`) — and the message is two
+> `GITHUB_REPO` (`CmdBug.func`) — and the message is two
 > lines: "Bug reporting is not currently configured." followed by "Please
 > contact staff directly to report bugs." Both gates run before any
 > switch is dispatched, so `@bug/list` and `@bug/show` refuse too.
 ```python
 if not hasattr(settings, 'GITHUB_TOKEN') or not settings.GITHUB_TOKEN:
-    caller.msg("|rBug reporting is not configured. Please contact staff.|n")
+    caller.msg("|rBug reporting is not currently configured.|n")
+    caller.msg("Please contact staff directly to report bugs.")
     return
+# then the same check, with the same two lines, for GITHUB_REPO
 ```
 
 ---
@@ -512,7 +513,7 @@ if not hasattr(settings, 'GITHUB_TOKEN') or not settings.GITHUB_TOKEN:
 ## Admin Features
 
 > **Correction 2026-09-11: nothing in this command is staff-gated.**
-> `locks = "cmd:all()"` (`commands/CmdBug.py:84`) and neither
+> `locks = "cmd:all()"` (`CmdBug.locks` in `commands/CmdBug.py`) and neither
 > `show_bug_list` nor `show_bug_detail` checks permissions, so every
 > player can run `@bug/list` and `@bug/show` — as "Command Syntax" above
 > already documents them. Read this heading as "Read-only switches", not
@@ -520,29 +521,10 @@ if not hasattr(settings, 'GITHUB_TOKEN') or not settings.GITHUB_TOKEN:
 
 ### List Recent Issues
 ```
-@bug/list [count]
+@bug/list
 ```
 
-**Example Output:**
-```
-> @bug/list 5
-
-|cRecent Bug Reports (Last 5):|n
-
-|y#44|n [combat] Grapple release doesn't work after knockout
-  Reported by: Alice (2 hours ago)
-  |chttps://github.com/daiimus/gelatinous/issues/44|n
-
-|y#43|n Grenades vanish when rigged to exits
-  Reported by: Bob (3 hours ago)
-  |chttps://github.com/daiimus/gelatinous/issues/43|n
-
-|y#42|n Web character creation form validation error
-  Reported by: Carol (5 hours ago)
-  |chttps://github.com/daiimus/gelatinous/issues/42|n
-
-[... truncated ...]
-```
+`@bug/list` takes no count. Any text after it is ignored, and it always shows the 10 newest player reports. Its output is shown under "User Experience Flow" → "List Recent Bugs" above.
 
 ### Future Admin Commands (Phase 2)
 - `@bug/close <issue_number>` - Close an issue from in-game
@@ -554,7 +536,7 @@ if not hasattr(settings, 'GITHUB_TOKEN') or not settings.GITHUB_TOKEN:
 > `close`/`comment` appear there again as "Admin close/comment commands
 > from in-game" under **Phase 3: Future Enhancements (Not Currently
 > Planned)**. `@bug/search` is not listed in any phase. None of the three
-> exist: `switch_options = ("list", "show")`, `commands/CmdBug.py:86`.
+> exist: `switch_options = ("list", "show")`, `CmdBug.switch_options` in `commands/CmdBug.py`.
 
 ---
 
@@ -563,14 +545,12 @@ if not hasattr(settings, 'GITHUB_TOKEN') or not settings.GITHUB_TOKEN:
 ### Token Security
 - ✅ Store token in `secret_settings.py` (gitignored)
 - ✅ Never log or display token in error messages
-- ✅ Use environment variable as fallback: `os.getenv('GITHUB_TOKEN')`
-- ✅ Restrict token scope to minimum required (`repo` only)
+- ✅ Restrict token scope to the minimum required (`public_repo`; full `repo` only if the repository were private)
 
 ### Input Sanitization
 - ✅ Limit description length (5000 characters)
-- ✅ Strip potentially malicious markdown patterns
+- Escape `@name` mentions and `#123` references with a zero-width space, in the title and the description (#2527); markdown is left as typed
 - ✅ Validate category against whitelist
-- ✅ Escape special characters appropriately
 
 ### Rate Limiting
 - ✅ 30 reports per account per day
@@ -703,12 +683,11 @@ GITHUB_REPO = "daiimus/gelatinous"
 BUG_REPORT_DAILY_LIMIT = 30
 ```
 
-### settings.py (done — #3408 declares the default there)
+### settings.py
 ```python
-# Bug reporting defaults (can override in secret_settings.py)
-BUG_REPORT_DAILY_LIMIT = getattr(secret_settings, 'BUG_REPORT_DAILY_LIMIT', 30)
-GITHUB_REPO = getattr(secret_settings, 'GITHUB_REPO', 'daiimus/gelatinous')
+BUG_REPORT_DAILY_LIMIT = 30
 ```
+`settings.py` declares one default, `BUG_REPORT_DAILY_LIMIT = 30` (#3408). It then imports `secret_settings.py`, which can override it. It gives no default for `GITHUB_TOKEN` or `GITHUB_REPO`, so both must be set in `secret_settings.py`. If either is missing, `@bug`, `@bug/list` and `@bug/show` all refuse.
 
 ---
 
@@ -742,6 +721,7 @@ GITHUB_REPO = getattr(secret_settings, 'GITHUB_REPO', 'daiimus/gelatinous')
 Usage:
   @bug
   @bug/list
+  @bug/show <number>
 
 Opens an interactive bug report workflow that will guide you through:
 1. Entering a title/summary for the bug
@@ -749,9 +729,11 @@ Opens an interactive bug report workflow that will guide you through:
 3. Writing a detailed description in a multi-line editor
 
 Use @bug/list to view recent bug reports from the GitHub repository.
+Use @bug/show <number> to view full details of a specific bug report.
 
 Your report will be created as a GitHub issue for the development team
-to review. All players can submit up to 30 bug reports per day.
+to review. Reports are capped per player per day; after each one the
+game tells you how many you have left.
 
 Be clear and descriptive - good bug reports help us fix issues faster!
 ```
