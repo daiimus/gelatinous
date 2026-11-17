@@ -3,18 +3,18 @@
 > **Status:** ✅ Shipped — high-level overview of the running combat system. NOTE: some features described below are aspirational and NOT implemented — skill progression, reputation, ammunition tracking, weapon durability, and formation fighting. Treat the combat code and COMBAT_REFACTOR (roadmap) as current truth where they disagree.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited 2026-09-11, and are NOT covered by the aspirational list above.** Each is annotated in place below.
-> - **No cover system.** §Ranged Combat's "Cover System" has no implementation; nothing about the room, an object or terrain reaches the hit math (`world/combat/attack.py:422-470`).
+> - **No cover system.** §Ranged Combat's "Cover System" has no implementation; nothing about the room, an object or terrain reaches the hit math (`process_attack` in `world/combat/attack.py`).
 > - **No environmental modifier.** §Multi-Room Combat's "Environmental Factors" contradicts this spec's own "Planned Enhancements", which still lists weather/terrain/lighting as unbuilt.
-> - **`aim` grants no accuracy bonus.** The to-hit roll is `randint(1,20) + motorics × sight × manipulation` (`world/combat/attack.py:437`, `:469`) and never reads the aim state. Aim locks the target, posts a visible tell, enables cross-room fire along an aimed exit, and buys an opportunity attack if the target flees.
-> - **Grappling auto-yields only the grappler**, not both parties (`world/combat/grappling.py:410-413`, matching `GRAPPLE_SYSTEM_SPEC.md:91-92` and `:413-414`).
-> - **Resonance is unused by combat.** It appears under `world/combat/` only as `STAT_RESONANCE` (`constants.py:24`) and a descriptor-table entry (`:830`), and nowhere at all under `commands/combat/`; its live consumers are perception and recognition (`world/stealth.py:162`, `world/identity.py:1758`, `world/voice.py:485`, `world/radio.py:744`). There is no social-combat resolver.
+> - **`aim` grants no accuracy bonus.** The to-hit roll is `randint(1,20) + motorics × sight × manipulation × grip`, plus the weapon choice's `hit_bonus` and the one-shot charge bonus (`process_attack` in `world/combat/attack.py`), and never reads the aim state. Aim locks the target, posts a visible tell, enables cross-room fire along an aimed exit, and buys an opportunity attack if the target flees.
+> - **A contested grapple auto-yields only the grappler**, not both parties; a consensual hold (#3363) yields both (`resolve_grapple_initiate` in `world/combat/grappling.py`, matching `GRAPPLE_SYSTEM_SPEC.md:91-92` and `:413-414`).
+> - **Resonance is unused by combat.** It appears under `world/combat/` only as `STAT_RESONANCE` (`constants.py:24`) and a descriptor-table entry, and nowhere at all under `commands/combat/`; its live consumers are perception and recognition (`contest` in `world/stealth.py`, `attempt_disguise_pierce` in `world/identity.py`, `attempt_voice_discern` in `world/voice.py`, `_mutter_into` in `world/radio.py`). There is no social-combat resolver.
 > - **Grit drives no health pool and no damage resistance.** There is no character-level hit-point stat; health is the organ model (`world/medical/core.py:15`) and mitigation is armor (`typeclasses/armor_mixin.py:320`).
-> - **No per-weapon accuracy stat.** Weapons carry `db.damage` and `db.is_ranged` only; every weapon lands on the attacker's motorics alone.
+> - **No per-weapon accuracy stat, only a small to-hit term.** A weapon may carry `db.hit_bonus` (0 when unset, read by `world/combat/weapon_choice.py`); an akimbo pair's profile in `AKIMBO_PROFILES_BY_TYPE` sets +1 or -1; no prototype sets `hit_bonus` on a single weapon today. A two-handed weapon without a free second hand rolls at reduced skill (`grip_hit_factor` in `world/combat/capacity.py`).
 > - **`INITIATIVE_BASE`, `DAMAGE_MULTIPLIER` and `GRAPPLE_DIFFICULTY` do not exist** anywhere in the repo.
 > - **No performance instrumentation.** `world/combat/debug.py` is a diagnostics/audit sink with no timing, counter or throughput metric.
 > - **"(Sept 2024)"** on the improvements section is an off-by-one-year error — that section was added 2025-09-14 (`bba77e22`).
 >
-> **Two things that look like drift and are not** (checked 2026-09-11, recorded so the next auditor does not "fix" them): `look` really is combat-aware from the main character cmdset — Evennia's own `CmdLook` arrives by inheritance at `commands/default_cmdsets.py:150`, the game's custom subclass having been deleted with `commands/combat/info_commands.py` in `d8261f7e`; and the kill/hit colour escalation really is as documented, because in Evennia lowercase `|r` is the HILITE (bold) red and uppercase `|R` the regular one (`world/combat/messages/__init__.py:175-183`; cf. commit `ef3b18e6` "Bold white -> regular white", which changed `|w` → `|W`).
+> **Two things that look like drift and are not** (checked 2026-09-11, recorded so the next auditor does not "fix" them): `look` really is combat-aware from the main character cmdset — at that check it was Evennia's own `CmdLook`, arriving by inheritance, the game's custom subclass having been deleted with `commands/combat/info_commands.py` in `d8261f7e`; since #3596 (2026-10-24) it is the game's `commands/CmdLook.py` again, a subclass of Evennia's added in `commands/default_cmdsets.py`, which while aiming searches the aimed room first for `look <target>`; and the kill/hit colour escalation really is as documented, because in Evennia lowercase `|r` is the HILITE (bold) red and uppercase `|R` the regular one (`world/combat/messages/__init__.py:175-183`; cf. commit `ef3b18e6` "Bold white -> regular white", which changed `|w` → `|W`).
 
 ## Overview
 
@@ -90,13 +90,13 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 - **Line of Sight**: Clear path required for ranged attacks
 - **Cover System**: Objects and terrain affect accuracy
   > **⚠ Corrected 2026-09-11 — NOT implemented.** No cover mechanic exists anywhere in `world/combat/`; the only "cover" hits are clothing coverage (`constants.py:133-184`) and two flee messages about covered exits (`constants.py:587`, `:594`). The to-hit roll (`world/combat/attack.py:422-470`) takes no term derived from the room or its contents.
-- **Ammunition**: Limited shots require tactical resource management
+- **Ammunition**: Limited shots require tactical resource management 📋 UNBUILT (no issue)
 
 ### Grappling System
 
 #### **Restraint Mode** (Default)
 - **Auto-Yielding**: Both parties start in non-violent mode
-  > **⚠ Corrected 2026-09-11 — only the grappler auto-yields.** `world/combat/grappling.py:410-413` sets `char_entry[DB_IS_YIELDING] = True` for the grappler and deliberately leaves the victim non-yielding (the line that would yield them is commented out) so the victim auto-resists every turn. `GRAPPLE_SYSTEM_SPEC.md:91-92` and `:413-414` document the shipped behaviour correctly; this line is the outlier. A knock-on: `escape`'s "you switch to violent struggle" message only fires if the victim *was* yielding (`commands/combat/special_actions.py:248-252`), so in a default grapple it never appears. Both parties yielding is reachable, but only if the victim chooses it.
+  > **⚠ Corrected 2026-09-11 — only the grappler auto-yields.** In a contested grapple, `resolve_grapple_initiate` in `world/combat/grappling.py` sets `char_entry[DB_IS_YIELDING] = True` for the grappler and deliberately leaves the victim non-yielding (the line that would yield them is commented out) so the victim auto-resists every turn. `GRAPPLE_SYSTEM_SPEC.md:91-92` and `:413-414` document the shipped behaviour correctly; this line is the outlier. A knock-on: `escape`'s "you switch to violent struggle" message only fires if the victim *was* yielding (`CmdEscapeGrapple` in `commands/combat/special_actions.py`), so in a contested grapple it never appears. Both parties yielding is reachable in two ways: the victim chooses it, or the hold is consensual (#3363, owner ruling 2026-09-13). If the target trusts the grappler for `grab`, or cannot contest (unconscious, dead or already restrained), the hold is taken with no roll and both parties are set yielding, so nobody struggles.
 - **Gentle Hold**: Grappler maintains control without harm
 - **Peaceful Resolution**: Preferred method for conflicts
 - **De-escalation**: Allows for roleplay and negotiation
@@ -124,14 +124,17 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 ## Command Structure
 
 ### Core Actions (`commands/combat/core_actions.py`)
-- **`attack <target>`**: Initiate or continue combat
+- **`attack <target>`** (alias `kill`): Initiate or continue combat
 - **`stop attacking`**: Cease aggressive actions, enter yielding state
+- **`stop aiming`**: Drop your aim at a target or a direction
+- **`stop`** (bare): abort a channeled act in progress
 
 ### Movement Commands (`commands/combat/movement.py`)
 - **`flee`**: Attempt to escape combat entirely (once per round, instant execution)
-- **`retreat`**: Back away from melee range (same room)
-- **`advance <target>`**: Close distance for melee combat
-- **`charge <target>`**: Reckless rush attack with bonuses/penalties
+- **`retreat`** (alias `disengage`): Back away from melee range (same room)
+- **`advance <target>`** (alias `engage`): Close distance for melee combat
+- **`charge <target>`** (alias `rush`): Reckless rush attack with bonuses/penalties
+- **`jump off <direction> edge`** / **`jump across <direction> edge`** (`commands/combat/jump.py`, also `jump on <explosive>`): go over an edge or across a gap on purpose; in a fight it pays both of flee's contests (see below)
 
 > **Refused at the edge (#3583, owner ruling 2026-09-16).** None of the
 > three room-changing movement commands will take a body over a drop.
@@ -178,9 +181,10 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 > first and #3591 the second, so `flee` and the jump verbs charge them by
 > exactly the same rules:
 >
-> * `break_aim_lock(caller, *, bonus=0, label=None)` — the
+> * `break_aim_lock(caller, *, bonus=0, label=None, immediate_attack=False)` — the
 >   Motorics-vs-Motorics roll that breaks an aimer's lock, with the
->   aimer's opportunity attack on a loss.
+>   aimer's opportunity attack on a loss, resolved at once when
+>   `immediate_attack` is True (the jump verbs).
 > * `roll_to_disengage(caller, handler, *, bonus=0, label=None)` — the
 >   Motorics-vs-Motorics roll against the best-Motorics opponent
 >   targeting you, ties to the blocker, with that blocker's opportunity
@@ -350,14 +354,14 @@ The **G.R.I.M. Combat System** is a roleplay-focused, turn-based combat engine t
 - **`release`**: Let go of grappled target
 - **`disarm <target>`**: Attempt to remove target's weapon
 - ~~**`aim <target>`**: Improve accuracy for next attack~~ **Owner ruling 2026-09-13 (#3355): the promise is withdrawn.** Aim is a positioning tool -- lock, tell, cross-room fire, flee-punish -- and grants no accuracy. `help aim` now says so.
-  > **Directional attacks resolve through `room_through` (#3589, owner ruling 2026-09-16).** `aim <direction>` + `attack` no longer fires into whatever room the exit happens to point at. `commands/combat/core_actions.py` asks `world.gravity.room_through(exit_obj)` for the room the aim really reaches: over an **edge** (or any exit into air) that is the ground the edge drops to, not the empty air cell; across a **gap** it is the far perch; anywhere else it is just the destination. Owner: *"Aiming at an edge typically means aiming at the ground area it drops to because of sniping. Rooftop to street for example."* The ground is found by `ground_below`, which takes the **highest non-air room in the same column below** — read off `world/spatial`'s `coordinate_index()`, the one cell-addressed lookup in the game, with no cell limit and no floor at z=0 (the Drifts resolve downward past zero), falling back to the `down` exit chain only off-grid or where the grid has nothing seeded below. So a shot over a parapet works whether or not anyone wired the column: **geometry wins over wiring**, and a bare column (#3581) still resolves the shot to the seeded street even though a fall down it parks in mid-air. Two `None` cases refuse the shot — *"You are aiming `<dir>`, but there's nothing down there to hit."* — nothing solid below at all, and the **occlusion rule**: a room below that is not a surface (`is_surface` — a rooftop or `outside is True`) means an unbuilt roof is in the way. The aiming **look** and its aimed-room target search resolve the same way (`typeclasses/rooms.py`), falling back to the air cell so a bare column still renders; throw's `at` form resolves the same way too, while its directional forms still fly into the air cell so gravity carries the object down. Upward (street → roof) is unbuilt and parked with Phase 3 (#1511) — no exit to aim through, no line-of-sight concept — but the asymmetry only constrains who can OPEN: the attack command enrols the victim with the shooter as target, so from the next round a street target with a ranged weapon fires back at the roof, needing neither an aim nor an exit — **by design** (owner 2026-09-16: *"Automagic self-defense and the perk of carrying a gun."*); with a melee weapon the round's attack is refused across rooms (*"You can't reach … from here."*) and `advance`/`charge` find no way up. The other exposure the review named — aiming widens every bare name search into the aimed room, now a populated street — is filed as #3596. Full contract: `specs/JUMP_COMMAND_SPEC.md`, "Aiming over an edge (#3589)".
-  > **⚠ Corrected 2026-09-11 — no accuracy bonus is applied.** `world/combat/attack.py:437` computes `effective_skill = attacker_skill * sight_factor * manip_factor` and `:469` rolls `randint(1, 20) + effective_skill`; `NDB_AIMING_AT` is never read in that file. What aiming actually buys: the target is held in place, a visible tell is posted, `aim <direction>` unlocks cross-room fire through that exit (`commands/combat/core_actions.py:97-115`), and the aimer gets an opportunity attack if the aimed-at target flees (`commands/combat/movement.py:229`). Whether the bonus should be built or the promise withdrawn is an open owner question — `CmdAim`'s own help text (`commands/combat/special_actions.py:361`) makes the same claim.
+  > **Directional attacks resolve through `room_through` (#3589, owner ruling 2026-09-16).** `aim <direction>` + `attack` no longer fires into whatever room the exit happens to point at. `commands/combat/core_actions.py` asks `world.gravity.room_through(exit_obj)` for the room the aim really reaches: over an **edge** (or any exit into air) that is the ground the edge drops to, not the empty air cell; across a **gap** it is the far perch; anywhere else it is just the destination. Owner: *"Aiming at an edge typically means aiming at the ground area it drops to because of sniping. Rooftop to street for example."* The ground is found by `ground_below`, which takes the **highest non-air room in the same column below** — read off `world/spatial`'s `coordinate_index()`, the one cell-addressed lookup in the game, with no cell limit and no floor at z=0 (the Drifts resolve downward past zero), falling back to the `down` exit chain only off-grid or where the grid has nothing seeded below. So a shot over a parapet works whether or not anyone wired the column: **geometry wins over wiring**, and a bare column (#3581) still resolves the shot to the seeded street even though a fall down it parks in mid-air. Two `None` cases refuse the shot — *"You are aiming `<dir>`, but there's nothing down there to hit."* — nothing solid below at all, and the **occlusion rule**: a room below that is not a surface (`is_surface` — a rooftop or `outside is True`) means an unbuilt roof is in the way. The aiming **look** and its aimed-room target search resolve the same way (`typeclasses/rooms.py`), falling back to the air cell so a bare column still renders; throw's `at` form resolves the same way too, while its directional forms still fly into the air cell so gravity carries the object down. Upward (street → roof) is unbuilt and parked with Phase 3 (#1511) — no exit to aim through, no line-of-sight concept — but the asymmetry only constrains who can OPEN: the attack command enrols the victim with the shooter as target, so from the next round a street target with a ranged weapon fires back at the roof, needing neither an aim nor an exit — **by design** (owner 2026-09-16: *"Automagic self-defense and the perk of carrying a gun."*); with a melee weapon the round's attack is refused across rooms (*"You can't reach … from here."*) and `advance`/`charge` find no way up. The other exposure the review named — aiming widened every bare name search into the aimed room, now a populated street — was #3596, closed 2026-10-25: aiming widens no other command's search; only `look` (`commands/CmdLook.py`), `attack` and `throw ... at` reach into the aimed room. Full contract: `specs/JUMP_COMMAND_SPEC.md`, "Aiming over an edge (#3589)".
+  > **⚠ Corrected 2026-09-11 — no accuracy bonus is applied.** `process_attack` in `world/combat/attack.py` computes `effective_skill = attacker_skill * sight_factor * manip_factor * grip_factor`, rolls `randint(1, 20) + effective_skill` and adds the weapon choice's `hit_bonus` and the charge bonus; `NDB_AIMING_AT` is never read in that file. What aiming actually buys: the target is held in place, a visible tell is posted, `aim <direction>` unlocks cross-room fire through that exit (`commands/combat/core_actions.py:97-115`), and the aimer gets an opportunity attack if the aimed-at target flees (`commands/combat/movement.py:229`). That question is settled by the owner ruling of 2026-09-13 (#3355, above): no bonus. `CmdAim`'s help text now says so ("Aiming does not improve your accuracy").
 
 ### Information Commands (main character cmdset)
 There is no dedicated combat info-command module. Combat-aware `look` is provided
 by the main character cmdset (so it works both in and out of combat) rather than a
 separate `commands/combat/` file.
-- **`look`**: Enhanced awareness during combat (registered on the main character cmdset)
+- **`look`**: Enhanced awareness during combat (`commands/CmdLook.py`, registered on the main character cmdset). While you aim down an exit, `look` shows the aimed room and `look <target>` searches it before your own surroundings (#3596).
 
 ## Combat Flow
 
@@ -365,17 +369,18 @@ separate `commands/combat/` file.
 ```
 Player A: attack Player B
 → Combat handler created
-→ Initiative order established
+→ Attacker and target are added, each rolling initiative once
 → Both players enter combat state
 ```
 
 ### 2. **Turn Processing**
 ```
-→ Check initiative order
-→ Process active player's action
-→ Apply results and consequences
-→ Check for combat end conditions
-→ Move to next player's turn
+→ Every 6 seconds the handler runs one round
+→ Orphan sweep; fighters who are gone or outside the fight's rooms are dropped
+→ Everyone yielding and no grapple: peaceful end
+→ Each fighter in initiative order: a queued action (grapple, release, advance, retreat, charge, disarm) runs, otherwise an attack is scheduled, staggered 1.5 s apart
+→ Dead or unconscious fighters are removed
+→ One fighter or none left: combat ends
 ```
 
 ### 3. **Resolution**
@@ -397,10 +402,11 @@ Player A: attack Player B
 
 ### Weapon System
 - **Weapon Types**: Melee, ranged, thrown, improvised
+- **Which weapon swings**: one resolver, `choose_weapon` in `world/combat/weapon_choice.py`, answers for every reader (the swing, the reach gates, the initiate prose, aim, flee). Deployed natural weapons (claws) that can reach come first, then held weapons; tagged weapons push out untagged items; a target out of reach leaves only ranged options; two of one weapon type with an akimbo profile fight as one attack; each attack takes the next option that can reach. Detail: `specs/proposals/MULTI_WEAPON_COMBAT_SPEC.md`, `specs/proposals/GRIP_ENFORCEMENT_SPEC.md`.
 - **Weapon Stats**: Damage, accuracy, range, special properties
-  > **⚠ Corrected 2026-09-11 — damage and range ship; accuracy does not.** Weapons carry `db.damage` (read via `get_weapon_damage`, `world/combat/utils.py:209-229`) and `db.is_ranged` (`:232-233`). There is no per-weapon accuracy attribute anywhere in the repo; every weapon lands on the attacker's motorics alone (`world/combat/attack.py:422-470`), so a pistol and a brick are equally easy to hit with. Thrown objects are blunter still — `world/combat/throwing.py:433` flat-rates a 70% hit chance under the comment "could be enhanced with accuracy system".
-- **Ammunition**: Limited resources for ranged weapons
-- **Durability**: Weapons can break or become damaged
+  > **⚠ Corrected 2026-09-11 — damage and range ship; accuracy does not.** Weapons carry `db.damage` (read via `get_weapon_damage` in `world/combat/utils.py`, and by `world/combat/weapon_choice.py` for the swing) and `db.is_ranged`. There is no per-weapon accuracy stat. A single held weapon adds nothing to the roll unless its `db.hit_bonus` is set (no prototype sets one today); an akimbo pair's profile adds +1 or -1; and a two-handed weapon without a free second hand rolls at reduced skill (`grip_hit_factor`). Otherwise the roll is the attacker's motorics, sight and manipulation (`process_attack` in `world/combat/attack.py`). Thrown objects are blunter still — `world/combat/throwing.py` flat-rates a 70% hit chance under the comment "could be enhanced with accuracy system".
+- **Ammunition**: Limited resources for ranged weapons 📋 UNBUILT (no issue)
+- **Durability**: Weapons can break or become damaged 📋 UNBUILT (no issue)
 
 ### Status Effects
 - **Grappled**: Restricted movement and actions
@@ -408,6 +414,7 @@ Player A: attack Player B
   > **⚠ Corrected 2026-09-11.** The aimed state is real (`NDB_AIMING_AT` / `NDB_AIMED_AT_BY`, set at `commands/combat/special_actions.py:632-633`) but confers no accuracy bonus — see the `aim <target>` note under Command Structure. Its mechanical effects are immobilising the target, the visible tell, cross-room fire, and an opportunity attack on a flee attempt.
 - **Yielding**: Non-violent stance with limited options
 - **Wounded**: Injury effects on performance
+- **Hidden** (`world/stealth.py`): opening an attack on a target who cannot perceive you is an ambush: "You strike from concealment!", a first-strike initiative bonus (`AMBUSH_INITIATIVE_BONUS`), and the attack reveals you. Aiming at someone reveals the aimer (#3769). Nobody can hide while in a fight or with a weapon aimed at them (#3763), and an untargeted throw never lands on someone the thrower cannot perceive. Detail: `specs/proposals/STEALTH_AND_DETECTION_SPEC.md`.
 
 ## Roleplay Integration
 
@@ -433,7 +440,8 @@ Player A: attack Player B
 ## Technical Implementation
 
 ### State Management
-- **NDB Attributes**: Temporary combat state (proximity, targeting, etc.)
+- **Handler DB state**: who targets, grapples or yields to whom, initiative and queued actions, held in the handler's `db.combatants` (survives a reload)
+- **NDB Attributes**: Temporary combat state (proximity, aim, the handler pointer), cleared by a reload. At start-up `server/conf/at_server_startstop.py` re-links the handler pointer and same-room melee proximity for live fights, and clears stranded aim tells rather than restoring aim
 - **DB Attributes**: Persistent character data (stats, equipment, etc.)
 - **Handler Persistence**: Combat state survives server restarts
 - **Cleanup Systems**: Automatic state cleanup when combat ends
@@ -468,11 +476,11 @@ GRAPPLE_DIFFICULTY = 8
 ```
 
 > **⚠ Corrected 2026-09-11 — the four `DEFAULT_*` lines are real (`world/combat/constants.py:17-20`); the three "Combat mechanics" lines are not.** `INITIATIVE_BASE`, `DAMAGE_MULTIPLIER` and `GRAPPLE_DIFFICULTY` appear nowhere in the repo. What actually ships:
-> - **Initiative** — `randint(1, 20) + motorics + surplus_limb_initiative_bonus(char) + ambush_bonus`, rolled once when a combatant is added (`world/combat/utils.py:668-673`; the limb bonus is defined at `:295`).
-> - **Damage** — `randint(1, 6)` base plus the weapon's own `db.damage`, with no global multiplier (`world/combat/attack.py:531-534`), then armor reduction in `take_damage` (`typeclasses/armor_mixin.py:69`, `:320`).
+> - **Initiative** — `randint(1, 20) + motorics + surplus_limb_initiative_bonus(char) + ambush_bonus`, rolled once when a combatant is added (`add_combatant` in `world/combat/utils.py`, where `surplus_limb_initiative_bonus` is also defined). `ambush_bonus` is `AMBUSH_INITIATIVE_BONUS` when the attacker opens on a target who cannot perceive them, else 0.
+> - **Damage** — `randint(1, 6)` base plus the weapon choice's damage (the item's `db.damage`, or an akimbo profile's figure for a pair), with no global multiplier (`process_attack` in `world/combat/attack.py`), then armor reduction in `take_damage` (`_calculate_armor_damage_reduction` in `typeclasses/armor_mixin.py`).
 > - **Grapple** — an opposed motorics contest, not a fixed difficulty number (`world/combat/grappling.py`).
 >
-> Also in this file and **defined but never read anywhere**: `DEFAULT_HP = 10` and `HP_GRIT_MULTIPLIER = 2` (`:29-30`) — see the Grit note above. The timing constants this spec cites elsewhere are all genuine: `COMBAT_ROUND_INTERVAL = 6`, `STAGGER_DELAY_INTERVAL = 1.5`, `MAX_STAGGER_DELAY = 4.5` (`:806-808`).
+> Also in this file and **defined but never read anywhere**: `DEFAULT_HP = 10` and `HP_GRIT_MULTIPLIER = 2` (`:29-30`) — see the Grit note above. The timing constants this spec cites elsewhere are all genuine: `COMBAT_ROUND_INTERVAL = 6`, `STAGGER_DELAY_INTERVAL = 1.5`, `MAX_STAGGER_DELAY = 4.5`.
 
 ### Message Templates
 - **Action Messages**: Descriptions of combat actions
@@ -536,6 +544,7 @@ Combat initiation now shows both aggressive and defensive stances:
 Visual clarity improved through contextual color application:
 - **Threat Escalation**: Red initiate → Red hit → Bold red kill
 - **Clear Misses**: White coloring for failed attempts
+- **Grapple Lines**: green for a hold taken, released or broken free of; yellow for a hold that failed or is being lost
 - **Automatic Application**: No manual color coding required in weapon templates
 - **Override Support**: Pre-colored messages respected
 

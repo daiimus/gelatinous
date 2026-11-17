@@ -25,7 +25,7 @@
 > for people and things alike: the default reach, `location=`, and a
 > command's own `candidates=`. It closed `look <stashed item>` and
 > `get <x> from <stashed container>`, and the search fallback that reached
-> a hidden person by key (`look iver` after `remember iver as Iver`). It
+> a hidden person by key (`look alice` after `remember alice as Alice`). It
 > keeps ordinals and exact-before-partial matching counting only what the
 > searcher perceives. Global and #dbref searches have no pool and stay
 > ungated (staff tooling). `defuse` and `remember <papers>`

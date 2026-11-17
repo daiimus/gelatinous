@@ -153,13 +153,13 @@ Natural weapons on non-grasping hosts (Jawz) join the natural wheel with body-wi
 | weapon references recorded on more than one body | 0 |
 | stored limbs or heads whose snapshot records a weapon | 0 |
 | `carbide blades` objects (to update to the one-hand prototype) | 0 |
-| Iver Kestrel's ability hosts | 0 |
+| The developer test character's ability hosts | 0 |
 
 No one-shot function is written. What the migration would have settled, the live code now settles as it goes: a shared reference is resolved on every toggle (§3) and at every cut, living or corpse (§9), and a claw object spawns from the current prototype. The cross-body rule below stays as the description of what the code does at a cut; nothing stored needed it. The paragraphs that follow are kept as the record of the plan.
 
 The plan was a one-shot `split_shared_ability_weapons()` in `world/medical/augments.py`, run once with `@py` at deploy with owner approval, with its own test and its counts in the PR, deleted in the next PR. Not a boot sweep.
 
-Read-only census first: characters and NPCs with two or more `nailz` hosts; bodies with two shotgun arms; objects whose dbref is recorded on more than one body (a limb reattached before severance settled the share; the per-character pass cannot see these); Iver Kestrel (state captured first and left as found).
+Read-only census first: characters and NPCs with two or more `nailz` hosts; bodies with two shotgun arms; objects whose dbref is recorded on more than one body (a limb reattached before severance settled the share; the per-character pass cannot see these); the developer test character (state captured first and left as found).
 
 For each living character, for each ability with two or more living hosts, in slot order: hosts sharing a dbref keep it on the host whose hand holds the object, otherwise the first, and only if the object sits where it belongs (None for a natural weapon; for an integrated weapon, the character when deployed and None when retracted); the others drop the dbref, and a deployed one spawns its own object now. For natural weapons no player sees a change. For integrated hosts (two shotgun arms) the second arm gains a gun it never had, which seats in that hand and drops what it held: a visible mechanic change, to be labelled as such. A host whose object lies elsewhere (a severed appendage) drops both dbref and deployed. Each Nailz host's install-time ability spec is refreshed from the current `organ_spec`, or old installs lack the `_one` prose and render the old both-hands longdesc twice. Existing `NAILZ_CLAWS` objects are updated with Evennia's `batch_update_objects_with_prototype` after a read-only check that a live object carries the `from_prototype` tag. Snapshots sharing a dbref are counted and left alone.
 

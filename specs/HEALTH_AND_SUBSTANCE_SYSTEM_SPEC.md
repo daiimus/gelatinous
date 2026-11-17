@@ -35,7 +35,7 @@ Nothing treats *being open* as harm.
 So incising seeds pain once, and after that an open cavity costs the
 patient nothing: no bleeding, no infection risk, no healing penalty. A
 colonist can walk around indefinitely with an open abdomen; a secbot
-can patrol with its chest hanging open. `procedures.py:411` even
+can patrol with its chest hanging open. `procedures.py` (where a procedure's surgeon has gone away) even
 carries the comment *"the incision stays open and bleeds"*, describing
 behaviour that was never implemented.
 
@@ -59,8 +59,11 @@ infection does not.
 ## Current Model (authoritative — 2026-06)
 
 ### Condition roster
-Five conditions ship (`world/medical/conditions.py`): **bleeding,
-pain, infection, consciousness-suppression, addiction**.  Burning
+Six conditions ship (`world/medical/conditions.py`): **bleeding,
+pain, infection, consciousness-suppression, addiction, renal
+failure** (renal failure is spawned when both kidneys are gone; it
+weakens and does not kill, #3402; see
+CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §7.2).
 and acid are **not** implemented — parked until fire exists as
 content (the `BurningCondition` / `AcidCondition` named in older
 phase notes below were never built).  Conditions run on one
@@ -106,17 +109,30 @@ templates: replacement organ, anatomy augment, limb chassis,
 hardpoint module, flesh implant).  Full design:
 `ANATOMY_AUGMENTS_SPEC` + `AUGMENT_ABILITIES_SPEC`.
 
+### Death and repair
+Death is any capacity in `LETHAL_CAPACITY_NAMES` (`blood_pumping`,
+`breathing`, `digestion`, `neck_integrity`, `brain_integrity`) at 0,
+or blood at or below 15%.  `consciousness` is the awake axis and never
+gates death (owner, 2026-09-26: "Conscious capacity 0 should not be
+death").  Every death except a beheading has a 90-second window
+(`DEATH_PROGRESSION_DURATION`), and revival is exactly `not
+is_dead()`.  A beheading is a corpse at once (#3835).  A soft organ
+at 0 HP stays destroyed until a donor or cybernetic install; a bone
+at 0 HP is broken and heals; anything severed stays severed; a
+harvested organ is gone (`MedicalState.organ_beyond_repair`, owner
+ruling 2026-09-28, #3253).
+
 ## Implementation Status
 
 ### ✅ COMPLETED PHASES
 **Medical Foundation Complete (Phases 1-2.5):**
-- Complete anatomical damage system (15 body regions + 6 organs)
-- Medical conditions with severity tracking (bleeding, fractures, pain, etc.)
+- Complete anatomical damage system (per-species organ tables in `world/anatomy/species.py`)
+- Medical conditions with severity tracking (bleeding, pain, infection, etc.)
 - Vital signs calculation (consciousness, blood level, pain level)
 - Death/unconsciousness determination based on organ failure
 
 **Medical Tools & Consumption Complete:**
-- 7 medical item prototypes using Evennia's attribute-based system
+- Medical item prototypes (ordinary `Item` prototypes tagged `medical_item` in `world/prototypes.py`) using Evennia's attribute-based system
 - Natural language consumption commands (`inject`, `apply`, `bandage`, `eat`, `drink`, `inhale`, `smoke`)
 - Medical inventory readouts (`medlist`, `mediteminfo`, `refillmed`) — removed 2026-10-09, #3728 by owner ruling (no tests, no callers, checklist-only spec presence; `refillmed` was a testing tool). **GAP:** remaining uses of a medical item are now shown only by the post-use message; `inventory` and an item look do not render them
 - Skill-based treatment success using G.R.I.M. stats (Intellect-based medical skill)
@@ -150,29 +166,29 @@ hardpoint module, flesh implant).  Full design:
 - ✅ **Simplified architecture** - single system for all health management
 
 **Death Progression System Complete (September 2025):**
-- ✅ **6-minute revival window** - Time-delayed death progression allowing medical intervention
+- ✅ **90-second revival window** (`DEATH_PROGRESSION_DURATION`, `world/combat/constants.py`) - Time-delayed death progression allowing medical intervention
 - ✅ **Progressive dying messages** - Chuck Palahniuk/Hunter S. Thompson inspired visceral narrative 
 - ✅ **Medical system integration** - Automatic revival if medical conditions resolved during progression
 - ✅ **Session-aware formatting** - Text centering using curtain of death patterns for consistent presentation
 - ✅ **Emotional resonance** - 11 progression messages with substantial literary content creating meaningful death experience
 - ✅ **Observer messaging** - Room occupants see progression indicators while dying character experiences internal narrative
-- ✅ **Script-based timer** - Robust 30-second interval system with cleanup and state management
+- ✅ **Script-based timer** - Checks every few seconds (`DEATH_PROGRESSION_CHECK_INTERVAL`, 60% of the message spacing) with cleanup and state management
 - ✅ **Universal themes** - Death messaging avoids specific cultural/family references for inclusive player experience
 
 ### ✅ CURRENT STATE: COMPREHENSIVE DEATH AND MEDICAL SYSTEM (September 2025)
 **Complete Death Processing and Revival Mechanics:**
 - **Death curtain protection** with no personal medical messages sent to deceased characters
 - **Persistent placement descriptions** providing visual indicators for unconscious/dead states without scrolling
-- **Enhanced observer messaging** with atmospheric blood descriptions for deceased characters
+- **Observer messaging stops at death** - no bleeding line is sent to the room for a deceased character
 - **Race condition elimination** through centralized death processing and delayed attack validation
 - **Integrated infection messaging** with consolidated medical system using consistent red coloring
 - **BloodPool forensic evidence** with aging and room description integration
 - **Unified cleaning system** supporting both graffiti and blood evidence removal
-- **Death progression system** with 6-minute revival window and medical intervention mechanics
+- **Death progression system** with 90-second revival window and medical intervention mechanics
 - **Smart medical item consumption** with need-based resource management preventing waste
 
 **Death System Implementation Complete:**
-- **✅ Death script cleanup** - Death progression script automatically stops and deletes after 6-minute window expires
+- **✅ Death script cleanup** - Death progression script automatically stops and deletes after the 90-second window expires
 - **✅ Character teleportation** - Character moved to temporary death room/limbo area for processing using reliable script pattern
 - **✅ Corpse object creation** - Robust corpse generation inheriting character attributes for forensic examination:
   - **✅ Inventory transfer** - All carried items, equipment, and worn clothing transferred to corpse with comprehensive source checking
@@ -182,7 +198,7 @@ hardpoint module, flesh implant).  Full design:
 **Unified Medical Messaging System Complete:**
 - **✅ Single medical message per tick** instead of separate bleeding/pain messages
 - **✅ Combined severity assessment** showing both bleeding and pain status
-- **✅ Consistent |R bright red coloring** for all medical-related text
+- **✅ Medical colouring** - the personal bleeding line is tinted in the species' blood colour and names its fluid (crimson blood for a human, cobalt blood for a synth, amber hydraulic fluid for a robot); pain and infection lines and the room bleeding line are `|r`
 - **✅ Smart message timing** prevents message spam while maintaining medical urgency
 
 **Smart Medical Item Consumption System Complete (September 2025):**
@@ -245,13 +261,13 @@ CONSUMPTION_RULES = {
 **Medical System Testing and Validation (Completed September 2025):**
 - **✅ Medical conditions** - Extensive testing of bleeding, pain, infection condition preservation and treatment
 - **✅ Smart consumption system** - Comprehensive testing of need-based medical item consumption logic
-- **✅ Revival mechanics** - Production testing of 6-minute death progression and medical intervention
+- **✅ Revival mechanics** - Production testing of the death progression window and medical intervention
 - **✅ Unconscious patient treatment** - Verified medical procedures work correctly on unconscious patients  
 - **✅ Medical specialization** - Tested surgery vs splint specialization with appropriate organ targeting
 - **✅ Item consumption accuracy** - Verified items only consumed when actual treatment occurs vs examination only
 
 **Forensic Evidence System (Lower Priority Future Features):**
-- **🔨 Death cause attribution** - Enhanced storage of cause of death, weapon used, attacker information *(future enhancement)*
+- **Death cause attribution** - The cause is recorded on the corpse (`db.death_cause`, from `get_death_cause`); the weapon used and the attacker are not. 📋 UNBUILT (no issue)
 - **🔨 Advanced forensic evidence** - DNA markers, blood typing, time of death analysis *(future enhancement)*  
 - **🔨 Decay progression** - Enhanced corpse aging and decomposition mechanics *(future enhancement)*
 
@@ -262,35 +278,10 @@ CONSUMPTION_RULES = {
 - **Room description enhancement** showing blood stains as part of environment rather than object listings
 - **Forensic timeline tracking** with creation timestamps and deterioration over time
 
-> **⚠️ IMPLEMENTATION NOTE**: Current forensic system is a **proof-of-concept only**. Blood evidence appears automatically in room descriptions via the `look` command. A proper player-facing forensic system would require dedicated investigation commands (`examine evidence`, `analyze bloodstain`, `forensic scan`, etc.) and skill-based discovery mechanics. The current integration is primarily for atmospheric effect and technical foundation.
+> **⚠️ IMPLEMENTATION NOTE**: Current forensic system is a **proof-of-concept only**. Blood evidence appears automatically in room descriptions via the `look` command. `inspect <blood pool>` (alias `autopsy`, `commands/forensics.py`) reads a pool's forensic detail. Skill-based discovery and laboratory analysis are not built (see Phase 3.1 below). The current integration is primarily for atmospheric effect and technical foundation.
 
 **Integration Architecture:**
-```python
-# Room Integration System
-def get_integrated_objects_content(self, looker):
-    """Include BloodPool objects in room description integration"""
-    integrated_objects = []
-    
-    for obj in self.contents:
-        if obj.tags.has("graffiti", category="item_type"):
-            integrated_objects.append(obj)
-        elif obj.tags.has("blood_pool", category="item_type"):  # NEW
-            integrated_objects.append(obj)
-    
-    return integrated_objects
-
-# BloodPool Integration Description
-def integration_desc(self):
-    """Room description integration for blood stains"""
-    age_hours = (time.time() - self.db.created_at) / 3600
-    
-    if age_hours < 1:
-        return f"|R{self.db.description}|n"  # Fresh blood
-    elif age_hours < 24:
-        return f"|rDried {self.db.description.lower()}|n"  # Dried blood
-    else:
-        return f"|xDark stains mark where {self.db.description.lower()} once was|n"  # Old stains
-```
+A `BloodPool` (`typeclasses/objects.py`) is woven into the room description by `Room.get_integrated_objects_content` (`typeclasses/rooms.py`), which picks objects by typeclass (Item, GraffitiObject, BloodPool, ShopContainer, Furniture) and the `db.integrate` flag, not by tag. Its room line (`db.integration_desc`) ages through four tiers: under 1 hour, under 6 hours, under 24 hours, and older; its own look text uses finer age wording.
 
 **Forensic Features (Proof-of-Concept):**
 - **Incident tracking** - Each blood pool tracks creation timestamp and source incident
@@ -315,34 +306,10 @@ def integration_desc(self):
 - **Realistic solvent mechanics** - Spray removes both paint and biological evidence
 
 **Enhanced Cleaning Logic:**
-```python
-def func(self):
-    """Enhanced spray command with blood pool cleaning"""
-    location = self.caller.location
-    graffiti_objects = [obj for obj in location.contents 
-                       if obj.tags.has("graffiti", category="item_type")]
-    blood_pools = [obj for obj in location.contents 
-                   if obj.tags.has("blood_pool", category="item_type")]
-    
-    if not graffiti_objects and not blood_pools:
-        self.caller.msg("There's nothing here that needs cleaning.")
-        return
-    
-    # Context-appropriate cleaning messages
-    if graffiti_objects and blood_pools:
-        self.caller.msg("You spray solvent over the colors and stains, watching them dissolve and run off.")
-    elif graffiti_objects:
-        self.caller.msg("You spray solvent over the colors, watching them dissolve and run off.")
-    elif blood_pools:
-        self.caller.msg("You spray solvent over the stains, watching them dissolve and wash away.")
-    
-    # Clean all evidence
-    for obj in graffiti_objects + blood_pools:
-        obj.delete()
-```
+`spray here with <solvent can>` (`commands/CmdGraffiti.py`, `_handle_clean_with_solvent` and `_apply_solvent`) is a channelled scrub. With nothing to clean it says "There's nothing here to clean." Each application spends up to 10 units of solvent and strips that many random characters from graffiti; blood pools are broken down only if the channel completes, and a pool can resist. Several applications may be needed.
 
 **Cleaning Features:**
-- **Comprehensive evidence removal** - Cleans both graffiti and blood in single action
+- **Combined scrub** - Works on graffiti and blood in one application; neither is necessarily gone after one
 - **Realistic messaging** - References "colors" for graffiti, "stains" for blood
 - **Combined scenarios** - Smart messaging when both evidence types present
 - **Consistent mechanics** - Same solvent works on both paint and biological evidence
@@ -355,23 +322,7 @@ def func(self):
 - **Combat integration** - Removed duplicate death analysis from combat handler
 
 **Death Analysis Architecture:**
-```python
-def at_death(self):
-    """Centralized death handling with consistent analysis"""
-    # Standard death processing
-    self.msg("|rYou have died.|n")
-    
-    # Centralized death analysis for all scenarios
-    self._perform_death_analysis()
-    
-    # Continue with death processing
-    super().at_death()
-
-def _perform_death_analysis(self):
-    """Consistent death analysis across all death scenarios"""
-    from world.combat.utils import perform_death_analysis
-    perform_death_analysis(self, "medical system")
-```
+`Character.at_death` (`typeclasses/characters.py`) writes `debug_death_analysis()` to the combat audit log for every death. It sends no death line of its own and does not call `super()`; the death curtain does the telling. The full sequence is under Phase 2.8 below.
 
 **Analysis Consistency:**
 - **All death scenarios covered** - Combat deaths, medical deaths, other causes
@@ -380,14 +331,14 @@ def _perform_death_analysis(self):
 - **Elimination of gaps** - No more inconsistent death analysis between different systems
 
 ### ⏳ DEATH PROGRESSION SYSTEM (September 2025)
-**6-Minute Revival Window:**
-- **Time-delayed death** - Characters enter 6-minute dying state instead of instant death
+**90-Second Revival Window:**
+- **Time-delayed death** - Characters enter a 90-second dying state (`DEATH_PROGRESSION_DURATION`) instead of instant death; a beheading has no window (#3835)
 - **Medical intervention window** - Healthcare providers can attempt revival during progression
 - **Dramatic tension** - Creates urgency and meaningful medical response opportunities
 - **Automatic revival** - Medical system integration allows natural recovery if conditions improve
 
 **Progressive Narrative Experience:**
-- **11 message intervals** - Every 30 seconds during 6-minute progression
+- **11 message intervals** - Spaced evenly across the window (`DEATH_PROGRESSION_DURATION // DEATH_PROGRESSION_MESSAGE_COUNT`: every 8 seconds at the current 90)
 - **Literary styling** - Chuck Palahniuk/Hunter S. Thompson inspired visceral stream-of-consciousness
 - **Emotional progression** - Messages evolve from medical shock to existential acceptance to peaceful transition
 - **Universal themes** - Content avoids specific cultural/family references for inclusive player experience
@@ -399,21 +350,15 @@ class DeathProgressionScript(DefaultScript):
     """Time-delayed death progression with medical intervention window"""
     
     def at_script_creation(self):
-        self.db.total_duration = 360  # 6 minutes
-        self.db.message_intervals = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]
+        self.db.total_duration = DEATH_PROGRESSION_DURATION  # 90 s
+        self.db.message_intervals = [8, 16, 24, ..., 88]  # DURATION // MESSAGE_COUNT apart
         self.db.can_be_revived = True
         
     def _check_medical_revival_conditions(self, character):
         """Check if medical treatment has resolved fatal conditions"""
-        # Brain death blocks revival — tracked as Phase 2 of the
-        # MEDICAL_SUBSTRATE_ROADMAP remediation plan.
-        # Below is the intended shape; the live code in
-        # typeclasses/death_progression.py:_check_medical_revival_conditions
-        # currently only calls medical_state.is_dead() and will gain
-        # this guard when Phase 2 ships.
-        brain_organ = character.medical_state.get_organ("brain")
-        if brain_organ and brain_organ.current_hp <= 0:
-            return False  # Brain death = no revival possible
+        # Revival is exactly "not is_dead()". A destroyed brain is
+        # brain_integrity = 0 (#3248); a brain installed inside the
+        # window restores it and revives the body.
 
         # Check overall medical death status
         if character.medical_state and not character.medical_state.is_dead():
@@ -438,23 +383,25 @@ class DeathProgressionScript(DefaultScript):
 - **Debug logging** - Comprehensive Splattercast integration for monitoring
 
 **Revival Mechanics (Currently Functional):**
-- **✅ 6-minute revival window** - Medical intervention during death progression works as intended
+- **✅ 90-second revival window** - Medical intervention during death progression works as intended
 - **✅ Medical system integration** - Automatic revival when fatal conditions resolved
 - **✅ Death progression messaging** - Complete narrative experience with observer integration
 - **Future enhancement potential** - Brain death mechanics could be added but current system is sufficient
   - *Settled 2026-09-26 (#3248).* Brain death is built as `brain_integrity`, the brain's structural capacity (twin of `neck_integrity`), NOT as a consciousness threshold: the owner ruled "Conscious capacity 0 should not be death" and then "Death with a window". The §10.4 hole in `DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md` (a brain-destroyed patient who never dies and is handed back whole) is closed; #3253 (2026-09-28) then closed the in-place route too: a destroyed soft organ is refused by sealant and the dressing tick alike, so only a replacement brings a brain back.
 
 **Progression Message Themes:**
-- **Early stages (30-120s)** - Medical shock, surreal sensory experiences, dark humor
-- **Middle stages (150-240s)** - Existential reflection, memory fragmentation, acceptance
-- **Final stages (270-330s)** - Peaceful transition, universal human experiences, gentle release
+- **Early stages (first third of the window)** - Medical shock, surreal sensory experiences, dark humor
+- **Middle stages (middle third)** - Existential reflection, memory fragmentation, acceptance
+- **Final stages (last third)** - Peaceful transition, universal human experiences, gentle release
 
 **Individual Bone Structure:**
-- **Arms:** `left/right_humerus` (main arm bones) → 40% manipulation each
-- **Hands:** `left/right_metacarpals` (hand bones) → 20% manipulation each  
-- **Thighs:** `left/right_femur` (thigh bones) → 40% movement each
-- **Shins:** `left/right_tibia` (shin bones) → 40% movement each
-- **Feet:** `left/right_metatarsals` (foot bones) → 10% movement each
+- **Arms:** `left/right_humerus` (main arm bones) → weight 0.4 each in manipulation
+- **Hands:** `left/right_metacarpals` (hand bones) → 0.2 each in manipulation
+- **Thighs:** `left/right_femur` (thigh bones) → 0.4 each in moving
+- **Shins:** `left/right_tibia` (shin bones) → 0.4 each in moving
+- **Feet:** `left/right_metatarsals` (foot bones) → 0.1 each in moving
+- **Spine and pelvis:** `thoracolumbar_spine` and `pelvis` → 1.0 each in moving
+- A capacity is the weighted share of its total: moving totals 3.8, so one femur is about 11% of it; manipulation totals 1.2, so one humerus is about 33%
 
 **Medical Benefits:**
 - Realistic fractures (can break humerus without affecting other bones)
@@ -470,15 +417,14 @@ class DeathProgressionScript(DefaultScript):
 - **Container Hierarchy**: Organs exist within body location containers (`head`, `chest`, `left_arm`, etc.)
 
 **Critical Integration Points:**
-- `ORGANS` constants define available organs with their containers and properties
+- The species registry (`SPECIES_DEFINITIONS` in `world/anatomy/species.py`) defines each species' organs with their containers and properties; `ORGANS` is the human entry
 - `BODY_CAPACITIES` must reference organs that exist in `ORGANS` 
-- **Auto-creation Gap**: `get_organ()` creates undefined organs with `container="unknown"`
-- **Solution**: All capacity calculations use properly defined organ names
+- `get_organ()` never creates: an organ the body does not have returns `None` and adds nothing to a capacity (#516)
 
 **Capacity Calculation Flow:**
-1. Medical state initialized with organs from `ORGANS.keys()`
+1. Medical state initialized from the species organ table (`get_species_organs`)
 2. Body capacity calculation references `BODY_CAPACITIES[capacity]["organs"]`
-3. Each referenced organ must exist in `ORGANS` or gets auto-created with "unknown" container
+3. A referenced organ the body does not have is skipped
 4. Bone-specific contributions (femur_contribution, humerus_contribution) provide balanced capacity totals
 
 **Enhanced Medical Commands:**
@@ -525,13 +471,13 @@ superseded; see [Current Model](#current-model-authoritative--2026-06)):**
 - ✅ **Blood pool room integration** - BloodPool objects properly integrate into room descriptions like graffiti
 - ✅ **Enhanced spray command** - Unified cleaning system for both graffiti and blood evidence with context-appropriate messaging
 - ✅ **Death analysis consistency** - Centralized death reporting via Character.at_death() for all death scenarios
-- ✅ **Standardized medical color coding** - Consistent |R bright red coloring for all medical-related messages
+- ✅ **Standardized medical color coding** - The personal bleeding line takes the species' blood colour; pain, infection and room lines are `|r`
 - ✅ **Forensic evidence management** - Blood pools age and deteriorate over time, creating realistic crime scene evolution
 
 **Phase 2.8 - Death Curtain Integration & Race Condition Fixes (✅ COMPLETED September 2025):**
 - ✅ **Placement description system** - Persistent visual indicators for unconscious ("unconscious and motionless.") and death ("lying motionless and deceased.") states  
 - ✅ **Death curtain protection** - Medical messaging respects death curtain experience by not sending personal messages to deceased characters
-- ✅ **Enhanced observer messaging** - Special bleeding descriptions for deceased characters ("Blood flows freely from [name]'s lifeless body, forming a growing pool of crimson.")
+- ✅ **Observer messaging stops at death** - No bleeding, pain or infection line is sent for a dead character, personal or room
 - ✅ **Automated placement cleanup** - Placement descriptions automatically cleared on consciousness recovery and manual healing
 - ✅ **Death processing race condition fixes** - Centralized death processing with proper flag timing prevents duplicate death curtains
 - ✅ **Delayed attack validation** - Combat system now validates attacker/target death status before executing delayed attacks
@@ -539,43 +485,10 @@ superseded; see [Current Model](#current-model-authoritative--2026-06)):**
 - ✅ **Infection message integration** - Infection conditions now part of consolidated medical messaging system with consistent |r red coloring
 
 **Death Processing Architecture:**
-```python
-def at_death(self):
-    """Centralized death processing with race condition protection"""
-    # Prevent duplicate processing with immediate flag setting
-    if hasattr(self, 'ndb') and getattr(self.ndb, 'death_processed', False):
-        return
-    self.ndb.death_processed = True
-    
-    # Clear unconsciousness state since death supersedes it
-    if getattr(self.ndb, 'unconsciousness_processed', False):
-        self.ndb.unconsciousness_processed = False
-    
-    # Set death placement description for persistent visual indication
-    self.override_place = "lying motionless and deceased."
-    
-    # Always show death analysis and start death curtain
-    self._show_death_analysis()
-    show_death_curtain(self)
-```
+`Character.at_death` (`typeclasses/characters.py`) returns at once if `db.death_processed` is already set. Otherwise it ends any channel and any procedure on the body, sets `db.death_processed`, sets the placement "lying motionless and deceased.", breaks stealth, releases any dispatcher call, writes the souls audit, writes `debug_death_analysis()` to the combat audit, and shows the death curtain (deferred while in combat, with a 5-second fallback).
 
 **Medical Messaging for Deceased Characters:**
-```python
-def _send_medical_messages(self, bleeding_severity, pain_severity, infection_severity=0):
-    """Enhanced messaging with death curtain protection"""
-    # Check if character is dead - don't send personal messages
-    is_dead = self.obj.medical_state and self.obj.medical_state.is_dead()
-    
-    if is_dead:
-        # Special observer messages for deceased characters
-        if bleeding_severity > 12:
-            room_msg = f"Blood flows freely from {self.obj.key}'s lifeless body, forming a growing pool of crimson."
-            self.obj.location.msg_contents(room_msg, exclude=self.obj)
-    else:
-        # Normal personal + observer messages for living characters
-        self.obj.msg(personal_medical_message)
-        self.obj.location.msg_contents(observer_message, exclude=self.obj)
-```
+`MedicalScript._send_medical_messages` (`world/medical/script.py`) sends nothing for a dead character: no bleeding, pain or infection line to the character, and no bleeding line to the room. For the living, the room line goes through `msg_room_identity`.
 
 **Combat Race Condition Fixes:**
 ```python
@@ -617,7 +530,7 @@ def _process_delayed_attack(self, attacker, target, attacker_entry, combatants_l
 **Phase 3.2 - Cybernetics & Prosthetics (✅ FOUNDATION SHIPPED, 🔮 ELABORATION PENDING):**
 - **✅ Organ transplant procedures** - `incise → harvest → install → suture` chain (PR #380); scan-based architecture (PR #378) ensures replaced organs immediately reflect functional state
 - **✅ Procedure verb framework** - Extensible dispatch (`world/medical/procedures.py`) supports new verbs (e.g., future `graft`) without architectural rework
-- **🎯 ``operate`` charting menu** - Menu-driven planner over the procedure dispatch (see Phase 5)
+- **✅ `operate` charting menu** - Menu-driven planner over the procedure dispatch (`commands/CmdOperate.py`; see Phase 5)
 - **🔮 Limb replacement mechanics** - Prosthetics and cybernetic limb systems built on the install/harvest flow
 - **🔮 Cybernetic enhancement systems** - Performance-boosting implants and modifications
 - **🔮 Bio-compatibility mechanics** - Rejection, adaptation, and maintenance systems
@@ -639,7 +552,7 @@ The Gelatinous Monster health and substance system creates tactical medical game
 ### Integration with Existing Systems
 - **Longdesc System**: Medical conditions visible in character descriptions
 - **Combat System**: Damage targeting specific anatomical locations
-- **G.R.I.M. Stats**: Medical skill primarily based on Intellect (3/4 weight), with Motorics for surgical precision (1/4 weight)
+- **G.R.I.M. Stats**: Procedures and wound care use Intellect ×0.75 + Motorics ×0.25 (`calculate_treatment_skill`); consumable items (`calculate_treatment_success`) still use Intellect ×2 alone. A code comment calls unifying the two a future balance pass
 - **Clothing System**: Armor/clothing affects injury locations and severity
 
 ## ANATOMICAL SYSTEM ARCHITECTURE
@@ -657,7 +570,8 @@ character.longdesc = {
     # "right_leg" not in dict = location doesn't exist on this character
 }
 
-# Layer 2: Organ Container Mapping (Medical Constants)
+# Layer 2: organ table from the species registry
+# (world.anatomy.species.SPECIES_DEFINITIONS[species]["organs"]; ORGANS is the human entry)
 ORGANS = {
     "brain": {"container": "head", "max_hp": 10, "vital": True},
     "left_humerus": {"container": "left_arm", "max_hp": 25, "vital": False},
@@ -673,36 +587,11 @@ character.medical_state.organs = {
 ```
 
 #### **Hit Location Resolution Logic**
-```python
-def determine_valid_hit_locations(character):
-    """
-    Dynamic hit location discovery based on character's actual anatomy.
-    
-    Returns locations that:
-    1. Exist in character's longdesc system (even if description is None)  
-    2. Contain at least one functional (non-destroyed) organ
-    """
-    valid_locations = []
-    
-    for location_name in character.longdesc.keys():  # Layer 1: Available locations
-        organs_in_location = get_organ_by_body_location(location_name)  # Layer 2: Organ mapping
-        
-        # Layer 3: Check for functional organs
-        has_functional_organs = any(
-            not character.medical_state.organs[organ_name].is_destroyed()
-            for organ_name in organs_in_location
-            if organ_name in character.medical_state.organs
-        )
-        
-        if has_functional_organs:
-            valid_locations.append(location_name)
-    
-    return valid_locations
-```
+`select_hit_location` (`world/medical/utils.py`) weights every location in the character's `longdesc` by the summed hit weight of the organs the body has there, whether those organs still work or not, with a minimum weight of 1. A skilled attacker or a large success margin leans the weights toward the vital locations (`_get_vital_locations`). As built, nothing drops a location whose organs are all destroyed or severed. 📋 UNBUILT (not decided): removing such locations from targeting.
 
 #### **Key Architectural Benefits**
 - **Species Flexibility**: Spider characters automatically get different hit locations based on their longdesc anatomy
-- **Injury Progression**: Lost limbs automatically become invalid targets (no functional organs)
+- **Injury Progression**: as built, location targeting does not check whether a location's organs still work, so a lost limb's location is not removed from targeting (📋 UNBUILT, not decided)
 - **Prosthetic Integration**: New artificial limbs add new hit locations with their own organ mappings
 - **Medical History**: Destroyed organs remain tracked (HP=0) for replacement — and, for BONES only, healing. Owner ruling 2026-09-28 (#3253): a soft organ at 0 HP stays destroyed until a donor or cybernetic install; a bone at 0 HP is broken and heals (the cervical spine is a bone; a *severed* one is a decapitation and one-way); anything severed stays severed. `MedicalState.organ_beyond_repair` is the one question, `Organ.heal` refuses on it; staff `@heal` keeps its override.
 - **Mr. Hands Compatibility**: Custom anatomy modifications work seamlessly with existing hit targeting
@@ -714,7 +603,7 @@ ORGAN_FUNCTIONAL = "current_hp > 0"     # Can be targeted and damaged
 ORGAN_DESTROYED = "current_hp = 0"      # Cannot be damaged further, doesn't contribute to capacities
 ORGAN_MISSING = "not in medical_state"  # Removed/never existed (rare, for extreme modifications)
 
-# Hit targeting only considers locations with FUNCTIONAL organs
+# Location targeting does not check organ HP (select_hit_location)
 # Destroyed organs remain in medical state for replacement (bones: healing) — #3253
 ```
 
@@ -790,6 +679,8 @@ hit and consumed later in the asynchronous death flow
 (`_create_corpse_from_character`), which spawns a `SeveredHead`. See the
 IDENTITY spec for the full Phase A–D narrative and the item-retention rules.
 
+A beheading has no death window (#3835). Owner, 2026-11-14: *"is someone really dying if there head is missing? They should be a corpse."* The death curtain plays and tells the room the cause; then `complete_a_beheading` (`typeclasses/death_progression.py`) finishes the death at once: no revival check, no dying messages, and the corpse and `SeveredHead` are built straight away. If that call never runs, the progression script's next tick completes the death instead. Every other death keeps its window.
+
 #### Vital-location derivation (`_get_vital_locations`)
 
 The set of **vital body locations** used by the combat hit-location bias is
@@ -811,13 +702,15 @@ neck_integrity), and anatomy changes propagate automatically. See
 ### Character Anatomy Customization
 Characters can have varied anatomy through:
 1. **Species Templates**: Different creature types get different default organs/locations
-2. **Injury Loss**: Destroyed organs stop contributing to hit targeting for that location
+2. **Injury Loss**: Destroyed organs stop contributing to capacities; as built they still count toward hit targeting for that location
 3. **Prosthetic Addition**: New locations and organs can be dynamically added
 4. **Mr. Hands Integration**: Custom body modifications extend the longdesc + organ system
 
 ## CONFIGURATION CONSTANTS
 
 *All numerical values use constants for easy balance modification during implementation:*
+
+> As built, only the death/unconsciousness thresholds, the `HIT_WEIGHT_*` values and the two `PAIN_*` modifiers below are read by code. The treatment and resource constants (`BASE_TREATMENT_SUCCESS` through `TOOL_EFFECTIVENESS_MODIFIERS`) are defined in `world/medical/constants.py` and read by nothing: the item roll in `calculate_treatment_success` (`world/medical/utils.py`) is 3d6 + Intellect ×2 (+ any treatment-station bonus) against 15 − item effectiveness, with full success at 5 over, all hardcoded.
 
 ```python
 # Death/Unconsciousness Thresholds  
@@ -865,10 +758,10 @@ class MedicalState:
     """Complete medical state tracking"""
     def __init__(self, character=None):
         self.organs = {}              # Organ health tracking
-        self.conditions = []          # Medical conditions (bleeding, fractures, etc.)
+        self.conditions = []          # Medical conditions (bleeding, pain, infection, etc.)
         self.blood_level = 100.0      # Current blood percentage
         self.pain_level = 0.0         # Pain accumulation
-        self.consciousness = 100.0    # Consciousness level
+        self.consciousness = 1.0      # runtime, 0.0-1.0
     
     def is_dead(self):
         """Multi-factor death determination"""
@@ -886,9 +779,8 @@ class MedicalState:
         return False
     
     def is_unconscious(self):
-        """Multi-factor unconsciousness"""
-        consciousness_level = self.calculate_body_capacity("consciousness")
-        return consciousness_level < 0.30  # 30% threshold
+        """Runtime consciousness: pain, blood loss and suppression applied"""
+        return self.consciousness < CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD / 100.0
 
 # CHARACTER INTEGRATION (IMPLEMENTED)
 class Character:
@@ -910,7 +802,7 @@ class Character:
 BLOOD_BAG = {
     "key": "blood bag",
     "typeclass": "typeclasses.items.Item",  # Regular Item, not custom
-    "tags": [("medical_item", "item_type")],
+    "tags": [("medical_item", "item_type"), ("inject", "delivery_method")],  # the delivery tag decides which verb may use it
     "attrs": [
         ("medical_type", "blood_restoration"),
         ("uses_left", 1),
@@ -928,13 +820,13 @@ apply_medical_effects(...)     # Apply treatment effects
 ### Anatomical Foundation (Dynamic Integration)
 ```python
 # UNIFIED ANATOMY SYSTEM DESIGN:
-# 1. Character typeclasses define both longdesc anatomy AND organ mappings
+# 1. db.species selects the organ and capacity tables (human, rat, synthetic_humanoid, robot)
 # 2. Medical system adapts to whatever anatomy exists on character
 # 3. Creature-type templates provide standard organ-to-location mappings
-# 4. NO FALLBACK RULES - all organ-to-location mappings must be explicit per typeclass
+# 4. organ-to-location mappings are explicit per species; an unregistered species falls back to human
 # 5. UNIVERSAL INJURY TYPES - fractures, bleeding, infections work on any anatomy
 
-# CROSS-SPECIES FRACTURE COMPATIBILITY:
+# CROSS-SPECIES FRACTURE COMPATIBILITY (illustrative; no tentacle or spider species exists):
 # - Human: left_arm, right_arm, left_leg, right_leg can be fractured
 # - Tentacle Monster: tentacle_1, tentacle_2, tentacle_3, tentacle_4 can be fractured  
 # - Spider Creature: leg_1, leg_2, leg_3, leg_4, leg_5, leg_6, leg_7, leg_8 can be fractured
@@ -955,7 +847,7 @@ TENTACLE_MONSTER_LOCATIONS = {
     "tentacle_1": None, "tentacle_2": None, "tentacle_3": None, "tentacle_4": None
 }
 
-# Organ mapping defined per character type via creature templates
+# Organ mapping defined per species in world/anatomy/species.py
 ```
 
 ## CORE MECHANICS CLARIFICATION
@@ -964,7 +856,7 @@ TENTACLE_MONSTER_LOCATIONS = {
 - **Organs have HP**: Each organ has max_hp (see ORGANS definition above)  
 - **Damage reduces HP**: Incoming damage reduces current HP from max_hp
 - **Destruction at 0 HP**: When organ HP reaches 0, organ is destroyed/non-functional
-- **Death conditions**: Destruction of vital organs (heart, both lungs, liver, or the `cervical_spine` → decapitation) = death
+- **Death conditions**: heart destroyed; both lungs destroyed; liver AND stomach destroyed; cervical spine at 0 HP (a broken neck; severed, a decapitation); brain destroyed (`brain_integrity`, #3248). See `LETHAL_CAPACITY_NAMES`.
 - **Paired organ logic**: Both kidneys/lungs destroyed = death, single destruction = reduced function
   *(Kidneys superseded, #3402: total kidney loss is **not** fatal by owner ruling — it spawns renal failure, a lasting obtundation that leaves the patient fragile. See CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §7.2. Lungs are unchanged.)*
 
@@ -983,7 +875,10 @@ HIT_WEIGHTS = {
 ### Death vs Unconsciousness vs Functionality
 - **Blood loss kills**: Tracked separately, reaches fatal threshold = death
 - **Blood pumping = 0**: Death (heart destroyed/stopped)
-- **Neck integrity = 0**: Death (cervical spine broken → a death with a window; severed → decapitation, #243/#3253)
+- **Neck integrity = 0**: Death (cervical spine broken → a death with a window; severed → decapitation, which has no window, #243/#3253/#3835)
+- **Breathing = 0**: Death (both lungs destroyed)
+- **Digestion = 0**: Death (liver and stomach destroyed)
+- **Brain integrity = 0**: Death with a window (brain destroyed, #3248)
 - **Consciousness**: Flag system (is_unconscious = True/False), not death
 - **Functionality**: Reduced stats/capabilities, but character remains conscious
 
@@ -993,10 +888,12 @@ HIT_WEIGHTS = {
 - BLOOD_LOSS_DEATH_THRESHOLD
 - HIT_WEIGHT_* values
 - PAIN_MODIFIER_*
-- All treatment success rates and failure penalties
+- Treatment success rates: not yet; the item roll is hardcoded (see the note under CONFIGURATION CONSTANTS)
 - `WOUND_HEALING_DIVISOR` / `WOUND_HEALING_FLOOR_HP_PER_TICK` — **flat in its used range (#3254, parked 2026-10-26 for the balance pass).** The slow heal is `rating // 5` HP per minute, and the six items that carry `wound_healing` (gauze bandages 6, surgical sealant 5, sealant patches 6, conformal coating 5, stimpak 8, antiseptic spray 5) all heal one point per minute; the authored "excellent" vs "modest" comments describe a gradient that does not exist. The items differ in their other effects. Owner: "We're bug hunting not fine tuning." Fix shapes when the pass comes: fractional accumulation, a smaller divisor, or re-authored ratings.
 
 ### Medical Conditions
+
+> 📋 The `PAIN_SYSTEM`, `BLOOD_SYSTEM` and `MEDICAL_CONDITIONS` blocks below are the original design sketch. Where they differ from **Current Model** above, Current Model is what the game does: there is no fracture condition (a bone at 0 HP is broken and heals, #3253), bleeding at severity 5 or less clots on its own, and blood loss is a per-minute rate set by severity, not a percentage per round. Whether these sketches stay as intent is not decided.
 
 #### Injury Types
 ```python
@@ -1072,29 +969,12 @@ INJURY_TYPES = {
 ```
 
 #### 🔧 Current Weapon Implementation Status
-As of December 2024, all weapon prototypes have been updated with appropriate damage types:
+Weapon prototypes carry a `damage_type` that the combat handler maps to injury mechanics:
 
 ```python
-# IMPLEMENTED WEAPON DAMAGE TYPES:
-WEAPON_DAMAGES = {
-    # Firearms - high bleeding, hard to treat
-    "bullet": ["pistol", "shotgun", "assault_rifle", "sniper_rifle", "heavy_machine_gun"],
-    
-    # Cutting weapons - moderate bleeding, easy to treat  
-    "cut": ["knife", "machete", "sword", "katana", "claymore", "battle_axe", "small_axe"],
-    
-    # Stabbing weapons - severe bleeding, organ damage risk
-    "stab": ["dagger", "spear", "straight_razor", "awl", "ice_pick"],
-    
-    # Blunt weapons - minimal bleeding, fracture risk
-    "blunt": ["club", "hammer", "sledgehammer", "pipe_wrench", "baseball_bat", "crowbar"],
-    
-    # High-damage ragged weapons - severe bleeding and pain
-    "laceration": ["chainsaw", "shuriken", "meat_hook", "rebar", "nailed_board"],
-    
-    # Chemical/fire weapons - high infection risk  
-    "burn": ["spray_can", "solvent_can", "flamethrower"]
-}
+# Weapon prototypes in world/prototypes.py carry a damage_type: bullet,
+# cut, stab, blunt, laceration or burn. Read that file for the current
+# roster.
 
 # Combat handler automatically maps weapon.db.damage_type to appropriate injury mechanics
 # All apply_damage() calls throughout codebase use 4-parameter signature
@@ -1225,6 +1105,8 @@ MEDICAL_CONDITIONS = {
 
 ### Medical Equipment
 
+Original design sketch, not the item data. The shipped items and their numbers are the prototypes in `world/prototypes.py` (blood bag, painkiller, gauze bandages, medical splint, tourniquet, surgical kit, stimpak, oxygen tank, stimpak inhaler, anesthetic gas). Multi-round use, a success formula per item and failure consequences are 📋 UNBUILT (no issue).
+
 #### Blood Bag
 ```python
 BLOOD_BAG = {
@@ -1341,6 +1223,8 @@ The medical system serves as the foundation for a broader consumable substance s
 
 ### Consumption Commands
 
+Current rules: `SUBSTANCES_AND_DELIVERY_SPEC.md`. A verb accepts an item that carries its delivery tag (category `delivery_method`: `inject`, `apply`, `bandage`, `eat`, `drink`, `inhale`, `smoke`; `supports_delivery` in `world/consumables.py`). What a dose does comes from the item's substance (`world/substances/registry.py`); medical items run the treatment roll. The tables below are the original design. 📋 UNBUILT (no issue): no verb takes rounds; every verb acts at once.
+
 #### Primary Consumption Methods
 ```python
 CONSUMPTION_METHODS = {
@@ -1371,8 +1255,8 @@ CONSUMPTION_METHODS = {
     "eat": {
         "aliases": ["eat", "consume", "swallow"],
         "self_syntax": "eat <item>",
-        "other_syntax": "feed <item> to <target>",
-        "examples": ["eat ration bar", "feed medicine to Charlie"],
+        "other_syntax": "eat <item> <target>",
+        "examples": ["eat ration bar", "eat medicine Charlie"],
         "time_required": "1 round",
         "stat_requirements": None,
         "applicable_to": ["pills", "tablets", "food", "edible drugs", "emergency rations"]
@@ -1382,8 +1266,8 @@ CONSUMPTION_METHODS = {
     "drink": {
         "aliases": ["drink", "sip", "gulp"],
         "self_syntax": "drink <item>",
-        "other_syntax": "give <item> to <target> to drink",
-        "examples": ["drink medical brew", "give water to Dana"],
+        "other_syntax": "drink <item> <target>",
+        "examples": ["drink medical brew", "drink water Dana"],
         "time_required": "1 round",
         "stat_requirements": None,
         "applicable_to": ["liquid medicines", "water", "alcohol", "liquid drugs", "nutritional drinks"]
@@ -1393,7 +1277,7 @@ CONSUMPTION_METHODS = {
     "inhale": {
         "aliases": ["inhale", "huff", "breathe"],
         "self_syntax": "inhale <item>",
-        "other_syntax": "help <target> inhale <item>",
+        "other_syntax": "inhale <item> <target>",
         "examples": ["inhale oxygen", "inhale anesthetic gas"],
         "time_required": "1-2 rounds",
         "stat_requirements": "conscious target required",
@@ -1402,9 +1286,9 @@ CONSUMPTION_METHODS = {
     
     # Smoking/burning consumption
     "smoke": {
-        "aliases": ["smoke", "light", "burn"],
+        "aliases": ["smoke"],  # as built: commands/CmdSmoke.py (#454); `light` is its own command
         "self_syntax": "smoke <item>",
-        "other_syntax": "help <target> smoke <item>",
+        "other_syntax": None,  # as built, smoking is self-only
         "examples": ["smoke medicinal herb", "smoke pain-relief cigarette"],
         "time_required": "3-5 rounds",
         "stat_requirements": "fire source required",
@@ -1414,6 +1298,7 @@ CONSUMPTION_METHODS = {
 ```
 
 #### Special Consumption Cases
+📋 UNBUILT (no issue): there is no `boof`, `insert` or `administer` command. `bandage` is built; see Implemented Consumption Commands below.
 ```python
 SPECIAL_CONSUMPTION_METHODS = {
     # Suppository/rectal administration (boof)
@@ -1430,7 +1315,7 @@ SPECIAL_CONSUMPTION_METHODS = {
     
     # Combination methods
     "bandage": {
-        "aliases": ["bandage", "wrap", "dress"],
+        "aliases": ["bandage", "wrap", "patch"],  # "dress" belongs to clothing (#307); "patch" is the machine word (#2278)
         "self_syntax": "bandage <body_part> with <item>",
         "other_syntax": "bandage <target>'s <body_part> with <item>",
         "examples": ["bandage arm with gauze", "bandage Alice's leg with medicated bandage"],
@@ -1444,6 +1329,8 @@ SPECIAL_CONSUMPTION_METHODS = {
 ### Administration Mechanics
 
 #### Self-Administration vs Third-Party
+
+📋 UNBUILT design (no issue). As built, every consumption verb acts at once, a third party treats with the same roll as self-treatment, and whether an unconscious patient can be treated is decided by the item's medical type (`check_medical_requirements` in `commands/CmdConsumption.py`).
 ```python
 def administer_substance(administrator, target, substance, method):
     """
@@ -1479,6 +1366,7 @@ def administer_substance(administrator, target, substance, method):
 ```
 
 #### Medical vs Recreational Substances
+📋 UNBUILT design (no issue): no code has this table.
 ```python
 SUBSTANCE_CATEGORIES = {
     "medical": {
@@ -1545,6 +1433,7 @@ You breathe in the aerosolized stimpak. Energy surges through your body as your 
 ### Medical Tool Interactions
 
 ### Treatment Effectiveness (Simplified)
+📋 UNBUILT design (no issue): no code has this table.
 ```python
 # Simple tool appropriateness for conditions
 TOOL_APPROPRIATENESS = {
@@ -1584,12 +1473,16 @@ TOOL_APPROPRIATENESS = {
 - **Resonance**: Bedside manner, patient stabilization, calming effect on others
 
 ### Medical Treatment Formula
-```python
-medical_effectiveness = (intellect * 0.75) + (motorics * 0.25)
-treatment_success = d20_roll + medical_effectiveness vs difficulty_threshold
-```
+There are two treatment rolls, as built. Neither uses a d20.
+
+- **Most treatment** (`inject`, `eat`, `drink`, `inhale`, `bandage`, and `apply` without a location): 3d6 + Intellect × 2 (+ the AutoDoc bonus) against 15 minus the item's effectiveness for the condition. Five or more over that is a full success, at or above it a partial success, below it a failure (`calculate_treatment_success`, `world/medical/utils.py`).
+- **Wound care on a named location** (`apply <item> on <target>'s <location>`): 3d6 + (Intellect × 0.75 + Motorics × 0.25) + the item's rating (+ the AutoDoc bonus) against a target set by the wound's severity and depth (`roll_treatment`, `world/medical/treatments.py`).
+
+The code notes unifying the two as a future balance pass.
 
 ### Medical Actions
+
+📋 UNBUILT sketch (no issue): neither function below exists. Diagnosis as built is `world/medical/diagnose.py`; treatment as built is the two rolls above. The constants named here (`MEDICAL_TREATMENT_BASE_DIFFICULTY`, `PARTIAL_SUCCESS_MARGIN`, `TOOL_EFFECTIVENESS_MODIFIERS`) exist in `world/medical/constants.py`, but nothing reads them.
 
 #### Diagnosis
 ```python
@@ -1637,24 +1530,10 @@ def apply_medical_treatment(medic, patient, tool, condition):
 ### Combat System Integration
 
 #### Damage Location Targeting
-```python
-def apply_anatomical_damage(character, damage, location):
-    """
-    Apply damage to specific body part, affecting relevant organs/systems.
-    """
-    # Determine which organs/systems are affected
-    affected_systems = get_systems_for_location(location)
-    
-    # Distribute damage across systems
-    for system in affected_systems:
-        system_damage = calculate_system_damage(damage, system)
-        apply_system_damage(character, system, system_damage)
-        
-    # Check for immediate effects
-    check_critical_system_failure(character, affected_systems)
-```
+A hit goes to one body location and then to one organ in it; see Phase 2.3 (Precision Targeting System) below. `apply_anatomical_damage(character, damage_amount, location, injury_type, target_organ)` (`world/medical/utils.py`) puts all the damage on the targeted organ, or spreads it by hit weight when no organ is targeted or the targeted one is already destroyed.
 
 #### Weapon-Specific Injury Patterns
+📋 UNBUILT design (no issue): no code has this table. The injury type of a hit comes from the weapon's damage type (`world/combat/attack.py`).
 ```python
 WEAPON_INJURY_PATTERNS = {
     "blade": {"primary": "laceration", "secondary": "organ_damage"},
@@ -1667,6 +1546,7 @@ WEAPON_INJURY_PATTERNS = {
 ### Longdesc System Integration
 
 #### Medical Condition Visibility (Automatic Longdesc Appending)
+📋 UNBUILT design (no issue), overtaken by the wound-description system (Phase 2.4 below). Conditions such as bleeding or a splinted arm do not add longdesc text; wounds do, by organ wound stage and injury type.
 ```python
 MEDICAL_DESCRIPTIONS = {
     "bleeding": {
@@ -1688,31 +1568,31 @@ MEDICAL_DESCRIPTIONS = {
 ```
 
 ### Integration Implementation Notes
-- **Longdesc System**: Medical conditions visible in character descriptions
+- **Longdesc System**: wounds, not conditions, show in character descriptions (Phase 2.4 below)
 - **Condition Storage**: Medical conditions stored persistently across sessions
 - **Priority System**: More severe conditions override less severe ones for display
 
 ---
 
-*This specification reflects the current implemented state through Phase 2.5, with pure medical system architecture and complete consumption method interface. Future phases documented for development planning.*
 
 #### Implemented Data Storage Architecture
 ```python
 # Character medical state stored persistently in character.db
 character.db.medical_state = {
     "organs": {
-        "brain": {"current_hp": 8, "max_hp": 10, "conditions": []},
-        "heart": {"current_hp": 15, "max_hp": 15, "conditions": []},
-        "humerus_left": {"current_hp": 20, "max_hp": 20, "conditions": []},
+        # each entry is Organ.to_dict(): name, data, current_hp, max_hp, conditions,
+        # container, display_location, wound_stage, injury_type, wound_timestamp,
+        # stabilized, dressing_rate, dressing_progress, tourniqueted, ability_state
+        "brain": {"current_hp": 8, "max_hp": 10, ...},
+        "heart": {"current_hp": 15, "max_hp": 15, ...},
+        "left_humerus": {"current_hp": 20, "max_hp": 20, ...},
         # ... all organs and bones
     },
-    "conditions": [
-        {"type": "fracture", "location": "left_arm", "severity": "moderate", "treated": False},
-        {"type": "bleeding", "location": "chest", "severity": "minor", "rate": 1}
-    ],
+    "removed_organs": [...],
+    "conditions": [condition.to_dict(), ...],
     "blood_level": 85.0,    # Percentage of normal blood volume
     "pain_level": 23.0,     # Current pain accumulation  
-    "consciousness": 78.0   # Current consciousness level
+    "consciousness": 0.78   # Fraction, 0 to 1
 }
 ```
 
@@ -1726,7 +1606,7 @@ character.db.medical_state = {
 
 ### Phase 2: Medical Tools & Consumption Method Commands - ✅ COMPLETED
 - ✅ **Medical item classes**: Full item management system with usage tracking
-- ✅ **Consumption method commands implemented**: `inject`, `apply`, `bandage`, `eat`, `drink`, `inhale`, `smoke`
+- ✅ **Consumption method commands implemented**: `inject`, `apply`, `bandage`, `eat`, `drink`, `inhale`, `chug`, `devour`. `smoke` is a separate command (`commands/CmdSmoke.py`, #454)
 - ✅ **Self-administration & third-party administration**: Complete targeting and consent mechanics
 - ✅ **Medical item management system**: Item discovery, validation, and usage tracking
 - ✅ **G.R.I.M.-based treatment success/failure**: Medical effectiveness calculations implemented
@@ -1740,16 +1620,22 @@ character.db.medical_state = {
 - ✅ `eat <item>` - Oral consumption of solid substances
 - ✅ `drink <item>` - Liquid consumption system
 - ✅ `inhale <item>` - Inhalation of gases, vapors, oxygen, anesthetic substances
-- ✅ `smoke <item>` - Smoking medicinal herbs, cigarettes, dried medicines
-- ✅ `drink <item>` - Liquid consumption system
+- `smoke <smokable>` is a separate command (`commands/CmdSmoke.py`, #454), not a consumption verb; see Phase 2.5 below
 - ❌ `medlist` - removed 2026-10-09, #3728
-- ✅ `inhale/smoke` - **COMPLETE** (Phase 2.5 - Consumption System Complete)
+- `chug <drink>` / `devour <food>` - take every remaining sip or bite at once; the doses stack. Medical items are refused.
+- `eat <snack>` with nothing held by that name eats from a serving fixture in the room (a bar's snacks).
+
+Rules every verb shares, as built (`commands/CmdConsumption.py`):
+- Dosing or treating anyone else needs their trust, or that they cannot resist (`check_consent`, `heal`; TRUST_AND_CONSENT_SPEC). This holds for every consumable, medical or not.
+- An unconscious patient can still be given blood, surgery, wound care, antiseptic, a splint, organ repair or a tourniquet; anything else is refused.
+- A tourniquet needs a named limb: `apply tourniquet to <target>'s <limb>`.
+- `apply <item> on <target>'s <location>` with a wound-care or organ-repair item stabilizes the wound and starts healing from the dressing (`apply_wound_care`, #307). `bandage`, and `apply` with no location, only cut the severity of one bleed (`execute_treatment`). The two routes give different results.
 
 #### Medical Item Integration
 - ✅ **Item type detection**: Automatic medical item classification
 - ✅ **Usage tracking**: Items consume uses when applied
 - ✅ **Treatment effects**: Medical conditions modified by successful treatments
-- ✅ **Success calculation**: `(intellect * 0.75) + (motorics * 0.25)` formula implemented
+- ✅ **Success calculation**: two rolls, as built (see Medical Treatment Formula above): 3d6 + Intellect × 2 for most treatment (`calculate_treatment_success`), and 3d6 + `(intellect * 0.75) + (motorics * 0.25)` + item rating for wound care on a named location (`roll_treatment`)
 
 *Note: Phase 2 consumption method system provides foundation for broader drug/substance system expansion*
 
@@ -1758,19 +1644,19 @@ The final consumption method commands completing the natural language medical in
 
 #### Implemented Inhalation Commands
 - ✅ `inhale <item>` - Inhalation of gases, vapors, oxygen, anesthetic gases
-- ✅ `smoke <item>` - Smoking medicinal herbs, cigarettes, dried medicines  
-- ✅ Natural language syntax with help targeting: `help <target> inhale <item>`
-- ✅ Consciousness requirements: Both commands require conscious targets
+- `smoke <smokable>` (`commands/CmdSmoke.py`, #454) takes a puff from a lit smokable held in your hand. Light it first with a held lighter (`light <cigarette>` or `light <person>'s <cigarette>`); `snuff` puts it out. Each puff gives one dose of the item's substance (`SUBSTANCES_AND_DELIVERY_SPEC.md`) and uses one puff. Smoking is self-only and runs no medical treatment roll.
+- ✅ Third-party syntax: `inhale <item> <target>`. There is no `help <target> ...` form; `help` is the help command.
+- ✅ Consciousness requirement: `inhale` refuses an unconscious target
 - ✅ Medical type validation: Items must have appropriate medical_type attributes
 
 #### New Medical Types Supported
 - ✅ **Inhalation types**: `oxygen`, `anesthetic`, `inhaler`, `gas`, `vapor`
-- ✅ **Smoking types**: `herb`, `cigarette`, `medicinal_plant`, `dried_medicine`
+- **Smoking types**: `herb`, `cigarette`, `medicinal_plant`, `dried_medicine`. `apply_medical_effects` still has branches for them, but no command reaches them since the consumption `smoke` was removed (#454). 📋 UNBUILT (not decided): whether they are meant to treat again.
 - ✅ **Medical effects**: Respiratory treatment, pain relief, consciousness effects
 - ✅ **Prototype examples**: Oxygen tank, stimpak inhaler, medicinal herbs, pain relief cigarettes
 
 #### Command Integration
-- ✅ Added to default command set with proper aliases (`huff`, `breathe`, `light`, `burn`)
+- ✅ Added to default command set. `inhale` has the aliases `huff` and `breathe`; `light` is its own command (`commands/CmdSmoke.py`) and there is no `burn`
 - ✅ Full integration with existing medical utility functions
 - ✅ Consistent syntax and behavior with other consumption commands
 - ✅ Medical state persistence and treatment effect application
@@ -1783,10 +1669,10 @@ Advanced two-stage precision targeting system replacing simple weighted random h
 #### Two-Stage Targeting Architecture
 
 **Stage 1: Success Margin Location Bias**
-Attack success margin influences body region targeting with bias toward vital areas for skilled attacks:
+Attack success margin influences body region targeting with bias toward vital areas for skilled attacks. As built, every caller passes the attacker (`select_hit_location(target, success_margin, attacker)`), and then the bias comes from the attacker's Grit + Motorics (4 or less: ×1.1, 6 or less: ×1.3, 8 or less: ×1.6, else ×2.0), raised 10% per point of success margin. An attacker with Intellect 3 or more prefers unarmoured vitals and avoids heavily armoured ones, more strongly at 5 or more. The margin-only table below is used only when no attacker is given:
 
 ```python
-def select_hit_location(character, success_margin=0):
+def select_hit_location(character, success_margin=0, attacker=None):
     # Base organ weights calculated for each location
     for location in available_locations:
         base_weight = sum(organ_hit_weights_in_location)
@@ -1846,13 +1732,13 @@ def distribute_damage_to_organs(location, total_damage, medical_state, injury_ty
 Complete integration with existing combat architecture:
 
 ```python
-# Combat handler attack resolution (world/combat/handler.py ~line 1210)
+# Attack resolution (world/combat/attack.py), after a hit
 if attacker_roll > target_roll:
     # Calculate success margin for location bias
     success_margin = attacker_roll - target_roll
     
     # Stage 1: Select hit location with success margin bias
-    hit_location = select_hit_location(target, success_margin)
+    hit_location = select_hit_location(target, success_margin, attacker)
     
     # Stage 2: Make precision roll for organ targeting
     precision_roll = randint(1, 20)
@@ -1861,10 +1747,11 @@ if attacker_roll > target_roll:
     precision_skill = int((attacker_motorics * 0.7) + (attacker_intellect * 0.3))
     
     # Select specific target organ within location
-    target_organ = select_target_organ(hit_location, precision_roll, precision_skill)
+    target_organ = select_target_organ(hit_location, precision_roll, precision_skill,
+                                       medical_state=target.medical_state)
     
     # Apply focused damage to single organ
-    target_died = target.take_damage(damage, location=hit_location, 
+    target_died, actual_damage = target.take_damage(damage, location=hit_location, 
                                    injury_type=injury_type, target_organ=target_organ)
 ```
 
@@ -1873,8 +1760,8 @@ All medical system functions updated to support precision targeting:
 
 ```python
 # Core targeting functions
-select_hit_location(character, success_margin=0)
-select_target_organ(location, precision_roll=0, attacker_skill=1)
+select_hit_location(character, success_margin=0, attacker=None)
+select_target_organ(location, precision_roll=0, attacker_skill=1, medical_state=None)
 
 # Damage application functions  
 distribute_damage_to_organs(location, total_damage, medical_state, injury_type="generic", target_organ=None)
@@ -1897,7 +1784,7 @@ PRECISION_TARGET: attacker margin=8, precision=24, hit chest:heart
 
 #### Backward Compatibility
 All new parameters have default values maintaining compatibility with existing code:
-- `success_margin=0` → no location bias (original behavior)
+- `success_margin=0` with no attacker → no location bias (original behavior). With an attacker, which every caller passes, the Grit + Motorics bias still applies at margin 0
 - `target_organ=None` → proportional damage distribution (original behavior)
 
 **Foundation Complete**: Two-stage precision targeting fully integrated with combat system and Phase 2.4 wound description system fully implemented with comprehensive longdesc integration.
@@ -1908,7 +1795,7 @@ Dynamic wound descriptions that integrate with character longdesc system, featur
 #### Implementation Overview
 Complete wound description system with organ-level state tracking, automated grammar formatting, and dynamic longdesc integration:
 
-- **Multi-Variant Descriptions**: 20+ wound variants per injury type for variety
+- **Multi-Variant Descriptions**: seven variants per stage in each human injury module; the synth, robot, harvested and severed packs have fewer
 - **Organ State Tracking**: `wound_stage`, `injury_type`, `wound_timestamp` per organ
 - **Grammar System**: Automatic capitalization and punctuation with color code preservation
 - **Multiple Wound Handling**: Smart formatting for locations with multiple wounds
@@ -1924,10 +1811,9 @@ Medical conditions dynamically modify character appearance through integrated lo
 
 **Treated Wounds** (`wound_stage: 'treated'`):
 - Bandaged, sutured, or medicated wound descriptions
-- Treatment method visible: "neatly bandaged forearm" vs. "crude field dressing"
-- Treatment quality affects description detail
+- Treatment method and quality are not recorded: 📋 UNBUILT (no issue). The one built case is a sutured stump, whose prose follows the suture roll (see Treatment Quality & Method System below)
 
-**Healing Wounds** (`wound_stage: 'healing'`):
+**Healing Wounds** (`wound_stage: 'healing'`) — prose exists, but no code sets this stage on a living body: 📋 UNBUILT (no issue):
 - Scabbing, bruising progression, reduced severity
 - Time-based healing stages with evolving descriptions
 - Natural recovery process visualization
@@ -1936,35 +1822,34 @@ Medical conditions dynamically modify character appearance through integrated lo
 - Immediate aftermath of catastrophic organ/limb destruction
 - Raw trauma visualization: "mangled beyond recognition", "bloody mess", "hanging by sinew"
 - Requires immediate medical intervention to prevent death/infection
-- Can be treated to "severed" state with proper medical care
+- Treatment does not turn it into "severed"; a destroyed soft organ stays destroyed until replaced, while a broken bone set from 0 HP moves to "treated" (owner ruling 2026-09-28, #3253)
 
 **Severed Wounds** (`wound_stage: 'severed'`):
 - Medically treated destruction - clean amputation with proper surgical care
 - Professional medical descriptions: "surgical amputation", "sterile bandaging", "proper closure"
-- Result of treating "destroyed" organs with advanced medical intervention
+- Set only when a part is cut off (`typeclasses/items.py`, `world/medical/severance.py`), not by treating a "destroyed" organ
 - Permanent state but clean and safe for prosthetic attachment
 
-**Scarred Wounds** (`wound_stage: 'scarred'`):
+**Scarred Wounds** (`wound_stage: 'scarred'`) — prose exists, but no code sets this stage on a living body; a wound that heals to full HP is cleared instead: 📋 UNBUILT (no issue):
 - Permanent marking system for healed non-destroyed wounds
 - Scar tissue descriptions based on original injury
 - Character history preservation through appearance
 - Only applies to wounds that healed naturally (not destroyed organs)
 
 #### Wound Progression Paths
-The medical system supports multiple wound progression paths based on damage severity and medical intervention:
+Stages in play today, as built:
 
-**Normal Healing Path:**
-1. `Fresh` → `Treated` (medical intervention) → `Healing` (time) → `Scarred` (permanent)
-2. `Fresh` → `Healing` (natural) → `Scarred` (permanent)
-
-**Catastrophic Damage Path:**
-1. `Fresh` → `Destroyed` (damage exceeds threshold)
-2. `Destroyed` → `Severed` (medical treatment transforms raw trauma into clean amputation)
-3. `Destroyed/Severed` → **Prosthetic/Cybernetic Required** (permanent replacement)
-
-**Key Distinction:** "Destroyed" represents immediate, raw trauma requiring urgent medical care to prevent death/infection, while "Severed" represents the clean, safe state achieved through proper medical treatment of destroyed organs. This creates a realistic progression where catastrophic injuries must be medically stabilized before prosthetic attachment is possible.
+- `fresh` on first damage; `destroyed` at 0 HP.
+- `treated` when a harvest site is closed, or when a broken bone set from 0 HP starts to heal.
+- `severed` when a part is cut off.
+- A wound that heals to full HP disappears (its stage is cleared).
+- A destroyed soft organ, a severed part or a harvested slot does not heal in place; only a replacement fixes it (owner ruling 2026-09-28, #3253).
+- `healing` and `scarred` exist as prose in the message files, but nothing sets them on a living body: 📋 UNBUILT (no issue).
+- Treatment does not turn `destroyed` into `severed`.
 
 #### Organ-Specific Wound Descriptions
+📋 UNBUILT (no issue): organ-type categories (`organ_type`, `ORGAN_TYPE_MAPPING`) and organ-specific variants in the per-stage lists. Built: `get_organ_display_name` (`world/anatomy/organs.py`, species-aware) and the `{organ}` variable used by the destroyed-at-location overlays.
+
 The wound system supports both location-level and organ-specific descriptions for enhanced medical accuracy and narrative detail:
 
 **Current System Enhancement Opportunity:**
@@ -2069,8 +1954,8 @@ This enhancement maintains backward compatibility while providing much richer me
 
 **✅ Currently Implemented:**
 - Location-based wound descriptions (`"bullet wound on the chest"`)
-- Organ parameter available in format variables but unused in message files
-- Complete wound stage system (fresh/treated/healing/destroyed/severed/scarred)
+- `{organ}` is filled with the organ's species display name (`get_organ_display_name`), or the location when no organ is named, and is used by the destroyed-at-location overlays (eyes, ears, face)
+- Wound stages set in play: fresh, destroyed, treated, severed (healing and scarred have prose but are not set; see Wound Progression Paths)
 - Grammar formatting system preserving color codes
 - Multi-variant descriptions for narrative variety
 
@@ -2115,63 +2000,33 @@ The organ-specific enhancement can be implemented incrementally, starting with t
 
 #### Actual Implementation Architecture
 ```python
-# Organ-level wound state tracking (world/medical/core.py)
-class Organ:
-    def __init__(self, name, hp_max):
-        self.wound_stage = 'fresh'         # fresh/treated/healing/destroyed/severed/scarred
-        self.injury_type = 'generic'       # bullet/stab/cut/blunt/etc
-        self.wound_timestamp = None        # For time-based healing
-        self.treatment_quality = None      # poor/adequate/professional/surgical
-        self.treatment_method = None       # bandage/suture/cauterize/field_dressing
-    
-    def apply_treatment(self, quality='adequate', method='bandage'):
-        """Medical treatment with quality and method tracking"""
-        if self.wound_stage == 'fresh':
-            self.wound_stage = 'treated'
-            self.treatment_quality = quality
-            self.treatment_method = method
-        elif self.wound_stage == 'destroyed':
-            # Medical intervention can transform raw trauma into clean amputation
-            self.wound_stage = 'severed'
-            self.treatment_quality = quality
-            self.treatment_method = method
-    
-    def advance_healing_stage(self):
-        """Natural healing progression over time"""
-        stage_progression = {
-            'fresh': 'healing',
-            'treated': 'healing', 
-            'healing': 'scarred'
-            # Note: destroyed/severed are permanent states requiring replacement
-        }
-        self.wound_stage = stage_progression.get(self.wound_stage, 'scarred')
+# Per-organ wound state (world/medical/core.py, class Organ). All of these
+# persist through Organ.to_dict / from_dict:
+#   wound_stage        None, 'fresh', 'destroyed', 'treated' or 'severed' as built
+#   injury_type        bullet / stab / cut / blunt / laceration / generic / ...
+#   wound_timestamp    when the wound occurred
+#   stabilized         wound care applied (#307)
+#   dressing_rate, dressing_progress   healing from the dressing (#307/#501)
+#   tourniqueted       (#509)
+#   ability_state
+# 📋 UNBUILT (no issue): treatment quality and method are not tracked; there is
+# no apply_treatment() or advance_healing_stage().
 
-# Dynamic wound description generation (world/medical/wounds/wound_descriptions.py)
-def get_wound_description(injury_type, location, severity="Moderate", stage="fresh", organ=None, character=None):
-    """Generate contextual wound description with organ-specific details"""
-    stage = _determine_wound_stage_from_organ(organ)
-    injury_type = getattr(organ, 'injury_type', 'generic')
-    treatment_quality = getattr(organ, 'treatment_quality', None)
-    treatment_method = getattr(organ, 'treatment_method', None)
-    
-    # Enhanced format variables with organ support
-    format_vars = {
-        'severity': INJURY_SEVERITY_MAP.get(severity, severity.lower()),
-        'location': get_location_display_name(location, character),
-        'organ': get_organ_display_name(organ) if organ else "",           # ENHANCEMENT OPPORTUNITY
-        'organ_type': get_organ_type(organ) if organ else "",              # ENHANCEMENT OPPORTUNITY
-        'injury_type': injury_type
-    }
-    
-    description = _get_variant_description(organ, stage, injury_type, 
-                                         treatment_quality, treatment_method, format_vars)
-    return _format_wound_grammar(description)
-
-def _get_variant_description(organ, stage, injury_type, treatment_quality, treatment_method, format_vars):
-    """Select description variant with organ-specific logic"""
-    # Current: Only uses location-based descriptions
-    # Enhancement: Use organ-specific descriptions when available
-    pass
+# Wound description (world/medical/wounds/wound_descriptions.py)
+# get_wound_description(injury_type, location, severity, stage, organ, character)
+# takes the stage it is given (get_character_wounds works it out; organ is an
+# organ name) and:
+#   1. picks the prose table: a species with a wound pack (synth, robot) uses
+#      its own pack, by injury type where the pack has BY_INJURY; an injury
+#      type the pack has not authored gets a plain neutral line (#3514). Other
+#      bodies use the module for the injury type, else messages.generic.
+#   2. for a destroyed stage, uses the module's DESTROYED_BY_LOCATION overlay
+#      when the location has one (eyes, ears, face).
+#   3. picks a random variant and fills {severity}, {location} and {organ}
+#      ({organ} is the species' name for the organ, get_organ_display_name,
+#      #3537, else the location).
+#   4. fills pronoun tokens, then runs _format_wound_grammar.
+# There is no organ_type and no _get_variant_description.
 
 def _format_wound_grammar(text):
     """Auto-format capitalization and punctuation while preserving color codes"""
@@ -2212,6 +2067,8 @@ def _summarize_location_wounds(location_wounds, character=None):
 ```
 
 #### Treatment Quality & Method System
+📋 UNBUILT (no issue): nothing records treatment quality or method yet. The only built case is a sutured stump, whose prose follows the suture roll (`treated_success` / `treated_partial` / `treated_failure` in `world/medical/wounds/messages/severed.py`).
+
 **Treatment Quality Levels**:
 - **`poor`**: Makeshift field treatment, improvised materials
   - *"crudely bandaged with torn cloth"*, *"hastily wrapped with dirty rags"*
@@ -2271,8 +2128,8 @@ TREATED_DESCRIPTIONS = {
 Complete multi-variant wound description files covering all injury types and stages:
 
 **Message File Structure** (`world/medical/wounds/messages/`):
-- Individual files per injury type: `bullet.py`, `stab.py`, `cut.py`, `blunt.py`, `burn.py`, etc.
-- 20+ description variants per wound stage for narrative variety
+- Injury modules: `blunt.py`, `bullet.py`, `cut.py`, `laceration.py`, `stab.py`, `generic.py` (fallback); special cases `harvested.py` (extraction sites) and `severed.py` (stumps); species packs `synth.py` and `robot.py`, which replace the human prose wholesale for those bodies
+- Seven variants per stage in each human injury module; the synth, robot, harvested and severed packs have fewer
 - Template variable support: `{skintone}`, `{location}`, medical colors `|r`, `|g`, `|n`
 
 **Grammar Formatting System**:
@@ -2295,44 +2152,23 @@ def _format_wound_grammar(text):
 - **One wound**: rendered via the type/stage-specific
   `get_wound_description` (the per-injury-type message modules).
 - **Two or more wounds at the same location**: collapse into a single
-  concise line via `_compound_phrase` — the worst wound (severity → stage
-  priority) plus a count of the rest ("a grievous cut wound **and another
-  wound** mark the left arm", or "**and several other wounds**"), rather
-  than concatenating every wound's full description. An all-healed mix
-  renders a calm, skintone-colored "multiple old wounds" summary.
-- **Future hook (not yet built)**: per-injury-type compound templates,
-  mirroring the single-wound `messages.<type>.WOUND_DESCRIPTIONS` dicts. A
-  later pass can add `messages.<worst_type>.COMPOUND_DESCRIPTIONS[stage]`,
-  `random.choice` a variant, and fall back to `messages.generic` then to the
-  generic phrasing — exactly how `get_wound_description` resolves single
-  wounds. The type message modules are intentionally left untouched until
-  then; `_compound_phrase` is the single seam to flip.
+  line from the worst wound's (severity → stage priority)
+  `COMPOUND_DESCRIPTIONS[stage]`: its injury module's, else
+  `messages.generic`; a species pack uses its own `COMPOUND_DESCRIPTIONS` /
+  `COMPOUND_BY_INJURY`. The line is filled with severity, location and a
+  count of the rest ("**another wound**" or "**several other wounds**"),
+  rather than concatenating every wound's full description
+  (`_compound_phrase`). The inline phrasing (a calm, skintone-colored
+  "multiple old wounds" line when the worst is treated/healing/scarred) is
+  used only when no template resolves.
 
 #### Character Integration Points
-```python
-# Character longdesc integration (typeclasses/characters.py)
-def _get_visible_body_descriptions(self):
-    """Generate dynamic body descriptions including wounds"""
-    descriptions = {}
-    for location in self.anatomy.locations:
-        base_desc = self.db.longdesc.get(location, "")
-        wound_desc = append_wounds_to_longdesc(self, location, base_desc)
-        if wound_desc != base_desc:  # Only include if wounds present
-            descriptions[location] = wound_desc
-    return descriptions
-
-# Clothing concealment support
-def check_wound_visibility(character, location):
-    """Check if wounds are concealed by clothing"""
-    worn_items = character.get_worn_items_for_location(location)
-    coverage = calculate_coverage_percentage(worn_items, location)
-    return coverage < 90  # Wounds visible if <90% coverage
-```
+Wounds join the body view in `typeclasses/appearance_mixin.py`: a location with a longdesc gets `append_wounds_to_longdesc(desc, character, location, looker)` (in `_render_body_longdesc`); one without gets `get_standalone_wound_description(character, location, looker)` (in `_get_visible_body_descriptions`). A wound is hidden when anything worn covers its location (`_is_wound_visible` → `is_location_covered`, `typeclasses/clothing_mixin.py`); there is no coverage percentage.
 
 #### Future-Proof Architecture Features
 - **Extensible State Tracking**: Organ-level `wound_stage` ready for medical system expansion
-- **Treatment Quality System**: `treatment_quality` and `treatment_method` tracking for medical skill integration
-- **Treatment Integration**: `apply_treatment(quality, method)` and `advance_healing_stage()` methods prepared
+- **Treatment Quality System**: 📋 UNBUILT (no issue): treatment quality and method are not tracked
+- **Treatment Integration**: 📋 UNBUILT (no issue): there is no `apply_treatment(quality, method)` or `advance_healing_stage()`
 - **Time-Based Healing**: `wound_timestamp` tracking for temporal healing mechanics  
 - **Dynamic Anatomy Support**: Flexible location handling for any anatomy configuration
 - **Template System**: Variable substitution ready for expanded customization
@@ -2356,9 +2192,9 @@ def check_wound_visibility(character, location):
 *Note: Phase 2.4 wound description system completed with comprehensive longdesc integration, multi-variant messaging, and future-proof organ state tracking architecture*
 
 ### Phase 2.5: Extended Consumption Methods - ✅ COMPLETED (September 2025)
-- ✅ **Additional consumption commands**: `inhale`, `smoke`, `huff` with full aliasing implemented
+- ✅ **Additional consumption commands**: `inhale` (aliases `huff`, `breathe`) and `smoke` (its own command, `commands/CmdSmoke.py`, #454)
 - ✅ **Inhalation mechanics**: Respiratory delivery systems for gases, vapors, oxygen
-- ✅ **Combustion consumption**: Smoking/burning substance delivery for herbs and medicinal plants
+- ✅ **Combustion consumption**: `smoke` gives a held, lit smokable's substance one puff at a time; the herb / medicinal plant treatment path is not reached (see Smoking types above)
 - 🔧 **Advanced substance interactions**: Command framework complete, substance effect refinement ongoing
 
 *Note: All consumption method commands are implemented and functional. Substance effect balancing and advanced interactions are iterative improvements to the solid foundation.*
@@ -2472,7 +2308,6 @@ class BleedingCondition(MedicalCondition):
                 # Send message to character
                 # Apply actual damage to medical state
                 # Remove condition if bleeding stopped
-```
             # Apply blood loss
             blood_loss = self.severity
             character.medical_state.blood_current -= blood_loss
@@ -2595,7 +2430,7 @@ if character.has_condition("bleeding") and character.has_condition("burning"):
     bleeding.severity = max(0, bleeding.severity - 1)
 ```
 
-#### System Benefits
+#### System Benefits (Dec 2024 design, superseded)
 - **Realistic Progression**: Bleeding naturally decreases over time
 - **Treatment Urgency**: Severe conditions require immediate intervention
 - **Dynamic Combat**: Ongoing effects create tactical decisions
@@ -2617,20 +2452,24 @@ Conditions now bind at one of three scopes:
 
 The three tiers share a common ``MedicalCondition`` base but specialise treatment-correlation: splints resolve location-bound fractures; organ-specific treatments resolve organ-bound damage; systemic drugs resolve body-bound infection. See ``world/medical/conditions.py``.
 
+As built, conditions are stored in two places: on the body (``medical_state.conditions``, either body-wide with no location or bound to a location; these stay with the body when an organ is swapped) and on an organ (``Organ.conditions``, which travel with the organ through harvest and install). Infection from a botched procedure is seeded location-bound. No code creates an organ-bound condition yet. 📋 UNBUILT (no issue): fracture, arrhythmia and sepsis conditions, and the per-tier treatment mapping above.
+
 #### Scan-Based Architecture (PR #378)
 
 Per #378, condition modifiers re-derive from the current organ snapshot on each scan rather than mirroring an internal table. Replacing an organ rolls the modifier set forward automatically — no cleanup pass required. This was the predicate for shipping harvest/install without organ-state leak across transplants.
 
 #### Procedure Verb Set (PR #380)
 
-Four verbs, all gated on a surgical kit in inventory:
+Four standalone verbs, all gated on a surgical kit in inventory (a tool roll for a robot patient):
 
 | Verb | Syntax | Delay |
 | --- | --- | --- |
-| ``incise`` | ``incise <target> at <location>`` | 6s |
-| ``harvest`` | ``harvest <organ> from <target>`` | 18s |
-| ``install`` | ``install <organ> in <target>`` | 18s |
-| ``suture`` (alias ``stitch``) | ``suture <target>`` | 9s |
+| ``incise`` (alias ``cut``) | ``incise <target> at <location>`` | 6s |
+| ``harvest`` (alias ``extract``) | ``harvest <organ> from <target>``; ``harvest <target>`` lists what can be taken | 18s |
+| ``install`` (aliases ``fit``, ``graft``) | ``install <organ> in <target> [at <side/location>]`` | 18s |
+| ``suture`` (aliases ``stitch``, ``seal``) | ``suture <target>`` or ``suture <target>'s <location>`` | 9s |
+
+Augment, module and limb installs use the same ``install`` command and route by the item (18s / 9s / 18s). Two more procedures exist only as chart steps in ``operate``: ``amputate`` (12s; typing ``amputate`` reaches ``sever`` instead) and ``autopsy`` (30s, deceased subjects only).
 
 All four operate on a unified ``get_organ_snapshot`` accessor that handles living characters, corpses, severed heads, and severed appendages identically. Consistency is the learning surface — practising on corpses transfers directly to operating on living patients.
 
@@ -2647,23 +2486,36 @@ Procedure base difficulty is **12** (``PROCEDURE_BASE_DIFFICULTY``), with **+5**
 Each verb resolves to success / partial / failure on a ``3d6 + skill`` vs. difficulty roll. Failure modes seed conditions on the patient:
 
 * ``incise`` failure → no incision opens + location-bound ``InfectionCondition`` seed
-* ``harvest`` failure → organ extracted but condition tier worse, plus ``InfectionCondition`` and ``PainCondition`` seeds (pain skipped on unconscious targets)
+* ``harvest`` failure → the organ is torn out and lost (marked removed from the source, no item produced), plus ``InfectionCondition`` and ``PainCondition`` seeds (pain skipped on unconscious targets)
 * ``install`` failure → organ doesn't take + ``InfectionCondition`` seed
 * ``suture`` failure → closes but seeded ``InfectionCondition``
+
+Partial outcomes cost something too: ``incise`` opens the incision but takes 2 HP from every organ at the site (a failure takes 3 HP); ``harvest`` yields the organ one tier worse (pristine becomes damaged); ``install`` takes but seeds ``InfectionCondition``; ``suture`` closes and records the stump as a partial, with rougher prose.
 
 Failure-consequence *paths* are real and tested; *severity values* are placeholders pending treatment-depth calibration.
 
 #### Anesthesia Is a Drug, Not a Verb
 
-There is no ``anesthetize`` verb. Anesthesia goes through the existing consumption surfaces (``inject anesthetic into <target>``, etc.). The procedure dispatch reads ``target.is_unconscious()`` to apply the difficulty bonus and skip pain seeding — the unconscious state itself is the contract, not its cause.
+There is no ``anesthetize`` verb. Anesthesia goes through the existing consumption surfaces: the anesthetic gas is inhaled (``inhale anesthetic gas``, or ``help <target> inhale anesthetic gas`` for someone else). It relieves pain and adds a consciousness-suppression condition that wears off. The procedure dispatch reads ``target.is_unconscious()`` to apply the difficulty bonus and skip pain seeding — the unconscious state itself is the contract, not its cause.
 
 Conscious-patient procedures accumulate ``PainCondition`` seeds during each verb's resolution, scaled by the verb's invasiveness (``CONSCIOUS_PAIN_SEVERITY`` in ``procedures.py``).
 
+#### Rules Every Procedure Runs Under
+
+These hold at every door, the standalone verbs and the `operate` chart alike (`start_procedure` and `roll_procedure` in `world/medical/procedures.py`, `_resolve_target` in `commands/CmdSurgical.py`).
+
+* **Instruments.** The surgeon needs a surgical kit in inventory; a robot patient needs a tool roll instead.
+* **One at a time.** A patient can have only one procedure running (#2509).
+* **Consent.** A conscious patient other than yourself must trust you with `heal`, or be restrained.
+* **Deployed hardware.** Before the work starts, any deployed augment hardware at the site is stowed (#3360).
+* **Channeled act.** Surgery is a channeled act (#2926). Damage to the surgeon, combat, a grapple, the surgeon losing consciousness or dying, or a forced move breaks it, and the work is lost.
+* **Outcome.** Success at total ≥ difficulty + 5, partial at total ≥ difficulty, otherwise failure. A patient lying on an AutoDoc adds its station bonus to the total.
+
 #### CmdApply Upgrade
 
-``apply`` is now location-precision aware: ``apply <item> on <target>'s <location>`` targets a specific body location. When the location is an internal container (``head``, ``chest``, ``abdomen``, ``back``, ``neck``, ``groin``), ``apply`` rejects unless an incision is currently open at that location. Surface treatments (bandages on skin) skip the requirement. The legacy ``surgery`` / ``operate`` aliases on ``apply`` were removed — the procedure verbs replace them entirely.
+``apply`` is now location-precision aware: ``apply <item> on <target>'s <location>`` targets a specific body location. ``to`` works as well as ``on``, and the location may name an organ. The location must exist on the target, but an open incision is NOT required, at an internal container or anywhere else: per the #307 design pass, delivery to any location is accepted, and what the item does there is left to the drug rules. (`CmdApply`'s own help text still says deep treatments need an open incision; the code does not check.) The legacy ``surgery`` / ``operate`` aliases on ``apply`` were removed — the procedure verbs replace them entirely.
 
-Note that the ``TOOL_APPROPRIATENESS`` table below still records surgical kits as effective for severe internal bleeding, infection cleaning, and complex fractures — but surgical kits are now consumed as a *tool prerequisite* for the procedure verbs, not by ``apply``. The effectiveness mapping is design intent; the consumption surface moved.
+Note that the ``TOOL_APPROPRIATENESS`` table above (under "Treatment Effectiveness (Simplified)"; a design table, not present in code) still records surgical kits as effective for severe internal bleeding, infection cleaning, and complex fractures — but surgical kits are now consumed as a *tool prerequisite* for the procedure verbs, not by ``apply``. The effectiveness mapping is design intent; the consumption surface moved.
 
 #### Forensics Pipeline Continuity
 
@@ -2674,17 +2526,17 @@ The ``harvested`` injury type (``world/medical/wounds/messages/harvested.py``) i
 * ``world/medical/procedures.py`` — dispatch module
 * ``commands/CmdSurgical.py`` — four command classes
 * ``commands/CmdConsumption.py`` — ``CmdApply`` location-precision upgrade
-* ``world/tests/test_surgical_procedures.py`` — 34 tests covering snapshot accessor, incision lifecycle, skill/difficulty, roll outcomes, failure seeders, resolver outcomes, and ``_mark_organ_removed`` wound synthesis
+* ``world/tests/test_surgical_procedures.py`` — covers snapshot accessor, incision lifecycle, skill/difficulty, roll outcomes, failure seeders, resolver outcomes, and ``_mark_organ_removed`` wound synthesis
 
-See also: Phase 5 "Proposed: ``operate`` Charting Command" — a future menu-driven planner that drives the same procedure dispatch as a higher-level surface.
+See also: Phase 2.9 "``operate`` Charting Command" — the menu-driven planner that drives the same procedure dispatch as a higher-level surface.
 
 ### Phase 3: Combat Integration & Stat Penalties - 🔲 IN PROGRESS
 - [x] **Smart hit location system** based on attack success margin and precision targeting - ✅ COMPLETED
 - [ ] **Organ density-based targeting** - vital organ areas harder to hit precisely
-- [ ] **Armor protection layers** - clothing/armor reduces damage to protected organs  
-- [ ] **Armor damage system** - protective gear degrades from absorbing hits
+- [x] **Armor protection layers** - clothing/armor reduces damage to protected organs — shipped as its own system, see `MODULAR_ARMOR_SYSTEM_SPEC.md`
+- [x] **Armor damage system** - protective gear degrades from absorbing hits — shipped (`ArmorMixin._degrade_armor`), see `MODULAR_ARMOR_SYSTEM_SPEC.md`
 - [ ] **Weapon penetration mechanics** - different weapons vs different armor types
-- [ ] **Limb loss system** - complete destruction of all organs in a location results in limb loss
+- [x] **Limb loss system** - shipped as combat severance, not as written here: an edged hit that destroys a location's representative bone detaches it (see "Limb Loss System" below)
 
 #### Hit Location Mechanics (IMPLEMENTED)
 ```python
@@ -2695,12 +2547,15 @@ attack_roll = d20 + attacker_skill
 defense_roll = d20 + defender_skill  
 success_margin = attack_roll - defense_roll
 
-hit_location = select_hit_location(target, success_margin)
-# Success margin biases targeting toward vital areas:
-# margin 1-3:   +25% weight to head/chest/neck/abdomen
-# margin 4-8:   +50% weight to vital areas
-# margin 9-15:  +100% weight to vital areas  
-# margin 16+:   +200% weight to vital areas
+hit_location = select_hit_location(target, success_margin, attacker)
+# Vital areas come from organ criticality, not a fixed list.
+# With an attacker (every combat attack passes one):
+#   base vital bias from Grit + Motorics: <=4: x1.1, <=6: x1.3, <=8: x1.6, else x2.0
+#   times (1 + 0.1 x margin) when margin > 0
+#   Intellect 5+: unarmoured vital x1.5, heavily armoured vital x0.6
+#   Intellect 3-4: unarmoured vital x1.3, heavily armoured vital x0.8
+# Without an attacker, the margin alone sets the vital bias:
+#   margin <=3: x1.25, <=8: x1.5, <=15: x2.0, 16+: x3.0
 
 # Stage 2: Precision roll determines specific organ within location
 precision_roll = d20
@@ -2718,6 +2573,9 @@ target.take_damage(damage, location=hit_location, injury_type=weapon_type, targe
 ```
 
 #### Armor Integration System
+
+> **⚠️ SUPERSEDED** — armour shipped per `MODULAR_ARMOR_SYSTEM_SPEC.md`. The layer loop below and the `PENETRATION_VALUES` matrix after it were never built; they are kept as historical intent.
+
 ```python
 # Layered protection check
 worn_items = character.get_worn_items_for_location(hit_location)
@@ -2792,13 +2650,13 @@ The precision targeting system is fully integrated with the existing combat arch
 
 **Current Implementation**: Combat handler uses two-stage targeting with single organ damage
 ```python
-# In combat handler attack resolution (world/combat/handler.py)
+# In attack resolution (world/combat/attack.py)
 if attacker_roll > target_roll:
     # Calculate success margin for location bias
     success_margin = attacker_roll - target_roll
     
     # Stage 1: Location selection with vital area bias
-    hit_location = select_hit_location(target, success_margin)
+    hit_location = select_hit_location(target, success_margin, attacker)
     
     # Stage 2: Precision-based organ targeting
     precision_roll = randint(1, 20)
@@ -2806,7 +2664,7 @@ if attacker_roll > target_roll:
     target_organ = select_target_organ(hit_location, precision_roll, precision_skill)
     
     # Apply focused damage to single targeted organ
-    target_died = target.take_damage(damage, location=hit_location, 
+    target_died, actual_damage = target.take_damage(damage, location=hit_location, 
                                    injury_type=injury_type, target_organ=target_organ)
 ```
 
@@ -2820,7 +2678,7 @@ if attacker_roll > target_roll:
 - Integrates with weapon damage calculation: `get_weapon_damage(weapon, 0)`
 - Supports all current weapon types (unarmed, blades, firearms, etc.)
 
-**Combat Command Integration**:
+**Combat Command Integration**: 📋 UNBUILT (no issue): called shots do not exist. `attack <target>` takes a target only, and the location comes from the roll.
 ```python
 # Enhanced attack commands with targeting options
 > attack bandit             # Normal attack (success determines location)  
@@ -2908,6 +2766,9 @@ tactical targeting). The sketch below is superseded historical intent.
 4. Test integration with existing medical condition system
 
 #### Limb Loss System
+
+> **⚠️ SUPERSEDED — limb loss shipped as combat severance, not this way.** An edged hit (`SEVERING_INJURY_TYPES`) that freshly destroys a location's representative bone detaches the limb (`ArmorMixin._maybe_sever_from_damage` → `apply_sever_to_character`); a destroyed cervical spine decapitates. The trigger, penalties, stabilization check and functions below (`check_location_viability`, `process_limb_loss`, `apply_limb_loss_effects`, `emergency_stabilization`) were never built. See "Spinal Anatomy, Decapitation & Combat Severance" above. The sketch below is retained as historical intent only.
+
 **Trigger Condition**: Complete destruction of all organs in a location results in limb loss.
 
 **Implementation Architecture**:
@@ -3213,7 +3074,7 @@ The diagnose node is the consolidation surface for medical observation. Today th
 - **Prior chart history** — previous chart runs on this patient, who authored, outcomes
 - **Recent vitals trajectory** — unconscious/conscious transitions, recent damage events
 
-Surgeon's medical skill (G.R.I.M. — `(intellect * 0.75) + (motorics * 0.25)`) gates the depth of the reveal. Low skill shows surface findings (visible bleeding, gross fractures); higher skill surfaces internal organ condition and cybernetic identification. This is the same difficulty ladder as the procedure verbs — consistency for learning.
+Surgeon's medical skill (G.R.I.M. — `(intellect * 0.75) + (motorics * 0.25)`) gates the depth of the reveal. Low skill shows surface findings (visible bleeding, gross fractures); higher skill surfaces internal organ condition and cybernetic identification. This is the same difficulty ladder as the procedure verbs — consistency for learning. (As built, the reveal is an Intellect roll per finding against an obfuscation DC, not this formula; see As Built below.)
 
 The pane is read-only as a diagnostic surface but offers a "note a finding" action that appends to the chart's `diagnoses` list, giving the surgeon a place to record observations that other surgeons can see on handoff.
 
@@ -3232,8 +3093,11 @@ The dispatcher validates each step against the patient's current state at the mo
 
 Failure modes per step:
 
-- **Hard fail** (step cannot run): mark `status: "skipped"`, surface a prompt-or-continue choice to the surgeon ("the left lung is no longer present — skip step or abort chart?")
-- **Soft fail** (verb dispatch fails its roll): mark `status: "failed"`, record `outcome`, continue to next step (surgeon's plan accounted for risk; subsequent steps may compensate)
+- **Inputs missing at run time** (organ no longer present, donor not in the surgeon's inventory): the step is marked `status: "failed"` with the reason, and the chain moves on to the next step. There is no prompt.
+- **Refused by a resolver gate** (no incision, wrong species, skeletal remains): the step is marked `failed` with the reason, and the chain moves on.
+- **Roll fails** (for example "The graft won't take"): as built, the step is marked `done`. The consequences (infection, pain, damage) land on the patient, but the chart does not record the failed roll.
+- **Patient busy** (another procedure already running on them): the step is marked `failed` and the chart `aborted`.
+- **Treatment step** (`apply` / `inject`): marked `skipped`. Treatment steps from the chart are 📋 UNBUILT (no issue; the code calls it PR-OP3).
 
 Charting *can* enqueue steps that aren't currently valid (e.g., chart `harvest` before the prior `incise` has executed) — the validation runs at execution time, not chart time, so plans can include future state.
 
@@ -3267,7 +3131,7 @@ Walk-through of a routine multi-step procedure:
   Location? chest
   Notes? ""
 
-→ Add treatment step
+→ Add treatment step          (📋 UNBUILT: treatment steps from the chart, no issue)
   Verb? inject
   Item? antibiotic
   Notes? "post-op prophylaxis"
@@ -3281,11 +3145,11 @@ Walk-through of a routine multi-step procedure:
 Chart completed. 5/5 steps succeeded. Patient stable.
 ```
 
-If the patient regained consciousness between charting and execution (anesthesia wore off), step 1 picks up the conscious-patient +5 difficulty automatically. If the donor lung was lost between charting and execution, step 3 hard-fails and prompts the surgeon.
+If the patient regained consciousness between charting and execution (anesthesia wore off), step 1 picks up the conscious-patient +5 difficulty automatically. If the donor lung was lost between charting and execution, step 3 is marked `failed` and the chain moves on to step 4 without a prompt.
 
 #### Execution Flow ("Commence")
 
-The dispatcher is a thin wrapper around the existing per-verb resolvers in `world/medical/procedures.py`:
+The dispatcher is a thin wrapper around the existing per-verb resolvers in `world/medical/procedures.py`. The pseudo-code below is the original proposal: as built, the runner is `commence_chart` in `world/medical/charts.py`, and `_validate_step` / `_step_finished` do not exist (the failure list above says what it does).
 
 ```python
 def commence_chart(surgeon, target):
@@ -3319,16 +3183,18 @@ def _step_finished(surgeon, target, chart, step_idx, outcome):
     _run_next_step(surgeon, target, chart, step_idx + 1)
 ```
 
-The `on_complete` callback is the only extension to the existing procedure dispatch — verbs already use `evennia.utils.delay`, so the chart runner hooks the same staging.
+The `on_complete` callback is the only extension to the existing procedure dispatch — verbs already use `evennia.utils.delay`, so the chart runner hooks the same staging. (As built, the timer is the surgeon's channeled act since #2926; `delay` is only the fallback when a channel cannot start.)
 
 #### Interruption Semantics
 
-- **Surgeon disconnect mid-chart.** The currently-running step continues to its resolver (the existing verb behaviour). Subsequent steps do not auto-resume. Chart status flips to `aborted` with `last_step_completed` recorded. Another surgeon can pick up the chart and resume from the next pending step.
-- **Combat interrupts surgeon.** The current step is interrupted via the existing `interrupt_procedure` path. Chart aborts. No automatic recovery — the surgeon must re-`operate` and resume manually.
-- **Patient moves / dies.** Death halts the chart immediately and flips status to `aborted`; subsequent diagnostic value of the chart is preserved for autopsy. Movement aborts the current step per the existing procedure interrupt rules.
-- **Resume by a different surgeon.** Any surgeon with permission can open `operate` on the patient, see the chart's pending steps, and choose *Commence (resume from step N)*. This is the explicit handoff path.
+- **Surgeon gone or server restart mid-chain.** The chain stops. If the surgeon no longer exists when the step's timer ends, nothing resolves and the step stays `running`; after a restart the in-memory chain hook is lost the same way. The next time anyone commences the chart, a step left `running` with nothing timing it is put back to `pending` (and an `aborted` chart back to `in_progress`), and the chain resumes from it (`requeue_stranded_steps`). There is no `last_step_completed` field.
+- **Interruption.** Surgery is a channeled act (#2926). Damage to the surgeon, the surgeon entering combat or being grappled, the surgeon falling unconscious or dying, or the surgeon being moved by force breaks it. `interrupt_procedure` marks the running step `failed` ("interrupted: …") and the chart `aborted`. The surgeon re-opens `operate` and commences again to carry on.
+- **Patient dies or is moved.** The patient's death interrupts the procedure the same way. A patient dragged off in a grapple takes the procedure with them (`take_patient_away`): the step fails, and the surgeon, the patient and the room are told. A procedure never resolves on a patient who is no longer in the surgeon's room or hands, or whose body is gone.
+- **Resume by a different surgeon.** Anyone who can target the patient can open `operate`, see the pending steps, and choose Commence, which runs from the first pending step. There is no chart permission check (see Permissions and Visibility).
 
 #### Permissions and Visibility
+
+📋 UNBUILT (no issue; phases 2 and 4 of the plan below): this table and the Display Surface section. Today anyone who can target the patient can open, edit and commence the chart; for a conscious patient other than yourself that means passing the `heal` trust gate, or the patient being restrained.
 
 | Action | Who can do it |
 | --- | --- |
@@ -3340,9 +3206,11 @@ The `on_complete` callback is the only extension to the existing procedure dispa
 | Annotate diagnoses | Anyone with read permission (additive only) |
 | Patient's own visibility | The patient sees the chart in `operate` when conscious (consent model); unconscious patients have no recourse — narrative tension is intentional |
 
-The patient-consent model is intentionally light: there's no hard block on charting an unconscious or unwilling patient, and the resulting chart sits on `target.db.medical_chart` regardless. The fiction is that consent and ethics are roleplay concerns, not enforced mechanics — paralleling how the procedure verbs themselves don't require consent.
+The patient-consent model is intentionally light: there's no hard block on charting an unconscious or unwilling patient, and the resulting chart sits on `target.db.medical_chart` regardless. The fiction is that consent and ethics are roleplay concerns, not enforced mechanics — paralleling how the procedure verbs themselves don't require consent. (Superseded by the trust/consent gate: a conscious patient other than yourself must trust the surgeon with `heal` or be restrained, `TRUST_AND_CONSENT_SPEC.md` §3; an unconscious patient still has no say.)
 
 #### Display Surface
+
+📋 UNBUILT (no issue): none of the three surfaces below exists yet.
 
 The chart surfaces in three places beyond the menu itself:
 
@@ -3354,11 +3222,11 @@ The chart is *not* surfaced in standard `look` output to non-medical observers �
 
 #### Integration with Existing Systems
 
-- **Procedure verbs.** Single execution path: chart dispatcher and direct verb invocation both go through `start_procedure`. Adding new verbs (e.g., a future `graft`) automatically makes them chartable with no menu changes beyond surfacing them in the verb picker.
+- **Procedure verbs.** Single execution path: chart dispatcher and direct verb invocation both go through `start_procedure`. Adding new verbs automatically makes them chartable with no menu changes beyond surfacing them in the verb picker.
 - **Consumption commands.** Treatment steps (`inject`, `apply`, `spray`, `inhale`) reuse the existing consumption command implementations via internal dispatch. The chart's `args` carries the same item/target/location parameters the player would have typed at the prompt.
 - **Conditions and tickers.** No new condition types required. Failure-mode seeding (infection, pain, organ damage) already lives in the procedure resolvers and applies identically whether the verb was invoked directly or via chart.
 - **Forensics / autopsy.** Completed chart records become first-class evidence in autopsy output. Aborted charts on a deceased patient provide narrative context for cause of death.
-- **G.R.I.M. skill.** Diagnose-pane reveal depth and procedure success rolls share the same formula; surgeons don't learn separate skill ladders for planning vs. execution.
+- **G.R.I.M. skill.** Diagnose-pane reveal depth and procedure success rolls share the same formula; surgeons don't learn separate skill ladders for planning vs. execution. (As built they do not share it: the diagnose reveal rolls Intellect alone.)
 
 #### Phased Implementation Plan
 
@@ -3385,13 +3253,14 @@ Each phase is independently useful and testable; nothing in a later phase requir
 The implementation matches the proposal at the chart-data-structure and procedure-dispatch level. The following deviations and additions are visible in the shipped menu:
 
 * **Visual layout** — the box-drawn `score`-style chrome was replaced with **tree-branched section labels** (`PATIENT` / `CHART` / `OPTIONS` connected with box-drawing characters). The `describe`-style flush-left layout was retained. The current design idiom matches `armor comprehensive`.
-* **Charting + treatment unified.** The proposal split "Add procedure step" from "Add treatment step." Implementation collapses to a single "Add procedure step" because treatment verbs (`apply` / `inject` / `spray` / `inhale`) are now dispatched through a future PR-OP3 path; they're skipped with an outcome note today and the surgeon adds them inline once that lands.
+* **Charting + treatment unified.** The proposal split "Add procedure step" from "Add treatment step." Implementation has a single "Add procedure step". The chart's treatment verbs (`apply` / `inject`; there is no `spray` or `inhale`) are 📋 UNBUILT (no issue; PR-OP3 in the code): the add-step node offers no treatment verb, and a treatment step already on a chart is skipped with an outcome note.
+* **Top menu as built** — 1 Add procedure step (incise / harvest / install / suture / amputate, plus autopsy on a deceased subject), 2 Edit chart (`u N` / `d N` move a step, `r N` removes it, `i N` inserts a step before it, `v N` views its recorded finding), 3 Commence pending steps (runs them back to back), 4 Save and exit, 5 Discard chart, x Exit (no save). The wireframe, the reordering note and the example session above are the original proposal; no "N/N steps succeeded" summary is printed.
 * **`amputate` is a procedure verb.** Combat-side severance went through `apply_sever_to_character` / `spawn_severed_head_for_living` directly; the chart now exposes `amputate` as a fifth procedure verb that routes through the same severance pipeline (with surgical-kit gating instead of edged-weapon gating). `CmdSever` retains `amputate` as a command alias.
 * **Multi-source pickers.** The suture location picker reads from three sources (open incisions, planned chart steps, severed-organ stumps from the medical state); the install location picker filters slots by species + donor-organ compatibility. See [EVMENU_PATTERNS_SPEC.md](EVMENU_PATTERNS_SPEC.md) "Pattern D — Multi-Source Picker with Status Tags" for the canonical shape.
-* **Diagnose pane** is the only proposed sub-feature still pending — currently rolled into the patient panel header (status indicators + open-incision list). The proposal-grade dedicated pane with skill-gated reveal is open work.
+* **Diagnose pane** — built (#445) inside the PATIENT block rather than as a separate menu node (`world/medical/diagnose.py`). It shows a condition rung (stable / tenuous / serious / critical / moribund / deceased) and the findings the surgeon detects: each injured organ and each condition is rolled on Intellect against an obfuscation DC. The result is cached per surgeon and patient for 5 minutes, and a fresh roll shows the room a pose. 📋 UNBUILT (no issue): the note-a-finding action and the `diagnoses` list, cybernetic identification, vitals trajectory, prior chart history.
 * **Target resolution** — `operate <mob>` now correctly finds the body even when severed parts are in the room. Identity-pipeline candidate set excludes `Appendage` / `SeveredHead` items at stage 1; the NPC-fallback in the sdesc matcher falls through to word-boundary when prefix doesn't fire (otherwise `operate rat` couldn't reach a `"a scrawny ragged rat"` mob — the article prefix would defeat the prefix-only match).
-* **Chart status fields** — `last_modified_by` is not stored separately; the chart's most-recent step author is implicit in `_step_finished` records. `diagnoses` field is reserved but unused pending the diagnose pane.
-* **Tests** — node-level coverage seeded in `world/tests/test_operate_menu.py` (42 tests across the suture picker, install picker, top-choice routing, verb-choice routing). Chart-data layer covered in `world/tests/test_operate_charts.py`.
+* **Chart fields as stored** — `new_chart` (`world/medical/charts.py`) stores `version`, `authored_by`, `authored_at`, `last_modified_at`, `status`, `next_step_id` and `steps`. There is no `last_modified_by`, no per-step author, and no `diagnoses` list (📋 UNBUILT with note-a-finding, no issue). A step may also carry `result`: the autopsy report, which the surgeon reads from the edit node with `v N`.
+* **Tests** — node-level coverage seeded in `world/tests/test_operate_menu.py` (suture picker, install picker, top-choice routing, verb-choice routing). Chart-data layer covered in `world/tests/test_operate_charts.py`.
 
 ### Phase 2.10: Severance, Suture Stumps, and Install Picker - ✅ COMPLETED (June 2026)
 
@@ -3399,7 +3268,7 @@ The procedural verbs and the operate menu went live on a model that mostly worke
 
 #### Severance helper module (PR #427)
 
-`world/medical/severance.py` is the single source of truth for severance-related queries. Three functions:
+`world/medical/severance.py` is the single source of truth for severance-related queries. Three query helpers (the corpse stage helpers are described below):
 
 * `compute_severed_containers(target)` — the set of containers carrying at least one organ with `wound_stage="severed"` and `current_hp == 0`. Both gates so a partially-zeroed organ isn't promoted to a severance.
 * `compute_cut_points(target)` — the canonical *one-entry-per-severance* set after two collapse rules:
@@ -3413,7 +3282,7 @@ Three consumers route through these helpers and agree on the answers:
 |---|---|---|
 | `world.medical.wounds.wound_descriptions.get_character_wounds` | `compute_cut_points` | Synthetic cut-point wound emission |
 | `commands.CmdOperate._list_severed_locations` | `compute_cut_points` − `normalize_sutured_stumps.keys()` | Suture picker entries |
-| `world.medical.procedures._resolve_suture` | same | Runtime untreated-stumps set for `suture all` |
+| `world.medical.procedures._resolve_suture` | `procedures.untreated_stump_locations` (the same subtraction; `CmdSuture` reads it too, through `sutureable_locations`, #2554) | Runtime untreated-stumps set for `suture all` |
 
 Pre-consolidation each consumer reimplemented the cluster + chain filter and the storage-shape shim. Three copies of the same logic; the consolidation collapses to one.
 
@@ -3490,7 +3359,7 @@ Same contract applies to severed heads / appendages? Not yet — those route thr
 
 #### Decapitation pipeline ownership (PR #419)
 
-`spawn_severed_head_for_living` now sets both `head_severed_at_decap = True` *and* `decapitation_pending = True`. The corpse-side cleanup hook in `DeathProgressionScript._create_corpse_from_character` gates on `decapitation_pending` to strip head-cluster prose / wounds and synthesise the neck-stump wound on the corpse. Pre-fix the combat path set `decapitation_pending` upstream but the chart-amputate path didn't — so chart-driven decap left the corpse rendering wounds at every cluster location. Owning both flags inside the spawn makes the cleanup fire regardless of caller.
+`spawn_severed_head_for_living` now sets both `head_severed_at_decap = True` *and* `decapitation_pending = True`. The corpse-side cleanup hook in `DeathProgressionScript._create_corpse_from_character` gates on `decapitation_pending` to strip head-cluster prose / wounds and synthesise the neck-stump wound on the corpse. Pre-fix the combat path set `decapitation_pending` upstream but the chart-amputate path didn't — so chart-driven decap left the corpse rendering wounds at every cluster location. Owning both flags inside the spawn makes the cleanup fire regardless of caller. Since #3840 a beheading has no death window: once the death curtain has played, `complete_a_beheading` (`typeclasses/death_progression.py`) builds the corpse at once.
 
 #### Install picker species + organ filter (PR #431)
 
@@ -3501,7 +3370,7 @@ Same contract applies to severed heads / appendages? Not yet — those route thr
 | **Biological** | Donor's `db.organ_name` is in the target species' organ spec | `get_species_organs(target_species)[organ_name]` — picks display_location if distinct from container, else container |
 | **Cyberware** | Donor declares `db.target_container` and / or `db.target_display_locations` | Item-side overrides; the donor doesn't need an entry in the species spec |
 
-Cross-species gate runs first: `donor_item.db.compatible_species` (stamped `[source_species]` at harvest by `_configure_harvested_item`) must include the target's species or the picker shows nothing. Legacy items pre-dating this field fall back to `[source_species]` via the existing harvest provenance.
+Cross-species gate runs first: `donor_item.db.compatible_species` (stamped `[source_species]` at harvest by `_configure_harvested_item`) must include the target's species or the picker shows nothing. Legacy items pre-dating this field fall back to `[source_species]` via the existing harvest provenance. An item with neither field is still listed by the picker, but the install resolver refuses it (#3070), so the two doors disagree about it. For an ability module the picker offers only free matching hardpoints.
 
 Each slot is tagged `(empty)` or `(occupied)` based on the slot organ's current HP. Surgeon can still pick occupied slots — the resolver replaces — but the tag warns. Multi-slot capacity (cybernetic limb augmentation — Doctor Octopus arms) is future work and will plug into the same `target_display_locations` declaration without rework.
 
@@ -3522,8 +3391,8 @@ Two fixes, two surgical edits:
 * `commands/CmdOperate.py` — multi-source suture picker, species-filtered install picker
 * `commands/CmdSurgical.py` — detached-parts filter in `_resolve_target`
 * `world/search.py` — NPC-fallback word-boundary fall-through
-* `world/tests/test_severance_helpers.py` — 13 tests covering the helper module
-* `world/tests/test_operate_menu.py` — 42 tests covering picker + routing nodes
+* `world/tests/test_severance_helpers.py` — covers the helper module
+* `world/tests/test_operate_menu.py` — covers picker + routing nodes
 
 ## Medical System Summary
 
@@ -3562,7 +3431,7 @@ This specification documents a comprehensive medical system architecture providi
 - **Phase 2.8**: ✅ Procedural surgery system (`incise` / `harvest` / `install` / `suture` / `amputate`) (Completed June 2026)
 - **Phase 2.9**: ✅ `operate` charting command — menu-driven surgery planning (Completed June 2026)
 - **Phase 2.10**: ✅ Severance helper module, sutured-stump outcome flavour, install picker species filter, combat-amputation incision symmetry, corpse-side stump progression (decay-aware + event-driven sync), forensic blood-pool surface (`inspect` command, alias `autopsy`) (Completed June 2026)
-- **Phase 3**: 🔮 Advanced features (cybernetics implementation, multi-slot capacity, healing-tick progression) - Future development
+- **Phase 3**: 🔮 Advanced features — multi-slot capacity and healing-tick progression of stumps are 📋 UNBUILT (no issue). Cybernetics shipped as the chassis + module standard (`ANATOMY_AUGMENTS_SPEC`; #516, #526), not as a future phase.
 
 **Key Features Delivered:**
 - Hospital-grade anatomical accuracy with individual bone tracking
@@ -3579,7 +3448,7 @@ This specification documents a comprehensive medical system architecture providi
 - **Forensic Evidence Integration (Proof-of-Concept)**: Blood pools now integrate into room descriptions like graffiti, creating atmospheric crime scenes - *foundation for future dedicated forensic investigation system*
 - **Enhanced Evidence Cleaning**: Spray command now handles both graffiti and blood evidence with context-appropriate messaging
 - **Death Analysis Consistency**: Centralized death reporting ensures debug information appears for all death scenarios
-- **Medical Color Standardization**: All medical-related messages now use consistent |R bright red coloring
+- **Medical Color Standardization**: medical tick and death messages moved to |R bright red. Not every medical message uses it: `world/medical/medical_messages.py` also uses |y and |B, and the diagnose rungs, procedure interruption lines and the `operate` menu use other colours.
 
 *The implemented system provides a solid foundation for medical gameplay while maintaining Evennia compatibility and extensibility for future enhancements. Recent improvements focus on user experience quality-of-life enhancements and proof-of-concept forensic evidence management.*
 

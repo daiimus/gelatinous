@@ -1,14 +1,6 @@
 # Substances and Delivery Spec
 
 > **Status:** 🚧 **PARTIAL** — §§1-4 shipped; §5 roll-your-own remains open. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 19 claim(s) false, annotated inline**.
->
-> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
-> - The §4 delivery table lists `snort` → `CmdSnort`. **No such command or delivery tag exists.** The table is prefaced "existing or planned" but carries no planned marker.
-
-**Status**: descriptive of the three-layer model and how
-current code maps onto it.  Substance registry + effect →
-condition pipeline are scoped for a future PR, not implemented
-here.
 
 ## 0 · Purpose
 
@@ -63,10 +55,11 @@ Three layers, three independent axes:
   **Superseded 2026-09-11 — "one item, one substance" no longer
   holds.**  A recipe-composed drink or plated dish carries
   `db.drink_effects`, a `{substance_id: doses}` MAP written by
-  `world/bar.py:78`, and `_apply_substance_dose` applies every entry
-  through the same pipeline (`commands/CmdConsumption.py:210-224`; 21
-  prototypes carry it, e.g. `world/prototypes.py:3240` alcohol,
-  `:3190` tobacco_neutral, `:1894` nutrition).  That shape is
+  `make_drink` in `world/bar.py`, and `_apply_substance_dose` applies every entry
+  through the same pipeline (`commands/CmdConsumption.py`; 22
+  prototypes carry it, e.g. `DOUBLESHIFT_LAGER` alcohol,
+  `CHEWING_TOBACCO_PLUG` tobacco_neutral, `RAT_TAIL` nutrition, all in
+  `world/prototypes.py`).  That shape is
   deliberate — `BARS_AND_RECIPES_SPEC` §3-§4 owns it as an
   ingredient's `contributions` summed and capped into the drink's
   `effects`, and §6 there says it rides `apply_substance` so the
@@ -87,12 +80,17 @@ Three layers, three independent axes:
   modifier**, here or in the diagram's DELIVERY box above.  Greps for
   `delivery_magnitude` / `magnitude_modifier` / a delivery multiplier
   return nothing repo-wide.  `apply_substance`'s only dial is a plain
-  `doses` count (`world/substances/registry.py:504`): `CmdSmoke` passes
-  the default 1 per puff (`commands/CmdSmoke.py:276`), the ingestion
+  `doses` count (`apply_substance` in `world/substances/registry.py`): `CmdSmoke` passes
+  the default 1 per puff (`CmdSmoke.func`), the ingestion
   verbs pass 1 or the item's own `drink_effects` count, and
   `chug`/`devour` pass `uses_left`.  A smoked dose and an injected dose
   of the same substance are identical.  Dose count is per ITEM, never
   per delivery.
+
+  `apply` and `bandage` deliver no substance: neither calls
+  `apply_substance`, so an item's `db.substance` does nothing through
+  them.  They run the treatment path (`medical_type`) only.  A
+  substance taken through the skin is 📋 UNBUILT (no issue).
 
 ## 2 · Encoding on items
 
@@ -110,8 +108,11 @@ Optional state:
 |---|---|---|
 | Lit | Tag `("lit", "cigarette_state")` (smoke only) | bool |
 | Sealed / opened | Tag (TBD when bottles arrive) | bool |
-| Loaded (pipe) | `db.substance` set to non-null when loaded | implicit |
+| Loaded (pipe) | `db.substance` set to non-null when loaded | implicit; 📋 UNBUILT (no issue): no pipe exists |
 | Ignition charges | `db.uses_left` on the **lighter** (absent = infinite) | int / unset |
+| Substances (composed) | `db.drink_effects` | `{substance_id: doses}` map, e.g. `{"alcohol": 1}`; when set (even empty) it is used instead of `db.substance` |
+| Taste line | `db.drink_taste` | string, shown with the effect lines on each sip or bite, only on items that carry `db.drink_effects` |
+| Smoke form | `db.smoke_form` | string such as `"cigarette"`, `"joint"`, `"cigar"`: the item's noun in light / snuff / burnout lines; unset falls back by substance (cannabis → joint, else cigarette) |
 
 **Ignition source charges**: a lighter's `db.uses_left` (when
 present) is an independent charge counter, decremented per
@@ -140,21 +141,36 @@ from the original sketch below in two deliberate ways:
   model: `pain_relief` shaves `PainCondition` severity,
   `sedation` adds/stacks a capped
   `ConsciousnessSuppressionCondition(suppression_type="sedative")`.
+  `pain_inflict` adds a `PainCondition` of that severity (#498).
+  `nourish` eases a souled NPC's hunger meter by magnitude × 0.05
+  per dose; a consumer with no soul meter (players, for now) gets
+  nothing (#2074).  Food carries it through the `nutrition`
+  substance.
   Decay rides the conditions' own tick recovery — no parallel
   timing model.
-* **`ConditionSpec` (tolerance / addiction / organ damage) is not
-  built yet.**  The substrate hook shipped instead:
-  `apply_substance` increments `consumer.db.substance_doses`
-  per dose, so the future tolerance system has historical data
-  from day one.
+* **There is no generic `ConditionSpec` list.**  Tolerance and
+  addiction are `ToleranceSpec` / `AddictionSpec` fields on each
+  `Substance` (#485; see §5 item 4).  `apply_substance` also counts
+  every dose in `consumer.db.substance_doses`; the addiction
+  threshold reads that lifetime count.  Organ damage (lung damage
+  and the like) is 📋 UNBUILT (no issue).
 
-Shipped entries: `tobacco_neutral` (pain_relief 1/dose),
+Registered entries: `tobacco_neutral` (pain_relief 1/dose),
 `tobacco_noir` (pain_relief 1 + sedation 1 capped at 2 total —
-woozy ceiling, never blackout).  `apply_substance(consumer, id)`
+woozy ceiling, never blackout), `cannabis` (pain_relief 1 +
+sedation 1, cap 2), `alcohol` (pain_relief 1 + sedation 1, cap 4),
+`opium` (pain_relief 3 + sedation 2, cap 5), `guttervenom`
+(pain_inflict 3 + sedation 1, cap 3; no tolerance or addiction) and
+`nutrition` (nourish 3; no tolerance or addiction).  `apply_substance(consumer, id)`
 is the single pipeline entry point; unknown ids no-op so
 flavor-only items stay legitimate.
 
-Original sketch (kept for the ConditionSpec direction):
+Original sketch, superseded and kept for the record.  The built
+`Substance` has `effects` (severity-based), `tolerance` and
+`addiction` fields in place of `conditions`, and `flavor_bank_key`
+was removed by owner ruling 2026-09-05 (#2767); the note on
+`Substance` says the field was read by nothing and only repeated
+the substance id:
 
 ```python
 @dataclass(frozen=True)
@@ -206,12 +222,16 @@ Initial set, mapped to existing or planned commands:
 | inhale | `CmdInhale` | `inhale` | conscious |
 | drink | `CmdDrink` | `drink` | conscious; mouth not gagged |
 | eat | `CmdEat` | `eat` | conscious; mouth not gagged |
-| snort | `CmdSnort` | `snort` | conscious; nose not destroyed |
+| snort | 📋 UNBUILT (#1513) | `snort` | conscious; nose not destroyed |
 | apply | `CmdApply` | `apply` | skin contact |
+| bandage | `CmdBandage` | `bandage` | medical item only; no substance |
+| chug | `CmdChug` | `drink` | refuses medical items; every remaining use at once |
+| devour | `CmdDevour` | `eat` | refuses medical items; every remaining use at once |
 
 A single item can declare multiple delivery methods.  A pill
 might support `eat` only.  A vial might support `inject` and
-`drink`.  A pipe loaded with a substance supports `smoke`.
+`drink`.  A pipe loaded with a substance supports `smoke` (📋 UNBUILT (no issue):
+no pipe exists yet).
 
 The `CmdConsumption` commands (`eat`, `drink`, `inhale`,
 `inject`, `apply`, `bandage`) gate on delivery-method tags via
@@ -222,34 +242,34 @@ migration from the old `medical_type` strings.
 > wrong about the shipped delivery layer:**
 >
 > - **The command list is short by two.**  `CmdChug`
->   (`commands/CmdConsumption.py:1221`) and `CmdDevour` (`:1277`) also
+>   and `CmdDevour` (both in `commands/CmdConsumption.py`) also
 >   gate on `supports_delivery` (`drink` / `eat` respectively) and
->   apply every remaining use at once via `_apply_full_dose` (`:231`).
+>   apply every remaining use at once via `_apply_full_dose`.
 > - **Most of the Prerequisites column is intent rather than code —
 >   but the consciousness rows are enforced one layer up.**
 >   `CmdInject` performs no vein-access and no armor check whatsoever
->   (`:465-521`); `apply` enforces no skin contact; and there is no gag
+>   (`CmdInject.func`); `apply` enforces no skin contact; and there is no gag
 >   mechanic anywhere in the repo — the only `gag` in the tree is
 >   combat prose — so the `eat` / `drink` row describes a check nothing
 >   could make today.  "Conscious", however, IS honoured: the
 >   `UnconsciousCmdSet` REPLACES the character cmdset entirely and
->   carries no consumption verb at all (`commands/default_cmdsets.py:71-113`,
+>   carries no consumption verb at all (`UnconsciousCmdSet` in `commands/default_cmdsets.py`,
 >   with `no_objs = True` since #2528 so room fixtures can't hand one
 >   back), so an unconscious character cannot `eat` / `drink` /
 >   `inhale` / `inject` / `chug` / `devour` / `smoke`.  What is
 >   unenforced is the THIRD-PARTY path: `check_medical_requirements`
 >   refuses a medical procedure on an unconscious patient (`:328-333`)
->   and `CmdInhale` checks its target explicitly (`:1173`), but the
+>   and `CmdInhale` checks its target explicitly (`CmdInhale.func`), but the
 >   other verbs let a conscious character put a non-medical substance
 >   into an unconscious one — and that is partly deliberate, because
 >   `check_consent` grants the free path for a target that cannot
->   contest (`world/consent.py:62-63`, `:210-212`), which is what lets
+>   contest (`can_contest` and `check_consent` in `world/consent.py`), which is what lets
 >   a medic dose a patient who is out cold.  As a PRESENTATION failure
 >   the column is the same class as the `snort` row, tracked in #1513.
 > - **The one prerequisite that IS enforced is missing from the
 >   table: trust/consent.**  `get_item_and_target` refuses every
 >   consumption verb aimed at another character without `heal`-class
->   consent (`:176-181`), hoisted to that funnel by #2458 after the
+>   consent, hoisted to that funnel by #2458 after the
 >   medical-only gate let `inject guttervenom bob` land 3 pain on an
 >   unwilling target.
 
@@ -266,8 +286,10 @@ migration from the old `medical_type` strings.
 * **`world/medical/utils.py:use_item`** — medical-item-gated
   wrapper over `consume_use` with "crumbles away" broadcast.
 * **`commands/CmdSmoke.py`** — `light` / `smoke` / `snuff`
-  routing on the `("smoke", "delivery_method")` tag.  Cross-
-  character syntax via possessive parser.  The smokable is named
+  routing on the `("smoke", "delivery_method")` tag.  `light`
+  alone takes a possessive (`light <person>'s cigarette`): it lights a
+  smokable in another character's hand with the caller's lighter.
+  `smoke` and `snuff` act only on the caller's own hands.  The smokable is named
   through the core matcher over the smokables in the hands
   (`_held_smokables`, #3783): key or alias, ordinals (`2nd cig`),
   and a held smoke grenade never answers `smoke smoke`.  Each puff applies one
@@ -275,8 +297,13 @@ migration from the old `medical_type` strings.
   burns one `db.uses_left` charge per light (#803): unset =
   infinite (Zippo), zero → the lighter announces its last flame
   and `delete()`s itself, with a low-charge warning at ≤3.
-* **`typeclasses/smoke.py`** — `CigarettePack` is a container
-  that lazily `spawn`s its cigarettes on first open.  Its
+* **`typeclasses/smoke.py`** — `CigarettePack` fills itself to
+  `capacity` cigarettes when it is created, stamping its `substance`
+  on each.  That fill runs before a prototype's attributes land, so
+  looking at the pack repairs it first: cigarettes in it that carry
+  the wrong substance are replaced one for one (#2430), and a pack
+  never filled (`db.filled_once` unset) is filled.  Deleting the pack
+  deletes the cigarettes still in it (#2635).  Its
   `at_object_leave` self-destructs the pack when the **last**
   cigarette is drawn (#801): once no cigarette remains, it tells
   the taker "that's the last one" and `delay(0, self.delete)`s the
@@ -288,8 +315,8 @@ migration from the old `medical_type` strings.
   the words "cigarette machine" colored cyan, and a `get:false()`
   lock so the fixture itself can't be picked up.
 * **`world/substances/`** (#458) — `Substance` /
-  `SubstanceEffect` dataclasses, registry with the two tobacco
-  entries, `apply_substance` pipeline feeding the medical
+  `SubstanceEffect` dataclasses, registry with the seven
+  entries listed in §3, `apply_substance` pipeline feeding the medical
   condition system, per-substance dose bookkeeping on
   `db.substance_doses`.
 * **`commands/CmdConsumption.py`** — the medical / substance
@@ -298,18 +325,22 @@ migration from the old `medical_type` strings.
   still key off `medical_type` pending the substance-entry
   migration (item 6).
   **Correction 2026-09-11:** the cluster is EIGHT verbs — `CmdChug`
-  (`:1221`) and `CmdDevour` (`:1277`) ship too, gate on the same
-  `drink` / `eat` tags (`:1244`, `:1298`), refuse medical items
+  and `CmdDevour` ship too, gate on the same
+  `drink` / `eat` tags, refuse medical items
   outright, and apply every remaining use at once via
-  `_apply_full_dose` (`:231`).  The "pending" clause is stale in both
+  `_apply_full_dose`.  The "pending" clause is stale in both
   halves: item 6 closed in #487, and #3207 (item 3 above) settled that
   treatment pharmacology riding `medical_type`
-  (`world/medical/utils.py:1272`) is the DESIGN, not a migration
+  (`apply_medical_effects` in `world/medical/utils.py`) is the DESIGN, not a migration
   waiting on a substance entry — the registry owns the habit half
   (tolerance, addiction), the treatment path owns healing.  Also
   unrecorded here: the trust/consent gate #2458 hoisted into
-  `get_item_and_target` (`:176-181`), the one delivery prerequisite
+  `get_item_and_target`, the one delivery prerequisite
   enforced for every third-party use.
+  `eat` also serves from a room fixture's `db.snacks` list
+  (`eat <snack> [from <fixture>]`) when the eater holds no match:
+  bottomless, nothing enters inventory, and the snack's `effects`
+  map goes through `apply_substance` (#2074).
 
 ### Gaps to close (separate PRs)
 
@@ -352,7 +383,8 @@ migration from the old `medical_type` strings.
      future exit).  Dormant while fed; `craving_after` seconds
      without a dose makes it contribute 1 pain via
      `get_pain_contribution` and surface craving prose
-     (`CRAVING_PROSE` banks) every ~5 medical ticks.  Both clear
+     (`CRAVING_PROSE` banks) on the first medical tick of the craving,
+     then about every five minutes of real time (#501).  Both clear
      on the next dose.  **No hard stat penalties in v1** — the
      escalation path (withdrawal stages) is deliberate future
      growth once the flavor pass is tuned.
@@ -360,7 +392,7 @@ migration from the old `medical_type` strings.
      ticking permanently; the dormant path is two time
      comparisons.  Addiction is PC-facing; mass-NPC addiction
      would need a rethink.
-5. **Roll-your-own** — `roll` command that consumes raw
+5. **Roll-your-own** (📋 UNBUILT (no issue)) — `roll` command that consumes raw
    substance + paper + filter and spawns a cigarette / joint
    prototype with the substance baked on.
 6. ~~**More substances**~~ — ✅ cannabis, alcohol, opium shipped
@@ -381,8 +413,8 @@ migration from the old `medical_type` strings.
    consumables route through ``consume_use``, and the ingestion
    verbs no longer require ``medical_item`` — the delivery tag is
    the gate (a bottle of rotgut is drinkable without being a
-   medkit).  Prototypes: HAND_ROLLED_JOINT, ROTGUT_BOTTLE,
-   OPIUM_CIGARETTE.
+   medkit).  Prototypes: PRE_ROLLED_JOINT, ROTGUT_BOTTLE,
+   OPIUM_CIGARETTE (and GUTTERVENOM_SYRINGE from #498).
 
 ## 6 · Anti-patterns to avoid
 
@@ -416,8 +448,8 @@ verb that the smoke delivery's `light` step delegates to.
 
 * **§1 (layers)** is stable design.  Don't change without a
   refactor PR.
-* **§3 (registry)** is the next implementation target; expect
-  this section to evolve as the registry lands.
+* **§3 (registry)** grows as substances and effect kinds are
+  added; update it in the same PR.
 * **§4 (delivery methods)** can grow — add new methods as the
   game introduces them.
 * **§5 (current state)** ages quickly; refresh when substantive
