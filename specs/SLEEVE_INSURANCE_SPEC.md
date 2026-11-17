@@ -273,7 +273,7 @@ null `sleeve_uid` characters, backfilled in-process before any gate ships.
 Because players can buy from this slice on but the clone gate is Slice C,
 `create_flash_clone` **voids the lineage's record from Slice A on** (no
 gate yet, only consumption), so no clone ever leaves a row its living body
-cannot replace. Play: Iver buys, is refused twice, reads his status.
+cannot replace. Play: a developer's test character buys, is refused twice, reads its status.
 
 **Slice B — NPC return. BUILT 2026-09-25 (PR #3672), as below with these
 as-built notes:** the return answers RESLEEVED / HOLD / SUCCESSOR; the
@@ -383,7 +383,7 @@ _SPEC`, `EVMENU_PATTERNS_SPEC`, `NEW_PLAYER_EXPERIENCE_SPEC`,
 `WEB_CHARACTER_CREATION_ALIGNMENT`.
 
 Each slice: tests with controls against master, the adversarial review,
-played live as Iver, then the spec promoted or amended.
+played live with a test character, then the spec promoted or amended.
 
 ## 6 · Deferred, on purpose
 

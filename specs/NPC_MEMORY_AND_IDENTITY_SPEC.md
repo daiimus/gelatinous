@@ -292,7 +292,7 @@ feeds it from speech. Poses and other room events still do not.
 > **primary** — the one name used for display, pose and search. The alias list
 > keeps **everything**: setting a new primary shifts the old one down the list
 > rather than discarding it. So an NPC who coined "the Toe Guy" and is later
-> told "I'm Iver" calls you Iver and *still knows both*. This supersedes the
+> told "I'm Alice" calls you Alice and *still knows both*. This supersedes the
 > "sticky nickname" wording below, which read as the nickname staying primary;
 > what is sticky is the MEMORY, not the display slot. Eventually the whole list
 > becomes visible through the remember/memory interface; for now only NPCs hold
