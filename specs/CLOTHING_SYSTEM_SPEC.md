@@ -3,9 +3,9 @@
 > **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
-> - "Phase 3: Advanced Features 📋 PENDING — layer conflict detection and resolution" is **stale**; it is fully implemented in `clothing_mixin.wear_item`. Staff targeting ships as `CmdDress`/`CmdUndress`. (Precision, 2026-09-11: those two are `cmd:all()` PLAYER verbs gated on trust or incapacity — `commands/CmdClothing.py:834`, `:1060`, classes at `:813` and `:1041`. No staff-only clothing verb exists, and the `@wear` / `@remove` commands sketched in §Staff Commands were never built.)
-> - **"Meaningful transition validation" — style changes requiring both a `coverage_mod` AND a `desc_mod` — was NEVER IMPLEMENTED and must not be.** `can_style_property_to()` checks membership only (`typeclasses/items.py:343-351`). 35 of the 60 style states in `world/prototypes.py` would be refused if the rule were enforced, every restore-to-`normal` among them. See §Style Validation and §Key Design Decisions.
-> - **`desc_mod` values do not combine.** `get_current_worn_desc()` (`typeclasses/items.py:321-341`) returns the FIRST non-empty `desc_mod` in sorted property order and stops, and a `desc_mod` **replaces** the whole `worn_desc`. The combined-sentence examples in §Multi-Property Combination Examples are not what renders. `coverage_mod` values DO combine.
+> - "Phase 3: Advanced Features 📋 PENDING — layer conflict detection and resolution" is **stale**; it is fully implemented in `clothing_mixin.wear_item`. Staff targeting ships as `CmdDress`/`CmdUndress`. (Precision, 2026-09-11: those two are `cmd:all()` PLAYER verbs gated on trust or incapacity — `CmdDress` and `CmdUndress` in `commands/CmdClothing.py`, both `locks = "cmd:all()"`. No staff-only clothing verb exists, and the `@wear` / `@remove` commands sketched in §Staff Commands were never built.)
+> - **"Meaningful transition validation" — style changes requiring both a `coverage_mod` AND a `desc_mod` — was NEVER IMPLEMENTED and must not be.** `can_style_property_to()` checks membership only (`typeclasses/items.py`). 35 of the 60 style states in `world/prototypes.py` would be refused if the rule were enforced, every restore-to-`normal` among them. See §Style Validation and §Key Design Decisions.
+> - **`desc_mod` values do not combine.** `get_current_worn_desc()` (`typeclasses/items.py`) returns the FIRST non-empty `desc_mod` in sorted property order and stops, and a `desc_mod` **replaces** the whole `worn_desc`. The combined-sentence examples in §Multi-Property Combination Examples are not what renders. `coverage_mod` values DO combine.
 
 ## Implementation Status: CORE COMPLETE ✅
 
@@ -34,8 +34,8 @@ The Clothing System extends the longdesc foundation to provide wearable items th
 ### Shared Body Location System
 Clothing uses the exact same body location constants as longdesc:
 - **Consistent mapping**: Clothing coverage and longdesc locations use identical constants
-- **Single source of truth**: `world/combat/constants.py` defines locations for both systems
-- **Validation harmony**: Same validation rules apply to both clothing coverage and longdesc locations
+- **Single source of truth**: body locations come from the species registry (`default_longdesc_locations` in `world/anatomy/species.py`); `world/combat/constants.py` copies the human set
+- **No coverage validation**: nothing checks a garment's `coverage` list against the body's locations at runtime; a misspelt location is accepted and covers nothing
 
 ### Coverage Rules
 - **Hidden longdescs**: When clothing covers a body location, that location's longdesc is not displayed
@@ -102,7 +102,7 @@ Clothing uses the exact same body location constants as longdesc:
 # Items become clothing simply by having coverage and worn_desc populated
 # All functionality implemented in base Item class via AttributeProperty
 
-class Item(DefaultObject):
+class Item(ObjectParent, DefaultObject):
     """
     Base item class with optional clothing capabilities.
     Items become wearable when coverage and worn_desc are set.
@@ -125,8 +125,12 @@ class Item(DefaultObject):
     # Examples: "leather", "steel", "silk", "kevlar", "titanium"
     material = AttributeProperty("", autocreate=True)
     
-    # Layer priority for stacking items (higher = outer layer)
-    layer = AttributeProperty(2, autocreate=True)
+    # Layer (higher = outer layer) is a property, not an AttributeProperty:
+    # a stored `layer` attribute wins; otherwise world.style.derive_rung
+    # reads it from the garment's name ('coat' is 4, 'boots' 5), and a
+    # name that matches nothing is layer 1.
+    @property
+    def layer(self): ...
     
     # Multiple style properties for combination states
     style_properties = AttributeProperty({}, autocreate=True)
@@ -149,6 +153,8 @@ class Item(DefaultObject):
         """Check if this item can be worn as clothing"""
         return bool(self.coverage) and bool(self.worn_desc)
 ```
+
+The disguise attributes (`is_disguise_item`, `disguise_essential`, `disguise_type_id`, `disguise_weight`, `disguise_adjective`, `worn_sdesc_short`) also live on `Item`; see IDENTITY_RECOGNITION_SPEC §Disguise Items.
 
 ### Coverage System Design
 
@@ -228,8 +234,9 @@ Both want the same missing idea: **a garment can cover a location without
 concealing it.**
 
 Sketch, not a decision — the cheapest shape is likely a per-garment
-`sheer` flag (or a per-location set) consulted by
-`_build_clothing_coverage_map`: a sheer garment still registers for layering,
+`sheer` flag (or a per-location set) consulted where the coverage map is
+built (`coverage_from_worn_stack`, shared by living bodies, corpses and
+severed parts): a sheer garment still registers for layering,
 armour and removal rules, but the appearance layer renders the body longdesc
 underneath *as well as* the garment rather than instead of it. That keeps the
 mechanical meaning of coverage intact and changes only what is shown.
@@ -240,12 +247,12 @@ being sheer); whether armour and combat targeting should see through it at all;
 and how two sheer layers stack.
 
 ### ANSI Color System Integration
-Clothing items support primary and secondary color attributes for enhanced visual immersion:
+A clothing item has one `color` attribute. A `{color}` token in its current worn description is replaced by that colour's ANSI code from `COLOR_DEFINITIONS`:
 
 ```python
 # Color definitions using Evennia ANSI constants
 COLOR_DEFINITIONS = {
-    "black": "|x",        # Black
+    "black": "|=l",       # Black (256-colour dark grey)
     "red": "|r",          # Red  
     "green": "|g",        # Green
     "yellow": "|y",       # Yellow
@@ -278,13 +285,15 @@ BLUE_JEANS = {
 }
 ```
 
+A colour name that is not in `COLOR_DEFINITIONS` turns the `{color}` token into nothing, so the word shows in the default colour. Most colour names the prototypes use (grey, charcoal, brown, amber, olive and others) are not in the table.
+
 ### Color and Material Enhanced Descriptions
-Clothing descriptions can dynamically incorporate color and material information for future use:
+`Item._process_color_codes` in `typeclasses/items.py` fills the `{color}` token. It runs on the current worn description (the active `desc_mod`, or `worn_desc`) before pronoun tokens are resolved. `material` is stored on the item, but no worn description reads it.
 
 ```python
-def get_colored_description(self):
-    """Return description with ANSI color codes applied"""
-    desc = self.worn_desc
+def _process_color_codes(self, text):
+    """Replace {color} in the current worn description with an ANSI code"""
+    desc = text
     
     # Replace color placeholders with actual ANSI codes
     if self.color:
@@ -318,11 +327,15 @@ FULL_ROBE_COVERAGE = ["chest", "back", "abdomen", "groin", "left_arm", "right_ar
 ```
 
 #### Layering System
-- **Layer 1**: Undergarments (underwear, undershirts)
-- **Layer 2**: Base clothing (shirts, pants, dresses)
-- **Layer 3**: Outer wear (jackets, coats, robes)
-- **Layer 4**: Accessories (belts, jewelry) 
-- **Layer 5**: Outerwear (cloaks, heavy coats)
+Layers run 0 to 5; higher is further out. A garment that sets its own `layer` keeps it; otherwise its name picks the layer from `RUNGS` in `world/style.py`:
+- **Layer 0**: underwear, undershirts, socks, stockings, tights
+- **Layer 1**: shirts, trousers, skirts, dresses, wigs, watches, scrubs; also any garment whose name matches nothing
+- **Layer 2**: vests, hoodies, sweaters, coveralls, masks, balaclavas, respirators, glasses
+- **Layer 3**: jackets, blazers, harnesses, hoods, slickers
+- **Layer 4**: coats, robes, ponchos, aprons, cloaks
+- **Layer 5**: footwear, hats, caps, helmets, gloves, belts, ties, scarves, goggles
+
+Two garments on the same layer at the same location cannot both be worn, a garment cannot go on under one already worn on a higher layer, and a higher layer blocks removal of what is under it.
 
 ### Dynamic Styling System
 
@@ -330,8 +343,8 @@ FULL_ROBE_COVERAGE = ["chest", "back", "abdomen", "groin", "left_arm", "right_ar
 Each clothing item can have multiple wear configurations that modify both coverage and appearance:
 
 **Core Style Commands:**
-- `rollup <item>` / `unroll <item>` - Roll sleeves, cuffs, pant legs, or hoods up/down
-- `zip <item>` / `unzip <item>` - Zip or unzip jackets, boots, bags, etc.
+- `rollup <item>` / `unroll <item>` - the garment's adjustable feature: roll or unroll sleeves, loosen or straighten a tie, raise or lower a hood
+- `zip <item>` / `unzip <item>` / `button <item>` / `unbutton <item>` - close or open a worn garment's closure, zipped or buttoned, whichever it declares
 
 **Style Configuration Examples:**
 ```python
@@ -420,13 +433,13 @@ jacket = {
 ```
 
 > **CORRECTED 2026-09-11 (#2445 item 8).** The **coverage** half of this example
-> is exactly what ships. `get_current_coverage()` (`typeclasses/items.py:289-319`)
+> is exactly what ships. `get_current_coverage()` (`typeclasses/items.py`)
 > walks every active property in sorted order and applies all of their
 > `coverage_mod` lists cumulatively, so combination 4 really does reduce to
 > `["back"]`.
 >
 > The **description** half does not ship. `get_current_worn_desc()`
-> (`typeclasses/items.py:321-341`) returns the FIRST non-empty `desc_mod` in
+> (`typeclasses/items.py`) returns the FIRST non-empty `desc_mod` in
 > sorted property order and stops. Two consequences:
 >
 > - `desc_mod` values never concatenate. In combination 4 the code renders the
@@ -439,8 +452,8 @@ jacket = {
 >   the fragment-style values used above (`"with sleeves rolled up"`, `"zipped
 >   tight against the cold"`, `"hanging open"`) are not how live garments are
 >   authored. All 35 non-empty `desc_mod` values in `world/prototypes.py` are
->   complete standalone worn descriptions — see `WORK_COVERALLS`,
->   `world/prototypes.py:3833-3848`.
+>   complete standalone worn descriptions — see `WORK_COVERALLS`
+>   in `world/prototypes.py`.
 >
 > Authors should therefore write each state's `desc_mod` as a full description
 > that reads correctly on its own, and accept that when two properties are both
@@ -449,65 +462,70 @@ jacket = {
 
 #### Style Validation
 - **Configuration check**: Commands only work if item has the required style_configs
-- **Meaningful transition validation**: Style changes require both coverage_mod and desc_mod to be populated
-- **Defensive command validation**: Commands prevent transitions that would have no meaningful effect
-- **IC failure messages**: "The shirt doesn't have sleeves to roll up." / "The jacket doesn't have a zipper."
+- **Meaningful transition validation**: none. A style change needs only a state the garment declares; its `coverage_mod` and `desc_mod` may each be empty (see note below)
+- **Defensive command validation**: Commands refuse a state the garment does not declare, or the state already current; nothing tests whether a change is meaningful
+- **IC failure messages**: "The shirt doesn't have anything to roll up." / "The jacket doesn't have a zipper."
 - **State tracking**: Items remember their current style_properties across sessions
-- **Layer interaction**: Style changes check for layer conflicts with other worn items
+- **Layer interaction**: none. A style change re-seats the garment at its new coverage and never refuses on a layer conflict (see note below)
 
-> **CORRECTED 2026-09-11 (#2445 item 8).** Of those six bullets, two are
+> **CORRECTED 2026-09-11 (#2445 item 8).** Of those six bullets as first written, two are
 > honoured as written, one is honoured more narrowly than it reads, and three
 > are not honoured at all.
 >
-> **Honoured.** *Configuration check* — `commands/CmdClothing.py:449` and `:553`
-> refuse before any other style check if the garment declares no `adjustable` /
+> **Honoured.** *Configuration check* — `CmdRollUp.func` and `CmdZip.func` in
+> `commands/CmdClothing.py` refuse before any other style check if the garment declares no `adjustable` /
 > `closure` entry. *State tracking* — `style_properties` is a persisted
 > `AttributeProperty` (`typeclasses/items.py:208`).
 >
 > **Meaningful transition validation — never shipped, and must not be.**
-> `Item.can_style_property_to()` (`typeclasses/items.py:343-351`) checks
+> `Item.can_style_property_to()` (`typeclasses/items.py`) checks
 > membership only, and says why: *"Always allow transitions to valid states -
 > the validation is structural, not functional."* The both-populated rule would
 > break the shipped wardrobe: of the 60 style states declared in
 > `world/prototypes.py`, **35 leave `coverage_mod` and/or `desc_mod` empty, and
 > all 24 prototypes that declare `style_configs` carry at least one of them** —
-> including every one of the 12 restore-to-`normal` states (`WORK_COVERALLS`,
-> `world/prototypes.py:3835`), the dust poncho's `unzipped`, which is also its
-> DEFAULT state (`DUST_PONCHO`, `world/prototypes.py:3941`, `:3944`), the
+> including every one of the 12 restore-to-`normal` states (`WORK_COVERALLS`), the dust poncho's `unzipped`, which is also its
+> DEFAULT state (`DUST_PONCHO`), the
 > slicker's `hood_down` (`SEALED_SLICKER`), and the thermal's `rolled`, which
-> changes prose without changing coverage (`world/prototypes.py:4009-4012`).
+> changes prose without changing coverage (`THERMAL_SHIRT`).
 > Under this rule nothing could ever be unrolled, unsnapped, lowered or
 > straightened again. This spec's own boot example above (`zipped`/`unzipped`,
 > both with an empty `coverage_mod`) fails it too.
 >
 > **Defensive command validation — honoured, but structurally rather than
 > semantically.** The commands refuse a property the garment does not declare
-> (`:449`, `:553`), a target state the garment does not declare
-> (`_target_style_state`, `commands/CmdClothing.py:383-394`, called at `:455`
-> and `:561`), and a state that is already current (`:464`, `:570`) — that last
+> (the configuration check above), a target state the garment does not declare
+> (`_target_style_state` in `commands/CmdClothing.py`, called from both
+> commands), and a state that is already current — that last
 > one is the only sense in which "a transition with no effect" is prevented.
 > Nothing tests whether a change would be *meaningful*. One consequence: the
-> `"That wouldn't change anything about the ..."` refusal still present at
-> `:469` and `:575` is unreachable, because its target state was read out of
+> `"That wouldn't change anything about the ..."` refusal still present in
+> both commands is unreachable, because its target state was read out of
 > `style_configs` a few lines earlier, so the guard it sits behind cannot fail.
 >
 > **IC failure messages — half stale.** The zipper line is verbatim
-> (`commands/CmdClothing.py:555`). The sleeve line is not: the rollup refusal
+> (`CmdZip.func`). The sleeve line is not: the rollup refusal
 > reads `The <item> doesn't have anything to roll up.`
-> (`commands/CmdClothing.py:451`) — phrased from the command rather than from
+> (`CmdRollUp.func`) — phrased from the command rather than from
 > sleeves, which is what the garment-driven targeting of #2742 requires, since
 > `rollup` now also reaches hoods and neckties. `button`/`unbutton` add a
-> third: `The <item> doesn't have buttons.` (`:557`).
+> third: `The <item> doesn't have buttons.` `unroll` on a garment with no
+> adjustable feature says `The <item> doesn't have anything to unroll.` A
+> garment that declares the property but none of the states the verb can
+> reach gets `There's no way to <roll up|unroll|close|open> the <item>.` A
+> change to the state already current gets `The <item> is already <state>.`,
+> the state reading `rolled up`, `zipped up`, `unbuttoned`, `hood down` and so
+> on; `unroll` on a garment that is not rolled says `already straight`.
 >
 > **Layer interaction — not implemented, and the gap is reachable.** A style
 > change never consults layering and never refuses on it. It **re-seats** the
 > garment: `set_style_property` calls `Character.refresh_worn_coverage`
-> (`typeclasses/items.py:370-376` → `typeclasses/clothing_mixin.py:613-655`),
+> (`Item.set_style_property` → `refresh_worn_coverage` in `typeclasses/clothing_mixin.py`),
 > which lifts the item out of `worn_items` everywhere and re-inserts it by
 > `layer` at its new coverage — which is what lets the layer beneath surface
 > the moment a sleeve rolls (#2398). Layer *conflict* detection remains a
-> **wear**-time rule only (`clothing_mixin.wear_item`, `:116-146`;
-> `clothing_mixin.blocking_garments`, `:31-61`). Record this as a gap, not a
+> **wear**-time rule only (`clothing_mixin.wear_item` and
+> `clothing_mixin.blocking_garments`). Record this as a gap, not a
 > ruling: a state whose `coverage_mod` ADDS a location can seat a garment where
 > `wear_item` would have refused it — `hood_up` on the tox-sealed slicker adds
 > `+head` at layer 3, the same layer as `HOODIE_HOOD_UP`, and the developer
@@ -520,8 +538,9 @@ jacket = {
 > exist anywhere in the codebase — a repo-wide grep for `validate_style` returns
 > nothing. The sketch below was never built, and the both-populated rule at its
 > heart is the one corrected immediately above. The validation that did ship is
-> split between `Item.can_style_property_to()` (`typeclasses/items.py:343`) and
-> the two style commands (`commands/CmdClothing.py:423-492` and `:518-598`).
+> split between `Item.can_style_property_to()` (`typeclasses/items.py`) and
+> the two style commands (`CmdRollUp.func` and `CmdZip.func` in
+> `commands/CmdClothing.py`).
 > Kept because it records the reasoning the design started from.
 
 All style commands perform comprehensive validation before executing transitions:
@@ -566,20 +585,21 @@ Each clothing item has two descriptions:
 **Inventory Integration:**
 ```
 > inventory
-You are carrying:
-a black leather jacket (worn, rolled up, unzipped)
-a weathered tricorn hat (worn)  
-a steel dagger
-some copper coins
-a worn leather pouch
+Wearing:
+  black leather jacket (rolled up)
+  weathered tricorn hat
 
-# Other examples:
-a denim jacket (worn, unzipped)
-a cotton shirt (worn, rolled up)  
-leather boots (worn)
+Carrying:
+  steel dagger
+  copper coins
+  leather pouch
+
+Held:
+Nothing is in your left hand.
+Nothing is in your right hand.
 ```
 
-**Default State Convention**: Items showing only `(worn)` are in their default state with all style properties set to "normal" (e.g., zipped and unrolled). Only non-default style states are displayed, keeping the interface clean while providing complete information.
+**Default State Convention**: A worn garment with no bracket shows no off-default state. For each style property, the default is the first state the garment declares with both `coverage_mod` and `desc_mod` empty. Only two off-default states are named: `rolled up` (adjustable) and `unzipped` (closure). Other states (buttoned, open, loosened, hood up, zipped) are never shown, and a property that has no state with both fields empty never shows in the bracket.
 
 **Appearance Display:**
 ```
@@ -656,6 +676,17 @@ unwear boots
 remove all
 ```
 
+#### `dress <target> in <item>` / `undress <target> [<item>]`
+**Purpose**: Put a garment from your inventory on someone or something, or take one garment or all of them off into your inventory  
+**Syntax**: `dress <target> in <item>`, `undress <target>` or `undress <target> <item>`  
+Works freely on a target who is unconscious, dead or restrained, and on a severed part. A conscious, free target must have trusted you for the `dress` class (see TRUST_AND_CONSENT_SPEC). Corpses and severed parts can be dressed and undressed.  
+**Examples**:
+```
+dress corpse in jacket
+undress corpse
+undress corpse jacket-2
+```
+
 ### Style Commands
 
 #### `rollup <item>` / `unroll <item>`
@@ -664,13 +695,13 @@ remove all
 **Examples**:
 ```
 rollup shirt
-unroll sleeves
+unroll shirt
 rollup 2nd jacket
 ```
 
 #### `zip <item>` / `unzip <item>`
-**Purpose**: Zip or unzip items with closures  
-**Syntax**: `zip <item>` or `unzip <item>`  
+**Purpose**: Close or open a worn garment's closure, zipped or buttoned, whichever it declares  
+**Syntax**: `zip <item>`, `unzip <item>`, `button <item>` or `unbutton <item>`  
 **Examples**:
 ```
 zip jacket
@@ -678,8 +709,10 @@ unzip boots
 zip up coat
 ```
 
+All clothing verbs are refused while you are channelling. Removing armour with a stuck grenade warns you and the room, and the grenade stays on the armour. A single-use garment (issue clothing) tears apart as it comes off and is gone.
+
 ### Staff Commands
-Following longdesc pattern, staff can manage clothing on other characters using OOC commands:
+📋 UNBUILT (not decided). No staff clothing command exists; `dress` and `undress` are the player verbs. The sketch, following the longdesc pattern:
 ```
 @wear <character> <item>     - Force wear item on character
 @remove <character> <item>   - Force remove item from character
@@ -691,7 +724,7 @@ Following longdesc pattern, staff can manage clothing on other characters using 
 1. **Get all worn clothing** in layer order (outer to inner)
 2. **Build coverage map** of which locations are covered by which items
 3. **For each body location** (in anatomical display order):
-   - If covered by clothing: Add outermost clothing's worn_desc for that location
+   - If covered by clothing: Add outermost clothing's worn_desc for that location. Each garment's description appears once, at the first location it shows on in display order; a left/right pair collapses into one line only when neither side is covered
    - If not covered: Add character's longdesc for that location (if set)
 4. **Apply paragraph formatting**: Feed all descriptions into existing `_format_longdescs_with_paragraphs()` system
 5. **Regional breaking**: Use existing anatomical region logic for smart paragraph breaks
@@ -704,16 +737,16 @@ When multiple items cover the same location:
 - **Smart layering**: System prevents logical conflicts (can't wear shirt over jacket)
 
 ### Coverage Validation
-- **Anatomy checking**: Can only wear items covering locations the character has
+- **Anatomy checking** 📋 UNBUILT (not decided): wear does not check that the wearer has the locations the item covers
 - **Layer conflicts**: Prevent wearing conflicting items in wrong order
-- **Slot limits**: Reasonable limits on items per location (e.g., one hat, two rings)
+- **Slot limits** 📋 UNBUILT (not decided): there is no per-location item count; the only limit is one garment per layer per location
 
 ## Data Storage
 
 ### Character Clothing Storage
 ```python
 # In Character class
-worn_items = AttributeProperty({}, autocreate=True)
+worn_items = AttributeProperty({}, category="clothing", autocreate=True)
 
 # Structure:
 {
@@ -726,10 +759,12 @@ worn_items = AttributeProperty({}, autocreate=True)
 
 ### Clothing Item Properties
 ```python
-# In Clothing class
+# On the base Item class (typeclasses/items.py)
 coverage = AttributeProperty([], autocreate=True)            # Base body locations covered
 worn_desc = AttributeProperty("", autocreate=True)           # Base description when worn
-layer = AttributeProperty(2, autocreate=True)                # Layer priority
+# layer is a property, not an AttributeProperty: a stored "layer" attribute wins;
+# otherwise it is derived from the garment's name (world.style.derive_rung), else 1.
+# Rungs run 0-5 (CLOTHING LAYERS in world/combat/constants.py); higher is further out.
 style_properties = AttributeProperty({}, autocreate=True)    # Current style states
 style_configs = AttributeProperty({}, autocreate=True)       # Style variations (optional)
 ```
@@ -738,21 +773,20 @@ style_configs = AttributeProperty({}, autocreate=True)       # Style variations 
 
 ### With Longdesc System
 - **Shared constants**: Both systems use `world/combat/constants.py` body locations
-- **Visibility override**: `_get_visible_longdescs()` checks clothing coverage
+- **Visibility override**: `_get_visible_body_descriptions()` checks clothing coverage
 - **Appearance assembly**: `return_appearance()` combines clothing and longdescs
 - **Paragraph formatting**: Clothing descriptions participate in smart formatting
 
 ### With Inventory System
-- **Wearable detection**: Items with `coverage` property are wearable
-- **Worn item display**: Inventory command shows `(worn)` indicator for equipped items
-- **Style state display**: Worn items show current style states: `(worn, rolled up, unzipped)`
-- **Comprehensive status**: Players see full clothing configuration at a glance in inventory
+- **Wearable detection**: `item.is_wearable()` is true when the item has both `coverage` and `worn_desc`
+- **Worn item display**: `inventory` lists worn items under a **Wearing:** heading
+- **Style state display**: a worn item that is rolled up or unzipped shows it in brackets, for example `blue jeans (rolled up)`. Only those two are shown, and only when the garment also declares a plain state (empty `coverage_mod` and `desc_mod`) for that property (`CmdInventory._get_style_state_display` in `commands/CmdInventory.py`); states such as `loosened`, `hood_up` or `open` do not appear
 - **Transfer rules**: Can't drop worn items, must remove first
 - **Unified interface**: Players use standard `inventory` command to see all items including worn status
 
 ### With Combat System
 - **Armor integration**: Clothing can provide damage reduction
-- **Targeting modifiers**: Covered locations harder to target precisely
+- **Targeting modifiers**: covering a location does not make it harder to hit. Armour does change aim: an attacker with Intellect 3 or more is less likely to aim at a vital location carrying armour rating 4 or more, and more likely to aim at an unarmoured vital one (`select_hit_location` in `world/medical/utils.py`)
 - **Equipment visibility**: Combat messages reflect what's visible vs covered
 
 ## Technical Implementation
@@ -761,13 +795,12 @@ style_configs = AttributeProperty({}, autocreate=True)       # Style variations 
 Instead of separate clothing classes, wearable items are identified by the presence of clothing-specific attributes:
 
 ```python
-def is_wearable(item):
-    """Check if an item is wearable clothing"""
-    return hasattr(item, 'coverage') and bool(item.coverage)
+def is_wearable(self):            # Item method, typeclasses/items.py
+    """Check if this item can be worn as clothing"""
+    return bool(self.coverage) and bool(self.worn_desc)
 
-def is_clothing_worn(item):
-    """Check if a clothing item is currently worn"""
-    return hasattr(item, 'worn_desc') and bool(item.location and hasattr(item.location, 'worn_items'))
+# Whether an item is worn is asked of the wearer:
+# character.is_item_worn(item)    (ClothingMixin, typeclasses/clothing_mixin.py)
 ```
 
 All clothing functionality is implemented directly in the base `Item` class via AttributeProperty fields. Items become "clothing" simply by having `coverage` and `worn_desc` populated.
@@ -790,19 +823,20 @@ def is_location_covered(self, location):
     
 def get_coverage_description(self, location):
     """Get clothing description for covered location"""
+
+def is_item_worn(self, item):
+    """Check if a specific item is currently worn"""
+
+def blocking_garments(self, item):
+    """Worn garments that would stop item going on (empty list = it fits).
+    wear_item enforces the same rule; souls consult it before choosing."""
+
+def can_wear_now(self, item):
+    """Whether item would go on over what is already worn"""
 ```
 
 #### Item Methods (Clothing Functionality)
 ```python
-def can_wear_on(self, character):
-    """Check if this item can be worn by character (anatomy validation)"""
-    
-def conflicts_with(self, other_item):
-    """Check for layer or logical conflicts with another worn item"""
-    
-def get_worn_appearance(self):
-    """Get description when worn on character (current style state)"""
-    
 def get_current_coverage(self):
     """Get coverage for current combination of style states with improved logic"""
     coverage = list(self.coverage)  # Start with base coverage
@@ -863,12 +897,9 @@ def can_style_property_to(self, property_name, state_name):
     if state_name not in self.style_configs[property_name]:
         return False
     
-    # Validate meaningful transition
-    config = self.style_configs[property_name][state_name]
-    has_coverage_change = bool(config.get("coverage_mod", []))
-    has_desc_change = bool(config.get("desc_mod", "").strip())
-    
-    return has_coverage_change and has_desc_change
+    # Membership only: any state the garment declares is allowed.
+    # There is no meaningful-transition rule (see §Style Validation).
+    return True
 
 def set_style_property(self, property_name, state_name):
     """Set specific style property to given state with validation"""
@@ -879,6 +910,14 @@ def set_style_property(self, property_name, state_name):
         self.style_properties = {}
     
     self.style_properties[property_name] = state_name
+
+    # If the item is worn, re-seat its coverage on the wearer so worn_items
+    # follows the new style. Done here so every caller (commands, souls,
+    # the LLM style tool) gets it.
+    wearer = self.location
+    if wearer is not None and hasattr(wearer, "refresh_worn_coverage"):
+        if wearer.is_item_worn(self):
+            wearer.refresh_worn_coverage(self)
     return True
 
 def get_style_property(self, property_name):
@@ -970,19 +1009,15 @@ def _get_visible_body_descriptions(self, looker=None):
 ### Pronoun and Color Processing
 ```python
 def get_current_worn_desc_with_perspective(self, looker=None, from_obj=None):
-    """Get current worn description with brace-token and color processing"""
-    # Get base description (considering current style state)
-    desc = self.get_current_worn_desc()
-    
-    # Process color placeholders
-    desc = self._process_color_codes(desc)
-    
-    # Process {their}/{they} brace tokens with perspective
-    if looker and from_obj:
-        from evennia.utils.funcparser import FuncParser
-        parser = FuncParser(desc)
-        desc = parser.parse(caller=from_obj, receiver=looker)
-    
+    """Worn text for one looker: style-aware, coloured, brace tokens resolved"""
+    if not self.worn_desc:
+        return ""
+    desc = self._process_color_codes(self.get_current_worn_desc())
+    if looker and from_obj and hasattr(from_obj, "_process_description_variables"):
+        # The wearer resolves {their}/{they}/... by its APPARENT gender,
+        # always in third person, even when the wearer looks at themselves.
+        return from_obj._process_description_variables(
+            desc, looker, force_third_person=True)
     return desc
 
 def _process_color_codes(self, description):
@@ -996,23 +1031,25 @@ def _process_color_codes(self, description):
         description = description.replace("{color}", color_code)
         
     return description
+```
 
 ## Command Implementation
 
 ### Wear Command Logic
 1. **Find item** in character's inventory
-2. **Validate wearability** (anatomy check, item type)
-3. **Check layer conflicts** with currently worn items
-4. **Remove conflicting items** if necessary (with confirmation)
-5. **Wear item** and update worn_items storage
-6. **Provide feedback** with appearance change summary
+2. **Validate wearability**: refuse if the item lacks `coverage` or `worn_desc`, or is already worn. There is no anatomy check
+3. **Check layer conflicts** with currently worn items: refuse if a worn garment at a shared location is on the same layer, or on a higher one (the new item would go under it)
+4. **Refuse on a conflict**, naming the garments in the way. Nothing is removed for you
+5. **Wear item** and update worn_items storage. A garment held in a hand leaves the hand only now, once the wear is going ahead
+6. **Provide feedback**: "You put on a <item>." to the wearer, and a matching line to the room
 
 ### Remove Command Logic
-1. **Find worn item** by name or location
-2. **Validate removal** (not locked, accessible)
-3. **Update worn_items** storage
-4. **Move to inventory** 
-5. **Provide feedback** with appearance change summary
+1. **Find worn item** by name among the garments worn (or `remove all`)
+2. **Warn** if a grenade is stuck to the garment; it stays stuck to it
+3. **Validate removal**: refuse if a higher-layer garment over a shared location is still on ("Remove the <item> first.")
+4. **Update worn_items** storage. The item never left the inventory, so nothing moves
+5. **Run the garment's `at_removed` hook**: single-use issue clothing tears apart and is deleted, and the wearer gets the tear message instead of "You remove..."
+6. **Provide feedback**: "You remove a <item>." to the wearer, and a matching line to the room
 
 ### Style Command Logic
 1. **Find worn item** by name
@@ -1028,63 +1065,56 @@ def _process_color_codes(self, description):
 > shipped sequence is 1, 2, 3, then:
 >
 > 4. **Ask the GARMENT for the target state.** The command no longer names it.
->    `_target_style_state()` (`commands/CmdClothing.py:383-394`) walks the
+>    `_target_style_state()` (`commands/CmdClothing.py`) walks the
 >    command's intent list — `_ADJUST_TO`, `_RESTORE_TO`, `_CLOSE_TO`,
->    `_OPEN_TO` (`:377-380`) — and takes the first state the garment's own
+>    `_OPEN_TO` — and takes the first state the garment's own
 >    `style_configs` declares; `button`/`unbutton` reverse their list so the
->    buttoned pair is preferred (`:550-551`). So `rollup` can land on
+>    buttoned pair is preferred (`CmdZip.func`). So `rollup` can land on
 >    `loosened` or `hood_up` and `button` on `buttoned`, which the hard-coded
 >    four could never reach (#2742). Prose comes from the STATE, not the
->    command (`_STYLE_PROSE`, `:353-363`).
-> 5. **Refuse only if the state is already current** (`:464`, `:570`). There is
+>    command (`_STYLE_PROSE`).
+> 5. **Refuse only if the state is already current** (`CmdRollUp.func`, `CmdZip.func`). There is
 >    NO meaningful-transition test — see §Style Validation for why enforcing one
 >    would break 35 of the 60 declared style states.
 > 6. **No layer validation happens here.** Applying the change re-seats the
 >    garment's coverage by layer instead (`Character.refresh_worn_coverage`,
->    `typeclasses/clothing_mixin.py:613`), which is what lets the layer
+>    `typeclasses/clothing_mixin.py`, called from `Item.set_style_property`), which is what lets the layer
 >    underneath surface. §Style Validation records the gap this leaves for
 >    states that ADD coverage.
 >
 > Steps 7 and 8 are correct, with one addition: the feedback is a paired
 > self-message and `msg_room_identity` broadcast whose observer names are
 > snapshotted BEFORE the change, because restyling can move the wearer's sdesc
-> (`commands/CmdClothing.py:472-490`, `:578-596`).
+> (`CmdRollUp.func`, `CmdZip.func` in `commands/CmdClothing.py`).
 
 #### Command to Property Mapping
-- `rollup/unroll` → `adjustable` property → `rolled/normal` states (could be sleeves, hood, cuffs, pant legs, etc.)
-- `zip/unzip` → `closure` property → `zipped/unzipped` states (could be zipper, buttons, laces, etc.)
-- Commands automatically detect which property they affect based on item configuration
+- `rollup`/`unroll` → `adjustable` property. `rollup` goes to the first of `rolled`, `loosened`, `hood_up` that the garment declares; `unroll` goes to `normal`, or else `hood_down` (could be sleeves, hood, cuffs, pant legs, a tie, etc.)
+- `zip`/`unzip`/`button`/`unbutton` → `closure` property. Closing goes to `zipped` or `buttoned`, opening to `unzipped` or `open`; the button verbs try `buttoned`/`open` first (could be zipper, buttons, laces, etc.)
+- Each command is fixed to one property; the target state is read from the garment's own `style_configs` (`_target_style_state` in `commands/CmdClothing.py`)
 - Items can have one, both, or neither style property configured
 
 #### Style Command Examples
 ```
 > rollup jacket
-You roll up the sleeves of your leather jacket.
+You roll up the leather jacket.
 
-> zip jacket  
-You zip up your leather jacket.
-
-> look me
-Sterling wears a black leather jacket with sleeves rolled up, zipped tight against the cold.
+> zip jacket
+You zip up the leather jacket.
 
 > unzip jacket
-You unzip your leather jacket, letting it hang open.
-
-> look me  
-Sterling wears a black leather jacket with sleeves rolled up, hanging open.
+You unzip the leather jacket.
 
 > unroll jacket
-You unroll the sleeves of your leather jacket.
-
-> look me
-Sterling wears a black leather jacket hanging open.
+You unroll the leather jacket.
 
 > rollup shirt
-The shirt doesn't have sleeves that can be rolled up.
+The shirt doesn't have anything to roll up.
 
 > zip shirt
 The shirt doesn't have a zipper.
 ```
+
+A `look` shows one style description at a time: the first non-empty `desc_mod`, in property-name order, replaces the whole `worn_desc`, so two styles never combine in one sentence.
 
 ## Future Expansion Points
 
@@ -1117,7 +1147,7 @@ The shirt doesn't have a zipper.
 ### Integration Tests ✅ COMPLETED  
 - ✅ **Longdesc + clothing visibility interaction** - Coverage hiding longdescs properly
 - ✅ **Multi-layer clothing combinations** - Layer resolution working
-- ✅ **Staff targeting for clothing management** - Admin functionality tested
+- ✅ **Third-party clothing** - `dress`/`undress`, consent-gated player verbs (no staff-only clothing verb exists)
 - ✅ **Inventory integration with worn item handling** - Worn status display working
 
 ### User Acceptance Tests ✅ COMPLETED
@@ -1137,14 +1167,14 @@ The shirt doesn't have a zipper.
 - [x] Create style commands (`rollup`, `unroll`, `zip`, `unzip`)
 
 ### Phase 2: Appearance Integration ✅ COMPLETED
-- [x] Modify `_get_visible_longdescs()` to check clothing coverage
+- [x] Modify `_get_visible_body_descriptions()` to check clothing coverage
 - [x] Implement clothing description display in appearance
 - [x] Add layer resolution logic for overlapping items
 - [x] Test appearance assembly with clothing + longdescs
 
 ### Phase 3: Advanced Features 📋 PENDING
-- [ ] Layer conflict detection and resolution
-- [ ] Staff targeting for clothing management
+- [x] Layer conflict detection (`ClothingMixin.wear_item`, `remove_item`, `blocking_garments`): a conflict is refused, never resolved for the player
+- [ ] Staff targeting for clothing management (no staff-only clothing verb exists; third-party clothing is the consent-gated `dress`/`undress`)
 - [ ] Comprehensive error handling and user feedback
 - [ ] Performance optimization and testing
 
@@ -1152,19 +1182,19 @@ The shirt doesn't have a zipper.
 
 ### Key Design Decisions
 
-**Multi-Property Style System**: Items can have multiple independent style properties (`adjustable`, `closure`) that combine to create rich variation. A jacket can be both rolled up and unzipped simultaneously, creating four distinct states with different coverage and descriptions.
+**Multi-Property Style System**: Items can have multiple independent style properties (`adjustable`, `closure`) that combine to create rich variation. A jacket can be both rolled up and unzipped simultaneously, creating four distinct states. Coverage combines across properties; descriptions do not: the first non-empty `desc_mod`, in property-name order, replaces the whole `worn_desc`.
 
 **Meaningful Transition Validation**: All style commands require both coverage changes AND description changes. This ensures every player interaction has both functional and visual impact, preventing meaningless commands.
 
 > **CORRECTED 2026-09-11 (#2445 item 8).** This decision was never implemented,
 > and the shipped wardrobe rules it out. `can_style_property_to()`
-> (`typeclasses/items.py:343-351`) admits any state the garment declares —
+> (`typeclasses/items.py`) admits any state the garment declares —
 > *"the validation is structural, not functional"* — and 35 of the 60 style
 > states in `world/prototypes.py` would be refused if the rule were enforced,
 > spread across all 24 prototypes that declare `style_configs` and taking every
 > restore-to-`normal` state with them. The `"That wouldn't change anything
 > about the ..."` refusal the commands still carry
-> (`commands/CmdClothing.py:469`, `:575`) is therefore unreachable.
+> (`CmdRollUp.func`, `CmdZip.func` in `commands/CmdClothing.py`) is therefore unreachable.
 >
 > The decision that DID ship is close in spirit and worth keeping in mind: a
 > style state must be **declared by the garment** to be reachable, and the
@@ -1177,7 +1207,7 @@ The shirt doesn't have a zipper.
 
 **Generic Property Naming**: The `adjustable` property covers any rollup/unroll functionality (sleeves, hoods, cuffs, pant legs), making the system flexible and extensible without requiring specific properties for each adjustment type.
 
-**Defensive Command Logic**: Commands perform comprehensive validation before execution, checking for capability, meaningful transitions, and current state to provide helpful feedback and prevent invalid operations.
+**Defensive Command Logic**: Before a change, the style commands check that the garment has the property, that it declares a state for this command, and that it is not already in that state, and say which check failed. There is no meaningful-transition check.
 
 **Combinatorial Coverage Calculation**: Base coverage is modified by all active style properties in deterministic order, allowing complex layering effects and partial coverage scenarios.
 
@@ -1344,11 +1374,11 @@ COMBAT_BOOTS = {
 ## Implementation Status: Enhanced Features
 
 ### Phase 1: Perspective-Aware Descriptions ✅ COMPLETED (Without $pron())
-- [x] Base clothing descriptions **implemented** with static pronouns in prototypes 
+- [x] Base clothing descriptions use `{their}`/`{they}` brace tokens, resolved per looker by the wearer's `_process_description_variables`
 - [x] Style descriptions **implemented** without `$pron()` tags (not available in prototypes)
 - [x] Character appearance system **implemented** with proper perspective handling in methods
-- [x] `get_current_worn_desc_with_perspective()` method **implemented** in Item class for future enhancement
-- [x] All prototype examples **corrected** to use static descriptions
+- [x] `get_current_worn_desc_with_perspective()` on Item is what `_get_visible_body_descriptions` uses for each visible garment's text
+- [x] Prototype worn descriptions and style `desc_mod`s use the same brace tokens; `$pron()` is not used
 
 ### Phase 2: Color & Material System Implementation ✅
 - [x] `color` and `material` AttributeProperty added to Item class
@@ -1369,4 +1399,3 @@ COMBAT_BOOTS = {
 ---
 
 **Document Status**: Enhanced with `{their}`/`{they}` brace-token integration, streamlined single-color system, and material attribute for future extensibility
-**Next Steps**: Implement Phase 2 color & material system enhancements in codebase

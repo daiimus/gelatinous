@@ -79,7 +79,15 @@ Body locations are defined as constants (similar to Mr. Hands system) to ensure:
 - **Anatomy source of truth** - foundation for all body-related systems
 
 #### Constants Structure
-Following the Mr. Hands pattern, body locations will be defined in `world/combat/constants.py`:
+Body locations are declared per species in `world/anatomy/species.py`
+(`SPECIES_DEFINITIONS[<species>]`: `default_longdesc_locations`,
+`anatomical_display_order`, `anatomical_regions`, `pair_keys`,
+`longdesc_flex_nouns`) and read through the `get_species_*` helpers there
+(`get_species_default_longdesc_locations` and the rest).
+`world/combat/constants.py` keeps human-only copies derived from the human
+entry (`DEFAULT_LONGDESC_LOCATIONS`, `ANATOMICAL_DISPLAY_ORDER`,
+`ANATOMICAL_REGIONS`, `PAIR_MERGE_KEYS`, `LONGDESC_FLEX_NOUNS`) for callers with
+no species, plus the limits below. The human values:
 
 ```python
 # Default human anatomy (auto-created on character creation)
@@ -109,6 +117,8 @@ REGION_BREAK_PRIORITY = True     # Prefer breaking between anatomical regions
 VALID_LONGDESC_LOCATIONS = set(DEFAULT_LONGDESC_LOCATIONS.keys())
 ```
 
+`MAX_LONGDESC_LOCATIONS` is defined but nothing enforces it: 📋 UNBUILT (not decided).
+
 #### Anatomy Validation System
 - **Character anatomy source of truth** - longdesc system serves as foundation for all body-related systems
 - **Dynamic validation** - only locations present in character's anatomy dictionary are settable
@@ -117,8 +127,9 @@ VALID_LONGDESC_LOCATIONS = set(DEFAULT_LONGDESC_LOCATIONS.keys())
 
 #### Schema Drift & Backfill (IMPORTANT)
 A character's `longdesc` dict is persisted **once**, at `at_object_creation`,
-as a copy of `DEFAULT_LONGDESC_LOCATIONS`. There is no automatic migration:
-adding (or reordering) a location in `DEFAULT_LONGDESC_LOCATIONS` does **not**
+as the species' default map from `get_species_default_longdesc_locations(species)`
+(human when species is unset). There is no automatic migration:
+adding (or reordering) a location in a species' default locations does **not**
 propagate to already-existing characters. Their stored dict keeps the key set
 (and order) it had at creation time.
 
@@ -163,7 +174,7 @@ for c in Character.objects.all_family():
     # PER SPECIES -- never the human-only DEFAULT_LONGDESC_LOCATIONS.
     D = get_species_default_longdesc_locations(getattr(c.db, "species", None)) or {}
     if not D:
-        continue                           # unknown species: leave it alone
+        continue                           # never taken: unknown/None species resolve to human
     cur = c.longdesc or {}
     rebuilt = {k: cur.get(k) for k in D}   # canonical order + backfill missing as None
     for k, v in cur.items():               # preserve extended anatomy
@@ -174,6 +185,10 @@ for c in Character.objects.all_family():
         updated += 1
 print(f"Updated {updated} characters")
 ```
+
+Unknown or missing species resolve to human, so check the `species` values on
+the bodies before running this: a body whose species is not a registered key
+gets human anatomy.
 
 Because the rebuild also reorders each dict into canonical order, it doubles
 as the fix for `describe/list` showing a backfilled key (e.g. `hair`) out of
@@ -187,10 +202,14 @@ position. This procedure was used to propagate the `hair` location (added in
 As of the command-merge work (issue #276), the former `@longdesc`,
 `@shortdesc`, and Evennia's default `setdesc` are unified into a single
 `describe` command (`commands/CmdCharacter.py::CmdDescribe`, `key="describe"`,
-**no aliases**). It owns all three facets of a character's appearance:
+**no aliases**). It owns five facets of a character's appearance:
 
 - **Short Description** — the main paragraph (`db.desc`), formerly `setdesc`.
 - **Keyword** — the sdesc noun (`sdesc_keyword`), formerly `@shortdesc`.
+- **Look Place** — `look_place`, how the character appears in a room by
+  default ("standing here.").
+- **Temp Place** — `temp_place`, a placement that overrides the look place and
+  is cleared when the character leaves the room.
 - **Body locations** — per-part longdesc text (the subject of this spec).
 
 `describe` is **not** aliased to `desc` to avoid colliding with Evennia's
@@ -211,7 +230,7 @@ describe left_wing "A massive feathered wing spreads in midnight black."
 ```
 
 ### Command Behavior
-- **Validation**: Location must be valid body location constant
+- **Validation**: Location must be a key in the character's own `longdesc` (`has_location`), or a pair shorthand of its species
 - **Storage**: Description stored in character database
 - **Replacement**: New description overwrites existing for that location
 - **Removal**: Empty description removes longdesc for location
@@ -223,12 +242,16 @@ describe left_wing "A massive feathered wing spreads in midnight black."
 - `describe` - Open the interactive editor menu (self only)
 - `describe short <description>` - Set the short description (`db.desc`)
 - `describe keyword <word>` - Set the sdesc keyword (`sdesc_keyword`)
+- `describe lookplace <text>` - Set the look place; `clear` resets it to "standing here."; no text shows the current value
+- `describe tempplace <text>` - Set the temp place; `clear` empties it; no text shows the current value
 - `describe <location> "<description>"` - Set one body location
 - `describe <location>` - View current description for location
 - `describe/list` - List all available body locations for this character
 - `describe/clear <location>` - Remove description for location (set to None)
+- `describe/clear` - Clear every body-location description at once (no confirmation prompt)
 
-The `keyword` and `short` sub-words are reserved one-off forms that always
+The `keyword`, `short`, `lookplace` and `tempplace` sub-words (`look_place`
+and `temp_place` also work) are reserved one-off forms that always
 operate on the caller; they are claimed before staff target resolution because
 they are neither valid body locations nor plausible character names.
 
@@ -236,16 +259,17 @@ they are neither valid body locations nor plausible character names.
 - `describe <character> <location> "<description>"` - Set longdesc on another character
 - `describe <character>` - View all set longdescs on another character
 - `describe/clear <character> <location>` - Clear specific location on another character
+- `describe/clear <character>` - Clear every body location on another character
 
 ### Interactive Editor (EvMenu)
 
 Bare `describe` (acting on self) opens an EvMenu-driven editor instead of
-printing a static list. The list is **flat**: the Short Description and Keyword
-sit above the anatomy slots so a player edits every facet of their appearance
+printing a static list. The list is **flat**: the Short Description, Keyword, Look Place and
+Temp Place sit above the anatomy slots so a player edits every facet of their appearance
 from one place. The flow:
 
 1. **List node** (`node_describe_list`): a one-per-line numbered list whose
-   first two rows are fixed and the rest are dynamic body slots. Rows render
+   first four rows are fixed and the rest are dynamic body slots. Rows render
    as `N. Label :: value` with the label column aligned so the `::` separators
    line up. The menu is rendered all-white for readability: in this palette
    `|w` is bold white and `|W` is unbold white, so **only the row numbers and
@@ -257,7 +281,13 @@ from one place. The flow:
      `(empty)`).
    - `2. Keyword :: …` — current `sdesc_keyword`, or the gendered default
      marked `(default)`.
-   - `3..N` — editable longdesc **slots**, built by `_build_longdesc_slots`:
+   - `3. Look Place :: …` and `4. Temp Place :: …` — current `look_place`
+     (default `standing here.`) and `temp_place` (or `(none)`). Each opens an
+     entry node (`node_lookplace_entry`, `node_tempplace_entry`) that takes new
+     text, `clear` (the look place resets to `standing here.`, the temp place
+     empties) or `back`/blank. It adds a full stop when the text has no end
+     punctuation, and rejects text over 200 characters and re-prompts.
+   - `5..N` — editable longdesc **slots**, built by `_build_longdesc_slots`:
      - Symmetric pairs collapse to their shorthand (`eyes`, `hands`, ...) so the
        dynamic anatomy reads as a clean, compact list.
      - An asymmetric pair (only one side present) shows that side individually.
@@ -294,19 +324,23 @@ singular form. Any brace token the resolver does not recognise survives in the
 rendered output and is surfaced as an explicit warning, so typos like
 `{thier}` are caught at authoring time rather than shipped silently. The
 preview fires after both the interactive editor save and the one-off
-`describe <location> "..."` command.
+`describe <location> "..."` command. The preview recognises only the human
+pair shorthands (`PAIR_MERGE_KEYS`), so a rat's `forelegs` gets only the
+singular line, and its lone-side line has no side word ("eye", not "left eye"),
+unlike the real render.
 
 
 ## Implementation Details
 
 ### Character Search System
-Staff targeting uses a comprehensive search system that:
-1. **Global search**: Attempts to find character globally first
-2. **Local search**: Falls back to searching locally if global fails
-3. **Location search**: Searches within caller's current location
-4. **Manual search**: Iterates through location contents for exact name matches
-5. **List handling**: Properly handles search results returned as lists vs single objects
-6. **Type validation**: Confirms target is actually a Character typeclass before proceeding
+Staff targeting uses `resolve_admin_target` (`commands/_identity_targeting.py`).
+It first looks in the caller's room for a character matching what the caller
+sees (sdesc or recognised name; a Builder can also match by key). If that finds
+nothing, it searches every Character in the game by key. If that global search
+finds more than one, the caller is told to be more specific (for example with a
+dbref) and nothing is targeted. `CmdDescribe` uses the result only if it has a
+`longdesc`; otherwise the command acts on the caller and reads the whole
+argument as a location.
 
 ### Permission Integration
 - Uses Evennia's lock system: `caller.locks.check_lockstring()`
@@ -341,13 +375,13 @@ With your administrative visibility, you see: item1 [#123], item2 [#456], weapon
 #### Template Variable System Enhancement ✅
 - **Case Sensitivity Support**: Both {They}/{their} and {they}/{their} work properly
 - **Third-Person Consistency**: All descriptions use consistent third-person perspective regardless of viewer
-- **Pronoun Processing**: Based on character's `sex[biology]` attribute with he/him/his, she/her/hers, they/them/their support
+- **Pronoun Processing**: Pronoun tokens follow the character's *apparent* gender (`world.identity.get_apparent_gender`): a disguise keyword sets it, and without one it is the real grammar gender. Male and female render he/she; everything else renders singular they (#2462)
 - **Grammar Correction**: Eliminates awkward constructions like "You carries himself"
 
 #### Wielded Items Integration ✅
-- **Hands System Integration**: Uses `hands[equipment]` attribute to determine wielded items
+- **Hands System Integration**: Reads the derived `hands` property (species-aware grasping slots backed by `held_items`; #460). A deployed integrated cyber weapon is not listed as held: it renders on its own line as the limb it has become ("<Name>'s shotgun module is their right hand.", `_format_integrated_weapon_line`) and suppresses "is holding nothing". A natural weapon (claws) never appears here and does not suppress "is holding nothing"
 - **Natural Language Display**: "drek is holding a light pistol" with proper grammar
-- **Multiple Items Support**: "holding a knife, a pistol, and a grenade" with correct articles
+- **Multiple Items Support**: "holding a knife, a pistol, and a grenade"; the renderer writes "a" before every item name, whatever its first letter
 - **Empty Hands Display**: "drek is holding nothing" for transparency
 - **Combat Readiness**: Immediate visibility of character's weapon state
 
@@ -366,11 +400,14 @@ With your administrative visibility, you see: item1 [#123], item2 [#456], weapon
 - **Clothing integration**: Clothing descriptions participate in paragraph formatting system
 
 #### Display Order (Anatomical Head-to-Toe) ✅
-1. **Head region**: head, face, left_eye, right_eye, left_ear, right_ear, neck
-2. **Torso region**: chest, back, abdomen, groin  
+1. **Head region**: hair, left_eye, right_eye, head, face, left_ear, right_ear, neck
+2. **Torso region**: chest, back, abdomen
 3. **Arm region**: left_arm, right_arm, left_hand, right_hand
-4. **Leg region**: left_thigh, right_thigh, left_shin, right_shin, left_foot, right_foot
-5. **Extended appendages**: tail, wings, tentacles (in order of creation/numbering)
+4. **Leg region**: groin, left_thigh, right_thigh, left_shin, right_shin, left_foot, right_foot
+5. **Extended anatomy**: any other key in the character's `longdesc` (tail, wings, an installed augment), in the order it was added
+
+This is the human order. Each species declares its own order and regions in
+`world/anatomy/species.py` (a rat has foreleg, hindleg and tail regions).
 
 **Current Implementation**: Uses `_format_longdescs_with_paragraphs()` method with smart breaking logic and anatomical region awareness for natural paragraph flow.
 
@@ -378,14 +415,14 @@ With your administrative visibility, you see: item1 [#123], item2 [#456], weapon
 - **Character counting**: System tracks cumulative character count as it builds description
 - **Smart breaking**: When threshold reached, insert paragraph break before next anatomical region
 - **Region respect**: Avoid breaking within anatomical regions when possible
-- **Overflow handling**: If single region exceeds threshold, break at most logical location within region
+- **Overflow handling**: Within a region, a new paragraph starts before any description that would push the paragraph past 400 characters. At a region boundary, a break happens only if the paragraph already has 280 or more characters, and the 400 check is skipped there
 - **Coverage integration**: Only visible descriptions (body longdescs + clothing longdescs) count toward thresholds
 - **Writer freedom**: No forced connecting words or narrative structure - writers control their own style
 - **Authoring convention**: Locations within a region are joined with single
   spaces; the renderer adds no capitalization or punctuation. Author each
   location as a **complete sentence** (capitalized, period-terminated) so the
   joined output reads as prose — bare fragments run together into a run-on.
-- **Constants-driven**: Uses `PARAGRAPH_BREAK_THRESHOLD`, `REGION_BREAK_PRIORITY`, and `ANATOMICAL_REGIONS` for fine-tuning
+- **Constants-driven**: Uses `PARAGRAPH_BREAK_THRESHOLD` and `REGION_BREAK_PRIORITY` (`world/combat/constants.py`) and the species' `anatomical_regions` (`get_species_anatomical_regions`)
 
 #### Paired Longdesc Collapse ✅
 Symmetric left/right paired appendages collapse into a single line when their
@@ -402,18 +439,30 @@ etc.) participates automatically with no hardcoded list.
 uncovered AND **one** of:
 - **Identical longdescs**: both sides hold the same non-empty longdesc string
   (literal equality — WYSIWYG, no normalization), OR
-- **Both cleanly severed**: both sides are fully severed (every organ in the
-  location has `wound_stage == "severed"`); the longdesc key is absent.
+- **Both cleanly severed**: both sides are fully severed (every visible wound
+  at the location has stage `severed`) and neither side has a longdesc.
 
 When eligible, the pair renders as one line and the right-side entry is
 skipped. Asymmetric coverage (one side clothed), differing prose, or a single
 amputated limb all **fail** the identity test and render each side separately.
+
+**Destroyed organs (#350)**: at a location where an organ is destroyed, the
+authored longdesc is not shown; the destruction wound is the only description
+there. Identical prose does not collapse if either side is destroyed. When both
+sides are destroyed by the same kind of injury and neither side is covered,
+they render as one plural destruction line (`_build_destroyed_pair_collapse`,
+`world.medical.wounds.get_paired_destroyed_description`).
 
 **Verbatim collapse + number tokens** (the system never rewrites player
 prose): the identical string is rendered **once, at plural number**, through
 `_process_description_variables(..., number="plural")`. Words the author
 wrapped in `{braces}` are flexed to plural; everything else renders verbatim.
 A lone survivor or single side renders the same string at `number="singular"`.
+When a single side renders, a braced pair noun takes the side: `{eyes}` on
+`left_eye` reads "left eye", and `{an arm}` on `right_arm` reads "a right arm"
+(#341). Non-pair flex nouns (`leg`, `shoulder`, ...) take no side. A
+`{they <verb> ...}` token agrees the verb with the person, not the body part
+("she walks", "they walk").
 This dissolves the old "can we safely pluralize?" failure mode — there is no
 heuristic noun-substitution and no `None` fallback; any identical pair
 collapses.
@@ -421,8 +470,9 @@ collapses.
 Number tokens (see `GRAMMAR_ENGINE_SPEC.md` §Number-Flexing Tokens):
 - **Noun** — a braced word whose singular is in the flex-noun vocabulary: the
   pair nouns (`eye`, `ear`, `arm`, `hand`, `thigh`, `shin`, `foot`; derived
-  from `PAIR_MERGE_KEYS`) **plus** the curated `LONGDESC_FLEX_NOUNS` body-noun
-  set (`leg`, `shoulder`, `hip`, `knee`, …). `{eye}`/`{eyes}` flex the noun;
+  from the species' `pair_keys`) **plus** the species' curated
+  `longdesc_flex_nouns` set (human: `leg`, `shoulder`, `hip`, `knee`, …; rat:
+  `tail`, `snout`, `whisker`, …). `{eye}`/`{eyes}` flex the noun;
   `{an eye}` additionally drops the article on plural and re-agrees `a`/`an` on
   singular. `LONGDESC_FLEX_NOUNS` is **vocabulary only** — its words are not
   anatomy locations, not pairs, and not `describe` shorthands; extend it freely
@@ -436,8 +486,10 @@ Number tokens (see `GRAMMAR_ENGINE_SPEC.md` §Number-Flexing Tokens):
   `str.format` footgun is gone; substitution is now per-token via `re.sub`).
 
 **Authoring convenience — pair shorthand**: `describe <pair> "..."` (where
-`<pair>` is a `PAIR_MERGE_KEYS` key: `eyes`, `ears`, `arms`, `hands`,
-`thighs`, `shins`, `feet`) sets, views, and clears **both** sides at once,
+`<pair>` is a key of the character's species `pair_keys`, from
+`get_species_pair_keys`: for humans `eyes`, `ears`, `arms`, `hands`,
+`thighs`, `shins`, `feet`; for rats `eyes`, `ears`, `forelegs`, `forepaws`,
+`hindlegs`, `hindpaws`) sets, views, and clears **both** sides at once,
 guaranteeing the byte-for-byte identity collapse requires. The pair keys are
 write-conveniences only — not body locations, not wearable, not render keys.
 Set the sides individually to make them differ (e.g. heterochromia).
@@ -449,9 +501,10 @@ Set the sides individually to make them differ (e.g. heterochromia).
 
 **Wounds do not gate collapse**: a wound on one side does not split the pair —
 the merged line renders once and per-side wound sentences continue to append
-through the normal wound-layering path. (Collapsing two identical per-side
-wound sentences into "both hands" is a possible future refinement, not
-currently done.)
+through the normal wound-layering path. (Collapsing two identical ordinary
+per-side wound sentences into "both hands" is 📋 UNBUILT (no issue); only a
+pair destroyed on both sides by the same injury collapses, as described under
+Destroyed organs above.)
 
 **Implementation**: `_build_paired_longdesc_collapse`,
 `_merge_paired_location`, `_get_severed_locations`,
@@ -463,7 +516,7 @@ currently done.)
 ### Visibility Rules ✅
 - **Default**: All body locations are visible unless covered by clothing
 - **Clothing Coverage**: Worn items hide covered locations and display their own descriptions instead
-- **Unset Locations**: Body parts without longdesc descriptions remain invisible
+- **Unset Locations**: A body part with no longdesc shows nothing unless it has a visible wound, which renders on its own. Organ containers the medical state knows but no longdesc names (a socket left after chrome was removed) are visited too, so their wounds show
 - **Template Processing**: All visible descriptions processed for third-person perspective consistency
 
 > **Extended 2026-09-16 (#3578) — the visibility rules are not
@@ -498,7 +551,7 @@ currently done.)
 Following the Mr. Hands AttributeProperty pattern:
 
 ```python
-# Auto-created on character creation (like Mr. Hands)
+# Seeded at character creation with the species' default locations (human shown)
 character.db.longdesc = {
     "head": None, "face": "High cheekbones and a defined jawline lend {their} face a rough calm.", 
     "left_eye": "A piercing blue eye glints with flecks of gold.", "right_eye": "A cybernetic replacement glows with a steady red LED.",
@@ -519,12 +572,10 @@ character.db.longdesc = {
 
 #### Implementation Pattern
 ```python
-# In Character typeclass (following Mr. Hands pattern)
-longdesc = AttributeProperty(
-    DEFAULT_LONGDESC_LOCATIONS.copy(),
-    category="appearance", 
-    autocreate=True
-)
+# In Character typeclass (typeclasses/characters.py)
+longdesc = AttributeProperty(None, category="appearance", autocreate=True)
+# at_object_creation seeds it with get_species_default_longdesc_locations(species);
+# return_appearance reseeds it the same way if it is ever None.
 ```
 
 ### Storage Principles
@@ -545,7 +596,7 @@ longdesc = AttributeProperty(
 ### Future Layer Integration Points
 
 #### Clothing/Equipment Coverage ✅ **COMPLETED**
-- Items define coverage areas: `coverage = ["chest", "arms"]`
+- Items define coverage areas: `coverage = ["chest", "left_arm", "right_arm"]`
 - **Coverage uses same location constants** as longdesc system for consistency
 - **Covered longdescs hidden** - base body descriptions not shown when covered
 - **Clothing longdescs displayed** - clothing items have their own appearance descriptions
@@ -560,18 +611,24 @@ longdesc = AttributeProperty(
 - **Coverage validation** - ensures clothing coverage matches character's anatomy
 
 #### Injury/Medical System
-- Injuries override or supplement base descriptions
+- Wounds append to the location's longdesc (`append_wounds_to_longdesc`); a
+  location with no longdesc still shows its wounds
+  (`get_standalone_wound_description`); severed and destroyed parts render as
+  described under Paired Longdesc Collapse
 - Temporary modifications (bandages, casts)
 - Permanent modifications (scars, prosthetics)
-- Medical condition visibility
+- Medical condition visibility: a body's dominant symptom (cyanosis, pallor,
+  ...) tints every body longdesc in place of the skintone
+  (`world.medical.appearance.get_appearance_tint`, CAPACITY_CONSUMERS spec §7.3)
 
 #### Chrome / Inorganic Rendering ✅ **SHIPPED** (anatomy-augments + cyberware arc, #511–#551)
 Cybernetic limbs/organs are no longer a future overlay — they render
 through a live inorganic layer in `typeclasses/appearance_mixin.py`:
 
 - **Inorganic location detection** — `_location_is_inorganic(location)`
-  reads the per-character organ snapshot for an `inorganic`/
-  `prosthetic_frame` organ at the location; chrome locations render in
+  reads the medical state for an organ whose `display_location` is this
+  location and whose data is `inorganic`; organs inside a body cavity are
+  ignored, so a cyber heart does not chrome the chest (#2587); chrome locations render in
   `CHROME_DEFAULT_COLOR` (`|=l`, dark steel grey — `world/combat/constants.py`)
   instead of skin tone.
 - **Side-aware chassis longdesc** — `{side}` tokens in a chassis
@@ -609,8 +666,8 @@ System below).
 - **Location validation against character's actual anatomy** (anatomy source of truth)
 - **Description length limits (1000 characters max per location)**
 - **Paragraph formatting validation (400 character break threshold)**
-- Content filtering capabilities
-- Input sanitization
+- Content filtering: 📋 UNBUILT (not decided)
+- Input sanitization: 📋 UNBUILT (not decided); only the location and the 1000-character limit are checked, and surrounding whitespace is stripped
 - **Anatomical order preservation** for display consistency
 - **Dynamic anatomy checking** - only allow longdescs for locations character actually possesses
 
@@ -697,7 +754,7 @@ System below).
 ### Initial Implementation ✅ COMPLETED
 1. ✅ **Body location constants definition** - Added to `world/combat/constants.py`
 2. ✅ **`describe` command implementation** - Complete command (`CmdDescribe`) in `commands/CmdCharacter.py`
-3. ✅ **Character appearance integration** - Enhanced `typeclasses/characters.py`
+3. ✅ **Character appearance integration** - `AppearanceMixin` in `typeclasses/appearance_mixin.py`
 4. ✅ **Comprehensive testing and validation** - Full in-game testing completed
 
 ### Development Migration ✅ COMPLETED
@@ -748,23 +805,22 @@ System below).
 
 #### 1. Constants System (`world/combat/constants.py`)
 **Status**: ✅ **IMPLEMENTED**  
-**Location**: Lines 35-77  
 **Added Constants**:
 - `DEFAULT_LONGDESC_LOCATIONS` - 22-location default human anatomy dictionary (includes `hair`)
-- `MAX_LONGDESC_LOCATIONS` - Practical limit (50 locations)  
+- `MAX_LONGDESC_LOCATIONS` - Practical limit (50 locations), not enforced: 📋 UNBUILT (not decided)  
 - `MAX_DESCRIPTION_LENGTH` - Individual description limit (1000 chars)
 - `PARAGRAPH_BREAK_THRESHOLD` - Auto-paragraph threshold (400 chars)
 - `VALID_LONGDESC_LOCATIONS` - Validation set
 - `ANATOMICAL_DISPLAY_ORDER` - Head-to-toe display sequence (head region ordered by organic recognition: hair, eyes, head, face, ears, neck)
 - `ANATOMICAL_REGIONS` - Region groupings for smart paragraph breaks
 
-#### 2. Character Typeclass Enhancement (`typeclasses/characters.py`)
+#### 2. Appearance (`typeclasses/appearance_mixin.py`, mixed into Character; `longdesc` and its seeding stay in `typeclasses/characters.py`)
 **Status**: ✅ **IMPLEMENTED**  
 **Added Methods**:
 - `longdesc` AttributeProperty with auto-creation following Mr. Hands pattern
 - `at_object_creation()` enhanced for longdesc system initialization
 - `get_longdesc_appearance()` - Main appearance assembly with paragraph formatting
-- `_get_visible_longdescs()` - Visibility filtering with clothing integration hooks
+- `_get_visible_body_descriptions()` - Visibility filtering with clothing integration hooks
 - `_format_longdescs_with_paragraphs()` - Smart paragraph formatting with region awareness
 - `_get_anatomical_region()` - Region identification for formatting logic
 - `has_location()` - Anatomy validation (anatomy source of truth)
@@ -776,12 +832,12 @@ System below).
 #### 3. Command System (`commands/CmdCharacter.py`)
 **Status**: ✅ **IMPLEMENTED**  
 **Complete Command Suite** (`describe`):
-- `describe` - Open the interactive editor (lists short desc, keyword, and every body location; pick a slot, type new text, see an instant preview)
+- `describe` - Open the interactive editor (lists short desc, keyword, look place, temp place, and every body location; pick a slot, type new text, see an instant preview)
 - `describe <location> "<description>"` - Set one body location with validation
 - `describe <location>` - View a specific location's description
 - `describe/list` - Show available body locations grouped by anatomical regions
 - `describe/clear <location>` - Clear a specific location's description
-- `describe/clear` - Clear all descriptions with confirmation
+- `describe/clear` - Clear every body-location description at once (no confirmation prompt)
 - **Admin Commands**: Staff can target other characters with proper permission checking
 - **Comprehensive Validation**: Location existence, description length, anatomy verification
 - **User-Friendly Error Messages**: Clear feedback for all error conditions
@@ -806,7 +862,7 @@ System below).
 - ✅ **Real-time assembly** without performance concerns
 
 #### Future Integration Architecture
-- ✅ **Clothing coverage hooks** in `_get_visible_longdescs()` method
+- ✅ **Clothing coverage hooks** in `_get_visible_body_descriptions()` method
 - ✅ **Injury/modification override points** in appearance assembly
 - ✅ **Equipment integration preparation** with visibility system
 - ✅ **Pronoun system integration points** identified and documented
@@ -816,7 +872,7 @@ System below).
 #### Syntax Validation ✅ COMPLETED
 - ✅ **All files compile** without Python syntax errors
 - ✅ **Import structure validated** - proper dependency management
-- ✅ **Constants consistency verified** - 21 locations, 4 regions, complete coverage
+- ✅ **Constants consistency verified** - 22 locations, 4 regions (human), complete coverage
 
 #### Logic Validation ✅ COMPLETED  
 - ✅ **Paragraph breaking logic tested** with sample verbose descriptions
@@ -837,14 +893,14 @@ describe face "High cheekbones and a defined jawline lend {their} face a rough c
 describe left_eye "A piercing blue eye glints with flecks of gold."  
 describe right_hand "A prosthetic metal hand ends in intricately engraved fingers."
 
-# Interactive editor (lists short desc, keyword, and every body location for editing)
+# Interactive editor (lists short desc, keyword, look place, temp place, and every body location for editing)
 describe
 
 # Discovery and management
 describe/list           # Show available locations grouped by region
 describe face           # View current face description
 describe/clear face     # Clear specific location
-describe/clear          # Clear all descriptions with confirmation
+describe/clear          # Clear every description at once (no confirmation prompt)
 
 # Staff moderation commands  
 describe PlayerName face "staff-modified description"
@@ -863,11 +919,12 @@ describe/clear PlayerName
 
 **Example Output**:
 ```
+CharacterName
 A weathered detective with years of experience etched into every line.
 
-Her weathered features show high cheekbones and a determined jawline. A piercing blue left eye contrasts sharply with the cybernetic red LED of her right eye replacement.
+A piercing blue eye glints with flecks of gold. A cybernetic replacement glows with a steady red LED. High cheekbones and a defined jawline lend her face a rough calm. Broad shoulders taper to a narrow waist. A calloused hand carries dirt under the fingernails. A prosthetic metal hand ends in intricately engraved fingers.
 
-Broad shoulders taper to a narrow waist, clearly showing years of physical training. Calloused hands with dirt under the fingernails speak of hard work, while her prosthetic right hand gleams with intricate metal engravings.
+CharacterName is holding nothing.
 ```
 
 ### Next Steps for Testing 🧪

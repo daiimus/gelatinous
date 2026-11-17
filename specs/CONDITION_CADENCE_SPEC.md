@@ -1,13 +1,13 @@
 # Condition Cadence Spec — Elapsed-Time Rates
 
-> **Status:** ✅ **SHIPPED** — Phases 1-2 shipped; Phase 3 parked by design. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 14 claim(s) false, annotated inline**.
+> **Status:** ✅ **SHIPPED** — Phases 1-2 shipped; Phase 3 parked by design. ~~Verified 2026-08-02~~ **re-checked 2026-09-11, corrections annotated inline**.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The previous banner called Phases 1-2 "the near-term lift". Both landed; `CONDITION_INTERVALS` is gone from the code entirely.
 
 **Status:** approved design, implementation phased (issue #501).
-Phase 1–2 are the near-term lift; Phase 3 is parked until content
-needs it.  The discussion that settled every decision below happened
+Phase 3's tactical tier is parked until content needs it (§1.6); its
+carrier is 📋 UNBUILT (#3076, §8).  The discussion that settled every decision below happened
 2026-06-11; the benchmark referenced in §2 ran the same day.
 
 ## 0 · The principle: where time lives
@@ -60,6 +60,10 @@ revision:
    carriers.  TickerHandler was evaluated (auto-pruning, no
    ScriptDB churn, but O(N²) persistence saves and synchronized
    firing) and shelved; revisit only on operational pain.
+   *(2026-09-09, §8: the operational pain arrived, and a single
+   global `medical_heartbeat` carrier is planned, 📋 UNBUILT
+   (#3076). Until it exists the game runs one `MedicalScript` per
+   wounded character.)*
 5. **Tick frequency may vary per script** (Phase 3): a character's
    medical script may run faster while an urgent condition exists
    and return to baseline after — safe *only because* of decision
@@ -95,7 +99,6 @@ revision:
   `db.detonation_deadline`; the `at_server_start` sweep re-arms live
   fuses at true remaining time and cooks off overdue ones; duds and
   defuses clear the deadline.
-  Out of scope here; tracked as its own issue (§6.3).
 
 ## 3 · Effect taxonomy
 
@@ -105,23 +108,27 @@ differently:
 | Kind | Example | Conversion |
 |---|---|---|
 | **Continuous quantity** | bleeding blood loss | `rate_per_minute × elapsed_minutes`, applied fractionally |
-| **Integer severity drift** | pain decaying 1/tick | fractional progress accumulator; severity steps when accumulated progress ≥ 1 |
-| **Probabilistic event** | infection worsening chance | per-minute hazard `p`; over elapsed `t` minutes, fire with probability `1 − (1 − p)^t` |
+| **Continuous integer quantity** | dressing healing (HP) | fractional progress kept on the organ (`dressing_progress`); whole HP is applied once it reaches ≥ 1 |
+| **Probabilistic event** | infection worsening chance; pain fading one severity | per-minute hazard `p`; over elapsed `t` minutes, fire with probability `1 − (1 − p)^t` |
 
 Severity values stay integers (the whole condition system keys off
-integer severities); only the *progress toward the next step* is
-fractional, persisted alongside the condition.
+integer severities) and change one step at a time when a per-minute
+hazard fires (§4.4); conditions keep no fractional progress.  The one
+fractional accumulator is dressing healing, kept on the organ
+(`Organ.dressing_progress`).
 
 ## 4 · Mechanics
 
 ### 4.1 · The clock
 
-One function, one place (`world/medical/clock.py` or equivalent):
+One module, `world/medical/clock.py`:
 
 ```python
-def elapsed_game_minutes(since: float, now: float | None = None) -> float:
-    """Real minutes elapsed since `since`. The single seam where
-    the future in-game time system (#301) plugs in."""
+def now() -> float:
+    """Current clock value (seconds).  The swap point for #301."""
+
+def elapsed_game_minutes(since: float, current: float | None = None) -> float:
+    """Real minutes elapsed since ``since`` (never negative)."""
 ```
 
 No condition or script reads `time.time()` for rate math directly.
@@ -133,15 +140,21 @@ No condition or script reads `time.time()` for rate math directly.
 * `last_processed: float` — wall-clock timestamp, persisted in
   `to_dict()`; defaults to *now* on creation and on legacy
   deserialization (§7).
-* `process(character, now=None)` — the only entry point carriers
-  call.  Computes `elapsed = min(elapsed_game_minutes(last_processed),
-  ELAPSED_CAP_MINUTES)`, calls `tick_effect(character, elapsed)`,
-  updates `last_processed`.  Subclasses implement
+* `process(character, current=None)` — the only entry point carriers
+  call.  Computes `elapsed = min(elapsed_game_minutes(last_processed,
+  current), ELAPSED_CAP_MINUTES)`, sets `last_processed` to `current`,
+  then calls `tick_effect(character, elapsed)` when elapsed > 0.  Subclasses implement
   `tick_effect(character, elapsed_minutes)` and never touch the
   clock themselves.
 
 The medical script's `at_repeat` switches from calling
-`tick_effect(obj)` to `process(obj)`.  The future tactical tier
+`tick_effect(obj)` to `process(obj)`.  After applying conditions and
+healing, `at_repeat` saves the medical state (`save_medical_state`,
+#2418) before it checks whether to stop, so `last_processed`,
+severities, blood level and `dressing_progress` survive a reload.
+(A tick that ends in death returns before this save.)  Saving only
+on change, with a bounded checkpoint, is part of the 📋 UNBUILT
+carrier (#3076).  The future tactical tier
 calls the *same* `process()` from the combat round — that is the
 entire handoff.
 
@@ -152,7 +165,10 @@ twice the expected sampling gap.  A normal tick sees ~1 minute; a
 tick arriving after a 10-minute reload sees 2.  Players lose at
 most one extra tick's worth of progression to a restart, never an
 absence's worth.  (The cap constant lives with the other medical
-constants; the cap is applied in `process()`, nowhere else.)
+constants.  The cap is applied in two places: `MedicalCondition.process()`
+for conditions, and `MedicalScript.at_repeat` for dressing healing,
+which keeps its own marker on `ndb` (`last_heal_process`) that a
+reload resets to now.)
 
 ### 4.4 · Probabilistic events
 
@@ -163,6 +179,9 @@ the *designed* behavior, not the accidentally-current one:
 fire = random.random() < 1 - (1 - p_per_minute) ** elapsed_minutes
 ```
 
+`hazard_fires` in `world/medical/conditions.py` does this, and caps
+`p` at 0.95.
+
 ## 5 · Magnitude conversion table (the re-audit)
 
 The current tick is 60s, so most per-tick values convert 1:1 to
@@ -172,13 +191,16 @@ running 5× off its design:
 
 | Constant / behavior | Today (per 60s tick) | Per-minute | Note |
 |---|---|---|---|
-| `BLOOD_LOSS_PER_SEVERITY` | 0.5–2.5% per tick | same, per minute | 1:1 — authored for 60s.  #507 then made the rate derive from *current* severity (stale-rate fix) and replaced the treated-path truncation with the layered-brakes model: bandage slows to 30%, dressing stops, clotting only at severity ≤5 |
-| Bleeding natural clotting (severity −1 chance) | per tick | same hazard per minute | 1:1 |
-| Pain decay | 1 severity per tick | 1 per minute | 1:1 |
-| Infection: treated improvement | 12% per tick (authored: "12% per 12s tick") | **restored**: `1−(1−0.12)⁵ ≈ 47%` per minute | the 5× drift fix. **2026-09-11: this is not what shipped, and never was.** #504 shipped `INFECTION_IMPROVE_HAZARD_PER_MINUTE = 0.07` → `1−(1−0.07)⁵ ≈ 30%` per **five** minutes (`constants.py:210`, applied at `conditions.py:470`) — roughly **6× slower** than this cell. Deliberate: the #504 commit message says "treated ~30%/5min", and `world/tests/test_condition_cadence.py:133-138` pins `1−(1−p)⁵` between 0.25 and 0.35. The disagreement is a misread source. The pre-#504 line was `if random.randint(1, 100) <= 12:  # ~30% chance over 25 ticks = 1.2% per tick`, under the comment "improves every ~5 minutes (25 ticks at 12s intervals)" — so the literal `12` was itself a 10× slip against its own arithmetic, and this cell scaled the slip up another 5× instead of reading the design. §4.4 requires conversion to preserve "the *designed* behavior, not the accidentally-current one", which points at 0.07/min: on the spec's own rule the code is right and this cell is wrong. It is still a balance knob and no medical balance pass has run, so the owner should confirm the pacing rather than let either figure win silently — but nobody should "fix" the code up to 0.47 on the strength of this cell. The untreated row below is unaffected — 0.05/min is exactly the documented ~20-minute progression |
+| `BLOOD_LOSS_PER_SEVERITY` | 0.5–10% (severity 1–10) | same, per minute | 1:1 — authored for 60s.  #507 then made the rate derive from *current* severity (stale-rate fix) and replaced the treated-path truncation with the layered-brakes model: bandage slows to 30%, dressing stops, clotting only at severity ≤5 |
+| Bleeding natural clotting (severity −1 chance) | per tick | `BLEEDING_CLOT_HAZARD_PER_MINUTE = 0.10`, only at severity ≤ `BLEEDING_SELF_CLOT_MAX_SEVERITY` (5), doubled when bandaged (#507) | 1:1 |
+| Pain decay | 20% chance per tick | `PAIN_DECAY_HAZARD_PER_MINUTE = 0.20` | 1:1 |
+| Infection: treated improvement | 12% per tick (authored: "12% per 12s tick") | `INFECTION_IMPROVE_HAZARD_PER_MINUTE = 0.07` (`1−(1−0.07)⁵ ≈ 30%` per five minutes, the original "improves every ~5 minutes" design) | the 5× drift fix. *(2026-09-11: this cell first recorded `1−(1−0.12)⁵ ≈ 47%` per minute, which scaled a 10× slip in the old literal — the pre-#504 line was `if random.randint(1, 100) <= 12:  # ~30% chance over 25 ticks = 1.2% per tick`. §4.4 requires the *designed* behavior, which is 0.07/min; `TestInfectionRestoration.test_documented_pacing_constants` in `world/tests/test_condition_cadence.py` pins `1−(1−p)⁵` between 0.25 and 0.35. It is still a balance knob, and no medical balance pass has run, so the owner has not confirmed this pacing.)* |
 | Infection: untreated worsening | granular per-tick chance (authored for "~20min progression" at 12s) | **restored** to the documented ~20-minute progression curve | drift fix |
+| Infection × blood filtration | — | heal hazard × max(0.25, filtration); worsen hazard × (1 + (1 − filtration)) | CAPACITY_CONSUMERS §7.1; `BLOOD_FILTRATION_HEAL_FLOOR`, `BLOOD_FILTRATION_WORSEN_SLOPE` |
+| Consciousness suppression recovery | — | `CONSCIOUSNESS_RECOVERY_HAZARD_PER_MINUTE`: knockout 0.25, sedative 0.50, anesthesia 0.10, trauma 0.20 | authored per minute |
+| Renal failure progression | — | `RENAL_FAILURE_PROGRESSION_PER_MINUTE = 0.15` | authored per minute |
 | Dressing/splint knitting (`_hp_per_tick`) | rating//5 HP per tick | same per minute | 1:1 |
-| Addiction craving | already wall-clock (`last_dose_time`) | unchanged | the existing precedent |
+| Addiction craving | onset already wall-clock (`last_dose_time`); prose every few ticks | onset unchanged; prose at once when overdue, then every ~5 real minutes | #501 converted the prose cadence |
 
 Any future constant MUST be authored per-minute with a comment
 saying so.
@@ -196,17 +218,20 @@ saying so.
    loss-tolerable (throw flight: acceptable).  Anything that must
    survive a reload uses a Script, a TickerHandler subscription, or
    a persisted deadline timestamp swept at server start.  The
-   grenade fuse violates this today and is tracked separately:
-   persist the detonation *deadline* on `db`, sweep at
-   `at_server_start`, re-arm or detonate overdue.
+   grenade fuse follows this rule: the ticker starters persist
+   `db.detonation_deadline`, and `sweep_armed_grenades` in
+   `commands/explosion_utils.py`, run at server start, re-arms a
+   live fuse for the time it has left or detonates an overdue one
+   (#505).
 
 ## 7 · Migration
 
 * Existing persisted conditions lack `last_processed`:
   `from_dict` defaults it to *now* — no retroactive billing at
   upgrade, progression resumes on the next tick.
-* `AddictionCondition` is already elapsed-time-based and converges
-  without change.
+* `AddictionCondition` craving onset was already elapsed-time-based
+  (`last_dose_time`); only its craving prose moved from counting
+  ticks to elapsed time (#501).
 * Persisted scripts with stale intervals are healed by §6.1 on
   their first post-deploy reload.
 * `CONDITION_INTERVALS` and its import are deleted; `tick_interval`
@@ -239,7 +264,10 @@ saying so.
   per-object script permanently inert.  `GLOBAL_SCRIPTS` are immune
   (re-armed from settings every boot).  Stopgap shipped: an
   `at_server_start` re-arm on `MedicalScript` (Evennia's own hook,
-  idempotent `start()`).
+  idempotent `start()`).  It re-arms only a script whose
+  `db_is_active` is true, so a medical script stopped and kept at
+  death stays stopped.  `DeathProgressionScript.at_server_start`
+  has the same re-arm (#3075).
 
   Re-benchmarked in-process the same day, which supersedes the
   2026-06-11 figures in §1.4 (those measured the condition math
@@ -258,14 +286,17 @@ saying so.
   TickerHandler is confirmed O(N) per add and wrong for bursts.
 
   **Decision: the Phase 3 carrier is a single `GLOBAL_SCRIPTS`
-  `medical_heartbeat` on the souls-engine pattern** — tag-indexed
+  `medical_heartbeat` on the souls-engine pattern** (📋 UNBUILT, #3076) — tag-indexed
   bodies, `(beat + id) % SHARDS` phase offset, write-on-change with
   bounded checkpoint, LOD on side effects only (the math is never
   LOD-scaled: a body no player can see still bleeds out on
   schedule).  Crash-safe by construction.  Not the ORM: a tag index
-  answers the only question the heartbeat asks.  Tracked in the
-  carrier issue; blood-pool write-on-threshold + LOD lands first,
-  inside the current carrier, and carries over unchanged.
+  answers the only question the heartbeat asks.  Tracked in #3076.
+  Blood-pool write-on-threshold runs in the current carrier (#3077):
+  pool volume is kept in memory and written to the room's pool every
+  `BLOOD_POOL_FLUSH_TICKS` ticks, or at once when a player is in the
+  room, the pool's description would change, the bleeder moves, or
+  the script stops.  It carries over to the heartbeat unchanged.
 
 ## 9 · Test contract
 
@@ -288,14 +319,15 @@ Phase 1 ships with:
   *(2026-09-11: half of this is unbuilt and half is untested.
   Conditions carry no fractional accumulator at all — see the §3
   note — so there is nothing for `deserialize_condition` to
-  round-trip. `last_processed` does: written at
-  `world/medical/conditions.py:206`, restored with a safe default at
-  `:221` (and in every subclass override), pinned by
-  `world/tests/test_condition_cadence.py:155-171` — the round-trip
+  round-trip. `last_processed` does: written by
+  `MedicalCondition.to_dict`, restored with a safe default by
+  `MedicalCondition.from_dict` (and in every subclass override), pinned
+  by `TestPersistence` in `world/tests/test_condition_cadence.py` — the round-trip
   and the legacy-dict default both. The one real accumulator,
   `organ.dressing_progress`, round-trips through the **organ**
-  serializer instead (`world/medical/core.py:405`, `:463`) and is
-  pinned by **nothing**: `test_condition_cadence.py:13` still
+  serializer instead (`Organ.to_dict` / `Organ.from_dict` in
+  `world/medical/core.py`) and is pinned by **nothing**:
+  `test_condition_cadence.py` still
   advertises "persistence — last_processed and dressing_progress
   round-trip" in its own module docstring, and no test in the repo
   asserts the second half. The round-trip code is correct where it
