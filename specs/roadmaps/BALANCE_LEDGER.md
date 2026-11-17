@@ -1,6 +1,6 @@
 # Balance Ledger
 
-> **Status:** 🛣 Roadmap reference — the register of every tunable constant, paired with the `# BALANCE:` tags in the constants files; the balance pass's worklist.
+> **Status:** 🛣 Roadmap reference — the register of every constant tagged `#: BALANCE:` in `world/combat/constants.py` (the twelve gravity and jump knobs below); many other untuned numbers carry no tag and no row, and some are listed under "Gaps" below; the balance pass's worklist.
 
 No system in this game has been balance-tuned yet. Numbers were chosen so
 the mechanic could ship and be *played*, not because anything was sized
@@ -22,9 +22,11 @@ The row here says *what to watch when it is wrong*, in one place.
   constant, one row — no grouped rows, no "and friends".
 - **The two lists are pinned to each other.**
   `world/tests/test_every_balance_knob_is_in_the_ledger.py` reads the
-  `#: BALANCE:` declarations out of the constants files and the constant
-  names out of this table and fails if either list has an entry the other
-  does not. A knob added without a row breaks the suite, which is the
+  `#: BALANCE:` declarations out of `world/combat/constants.py` only, and
+  the backticked constant names out of this table's rows, and fails if
+  either list has an entry the other does not. Every name in a row must
+  exist in `world/combat/constants.py`, so a knob tagged in any other file
+  is not checked, and a row naming one makes the test fail. A knob added without a row breaks the suite, which is the
   point.
 - **Removing a constant?** Its row leaves the ledger in the **same PR**
   that removes it from the code. A row for a constant that no longer
@@ -53,7 +55,7 @@ roll, the direct drop, the slip in place).
 | `FALL_EDGE_DIFFICULTY_DEFAULT` (`world/combat/constants.py`) | `8` | Base landing difficulty on an edge exit that authors no `edge_difficulty`. | #3579 owner ruling 2026-09-16 | No | This is what most of the colony rolls against — every `@airfill` edge is bare. Watch the make-rate of ordinary roof descents at low Motorics. |
 | `FALL_LANDING_DIFFICULTY_PER_CELL` (`world/combat/constants.py`) | `2` | Landing difficulty added per storey fallen (Motorics vs `edge_difficulty` + this × cells). | #3579 owner ruling 2026-09-16 | No | The altitude at which the landing roll becomes unmakeable. This is the only place altitude is allowed to enter the difficulty — see the note in `PARKOUR_TEMPLATE_LIBRARY.md` §1 invariant 2 about not double-counting it in `gap_difficulty`. |
 | `GAP_DIFFICULTY_DEFAULT` (`world/combat/constants.py`) | `10` | Base takeoff difficulty for `jump across` on a gap exit that authors no `gap_difficulty`. | #3579 owner ruling 2026-09-16 | No | The failure rate of the span-1 crossing the roof city is built on. A gap missed is a full fall, so this number sets how punishing the second city is to learn. |
-| `FALL_MAX_CELLS` (`world/combat/constants.py`) | `30` | Cells one fall may traverse before it stops cleanly where it is. A runaway-column guard, not a design number. | #3579 owner ruling 2026-09-16 | No | Only that it stays above the tallest real column (the crane is 17 storeys). If a legitimate fall ever hits this, the guard is too low, not the world too tall. |
+| `FALL_MAX_CELLS` (`world/combat/constants.py`) | `30` | Cells one fall may traverse before it stops cleanly where it is. A runaway-column guard, not a design number. | #3579 (as built; the value was not ruled) | No | Only that it stays above the tallest real column (the crane is 17 storeys). If a legitimate fall ever hits this, the guard is too low, not the world too tall. |
 | `FALL_BODYSHIELD_MADE_VICTIM` (`world/combat/constants.py`) | `0.75` | Share of the fall's damage the dragged victim takes when the grappler lands **well** on them. | #3579 owner ruling 2026-09-16 | No | Whether dragging someone off a roof is a reliable execution. Shipped behaviour preserved as a constant; never sized against anything. |
 | `FALL_BODYSHIELD_MADE_GRAPPLER` (`world/combat/constants.py`) | `0.25` | Share the grappler takes when they land **well** on a dragged victim. | #3579 owner ruling 2026-09-16 | No | The cost of the tactic to the person choosing it. Paired with the row above — tune the pair, not one side. |
 | `FALL_BODYSHIELD_FAILED_VICTIM` (`world/combat/constants.py`) | `1.5` | Share the dragged victim takes when the grappler lands **badly** — more than the whole fall, crushed on impact. | #3579 owner ruling 2026-09-16 | No | Whether a botched drag-off is lethal to the victim at heights where the grappler walks away. |
@@ -63,6 +65,9 @@ roll, the direct drop, the slip in place).
 split used to charge the victim 9 and the grappler 2 — 1.2 and 0.3 of a
 per-exit `fall_damage` whose default was 8 — and now charges 3 and 1
 (0.75 and 0.25 of one storey at `FALL_DAMAGE_PER_STORY` = 5), by ruling.
+The direct drop rolls no landing, so it always charges the **made**
+split; the two **failed** shares are used only on a transit fall whose
+landing roll fails.
 The ratios in the four rows above are the shipped transit-fall splits
 preserved verbatim; it is the *base* they multiply that moved.
 
@@ -74,7 +79,7 @@ contest in `commands/combat/movement.py`.
 
 | Constant (declaration site) | Value | What it tunes | Set by | Tuned? | What to watch in play |
 |---|---|---|---|---|---|
-| `JUMP_AWAY_BONUS` (`world/combat/constants.py`) | `20` | Added to the jumper's Motorics roll in the contest against whoever has them in their aim when they jump off or across mid-fight. Flee's contest is roll-vs-roll on Motorics; this is the bold move's edge. | #3583 owner ruling 2026-09-16 ("the difficulty should be half or there should be a bonus. It's a bold move.") | No | Whether jumping away is a meaningful choice next to `flee` or a strictly better one. Rolls are `randint(1, Motorics)` with player Motorics defaulting to 75 and NPC blueprints at 1–3, so 20 is decisive against an NPC aimer and modest against a player. Whether it should scale with the aimer's Motorics is the balance-pass question. |
+| `JUMP_AWAY_BONUS` (`world/combat/constants.py`) | `20` | Added to the jumper's Motorics roll in both of flee's contests when they jump off or across mid-fight: the aim contest against whoever has them in their aim, and the disengage roll against the highest-Motorics opponent targeting them. A lost roll hands the winner an immediate attack; the jump still goes unless that attack leaves the jumper dead or unconscious. Flee's contest is roll-vs-roll on Motorics; this is the bold move's edge. | #3583 owner ruling 2026-09-16 ("the difficulty should be half or there should be a bonus. It's a bold move.") | No | Whether jumping away is a meaningful choice next to `flee` or a strictly better one. Rolls are `randint(1, Motorics)` with player Motorics defaulting to 75 and NPC blueprints at 1–3, so 20 is decisive against an NPC aimer and modest against a player. Whether it should scale with the aimer's Motorics is the balance-pass question. |
 
 ---
 
@@ -86,13 +91,15 @@ against are themselves untuned or unbuilt. Recorded here so nobody reads
 a "Value" column as a considered answer:
 
 - **Under-grip factor (GRIP_ENFORCEMENT_SPEC §4, 2026-10-06):** a two-handed weapon with no free second hand multiplies accuracy by 0.60 (one of two), 0.80 (two of three); placeholder anchors `(0, .20), (.5, .60), (2/3, .80), (1, 1)`. Nothing tuned; owner: *"Sure."*
-- **Bleeding is untuned.** Every chunk of fall damage that lands adds
-  pain and, at ≥10 damage to a container, a bleeding condition. Bleeding
+- **Bleeding is untuned.** Every chunk of fall damage that lands on an
+  organ adds pain and, when that one chunk is 10 or more, a bleeding
+  condition at its container (chrome organs do not bleed). Bleeding
   rates have never been through a balance pass, so the real lethality of
   a fall is the damage-per-storey number *plus an unknown*. Tuning the
   damage number alone will not settle how many falls kill.
-- **Container HP is wildly uneven.** The chest is ~22 points; the legs
-  the fall fills first are ~150 points across both. That is a ~7× spread
+- **Container HP is wildly uneven.** The chest's organs total 55 points
+  (the heart alone is 15); the legs the fall fills first are 150 points
+  across both. That is a ~2.7× spread (10× against the heart)
   between "where a fall puts its damage" and "where damage kills", and it
   is the single largest reason a long fall cripples instead of killing.
   It is anatomy data, not a balance knob — no row here can fix it, and
@@ -104,8 +111,6 @@ a "Value" column as a considered answer:
   substrate exists (`MEDICAL_SUBSTRATE_READINESS.md`, Phase 7), "leaving
   them crippled" is a description of the medical readout, not of what the
   character can do.
-
----
 - **Multi-weapon placeholders are untuned (2026-10-01).** The proposal
   `MULTI_WEAPON_COMBAT_SPEC.md` gives the Nailz claws prototype values of
   6 damage / +0 to-hit for one hand and 9 damage / +1 to-hit for both
@@ -117,24 +122,30 @@ a "Value" column as a considered answer:
   were picked to keep an intact owner at today's 9 damage, the others to
   match them or to make two pistols worth more than one and less than
   two shots, and all are sized against nothing else. Alternation between
-  held weapons (slice 2) lowers the average damage of mixed loadouts
-  against today's always-best rule; nobody has measured by how much.
+  held weapons (slice 2: `choose_weapon` in `world/combat/weapon_choice.py`)
+  lowers the average damage of mixed loadouts compared with the old
+  always-best rule; nobody has measured by how much.
 - **Shop prices at Gaia's Treasures are untuned (2026-10-06).** The live
-  shelving there (#2011) lists the bat, fan, katana, dagger, sword, staff,
+  shelving there (object #2011, not an issue) lists the bat, fan, katana, dagger, sword, staff,
   throwing knife, axe and shuriken at 0₮, and the Voxhaul Tiger claw at
   180₮ (its weapons-shelf price, MULTI_WEAPON_COMBAT_SPEC §13 slice 4).
   Owner, asked whether to leave the claw at 180: *"Sure. Future balance
   issue."* Nothing to size it against until the balance pass prices the
   rest.
 
+---
+
 ## See Also
 
 - `world/combat/constants.py` — section **GRAVITY & FALLING (#3579)**; the
   `#: BALANCE:` doc-comments are the other half of this register.
 - `world/gravity.py` and `commands/combat/jump.py` — the consumers of the
-  eleven rows above.
+  eleven gravity rows above; `commands/combat/jump.py`
+  (`pay_the_price_of_leaving`) with `commands/combat/movement.py`
+  (`break_aim_lock`, `roll_to_disengage`) consumes `JUMP_AWAY_BONUS`.
 - `specs/JUMP_COMMAND_SPEC.md` — the verbs that start a fall.
 - `specs/PARKOUR_TEMPLATE_LIBRARY.md` §0 — the owner-ruled movement
   kernel the damage-per-storey number comes from.
 - `specs/roadmaps/MEDICAL_SUBSTRATE_READINESS.md` — the movement-policing
-  substrate the third gap above is waiting on.
+  substrate the "Pulped legs do not stop anyone walking" gap above is
+  waiting on.

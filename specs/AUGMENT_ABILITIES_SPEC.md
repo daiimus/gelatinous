@@ -5,10 +5,10 @@
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - The previous banner said "implementation phased" and §5 frames Phases 2-3 as pending. All three have shipping code and tests — natural weapons (`NAILZ`, jawz) and the weapon-resolution precedence are live.
 
-**Status:** approved design, implementation phased.  Settled in
+**Status:** approved design.  Settled in
 discussion 2026-06-12.  Builds on `ANATOMY_AUGMENTS_SPEC.md` (the
 substrate: the body is the truth).  First consumer: the shotgun
-arm; the claw/teeth family follows on the same layer.
+arm; the claw/teeth family (`NAILZ`, `JAWZ`) uses the same layer.
 
 ## 0 · The principle: abilities live on organs
 
@@ -34,6 +34,8 @@ the weapon the active weapon.
    (`CYBERWARE_COMMAND_PREFIX = "/"`); Evennia's parser matches the
    key as a prefix, so swapping to `=` later is a one-line change.
    Bare `/` lists your installed abilities and their states.
+   `/system` is reserved: it prints the full cyberware diagnostic
+   (`render_system`) instead of toggling.
 2. **Slot-consuming weapons fill the slot.**  Deploy moves a real,
    persistent, character-owned weapon item into the hand slot;
    retract removes it.  The item is locked against drop / give and
@@ -48,12 +50,18 @@ the weapon the active weapon.
    reach (owner ruling 2026-10-03, MULTI_WEAPON_COMBAT_SPEC §4, §14
    ruling 2): in melee, claws out means you fight with claws, knife in
    hand or not; at range a held pistol fires while the claws stay out.
-   Resolution order: range filter, then active natural cyberweapon >
-   held weapon > fists.  Toggle claws off to use the knife in melee.
+   Resolution order (`choose_weapon`): tagged weapons push untagged
+   held items aside (with nothing tagged, only the hardest-hitting
+   improvised item stays), then the range filter, then deployed
+   natural cyberweapons over held weapons, then akimbo grouping, then
+   the wheel (one option per attack, in slot order); fists when
+   nothing is left (MULTI_WEAPON_COMBAT_SPEC §4-§6).  Toggle claws off
+   to use the knife in melee.
 5. **First consumer: the shotgun arm** — the first *replacement*
    augment.  Acquisition is amputate-first: take the flesh arm off
-   (combat or surgical amputation), then mount the gun arm over the
-   stump via the existing re-augment path.  Requires the substrate
+   (combat or surgical amputation), then mount a `CYBER_ARM` over the
+   stump via the existing re-augment path and seat a `SHOTGUN_MODULE`
+   in its forearm hardpoint.  Requires the substrate
    to go multi-container (arm + hand), see §3.5.
 6. **No ammo in v1.**  Ammo tracking exists nowhere (explicitly
    deferred); the shotgun arm fires forever like every other gun.
@@ -69,6 +77,12 @@ the weapon the active weapon.
    folds the deployed gun back inside the arm (`location=None`,
    `deployed` False): nothing lies on the floor or the hand, and the
    next toggle is a deploy, refused until the hand is restored.
+   Death parks every deployed weapon back inside the body
+   (`park_all_hardware`: `location=None`, `deployed` False) before
+   the corpse is made.  A limb cut off a corpse takes its hardware
+   the same way, recorded retracted
+   (`carry_snapshot_hardware_to_appendage`).  Harvesting a module or
+   organ parks its weapon first (`park_organ_hardware`).
 8. **Theming stays in prose** (ANATOMY_AUGMENTS §4): claws, nailz,
    cyber-teeth, biotech variants are item data over the same
    ability types.
@@ -86,16 +100,40 @@ An organ spec (inside the item's `augment_organs`) gains an
         "weapon_prototype": "SHOTGUN_ARM_GUN",
         "deploy_msg": "...", "retract_msg": "...",
     },
-    # The claw family (Phase 3):
-    # "claws": {"type": "natural_weapon", "weapon_prototype": ...,
-    #           "extend_msg": ..., "retract_msg": ...},
+    # A natural weapon (NAILZ, on a hand organ):
+    "nailz": {
+        "type": "natural_weapon",          # off-grid, never in a hand
+        "weapon_prototype": "NAILZ_CLAWS",
+        "deploy_msg": "...", "retract_msg": "...",
+        "deploy_room": "...", "retract_room": "...",
+    },
 }
 ```
+
+Ability types (`_TOGGLERS` in `world/medical/augments.py`):
+`integrated_weapon` (fills a hand slot), `natural_weapon` (an off-grid
+weapon that never touches the hands), `voice_modulator` (`/modulate`,
+`VOICE_MODULATOR`) and `blindsight` (`/blindsight`,
+`TARGETING_PROCESSOR`).  The last two are covert: no room line.  Prose
+keys: `deploy_msg`, `retract_msg`, `deploy_room`, `retract_room`, their
+`_one` variants, `deployed_longdesc` and `deployed_longdesc_slot`;
+without them a toggle uses its type's default prose.
 
 Ability names are the toggle words (`/shotgun`).  Runtime state
 (`deployed: bool`, `weapon_dbref`) persists on the organ alongside
 `stabilized` / `tourniqueted` — organ-level state, organ-level
 round-trip, gone when the organ goes.
+
+An ability may live on several organs: one `NAILZ` tray seats into
+both hands.  Each host keeps its own state and its own weapon item.
+`/<ability>` acts on every living host: if any host is deployed, all
+retract; otherwise all deploy (owner ruling 2026-10-05,
+MULTI_WEAPON_COMBAT_SPEC §14 #5).  One self line and one room line
+are spoken for the whole toggle; when exactly one host changed (a
+surgical stow, a body down to one hand), the `_one` keys
+(`deploy_msg_one`, `retract_msg_one`, `deploy_room_one`,
+`retract_room_one`, with `{hand}`) are used, falling back to the base
+keys.  The bare `/` listing shows each hand's state when they differ.
 
 ## 3 · Mechanics
 
@@ -105,7 +143,9 @@ round-trip, gone when the organ goes.
 cmdset.  Parses the remainder as the ability name, scans the
 caller's organs for a matching ability, and dispatches by type.
 Unknown name → list what you have.  No installed abilities → "you
-have no cyberware to command."
+have no cyberware to command."  `/system` is handled before the
+ability lookup and prints `world.medical.cyberware_status.render_system`,
+so no ability can be named `system`.
 
 ### 3.2 · integrated_weapon toggle
 
@@ -133,8 +173,9 @@ blocks.
 > vision, thermal) is designed to be used whenever; `refuse_if_channeling`
 > is intentionally not consulted here.
 
-> **Note 2026-09-11 (re-verification) — the CODE is short of this spec,
-> not the other way round.** `toggle_ability`
+> **Note 2026-09-11 (re-verification), no longer true: the 2026-09-13
+> ruling above put the busy gate in `toggle_ability` and the stow in
+> `start_procedure`, and left the channeling gate out by ruling.** `toggle_ability`
 > (`world/medical/augments.py:115-140`) implements the first two gates
 > (slot anatomy at `augments.py:194-200` plus the 0-HP organ filter in
 > `iter_abilities` at `:46`; dead / unconscious at `:132-136`) and
@@ -153,14 +194,17 @@ blocks.
 ### 3.3 · The integrated item
 
 Locked: `get:false()`, `drop:false()`, `give:false()`; flagged
-`db.integrated = True` for the disarm path and inventory rendering
-("(integrated)").  While deployed it appears held — correct, you
-are visibly brandishing an arm-gun.
+`db.integrated = True` (both set by `_get_or_spawn_weapon`), which
+disarm, wrest, give, drop, throw and steal check.  A deployed
+integrated weapon reads as body, not as a held item: `inventory`
+shows "A <weapon> is your <hand>.", and `return_appearance` leaves it
+out of the wielded list and gives it its own line ("<name>'s <weapon>
+is their <hand>.").
 
 > **Note 2026-09-11 (re-verification):** the `"(integrated)"` label and
 > the last sentence were already superseded on the banner date. #535
 > (2026-06-12) made a deployed integrated weapon read as *body*, not as
-> a held item: self-inventory renders "A shotgun module **is your right
+> a held item: self-inventory renders "A <weapon> **is your right
 > hand**" (`commands/CmdInventory.py:263-268`), and `return_appearance`
 > **excludes** integrated items from the wielded list entirely, giving
 > them their own line (`typeclasses/appearance_mixin.py:696-699`, the
@@ -169,7 +213,7 @@ are visibly brandishing an arm-gun.
 > exactly as described (`world/medical/augments.py:493-494`;
 > `world/combat/actions.py:111`, `:118`), as are the three locks.
 
-### 3.4 · natural_weapon precedence (Phase 3, designed now)
+### 3.4 · natural_weapon precedence
 
 > **Note 2026-10-05 (MULTI_WEAPON_COMBAT_SPEC slice 1):** this shipped,
 > and the selectors it named are gone. One door, `choose_weapon` in
@@ -193,14 +237,14 @@ were `tiger_claws` / `tiger_claws_akimbo` until slice 2 (owner ruling
 
 ### 3.5 · Multi-container substrate extension
 
-The tail assumed one new container.  The shotgun arm's
-`augment_organs` span existing containers (`right_arm` +
-`right_hand`), so:
+The tail assumed one new container.  A limb chassis's
+`augment_organs` span existing containers (`CYBER_ARM`: `{side}_arm` +
+`{side}_hand`), so:
 
 * the already-has gate checks every container its organs declare;
 * `augment_longdesc` becomes a list of entries (arm + hand keys
   restored over the stump);
-* the anchor is the shoulder-side stump (`right_arm`), incised as
+* the anchor is the shoulder-side stump (`{side}_arm`), incised as
   usual;
 * re-augment-over-severed-stump per container (already the rule).
 
@@ -209,14 +253,15 @@ severing the cyber-arm takes the cyber-hand, exactly like flesh.
 
 ## 4 · The shotgun arm (first consumer)
 
-`SHOTGUN_ARM` (right-side v1; left variant is data): replacement
-organs `cybernetic_humerus` (container `right_arm`, bone-typed
-actuator column, the §2 `shotgun` ability) + `cybernetic_metacarpals`
-(container `right_hand`, `grasping`); anchor `right_arm`;
-`compatible_species ["human"]`.  The gun itself: `SHOTGUN_ARM_GUN`
-weapon prototype, shotgun damage profile, `is_ranged`, integrated
-locks.  Install story: lose the arm, mount the gun.  The hand works
-as a hand until you `/shotgun`.
+The shotgun is `SHOTGUN_MODULE`, a forearm-hardpoint module that
+seats into a `CYBER_ARM` chassis on either side (§7, template 4);
+`compatible_species ["human"]`.  Its `shotgun` ability is an
+`integrated_weapon` with slot `{side}_hand` (resolved at install).
+The gun itself: `SHOTGUN_ARM_GUN` weapon prototype (ranged,
+`cybernetic_shotgun` weapon type, integrated locks).  Install story:
+amputate the arm, mount `CYBER_ARM` over the stump, seat the module
+in its forearm hardpoint.  The hand works as a hand until you
+`/shotgun`.
 
 ## 5 · Phases
 
@@ -289,8 +334,11 @@ and a distinct flesh-implant tier — see 4 and 5 below.)
 
 5. **Flesh implant** (Nailz): the sibling tier, **not a module** —
    an ability grafted directly into LIVING anatomy (carbide claws
-   into a flesh hand), no hardpoint, no chassis.  The host stays
-   flesh and still bleeds; it has no `prosthetic_frame`, so it
+   into a hand), no hardpoint, no chassis.  One `NAILZ` tray
+   implants into both hands (`flesh_containers`), skipping a hand
+   that already carries it or has no living organ.  The host may be
+   a flesh hand or a `CYBER_ARM` hand; a chrome host stays chrome and
+   keeps its frame.  A flesh host stays flesh and still bleeds; it has no `prosthetic_frame`, so it
    necroses and the limb doesn't reattach (the implant harvests out
    separately).  `module_mount: "flesh"` in code, but conceptually
    it's the implant tier, distinct from a hardpoint module.
@@ -302,6 +350,14 @@ The fused `SHOTGUN_ARM` was retired in favor of `CYBER_ARM`
 (side-agnostic chassis, forearm hardpoint) + `SHOTGUN_MODULE`.
 Fused all-in-ones may return later as flavor, but the standard
 template is modular.
+
+Other consumers of the templates: `TARGETING_PROCESSOR` (forearm
+module, `/blindsight`) and `VOICE_MODULATOR` (jaw module,
+`/modulate`), template 4; `CYBER_LEG` (limb chassis), template 3; the
+cyber eyes, ears and kidneys (`CYBER_LEFT_EYE` and its siblings),
+template 1.  `ROBOT_SHOTGUN_MODULE` (deploying `ROBOT_ARM_GUN`) is the
+robot-frame shotgun module; secbots are fitted with its spec at spawn
+(`world/director/population.py`).
 
 ## 8 · Limb reattachment & the prosthetic frame
 
@@ -363,7 +419,10 @@ override this per augment when they exist; until then it is the
 bare-metal default.  Limb longdesc is side-aware via the `{side}`
 token (resolved at install), and a deployed integrated weapon
 expands the limb's longdesc (`deployed_longdesc`) while replacing
-the consumed hand's longdesc (`deployed_longdesc_slot`).
+the consumed hand's longdesc (`deployed_longdesc_slot`).  Both
+render only at chrome (inorganic) locations
+(`_render_body_longdesc`), so a natural weapon's `deployed_longdesc`
+on a flesh hand (Nailz) does not show.
 
 ## 10 · Maintenance contract
 

@@ -1,6 +1,6 @@
 # Trust & Consent Spec
 
-> **Status:** ✅ **SHIPPED & LIVE** — verified against code 2026-08-02: `world/consent.py:173` `has_trust`, `commands/CmdTrust.py:60/157` registered at `default_cmdsets.py:183-184`, tests in `world/tests/test_consent.py`.
+> **Status:** ✅ **SHIPPED & LIVE** — verified against code 2026-08-02: `world/consent.py` `has_trust` / `check_consent`, `commands/CmdTrust.py` `CmdTrust` / `CmdDistrust` registered in `commands/default_cmdsets.py`, tests in `world/tests/test_consent.py`.
 
 > **Status: ✅ SHIPPED IN FULL (2026-07-03, Phases 1–3).** The gate
 > (`world/consent.py`: `can_contest` / `is_restrained` / `check_consent`),
@@ -59,13 +59,16 @@ can_contest(target) = is_conscious(target) and not is_restrained(target)
   any of them; a severed part is a corpse fragment and answers to the corpse's
   verbs (#3575, 2026-09-16).
 * **Restrained** → cannot contest → **free action**. Restraint comes from a
-  **grapple** *or* from a **restraint device** — e.g. being strapped into a
-  healing pod or a restraint chair. A grappled or pod-bound patient cannot
+  **grapple** *or* from lying in furniture marked `db.restraining` (only the
+  clinic AutoDoc pod sets it; `is_restrained` also counts any medical lie-in
+  furniture). A pod holds only someone who lay down in it: nobody can put
+  another person in, and anyone in it can `stand` and leave (📋 UNBUILT,
+  #3409). Restraint chairs and cuffs: 📋 UNBUILT (no issue). A grappled or pod-bound patient cannot
   contest healing or search/frisk; the action simply proceeds.
 * **Conscious *and* unrestrained** → **can contest** → the action requires
   **pre-granted trust** from the target (§2). Without it, the action is blocked;
-  to proceed, the actor must first **restrain** the target (grapple them, get
-  them into a pod), after which the free-action path applies.
+  to proceed, the actor must first **restrain** the target (grapple them; putting
+  an unwilling person into a pod is 📋 UNBUILT, #3409), after which the free-action path applies.
 
 Rationale: fits the deliberately dangerous, squishy world. You can do anything
 to someone you've **subdued or strapped down**; you can't grief someone who is
@@ -105,28 +108,45 @@ identity logic.
     not silently lapse over a wardrobe tweak — only over a real identity change.
 * **Re-sleeve lapses trust.** If the trusted person re-sleeves into a new body
   (new `sleeve_uid`), their UID changes and the grant lapses. You trusted *that
-  body/presentation*, not an abstract soul.
+  body/presentation*, not an abstract soul. A flash clone keeps the dead body's
+  `sleeve_uid` (`create_flash_clone` in `commands/charcreate.py`), and so does a
+  soul's new body (`restore` in `world/imprint.py`), so trust others gave that
+  person still holds for the new body while its look is unchanged. Grants live
+  on the character who made them and are not copied: a flash clone starts
+  trusting no one.
 
 ### Storage
 
 Grants live on the **grantor** (the potential target), e.g.
-`db.consent_grants = { apparent_uid: set(action_classes) }`, plus a snapshot
-display label per UID for the listing. Grants survive logout until revoked.
+`db.consent_grants = {apparent_uid: {"classes": [action classes], "label": "<how
+the grantor saw them at grant time>"}}`; the label is refreshed on each new grant. Grants survive logout until revoked.
 
 ## 3 · Action classes
 
-Trust is granted per **action class** (a class maps to a set of gated commands;
-not all commands exist yet):
+Trust is granted per **action class** (a class maps to a set of gated commands):
 
 | Class | Covers | Notes |
 |---|---|---|
-| `escort` / `follow` | movement-coupling (lead/drag the target's movement) | |
-| `grab` / `grapple` | consensual restraint (let them grab/restrain you uncontested) | the "strap me in willingly" path |
+| `escort` | `escort <person>`: lead them through exits ahead of you | `follow` is your own movement and needs no trust. Dragging is grapple plus movement, with no class and no command. |
+| `grab` | consensual restraint through `grapple` (let them grab/restrain you uncontested) | the "strap me in willingly" path |
 
-> **Shipped 2026-09-13 (#3363, owner ruling).** `grab` now has its consumer: `resolve_grapple_initiate` (`world/combat/grappling.py`) calls `check_consent(grappler, target, "grab")` before the contest. Trusted -- or a target who cannot contest (unconscious / restrained, the free path) -- is held **uncontested**: no roll, both parties set yielding so nobody auto-struggles, no retaliation target on the held person, prose "takes hold of X, who lets you". Untrusted is the contested grapple as before. `CmdGrapple` grants no ambush bonus on a consensual grab. Grapple doubles as holding; what makes it an attack is whether anyone chose violence.
-| `heal` | **all** medical commands — treat, bandage, inject, install, **operate, harvest** | **deliberately blanket** (§3.1) |
-| `search` / `frisk` | frisk / search / loot the target — **identifies the items on their person** (worn, carried, **and concealed**) | the active counter to organic concealment (§3.2) |
-| `dress` | dress / undress (strip) the target's clothing | the class `CmdClothing`'s third-party paths defer to today via their "requires the trust/consent system" placeholder — **2026-09-12: that deferral is over.** `dress`/`undress` call `check_consent(caller, target, "dress")` via `_can_third_party_clothing` (`commands/CmdClothing.py:626-638`, called at `:863` and `:1093`), with severed appendages always dressable. The placeholder rejection is gone from the code path entirely (`grep -rn "requires the trust"` returns nothing); only a stale comment block above the function still describes the pre-Phase-1 world (§3.3) |
+> **Shipped 2026-09-13 (#3363, owner ruling).** `grab` now has its consumer: `resolve_grapple_initiate` (`world/combat/grappling.py`) calls `check_consent(grappler, target, "grab")` before the contest. Trusted -- or a target who cannot contest (unconscious / restrained, the free path) -- is held **uncontested**: no roll, both parties set yielding so nobody auto-struggles, no retaliation target on the held person, prose "takes hold of X, who lets you". Untrusted is the contested grapple as before. `CmdGrapple` grants no ambush bonus on a consensual grab. Grapple doubles as holding; what makes it an attack is whether anyone chose violence. As built, `CmdGrapple` still reports every grab to the crime system as an assault (`report_crime`) and has the target react as to an attack (`react_to_attack`), consensual or not.
+| `heal` | **all** medical commands — treat, bandage, inject, install, **operate, harvest** | **deliberately blanket** (§3.1). `heal` also gates giving any substance to someone else through a consumption verb (`inject`, `chug`, `devour` and the rest), medical or not (#2458). |
+| `search` | `frisk` (alias `patdown`) — **identifies the items on their person** (worn, carried, **and concealed**) | the active counter to organic concealment (§3.2) |
+| `dress` | dress / undress (strip) the target's clothing | `dress`/`undress` call `check_consent(caller, target, "dress")` through `_can_third_party_clothing` (`commands/CmdClothing.py`). Severed parts and corpses can always be dressed and undressed (§3.3) |
+
+**Movement.** `escort <person>` leads someone: at each exit they go through
+first and you come after (`usher_escortee` in `world/movement_coupling.py`).
+Consent and consciousness are checked again before every move, so a revoked
+grant releases them at the next doorway, and an exit that refuses them stops
+you at the threshold too. Someone unconscious cannot be escorted; drag them
+by grapple instead. Two people cannot escort each other. `stop escorting`
+releases your escortee. `follow <person>` needs no trust: when the leader
+leaves, you take the same exit after them (`bring_followers`). Following
+someone, or stopping, reveals a hidden follower. A follower who cannot keep
+up (a refused door, a leader who leaves with no exit) loses the trail, and
+one who cannot perceive a hidden leader is left behind without a word.
+`stop following` also breaks away from anyone escorting you.
 
 ### 3.1 · `heal` is intentionally all-medical — betrayal included
 
@@ -146,7 +166,10 @@ dead target). It is the lawful/forceful inspection: a security bot frisks a
 subdued suspect, a medic frisks a willing patient, you frisk a corpse. It is the
 information step that precedes confiscation or theft. Contrast **theft**
 (`steal`/`pickpocket`), which is the *nonconsensual contest* version and lives in
-`STEALTH_AND_DETECTION_SPEC` §6.2 — frisk asks, theft takes.
+`specs/proposals/STEALTH_AND_DETECTION_SPEC.md` §6.2 — frisk asks, theft takes.
+Theft reads the same `can_contest` predicate (`commands/CmdTheft.py`): against
+a mark who cannot contest (unconscious, dead, restrained) it lands with no
+contest. Trust plays no part in theft.
 
 ### 3.3 · `dress` — narrow by design (2026-07-02)
 
@@ -171,14 +194,24 @@ companion wears/removes her own clothing via the `style` tool (self-action,
 | `distrust` / `untrust <person> [to <action>]` | revoke one class, or all of that person's grants when `to <action>` is omitted |
 | `distrust all` / `trust no one` | wipe every grant |
 
+Revoking works from memory: name the person as you know them (your
+recognition name, or the label taken at grant time); they need not be
+present. An exact name wins over partial matches; several partial matches
+are refused. `distrust <person> to all` is refused: to revoke everything
+from one person, leave out `to <action>`.
+
 ## 5 · Listing & perception
 
-`trust` (and per-person `trust <person>`) renders each stored UID back through
-recognition — `get_assigned_name(observer=you, uid)` — so the list reads in
-*your* terms: "You trust **batman** to heal you; **the lean droog** to escort
-you." A UID you've since forgotten falls back to the display-label snapshot taken
+`trust` renders each stored UID back through
+recognition — `world.identity.resolve_assigned_name` on your recognition memory
+(your own name for that look, or the name of the look you watched it come
+from) — so the list reads in
+*your* terms: `You trust:`, then one line per grant, e.g. `batman — heal`
+and `the lean droog — escort`. A UID you've since forgotten falls back to the display-label snapshot taken
 at grant time. You always see trust the way you *perceive* the trusted party —
 consistent with how the rest of the identity system renders.
+`trust <person>` is different: it works only on someone in the room with you,
+names them as you see them now, and shows what you trust that look with.
 
 ## 6 · NPC participation — **self-action only** (resolved 2026-07-02)
 
@@ -197,8 +230,8 @@ anyone — but **NPCs do not grant trust in practice**. The decided stance:
   forbids it — but it is out of scope and off the roadmap.)
 * **NPC as actor on a player** — a security bot cannot heal/search a *conscious,
   unrestrained, untrusting* player; it must lawfully **restrain** them first
-  (grapple / cuffs / pod). This is the dispatch spec's reserved seam
-  (`NPC_DISPATCH_AND_SIMULATION_SPEC` §6) — sequence coercive authority content
+  (grapple; cuffs, and putting someone into a pod, are 📋 UNBUILT, see §1). This is the dispatch spec's reserved seam
+  (`specs/proposals/NPC_DISPATCH_AND_SIMULATION_SPEC.md` §6) — sequence coercive authority content
   *after* this gate exists.
 
 ## 7 · Open edge cases — recommended resolutions (2026-07-02 dig)
@@ -217,7 +250,7 @@ The model is resolved; recommended resolutions below were presented in the
 3. **Restraint detection** — **recommend:** one shared helper in
    `world/consent.py` unifying the grapple state
    (`world/combat/grappling.py`) with a `restraining` property on furniture
-   (healing pod / restraint chair, clinic furniture system). Both sources
+   (only the clinic AutoDoc pod sets it). Both sources
    exist today; pure plumbing.
 4. **Consciousness threshold** — **recommend: strict binary** on the runtime
    `consciousness` value, no groggy middle band. Groggy-but-awake contests.
@@ -228,17 +261,16 @@ The model is resolved; recommended resolutions below were presented in the
 
 ## 8 · Cross-references
 
-- [[project-gelatinous-trust-consent]] — standing project note + decided stance.
 - `IDENTITY_RECOGNITION_SPEC` — `get_apparent_uid` / `get_identity_signature` /
   `get_assigned_name` / `recognition_memory`; the entire identity key (§2).
 - Grapple / restrain (`world/combat/grappling.py`) — one source of the
   restrained state (§1, §7.3).
-- Clinic furniture / AutoDoc (`project-gelatinous-clinic`) — the restraint-device
+- Clinic furniture / AutoDoc (`typeclasses/furniture.py` `AutoDoc`) — the restraint-device
   source (healing pod) and the primary `heal` consumer.
-- `world/medical` operate/harvest/install — invasive consumers that gate on the
-  free-action path today and defer the conscious path here.
-- `NPC_DISPATCH_AND_SIMULATION_SPEC` §6 — NPC-on-player actions defer to this gate.
-- `PHASE_LAYER_SPEC` §5.3 — a **jacked-in decker's body** (left in meatspace
+- `commands/CmdSurgical.py` `_resolve_target` — the one consent seam for
+  operate, incise, harvest, install and suture (`heal` class).
+- `specs/proposals/NPC_DISPATCH_AND_SIMULATION_SPEC.md` §6 — NPC-on-player actions defer to this gate.
+- `specs/proposals/PHASE_LAYER_SPEC.md` §5.3 — a **jacked-in decker's body** (left in meatspace
   while its owner is in the net) reads as unable-to-resist, so the contest
   predicate makes it a **free-action target** — frisk/move/harm the slumped body.
   Emergent from §1, no special case. (Acting *across* phases is impossible —
@@ -258,22 +290,25 @@ When the build is cleared:
 * **Phase 2 — `frisk`.** New command per §3.2; the information step the
   stealth spec's theft contest contrasts against.
 * **Phase 3 — escort/movement-coupling + the dispatch coercive-authority
-  seam** (`NPC_DISPATCH_AND_SIMULATION_SPEC` §6): lawful restrain-then-act
+  seam** (`specs/proposals/NPC_DISPATCH_AND_SIMULATION_SPEC.md` §6): lawful restrain-then-act
   for security NPCs.
   *(2026-09-12 drift audit: the movement-coupling half shipped in full
   (`world/movement_coupling.py`, `commands/CmdFollow.py`, hooked into
-  `Character.at_post_move`/`at_pre_move` at
-  `typeclasses/characters.py:1665`/`:1695`). The **lawful** half is the part
+  `Character.at_post_move` (calls `bring_followers`) and
+  `Character.at_pre_move` (calls `usher_escortee`) in `typeclasses/characters.py`). The **lawful** half is the part
   that is unbuilt: `world/director/security.py` gives a unit challenge,
   aim-lock and watch (`security_arrival`, `watch_once`) and escalates
   straight to `attack` (`_engage`) — it never grapples, cuffs or pods
-  anyone, so "restrain-then-act" has no lawful actor.
+  anyone, so "restrain-then-act" has no lawful actor. One lawful case does exist:
+  a unit takes hold of a downed unit's wreck by `grapple` and drags it to the
+  recovery bay (the `recover` plan in `world/souls/actions.py`, steps `hold`
+  and `deliver` in `world/souls/jobs.py`). No lawful NPC restrains a conscious
+  suspect: 📋 UNBUILT (no issue).
   Note this is **not** a gate-only phase: coercive restrain-then-act by NPCs
   is already live on the CRIMINAL side, through real commands and this
   spec's own predicate. A lawless soul that cannot afford to eat builds a
-  `grapple → rob → disengage` job (`world/souls/actions.py:752-768`,
-  `:793-819`), and the grapple step consults `can_contest(mark)` before
-  issuing the command (`world/souls/jobs.py:834-849`), with the rob step
-  re-checking it (`:976-989`). So "ALL §9 PHASES COMPLETE" holds for this
+  `grapple → rob → disengage` job (the hunger plan in `world/souls/actions.py`),
+  and the `grapple` step in `world/souls/jobs.py` consults `can_contest(mark)`
+  before issuing the command, with the `rob` step re-checking it. So "ALL §9 PHASES COMPLETE" holds for this
   spec's own build; what remains is the security-NPC CONTENT, which belongs
   to the dispatch arc as the status block says.)*

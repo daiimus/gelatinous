@@ -9,11 +9,12 @@
 > all SHIPPED.** §2 is `world/style.py` `RUNGS` + `derive_rung`, read
 > through the `Item.layer` property in `typeclasses/items.py` (#2126,
 > closed). §3 was settled as option (a) and executed by
-> `scripts/builds/090_one_ladder.py` (#2112, closed). §4/§4.3 are
+> `scripts/builds/090_one_ladder.py` (#2112, closed). §4 (the vocabulary and brands) and §4.3 are
 > `world/style.py` `STYLES`/`BRAND_STYLES`/`derive_style`/`affinity` and
 > `PRESENTATIONS`/`derive_presentation`, rolled onto every arrival in
 > `world/souls/population.py` and authored onto the cast by
-> `scripts/builds/095_colony_style.py` (#2122, closed). Of §8's phases,
+> `scripts/builds/095_colony_style.py` (#2122, closed). §4.1's coverage
+> preference and §4.2's preferred state are not built. Of §8's phases,
 > P1 and P2 are shipped and P3 is largely shipped; only P4 (weather) is
 > untouched. §9 is done (#2110, closed). Per-section notes below.
 >
@@ -31,7 +32,8 @@ everything else:
 - **TYPE** — what a garment *is* (coat, boots, apron, respirator).
   Derived from the item's NAME, so naming a thing correctly is what
   makes it behave correctly. Type determines **layer** and a default
-  **coverage**.
+  **coverage** (📋 UNBUILT (no issue): the default coverage; coverage
+  is always authored).
 - **STYLE** — what register a garment is *in* (salvage, clinical,
   lounge…). A character carries style keywords too, so **an outfit is
   a lookup, not an authored list**: match the person's style against
@@ -45,17 +47,16 @@ can have coherent taste without anyone hand-writing their wardrobe.
 
 > **SHIPPED — note added 2026-09-11.** This table is live as `RUNGS` in
 > `world/style.py`, reached through `derive_rung` and the `Item.layer`
-> property in `typeclasses/items.py` (#2126). The shipped ladder
-> differs from the table below in four places settled after this was
-> written: `goggles` sits on rung 5 (not 2), `slicker` on rung 3 (not
-> 4), `poncho` on rung 4 (not 3), and `watch`/`chrono` (#2433) and
-> `scrubs` (#3088) were moved down to rung 1. The shipped table also
-> carries words this one never listed — `top`, `suit`, `wig`,
-> `carrier`, `lenses`, `rebreather`.
+> property in `typeclasses/items.py` (#2126). The table below
+> lists the words in `RUNGS`; `world/style.py` is the source of truth.
+> Watches moved to rung 1 by owner ruling (#2433), scrubs by #3088.
 
-A garment's name is scanned for the first matching type keyword; that
-type fixes its layer and supplies default coverage when the prototype
-doesn't override. Names are checked longest-first so "trenchcoat"
+Every type keyword in the name is checked as a whole word (a plain
+plural also counts). The longest matching keyword decides the layer;
+if two of the same length point at different rungs, the inner rung
+wins. A `layer` stored on the object (by prototype, blueprint or
+builder) always beats the name. 📋 UNBUILT (no issue): type does not
+supply a default coverage; coverage is always authored. Names are checked longest-first so "trenchcoat"
 beats "coat" and "labcoat" beats "coat". (Note 2026-09-11: in the
 shipped `derive_rung` the `labcoat` half holds, but the `trenchcoat`
 half does not. The matcher anchors a word boundary at **both** ends
@@ -70,12 +71,12 @@ nothing, by design — the example now holds as written. And per the owner's rul
 
 | Layer | Register | Type keywords |
 |---|---|---|
-| **0 — skin** | worn under everything | bra, briefs, boxers, panties, thong, underwear, undershirt, socks, stockings, tights |
-| **1 — base** | the default; anything unlisted lands here | shirt, tee, t-shirt, blouse, henley, tank, trousers, pants, jeans, skirt, dress, jumpsuit, scrubs, leggings |
-| **2 — mid** | over the base, under outerwear | vest, waistcoat, sweater, jumper, hoodie, cardigan, glasses, goggles, mask, respirator, balaclava, coverall |
-| **3 — shell** | jackets and the like | jacket, windbreaker, blazer, poncho, cut, harness, hood |
-| **4 — outer** | the big coats and the working over-layers | coat, longcoat, trenchcoat, overcoat, topcoat, greatcoat, duster, labcoat, slicker, apron, robe, bathrobe, parka |
-| **5 — carried & fastened** | accessories, worn over everything | belt, tie, necktie, scarf, shawl, bandana, armband, badge, choker, boots, shoes, slippers, clogs, gloves, hat, cap, helmet |
+| **0 — skin** | worn under everything | bra, briefs, boxers, panties, thong, g-string, underwear, undershirt, sock, socks, stocking, stockings, tights |
+| **1 — base** | the default; anything unlisted lands here | shirt, tee, t-shirt, tshirt, blouse, henley, tank, top, trousers, pants, jeans, skirt, dress, jumpsuit, leggings, suit, wig, bodysuit, slip, watch, chrono, scrubs |
+| **2 — mid** | over the base, under outerwear | vest, waistcoat, hoodie, sweater, jumper, cardigan, coverall, glasses, sunglasses, shades, mirrorshades, mask, respirator, rebreather, balaclava, carrier, lenses |
+| **3 — shell** | jackets and the like | jacket, windbreaker, blazer, harness, hood, slicker, cut |
+| **4 — outer** | the big coats and the working over-layers | coat, labcoat, trench, overcoat, topcoat, greatcoat, duster, robe, apron, parka, bathrobe, cloak, poncho, trenchcoat, longcoat |
+| **5 — carried & fastened** | accessories, worn over everything | boot, boots, shoe, shoes, sneaker, sneakers, oxford, oxfords, wader, waders, sandal, sandals, loafer, heel, heels, slipper, slippers, clog, clogs, belt, tie, necktie, scarf, shawl, bandana, bandanna, armband, badge, glove, gloves, hat, cap, helmet, choker, garter, garters, wrap, collar, earpiece, goggles |
 
 Two rules make the convention enforceable rather than advisory:
 
@@ -85,6 +86,13 @@ Two rules make the convention enforceable rather than advisory:
    correct layering for free.
 2. **Unknown = layer 1.** No name match means base layer, so an
    unnamed scrap of cloth can never accidentally outrank a coat.
+
+As built, a few prototypes pin a layer that differs from their name's
+rung. `KEPT` in `world/tests/test_prototype_layers_match_the_ladder.py`
+lists them: the canvas poncho stays on 3, the kevlar vest and the
+Hive-Mind Mark VII coverall on 4, and the coloured contact lenses on 1.
+The test's comment calls the Hive-Mind coverall a protective over-suit
+worn over everything, while `coverall` itself is rung 2 (#3610).
 
 ## 3. The layer reconciliation (the real integration cost)
 
@@ -137,7 +145,19 @@ they are different problems that have been sharing a number.
 Style is a small keyword set, carried by garments as
 `db.style = ["salvage", "workwear"]` and by characters the same way.
 **A garment may carry several** — clothing is versatile, and a
-Longhaul slicker is honestly `workwear` and `sealed` at once.
+Hive-Mind coverall is honestly `workwear` and `sealed` at once. As
+built, a garment gets several styles only from a two-style brand
+(Boiler Run, Hive-Mind) or from its own `style` attribute. A brand's
+styles replace the name's, so a Longhaul slicker reads `workwear`
+only.
+
+A garment needs no stored style. Unless it carries a `style`
+attribute, its brand (spotted in its name or its description) decides;
+failing a brand, its name is matched against the style keywords in
+the order clinical, sealed, uniform, workwear, shine, salvage, and the
+first hit wins; failing that, it reads `street`. Presentation is a
+separate attribute: `presentation` on a garment, `presents` on a
+character.
 
 | Keyword | Reads as | Where it lives |
 |---|---|---|
@@ -159,7 +179,12 @@ Rulings folded in:
   branded item is pre-sorted at authoring time.
 - **`street` is a real style**, not the absence of one — most
   residents wear it, and it still sorts against `shine` and `uniform`
-  when a soul chooses what to put on.
+  when a soul chooses what to put on. As built, a garment in the
+  wearer's own style scores 2, a `street` garment scores 1 for anyone,
+  anything else 0; a garment whose presentation matches the wearer's
+  leaning adds 1 (an unmarked garment matches a neutral leaning, and a
+  wearer with no leaning ignores the axis). A character with no style
+  set dresses as `street`.
 - **Parked, deliberately**: a **money** register (no visible wealthy
   class yet) and **crew colors** (gang/faction identity — WSIS's
   business when it arrives). Both are good touch points; neither is
@@ -176,6 +201,10 @@ A character carries a coverage *preference* alongside their modesty
 floor. A Companion has a low floor **and** a preference for the
 minimum above it; a Flinch-Coded shut-in has a high floor and prefers
 more. Nobody is tagged "revealing"; they simply choose that way.
+
+📋 UNBUILT (no issue): no character carries a coverage preference;
+only the modesty floor (`db.modesty`, read by
+`world/souls/needs.py` `modesty_of`) exists.
 
 ### 4.3 Presentation — the second axis (RULED 2026-08-20)
 
@@ -203,8 +232,8 @@ The DATA will skew femme/neutral, because most masc-coded silhouettes
 are already carried by their register (an evening suit reads `shine`,
 heavy boots `workwear`), so only garments whose cut is the marked
 thing land there. That is an observation about this colony's
-wardrobe, not a property of the system. Measured live: 392 neutral,
-18 femme, 3 masc.
+wardrobe, not a property of the system. Measured live when this was written
+(2026-08-20): 392 neutral, 18 femme, 3 masc.
 
 It is a **reading, not an essence** — how this colony sees a garment,
 which is culture, and culture may differ elsewhere.
@@ -218,26 +247,38 @@ shoved back past the elbow (Lin's entire silhouette), a collar up, a
 jacket that is never once zipped. One attribute, applied when
 dressing, and it gives PCs a habit worth mirroring.
 
+📋 UNBUILT (no issue): no character carries a preferred garment
+state, and nothing applies one when dressing.
+
 ## 5. Where a character's style comes from
 
-- **Essential Personnel**: authored beside their blueprint wardrobe
+- **Essential Personnel**: authored by hand, in the `CAST` table of
+  `scripts/builds/095_colony_style.py` (the blueprint itself carries no
+  style)
   (Sable is `shine`, Bellows `street`+`salvage`, Nikolai/Marta
   `clinical`, Lin `workwear`+`street`). Their existing hand-written wardrobes
   stay exactly as they are — style only governs what they acquire
   *later*, so nobody's signature look is regenerated out from under
-  them.
+  them. One exception, as built: a named NPC whose blueprint leaves
+  the torso, legs or feet bare gets the gap filled from the thrift
+  rail (`world/souls/population.py` `ensure_outfit_complete`, #2705).
+  That pick is random and ignores style and budget.
 - **Generated residents**: rolled from **department** (the manifest's
   register — Life Systems leans `workwear`, Security `uniform`) and
   nudged by **traits** (Rivet-Tight prefers `salvage`, Open-Valve
   `shine`). Personality and past pick your clothes, which is exactly
   how it works for people.
 
-  *(2026-09-11: shipped, but rolled off **role**, not department —
-  `world/style.py` `ROLE_STYLES` + `roll_style`, called at arrival in
-  `world/souls/population.py`. `world/manifest.py` now carries
-  `DEPARTMENTS` and `department_of`, so the department signal this
-  bullet describes exists and is simply not wired to style yet; the
-  trait nudge is not wired either.)*
+  *(As built, neither department nor traits feed style. An arrival,
+  and a body made with `@spawnmob`, gets its style from
+  `world/souls/population.py` `roll_person`, which calls
+  `world/style.py` `roll_style` with no usable role, so the pick is a
+  weighted random draw: street 5, salvage 3, workwear 3, shine 1
+  (#2658). Role (`ROLE_STYLES`) was used once, by build 095, for souls
+  that had no style when it ran. `world/manifest.py` `DEPARTMENTS` and
+  `department_of` exist, and `roll_person` rolls a designation, but
+  style reads neither. 📋 UNBUILT: style from department and the trait
+  nudge.)*
 - **Players**: unset by default; a future `style` preference could
   feed shop filtering, but nothing is ever forced.
 
@@ -258,9 +299,17 @@ The Wardrobe need supplies the trigger; this supplies the taste.
              for this.
 ```
 
-Buying follows the same order: a soul replacing the Thawn-Harrison
-issue buys the cheapest garment in their own style that fills their
-emptiest slot.
+As built, arrival dressing (`world/souls/population.py` `outfit_for`)
+fills three slots, torso, legs and feet, choosing by style match plus
+presentation match, then the cheapest, then at random. 📋 UNBUILT (no
+issue): the per-(layer, region) SHAPE step, the "what they already
+own" tie-break, and style in the planner's own `wear` step
+(`world/souls/jobs.py`). 📋 UNBUILT (no issue): step 4, WEATHER.
+
+Buying, as built, works differently: from what it can afford, a soul
+buys the garment that covers the most of what is still bare; among
+equals, the one closest to its own style (and presentation); then the
+cheapest.
 
 ## 7. What this unlocks elsewhere
 
@@ -280,9 +329,12 @@ emptiest slot.
 
 > **Progress note, 2026-09-11.** P1 ✅ shipped — `world/style.py`
 > `RUNGS`/`derive_rung` plus `Item.layer` (#2126), with the §3
-> migration run as build 090 (#2112). P2 ✅ shipped — `db.style` and
-> `db.presents` derived on garments and rolled onto arrivals (#2122),
-> the cast authored by build 095. P3 🔶 largely shipped — taste drives
+> migration run as build 090 (#2112). P2 ✅ shipped — a garment's style
+> and presentation are derived from its name (and, for a brand, its
+> description) whenever they are read, unless it carries a `style` or
+> `presentation` attribute; a character carries `db.style` and
+> `db.presents`, both rolled onto arrivals (#2122), and build 095 wrote
+> the cast's `db.style`. P3 🔶 largely shipped — taste drives
 > arrival dressing (`population.outfit_for`) and buying
 > (`actions._proto_affinity`), but the wardrobe planner's own `wear`
 > step in `world/souls/jobs.py` still ranks candidates by bare coverage

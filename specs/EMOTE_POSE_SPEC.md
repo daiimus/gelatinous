@@ -12,11 +12,12 @@ This specification defines the emote, pose, and communication command system for
 - **Dot-pose (`.`)** — LambdaMOO-style first-person natural emoting with automatic perspective transformation
 - **Traditional emote (`emote`)** — Third-person emoting with identity-aware character references
 - **Say (`say`)** — Speech with per-observer speaker attribution
+- **Directed speech (`to`)** — `say` aimed at one target; everyone present hears it, and a radio you hold or wear is transmitted through
 - **Whisper (`whisper`)** — Directed speech with per-observer attribution for speaker and target
 - **Think (`think`)** — Private interiority as the MUSH thoughtbubble `Name thinks . o O ( … )`, perceived only by the actor and (v1) Builder+; the interiority channel LLM NPCs use instead of leaking thought into their visible emote
 - **Grammar engine (`world/grammar.py`)** — Shared infrastructure for verb conjugation, pronoun transformation, and article handling
 
-This system is the **communication counterpart** to the Identity & Recognition System (see `IDENTITY_RECOGNITION_SPEC.md`). The identity spec defines *how characters are perceived*; this spec defines *how that perception is expressed in communication*. The grammar engine defined here is the canonical implementation referenced by both specs.
+This system is the **communication counterpart** to the Identity & Recognition System (see `IDENTITY_RECOGNITION_SPEC.md`). The identity spec defines *how characters are perceived*; this spec defines *how that perception is expressed in communication*. The grammar engine (`world/grammar.py`) is specified in `GRAMMAR_ENGINE_SPEC.md`; this spec uses it.
 
 ### Relationship to Existing Systems
 
@@ -44,7 +45,7 @@ Evennia's FuncParser system (`$pron()`, `$conj()`, `$You()`) sends a single temp
 
 This is a **binary model**. The identity system requires **N-way resolution** — each observer may know the actor by a different name based on their recognition memory. FuncParser resolves the actor's name from `.key`, bypassing `get_display_name(observer)` entirely. There is no hook to inject per-observer name resolution into FuncParser.
 
-Additionally, the codebase has **zero existing uses** of `$pron()`, `$conj()`, or `$You()` in any `.py` file. Adopting FuncParser would require retrofitting all 234 `msg_contents()` calls — the same refactoring scope as a custom pipeline, but with the fundamental limitation of binary-only resolution.
+Additionally, the codebase has **zero existing uses** of `$pron()`, `$conj()`, or `$You()` in any `.py` file. Adopting FuncParser would require retrofitting every `msg_contents()` call — the same refactoring scope as a custom pipeline, but with the fundamental limitation of binary-only resolution.
 
 Therefore, this spec defines a custom rendering pipeline that produces **one unique string per observer**, with full control over name resolution, pronoun transformation, and verb conjugation.
 
@@ -82,7 +83,7 @@ class CmdDotPose(Command):
 | `"Hey," I .say, .waving my hand. "Over here!"` | "Hey," you say, waving your hand. "Over here!" | "Hey," Jorge says, waving his hand. "Over here!" | "Hey," a lanky man says, waving his hand. "Over here!" |
 | `.fold my arms and .lean against the wall.` | You fold your arms and lean against the wall. | Jorge folds his arms and leans against the wall. | A lanky man folds his arms and leans against the wall. |
 
-> **2026-09-11 — two speech-first rows above render a capital article, not a lowercase one.** The third and fifth rows show `"Get down!" a lanky man shouts` and `"Hey," a lanky man says`; the shipped observer branch calls `capitalize_first` on the first-mention display name unconditionally (`world/emote.py:892-896`, comment: "Observer: always capitalize_first on first mention"), so both read **"A lanky man"**. §Capitalization and Punctuation below already states this rule correctly ("the article is also capitalized: `"Get down!" A lanky man shouts.`"), and `CmdDotPose`'s own help text (`commands/CmdCommunication.py:521-522`) shows the capitalized form — it is this table that is stale, not the rule.
+> **2026-09-11 — two speech-first rows above render a capital article, not a lowercase one.** The third and fifth rows show `"Get down!" a lanky man shouts` and `"Hey," a lanky man says`; the shipped observer branch calls `capitalize_first` on the first-mention display name unconditionally (`world/emote.py` `render_for_observer`, comment: "Observer: always capitalize_first on first mention"), so both read **"A lanky man"**. §Capitalization and Punctuation below already states this rule correctly ("the article is also capitalized: `"Get down!" A lanky man shouts.`"), and `CmdDotPose`'s own help text shows the capitalized form — it is this table that is stale, not the rule.
 
 ### Traditional Emote (`emote`)
 
@@ -113,7 +114,7 @@ class CmdEmote(Command):
 
 **Self-view for `emote`:** The actor sees their own `.key` (real name), NOT "You". The player wrote in third person — "You leans" would be broken grammar, and deconjugating verbs is fragile and error-prone. See Appendix C for the full architectural rationale.
 
-**No verb or pronoun transformation** is performed for `emote`. The player is responsible for their own grammar. The only processing is character reference resolution and per-observer name rendering.
+**No verb or pronoun transformation** is performed for `emote`. The player is responsible for their own grammar. Processing is limited to: resolving character references per observer (second person for the observer themselves); dropping an article or a stray `you` typed right before a reference, since the resolved name carries its own; turning `you's` into `your`; and showing quoted words as `"..."` to observers who cannot hear. No period is added.
 
 ### Say (`say`)
 
@@ -144,6 +145,32 @@ class CmdSay(Command):
 
 Speech content passes through unchanged — no pronoun or verb transformation.
 
+### Directed Speech (`to`)
+
+`say` aimed at one target. Everyone present still hears it.
+
+**Syntax:**
+
+```
+to <target> <message>
+```
+
+**Examples** (actor speaks to a character they know as "Jorge"):
+
+| Audience | Sees |
+|---|---|
+| Actor | You say to Jorge, "Meet me later." |
+| Target | A lanky man says to you, "Meet me later." |
+| Room observer who knows neither | A lanky man says to a compact woman, "Meet me later." |
+
+**Rules** (`CmdTo.func`, `commands/CmdCommunication.py`):
+
+- The target is the longest run of leading words that names exactly one thing, so a multi-word sdesc is not split into the message. At least one word is always left for the message.
+- Attribution, hearing and voice flavour work exactly as for `say` (`world/speech.py` `broadcast_speech` with `target=`). The target's speech payload is marked `addressed`.
+- You can address anyone or anything in the room, and anything you hold or wear, but not something carried in a pocket (`addressable`). The refusal reads `<target> is stowed away — you'd have to hold it or wear it to speak to it.`
+- Aimed at a radio, `to` transmits through it, spoken openly (`world.radio.transmit`), instead of speaking to the room. You must be holding or wearing the radio, or be seated at the console (`world.radio.can_transmit_through`). A channelled action refuses a radio target first.
+- `to` breaks stealth. As built, the call comes after the usage, search, reach and channelling checks but before the radio hold-or-seat check, so that one refusal still costs cover.
+
 ### Whisper (`whisper`)
 
 Directed speech with per-observer attribution for both speaker and target. Three audiences receive different messages.
@@ -154,13 +181,13 @@ Directed speech with per-observer attribution for both speaker and target. Three
 whisper <target> = <message>
 ```
 
-> **2026-09-11 — this is the LEGACY form; it is still accepted.** The canonical syntax shipped in `commands/CmdCommunication.py:310-311` is:
+> **2026-09-11 — this is the LEGACY form; it is still accepted.** The canonical syntax, as `CmdWhisper`'s help gives it, is:
 >
 > ```
 > whisper "<message>" to <person>
 > ```
 >
-> `CmdWhisper.parse` (`:325-337`) matches the quoted-to form first and falls back to `=`; the usage error (`:344`) advertises only the quoted-to form. Owner ruling of 2026-07-03, recorded at `specs/proposals/STEALTH_AND_DETECTION_SPEC.md:324-326`: quoted-to is the syntax, and `whisper <person> = <message>` is a legacy alias that stays accepted — not a deprecation.
+> `CmdWhisper.parse` matches the quoted-to form first and falls back to `=`; the usage error in `CmdWhisper.func` advertises only the quoted-to form. Owner ruling of 2026-07-03, recorded at `specs/proposals/STEALTH_AND_DETECTION_SPEC.md:324-326`: quoted-to is the syntax, and `whisper <person> = <message>` is a legacy alias that stays accepted — not a deprecation.
 
 **Command class:**
 
@@ -180,7 +207,7 @@ class CmdWhisper(Command):
 | Room observer who knows both | Jorge whispers something to Maria. |
 | Room observer who knows neither | A lanky man whispers something to a compact woman. |
 
-**Visibility rule:** Room observers see that a whisper occurred and between whom, but NOT the speech content. Only the speaker and target receive the content.
+**Visibility rule:** Room observers see that a whisper occurred and between whom, but NOT the speech content. Only the speaker and target receive the content. A whisper is a visual event to bystanders: only those who can see, and from whom neither the whisperer nor the target is hidden, get the `whispers something to` line; nobody else gets anything. Whispering does not break stealth. If the whisperer is hidden from the target, the target's awareness of the whisperer rises to SUSPICIOUS: they know something is there, not who.
 
 ### Think (`think`)
 
@@ -204,7 +231,7 @@ class CmdThink(Command):
 | Builder+ in room (doesn't know actor) | A lanky man thinks . o O ( these are my innermost thoughts. ) |
 | Everyone else | (nothing) |
 
-**Perceiver rule (v1):** only the actor and **Builder+** in the room perceive a thought — staff watching a scene see what characters (and LLM NPCs) are thinking. The implementation (`render_think`) gates on a single perceiver test, so a future **telepathy/psychic sense** drops in there (slotting into `world/perception.py`'s capacity/sense framework) without changing callers. This is the channel an LLM NPC uses for interiority instead of leaking private thought into its visible `emote`.
+**Perceiver rule (v1):** only the actor and **Builder+** in the room perceive a thought — staff watching a scene see what characters (and LLM NPCs) are thinking. The implementation (`render_think`) gates on a single perceiver test, so a future **telepathy/psychic sense** drops in there (slotting into `world/perception.py`'s capacity/sense framework) without changing callers. This is the channel an LLM NPC uses for interiority instead of leaking private thought into its visible `emote`. Thinking does not break stealth. As built, staff here means an observer that passes `check_permstring("Builder")` (`render_think`), not the shared staff test `world.search.may_use_real_names`.
 
 ---
 
@@ -221,7 +248,7 @@ The `.` command accepts two starting patterns:
 
 The `.` prefix marks a word as a verb requiring conjugation:
 
-- **First verb:** Always the first word after the `.` command trigger (no additional `.` prefix needed on it)
+- **First verb:** The first word after the `.` command trigger (no additional `.` prefix needed on it), unless that word is a first-person pronoun (I, me, my, mine, myself) or the pose starts with speech or another non-letter; then only `.`-marked words are verbs
 - **Subsequent verbs:** Marked with `.` prefix anywhere in the text: `I .murmur`, `.diving behind cover`
 
 **Disambiguation rule:** `.` followed by a letter (`[a-zA-Z]`) is a verb marker. `.` followed by whitespace, punctuation, end-of-string, or a digit is literal punctuation.
@@ -233,7 +260,7 @@ The `.` prefix marks a word as a verb requiring conjugation:
 .lean back...                  → "lean" = verb, "..." = punctuation
 ```
 
-**Only mark words that need conjugation.** Participles like `taking` and `diving` don't change form between first and third person — they don't need markers. The system trusts the player's explicit markers. If a non-verb is marked (e.g., `.the`), it gets conjugated anyway ("thes") — that's the player's error.
+**Only mark words that need conjugation.** Participles like `taking` and `diving` don't change form between first and third person — they don't need markers. The system trusts the player's explicit markers. If a non-verb is marked (e.g., `.the`), it gets conjugated anyway ("thes") — that's the player's error. Exception: a marked word ending in -ing is treated as a participle and left as typed (`.diving` → "diving"), except the -ing base verbs bring, cling, fling, king, ping, ring, sing, sling, spring, sting, string, swing, thing, wing, wring and zing (`world/emote.py` `_should_conjugate`). A dot right after another dot (`...word`) is never a verb marker.
 
 ### Pronoun Detection
 
@@ -259,7 +286,7 @@ First-person pronouns outside of quoted speech are detected and transformed:
 Text enclosed in double quotes (`"..."`) is treated as a speech block:
 
 - **Never scanned** for pronouns, verb markers, or character references
-- **Preserved verbatim** in the output for the speaker and for observers who share the language *(2026-09-11: and who can **hear** the speaker. `world/emote.py:151-154` redacts the quoted words to `"..."` for any observer other than the speaker who fails `can_hear` — CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4, #589. The speaker always hears their own words. The same correction applies to the `SpeechToken` rows of the §Actor Self-View and §Observer View tables and to §Default Behavior.)*
+- **Preserved verbatim** in the output for the speaker and for observers who share the language *(2026-09-11: and who can **hear** the speaker. `world/emote.py` `process_speech` redacts the quoted words to `"..."` for any observer other than the speaker who fails `can_hear` — CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4, #589. The speaker always hears their own words. The same correction applies to the `SpeechToken` rows of the §Actor Self-View and §Observer View tables and to §Default Behavior.)*
 - **Tokenized as distinct SPEECH tokens** with speaker metadata, enabling future language system processing (see Speech Token System)
 
 Unmatched quotes (opening `"` with no closing `"`) treat the rest of the input as speech. Nested quotes are not supported — the parser matches the first `"` to the next `"`.
@@ -270,16 +297,18 @@ Other characters mentioned in the emote are resolved using **bare name matching*
 
 1. Get all visible characters in the room (excluding the actor)
 2. For each character, collect names the actor might use:
-   - Assigned name from actor's recognition memory
-   - Character's current sdesc (as perceived by the actor)
-   - Character's `.key`
+   - The display name the actor already holds for them (assigned name, or sdesc with article), and the same without its article
+   - Each single word of a name the actor holds for them, except function words and generic person-words (the, that, man, guy…)
+   - The raw sdesc
+   - Height/build descriptor + keyword, the keyword alone, and the descriptor alone (which matches only when typed with a capital letter), all built from the character's apparent look (`world.identity.apparent_axes`)
+   - The character's `.key`, for staff only (`world.search.may_use_real_names`)
 3. Sort candidates by string length, descending (longest match first)
 4. Scan emote text (excluding quoted speech) for case-insensitive matches
 5. Replace matches with character-reference tokens
 
 **Only scanned outside quoted speech.** If your character says someone's name in dialogue, that's speech content, not a game-object reference.
 
-**Ambiguity:** If multiple characters match the same string, the ordinal system applies: `2nd tall man` resolves to the second matching character (using the existing `get_search_query_replacement` ordinal system from `typeclasses/objects.py:41-76`).
+**Ambiguity:** If multiple characters match the same string, an ordinal picks one: `2nd tall man` resolves to the second character in the room that matches `tall man`. Only numeric ordinals work (`1st`, `2nd`, `3rd`…), not words like `second`. This is the emote's own pre-pass (`world/emote.py` `_find_ordinal_char_ref_spans`), not the search ordinal system.
 
 **No match:** If a name doesn't match any room occupant, it's treated as plain text — not an error. This handles references to absent characters, objects, or abstract concepts naturally.
 
@@ -435,10 +464,10 @@ def render_dot_pose(token_stream, actor, location, exclude=None):
         observer.msg(rendered)
 ```
 
-> **2026-09-11 — the signature above is still accurate; the loop body is superseded in three ways** (`world/emote.py:1029-1065`).
+> **2026-09-11 — the signature above is still accurate; the loop body is superseded in three ways** (`world/emote.py` `render_dot_pose`).
 > 1. **`perceivers(location, exclude_set)` (in `world/perception.py` since #3420 / #3530) replaced `contents_get` + the `hasattr` check.** `if not hasattr(observer, "msg")` excludes *nothing* — every typeclassed Evennia object has `.msg` — so the guard above is inert. #2788 replaced it with a character duck-type filter (then `world/emote.py` `_perceivers` / `_perceives`; since #3420 / #3530 the single definition is `world/perception.py` `perceivers` / `perceives`) after measuring that 1,961 of 2,037 objects standing in live rooms are not characters. **Do not reinstate the guard above; it is the bug, not the fix.**
 > 2. **The msg is typed and attributed:** `observer.msg(text=rendered, type="pose", from_obj=actor, **payload)`.
-> 3. **A structured speech payload rides along.** `_extract_speech` (`:1011`) pulls any embedded quote and the ids of referenced characters; `world/speech.py:speech_payload` attaches `speech` (hearing-gated) and `addressed`, so an NPC can tell "posed AT me" from "posed in the room". A wordless pose still carries `addressed` via `payload.setdefault` (`:1063`); `render_emote` carries the same fallback (`:1214`, #2462 item 4).
+> 3. **A structured speech payload rides along.** `_extract_speech` pulls any embedded quote and the ids of referenced characters; `world/speech.py:speech_payload` attaches `speech` (hearing-gated) and `addressed`, so an NPC can tell "posed AT me" from "posed in the room". A wordless pose still carries `addressed` via `payload.setdefault`; `render_emote` carries the same fallback (#2462 item 4).
 
 ### Actor Self-View
 
@@ -447,7 +476,7 @@ When `observer == actor`:
 | Token Type | Rendering |
 |---|---|
 | TextToken | Unchanged |
-| VerbToken | Base form (no conjugation): "lean", "ask" |
+| VerbToken | Second-person form via `conjugate_second_person`: the base form, with a typed -s form normalised (`.leans` → "lean", `.is` → "are"). -ing participles, modals and irregular past forms pass through unchanged. |
 | PronounToken | Second-person form: I→you, my→your, me→you, mine→yours, myself→yourself |
 | SpeechToken | `process_speech(text, speaker, observer)` (default: verbatim in quotes) |
 | CharRefToken | `_resolve_charref` — `"you"`/`"your"` if the ref is the actor (self-ref), else `get_display_name(actor)` |
@@ -474,7 +503,7 @@ The actor may be referenced multiple times in a single emote. The renderer track
 
 **First reference** to the actor (implicit from first verb, or first `I` pronoun):
 
-- Actor self-view: "You" (capitalized)
+- Actor self-view: "You", or "you" when speech or other text comes before it
 - Observer: Full display name via `get_display_name(observer)` — "Jorge" or "A lanky man"
 
 **Subsequent references** to the actor (`I` pronoun tokens after the first reference):
@@ -487,7 +516,7 @@ The actor may be referenced multiple times in a single emote. The renderer track
 - Actor: "your", "you", "yours", "yourself"
 - Observer: "his"/"her"/"their", "him"/"her"/"them", etc.
 
-**Character references** (other characters in the emote) render as full display names via `get_display_name(observer)` — with **one carve-out: a reference to the observer themselves renders second-person** (`you`, or `your` for the possessive). So a pose that targets you reads "watches **you**", never your own name; everyone else still resolves to the name that observer knows them by. No pronoun substitution for any other (non-actor, non-observer) character. This is the same rule for dot-pose and traditional emote — both resolve char-refs through `_resolve_charref(character, observer)`.
+**Character references** (other characters in the emote) render as full display names via `get_display_name(observer)` — with **one carve-out: a reference to the observer themselves renders second-person** (`you`, or `your` for the possessive). So a pose that targets you reads "watches **you**", never your own name; everyone else still resolves to the name that observer knows them by. No pronoun substitution for any other (non-actor, non-observer) character. This is the same rule for dot-pose and traditional emote — both resolve char-refs through `_resolve_charref(character, observer)`. Because the resolved name carries its own article, an article (or a stray `you`) typed right before a reference is dropped: `.watch the lanky man` renders "…watches a lanky man" or "…watches Jorge", never "the a lanky man". A possessive reference to the observer, `the lanky man's`, renders `your`.
 
 ### Rendering Trace
 
@@ -559,9 +588,9 @@ The first character of the final rendered string is capitalized. Specific cases:
 When a display name (sdesc with article) appears at the start of a clause after speech, the article is also capitalized: `"Get down!" A lanky man shouts.`
 
 > **2026-09-11 — three corrections to the capitalization and punctuation rules in this section.**
-> 1. **The terminal-punctuation set also includes `'`.** `world/emote.py:1000` tests `stripped[-1] not in ".!?\"')"` — the single quote is terminal too, which the list below omits.
-> 2. **A second, undocumented capitalizer ships.** After the first-character rule above, `world/emote.py:993-999` capitalizes the letter following any *bare* `[.!?]` + whitespace, so a multi-beat pose reads "…sets a glass down. He lets his eyes linger." Punctuation that *closes a quote* is deliberately excluded, so `"Get down!" you shout` stays lowercase.
-> 3. **Both rules are dot-pose only.** `render_emote_for_observer` (`world/emote.py:1132-1179`) applies neither, so `emote leans back` broadcasts "Jorge leans back" with no period. That is consistent with §Traditional Emote's "the player is responsible for their own grammar", but §Edge Cases → Auto-Punctuation Details states it as a general emote rule. See owner question.
+> 1. **The terminal-punctuation set also includes `'`.** `render_for_observer` tests `stripped[-1] not in ".!?\"')"` — the single quote is terminal too, which the list below omits.
+> 2. **A second, undocumented capitalizer ships.** After the first-character rule above, `render_for_observer` capitalizes the letter following any *bare* `[.!?]` + whitespace, so a multi-beat pose reads "…sets a glass down. He lets his eyes linger." Punctuation that *closes a quote* is deliberately excluded, so `"Get down!" you shout` stays lowercase.
+> 3. **Both rules are dot-pose only.** `render_emote_for_observer` (`world/emote.py`) applies neither, so `emote leans back` broadcasts "Jorge leans back" with no period. That is consistent with §Traditional Emote's "the player is responsible for their own grammar", but §Edge Cases → Auto-Punctuation Details states it as a general emote rule. Whether traditional `emote` should get them too is not decided.
 
 **Auto-punctuation:**
 
@@ -594,22 +623,22 @@ Self-perception "You" is applied by the **rendering pipeline**, not by `get_disp
 - **System messages** that need "You" handle it explicitly with `if observer == actor` checks
 - The existing `_process_description_variables()` system for `look` descriptions already handles self-perception separately from `get_display_name`
 
-This resolves the open architectural concern from the identity spec (self-perception in `get_display_name`). See Appendix C for the full rationale. The identity spec's Self-Perception section should be updated to reflect this decision.
+This resolves the open architectural concern from the identity spec (self-perception in `get_display_name`). See Appendix C for the full rationale. The identity spec's §Self-Perception records this decision.
 
 ### Character Reference Resolution
 
 When a player types a character name in an emote, the parser resolves it to a game object using the identity spec's targeting priority:
 
 1. **Assigned names** — Check the actor's recognition memory for any room occupant whose assigned name matches
-2. **Sdescs** — Match against visible characters' sdescs as perceived by the actor (partial, case-insensitive)
-3. **Real keys** — Fall through to `.key` matching *(2026-09-11: Builder+ only — `world/emote.py:426-442` gates this candidate on `actor.locks.check_lockstring(actor, "perm(Builder)")`. See the note in §Character References.)*
-4. **Ordinals** — `"2nd tall man"` uses the existing ordinal system
+2. **Sdescs** — The actor's view of the sdesc with or without its article, the descriptor + keyword, the keyword alone, or the descriptor alone (capitalised), matched as whole words, case-insensitive
+3. **Real keys** — Fall through to `.key` matching *(Staff only: the `.key` candidate is added when `world.search.may_use_real_names(actor)` is true.)*
+4. **Ordinals** — `"2nd tall man"`, numeric ordinals only (see §Character References)
 
 The resolved game object is stored in a `CharRefToken`. At render time, each observer sees that character via `get_display_name(observer)` — which may be completely different from what the actor typed.
 
 ### Disguise Interaction
 
-If the actor is disguised (via `appear`), their display name changes per-observer as expected. The emote rendering pipeline doesn't need to know about disguise mechanics — it calls `get_display_name(observer)` and the identity system handles the rest.
+If the actor is disguised (via `appear`), their display name changes per-observer as expected. For names, the emote rendering pipeline doesn't need to know about disguise mechanics — it calls `get_display_name(observer)` and the identity system handles the rest. Two other parts follow the disguise themselves. Pronouns come from the actor's apparent gender (`world.identity.get_apparent_gender`, which a disguise keyword decides), not from `sex`. Character-reference handles are built from the referenced person's apparent look (`world.identity.apparent_axes`), so their hidden real look cannot be used to pose at them.
 
 Similarly, if a *referenced* character is disguised, observers who see through the disguise see the real identity while others see the disguised sdesc.
 
@@ -695,24 +724,22 @@ def render_say(actor, message, location):
         observer.msg(f'{capitalize_first(speaker_name)} says, "{message}"')
 ```
 
-> **2026-09-11 — `render_say` does not exist; `say` rides the shared speech backbone.** `CmdSay.func` sends the actor's own line (`commands/CmdCommunication.py:80`) and then calls `broadcast_speech(caller, speech, location)` (`:81`) — `world/speech.py:116`, the one room loop `say`, `to` and `whisper` all share (#656). The three-audience *shape* above is still right; the mechanism is not:
-> - **Attribution is not `get_display_name`.** `world/speech.py:85-87` uses `resolve_speaker_attribution(speaker, observer)` (`world/voice.py`): sight and the voice channel decide *who*, so a speaker hidden from the observer is attributed by VOICE, and a remembered voice can name someone the observer cannot see (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4.5).
-> - **Hearing gates the content.** A deaf-but-watching observer gets "X says something you can't make out." (`world/speech.py:107-113`); an observer who is both deaf and blind is skipped entirely (`:130-131`).
-> - **Voice flavour may be appended** for observers who can see the speaker (`world/speech.py:42-54`, `:95-105`) — a garbled voice always renders, otherwise a low-frequency sprinkle rolled once per utterance so every observer reads it consistently.
+> **2026-09-11 — `render_say` does not exist; `say` rides the shared speech backbone.** `CmdSay.func` sends the actor's own line and then calls `broadcast_speech(caller, speech, location)` in `world/speech.py`, the room loop `say` and `to` share; `whisper` shares only its line renderer, `render_speech_line` (#656). The three-audience *shape* above is still right; the mechanism is not:
+> - **Attribution is not `get_display_name`.** `render_speech_line` (`world/speech.py`) uses `resolve_speaker_attribution(speaker, observer)` (`world/voice.py`): sight and the voice channel decide *who*, so a speaker hidden from the observer is attributed by VOICE, and a remembered voice can name someone the observer cannot see (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4.5).
+> - **Hearing gates the content.** A deaf-but-watching observer gets "X says something you can't make out." (`render_speech_line`); an observer who is both deaf and blind is skipped entirely (`broadcast_speech`).
+> - **Voice flavour may be appended** for observers who can see the speaker (`visible_voice_flavor`, `render_speech_line`) — a garbled voice always renders, otherwise a low-frequency sprinkle rolled once per utterance so every observer reads it consistently.
 >
-> `say` also breaks stealth: `break_stealth(caller)` at `commands/CmdCommunication.py:75`, placed *after* the argument and location guards so a refused command no longer blows your cover for an action that never happened (#2530).
+> `say` also breaks stealth: `break_stealth(caller)` in `CmdSay.func`, placed *after* the argument and location guards so a refused command no longer blows your cover for an action that never happened (#2530).
 
 Speech content passes through unchanged for `say`. The only transformation is per-observer speaker attribution.
 
 ### Death Filter Compatibility
 
-The existing death filter (`characters.py:137-205`) intercepts social messages to dead characters by checking message type metadata. Custom commands must pass compatible type information so the filter can intercept:
+The death filter (`Character.msg` in `typeclasses/characters.py`) passes a dead character only the death curtain, messages from the death-progression script, and messages from staff that are not social. A message is social (`_is_social_message`) when its `type` is say, pose, emote, tell, whisper or ooc, or its text matches a speech pattern. Every other message, with or without a sender, is dropped. The communication commands send with `from_obj` and a `type` (`say` for say and to, `whisper`, `pose` for dot-pose, emote and the socials), so a dead character receives none of them, from staff included:
 
 ```python
 observer.msg(text=rendered_message, type="say")
 ```
-
-Implementation must verify compatibility with the existing filter pattern. If the filter checks `options={"type": "say"}` or inspects `from_obj`, the custom commands must provide equivalent metadata.
 
 ---
 
@@ -725,7 +752,7 @@ Whisper renders differently for three audiences:
 | Audience | Template | Character References |
 |---|---|---|
 | Actor (speaker) | `You whisper to {target}, "{message}"` | Target = `get_display_name(actor)` |
-| Target | `{actor} whispers to you, "{message}"` | Actor = `get_display_name(target)` |
+| Target | `{actor} whispers to you, "{message}"` | Actor named by `resolve_speaker_attribution(actor, target)`: by sight, or by a known voice when the whisperer is hidden. Hearing gates the words: a deaf target reads `{actor} whispers something to you, but you can't make it out.` |
 | Room observers | `{actor} whispers something to {target}.` | Both = `get_display_name(observer)` |
 
 Room observers do **not** see the message content.
@@ -736,7 +763,7 @@ The whisper target is resolved using the identity spec's targeting priority:
 
 1. Assigned names from the actor's recognition memory
 2. Sdescs of visible room occupants
-3. Character `.key` values *(2026-09-11: Builder+ only. `Character.search` (`typeclasses/characters.py:1745`) bypasses the identity pipeline for Builder+ and otherwise filters default search results through `world/search.py:406 is_identity_match`, which for an identity-enabled target allows an assigned name or an sdesc and nothing else — so an ordinary player cannot whisper to a character by real key. Same gate as the emote path, by a different door; see the note in §Character References.)*
+3. Character `.key` values *(Staff only. `Character.search` always runs identity matching first; for staff (`world.search.may_use_real_names`) its fallback also keeps matches by `.key`. For everyone else the fallback drops any character `world.search.is_identity_match` does not allow, which is only an assigned name or an sdesc, so an ordinary player cannot whisper to a character by real key. A hidden target is not in the search pool and reads as a plain miss.)*
 4. Ordinals for ambiguous matches
 
 If no target is found, the actor receives an error message. If multiple targets match without an ordinal, the actor is prompted to clarify.
@@ -799,6 +826,8 @@ shrug           → "Jorge shrugs."
 
 Templates use `{actor}` and `{target}` placeholders resolved via `get_display_name(observer)`, following the same per-observer pattern as all other communication commands.
 
+The actor sees `You nod.` or `You nod at <target as the actor knows them>.` (`bow`: `You bow respectfully to …`). `sigh` has no targeted form: `sigh <anything>` replies `Usage: sigh`. The rest of the line is searched for as the target (`caller.search`). A social breaks stealth once it is sure to happen; a usage refusal or a failed search does not. The person a targeted social names is marked `addressed`, so an NPC can answer it.
+
 ---
 
 ## Edge Cases
@@ -811,7 +840,7 @@ Templates use `{actor}` and `{target}` placeholders resolved via `get_display_na
 
 `.` followed by nothing at end of text: Treated as literal period (disambiguation rule: `.` + end-of-string = punctuation).
 
-A `.` marker on a non-verb word (e.g., `.the`): The system conjugates it anyway ("thes"). The system trusts explicit markers — this is the player's error. Help text should be clear that only verbs should be marked.
+A `.` marker on a non-verb word (e.g., `.the`): The system conjugates it anyway ("thes"). The system trusts explicit markers — this is the player's error. A marked -ing word is the exception (see §Verb Markers). Help text should be clear that only verbs should be marked.
 
 ### Missing Targets
 
@@ -823,15 +852,15 @@ Multiple characters match the same name: The ordinal system applies (`2nd tall m
 
 ### Self-Reference
 
-Actor types their own name as a character reference in an emote: The system resolves it to the actor's character object. At render time, `_resolve_charref` makes it **second-person for the actor's own view** ("you") — since the referenced character is the observer — and the per-observer name for everyone else. (Previously this rendered the actor's own `.key` via `get_display_name(self)`, which was "technically valid but unusual"; the second-person carve-out fixes it.)
+Actor types their own name in an emote: it is not a character reference. `build_char_candidates` skips the actor, and `CmdEmote` and `CmdDotPose` leave the caller out of the room list, so the typed name stays plain text and every observer reads it exactly as typed. In a dot-pose, `I`, `me` and `my` are the way to refer to yourself.
 
 ### Combat Context
 
-All communication commands work during combat. They have no mechanical effects and the combat handler does not interfere with social commands. Emotes, say, and whisper are pure roleplay actions that coexist with tactical combat.
+All communication commands work during combat; the combat handler does not block them. They are not free of effects: `say`, `to`, `emote`/`:`/`pose`, `.` and the template socials break stealth, so a hidden speaker emerges. The call comes once the command has passed its own checks, so a refused command does not cost cover (one exception is noted under §Directed Speech). `whisper` and `think` do not break stealth. `to` aimed at a radio transmits over it.
 
 ### Auto-Punctuation Details
 
-Terminal punctuation check examines the last non-whitespace character. If it is not `.`, `!`, `?`, `"`, or `)`, a period is appended. This prevents double-punctuation while ensuring clean sentence endings.
+Dot-pose only (`render_for_observer`): the check examines the last non-whitespace character. If it is not `.`, `!`, `?`, `"`, `'` or `)`, a period is appended. This prevents double-punctuation while ensuring clean sentence endings. Traditional `emote` appends nothing.
 
 ### Very Long Emotes
 
@@ -846,13 +875,16 @@ No explicit length limit imposed by the emote system. Server-side limits (Evenni
 | File | Purpose |
 |---|---|
 | `world/grammar.py` | Grammar engine: conjugation, articles, pronouns |
-| `commands/CmdCommunication.py` | Custom say, whisper, emote, dot-pose commands |
+| `commands/CmdCommunication.py` | Custom say, to, whisper, emote, dot-pose and think commands |
+| `world/emote.py` | Tokenizer and per-observer renderer for dot-pose, emote and think |
+| `world/speech.py` | Shared speech line for say, to and whisper, the room loop for say and to, and the speech payload |
+| `world/emote_templates.py` | The eight template socials (`SOCIAL_COMMANDS`) |
 
 ### Files Modified
 
 | File | Change |
 |---|---|
-| `commands/default_cmdsets.py` | Add `CmdDotPose`, `CmdSay`, `CmdWhisper`, `CmdEmote` to `CharacterCmdSet` |
+| `commands/default_cmdsets.py` | Add `CmdSay`, `CmdTo`, `CmdWhisper`, `CmdEmote`, `CmdDotPose`, `CmdThink` and `SOCIAL_COMMANDS` to `CharacterCmdSet` |
 | `specs/IDENTITY_RECOGNITION_SPEC.md` | Update self-perception section; add cross-references to this spec |
 
 ### External Dependencies
@@ -1138,6 +1170,8 @@ Each test verifies all four observers receive a unique, correct rendering.
 
 ### Table B.3 — Gender Mapping
 
+This map applies when no disguise keyword is active. Under a disguise, pronouns come from `world.identity.get_apparent_gender`; see IDENTITY_RECOGNITION_SPEC §Pronouns Under Disguise.
+
 | Character `sex` Attribute | Gender Category |
 |---|---|
 | `"male"` | male |
@@ -1169,7 +1203,7 @@ Self-perception "You" is handled by the **communication/rendering layer**:
 
 | Context | Self-Perception Mechanism |
 |---|---|
-| Dot-pose (`.`) | Rendering pipeline checks `observer == actor`, uses "You" + base-form verbs |
+| Dot-pose (`.`) | Rendering pipeline checks `observer == actor`, uses "You" + second-person verb forms |
 | Traditional emote | Uses `get_display_name(self)` → `.key`. No "You" needed (player wrote 3rd person) |
 | `say` / `whisper` | Hardcoded "You say" / "You whisper" template for actor |
 | Room descriptions | `_process_description_variables()` handles self-view (existing system) |

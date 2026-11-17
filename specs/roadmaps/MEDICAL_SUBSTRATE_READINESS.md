@@ -14,7 +14,7 @@ The audit itself is the planning artifact and lifecycle: this is the at-a-glance
 
 ## How to use this document
 
-- **Adding a new flag** to `world/medical/constants.py` or a species `organs` spec? Add a row here too. If the flag has no current consumer, point at the substrate phase that will eventually read it.
+- **Adding a new flag** to a species table in `world/anatomy/species.py` (`organs` or `body_capacities`) or to an augment organ spec in `world/prototypes.py`? Add a row here too. `BODY_CAPACITIES` in `world/medical/constants.py` is a copy of the human table, not a place to declare flags. If the flag has no current consumer, point at the substrate phase that will eventually read it.
 - **Wiring a flag into a runtime consumer**? Mark the row as live, link the audit phase that resolved it, and remove it on the next cleanup pass.
 - **Adding a new consumer system** (substrate)? Read down the table for which flags it should consume on first wiring.
 - **Re-validating the audit**? Cross-check this table against current code via the grep-counts column.
@@ -26,26 +26,31 @@ The audit itself is the planning artifact and lifecycle: this is the at-a-glance
 | Flag (declaration site) | Reads (current) | Intended consumer | Audit phase | Status |
 |---|---|---|---|---|
 | `vital` (Organ init from species spec) | 0 | None — superseded by data-driven `_get_vital_locations` reading `LETHAL_CAPACITY_NAMES` | Phase 4 — Vestigial-Flag Deletion | **Vestigial** — delete when Phase 4 lands |
-| `fatal_threshold` (BODY_CAPACITIES) | 0 | A data-driven `is_dead` that compares each lethal capacity against this threshold instead of the literal `<= 0.0` floor | Phase 5 — `LETHAL_CAPACITY_NAMES` Split | Keep until Phase 5 |
-| `directly_fatal` (BODY_CAPACITIES) | 0 at runtime; pinned by test to equal `LETHAL_CAPACITY_NAMES` for every species (#3677, 2026-09-26) | Declares which capacities terminate life; `is_dead` loops over the tuple the flags must match | Done another way (#3248 removed `consciousness`; #3677 made the check a loop) | Keep, declarative and tested |
+| `fatal_threshold` (`body_capacities` in `world/anatomy/species.py`) | 0 | A data-driven `is_dead` that compares each lethal capacity against this threshold instead of the literal `<= 0.0` floor | Phase 5 was done another way (#3248) and does not wire this; decide at the Phase 7 audit whether to wire it or delete it | Unread. Keep until the Phase 7 audit |
+| `directly_fatal` (`body_capacities` in `world/anatomy/species.py`) | 0 at runtime; pinned by test to equal `LETHAL_CAPACITY_NAMES` for every species (#3677, 2026-09-26) | Declares which capacities terminate life; `is_dead` loops over the tuple the flags must match | Done another way (#3248 removed `consciousness`; #3677 made the check a loop) | Keep, declarative and tested |
 | ~~`total_loss_fatal: True` on `blood_filtration`~~ | **Deleted (#3402, 2026-09-24)** | Kidney loss is **not fatal** by owner ruling; renal failure's lasting obtundation is the cost | — | **SUPERSEDED.** The 2026-09-11 "behaviour shipped" true-up was already wrong: the drain had been unbilled since #2936 (2026-09-05). |
-| `incapacitation_threshold: 0.15` on `moving` | 0 | **Movement Policing system** — when capacity is below this, character cannot move (movement commands refuse / sleep into low-stamina locomotion) | Phase 7 — Movement Policing Substrate + Phase 10 wiring | **Substrate gap** — movement policing |
-| `unconscious_threshold` (in `consciousness` capacity dict) | 0 | None — duplicated as top-level `CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD` (the one `is_unconscious` actually reads) | Phase 4 — Vestigial-Flag Deletion | **Vestigial** — delete when Phase 4 lands |
+| `incapacitation_threshold: 0.15` on `moving` | 0 | **Movement Policing system** — when capacity is below this, character cannot move (movement commands refuse / sleep into low-stamina locomotion) | Phase 7 — Movement Policing Substrate + Phase 10 wiring | **Substrate gap** — movement policing. Movement itself is not gated. The dodge curve (`MOVING_CURVE_DODGE` in `world/combat/capacity.py`) copies 0.15 by hand instead of reading this flag. |
 | `modifiers: [...]` on `consciousness` | 0 | None — the cascade (pain → consciousness, blood → consciousness, suppression → consciousness) is implemented imperatively in `update_vital_signs`; this list is design documentation only | Phase 4 — Vestigial-Flag Deletion (or convert to spec comment) | **Vestigial** — delete or document-only |
 | `affects: [...]` on capacities | 0 | None today — could drive a generic capacity-effect graph if such a substrate is ever built | Phase 4 — Vestigial-Flag Deletion (unless effect-graph substrate is in plan) | **Vestigial unless** the graph is on the roadmap |
-| `total_loss_penalty: "blindness"` on `sight` | 0 | **Senses System** — total sight loss spawns a `BlindCondition` that gates perception (combat targeting, look output, sdesc rendering) | Phase 8 — Senses System | **Substrate gap** — senses |
-| `total_loss_penalty: "deafness"` on `hearing` | 0 | **Senses System** — total hearing loss spawns a `DeafCondition` that gates audio perception (combat broadcasts, room sounds, conversation) | Phase 8 — Senses System | **Substrate gap** — senses |
-| `total_loss_effects: ["cannot_negotiate", ...]` on `talking` | 0 | **Social interaction substrate** — can't speak → can't negotiate / persuade / bid in trade | (No audit phase yet — open design) | **Substrate gap** — social policing (out of audit scope) |
-| `cannot_be_destroyed: True` on `thoracolumbar_spine` | 0 | `Organ.take_damage` floors at 1 HP for this organ | Phase 7 follow-up (movement policing wires this) | **Direct wire** — small fix, ~Phase 7 cleanup |
+| `total_loss_penalty: "blindness"` on `sight` | 0 | **Senses System** — total sight loss spawns a `BlindCondition` that gates perception (combat targeting, look output, sdesc rendering) | Phase 8 — Senses System | **Partly met another way.** Sight gates perception by reading the capacity directly (`can_see` in `world/perception.py`) and scales hit chance (`sight_hit_factor` in `world/combat/capacity.py`). No `BlindCondition` exists, and this string is unread. |
+| `total_loss_penalty: "deafness"` on `hearing` | 0 | **Senses System** — total hearing loss spawns a `DeafCondition` that gates audio perception (combat broadcasts, room sounds, conversation) | Phase 8 — Senses System | **Partly met another way.** Hearing gates perception by reading the capacity directly (`can_hear` in `world/perception.py`). No `DeafCondition` exists, and this string is unread. |
+| `total_loss_effects: ["cannot_negotiate", ...]` on `talking` | 0 | **Social interaction substrate** — can't speak → can't negotiate / persuade / bid in trade | (No audit phase yet — open design) | **Substrate gap** — social policing (out of audit scope). The `talking` capacity already garbles speech (`is_voice_garbled` in `world/voice.py`); this list is unread, and nothing gates negotiation. |
+| `cannot_be_destroyed: True` on `thoracolumbar_spine` | 0 | 📋 UNBUILT (no issue): `Organ.take_damage` should floor this organ at 1 HP; today it floors every organ at 0 | Phase 7 follow-up (movement policing wires this) | **Direct wire** — small fix, ~Phase 7 cleanup |
 | `paralysis_if_destroyed: True` on `thoracolumbar_spine` | 0 | **Movement Policing system** — produces a permanent `ParalysisCondition` that zeroes `moving` capacity | Phase 7 — Movement Policing Substrate + Phase 11 wiring | **Substrate gap** — movement policing |
-| `can_be_destroyed` (most organs) | 0 (1 test) | Inverse of `cannot_be_destroyed`; redundant once `cannot_be_destroyed` is wired | Phase 4 — Vestigial-Flag Deletion | **Vestigial** — delete after spine wiring |
-| `fracture_vulnerable` | 2 files | Bone-fracture condition spawn path (`world/medical/utils.py`, `commands/CmdConsumption.py`) | — (live) | **Live** — load-bearing |
-| `bone_type` | 3 files | Bone-fracture and severance routing (`world/medical/utils.py`, `world/medical/core.py`, `commands/CmdConsumption.py`) | — (live) | **Live** — load-bearing |
+| `can_be_destroyed` (most organs) | 1 (`_is_leg_bone` in `world/gravity.py`) | Fall damage: an organ that feeds `moving` and carries `can_be_destroyed: True` counts as a leg. This keeps the pelvis and the spine out of the leg set | — (live) | **Live** — load-bearing |
+| `fracture_vulnerable` | 1 (`organ_is_bone` in `world/medical/core.py`) | Decides whether an organ is a bone. Splinting (`world/medical/utils.py`), the consumption treatment path (`commands/CmdConsumption.py`) and `MedicalState.organ_beyond_repair` all call `organ_is_bone` | — (live) | **Live** — load-bearing |
+| `bone_type` | 2 files | Bone identity (`organ_is_bone` in `world/medical/core.py`) and the bone name in the splint message (`world/medical/utils.py`) | — (live) | **Live** — load-bearing |
+| `total_loss_penalty: "anosmia"` on `smell` | 0 | **Senses System**. Smell already gates perception by reading the capacity directly (`can_smell` in `world/perception.py`) | Phase 8 — Senses System | **Unread** |
+| `effect: "unconscious_flag"` on `consciousness` | 0 | None known; `is_unconscious` reads `CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD` | Not assigned | **Unread** |
+| `source: "bleeding_injuries"` on `blood_loss` | 0 | None known; `BLOOD_LOSS_DEATH_THRESHOLD` is the real gate | Not assigned | **Unread** — declarative |
+| `jaw_primary` on `eating` | 0 | None known | Not assigned | **Unread** |
+| `causes_pain_when_damaged` (organ spec) | 0 | None known | Not assigned | **Unread** |
+| `backup_available` (organ spec) | 0 | None known | Not assigned | **Unread** |
 
 > **Read-count caveat (2026-06-14):** the "Reads (current)" column above was
 > last validated June 2026 and is stale — re-run the grep-counts before
-> relying on a specific number. The flags are correctly *classified*
-> (vestigial / gap / live); only the integer counts drift.
+> relying on a specific number. Some classifications have drifted too;
+> check the code before relying on a row.
 
 ---
 
@@ -60,13 +65,14 @@ doc exists to catch, turned on the doc itself).
 
 | Flag (declaration site) | Intended consumer | Status |
 |---|---|---|
-| `inorganic` (organ spec) | Damage model — chrome takes pain only, no bleed/infection (`Organ.take_damage`); chrome rendering (`appearance_mixin`); chrome severance prose (`get_severance_message`) | **Live** — load-bearing |
+| `inorganic` (organ spec) | Damage model — chrome takes pain only, no bleed/infection (`MedicalState.take_organ_damage`); chrome rendering (`appearance_mixin`); chrome severance prose (`get_severance_message`) | **Live** — load-bearing |
 | `prosthetic_frame` (chassis organs) | `is_cybernetic_limb` — reattachment eligibility + chrome severance routing | **Live** — load-bearing |
 | `hardpoint` (chassis slot organ) | `find_hardpoint` — module seating (`world/medical/procedures.py`) | **Live** — load-bearing |
 | `module_type` (module item / hardpoint) | Install dispatch + hardpoint match + harvest provenance | **Live** — load-bearing |
 | `abilities` (organ spec) | Ability layer — `find_ability`, `iter_abilities`, toggle dispatcher | **Live** — load-bearing |
 | `flesh_organ` (flesh-mount module) | Names the specific host organ in a multi-organ container (Jawz→jaw) | **Live** — load-bearing |
-| `can_be_harvested` / `can_be_replaced` | Harvest / install gates (operate menu + resolvers) | **Live** — load-bearing |
+| `can_be_harvested` | Harvest gate (`can_harvest_organ` in `world/medical/removable.py`) | **Live** — load-bearing |
+| `can_be_replaced` | None: nothing reads it, and `_resolve_install` does not check it | **Unread** — 📋 UNBUILT (not decided) |
 | `capacities` (list) + `*_contribution` | Per-character capacity math for replacement/augment organs (`calculate_body_capacity`) | **Live** — load-bearing |
 | `grasping` (organ spec) | Prehensile `hands` overlay — extra held slot from a grasping container | **Live** — load-bearing |
 | `severable_container` (augment organ) | Severable-overlay + operate-menu sever listing | **Live** — load-bearing |
@@ -88,13 +94,13 @@ Substrate work blocks the wiring phases that depend on it. Sequence per the audi
 
 | Substrate | Build in | Wires up |
 |---|---|---|
-| Chronic Medical Conditions framework | Phase 6 | ~~Phase 12 (kidney death via `RenalFailure`)~~ — declined (#3402) |
-| Movement Policing | Phase 7 | Phase 10 (functional-capacity incapacitation), Phase 11 (paralysis) |
-| Senses System | Phase 8 | Blindness / deafness conditions and downstream perception gating |
-| Equipment-Handling (manipulation consequences) | Phase 9 | Weapon-drop / can't-wield on low `manipulation` capacity |
+| Chronic Medical Conditions framework | Phase 6 | ~~Phase 12 (kidney death via `RenalFailure`)~~ — declined (#3402). `RenalFailureCondition` exists and extends `MedicalCondition`; 📋 UNBUILT (no issue): a generic `ChronicCondition` base |
+| Movement Policing | Phase 7 | Phase 10 (functional-capacity incapacitation), Phase 11 (paralysis). Today `moving` only scales dodge (`moving_dodge_factor`); movement is not gated |
+| Senses System | Phase 8 | Blindness / deafness conditions. Perception is already gated by capacity reads (`can_see` / `can_hear` / `can_smell` in `world/perception.py`), and sight scales hit chance |
+| Equipment-Handling (manipulation consequences) | Phase 9 | Weapon-drop / can't-wield on low `manipulation` capacity. Today manipulation and under-grip scale hit chance (`manipulation_hit_factor` / `grip_hit_factor` in `world/combat/capacity.py`); 📋 UNBUILT (no issue): refusing to wield and dropping items |
 | Social interaction substrate | (open — no audit phase) | `talking` total-loss effects (`cannot_negotiate`, etc.) |
 
-Phases 4 (Vestigial-Flag Deletion) and 5 (`LETHAL_CAPACITY_NAMES` Split) don't depend on substrates and can ship at any time.
+Phase 4 (Vestigial-Flag Deletion) does not depend on a substrate and can ship at any time. Phase 5 was done another way (#3248): one tuple, `LETHAL_CAPACITY_NAMES`, is both the death set and the vital-target set.
 
 ---
 

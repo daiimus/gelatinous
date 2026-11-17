@@ -6,7 +6,7 @@
 > - The header's "Implementation Status: COMPLETED ✅" contradicted its own "12/13 Features Complete". 12/13 is correct.
 > - **§Sensory Focus Commands (`listen`, `smell`, `feel`) do not exist and will not be built** (owner decision, 2026-08-03): `look` is the time-tested MUD verb and already surfaces every sense layer the room carries, perception-gated. Separate per-sense verbs would be syntax for its own sake. The section is retained as history, not as a plan.
 > - §13 Ambient Message System is confirmed unbuilt — no ticker or interval script emits atmospheric messages; the pools are pulled at `look` time only.
-> - Crowd-aware directional look **is** built (`typeclasses/exits.py:662`), contrary to earlier notes.
+> - Crowd-aware directional look **is** built (`Exit._get_exit_character_display` in `typeclasses/exits.py`), contrary to earlier notes.
 
 ## Overview
 
@@ -43,21 +43,26 @@ The enhanced look command system assembles rich, dynamic environmental descripti
 - **Natural Language Positioning**: Implemented `@temp_place`, `@look_place`, `@override_place` commands
   - **CORRECTION 2026-09-11: there is no `@override_place` command, and no sign there ever was.**
     Two of the three are commands — `CmdLookPlace` and `CmdTempPlace`
-    (`commands/CmdCharacter.py:497`, `:572`; registered at `commands/default_cmdsets.py:268-269`).
-    `override_place` is an `AttributeProperty` (`typeclasses/characters.py:238`) that only the
-    game writes: the aim/showdown system (`characters.py:2487`,
-    `commands/combat/core_actions.py:697`), unconsciousness and death (`characters.py:428`,
-    `:783`, `:875`, `:1061`), the stealth "lurking" tell (`typeclasses/rooms.py:573-575`) and
-    admin cleanup (`commands/CmdAdmin.py:193`, `:405`; two sites since #3383 removed `@testdeath`, 2026-10-09). It is the top of the render
-    hierarchy, not a player-settable field. The hierarchy bullet below is correct.
-- **Hierarchy **Example Implementation:**
+    (`commands/CmdCharacter.py`; registered in `commands/default_cmdsets.py`).
+    `override_place` is an `AttributeProperty` (`typeclasses/characters.py`, category
+    `description`) that only the game writes: aiming and showdown
+    (`commands/combat/special_actions.py`, `commands/combat/core_actions.py`; cleared on
+    movement and when the aim stops), combat entry ("locked in combat.",
+    `world/combat/utils.py`), channeled acts (`world/channeled.py`), unconsciousness and
+    death (`typeclasses/characters.py`) and one admin cleanup (`commands/CmdAdmin.py`). It
+    is the top of the stored placement hierarchy, not a player-settable field. The stealth
+    "lurking" line is not stored: `Room.get_display_characters` applies it at render time,
+    above `override_place`. The hierarchy bullet below is correct.
+- **Hierarchy**: `override_place` > `temp_place` > `look_place` > "standing here." (`Room.get_display_characters`). Above all of them, a hidden character who is still seen reads with the stealth lurking line (`world.stealth.lurk_placement`: "lurking in the shadows.", or a nervous face in the crowd when the room is busy). `{aim_target}` in a placement becomes the target's name, or "aiming carefully." when the target is gone. Characters with the same placement share one sentence.
+
+**Example Implementation:**
 
 **Component Assembly Example:**
 ```
 Base Room: "Large intersection where Sinn crosses Knife"
 + ✅ Weather Integration: "cool evening air carries hints of exhaust and distant cooking, while the soft murmur of traffic drifts from the main thoroughfare"
 + Crowd (moderate): "foot traffic starting to get heavy but personal space"
-+ @integrate Vehicles: "bullet-ridden vehicles pass through on drive-bys"
++ @integrate Vehicles: "bullet-ridden vehicles pass through on drive-bys" (📋 UNBUILT (no issue): no vehicle objects exist)
 + @integrate Graffiti: "walls daubed with colorful graffiti"
 + Traditional Objects: "You see a flyer [Nyrek the Unwired]"
 + Smart Exits: "street to the south/west/east" (intersection detected)
@@ -79,8 +84,8 @@ The street continues to the west (w) and east (e).
 
 **Weather Integration Details:**
 - Weather text appears with |w (bold white) formatting in room description
-- Messages selected randomly from appropriate time+weather pools  
-- Integrates directly into room description flow after base text
+- Weather shows only in rooms with `outside` set. Each look shows one line from each of two different senses the looker can perceive (three if their perception is reduced), drawn at random from the current weather+time pool. Rooms whose type has an entry in `ROOM_TYPE_POOLS` (`fire escape` is the one entry) get that type's lines mixed into the draw (`WeatherSystem.get_weather_contributions`)
+- Appended to the first line of the room description, after any @integrate content
 - All **19** weather types covered
   - **CORRECTION 2026-09-11, two errors in one line.** (1) The count is **19**, not 17 —
     `WEATHER_INTENSITY` (`world/weather/weather_messages.py:37-64`) defines 19 keys: 3 mild,
@@ -95,6 +100,7 @@ The street continues to the west (w) and east (e).
     mis-paste. The tail has been restored to its own bullet under §1; no text was lost.)*
 - **Character Commands**: `CmdLookPlace` and `CmdTempPlace` classes in `commands/CmdCharacter.py`
 - **Natural Language Output**: Characters show with placement descriptions like "Kathy Cohen-Gold is doing a handstand. Nick Kramer is in a full-split."
+- **Names**: names in these examples assume the looker knows the people. A stranger is shown by short description ("A lanky man in a Black Trenchcoat is doing a handstand."), from `Character.get_display_name`
 
 ### 2. Room Section Spacing  
 - **Proper Line Breaks**: Added conditional spacing between room description, items, characters, and exits
@@ -104,10 +110,10 @@ The street continues to the west (w) and east (e).
 ### 3. Natural Language Items
 - **Grammar-Aware Display**: "You see a chainsaw, frag grenade, and baseball bat" with proper conjunctions
   - **CORRECTION 2026-09-11:** the renderer articles *every* singleton, so the actual output is
-    "You see a chainsaw, a frag grenade, and a baseball bat." (`typeclasses/rooms.py:761`).
+    "You see a chainsaw, a frag grenade, and a baseball bat." (`Room.get_display_things`).
     Two behaviours this section never documented: identical items stack behind spelled-out
-    quantity words up to fifty (`:736`), and above fifty a profane euphemism is chosen at
-    random ("a shitload of ...", `:750`).
+    quantity words up to fifty, and above fifty a profane euphemism is chosen at
+    random ("a shitload of ...").
 - **Smart Pluralization**: Handles single items vs. multiple items correctly
 - **Integration**: Modified `get_display_things()` method for natural language output
 
@@ -122,10 +128,13 @@ The street continues to the west (w) and east (e).
 - **Type Attribute**: `room.type` for room classification (`street`, `corner store`, etc.)
 - **Sky Room Detection**: `room.is_sky_room` for aerial navigation
 - **Custom Descriptions**: `room.desc` AttributeProperty for rich room descriptions
+- **Outside**: `room.outside` – weather shows only in rooms with it set, and the exit look's weather framing needs it on this room or the destination
+- **Sense layers**: `room.sense_descs` – optional auditory/olfactory/tactile/atmospheric layers after the visual `desc`, each shown only to a looker with that sense
+- **Crowd base**: `room.crowd_base_level` – the crowd base; 0 means no crowd line
 - **Auto-Creation**: All attributes use `autocreate=True` for seamless integration
 
 ### 6. Exit Display Enhancements
-- **Alias Integration**: Shows direction and primary alias: "north (n)"
+- **Alias Integration**: Shows the exit's key and its shortest alias in parentheses: "north (n)", "elevator (in)" (`Room.get_custom_exit_display`)
 - **Up and down are not compass points (#3755, 2026-10-23).** Every footer sentence put the
   exit key after "to the", so a vertical exit read "The fire escape continues to the up (u)
   and down (d)." (Brackett fire escape, Halcyon companionways) and, once #3753 let the glance
@@ -166,6 +175,7 @@ The street continues to the west (w) and east (e).
 - **Flying Object Integration**: Flying objects automatically integrated with priority
 - **Sensory Contributions**: Objects use `sensory_contributions` dict for rich integration
 - **Fallback System**: `integration_desc` and `integration_fallback` for simple integration
+- **Which objects**: only Items, graffiti, blood pools, shop containers and furniture can integrate, by setting the `integrate` attribute (`db.integrate`); there is no `@integrate` command, and any other object with `integrate` set stays in the object list. An object may define `refresh_integration_desc()` to update its line before it is read (blood pools age this way). The last fallback is "{key} is here".
 - **Enhanced Object Display**: Objects woven into narrative instead of listed separately
 
 ### 8. Directional Look Character Display Enhancement
@@ -203,7 +213,7 @@ The street continues to the west (w) and east (e).
 ### 8. Weather System ✅
 - ✅ **Dynamic Message Pools**: Weather-based sensory descriptions using combat message architecture
 - ✅ **Environmental Integration**: Weather effects integrated into room descriptions via `return_appearance`
-- ✅ **Sensory Categories**: Visual, auditory, olfactory, atmospheric weather contributions
+- ✅ **Sensory Categories**: Visual, auditory, olfactory, tactile, atmospheric weather contributions
 - ✅ **Intensity-Based Messages**: Weather types scaled by intensity (mild/moderate/intense/extreme)
   - **CORRECTION 2026-09-11: the tier vocabulary shipped, the scaling did not.**
     `WEATHER_INTENSITY` assigns every weather a tier, but nothing reads that tier to shape
@@ -211,10 +221,10 @@ The street continues to the west (w) and east (e).
     under **Weather Types Implemented** above). The ✅ belongs to the vocabulary only.
 - ✅ **Time Period Variations**: Weather messages vary by time of day for atmospheric consistency
 - **Comprehensive Coverage**: All 19 weather types from `WEATHER_INTENSITY` mapping implemented
-- **Noir/Cinematic Style**: Adult-focused atmospheric descriptions with proper intensity scaling
+- **Style**: observational ambience (see the module docstring of `world/weather/weather_messages.py`); no intensity scaling
 - **Formatting Integration**: Weather text displayed with |w (bold white) formatting
 - **Message Pool Architecture**: Extensive message pools following combat system patterns
-- **Universal Descriptions**: Weather-focused messages avoid location-specific references
+- **Grounded Descriptions**: Weather lines are ambience grounded in the colony's texture (crater rim, channel, prefab roofs), each standing alone (module docstring of `world/weather/weather_messages.py`); `ROOM_TYPE_POOLS` adds lines for specific kinds of place
 
 **Weather Types Implemented:**
 
@@ -226,10 +236,10 @@ The street continues to the west (w) and east (e).
 > exist, and extreme is no longer than mild. The pools were re-authored to one uniform
 > ambience register — `world/weather/weather_messages.py`'s module docstring states the
 > authoring principles and says nothing about length-by-intensity. `WEATHER_INTENSITY`
-> has **no message-length consumer anywhere**: its only readers are the crowd
-> weather-modifier key pinning (`world/crowd/crowd_system.py:52`), the `@weather` admin
-> listing (`commands/CmdAdmin.py:578-585`), `get_weather_intensity()`
-> (`world/weather/weather_system.py:183`, read only by `CmdAdmin.py:548`) and two tests.
+> has **no message-length consumer anywhere**: its readers are `WeatherSystem.set_weather`
+> (validation), `WeatherSystem.get_weather_intensity()` (read only by the `@weather` admin
+> command), the `@weather` admin listing in `commands/CmdAdmin.py`, and two tests, one of
+> which pins `CrowdSystem.weather_modifiers` to its keys.
 > The stale claim is repeated at §8 "Intensity-Based Messages", §4 "Intensity Scaling",
 > "Intensity-Based Scaling", and the Integration Points summary. The type-to-tier
 > groupings themselves are still correct.
@@ -239,10 +249,10 @@ The street continues to the west (w) and east (e).
 - **Extreme Intensity**: flashstorm, torrential_rain (20+ word epic messages)
 
 **Technical Implementation:**
-- Message pools in `world/weather/weather_messages.py` with 4 sensory categories per weather type
+- Message pools in `world/weather/weather_messages.py` with 5 sense categories per pool (visual, auditory, olfactory, tactile, atmospheric); visual is gated on sight, auditory on hearing, olfactory on smell, and tactile and atmospheric always show
 - Integration via `world/weather/weather_system.py` with proper |w formatting
 - Room integration through modified `return_appearance()` method in `typeclasses/rooms.py`
-- Weather appears directly in room description after base text, before characters/exits
+- Weather is appended to the first line of the room description, after any @integrate content and before the object listing, characters and exits (`Room._compose_room_layers`)
 
 #### 8b. The weather DRIVER is UNBUILT — the ✅ above is the rendering layer only
 
@@ -290,10 +300,11 @@ this game has had its balance pass.
 - **Activity Integration**: Crowd noise, movement, and presence effects integrated into room descriptions
 - **Weather Integration**: Weather conditions affect crowd levels (rain reduces, clear weather increases)
 - **Message Pool Architecture**: Following weather system patterns with sensory categories and random selection
+- **Crowd level** (`CrowdSystem.calculate_crowd_level`): `crowd_base_level` + room-type modifier + 0.5 per body in the room (NPCs and hidden characters count) + weather modifier + colony-hour modifier (`time_modifiers`), rounded, never below 0; a `sky` room is always 0. `crowd_base_level` 0 means no crowd line ever (the builder's off switch). The message pool is chosen by room type (`crowd_profile_for_room_type`: default street, interior, shop, market, nightclub, constabulary, residential; sky is empty). The same level drives witness chance (`world/director/witness.py`) and the stealth concealment bonus (`world/stealth.py`).
 
 **Technical Implementation:**
-- Message pools in `world/crowd/crowd_messages.py` with visual, auditory, atmospheric categories
-- Integration via `world/crowd/crowd_system.py` with proper |W formatting  
+- Message pools in `world/crowd/crowd_messages.py` with visual, auditory, olfactory, tactile and atmospheric lines; one sense the looker can perceive is picked at random, then one line from it
+- Integration via `world/crowd/crowd_system.py` with |w (bold white) formatting  
 - Room integration through modified `get_display_characters()` method in `typeclasses/rooms.py`
 - Crowd messages appear before character listings with environmental context
 
@@ -302,10 +313,10 @@ this game has had its balance pass.
 - **Simple Detection**: No complex visibility logic - encourages interaction and chase scenes
   - **SUPERSEDED 2026-09-11 — there are now three gates on this walker**, added after this
     was written and all deliberate: (1) it returns "" outright for a looker who cannot see
-    (`can_perceive_sense(looker, "visual")`, `typeclasses/rooms.py:651-652`, #2793);
+    (`can_perceive_sense(looker, "visual")`, `Room.get_adjacent_character_sightings`, #2793);
     (2) it walks `_visible_exits(looker)` rather than raw `self.exits`, so a `view:false()`
-    secret exit is never named in the prose (`:661`, #2588); and (3) each counted character
-    must pass `can_perceive(looker, obj)`, the stealth presence gate (`:673-677`, stealth
+    secret exit is never named in the prose (#2588); and (3) each counted character
+    must pass `can_perceive(looker, obj)`, the stealth presence gate (stealth
     spec §7 — no leak through the doorway glance). The "encourages interaction and chase
     scenes" intent survives; "no complex visibility logic" does not.
   - **Fourth gate, 2026-10-12 (#3750): door state.** The walker skips any exit whose
@@ -362,7 +373,7 @@ this game has had its balance pass.
     hider blends into. `look <direction>` reads the same level for its crowd wording only when
     someone visible stands beyond, so with nobody visible there the crowd sentence is the one
     line from next door that shows the density moved; it names no one, and anyone standing in
-    that street reads the same tier from its own crowd line (round-4 review). Live census
+    that street reads the same tier from its own crowd line (round-4 review). Unlike the glance and the crowd line, `look <direction>` does not honour base 0: `Exit._get_exit_character_display` words the far room by its raw `calculate_crowd_level`, so a base-0 room with enough people in it reads as a crowd there while its own crowd line stays silent. Live census
     2026-10-17,
     taken with the people then present and under clear skies (each body adds 0.5, so any
     open-air room with a base above 0 reads heavy once enough gather; rain and worse pull
@@ -391,11 +402,12 @@ this game has had its balance pass.
 ### 11. Exit Examination Enhancement ✅
 - **Atmospheric Exit Descriptions**: Replaced generic "This is an exit." with immersive descriptions
 - **Contextual Analysis**: Analyzes destination properties, exit types, and directional context  
-- **Weather Integration**: Integrates with existing weather system for enhanced atmospheric context
+- **Weather Integration**: weather framing ("Through the steady rain, ...") is added only to the street-shape sentence, only when this room or the destination is `outside`, and never in clear weather (`Exit._get_weather_context`)
 - **Edge/Gap Support**: Specialized descriptions for edge and gap exits requiring jump commands
 - **Street Context Analysis**: Analyzes destination room layout for dead-end/intersection/continuing street descriptions
 - **Directional Defaults**: Noir-aesthetic atmospheric descriptions based on cardinal directions
-- **Character Display Integration**: Shows other characters in current room following standard patterns
+- **Order of the atmospheric line** (`Exit._get_atmospheric_description`): edge and gap together, edge, gap, a sky destination ("The opening leads into open air, where gravity makes the rules."), a street destination's shape, a `fire escape` destination (its own lines keyed by exit: window, up, down, drop, else a default), the direction defaults (compass points, up, down, in, out), and last "The passage stretches into shadows and uncertainty." A blind looker is told only the exit's kind, or "A passageway leading elsewhere." `{time}` tokens are rendered. A looker who is aiming is told "You cannot see any further." instead.
+- **Far-room people**: names the characters in the room the exit leads to, unless the exit blocks sight (a shut door). Hidden characters are left out, and a blind looker gets no names (`Exit._get_exit_character_display`).
 - **Aiming Restrictions**: Blocks exit examination when character is aiming (maintains combat focus)
 - **Residence doors (2026-10-13, #3508)**: looking at a unit's corridor-side door, the one the
   rental build registered as `cube.db.cube_door`, ends with the tenancy word: `Occupied.` for a
@@ -404,15 +416,15 @@ this game has had its balance pass.
   `DoorExit._residence_status`). Open or closed, sighted lookers only; the unit's own door
   leading out says nothing. The look is the touch that prunes a dead tenancy, so a unit whose
   tenant was deleted reads Vacant the moment anyone looks at its door.
-- **Custom Description Support**: Maintains existing @desc functionality as priority override
+- **Custom Description Support**: an exit's authored desc is shown first and the atmospheric line follows it; it does not replace it. A closed door (`DoorExit`) shows only its own desc and "It is closed." or "It is sealed; ..."
 - **Fallback System**: Graceful degradation with atmospheric fallbacks for edge cases
 
 **Technical Implementation:**
 - Custom `get_display_desc()` method in Exit class overriding DefaultExit behavior
-- Integration with weather system for contextual atmospheric descriptions  
+- Weather framing only on the street-shape sentence (`Exit._analyze_street_context`), as above  
 - Street type analysis using destination room exit counting and type classification
 - Specialized handling for edge/gap exits, sky rooms, and custom room types
-- Character display using current room contents (not destination room)
+- Character display using the destination room's contents (`Exit._get_exit_character_display`)
 - Aiming system integration prevents exit examination during combat focus
 - Weather context integration: "Through the steady rain, the street stretches eastward..."
 
@@ -425,10 +437,11 @@ this game has had its balance pass.
 
 ### 12. Directional Look Character Display Enhancement ✅
 - **Crowd-Aware Character Descriptions**: Character displays in directional looks adapt based on destination room crowd levels
-- **Weather Integration**: Weather context appears in directional descriptions ("Through the gentle snowfall, the street stretches westward...")
+- **Weather Integration**: Weather context appears only in the street-shape sentence, for an outside room or destination and any weather but clear ("Through the gentle snowfall, the street stretches westward...")
 - **Stylized Descriptions**: Atmospheric descriptions matching game's noir aesthetic
 - **Dynamic Character Presentation**: Characters presented with crowd context rather than generic "standing here" format
 - **Natural Language Flow**: Proper directional phrasing ("To the west you see..." / "To the north you can see...")
+- **Direction words**: only the four compass keys north, south, east and west get "To the ..."; any other exit key is capitalised as given ("Northeast you see ...", "Up you see ..."), without the "above"/"below" phrasing the footer and the glance use
 
 **Crowd Level Integration:**
 - **Heavy/Packed Crowds (Level 3+)**: "To the west you can see a bustling crowd of people going about their business, amidst them John Wilson."
@@ -438,7 +451,7 @@ this game has had its balance pass.
 
 **Technical Implementation:**
 - Integrated with existing crowd system via `crowd_system.calculate_crowd_level()`
-- Weather context integration through exit weather system
+- Weather framing from `Exit._get_weather_context`, on the street-shape sentence only
 - Directional context detection using exit key analysis
 - Graceful scaling for any number of characters with proper grammar
 - Maintains existing character display functionality while enhancing atmospheric presentation
@@ -446,10 +459,10 @@ this game has had its balance pass.
 **Example Outputs:**
 ```
 # Heavy crowd with weather:
-"Through the gentle snowfall, the street stretches westward through the urban canyon, where scattered streetlight illuminates the continuing path between deteriorating storefronts. You can see a bustling crowd of people going about their business, amidst them Janice Burns and Dean Keith."
+"Through the gentle snowfall, the street stretches westward through the urban canyon, where scattered streetlight illuminates the continuing path between deteriorating storefronts. To the west you can see a bustling crowd of people going about their business, amidst them Janice Burns and Dean Keith."
 
 # Moderate crowd, no weather:
-"The street stretches eastward through the urban canyon, where scattered streetlight illuminates the continuing path between deteriorating storefronts. You see figures moving through the urban maze, among them Sterling Hobbs and Charlene Fisk."
+"The street stretches eastward through the urban canyon, where scattered streetlight illuminates the continuing path between deteriorating storefronts. To the east you see figures moving through the urban maze, among them Sterling Hobbs and Charlene Fisk."
 
 # Sparse crowd:
 "To the north you catch glimpses of movement in the shadows, including Maria Santos."
@@ -529,35 +542,35 @@ Ambient messages appear at random intervals (every 2-5 minutes) to players in a 
 ### 2. Component-Based Description Assembly
 
 **Assembly Order:**
-1. **Room Name & Base Description**: Foundation sensory content
-2. **@integrate Object Integration**: Objects stacked at end of room description
-3. **Weather System Contribution**: ✅ **Current weather sensory additions via integrated weather system**
-4. **Crowd System Contribution**: Current crowd level sensory additions
-5. **Traditional Object Listing**: Non-integrated objects listed separately
+1. **Room Name & Base Description**: the sense layers the looker can perceive (`Room.get_display_desc`)
+2. **@integrate Object Integration, then Weather**: appended to the first line of the description (`Room._compose_room_layers`)
+3. **Traditional Object Listing**: Non-integrated objects listed separately (`Room.get_display_things`)
+4. **Crowd line, characters, neighbour glance, suspicion cue**: one paragraph (`Room.get_display_characters`)
+5. **Smart Exit Descriptions**: Context-aware exit information
 
-> **CORRECTION 2026-09-11 — 4 and 5 are swapped in the shipped order.** The crowd line is
-> emitted by `get_display_characters` (`typeclasses/rooms.py:543`), and the room's
-> `appearance_template` (`:235-239`) is `{header}{name}\n{desc}\n{things}\n{characters}\n{footer}`
+> **CORRECTION 2026-09-11 — the list as first written put the crowd line before the object
+> listing.** The crowd line is emitted by `Room.get_display_characters`, and the room's
+> `Room.appearance_template` is `{header}{name}\n{desc}\n{things}\n{characters}\n{footer}`
 > — so `{things}` (the traditional object listing) renders **before** the crowd line, not
-> after. Actual shipped order: name, desc (with @integrate + weather appended to the desc
-> line, `:270-303`), things, crowd + characters, exits.
-6. **Smart Exit Descriptions**: Context-aware exit information
+> after. Actual order: name, desc (with @integrate + weather appended to the desc
+> line, `Room._compose_room_layers`), things, crowd + characters, exits.
 
 ### 3. @integrate Object System
 
 **Integration Mechanism:**
-Objects with `@integrate` attribute appear at end of room description, stacking together without limits.
+Items, graffiti, blood pools, shop containers and furniture with the `integrate` attribute set are woven into the room description (appended to its first line, before weather), stacking together without limits.
 
 **Integration Stacking:**
 - **No Limits**: All @integrate objects display together
 - **Stacking Order**: Objects stack in discovery/creation order
   - **CORRECTION 2026-09-11:** order is by **integration priority, ascending** —
-    `integrated_objects.sort(key=lambda x: x[0])` (`typeclasses/rooms.py:426`), unset
-    defaults to 5 (`:416`), flying objects hardcode 1 so they always lead (`:392-396`).
+    `integrated_objects.sort(key=lambda x: x[0])` (`Room.get_integrated_objects_content`), unset
+    defaults to 5, and flying objects take priority 1 and are added first, so they lead unless
+    an object's priority is below 1.
     Creation order survives only as the tie-break within one priority (Python's sort is
     stable). This matches §7's "Priority System" bullet, not the line above.
 - **No Conflicts**: Multiple objects contributing similar content is acceptable
-- **End Positioning**: @integrate content appears after base room description but before weather/crowds
+- **End Positioning**: @integrate content, then weather, is appended to the first line of the room description (the end of the description only when it is a single line), before the object listing and the crowd/characters paragraph (`Room._compose_room_layers`)
 
 **Enhanced Integration by Sensory Category:**
 - **Visual Integration**: "bullet-ridden vehicles pass through", "colorful graffiti"
@@ -568,7 +581,7 @@ Objects with `@integrate` attribute appear at end of room description, stacking 
 
 **Special Integration Systems:**
 - **Graffiti System**: @integrate items with enhanced code logic for procedural variety
-- **Vehicle System**: Moving objects that contribute dynamic sensory elements
+- **Vehicle System**: 📋 UNBUILT (no issue): moving objects that would contribute dynamic sensory elements
 - **Art/Architecture**: Static integrated elements adding atmosphere
 
 ### 4. Dynamic Message Pool Systems
@@ -577,9 +590,11 @@ Objects with `@integrate` attribute appear at end of room description, stacking 
 ✅ **Implemented with comprehensive message pools following combat system architecture:**
 ```python
 # Located in world/weather/weather_messages.py
-weather_messages = {
+# Generated by _build_weather_messages from WEATHER_POOLS, TIME_LIGHT and TIME_ACTIVITY;
+# the lines below are illustrative, and real pools also carry 'tactile'.
+WEATHER_MESSAGES = {
     'default': {
-        'rain_evening': {
+        'rain_early_evening': {
             'visual': [
                 'steady rain turns the streets into dark mirrors reflecting neon light',
                 'water streams down building facades and pools in street corners',
@@ -631,8 +646,8 @@ weather_messages = {
 - **Message Selection**: Random selection from appropriate pools per look command
 - **Formatting**: Weather text appears with |w (bold white) formatting followed by |n reset
 - **Integration Point**: Weather messages integrated directly into room description via modified `return_appearance()` 
-- **17 Weather Types**: Complete coverage from mild (clear, overcast) to extreme (torrential_rain, flashstorm)
-- **Time Variations**: Weather messages vary by time of day (clear has 12 time periods, others have 1-4)
+- **19 Weather Types**: Complete coverage from mild (clear, overcast) to extreme (torrential_rain, flashstorm)
+- **Time Variations**: every weather type has all 12 time periods, so there are 228 weather+time pools, built at import from per-weather sense pools plus per-period light and street-activity lines (`_build_weather_messages`)
 - **Intensity Scaling**: Message length/complexity scales with weather intensity level
   - **CORRECTION 2026-09-11: it does not.** Measured means are 8.58 / 8.34 / 8.32 / 8.65
     words for mild / moderate / intense / extreme, and no line in the corpus exceeds 13
@@ -756,90 +771,95 @@ class AmbientMessageSystem:
 - **Intensity-Based Scaling**: Message complexity scales with weather intensity (mild/moderate/intense/extreme)
   - **CORRECTION 2026-09-11:** not implemented — see the correction under **Weather Types
     Implemented**. The selector reads weather type and time period only
-    (`world/weather/weather_system.py:43-52`); intensity never enters message selection.
+    (`WeatherSystem.get_weather_contributions`); intensity never enters message selection.
 - **Noir/Cinematic Style**: Adult-focused atmospheric writing with sophisticated descriptions
-- **Universal Descriptions**: Weather messages avoid location-specific references for broad applicability
+- **Grounded Descriptions**: Weather lines are grounded in the colony's texture; `ROOM_TYPE_POOLS` adds lines for specific kinds of place
 
 **Message Pool Structure:**
 ✅ **Implemented with comprehensive structure:**
 ```python
 # Located in world/weather/weather_messages.py
 WEATHER_INTENSITY = {
-    # Mild weather (8-12 word messages)
+    # Mild weather
     'clear': 'mild', 'overcast': 'mild', 'windy': 'mild',
-    # Moderate weather (12-16 word messages)
+    # Moderate weather
     'fog': 'moderate', 'rain': 'moderate', 'soft_snow': 'moderate', 
     'foggy_rain': 'moderate', 'light_rain': 'moderate',
-    # Intense weather (16-20 word messages)
+    # Intense weather
     'dry_thunderstorm': 'intense', 'rainy_thunderstorm': 'intense',
     'hard_snow': 'intense', 'blizzard': 'intense', 'gray_pall': 'intense',
     'tox_rain': 'intense', 'sandstorm': 'intense', 'blind_fog': 'intense', 
     'heavy_fog': 'intense',
-    # Extreme weather (20+ word epic messages)
+    # Extreme weather
     'flashstorm': 'extreme', 'torrential_rain': 'extreme'
 }
 
 WEATHER_MESSAGES = {
     'default': {
         'clear_midday': { 'visual': [...], 'auditory': [...], 'olfactory': [...], 'atmospheric': [...] },
-        'rain_evening': { 'visual': [...], 'auditory': [...], 'olfactory': [...], 'atmospheric': [...] },
+        'rain_early_evening': { 'visual': [...], 'auditory': [...], 'olfactory': [...], 'atmospheric': [...] },
         'torrential_rain_night': { 'visual': [...], 'auditory': [...], 'olfactory': [...], 'atmospheric': [...] }
-        # ... 44 total weather+time combinations implemented
+        # ... 228 weather+time pools in all (19 weather types x 12 time periods); each pool also has 'tactile'
     }
 }
 ```
-**Selection Logic**: `weather_type + "_" + time_period` determines message pool (e.g., `clear_midday`, `rain_evening`)
-**Coverage**: All 17 weather types implemented with 1-12 time period variations each
+**Selection Logic**: `weather_type + "_" + time_period` determines message pool (e.g., `clear_midday`, `rain_early_evening`)
+**Coverage**: All 19 weather types, each with all 12 time periods
 **Integration**: Weather system in `world/weather/weather_system.py` selects and formats messages with |w bolding
 
 ### 5. Smart Exit System Enhancement
 
 **Room Type System:**
 - **Storage**: `room.db.type` attribute for room classification
-- **Auto-Detected Types**: `street`, `intersection`, `dead-end` (based on adjacent room analysis)
+- **Street wording**: `street` is a stored type; "dead-end", "continues" and "intersection" are wording chosen from the destination street's layout (below), not stored room types
 - **Custom Types**: `courier service`, `cube hotel`, `hospital`, `stairway` (builder-defined)
 - **Integration**: Auto-detected and custom types work together for mixed scenarios
 
 **Auto-Detection Rules:**
-- **Intersection**: 3+ exits leading to rooms with `type="street"`
-- **Dead-end**: 1 exit from a room with `type="street"`
-- **Street**: Connected to other street-type rooms in linear fashion
+For each exit into a `street` room, the destination's exits that lead to other `street` rooms are counted (exits to other kinds of room do not count):
+- **Dead-end**: 0 or 1 → "There is a dead-end ..."
+- **Street**: exactly 2 → "The street continues ..."
+- **Intersection**: 3 or more → "There is an intersection ..."
 
 **Natural Language Exit Patterns:**
-1. **Grouped by Type**: "The street continues north and south"
-2. **Individual Destinations**: "There is a courier service to the west and a cube hotel to the east"
-3. **Mixed Integration**: "The street continues north. There is a hospital to the east and an edge to the south"
+1. **Grouped by Type**: "The street continues to the north (n) and south (s)."
+2. **Individual Destinations**: one sentence per type: "There is a courier service to the west (w). There is a cube hotel to the east (e)."
+3. **Mixed Integration**: "The street continues to the north (n). There is a hospital to the east (e). There is an edge to the south (s)."
 4. **Fallback Format**: "There is an exit to the south (s)" when no type information available
+
+Two or more exits of one kind take the plural ("There are edges to the south (s) and west (w)."). Groups are never joined with "and": each gets its own sentence, in this order: dead-ends, continuing streets, intersections, each custom type, edges, gaps, then other exits (`Room.format_exit_groups`).
 
 **Exit Display Examples:**
 ```
 Example 1 (Mixed types):
-"The street continues south and north. There is a courier service to the west and a cube hotel to the east."
+"The street continues to the south (s) and north (n). There is a courier service to the west (w). There is a cube hotel to the east (e)."
 
 Example 2 (Utilitarian/Complex):  
-"There are exits to the east (e), west (w), C01 (01), C02 (02), C03 (03), C04 (04), C05 (05), C06 (06)."
+"There are exits to the east (e), west (w), C01 (01), C02 (02), C03 (03), C04 (04), C05 (05), and C06 (06)."
 
 Example 3 (Simple mixed):
-"The street continues north. There is an intersection to the south and a stairway to the west."
+"The street continues to the north (n). There is an intersection to the south (s). There is a stairway to the west (w)."
 ```
 
 **Alias Integration:**
-- **Standard Format**: "north (n)" - shows direction and first alias
-- **No Alias**: "north" - omits parentheses when no alias exists
-- **Complex Exits**: Custom exit names with their primary alias
+- **Standard Format**: "north (n)" - shows the exit's key and its shortest alias ("elevator (in)", not "(car)")
+- **No Alias**: "north" - omits parentheses when no alias exists, or when the alias is the key itself
+- **Complex Exits**: Custom exit names with their shortest alias
 
 **Edge/Gap Integration:**
-- **Natural Language**: "There is an edge to the south and west"
+- **Natural Language**: "There are edges to the south (s) and west (w)."
 - **Mixed Content**: Edges integrated with other exit types naturally
 - **Multiple Edges**: Grouped using natural language conjunctions
 
 **Implementation Logic:**
 1. **Analyze Destinations**: Check each exit's destination `room.db.type`
 2. **Group by Type**: Collect exits leading to same destination types
-3. **Apply Grouping Rules**: "street continues" for multiple street destinations
+3. **Apply Grouping Rules**: each street exit is worded by its destination's count of street exits (dead-end, continues, intersection)
 4. **Format Individual Types**: "There is a [type] to the [direction]"
 5. **Integrate Edges/Gaps**: Include in natural language flow
 6. **Fallback Handling**: Use generic format for unknown types
+
+Inside a venue, exits to rooms of the same type read "The {type} continues ..." instead of "There is a ...". Articles come from `world.grammar.get_article`, and irregular plurals from `TYPE_PLURALS` ("constabularies"). Exits into sky rooms are not listed unless they are edges or gaps, and a sky room lists no exits at all. View-locked (secret) exits are not listed unless this looker has found them (`Room._visible_exits`, `db.found_exits`).
 
 ### 6. Character Integration Enhancement
 
@@ -894,22 +914,22 @@ crowd_pools = {
 
 **Selection Mechanics:**
 - Fresh random selection per look command (like combat messages)
-- Optional probability weights for rare/common messages
-- Variable substitution for dynamic content
+- Every line in a pool is equally likely; there are no weights
+- No variable substitution in weather or crowd lines; only the room's own description renders time tokens (`render_time_tokens` in `Room.get_display_desc`)
 - Conditional pools based on environmental state
 
 ### Component Integration System
 
 **Assembly Order:**
 1. **Room Name**: Static title
-2. **Base Description**: Core room visual content  
+2. **Base Description**: the visual `desc` plus any `sense_descs` layers the looker perceives (`Room.get_display_desc`)
 3. **@integrate Objects**: Stacked at end of room description text
-4. **Sensory Layer Assembly**: Weather/crowd/atmospheric content
+4. **Weather**: appended after the @integrate text on the same description line, outdoor rooms only. The crowd line is not here: it opens the character paragraph (`Room.get_display_characters`)
 5. **Character Listings**: Enhanced character descriptions
 6. **Traditional Objects**: Remaining visible objects
 
 > **CORRECTION 2026-09-11:** 5 and 6 are reversed in the shipped renderer — the
-> `appearance_template` (`typeclasses/rooms.py:235-239`) puts `{things}` before
+> `Room.appearance_template` (`typeclasses/rooms.py`) puts `{things}` before
 > `{characters}`. This is the second of two Assembly Order lists in this file and it also
 > disagrees with the first (§2 Component-Based Description Assembly); neither matches the
 > template. The template is authoritative.
@@ -954,7 +974,6 @@ def assemble_room_description(self, looker):
 **Performance Considerations:**
 - Message pool evaluation happens per look command for freshness
 - Static content caching where appropriate  
-- Efficient variable substitution system
 - Minimal database queries for dynamic content
 - Graceful degradation when components unavailable
 
@@ -964,39 +983,36 @@ def assemble_room_description(self, looker):
 
 **Sensory Message Storage:**
 ```python
-# Base sensory content
-base_sensory = {
-    'visual': "pungent smell floods your nostrils",
-    'auditory': "sounds of traffic and urban activity", 
+# Room attributes (AttributeProperty on Room, typeclasses/rooms.py)
+room.desc = "..."          # the visual layer
+room.sense_descs = {        # non-visual layers, each shown only to a looker who has that sense
+    'auditory': "sounds of traffic and urban activity",
     'olfactory': "sewage and raw garbage",
     'tactile': "acidic moisture in the air",
     'atmospheric': "tension of dangerous territory"
 }
+room.outside = True         # weather shows only when True
+room.crowd_base_level = 2   # int; 0 means no crowd line, ever
+room.is_sky_room = False
 
-# Integration settings
-integration_settings = {
-    'allow_weather': True,
-    'allow_crowds': True,
-    'weather_intensity': 'normal',
-    'crowd_base_level': 'moderate'
-}
-
-# Room type for smart exit labeling
-room.db.type = 'street'  # Can be auto-detected or manually set
-# Auto-detected: 'street', 'intersection', 'dead-end'
-# Custom: 'courier service', 'cube hotel', 'hospital', 'stairway', etc.
+# Room type for smart exit labeling: set by a builder, or by the room typeclass
+# (StreetRoom sets 'street', IndoorRoom 'interior'); nothing detects it.
+room.type = 'street'  # e.g. 'street', 'corner store', 'courier service', 'stairwell'
+# Dead-end, continuing street or intersection is worked out when the exits line is
+# written (Room.format_exit_groups), from how many street exits the far room has.
+# Nothing is stored.
 ```
 
 **Smart Exit Implementation:**
 ```python
-# NAME CORRECTION 2026-09-11: no method of this name exists. The shipped code is
-# Room.get_custom_exit_display(looker) (typeclasses/rooms.py:892) plus
-# Room.format_exit_groups(exit_groups) (:954), reached via get_display_footer (:799)
-# -- which is what the "Current Implementation" list above (line 137) names correctly.
-# The grouping shape below is still accurate, with one addition: the real method walks
-# _visible_exits(looker) (defined :873, called :903) rather than self.exits, so a
-# view:false() exit stays out of the exit prose entirely (#2588), and it skips exits
-# into sky rooms unless they are edges or gaps.
+# NAME CORRECTION 2026-09-11: no method of this name exists. The real code is
+# Room.get_custom_exit_display(looker) plus Room.format_exit_groups(exit_groups) in
+# typeclasses/rooms.py, reached via get_display_footer. Differences from the sketch below:
+# it walks _visible_exits(looker) rather than self.exits, so a view:false() exit stays
+# out of the exit prose (#2588); the paren hint is the shortest alias; it tests
+# destination.type; exits into sky rooms are skipped unless they are edges or gaps; a sky
+# room shows no exits; a group of the room's own type reads "The <type> continues ...";
+# up and down are phrased by format_exit_phrases ("above"/"below").
 def get_smart_exit_description(self, looker):
     """Generate natural language exit descriptions."""
     
@@ -1080,7 +1096,7 @@ def return_appearance(self, looker, **kwargs):
 ```python
 # On objects that should integrate into room description
 @integrate = True
-integration_priority = 10  # Higher = appears earlier in description
+integration_priority = 10  # Lower = appears earlier; unset = 5; flying objects are always 1
 sensory_contributions = {
     'visual': "bullet-ridden vehicles pass through",
     'auditory': "engine noise and grinding gears",
@@ -1091,7 +1107,9 @@ sensory_contributions = {
 **Integration Processing:**
 - Objects with `@integrate = True` contribute to room description
 - Priority determines integration order
-- Sensory contributions added to appropriate categories
+- Each object's perceivable `sensory_contributions` are joined into its own text, in the order visual, auditory, olfactory, tactile, gustatory, then any others, and appended to the description line in priority order
+- With no contributions an object falls back to `integration_desc`, then `integration_fallback`, then "<key> is here"; this fallback is visual only
+- `integrate` is honoured only on Items, graffiti, blood pools, shop containers and furniture (`Room.get_integrated_objects_content`)
 - Objects do not appear in traditional object listing
 
 ### Weather System Integration
@@ -1099,7 +1117,7 @@ sensory_contributions = {
 **Weather State Management:**
 - Current weather state affects all sensory categories
 - Message pools provide variety like combat system
-- Weather intensity affects message selection
+- Weather type and time of day choose the message pool; intensity plays no part in selection
 - Integration with room base description
 
 ### Crowd System Integration
@@ -1107,16 +1125,16 @@ sensory_contributions = {
 **Crowd Level Management:**
 - Dynamic crowd levels: sparse, moderate, heavy, packed
 - Each level has message pools for different sensory categories
-- Crowd messages add to atmospheric and auditory primarily
+- The crowd line is one sentence per look, from one sense the looker perceives (any of the five), from a pool chosen by room type (`crowd_profile_for_room_type`: shop, market, nightclub, constabulary, residential, interior, an empty pool for sky, the street pool otherwise); a room with `crowd_base_level` 0 never shows one
 - Integration with character listing and social dynamics
 
 ### Smart Exit Enhancement
 
 **Exit Context Detection:**
 - Analyze destination room types to determine exit labels
-- Auto-detect intersections, dead ends, special areas
-- Allow manual override for custom labeling
-- Integrate exit information into room narrative flow
+- For an exit into a `street` room, work out at render time whether it is a dead-end, a continuing street or an intersection, from how many street exits that room has (`Room.format_exit_groups`); nothing is stored
+- Other exits are named from the far room's `type`, which builders set
+- Exits render as their own last paragraph, after the people
 
 ## Example Implementation
 
@@ -1135,13 +1153,13 @@ Base Room: "Large intersection where Sinn crosses Knife"
 ## Integration Points
 
 ### Weather System Integration ✅
-✅ **Fully Implemented:**
+**Rendering only; the weather driver is 📋 UNBUILT (see §8b):**
 - Weather contributes to all sensory categories (visual, auditory, olfactory, atmospheric)
   - **CORRECTION 2026-09-11: five layers, not four** — `tactile` is authored and emitted for
     every pool (`_build_weather_messages`, `world/weather/weather_messages.py:1078-1088`),
-    matching this spec's own "Core Sensory Categories" list. Sight gates `visual` and hearing
-    gates `auditory`; olfactory, tactile and atmospheric always show
-    (`world/weather/weather_system.py:70-84`).
+    matching this spec's own "Core Sensory Categories" list. Sight gates `visual`, hearing
+    gates `auditory` and smell gates `olfactory`; tactile and atmospheric always show
+    (`blocked_senses` in `world/perception.py`, read by `WeatherSystem.get_weather_contributions`).
 - Message pools rotated like combat messages with fresh selection per look command
 - 17 weather types with intensity-based message complexity scaling
   - **CORRECTION 2026-09-11, two errors:** the count is **19** (`WEATHER_INTENSITY`,
@@ -1164,11 +1182,11 @@ Base Room: "Large intersection where Sinn crosses Knife"
     atmospheric), and the dict is composed at import by `_build_weather_messages()` (`:1069`)
     from `WEATHER_POOLS` + `TIME_LIGHT` / `TIME_ACTIVITY` — 228 pools, 3,192 lines, measured.
 - `world/weather/weather_system.py`: Message selection and formatting logic  
-- `typeclasses/rooms.py`: Integration point in `return_appearance()` method
-- Weather appears directly in room description after base text, before characters/exits
+- `typeclasses/rooms.py`: `Room._compose_room_layers`, used for your own room and for the room you aim into
+- Weather shows only in rooms with `outside` set; it mixes in the room type's ambience pool (`ROOM_TYPE_POOLS`) where one exists, and shows two lines from two different senses the looker perceives (three when the looker is missing a sense), appended after any @integrate text on the description line, before the things line
 
 ### Crowd System Integration  
-- Crowd levels affect atmospheric and auditory categories
+- Crowd level chooses the pool tier; the line can come from any sense the looker perceives
 - Character interactions influenced by crowd density
 - Dynamic social context for room descriptions
 
@@ -1187,7 +1205,7 @@ Base Room: "Large intersection where Sinn crosses Knife"
 ### Advanced Component Systems
 - **Economic Activity**: Market sounds, commercial atmosphere
 - **Security Level**: Patrol presence, safety indicators  
-- **Time Cycling**: Day/night variations in all systems
+- **Time Cycling**: weather lines, the crowd level and time tokens in room descriptions follow the colony clock; day/night variation in other systems is 📋 UNBUILT (no issue)
 - **Seasonal Changes**: Long-term environmental variations
 - **Ambient Message System**: Periodic atmospheric messages based on current room conditions
 
@@ -1287,7 +1305,7 @@ def return_appearance(self, looker, **kwargs):
     `commands/` defines none and `commands/default_cmdsets.py` adds none — so `examine` is
     Evennia's stock builder-locked debug command: no interaction hints, and not a player verb.
     The game's deep-examination verbs are `inspect` / `autopsy` for corpses and blood pools
-    (`CmdInspect`, `commands/forensics.py:55`, alias at `:99`). Whether this line is still a
+    (`CmdInspect` in `commands/forensics.py`, alias `autopsy`). Whether this line is still a
     plan or should join the `listen` / `smell` / `feel` ruling (#1510) is an open owner question.
 
 **🎯 Aiming Integration Enhancement:**
@@ -1306,20 +1324,13 @@ def return_appearance(self, looker, **kwargs):
 - ~~Unified ordinal numbering across both spaces ("2nd goblin" finds 2nd goblin whether in current or aimed room)~~
 - ~~Implemented via `Character.get_search_candidates()` override using Evennia's designed hook points~~
 - ~~Universal system affects ALL commands using `caller.search()`, not just look commands~~
-  - **NARROWED 2026-09-11.** Read literally this is still true, and the hook works: an
-    aiming looker's `caller.search()` draws on both rooms with unified ordinals
-    (`Character.get_search_candidates`, `typeclasses/characters.py:691-731`, delegating to
-    `Room.search_for_target`, `typeclasses/rooms.py:308`, which concatenates
-    `self.contents + aimed_room.contents` at `:344-348`). But **character** targeting
-    largely no longer goes that way: the identity system routes it through
-    `resolve_character_target` (`commands/_identity_targeting.py:86`), which defaults
-    candidates to `caller.location.contents` (`:127-131`) and never consults
-    `get_search_candidates` — its module docstring (`:1-30`) tells new commands not to use
-    `caller.search()` for this, because that bypasses the identity filter. Two doors onto
-    one act: check both whenever either changes.
+  - No longer true: `Character.get_search_candidates` does not add the aimed room to
+    `caller.search()` (#3596); see the note above.
 - Maintains backward compatibility when not aiming
 
 ### Sensory Focus Commands
+**Not to be built** (owner decision, 2026-08-03, #1510; see the header note).
+
 - `listen` - Focus on auditory information
 - `smell` - Focus on olfactory information
 - `feel` - Focus on tactile information
@@ -1340,11 +1351,10 @@ def return_appearance(self, looker, **kwargs):
     `look <target>` resolves there itself (`commands.CmdLook`); `attack` and `throw` always did.
   - **FALSE FOR `attack`, corrected 2026-09-11.** `attack` does not use the
     `get_search_candidates` hook at all. It resolves the aimed exit itself and scopes
-    candidates to `target_room.contents` **only** (`commands/combat/core_actions.py:98-120`,
-    then `:117-120` and the `resolve_character_target` call at `:128-130`), so while aiming,
-    the **current** room drops out of scope entirely and the unified-ordinal guarantee stated
-    in §Aiming Integration Enhancement does not hold for it. `look` and other
-    `caller.search()` consumers do get the unified space; `attack` is a separate door.
+    candidates to the people in the far room **only** (`CmdAttack.func` in
+    `commands/combat/core_actions.py`, passing them to `resolve_character_target`), so while
+    aiming, the **current** room drops out of scope entirely. No command's default
+    `caller.search()` reaches the aimed room; `look <target>` resolves it in `commands.CmdLook`.
 
 ### Inventory System Integration
 - Held items affect available interactions
@@ -1383,7 +1393,6 @@ Loose paving stones and crumbling curbs line the edge of the narrow street.
 
 Kathy Cohen-Gold is doing a handstand. Nick Kramer is in a full-split. 
 Sterling Hobbs, Janice Burns, and Dean Keith are standing here.
-
 The street continues to the west (w) and east (e). There is a corner store 
 to the north (n). There is a laundromat to the south (s).
 ```
@@ -1569,7 +1578,7 @@ automation_config = {
 **Phase 3: Advanced Features**
 1. Complex conditional parsing
 2. Dynamic environmental elements
-3. Advanced sensory focus commands
+3. ~~Advanced sensory focus commands~~ (not to be built, #1510)
 
 **Phase 4: Optimization**
 1. Performance optimization
