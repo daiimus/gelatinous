@@ -30,6 +30,12 @@ Every open issue carries exactly one `type:` label and one `area:` label. A
 comes off when it no longer does. If you cannot pick a type, the issue is not
 yet understood well enough to file.
 
+A player's `bug` report arrives without them: the game files it itself
+(`commands/CmdBug.py`) with the labels `bug` and `player-reported`, plus the
+category the player picked (`combat`, `medical`, `movement`, `items`,
+`commands`, `web`, `world`, `social`, `system` or `other`). Triage gives it
+its `type:` and `area:` labels.
+
 ### `type:` — what kind of work is this
 
 | label | means |

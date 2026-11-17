@@ -152,7 +152,8 @@ except SpecificException as e:
 - Document utility functions thoroughly
 
 ```python
-# world/combat/utils.py
+# Simplified from world/combat/utils.py, whose version also returns
+# `default` when the character has no attribute of that name
 def get_numeric_stat(character, stat_name: str, default: int = 1) -> int:
     """
     Safely retrieve a numeric stat from a character.
@@ -254,7 +255,7 @@ class CombatHandler(DefaultScript):
 
 **Test Structure**
 ```python
-# world/tests/test_combat_utils.py
+# Example: a test module for world/combat/utils.py
 import unittest
 from unittest.mock import Mock, patch
 from world.combat.utils import get_numeric_stat
@@ -383,7 +384,7 @@ log_debug(DEBUG_PREFIX_ATTACK, DEBUG_SUCCESS, "resolved against cover", characte
 **Stale NDB State**
 - Problem: An `ndb` attribute set by one action is still there when the next one runs
 - Solution: Clear it when the action ends: delete it (`delattr(obj.ndb, name)`) or set it to `None`. The code does both
-- Best Practice: Always validate NDB state before use
+- Best Practice: Test an NDB value with `is None`; `hasattr(obj.ndb, name)` is true for every name (see `AGENTS.md`, Typeclasses and Attributes)
 
 **SaverList Corruption**
 - Problem: SaverList objects becoming corrupted

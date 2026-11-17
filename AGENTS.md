@@ -169,8 +169,8 @@ a pattern.)
 Do not confuse *defining typeclasses* (code logic) with *creating data*.
 Typeclass hooks should only guarantee the Attribute data the code needs to
 function. Define **actual data** with the **Prototype** system: reusable dicts
-that spawn in-game objects. One `WanderingNPC` typeclass (the wander logic) backs
-many prototypes (deer, goblin, lost hiker) — same code, different data.
+that spawn in-game objects. One `Item` typeclass (`typeclasses/items.py`) backs
+over a hundred prototypes in `world/prototypes.py` — same code, different data.
 
 ## Commands
 
@@ -346,6 +346,18 @@ where the detail is held.
 | Fix grammar engine (conjugation, articles) | `world/grammar.py` |
 | Modify say/whisper/emote commands | `commands/CmdCommunication.py` |
 | Manage character descriptions (`describe`) | `commands/CmdCharacter.py` |
+| Change what an AI NPC says or does | `typeclasses/llm_npc.py`, `world/llm/` |
+| Make a slow call (a model, a remote service) | `world/llm/detached.py` |
+| Change NPC needs, schedules, jobs, posts | `world/souls/` |
+| Change how NPCs are dispatched to world events | `world/director/` |
+| Change what a job does at its post | `world/service.py` |
+| Modify radio | `world/radio.py`, `commands/CmdRadio.py` |
+| Modify voice identity and speech | `world/voice.py`, `world/speech.py` |
+| Change what a looker can see or hear | `world/perception.py` |
+| Modify hide/sneak/search | `world/stealth.py`, `commands/CmdStealth.py` |
+| Modify falling | `world/gravity.py` |
+| Work on medical/anatomy | `world/medical/`, `world/anatomy/` |
+| Modify world signals (WSIS) | `world/wsis.py` |
 | Understand a system before implementing | `specs/*.md` |
 
 ## When Stuck
@@ -354,10 +366,15 @@ where the detail is held.
 2. **`server/logs/combat_audit.log`** — every combat/medical diagnostic, always on
    (written via `world/combat/debug.py`).  For live in-game output, set
    `SPLATTERCAST_LIVE = True` in settings to mirror it to the Splattercast channel.
-3. **Grep for the constant** — most strings live in a `constants.py`.
-4. **Trace from the command** — `commands/` calls into handler/system methods.
-5. **Check NDB state** — many bugs are stale `char.ndb.*` references.
-6. **Read the spec** — `specs/*.md` documents each system; Evennia docs at
+3. **`server/logs/souls_audit.log`** — what each NPC soul set out to do,
+   failed at, finished and earned (written by `world/souls/audit.py`). To see
+   a model's raw reply beside the text players read, set
+   `LLM_GM_DECISION_LOG = True` and read `server/logs/llm_decisions.log`
+   (`world/llm/decision_log.py`).
+4. **Grep for the constant** — most strings live in a `constants.py`.
+5. **Trace from the command** — `commands/` calls into handler/system methods.
+6. **Check NDB state** — many bugs are stale `char.ndb.*` references.
+7. **Read the spec** — `specs/*.md` documents each system; Evennia docs at
    https://www.evennia.com/docs/latest/.
 
 ## Quick Reference

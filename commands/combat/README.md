@@ -10,7 +10,7 @@ commands/combat/
 ├── core_actions.py          # CmdAttack, CmdStop
 ├── movement.py              # CmdFlee, CmdRetreat, CmdAdvance, CmdCharge
 ├── jump.py                  # CmdJump (inter-room jumping)
-├── special_actions.py       # CmdGrapple, CmdEscape, CmdRelease, CmdDisarm, CmdAim
+├── special_actions.py       # CmdGrapple, CmdEscapeGrapple, CmdReleaseGrapple, CmdDisarm, CmdAim
 └── README.md
 ```
 
@@ -40,7 +40,7 @@ Specialized combat commands for tactical depth:
 - **CmdAim** -- Aim at a target or direction for ranged attacks
 
 ### cmdset_combat.py
-Defines `CombatCmdSet` which bundles all combat commands and is added to characters when combat begins.
+Defines `CombatCmdSet` (attack, stop, flee, retreat, advance, charge, jump, escape, release, disarm). `CharacterCmdSet` always includes it; `aim` and `grapple` are added to `CharacterCmdSet` directly.
 
 ## Integration
 
