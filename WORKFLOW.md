@@ -6,22 +6,47 @@ layer above the code.
 
 ## The three documents, and what each is allowed to say
 
-| artifact | answers | authority |
+| artifact | answers | holds |
 |---|---|---|
-| **spec** (`specs/*.md`) | *What should this system do?* | design intent |
-| **roadmap** (`specs/roadmaps/*.md`) | *In what order, and what is built?* | sequencing + phase status |
+| **spec** (`specs/*.md`) | *What does this system do, and what should it do?* | the rule as it stands now, the owner's rulings, what is unbuilt, what is undecided |
+| **roadmap** (`specs/roadmaps/*.md`) | *What comes next, and in what order?* | the order of work not yet done |
 | **issue** (GitHub) | *What is the next concrete unit of work?* | execution state |
 
-The rule that keeps them honest: **a spec never claims a phase is built.**
-Only a roadmap says built-or-not, and only an issue says in-progress. When a
-spec describes unbuilt behaviour it must say so inline — `📋 UNBUILT`, with a
-pointer to the issue.
+**Who the documents are for.** The code here is written by a language model
+working with the owner, and these documents are what that model reads before
+it writes. Owner, 2026-11-17, asked how they should be shaped: "What is best
+for you as the LLM? This is 100% vibe coded project." And to the answer set
+out below: "I concur."
 
-`specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` is the reference implementation
-of the roadmap pattern: a phase list, a status key, a separate readiness
-ledger mapping unconsumed flags to the substrate that will consume them, and
-an explicit sequencing rule ("build the substrate before wiring schema to
-it"). New roadmaps should copy its shape.
+- **No document says what is built.** Whether something is built is checked
+  in the code, which takes seconds and is never out of date. A "shipped"
+  marker, a status banner or a phase table is useful only while it is right,
+  and it is the first thing to go wrong: a stale one is acted on. Only an
+  issue says what is in progress.
+- **A spec says what cannot be read from the code**: what the system does
+  and should do now, each ruling in the owner's words with its date, what is
+  deliberately not built, and what is not decided. Unbuilt behaviour is
+  marked where it stands, `📋 UNBUILT`, with its issue number when there is
+  one.
+- **A spec gives the current rule first, and briefly.** No change-log
+  narrative ("it used to", "the first version") and no line numbers: name
+  the function. The history is in git and on the issues. The one piece of
+  history that stays is a short note where a ruling overturned an intention
+  the document had recorded (see Anti-drift below).
+- **A roadmap is short**: what comes next, and in what order. It is not a
+  ledger of what was built.
+- **`AGENTS.md`, `DEVELOPMENT_GUIDE.md` and this file stay tight.** They are
+  read at the start of every piece of work.
+
+Specs written before this still carry status markers, phase tables and
+history. They are being brought to this shape (#3865). Until a spec has been,
+trust the code over its status lines.
+
+`specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` is the model for a roadmap in
+what it sequences: a phase list in order, a readiness ledger mapping
+unconsumed flags to the substrate that will consume them, and an explicit
+sequencing rule ("build the substrate before wiring schema to it"). Its
+status key predates the rule above.
 
 ## Issue labels — three axes
 
@@ -140,6 +165,13 @@ labels win.
 
 **Every roadmap phase gets exactly one issue, and the phase status and the
 issue state must agree.**
+
+*Since 2026-11-17 a roadmap keeps no status for finished work (see "The three
+documents" above). What is left of this rule: every phase on a roadmap is
+work not yet done and has exactly one open issue, and a phase whose issue
+closes comes off the roadmap. The worked example below is from before that.
+Its lesson is the reason for the change: a status line in a document went
+stale in both directions at once.*
 
 A phase cannot read "Not started" while its issue is closed. A phase cannot
 read "Complete" with its issue open. This is the check that failed in
