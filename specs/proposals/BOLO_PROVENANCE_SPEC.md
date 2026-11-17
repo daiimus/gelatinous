@@ -1,30 +1,42 @@
 # BOLO Provenance — how a description travels
 
 **Status:** ✅ BUILT 2026-08-23 (#2247) — provenance, enforcement,
-and the machine-witness path. Clothing remains unbuilt (§4.4).
+and the machine-witness path.
 **Correction 2026-09-11:** §4.4 clothing SHIPPED the same day, ~30 min
 after this banner was written — PR #2253 ("What they were wearing",
 commit `43539842`, also under #2247). All four §4 items are in the code.
 **Depends on:** `world/director/security.py` (`build_bolo`, `match_bolo`),
-`world/director/crime.py`, `world/director/calls.py`
+`world/director/crime.py`, `world/director/calls.py`,
+`world/director/radio_report.py` (`consider_radio_report`)
 
 ---
 
 ## 1. The hole
 
-A BOLO is what a responding unit matches people against:
+A BOLO is what a responding unit matches people against. Before #2247
+it was:
 
 ```python
 {"uid": <apparent presentation hash>, "height": ..., "build": ...}
 ```
 
+Today `build_bolo` and `describe_suspect` both produce:
+
+```python
+{"uid": str | None, "height": str | None, "build": str | None,
+ "worn": set of (colour, garment), "via": "machine" | "witness" | "radio",
+ "by": the observer's key or None}
+```
+
+`uid` is set only when `via` is `"machine"`.
+
 `uid` is a **16-character hex digest** of the presentation signature.
 `match_bolo` reads it as `high` confidence — a positive identification —
 and falls back to `low` when only the height+build silhouette agrees.
 
-Today there is exactly ONE producer: `crime.py` calls `build_bolo(perp)`
-at crime time and drops it in the event payload, where the responder
-reads it directly. **The identity never travels through any channel.**
+Before #2247 there was exactly ONE producer: `crime.py` called
+`build_bolo(perp)` at crime time and dropped it in the event payload,
+where the responder read it directly. **The identity never travels through any channel.**
 (**Stale 2026-09-11:** three producers now — `crime.py` twice, with
 `via="machine"` and `via="witness"`; `calls.py::describe_suspect`, which
 builds the same shape with `via="radio"`; and, until removed 2026-10-09, #3728, `commands/CmdDispatch.py`,
@@ -37,8 +49,8 @@ communicate a uid over the radio?* Nobody says a hex digest out loud. A
 witness can't. Dispatch can't relay it. A player certainly can't shout
 it on 911.
 
-So the fidelity of a BOLO is currently independent of how it was
-learned, and everything gets the highest fidelity there is.
+So before #2247, how much a BOLO was worth did not depend on how it was
+learned, and every BOLO counted as a positive identification.
 
 > **Stale 2026-09-11:** §1 is preserved as the problem statement, but it
 > describes the PRE-#2247 code. `match_bolo` now gates `high` on
@@ -71,7 +83,9 @@ or a camera.
 
 `world/director/calls.py::describe_suspect` (built #2246) reads a
 caller's ordinary words into a silhouette and **never** sets a uid.
-That is this principle applied to one channel; it just isn't a rule yet.
+That is this principle applied to the radio channel. Since #2247 it is
+the rule for every channel: `build_bolo` sets a uid only for `machine`,
+and `match_bolo` gives `high` only for `machine`.
 
 `match_bolo` also requires BOTH axes for a `low` match, so a half
 description ("a svelte lady") matches nobody — the units are simply
@@ -84,28 +98,41 @@ axis plus a matching worn garment also returns `low` — "a svelte lady in
 a black trenchcoat" matches. The bare "a svelte lady" above still matches
 nobody, so the owner ruling holds; the stated rule no longer does.
 
+As built, a description with clothing but no height or build ("a guy in
+a black trenchcoat") matches nobody. When a BOLO carries both height and
+build, `match_bolo` decides on those two alone and does not look at
+clothing.
+
 ## 4. What changes
 
-1. **A BOLO gains provenance** — `{"via": "machine"|"witness"|"radio",
-   "source": ...}` — and `build_bolo` requires it rather than defaulting.
+1. **A BOLO carries its provenance**: `via` (`"machine"`, `"witness"` or
+   `"radio"`) and `by` (the observer's `key`, or None). `build_bolo` takes
+   `via` as a keyword and defaults to `"witness"`, the channel that
+   carries no uid, so a producer that forgets to declare a channel never
+   hands out a positive identification.
    (**As shipped 2026-08-23:** the second key is `by` — the observer's
    `key` — not `"source"`; `event.source` stays reserved for the ground
    truth `is_the_right_person` checks against. And `via` is keyword-only
    with a fail-safe default of `"witness"`, not required: an undeclared
-   producer gets the no-uid channel rather than an error.
+   producer gets the no-uid channel rather than an error. A channel name
+   that is not one of the three is recorded as `"radio"`, the weakest,
+   and carries no uid.
    `commands/CmdDispatch.py` was the one caller relying on that default; it was
    removed 2026-10-09, #3728, so today no caller relies on it: both `build_bolo`
    calls in `world/director/crime.py` pass `via=` explicitly.)
 2. **`match_bolo` refuses `high` unless `via == "machine"`.** A uid
-   arriving by any other route is a bug or a forgery, and should be
-   treated as one.
+   arriving by any other route (a bug or a forgery) is ignored, and the
+   BOLO is matched on its silhouette and clothing alone.
 3. **`crime.py` declares its channel.** A crime witnessed by a security
-   unit is `machine`; one witnessed by a person is `witness` and must
-   degrade to words before it reaches anybody else.
-4. **Clothing enters the vocabulary.** ✅ NOT DONE. "A black trenchcoat"
-   is the most useful thing a caller says and there is still nowhere to
-   put it — the BOLO record has no garment field and `match_bolo`
-   cannot compare worn items. This is the remaining half of the spec.
+   unit is `machine`; one witnessed by a person is `witness`: it carries
+   no uid, only the perpetrator's exact height, build and clothing (an
+   accurate silhouette).
+4. **Clothing is part of the BOLO.** A BOLO carries `worn`, a set of
+   (colour, garment) pairs. `build_bolo` reads them off the body's worn
+   items (`_worn_signature` in `world/director/security.py`).
+   `describe_suspect` reads them out of a caller's words (`_garments_named`
+   in `world/director/calls.py`), so "black trenchcoat" becomes
+   ("black", "trenchcoat"). `match_bolo` uses them (see §3).
 
    **Stale 2026-09-11 — this shipped.** PR #2253 (commit `43539842`,
    under #2247) added a `worn` key to the BOLO record plus
@@ -118,19 +145,21 @@ nobody, so the owner ruling holds; the stated rule no longer does.
 ## 5. Consequences worth wanting
 
 * **Disguise gets teeth from the other side.** A uid is a *presentation*
-  hash, so changing clothes already breaks it. Under provenance, only
+  hash, so changing a disguise item (a mask, a hood, a wig) already
+  breaks it. Under provenance, only
   machines hold that against you — a human witness's description
   degrades naturally, which is how it should feel.
   (**Precision 2026-09-11:** only *disguise-essential* garments shift the
   uid — `get_apparent_uid` hashes `get_essential_item_type_ids`, which
   selects worn items flagged `disguise_essential=True`: masks, hoods,
   wigs, contacts, sunglasses. Swapping an ordinary coat does NOT break
-  the hash. It is the `worn` field from #2253 that a coat change defeats,
+  the hash. Changing a presentation override (height, build or keyword)
+  does. It is the `worn` field from #2253 that a coat change defeats,
   so the machine hash is the more durable of the two.)
 * **Forgery has a target.** If a uid can only travel machine-to-machine,
   then injecting one is a decking objective: put your enemy's
   presentation in the net and the whole security force sees them
-  everywhere.
+  everywhere. 📋 UNBUILT (no issue): decking does not exist yet.
 * **Bad calls stop convicting people.** A vague radio report can no
   longer produce a positive ID, which is the difference between
   "security investigates" and "security detains the wrong person".

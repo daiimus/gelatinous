@@ -108,7 +108,7 @@ does not wait on the sidecar either).
 
 > *Historical as of 2026-09-12 — the rows below describe the code as it
 > stood on 2026-08-18. Findings 1–11 are all fixed: 3/5/9/10 by P0
-> (#1982), 1 by P1 (#1984), 2/4 by P2 (#1986), 6/7/11 by P3 (#1988), 8
+> (#1982), 1 by P1 (#1984), 2/4/11 by P2 (#1986), 6/7 by P3 (#1988), 8
 > across P2/P3. Finding 12 stands, deliberately —
 > `commands/CmdSoul.py` still uses `global_search`, admin-only.*
 
@@ -149,18 +149,25 @@ self-heal on reload; the stagger idiom already exists in
   remainder instead of truncating (#9); persist goal cooldowns to `db` (#10).
 - **P1 — kill the write storm (#1):** needs become compute-on-read — store
   `(snapshot, stamped_at)` once, derive pressure lazily in `pressure()` and
-  `@soul`; persist only when something *changes* a need (satisfy, think
-  transition, duty flip). Fold the duty mutation into the same single write.
-  Cold-soul per-beat writes drop from 3–4 to **0**.
+  `@soul`; persist only when something sets or changes a need (seeding a
+  soul, `needs.satisfy`, pin and unpin). Duty is worked out from schedule
+  and location (`engine.duty_pressure`) and never stored. The one periodic
+  write left is the wage checkpoint: a soul standing its post on a duty job
+  builds pay in `ndb.soul_wage_pending` and writes it to `db.soul_wage_owed`
+  every 10 beats, offset by soul id, so a reload loses at most about 5
+  minutes of one soul's pay; `economy.pay_wage` adds in what is not yet
+  written. Apart from that checkpoint, per-beat writes drop from 3–4 to **0**.
 - **P2 — spread the load:** phase-offset thinking by identity
   (`(beat + soul.id) % THINK_EVERY[lod]`, the routines.py idiom) (#2);
   de-align the tithe from the think cadence (#8); hoist player-room coord
-  computation out of the per-soul loop (#4).
+  computation out of the per-soul loop (#4); give each soul a ±15 min
+  schedule offset derived from its id (`engine.shift_jitter_hours`);
+  travel computes its route once, re-paths only when a step lands
+  somewhere the route does not expect, and a cold soul walks at half
+  pace (#11).
 - **P3 — query hygiene:** `get_id` in job steps (#6); tag advertisers and
   tills (`search_tag`, indexed) with a short-TTL in-process cache and a
-  per-prototype edibility memo (#7, #8); treasury reference memoized (#8);
-  travel caches its path and re-paths only on failure, step delay scaled by
-  LOD (#11).
+  per-prototype edibility memo (#7, #8); treasury reference memoized (#8).
 - **P4 — measure, then infra:** `dummyrunner` + `--profiler` baseline at
   current population, again after P1/P2, again with a synthetic 300-soul
   load; only then consider WAL journal mode via `SQLITE3_PRAGMAS` and the
@@ -202,6 +209,12 @@ on a timer.
 2. **`.ndb` for hot state, `.db` at checkpoints** — and assume `.ndb` dies
    at every reload; design the recovery path.
 3. **Tags for lookup, never attribute-key queries on a hot path.**
+   An attribute-key query is allowed off the hot path, once per cache
+   refresh or sweep, to catch objects a build forgot to tag:
+   `actions._reconcile_advertiser_tags` (once per 60 s advertiser-cache
+   refresh) and `economy._reconcile_till_tags` (once per tithe sweep) tag
+   any object that has the attribute but not the tag, and log a warning.
+   A missing tag is a build error, not a lookup path.
 4. **Stagger by identity.** Anything keyed `beat % N` across a population is
    a thundering herd; add the entity id to the phase.
 5. **Fault-isolate per entity inside any loop over the population.** One bad
@@ -209,7 +222,11 @@ on a timer.
 6. **One coordinator script per system, owned by `GLOBAL_SCRIPTS`.** Never
    per-entity scripts; never create script rows from an external shell.
 7. **Event-push over polling** where a hook exists (`at_new_arrival`-style);
-   pace-by-state where it doesn't.
+   pace-by-state where it doesn't. The souls engine does this through
+   `salience.notice`: a stimulus schedules an immediate think, and the
+   heartbeat makes any soul with something in its inbox think that beat
+   whatever its LOD. LOD sets how often a soul thinks about itself, not
+   how fast the world can reach it.
 8. **The reactor is the budget.** Every beat is a synchronous slice on the
    only thread; no ORM off-thread, ever. If a slice is too big, shrink or
    chunk it — measure with `--profiler` and `dummyrunner`, don't guess.

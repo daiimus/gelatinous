@@ -22,7 +22,10 @@
 > ratings, `letter_for()` giving the same A–Z tiers on the same 0–150 scale),
 > rendered in the "Ratings:" block of that same `@stats` box; see
 > `SKILLS_AND_DESIGNATION_SPEC.md` and #2082. Only its per-skill *word* lists
-> are still outstanding.
+> are still outstanding. The sheet lists at most six ratings, highest first
+> (`rated_skills`), each as its A–Z letter from `letter_for`; staff using
+> `/numeric` also see the number in brackets. A character with no ratings
+> gets "(no ratings on file)".
 >
 > What is still genuinely unbuilt is the **Future Extensions** list below —
 > per-tier colouring, help-file tier tables, comparison tools, chargen
@@ -31,7 +34,7 @@
 
 ## Overview
 
-The G.R.I.M. (Grit, Resonance, Intellect, Motorics) system will be enhanced with descriptive words that replace raw numerical displays for players. Each stat will have 26 alphabetical descriptive tiers (A-Z) representing power levels from 0-150, with each tier covering a 6-point range.
+Each G.R.I.M. stat (Grit, Resonance, Intellect, Motorics) is shown on the `@stats` sheet and the web character page as a word from 26 alphabetical tiers (A–Z) on the 0–150 scale. Tiers A to Y each cover six points; Z is exactly 0.
 
 ## System Design
 
@@ -68,8 +71,9 @@ The 0-150 stat range is divided into 26 alphabetical tiers:
 
 ### Display Philosophy
 
-- **Player Facing**: Only descriptive words are shown to players
-- **Administrative**: Help files and admin commands show both word and numerical range
+- **Player Facing**: as built, the `@stats` / `score` sheet and the web character page show only the descriptive word. Character creation, in game and on the web, shows and takes the exact numbers: the player shares out 300 points, 1–150 per stat. 📋 UNBUILT (no issue, not decided): descriptors in character creation.
+- **Administrative**: staff running `@stats/numeric` see the word plus the exact number, e.g. `Granite (112)`. No help file or command shows the tier range. 📋 UNBUILT (no issue, not decided): tier ranges in help files.
+- **Other characters' sheets**: staff (Builder or above, not quelled) can read another character's sheet with `@stats <target>`, adding `/numeric` for exact values. Anyone else who names a target is told "You can only check your own evaluation."
 - **Universal Application**: All Character typeclass entities (PCs, NPCs, mobs) use this system
 - **Thematic Consistency**: Each stat has its own vocabulary that reflects its nature
 
@@ -282,7 +286,7 @@ RESONANCE (Social Connection): From Attuned (145-150) to Zero (0)
 INTELLECT (Reasoning): From Absolute (145-150) to Zero (0)
 MOTORICS (Coordination): From Artful (145-150) to Zero (0)
 
-Each descriptor represents a 6-point range of capability.
+Descriptors A to Y each cover six points; Z is exactly 0.
 ```
 
 ### Backward Compatibility
@@ -317,17 +321,17 @@ Each descriptor represents a 6-point range of capability.
 ## Future Extensions
 
 ### Potential Enhancements
-- Colored tier displays (green for high, red for low)
-- Detailed tier descriptions in help files
-- Stat comparison tools using descriptive words
-- Integration with character generation system
-- Narrative text generation based on stat descriptors
+- Colored tier displays (green for high, red for low) 📋 UNBUILT (no issue, not decided)
+- Detailed tier descriptions in help files 📋 UNBUILT (no issue, not decided)
+- Stat comparison tools using descriptive words 📋 UNBUILT (no issue, not decided)
+- Integration with character generation system 📋 UNBUILT (no issue, not decided)
+- Narrative text generation based on stat descriptors 📋 UNBUILT (no issue, not decided)
 
 ### Customization Options
-- Server-configurable descriptor word sets
-- Language localization support
-- Theme-specific vocabulary variations
-- Player preference for numeric vs. descriptive display
+- Server-configurable descriptor word sets 📋 UNBUILT (no issue, not decided)
+- Language localization support 📋 UNBUILT (no issue, not decided)
+- Theme-specific vocabulary variations 📋 UNBUILT (no issue, not decided)
+- Player preference for numeric vs. descriptive display 📋 UNBUILT (no issue, not decided)
 
 ---
 

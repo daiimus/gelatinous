@@ -74,6 +74,13 @@ WSIS observes. That constraint is what let it ship while everything
 else waits on tuning: an observer needs no balance, because it reports
 whatever the numbers currently are.
 
+The only reader in the game is for staff. Bare `@soul` (Builder only,
+`commands/CmdSoul.py`, `_colony_dashboard`) shows deaths in the last
+hour from the bus, the three loudest zones, and decayed pressure per
+layer. Its other health alarms (untreated casualties, posts held by
+nobody home, dry shelves, machines wanting service) are read from souls
+and posts directly, not from the bus. No player can read the bus.
+
 ### 2. Interpretation — turning signal into a claim
 
 Zones, temporal baselines, anomaly detection, convergence. The engine
@@ -84,7 +91,8 @@ about the colony* rather than forty rows in a ring buffer.
 ### 3. Circulation — how a claim reaches a person
 
 The departure, and the cheap part, because **every surface already
-exists.** The Rook broadcasts nightly. Dispatch reads a board.
+exists.** The radio DJ on 88.8 already cuts an unprompted segment about every
+half hour. Dispatch reads a board.
 Bartenders have opinions. A decker will eventually read files.
 
 ---
@@ -138,10 +146,11 @@ gameplay rule:
   security layer that only counts incidents describes a busy district;
   one that counts wrong arrests describes a *badly policed* one, and
   those are different facts about a place.
-* **report quality per caller** — the false-report strike record
-  (Phase 3, #2256, already closes calls `unfounded` and says so on the
-  air). Held against the caller's VOICE UID, which exists, and which a
-  modulator already defeats — the counter-tradecraft is built in.
+* **report quality per caller** — a false-report strike record.
+  Calls are already closed `unfounded` and said so on the air (Phase 3,
+  #2256), and each call keeps the caller's VOICE UID, which a modulator
+  already defeats — the counter-tradecraft is built in. 📋 UNBUILT (no
+  issue): the per-caller count; only the last 50 calls are kept.
 
 Both fit the provenance model without modification. "The constabulary
 detains the wrong person on Volta about a third of the time" is
@@ -174,14 +183,15 @@ it — never by analogy to somebody else's categories.
 | **environment** | ⏳ aspirational | needs weather/hazard systems to emit; the terraform failure and the Boot breach are the obvious first sources |
 
 *(Verified 2026-09-12 — read "emitting today" as DECLARED, not live.
-The column mirrors `wsis.SIGNALS` (`world/wsis.py:49-74`), the bus's
+The column mirrors `wsis.SIGNALS` (`world/wsis.py`), the bus's
 vocabulary; only 7 of the 20 kinds above have an `emit()` call site
 anywhere in the repo (there are five `wsis.emit` call sites in non-test
-code): `death` (`typeclasses/death_progression.py:571`), `robbery`,
-`travel_stalled`, `plan_faulted` (`world/souls/jobs.py:78,990`),
-`went_hungry` (`world/souls/actions.py:771`), `post_vacant`
-(`world/souls/posts.py:360`), `till_empty`
-(`world/director/courier.py:214`). The four ✅ verdicts hold — each
+code): `death` (`DeathProgressionScript._handle_corpse_creation_and_transition`
+in `typeclasses/death_progression.py`), `robbery`, `travel_stalled`,
+`plan_faulted` (`_signal` in `world/souls/jobs.py`, called from `fault`
+and `step_job`), `went_hungry` (`plan_for` in `world/souls/actions.py`),
+`post_vacant` (`sweep` in `world/souls/posts.py`), `till_empty`
+(`hand_over` in `world/director/courier.py`). The four ✅ verdicts hold — each
 live layer has at least one real emitter — but `killing`, `assault`,
 `casualty`, `casualty_untreated`, `arrival`, `resleeve`, `homeless`,
 `undressed`, `sale`, `wage_paid`, `supply_dry`, `post_unsouled` and
@@ -190,8 +200,12 @@ live layer has at least one real emitter — but `killing`, `assault`,
 of them.)*
 
 Note what the live four already describe: **a colony that starves,
-loses its staff, and bleeds.** That is not a small picture. The
-medical collapse would have been visible in three of these four.
+loses its staff, and bleeds.** That is not a small picture. With
+today's emitters the medical collapse would reach the bus only as
+deaths. The signals that would name it (`casualty_untreated`,
+`post_unsouled`) are declared and not emitted, 📋 UNBUILT (#303). Bare
+`@soul` shows untreated casualties and unsouled posts, but reads them
+from souls and posts directly, not from the bus.
 
 ---
 
@@ -243,9 +257,12 @@ graph TB
     ANOM & CONV --> TERM & NPC & ROOM
 ```
 
-> *(Correction 2026-09-12: P0 did not ship in this shape, and the
-> sections from here through "Constants" describe components that are
-> already built — differently. The live bus is a FLAT module,
+> *(Correction 2026-09-12: P0 did not ship in this shape. Of the
+> sections from here through "Constants", the game has only the signal
+> bus and the store for its history, and they work differently (below).
+> Zones, ZTI, escalation tiers, anomaly and convergence detection,
+> terminals, the news network, room atmosphere, intelligence officers,
+> the feedback loops and the scripts table are 📋 UNBUILT (#303). The live bus is a FLAT module,
 > `world/wsis.py`: module-level `emit(kind, where=None, weight=None,
 > note="", layer=None)`, `recent`, `pressure`, `by_layer`, `hot_zones`,
 > `counts`, `flush`, with `LAYERS` / `SIGNALS` / `RING` /
@@ -256,7 +273,14 @@ graph TB
 > vocabulary in "Constants" share nothing with the shipped ones. Read
 > the tree below as a target shape for the UNBUILT layers, not as a
 > description of the bus. `world/combat/constants.py`, cited there as
-> the pattern, does exist.)*
+> the pattern, does exist. `emit` never raises. A kind not in `SIGNALS`
+> records at weight 0.35 in the population layer. Signals of weight 0.7
+> or more are saved at once, the rest every 25th emit, and `flush()`
+> saves the rest when the server stops, reloads or resets
+> (`at_server_stop` in `server/conf/at_server_startstop.py`, #3227).
+> The ring lives in each server process, so an external `evennia shell`
+> sees only what has been saved. `zone_of(where)` turns a place into
+> the zone name.)*
 
 ### Module Structure
 
@@ -332,8 +356,10 @@ sit in rather than needing their own authoring. So the zone map is
 mostly derivable from names that already exist, with hand-authoring
 reserved for the cases that need judgement.
 
-**Today the bus keys on the room name itself**, which is why it
-reports "Escallier Snailery" rather than a corridor. That is the
+**Today the bus keys on the room's name, cut at the first " - "**
+(so every unit of a building counts as the building, and a signal with
+no place counts as "the colony"), which is why it reports "Escallier
+Snailery" rather than a corridor. That is the
 change: aggregate at the corridor and keep the room as the note.
 
 ### Status: analysis only
@@ -442,7 +468,7 @@ graph LR
 ### Security Layer
 
 **Signals consumed:**
-- Combat events (from `CombatHandler` -- emit signal on `start_combat`, `end_combat`)
+- 📋 UNBUILT (#303): combat events from `CombatHandler` (`start()` when a fight begins, `stop_combat_logic()` when it ends). No combat signal is emitted.
 - Deaths/corpse creation (from `DeathProgressionScript`)
 - Weapon discharges (gunfire heard in adjacent rooms)
 - NPC faction patrol encounters
@@ -592,15 +618,14 @@ graph LR
 
 *(Correction 2026-09-12: `CombatHandler.start_combat()` does not exist
 and never has — there is no `start_combat` anywhere in the repo. The
-handler's live entry points are `get_or_create_combat(location)`
-(`world/combat/handler.py:102`) and `CombatHandler.start()` (`:224`);
-the example below is written against the missing method. The rest of
-the table checks out: `stop_combat_logic()` (`:255`),
-`Character.at_death()` (`typeclasses/characters.py:734`),
-`DeathProgressionScript` (`typeclasses/death_progression.py:85`),
-`CmdThrow` (`commands/CmdThrow.py:118`), `CmdBuy`
-(`commands/shop.py:12`), `weather_system.set_weather()`
-(`world/weather/weather_system.py:166`), and `db.managed_rooms` /
+handler's live entry points are `get_or_create_combat(location)` and
+`CombatHandler.start()` (`world/combat/handler.py`); the example below
+is written against the missing method. The rest of the table checks
+out: `stop_combat_logic()`, `Character.at_death()`
+(`typeclasses/characters.py`), `DeathProgressionScript`
+(`typeclasses/death_progression.py`), `CmdThrow`
+(`commands/CmdThrow.py`), `CmdBuy` (`commands/shop.py`),
+`weather_system.set_weather()` (`world/weather/weather_system.py`), and `db.managed_rooms` /
 `db.combatants` on the handler script. Note also that `death` already
 emits, from `DeathProgressionScript` rather than from
 `Character.at_death()`.)*
@@ -972,6 +997,8 @@ Following Evennia conventions (use `db` for persistent, `ndb` for temporary):
 
 ### Constants
 
+📋 UNBUILT (#303). `world/director/intel.py` is the security force's wanted record, not WSIS. The live bus constants (`LAYERS`, `SIGNALS`, `RING`, `CHECKPOINT_EVERY`, `SIGNATURE_SHARE`) are in `world/wsis.py`.
+
 All WSIS constants centralized in `world/intel/constants.py`, following the pattern in `world/combat/constants.py`:
 
 ```python
@@ -1079,7 +1106,7 @@ observes, then the part that interprets, then the part that speaks.**
 | **Legibility** | the signal bus, decay, checkpointing | ✅ live |
 | **Zones** | named districts on rooms; the bus keys on them instead of room names — *note 2026-09-12: "named districts" is the framing this spec's own "Corridors, not districts — corrected 2026-08-24" section rules WRONG, citing BUILDING_PLAYBOOK §1.5 (owner-set). Read this row as **corridors**, with Northside/Southside above them* | next — *but parked: the zone section says "Not being built (owner, 2026-08-24)", NPC management stays the priority, and #303 carries `status: parked`. #303's own "Next brick: zones" still records the superseded "named districts, hand-authored (owner ruling)", so spec and tracking issue currently disagree on the unit* |
 | **Interpretation** | baselines per (zone, layer), anomaly z-scores, convergence | after zones |
-| **Circulation — the Rook** | he already broadcasts nightly and already has opinions *(she — blueprint `dj_rook` is female, `world/npcs/blueprints.py:1819`; and the nightly claim is now stronger than when written: `db.ambient_broadcaster=True` with `broadcast_interval=1800` cuts an unprompted segment every ~30 min off the director heartbeat, `world/director/broadcasts.py` + `world/director/routines.py:492`; verified 2026-09-12)*. The cheapest mouth in the colony | after interpretation |
+| **Circulation — the Rook** | she already cuts an unprompted segment about every half hour and already has opinions (blueprint `dj_rook` in `world/npcs/blueprints.py` sets `ambient_broadcaster` and `broadcast_interval` 1800; `maintain_broadcasts` in `world/director/broadcasts.py` runs from the director heartbeat in `world/director/routines.py`). The cheapest mouth in the colony | after interpretation |
 | **Circulation — a terminal** | one door among several, gated by access, and the only source that tells the truth plainly | any time after zones |
 | **Circulation — rumour** | NPCs repeat what they half-know; fidelity degrades with each retelling | after interpretation |
 | **Circulation — the net layer** | raw signal, stealable, uninterpreted | with decking |

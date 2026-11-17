@@ -34,15 +34,15 @@
 > post-check (`search_present`) are gone. The awareness level decides, not
 > the flag alone: an ALERT looker still finds the hidden. What still names
 > or counts the hidden outside name search (broadcasts, occupancy,
-> relations) is tracked in #3659. **`search` GREW HIDDEN-EXIT DISCOVERY (#1114, 2026-07-10): view-locked (secret) exits roll the stash idiom (d20 + Resonance + search bonus vs `db.search_difficulty`, default 14 > stashes' 10) — a find is PER SEARCHER (`db.found_exits`; the exit joins THEIR exit prose forever, everyone else keeps seeing nothing; custom `db.search_found_msg`). First consumer: the Constabulary roof hatch.** **PHASE 4 (THE HUNT) SHIPPED
+> relations) is tracked in #3659. **`search` GREW HIDDEN-EXIT DISCOVERY (#1114, 2026-07-10): view-locked (secret) exits roll the stash idiom (d20 + Resonance + search bonus vs `db.search_difficulty`, default 14 > stashes' 10) — a find is PER SEARCHER (`db.found_exits`; the exit joins THEIR exit prose forever, everyone else keeps seeing nothing; custom `db.search_found_msg`). A secret exit hides only from the exit list: anyone who types its name can still go through it. First consumer: the Constabulary roof hatch.** **PHASE 4 (THE HUNT) SHIPPED
 > (2026-07-03):** `world/director/hunt.py` — the deterministic state
 > machine off the awareness meter, ticked by the director heartbeat
 > before the patrol beat **[mechanism stale — noted 2026-09-12: the state
 > machine still lives in `world/director/hunt.py`, but the BEAT now comes
 > from the souls job scheduler — `world/souls/engine.py` consults
 > `wants_hunt` and queues a `hunt` job, `world/souls/jobs.py` calls
-> `tick_hunt`. Nothing in the director ticks it any more (#2373)]**: Suspicious → orient beat (the player's audible
-> cue) + commit; Searching → director-travel to the LAST-KNOWN room
+> `tick_hunt`. Nothing in the director ticks it any more (#2373)]**: Suspicious → orient beat (a visible
+> emote, the player's cue to move) + commit; Searching → director-travel to the LAST-KNOWN room
 > (stamped on awareness records) and sweep it with the REAL `search`
 > command, fanning through unswept adjacents on a bounded budget
 > (SEARCH_BUDGET=4); reacquire → challenge ("Halt, Colonist."), raise a
@@ -168,29 +168,44 @@ and an NPC hiding from a PC run the identical math.
 The roll is heavily shaped by situation — which is where the parked-stats design
 keeps stealth *gear- and world-driven* rather than stat-driven:
 
-* **Light / shadow** — darkness favours the hider (gated by the searcher's
-  sight / blindsight via `world/perception.py`).
-* **Cover & line-of-sight** — coordinate-aware (`SPATIAL_COORDINATE_SYSTEM_SPEC`):
-  a wall/`barrier` face or an occluding object breaks LoS and favours hiding.
-* **Crowd** — density (the existing crowd system) is concealment for *blending*,
-  noise for *searching*.
-* **Noise & movement** — staying still beats sneaking beats running; loud actions
-  (combat, shouting) spike detectability.
-* **Distance** — coordinate distance bands degrade passive detection.
+* **Light / shadow** — 📋 UNBUILT (no issue): darkness favours the hider (gated
+  by the searcher's sight / blindsight via `world/perception.py`).
+* **Cover & line-of-sight** — 📋 UNBUILT (no issue): coordinate-aware
+  (`SPATIAL_COORDINATE_SYSTEM_SPEC`): a wall/`barrier` face or an occluding object
+  breaks LoS and favours hiding.
+* **Crowd** — the room's crowd level, capped at +3, is added to the hider at every
+  tier (`crowd_hider_bonus` in `world/stealth.py`).
+* **Noise & movement** — hiding on the move (`sneak`) costs 3; any speech or other
+  announced act breaks the hide (§6.4). Running as its own penalty is
+  📋 UNBUILT (no issue).
+* **Distance** — 📋 UNBUILT (no issue): coordinate distance bands degrade passive
+  detection.
 
 ### 3.3 · What you can hide, and the commands
 
 * **Self (static)** — `hide` / `unhide` toggles the hidden state in the current
-  room (best in cover / shadow / crowd).
+  room (a crowd helps; cover and shadow are 📋 UNBUILT (no issue), §3.2).
 * **Self (moving)** — `sneak <direction>` is "move while hiding": it carries you
   through an exit and **induces the hidden state** on arrival (a fresh contest in
   the new room). Sneaking is the in-motion form of `hide`; the same toggle state,
-  re-rolled per room, with the movement penalty from §3.2.
-* **Object** — `hide <object>` stashes an item in the room; `search` may turn it
-  up. (Stashed contraband, a planted bug, a dropped weapon.)
+  re-rolled per room, with the movement penalty from §3.2. If you are not already
+  hidden, `sneak` first hides you (no penalty) in the room you leave, so watchers
+  there can keep track of you; a locked exit is refused before any roll. Watchers
+  in the new room who win the contest read "You catch <name> slipping in."
+* **Object** — `hide <object>` stashes something you carry into the room. The
+  same checks as `drop` apply (`release_to_ground`), and a live or rigged
+  explosive is refused. Its hiding quality is rolled once (d20 + Motorics). Until
+  a `search` beats that roll (d20 + Resonance + 4), the item is gone from sight
+  and from name search for everyone, the one who hid it included. Once found, it
+  is in sight for everyone. Picking it up, or a fall, ends the stash. (Stashed
+  contraband, a planted bug, a dropped weapon.)
 
 `search` is the active counter: it spends an action to roll against everything
-hidden in the room, raising the searcher's awareness on success.
+hidden in the room, raising the searcher's awareness on success. Searching is
+done in the open: the room is told the searcher "searches the area carefully",
+which ends the searcher's own hide first (§6.4). It also rolls for secret exits.
+A person it finds is told they have been spotted, and stays hidden from everyone
+but the searcher.
 
 ### 3.4 · The passive tier (2026-07-03, user-decided)
 
@@ -222,6 +237,9 @@ level toward each hidden thing:
 The level **modulates what `can_perceive` returns for that observer** — this is
 the graded gate in action. Levels rise on failed-hide / successful-search /
 noise events and **decay over time** when contact is lost (the give-up arc).
+Awareness drops one level per 5 minutes without contact (`AWARENESS_DECAY`). A
+passive glance at the same hider re-rolls at most once a minute; one that falls
+short by less than 3 gives Suspicious. An active search adds +4.
 
 **The "lurking" tell.** When a hidden character *is* perceived — a *Detected*
 observer, or a failed hide roll where the watcher still sees them — they do **not**
@@ -231,12 +249,16 @@ here." in `get_display_characters`), so to those who see them they read as
 **"lurking in the shadows"** rather than "standing here." Failed concealment
 doesn't restore a normal appearance; it makes you *visibly furtive* — onlookers
 can tell this is someone who doesn't want to be seen. (At *Suspicious* the
-watcher gets only the "you sense something" cue, no placement; the lurking
-placement appears at *Detected*.)
+watcher gets only the cue "You get the prickling sense that you are not alone
+here.", no placement; the lurking placement appears at *Detected*: "lurking in
+the shadows." in a quiet room, "holding an unconvincing calm — a nervous,
+somewhat off face in the crowd." in a crowd of level 2 or more
+(`lurk_placement`). A blind looker gets no cue and sees nobody in the room,
+hidden or not.)
 
 **Identical loop, two consumers.** The same per-observer awareness data is:
-* **rendered to a PC** ("you sense something nearby…" at *Suspicious*; the target
-  appears at *Alert*), and
+* **rendered to a PC** ("You get the prickling sense that you are not alone
+  here." at *Suspicious*; the target appears at *Alert*), and
 * **read by a deterministic NPC** as the input to its behaviour state machine
   (§5).
 
@@ -247,6 +269,15 @@ state transition — is the design's point.
 
 ## 5 · NPC hunt behaviour (deterministic, MGS/Hitman/Thief)
 
+Only security units (`db.role == "security"`) hunt, and only with cause
+(user-decided 2026-07-03, see the note at the top). Cause is a wanted record on
+the presence's apparent-UID, or an unresolved incident (a raised event with no
+known source, in the last 10 minutes) in or next to the hunter's room or the
+presence's last-known room. Without cause the presence is ignored. The souls
+scheduler offers the hunt (`wants_hunt`; the `hunt` job runs `tick_hunt`) in a
+low band, so a unit already busy (on a call, in combat, travelling or talking)
+does not hunt.
+
 The awareness meter drives a hardcoded NPC state machine — **no LLM** — wired
 into `NPC_DISPATCH_AND_SIMULATION_SPEC`:
 
@@ -256,13 +287,26 @@ Unaware ──(detect)──▶ Suspicious ──(confirm)──▶ Searching �
    └──(decay/give up)─────┴───────(timeout)──────────┘                  (engage)
 ```
 
-* **Suspicious** — break routine, orient toward the stimulus (a noise's bearing,
-  a glimpsed coordinate).
-* **Searching** — the hunt: move toward **last-known position** (stored on the
-  awareness record), run a **Dijkstra search pattern** over nearby rooms (coord +
-  pathfinder), and **alert allies** by raising a dispatch event so other NPCs
-  escalate too (alert propagation).
-* **Alert** — reacquired → engage (combat / challenge), via real commands.
+In the code a hunter commits at Suspicious and its own record stays there
+(`tick_hunt`). Level 2 (Searching) is written only by alert propagation, onto
+the other security units; any other observer's awareness is 0, 1 or 3.
+
+* **Suspicious** — break routine and commit: the unit emotes "snaps alert,
+  optics sweeping for something it half-caught." (the player's visible cue to
+  move). Turning toward a noise's bearing or a glimpsed coordinate is
+  📋 UNBUILT (no issue).
+* **Searching** — the hunt: travel to the **last-known room** (stamped on the
+  awareness record) and sweep it with the real `search` command, then sweep that
+  room's neighbours one at a time, skipping any the hunter cannot reach, until
+  4 rooms (`SEARCH_BUDGET`) are spent; a room it tries and cannot get into still
+  costs one. Allies are alerted on reacquire (below), not while searching. A
+  **Dijkstra search pattern** over coordinates is 📋 UNBUILT (no issue).
+* **Alert** — reacquired with cause → the unit says "Halt, Colonist. Remain
+  where you are.", radios "Unit engaging — backup to <room>." (`xmit`), raises a
+  severity-2 `disturbance` naming the target (dispatch takes over from there),
+  and sets every other security unit to Searching at that room (alert
+  propagation). It starts no combat itself. If the cause has gone (a pardon),
+  it stands down silently.
 * **Give up** — search times out with no reacquire → awareness **decays** back
   down to Unaware and the NPC returns to routine. The cooldown is the
   Hitman/Thief "they lost me" beat.
@@ -287,6 +331,8 @@ to Alert. Covers **both** the combat and non-combat openers (user-decided):
   attacker's combat initiative via `add_combatant(..., ambush_bonus=)`, so
   from concealment you act first; the grapple resolves on that first turn
   before the target can contest. "You strike/lunge from concealment!"
+  A grab the target has consented to is never an ambush and takes no bonus
+  (#3363).
 * **theft** — `AMBUSH_CONTEST_BONUS` (+6) on the steal/pickpocket contest
   (§6.2): a mark who doesn't know you're there is far easier to lift.
 
@@ -302,20 +348,28 @@ risk is *getting caught*. It is the contest engine (§3) and the awareness meter
 **SHIPPED (2026-07-03; user-corrected: no frisk gate).**
 
 * **`steal <target>`** — lift something **at random from what they're
-  carrying** (not worn, not in-hand). No frisk required: theft is accessible
-  to anyone. **`steal <item> from <target>`** is the *precision path* — go for
-  a named piece, but only one you can actually perceive/reach (frisked,
-  tipped, in plain sight); intel lets you CHOOSE, it's never a gate.
+  carrying** (not worn, not in a hand slot, even a ruined hand's; never integrated
+  cyberware). No frisk required: theft is accessible
+  to anyone. **`steal <item> from <target>`** is the *precision path* — name a
+  piece and it is taken if it is among what they carry (not worn, not in a
+  hand); you do not need to have seen it. Knowing what they carry (a frisk, a
+  tip) only tells you what to name.
   Contest: thief-vs-victim (world.stealth.contest, crowd + ambush folded in).
   **Success** → the item transfers, clean. **Failure** → *caught*: the victim
-  and every witness in LoS jump to **Alert** toward the thief, recognition
-  keys on the thief's **apparent-UID** (a mask protects you), and a
-  **sourceless `crime` event** runs the block hot (situational cause — the
-  hunt reads it). Same-room is the ONLY spatial gate — theft is stealth, not
+  and every character in the room who can see jump to **Alert** toward the thief, recognition
+  keys on the thief's **apparent-UID** (a mask protects you), and the
+  theft is reported as `pickpocketing` with no named thief (`report_crime` in
+  `world/director/crime.py`). A security unit in the room raises the report at
+  once; otherwise a witness is rolled from the crowd and calls it in after a
+  delay, and can be silenced first; with neither, nothing is reported. A raised
+  report has no known source, so it runs the room and its neighbours hot for the
+  hunt (situational cause). Same-room is the ONLY spatial gate — theft is stealth, not
   combat, so it never requires proximity or an advance.
 * **`pickpocket <target>`** — **tokens (currency) only**: a blind grab for cash,
   lower-stakes and more deniable than targeted theft (you don't choose *what*, you
-  lift *some*). Same contest and caught-consequences, tuned lighter. Specific
+  lift *some*). Same contest and same consequences when
+  caught as `steal`; lighter tuning is 📋 UNBUILT (no issue). The amount lifted
+  is random, from 1 up to a third of the tokens the mark carries. Specific
   items are the riskier `steal`.
 * **Subdued / unconscious / dead target** → **free action** (it's just looting),
   via the `TRUST_AND_CONSENT_SPEC` predicate. The contest only matters for an
@@ -339,8 +393,9 @@ risk is *getting caught*. It is the contest engine (§3) and the awareness meter
 
 ### 6.3 · Frisk (the consent-gated reveal)
 
-`frisk <target>` **identifies the items on a person — worn, carried, and
-concealed** (the holdout the sdesc hides). It is **not** a contest: it is the
+`frisk <target>` **lists everything on a person — worn, in hand, carried
+(what a look never shows) and their tokens**. A corpse or a severed part can
+always be frisked. It is **not** a contest: it is the
 `search`/`frisk` action class in `TRUST_AND_CONSENT_SPEC`, so it **requires
 consent, or a target who is unconscious / restrained / dead** (the free-action
 path). Frisk is the active counter to organic concealment (§9) and the
@@ -372,7 +427,8 @@ breaks it (`ShopContainer.purchase_item`, so the spoken counter order and the
 `buy` command agree); and `hide` is refused while in combat or while someone
 in the room is aiming at you. Each is one `break_stealth` call at the place
 the action happens, not quiet, so the emergence beat lands before the line
-that names you. Slice two (#3767, 2026-10-24): a live or rigged explosive cannot
+that names you. Falling unconscious, dying, or moving any way other than
+`sneak` ends the hide quietly, with no emergence line. Slice two (#3767, 2026-10-24): a live or rigged explosive cannot
 be stashed (`hide <device>` refuses: "A trap is in plain sight to anyone in the
 room with it"), a detonator arming a stashed charge brings it into sight before
 its beep, and an LLM NPC counts only the company it perceives when deciding a
@@ -424,8 +480,10 @@ A hidden target is filtered from an unaware observer **only in passive
 perception**, through the same `filter_present` choke the phase layer
 established:
 
-* **Room display** (`get_display_characters` / `get_display_things`) — drops
-  targets the looker is Unaware of.
+* **Room display** — `get_display_characters` drops a hidden person for any
+  looker below Alert (a Suspicious looker gets only the cue line);
+  `get_display_things` drops every stashed object for everyone until a search
+  turns it up.
 * **Broadcasts** (`msg_contents`) — a hidden mover's incidental messages are
   suppressed to the unaware; deliberate noise *raises awareness* instead.
 * **Combat / proximity** — you can't passively target someone you're Unaware of;
@@ -445,7 +503,7 @@ unchanged).
 ## 8 · Data model
 
 * **Hidden state** — `char.db.hidden` (bool/room-scoped) for self; `obj.db.hidden`
-  for stashed objects. Cleared on move/reveal.
+  for stashed objects. Cleared on reveal and on any move but `sneak`.
 * **Awareness store** — per-observer, mirroring `recognition_memory`:
   `observer.db.awareness = { target_key: { level, last_known_pos, last_roll_t,
   decay_t } }` *[shipped shape differs — noted 2026-09-12: `world/stealth.py`
@@ -467,8 +525,9 @@ unchanged).
   prominently; weapon-priority and the longdesc/clothing-coverage systems convey
   the rest. That is sufficient to inform a player *and* an NPC's threat read.
   Expandable later (dedicated holster/print mechanics) but not now.
-* **Free-roam sneak movement** — start **room-scoped** (`hide`/`search` in a
-  room). Carry-stealth across the whole map is a later expansion.
+* **Free-roam sneak movement** — hiding carries from room to room only through
+  `sneak`, which contests again in each new room; any other move ends it.
+  Whether anything beyond that is wanted is not decided.
 * **Stat expansion** — the contest is Resonance/Motorics now; depth (skills,
   specialised gear modifiers) comes later, consistent with the parked
   stat/skill direction (gear + situation carry the weight for v1).
@@ -482,7 +541,7 @@ unchanged).
 | **Perception** (`world/perception.py`) | Home of the gate; awareness is a new graded clause in `can_perceive` / `filter_present`. |
 | **Phase** (`PHASE_LAYER_SPEC`) | Binary sibling; stealth is graded. Same choke points, same leak discipline. |
 | **Coordinates** (`SPATIAL_COORDINATE_SYSTEM_SPEC`) | LoS/cover (face state §6.1), distance bands, last-known position, Dijkstra search pattern. |
-| **Dispatch** (`NPC_DISPATCH_AND_SIMULATION_SPEC`) | Awareness drives the deterministic NPC state machine; alert propagation is a bus event. |
+| **Dispatch** (`NPC_DISPATCH_AND_SIMULATION_SPEC`) | Awareness drives the deterministic NPC hunt; alert propagation writes Searching awareness straight onto the other security units (`propagate_alert`), and the reacquire raises a `disturbance` for dispatch. |
 | **Identity** (`IDENTITY_RECOGNITION_SPEC`) | Parallel concealment axis; awareness store mirrors `recognition_memory` and keys on apparent-UID (detected-as-presence ≠ identified). |
 | **Crowd** | Concealment for blending; noise for searching. |
 | **Combat** | Ambush opener; attacking breaks stealth per-observer; a caught theft can trigger retaliation / a dispatch response. |
@@ -497,8 +556,8 @@ unchanged).
 | **1 — Hide/search contest** | `hide` (self/object) + `search`; opposed Resonance/Motorics with environmental modifiers | Room-scoped; gear/situation-driven |
 | **2 — Graded awareness store** | Per-observer awareness levels (mirrors `recognition_memory`); decay | The data spine |
 | **3 — Gate integration** | Awareness clause in `can_perceive`/`filter_present`; hidden filtered from passive perception; AoE/sound/search bypass | Reuses phase's choke points |
-| **4 — NPC hunt** | Deterministic state machine + last-known position + Dijkstra search + alert propagation (dispatch) | The headline MUD feature |
-| **5 — Ambush** | Surprise opener via existing aim/initiative; break-on-attack | |
+| **4 — NPC hunt** | Deterministic state machine + last-known room + neighbouring-room sweep (4 rooms) + alert propagation to security units; Dijkstra search over coordinates 📋 UNBUILT (no issue) | The headline MUD feature |
+| **5 — Ambush** | Surprise opener via initiative (+20); break-on-attack | |
 | **6 — Theft** | `steal <item> from <target>` + `pickpocket <target>` (tokens) as contests off the §3 engine; caught → awareness spike + recognition + dispatch; free action on subdued. `frisk` reveal lands with the trust gate | Applied stealth (§6.2) |
 
 Phases 1–2 are the testable core; the gate integration (3) is the safety-
