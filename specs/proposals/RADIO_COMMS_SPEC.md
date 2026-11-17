@@ -1,6 +1,6 @@
 # Radio Comms Spec — The Colony's Primary Communications
 
-> **Status:** 🚧 **PHASE 1 CORE SHIPPED (2026-07-04): player-facing radio is LIVE** — `world/radio.py` (single staff-locked channel + device-gated voice echo), `Radio` typeclass + `WALKIE_TALKIE` prototype, `transmit`/`xmit`/`xm` + `to <radio>,` retarget, `tune <device> to <freq|scan>`, `toggle <device> [on/off]`, state-aware look-readout (frequency shown only when powered). Voice-attributed (recognition on the air, modulator-defeatable), hearing-gated, every powered carried radio receives its band (scan catches all, freq-tagged). **WITNESS LINK + BOT TRANSCEIVERS ALSO SHIPPED (#1009):** the witness spawns with a real `WALKIE_TALKIE` on the **emergency band (911MHz)** and `witness_report` gates on it — snatch/break/KO = no report (a physical interdiction beside killing them; robbing them nets a walkie pre-tuned to the cop channel). Security bots carry a built-in **comms module** (ear/antenna augment organ, `factory_fit_comms`, like the riot gun) tuned to 911MHz — they hear the net via `comms_organ_frequency`; destroy/harvest the ear and the bot goes deaf (EMP/mute seam via medical hit-location). **ACQUISITION PLACED (2026-07-04):** the Colonial Armory stocks `WALKIE_TALKIE` at 0 tokens (live shop object) and ~1-in-3 gangers carry one (`chance_stock`) — Phase 1 is now player-obtainable end to end. **NPCs DOGFOOD THE REAL VERBS (2026-07-04):** the witness readies and calls it in through the actual player commands — `wield magpie` / `toggle magpie on` / `tune magpie to 911MHz` at spawn, `xmit <report>` + `emote` at report — never a backdoor `transmit()` call or direct `db` write. The NPC path is identical to the player path (level playing field; NPCs lead by example). Surfaced + fixed a real bug in the process: band matching is now **case-insensitive** (`world.radio.same_band`) so a band typed `911mhz` still reaches bots/constants stored as `911MHz`, while `tune` preserves the typed case for clean display **[STALE 2026-09-12: `tune` canonicalizes rather than preserving case — `CmdTune.func` writes `normalize_band(freq)`, so `911mhz` is stored and displayed as `911MHz`. Superseded by the megahertz-dial decision in §6.3 below.]**. **PHASE 2 RANGE — ✅ SHIPPED 2026-07-10 (#1128, same night as the sign-off):** `world/radio.py` range layer — constants RADIO_TX_RANGE=12 / MAST_TX_RANGE=999 **[now 20 — see the #1311 note later in this banner; world/radio.py:490]** / clear ≤0.7 / static ≤1.15 / +2 cells per z; `_deliver` grades every receiving set (clear/fuzzy/static/gone), fuzzy rides `_obscure_heard`, static = existence-only hiss (no speech payload, never elected), gone = silence; repeaters = powered on-band base stations w/ intact mast within origin reach, one hop, regenerate clean; off-grid fails open; **links are RECIPROCAL** (effective reach = max of both ends' antennas — the witness's handheld reaches dispatch because the CONSOLE's mast is tall; repeaters pick up anything their own ears cover; wrecking the mast deafens dispatch as well as muting it). The model as decided: range is wiring between machinery that already exists. (1) **Distance**: rooms carry live (x,y,z); `_deliver` measures speaker→receiver Chebyshev distance instead of assuming colony-wide reach. (2) **Falloff is RENDERED, not binary**: distance/`tx_range` ≤0.7 = crisp; 0.7–1.0 = clarity slides 1.0→0.2 through the EXISTING letter-drop comprehension renderer (the mutter machinery doubles as signal degradation — "c-ver the b-ck d--r" at the fringe of coverage); just past 1.0 = existence-only static wash; beyond = silence. (3) **The antenna is the RELAY**: handhelds/comms organs get modest `db.tx_range` (a few blocks); a base station with an INTACT mast is a one-hop repeater — traffic it hears on its band rebroadcasts at mast range (colony-wide). No relay chains. Consequence for free: wrecking the Constabulary mast collapses 911MHz from colony-wide to walkie-range clusters — dispatch goes deaf AND quiet beyond a few blocks. (4) **Elevation**: transmitter z adds range (rooftops matter, basements swallow signal). (5) **Fail-open**: coordinate-less rooms hear everything (no regression off-grid). Jamming = the inverse object later; battery orthogonal. Numbers (walkie cells-of-reach) = user's call at build time. **SHIPPED TOWARD IT (#1124): the dispatch transmission mast** — 'antenna mast' on the Constabulary roof, linked via `console.db.antenna`; wrecked (`db.intact` False) = no carrier at BOTH voice paths (acks + console answers); attack path SHIPPED (2026-07-11, #1164: `sabotage <structure>` / shared `repair` verb — channeled 90s/180s acts w/ visible tells, `db.breachable is True` gate on BOTH masts, wreck stashes/restores authored prose, completed sabotage = witnessed crime via report_crime; reciprocity makes it the heist — the wrecked mast can't carry the report of its own wrecking). **FIRST PUBLIC REPEATER (2026-07-11): the Queen of Cups house band** — tenant-rigged 'antenna mast' (#5081, `db.intact` seam) + 'repeater cabinet' (#5082, powered base station, `antenna`-linked) on the hotel roof (z=5), fixed on **88.8MHz** **[STALE 2026-09-12: `scripts/builds/018_qoc_raise.py` raised the Queen to z12 and moved #5081/#5082 to the new z12 roof; `019_fallen_antenna_bridge.py` / `020_fallen_antenna_gap.py` then toppled #5081 into "The Fallen Antenna" parkour crossing at (-3,-15,12). Coverage follows the object; neither is on a z=5 roof.]**; any handheld tuned there is heard by the mast's ears (reciprocity) and regenerated colony-wide — civilian counterpart to the 911MHz dispatch mast, scan-discoverable, sabotage-able the same way. **2026-07-25/28 ADDENDA:** THIRD REPEATER — the Brackett **AWE Sentinel9** conformed to the two-object standard (mast #5641 structure w/ intact+breachable on the North Roof **[STALE 2026-09-12: `scripts/builds/011_brackett_crown.py` relocated #5641 off the roof to the new climbable antenna platform at the mast head, (-10,-18,19) — "coverage follows the object". Cabinet #6027 is unaffected.]**; head-end cabinet #6027 in the basement Utility Room, antenna-linked; a bespoke press-grammar breaker was built and REMOVED same day — infrastructure reuses standard verbs). Retuned to **88.8MHz = 'the Birdhouse'** (colony street name): two masts union the civilian band. **RADIO GEOGRAPHY (#1311):** MAST_TX_RANGE 999→20 and `_antenna_site()` at all four seams — a mast-linked station transmits/receives/relays FROM ITS STEEL (position+elevation), so coverage has real fringes and dead zones (911 goes thin in the deep southwest; far north is silent). **NPC RADIO (#1313/#1319):** LLM radio-mode replies air via real `xmit` (never room-say); `world/director/broadcasts.py` gives flagged NPCs scheduled on-air segments (the Rook, sealed in the Brackett basement, is the first station voice); venue **AWE Fireside shelf radios** fan the band to whole rooms via the grille rule. Battery, jamming, encryption still open. Original scoping below.
+> **Status:** 🚧 **PHASE 1 CORE SHIPPED (2026-07-04): player-facing radio is LIVE** — `world/radio.py` (single staff-locked channel + device-gated voice echo), `Radio` typeclass + `WALKIE_TALKIE` prototype, `transmit`/`xmit`/`xm` + `to <radio>,` retarget, `tune <device> to <freq|scan>`, `toggle <device> [on/off]`, state-aware look-readout (frequency shown only when powered). Voice-attributed (recognition on the air; a modulator makes the voice harder to place, not unplaceable), hearing-gated, every powered carried radio receives its band (scan catches all, freq-tagged). **WITNESS LINK + BOT TRANSCEIVERS ALSO SHIPPED (#1009):** the witness spawns with a real `WALKIE_TALKIE` on the **emergency band (911MHz)** and `witness_report` gates on it — snatch/break/KO = no report (a physical interdiction beside killing them; robbing them nets a walkie pre-tuned to the cop channel). Security bots carry a built-in **comms module** (ear/antenna augment organ, `factory_fit_comms`, like the riot gun) tuned to 911MHz — they hear the net via `comms_organ_frequency`; destroy/harvest the ear and the bot goes deaf (EMP/mute seam via medical hit-location). **ACQUISITION PLACED (2026-07-04):** the Colonial Armory stocks `WALKIE_TALKIE` at 0 tokens (live shop object) and ~1-in-3 gangers carry one (`chance_stock`) — Phase 1 is now player-obtainable end to end. **NPCs DOGFOOD THE REAL VERBS (2026-07-04):** the witness readies and calls it in through the actual player commands — `wield magpie` / `toggle magpie on` / `tune magpie to 911MHz` at spawn, `xmit <report>` + `emote` at report — never a backdoor `transmit()` call or direct `db` write. The NPC path is identical to the player path (level playing field; NPCs lead by example). Surfaced + fixed a real bug in the process: band matching is now **case-insensitive** (`world.radio.same_band`) so a band typed `911mhz` still reaches bots/constants stored as `911MHz`, while `tune` preserves the typed case for clean display **[STALE 2026-09-12: `tune` canonicalizes rather than preserving case — `CmdTune.func` writes `normalize_band(freq)`, so `911mhz` is stored and displayed as `911MHz`. Superseded by the megahertz-dial decision in §6.3 below.]**. **PHASE 2 RANGE — ✅ SHIPPED 2026-07-10 (#1128, same night as the sign-off):** `world/radio.py` range layer — constants RADIO_TX_RANGE=12 / MAST_TX_RANGE=999 **[now 20 — see the #1311 note later in this banner; world/radio.py]** / clear ≤0.7 / static ≤1.15 / +2 cells per z; `_deliver` grades every receiving set (clear/fuzzy/static/gone), fuzzy rides `_obscure_heard`, static = existence-only hiss (no speech payload, never elected), gone = silence; repeaters = powered on-band base stations whose mast is not down (`mast_down`: a station never linked to a mast relays too, from its own room; a wrecked or deleted mast stops it), within the larger of the origin's reach and the repeater's, one hop, regenerate clean; off-grid fails open, except Evennia's default home room where deleted things land, which receives nothing (#2655); **links are RECIPROCAL** (effective reach = max of both ends' antennas — the witness's handheld reaches dispatch because the CONSOLE's mast is tall; repeaters pick up anything their own ears cover; wrecking the mast deafens dispatch as well as muting it). The model as decided: range is wiring between machinery that already exists. (1) **Distance**: rooms carry live (x,y,z); `_deliver` measures speaker→receiver Chebyshev distance instead of assuming colony-wide reach. (2) **Falloff is RENDERED, not binary**: distance/`tx_range` ≤0.7 = crisp; 0.7–1.0 = clarity slides 1.0→0.2 through the EXISTING letter-drop comprehension renderer (the mutter machinery doubles as signal degradation — "c-ver the b-ck d--r" at the fringe of coverage); just past 1.0 = existence-only static wash; beyond = silence. (3) **The antenna is the RELAY**: handhelds/comms organs get modest `db.tx_range` (a few blocks); a base station with an INTACT mast is a one-hop repeater — traffic it hears on its band rebroadcasts at mast range (colony-wide). No relay chains. Consequence for free: wrecking the Constabulary mast collapses 911MHz from colony-wide to walkie-range clusters — dispatch goes deaf AND quiet beyond a few blocks. (4) **Elevation**: transmitter z adds range (rooftops matter, basements swallow signal). (5) **Fail-open**: coordinate-less rooms hear everything (no regression off-grid). Jamming = the inverse object later; battery orthogonal. Numbers (walkie cells-of-reach) = user's call at build time. **SHIPPED TOWARD IT (#1124): the dispatch transmission mast** — 'antenna mast' on the Constabulary roof, linked via `console.db.antenna`; wrecked (`db.intact` False) = no carrier at BOTH voice paths (acks + console answers); attack path SHIPPED (2026-07-11, #1164: `sabotage <structure>` / shared `repair` verb — channeled 90s/180s acts w/ visible tells, `db.breachable is True` gate on BOTH masts, wreck stashes/restores authored prose, completed sabotage = witnessed crime via report_crime; reciprocity makes it the heist — the wrecked mast can't carry the report of its own wrecking). **FIRST PUBLIC REPEATER (2026-07-11): the Queen of Cups house band** — tenant-rigged 'antenna mast' (#5081, `db.intact` seam) + 'repeater cabinet' (#5082, powered base station, `antenna`-linked) on the hotel roof (z=5), fixed on **88.8MHz** **[STALE 2026-09-12: `scripts/builds/018_qoc_raise.py` raised the Queen to z12 and moved #5081/#5082 to the new z12 roof; `019_fallen_antenna_bridge.py` / `020_fallen_antenna_gap.py` then toppled #5081 into "The Fallen Antenna" parkour crossing at (-3,-15,12). Coverage follows the object; neither is on a z=5 roof.]**; any handheld tuned there is heard by the mast's ears (reciprocity) and regenerated colony-wide — civilian counterpart to the 911MHz dispatch mast, scan-discoverable, sabotage-able the same way. **2026-07-25/28 ADDENDA:** THIRD REPEATER — the Brackett **AWE Sentinel9** conformed to the two-object standard (mast #5641 structure w/ intact+breachable on the North Roof **[STALE 2026-09-12: `scripts/builds/011_brackett_crown.py` relocated #5641 off the roof to the new climbable antenna platform at the mast head, (-10,-18,19) — "coverage follows the object". Cabinet #6027 is unaffected.]**; head-end cabinet #6027 in the basement Utility Room, antenna-linked; a bespoke press-grammar breaker was built and REMOVED same day — infrastructure reuses standard verbs). Retuned to **88.8MHz = 'the Birdhouse'** (colony street name): two masts union the civilian band. **RADIO GEOGRAPHY (#1311):** MAST_TX_RANGE 999→20 and `_antenna_site()` at all four seams — a mast-linked station transmits/receives/relays FROM ITS STEEL (position+elevation), so coverage has real fringes and dead zones (911 goes thin in the deep southwest; far north is silent). **NPC RADIO (#1313/#1319):** LLM radio-mode replies air via real `xmit` (never room-say); `world/director/broadcasts.py` gives flagged NPCs scheduled on-air segments (the Rook, sealed in the Brackett basement, is the first station voice); venue **AWE Fireside shelf radios** fan the band to whole rooms via the grille rule. Battery, jamming, encryption still open. Original scoping below.
 >
 > **PHASE 1 SCOPED & DECIDED
 > (2026-07-03, §7): buildable now, vertical-independent** — devices +
@@ -43,13 +43,13 @@ makes it useful makes it attackable.
 | Device | What it is | Notes |
 |---|---|---|
 | **Walkie-talkie** | handheld transceiver item | carried/held; **snatchable** (grab/steal/disarm play); tunable to a channel; limited range without the antenna network |
-| **Base station** | fixed room object | strong range; where an org's traffic converges (security base = the intel-sync point). **✅ FIRST BUILD (2026-07-10):** `BASE_STATION` console at the security base (heartbeat-installed, idempotent) — **dispatch's voice**: deterministic template acks on 911MHz for every event **[STALE 2026-09-12 (#1160): when units roll there is NO dispatch line — each responder acks in its own voice via `_unit_ack` ("Unit <id> responding — <where>.", staggered). The dispatch template survives only for the drained pool and is aired by the OPERATOR's `xmit` (`_transmit_ack`), never by the console.]** (`Dispatch copies — an assault at Cobb Street. Unit responding.` / `No units available.` when the pool drains — the finite pool made audible). Switch it off or wreck it and dispatch goes silent (the sabotage seam, live). No LLM for acks — and **the ANSWERING brain SHIPPED (2026-07-10)**: traffic that names dispatch ('dispatch/control/base') from a non-NPC speaker gets an answered line via the **civic LLM lane** **[STALE 2026-09-12: the dispatch REPLY is no longer a civic-lane line and there is no 'names dispatch' gate. `LLMNpcMixin._hear_radio` defers emergency-band traffic heard at a seated board to `world/souls/salience.py::_work_radio_traffic`, which judges the call and then calls `answer_traffic` → `_try_llm_reply(…, "radio")` — the NPC's ordinary GM lane. The civic lane now serves the structured report CLASSIFIER (`request_civic_verdict`, `world/director/radio_report.py`) and the combat reflex (`world/llm/reflex.py`). The gate is "seated at a powered 911MHz board".]** (`CIVIC_LLM_URL` — a second OpenAI-compatible endpoint; an on-device AFM shim serves it today at ~0.4s warm, but the game never learns Apple exists — swap by URL). **OPERATOR v1 (2026-07-10): the far end is a PERSON.** Vess — an embodied GM-lane NPC seated at the base (heartbeat-ensured **[STALE 2026-09-25 (#3667): no longer — a dead dispatcher is a vacancy on the dispatch post, returned by her own sleeve policy or replaced by the sweep; the security base is no respawn point]**) — is the voice of dispatch: acks and answers transmit AS HER (smoky rasp on the air, voice-recognisable/rememberable/modulator-defeatable), her register carried by operator-voiced exemplars in the civic instructions. Dead/unconscious/absent operator = **SILENCE** (updated 2026-08-23, #2223/#2228 — the automation voice is deleted, not disabled: the colony is operated by its people, and an unmanned emergency line is the setting rather than a hole in it). The console no longer speaks OR dispatches; whoever is seated at it judges the call and answers in their own voice through the real `xmit`, so nothing anywhere has to check whether the desk is empty — nobody is there to hear it. Three shifts staff it now (Petra/Kiro/Ines, #2233); the ack beat varies 1.5–3.5s (a human pause, not a trigger). Rotating shift cast = the agreed follow-up. **THE DESK SEAM (2026-07-10):** a base station is a TRANSMIT device for whoever is SEATED at it (`seated_base_station` — worn/held gear still wins; `xmit` low, `to <console>, <msg>` overt). Whoever holds the chair holds the desk: attribution stays honestly the sitter's voice, so a seized board broadcasts the seizer, not the operator — and a dead console keys nothing (sabotage gate intact). The operator herself lives in the **dispatch room** (`@patrol/dispatch` tag, 2026-07-10 — console+operator upkeep prefers it, security base = fallback + respawn point). Operator renamed **Petra**; dispatch now answers from the Constabulary's secure 2nd floor while units respawn at the Colonial Landing Pad. Template fallback is STRUCTURAL (model failure/refusal → canned line, never silence) **[STALE 2026-09-12, and contradicts "= SILENCE / the automation voice is deleted" earlier in this same row: failure is silence at every layer now (`_try_llm_reply` defaults `on_fail=_llm_silent`; `consider_radio_report`: "Silence on every failure"; `AnsweringFixture`: "Silence is the honest report"). The surviving canned lines (`DESK_FALLBACK_LINES`) are `desk_discipline` substitutions applied by `salience.filter_for_duty` to a line the model DID produce — phantom units, promises to leave the chair — not a failure fallback.]**; loop-guarded (NPC/unit/own traffic never answered); 10s cooldown **[STALE 2026-09-12: no 10s gate exists — the directed radio turn rides `LLM_DIRECTED_COOLDOWN = 4.0` (typeclasses/llm_npc.py) and `AnsweringFixture.ANSWER_COOLDOWN = 4.0` (typeclasses/items.py); `consider_radio_report` is deliberately "not gated by any answer cooldown".]**; availability count grounds the reply |
+| **Base station** | fixed room object | strong range; where an org's traffic converges (security base = the intel-sync point). **✅ FIRST BUILD (2026-07-10):** `BASE_STATION` console at the security base (heartbeat-installed, idempotent) — **dispatch's voice**: deterministic template acks on 911MHz for every event **[STALE 2026-09-12 (#1160): when units roll there is NO dispatch line — each responder acks in its own voice via `_unit_ack` ("Unit <id> responding — <where>.", staggered). The dispatch template survives only for the drained pool and is aired by the OPERATOR's `xmit` (`_transmit_ack`), never by the console.]** (`Dispatch copies — an assault at Cobb Street. Unit responding.` / `No units available.` when the pool drains — the finite pool made audible). Switch it off or wreck it and dispatch goes silent (the sabotage seam, live). No LLM for acks — and **the ANSWERING brain SHIPPED (2026-07-10)**: traffic that names dispatch ('dispatch/control/base') from a non-NPC speaker gets an answered line via the **civic LLM lane** **[STALE 2026-09-12: the dispatch REPLY is no longer a civic-lane line and there is no 'names dispatch' gate. `LLMNpcMixin._hear_radio` defers emergency-band traffic heard at a seated board to `world/souls/salience.py::_work_radio_traffic`, which judges the call and then calls `answer_traffic` → `_try_llm_reply(…, "radio")` — the NPC's ordinary GM lane. The civic lane now serves the structured report CLASSIFIER (`request_civic_verdict`, `world/director/radio_report.py`) and the combat reflex (`world/llm/reflex.py`). The gate is "seated at a powered 911MHz board".]** (`CIVIC_LLM_URL` — a second OpenAI-compatible endpoint; an on-device AFM shim serves it today at ~0.4s warm, but the game never learns Apple exists — swap by URL). **OPERATOR v1 (2026-07-10): the far end is a PERSON.** Vess — an embodied GM-lane NPC seated at the base (heartbeat-ensured **[STALE 2026-09-25 (#3667): no longer — a dead dispatcher is a vacancy on the dispatch post, returned by her own sleeve policy or replaced by the sweep; the security base is no respawn point]**) — is the voice of dispatch: acks and answers transmit AS HER (smoky rasp on the air, voice-recognisable/rememberable; a modulator makes her harder to place), her register carried by operator-voiced exemplars in the civic instructions. Dead/unconscious/absent operator = **SILENCE** (updated 2026-08-23, #2223/#2228 — the automation voice is deleted, not disabled: the colony is operated by its people, and an unmanned emergency line is the setting rather than a hole in it). The console no longer speaks OR dispatches; whoever is seated at it judges the call and answers in their own voice through the real `xmit`, so nothing anywhere has to check whether the desk is empty — nobody is there to hear it. Three shifts staff it now (Petra/Kiro/Ines, #2233); the ack beat varies 1.5–3.5s (a human pause, not a trigger). Rotating shift cast = the agreed follow-up. **THE DESK SEAM (2026-07-10):** a base station is a TRANSMIT device for whoever is SEATED at it (`seated_base_station` — worn/held gear still wins; `xmit` low, `to <console>, <msg>` overt). Whoever holds the chair holds the desk: attribution stays honestly the sitter's voice, so a seized board broadcasts the seizer, not the operator — and a dead console keys nothing (sabotage gate intact). The operator herself lives in the **dispatch room** (`@patrol/dispatch` tag, 2026-07-10 — console+operator upkeep prefers it, security base = fallback + respawn point). Operator renamed **Petra**; dispatch now answers from the Constabulary's secure 2nd floor while units respawn at the Colonial Landing Pad. Template fallback is STRUCTURAL (model failure/refusal → canned line, never silence) **[STALE 2026-09-12, and contradicts "= SILENCE / the automation voice is deleted" earlier in this same row: failure is silence at every layer now (`_try_llm_reply` defaults `on_fail=_llm_silent`; `consider_radio_report`: "Silence on every failure"; `AnsweringFixture`: "Silence is the honest report"). The surviving canned lines (`DESK_FALLBACK_LINES`) are `desk_discipline` substitutions applied by `salience.filter_for_duty` to a line the model DID produce — phantom units, promises to leave the chair — not a failure fallback.]**; loop-guarded (NPC/unit/own traffic never answered); 10s cooldown **[STALE 2026-09-12: no 10s gate exists — the directed radio turn rides `LLM_DIRECTED_COOLDOWN = 4.0` (typeclasses/llm_npc.py) and `AnsweringFixture.ANSWER_COOLDOWN = 4.0` (typeclasses/items.py); `consider_radio_report` is deliberately "not gated by any answer cooldown".]**; availability count grounds the reply |
 | **Rooftop antenna / repeater** | fixed infrastructure object, placed high (`Z > 0` rooftops) | extends channel coverage across the city; **breakable** (climb up and smash it) and **repairable** — a physical target for sabotage |
 | **Built-in transceiver** | a robot component (chassis organ) | security bots report/receive via an internal radio — destroying that component (or EMP) mutes the bot without destroying it |
 
 ### 2.2 · Channels
 
-Traffic is organized by **channel** (a small integer dial / named band):
+Traffic is organized by **channel**: a band on a megahertz dial, 1–999.9 at one decimal (§6.3):
 
 * **Open channels** — public bands anyone can tune (colony chatter).
 * **Org channels** — security's dispatch band, a gang's band. **Tunable by
@@ -60,11 +60,14 @@ Traffic is organized by **channel** (a small integer dial / named band):
 
 ### 2.3 · Range & propagation (the spatial consumer)
 
-* **Direct device-to-device**: coordinate straight-line distance
-  (`world/spatial.distance`) under a per-device range.
+* **Direct device-to-device**: grid distance, the larger of the x and y gaps
+  plus the z gap (`world/radio.py` `_chebyshev`), under a per-device range: 12
+  cells for a handheld or comms organ, 20 for a base station whose mast is
+  standing, plus 2 per storey of the transmitting room's height.
 * **Network coverage**: within range of any **antenna/repeater** carrying that
-  channel, coverage extends to the union of the antenna network — practically
-  city-wide *while the antennae stand*. Kill the right antenna → a **coverage
+  channel, coverage extends to the union of the antenna network — each mast
+  covers its own 20 cells (plus height), so the union has edges and dead zones,
+  and holds only *while the antennae stand*. Kill the right antenna → a **coverage
   hole** (a district goes dark for that channel).
 * **Vertical matters**: rooftop antennae see far; the Drifts (`Z < 0` — the future mines/sewers) is
   naturally radio-dark unless wired repeaters are placed — mines and tunnels
@@ -78,12 +81,19 @@ Radio speech reuses the **voice system** (`world/voice.py`) end-to-end:
 * A transmission renders with the speaker's **voice phrase** — and listeners
   run **voice recognition** (`get_apparent_voice_uid` / voice memory) exactly
   as if hearing them in the room. You can be *recognized by voice on the air*
-  — and a **voice modulator defeats that** (existing chrome).
-* **Hearing-gated**: a deaf listener gets nothing from a speaker grille; the
+  — a **voice modulator** (existing chrome) changes the voice and adds 3 to
+  the speaker's side of the placing roll, but a listener who has named the
+  natural voice can still place it.
+* **Hearing-gated**: a deaf listener reads only that a radio crackled ("Your radio / A radio
+  nearby crackles, but you can't make out a word.") and gets no words; the
   existing perception machinery applies.
 * Radio voices are attributed by voice only — never by sight (you can't see
-  the speaker). The "unrecognised voice = 'someone'" rule carries over
-  naturally.
+  the speaker). A voice the listener does not
+  place is "A voice", and the speaker's voice phrase follows it when they have
+  set one: `A voice crackles over the radio: *speaking Common, in a smoky rasp*
+  "…"` (`world/radio.py` `_render_radio_line`). An NPC brain hears "a
+  <description> voice", or "an unfamiliar voice" when none is set
+  (`radio_voice_handle`).
 
 ## 3 · The dispatch chain rides radio
 
@@ -103,10 +113,13 @@ real play.
 
 ## 4 · Command surface (sketch)
 
-* `radio <message>` — transmit on the held device's channel.
-* `radio/tune <channel>` — retune.
-* `radio/listen` (or just holding one powered on) — receive; traffic renders
-  as heard speech ("A gravelly voice crackles over the walkie: …").
+* `transmit <message>` (also `xmit`, `xm`; add `on <device>` to pick one) —
+  transmit low through a worn radio first, then one in hand, then the board
+  you are seated at, then a built-in comms organ.
+* `to <radio>, <message>` — transmit openly; the whole room hears.
+* `tune <device> to <MHz|scan>` — retune.
+* `toggle <device> [on|off]` — a powered radio receives with no other command;
+  traffic renders as heard speech (`A voice crackles over the radio: …`).
 * Snatching/breaking rides existing systems: the grab/steal machinery
   (`STEALTH_AND_DETECTION_SPEC` §6.2 / wrest) for the walkie; ordinary object
   damage for antennae; jamming device TBD (§6).
@@ -119,7 +132,8 @@ real play.
   the Drifts dark-by-default.
 * **Voice / identity** — §2.4; voice recognition + modulators carry over.
 * **Perception** — hearing gates reception; a transmission into a room is an
-  auditory event (stealth: a squawking radio gives you away).
+  auditory event: bystanders hear the grille. As built, a hidden holder is not
+  revealed by it; whether it should is not decided.
 * **Robots** — the built-in transceiver is a chassis component
   (`ROBOT_SPECIES_AND_MOB_SPEC`), destroyable/EMP-able.
 * **Phase/net** — reserved: a decker tapping/spoofing radio traffic from the
@@ -154,8 +168,9 @@ channel-per-frequency):
 * **Player view** — players NEVER subscribe. A walkie tuned to a frequency
   **echoes** matching traffic, re-rendered through the say/voice rails: the
   speaker's **voice phrase**, **voice recognition** (recognisable on the
-  air; a modulator defeats it), **hearing-gated**, attributed **by voice
-  only** (never sight). "A gravelly voice crackles over the walkie: …"
+  air; a modulator makes it harder to place), **hearing-gated**, attributed
+  **by voice only** (never sight). `A voice crackles over the radio: *speaking
+  Common, in a gravelly drawl* "…"`
 
   **AMENDED (2026-07-06) — the four-perspective display model.** The
   original text scoped the echo "to its holder"; the physical stance (§2.4
@@ -180,7 +195,10 @@ channel-per-frequency):
      lying on the floor → its room), hearing-gated per observer ("A radio
      nearby crackles…" for non-holders when deaf). Carrying a live radio
      is a stealth liability — as the `toggle` help always promised.
-     **Comms ORGANS stay internal** (in the ear = private to the unit).
+     **Comms ORGANS stay internal** (in the ear = private to the unit) for
+     receiving. Transmitting through one is not private: the room hears the
+     words in full, "<unit> says over comms, "…"", with no mutter roll
+     (`transmit_organ`).
      **DOUBLE RENDER (2026-07-07, playtest-decided — replaces the earlier
      same-room suppression):** a matching radio beside the speaker DOES
      echo. With xmit's low voice this is load-bearing counter-play: you
@@ -233,7 +251,9 @@ later phase).
 
 Antennae/repeaters/coverage holes, real coordinate range, the Drifts-dark
 rule, jamming devices, **power/battery**, encryption/scrambling, and the
-robot built-in-transceiver attacks (ride the robot-component work).
+robot built-in-transceiver attacks (ride the robot-component work). The
+Drifts-dark rule, jamming devices, power/battery and encryption/scrambling are
+📋 UNBUILT (no issue).
 
 ## 7 · NPC radio comprehension — ✅ SHIPPED (2026-07-04)
 
@@ -246,7 +266,8 @@ robot built-in-transceiver attacks (ride the robot-component work).
 > volunteer). Radio turns attribute by VOICE (`radio_voice_handle`, shared
 > with the echo render), carry no visual perception, and scope memory to the
 > VOICE identity (`voice:<uid>` subject threaded through storage so nothing
-> cross-sensory leaks). Transmit = the `radio` action tool (granted to
+> cross-sensory leaks; when the NPC forgets a name, what it filed under the
+> voices that went with it is dropped too, #3861). Transmit = the `radio` action tool (granted to
 > `security`; withheld from `colonist`) → the REAL `xmit` command, whose new
 > no-handheld fallback keys a built-in comms organ (`transmit_organ`) — so
 > bots and any future implanted player transmit through the identical
@@ -294,20 +315,29 @@ the room-speech discipline exactly:
   report and any bot chatter are NPC-sourced, so bots hearing the witness
   don't spin up turns, and two NPCs on a band can't ping-pong.
 * **"All units" de-confliction** — a broadcast addressed to many must not make
-  *all* of them answer. One responds (nearest / a single elected speaker),
-  the rest observe — this is the multi-NPC de-confliction the LLM spec parks
+  *all* of them answer. One responds. As built, the elected answerer
+  is the lowest-dbref AI NPC that received the call on a radio it carries or
+  its own comms organ, with words it could make out (clear or fuzzy); nothing
+  chooses by nearness. Only a call containing a band-wide phrase ("all
+  units", "any unit", "all stations", "anyone on this band", "anyone copy",
+  "does anyone copy") waits for that NPC; an NPC named in the call answers
+  itself, and one seated at a powered 911MHz board answers only after the
+  souls layer has judged the call. The rest observe — this is the multi-NPC de-confliction the LLM spec parks
   as future; radio is its first forcing case.
 
 ### 7.3 · Transmitting — the NPC keys up
 
 Through the **real command** (the execute-cmd mandate), never a backdoor: a
 `radio`/`transmit` **action tool** in the LLM turn schema (archetype-scoped —
-granted to dispatcher/security/fixer/companion, withheld from a mute
-colonist), routed to `transmit`/`to <device>,`. The persona/context carries the
+as built, granted to the merchant, dispatcher, dj and security archetypes
+and withheld from bartender, companion, doctor, colonist and butcher), routed
+to `xmit`. The persona/context carries the
 NPC's radio state ("you carry a walkie tuned to 911MHz", or the bot's comms
-organ) so the model knows it *can*. On a radio-heard turn the model **chooses
-its channel** — answer over the air (the radio tool) or speak in the room
-(normal `say`) — a startled bystander mutters aloud; a dispatcher keys back.
+organ) so the model knows it *can*. As built (#2585), a radio-heard turn does
+not choose: its reply goes to the NPC's real `xmit` and is not spoken in the
+room, and if `xmit` refuses nothing is said (§7.5). When the model also calls
+the radio tool, that call carries the transmission and the reply's speech is
+spoken in the room.
 
 ### 7.4 · Security bots come along for free
 
@@ -339,7 +369,8 @@ is not looking. From 2026-07-25 (#1314) to this change the brain rendered a
 refused transmit as room speech, the slip that issue's own message ("mute,
 player-equal") described the fix for. Any other command's refusal may carry
 the same tag and is heard the same way.
-A refusal also names its verb (`verb="transmit"`), and a soul hearing that
+The radio's own refusals also name their verb (`verb="transmit"`; the channel
+gate's refusal does not), and a soul hearing that
 verb raises the **comms** goal (NPC_NEEDS_AND_GOALS §3.9, #3777): the think
 tree takes the handheld out of the pocket and switches it on through `wield`
 and `toggle`, the same commands a player would type.
@@ -355,7 +386,9 @@ and `toggle`, the same commands a player would type.
   this wrong is either silence or a chorus.
 * **Channel choice** — the model conflating radio-back vs room-speech would
   have a bot muttering to an empty street or answering a face-to-face question
-  over the air. The turn framing (§7.1) must be unambiguous.
+  over the air. The turn framing (§7.1) must be unambiguous. As built
+  (#2585), a radio turn's reply goes to `xmit`, never to the room, unless the
+  model also calls the radio tool (§7.3).
 
 ## 8 · Risks & open questions
 
