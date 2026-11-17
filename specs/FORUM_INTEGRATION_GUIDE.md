@@ -14,7 +14,7 @@ The Gelatinous project includes optional support for integrating with a Discours
 
 - **Single Sign-On (SSO)**: Users log in once, access both game and forum
 - **Visual Consistency**: Embedded Django header in forum for seamless navigation
-- **Session Synchronization**: Login/logout synced between platforms
+- **Session Synchronization**: following the menu's Forum link while logged in signs you into the forum (via `/sso/discourse/session-sync/`); logging out of the game logs you out of the forum (needs `DISCOURSE_API_KEY`); logging out of the forum logs you out of the game (via the forum's logout redirect)
 - **Custom Styling**: Forum themed to match game aesthetic
 
 **If you don't plan to run a forum**: You can safely ignore all Discourse-related files and configuration. The game will work normally.
@@ -28,15 +28,15 @@ The Gelatinous project includes optional support for integrating with a Discours
 The following files support forum integration but are **non-invasive**:
 
 **Views** (`web/website/views/`):
-- `discourse_sso.py` - SSO authentication handler (only runs if `DISCOURSE_SSO_SECRET` is set)
+- `discourse_sso.py` - SSO handler. Requires a logged-in game account. Needs both `DISCOURSE_SSO_SECRET` and `DISCOURSE_URL`, and only redirects back to an https address on the `DISCOURSE_URL` host
 - `discourse_logout.py` - Forum logout handler
 - `discourse_session_sync.py` - Session synchronization
 - `logout_with_discourse.py` - Dual logout
-- `header_only.py` - Header iframe endpoint (harmless even if unused)
+- `header_only.py` - Header iframe endpoint (harmless even if unused). It picks its skin on the server from the `gel_skin` cookie (only known skins are accepted, otherwise the default), so it matches the forum's skin from the first paint
 
 **URL Routes** (`web/website/urls.py`):
-- `/header-only/` - Renders just the header (can be used for any iframe embedding)
-- `/sso/discourse/` - SSO endpoint (returns error if not configured)
+- `/header-only/` - Renders just the header for iframe embedding (only the forum address in `web/utils/security_middleware.py` may frame it)
+- `/sso/discourse/` - SSO endpoint (login required; returns a 400 error if not configured)
 - `/sso/discourse/logout/` - Logout endpoint
 - `/sso/discourse/session-sync/` - Session sync endpoint
 - *2026-09-11: two more routes in `web/website/urls.py` belong to this
@@ -55,7 +55,7 @@ The following files support forum integration but are **non-invasive**:
 If you set up a Discourse forum, the complete theme configuration —
 color scheme, header-integration CSS, iframe-embedding JavaScript, and
 caching/preconnect setup — lives in **`DISCOURSE_INTEGRATION.md`**
-(steps 3–9). (The previously-separate `DISCOURSE_COLOR_PALETTE.md` /
+(Steps 3–7, plus its sections on the header height contract and on caching). (The previously-separate `DISCOURSE_COLOR_PALETTE.md` /
 `DISCOURSE_DARK_THEME_CSS.md` / `DISCOURSE_THEME_CODE_FIXED.md` /
 `CACHING_AND_PRECONNECT_SETUP.md` files were consolidated into it.)
 
@@ -98,6 +98,8 @@ DISCOURSE_SSO_SECRET = "your-shared-secret-here"  # Must match Discourse setting
 DISCOURSE_URL = "https://forum.yourgame.com"      # Your forum URL
 ```
 
+   For logout sync, also set `DISCOURSE_API_KEY` (an admin API key from the forum). Without it, logging out of the game does not log you out of the forum. Optional: `DISCOURSE_INTERNAL_URL`, an internal address the game uses for its API calls to the forum (it falls back to `DISCOURSE_URL`), and `DISCOURSE_LOGOUT_REDIRECT`, where a logout started from the forum lands (default `/`).
+
 2. **Restart your game server** (Docker or Evennia reload)
 
 That's it for the Django side! The routes and views are already in place.
@@ -111,6 +113,7 @@ That's it for the Django side! The routes and views are already in place.
 3. Set: `discourse connect url` = `https://yourgame.com/sso/discourse/`
 4. Set: `discourse connect secret` = (same secret as in Django settings)
 5. Set: `logout redirect` = `https://yourgame.com/sso/discourse/logout/`
+   - The game only accepts this logout when the browser's Referer comes from the `DISCOURSE_URL` host. A missing or different Referer gets a 403 and the game session stays logged in, so the forum must not strip its referrer.
 
 #### B. Create Theme Component
 
@@ -122,14 +125,14 @@ That's it for the Django side! The routes and views are already in place.
 #### C. Apply Color Palette
 
 1. Go to **Admin** → **Customize** → **Colors**
-2. Create new color scheme using values from `DISCOURSE_COLOR_PALETTE.md`
+2. Create new color scheme using the values in `DISCOURSE_INTEGRATION.md`, Step 3
 3. Apply it to your main theme
 
 #### D. Add CSS
 
 1. Edit your theme component
 2. Go to **Common** → **CSS**
-3. Paste CSS from `DISCOURSE_DARK_THEME_CSS.md`
+3. Paste CSS from `DISCOURSE_INTEGRATION.md`, Step 6
 4. **Save**
 
 #### E. Add HTML
@@ -148,7 +151,7 @@ That's it for the Django side! The routes and views are already in place.
 
 1. Edit your theme component
 2. Go to **Common** → **JavaScript**
-3. Paste JavaScript from `DISCOURSE_THEME_CODE_FIXED.md`
+3. Paste JavaScript from `DISCOURSE_INTEGRATION.md`, Step 7
 4. **Save**
 
 #### G. Activate Theme
@@ -180,8 +183,9 @@ That's it for the Django side! The routes and views are already in place.
 If you decide not to use forum integration:
 
 ### Option 1: Just Don't Configure It
-- Don't set `DISCOURSE_SSO_SECRET` in settings
-- The views will return errors if accessed, but won't break anything
+- Don't set `DISCOURSE_SSO_SECRET` or `DISCOURSE_URL` in settings
+- Then `/sso/discourse/` returns a 400 error, `/sso/discourse/logout/` returns 403 for a logged-in user, `/sso/discourse/session-sync/` and `/forum/` send you to the home page, and site logout works as a normal logout
+- The site menu still shows a Forum link (`web/templates/website/_menu.html`): visitors get a fixed forum address, and logged-in users go through session-sync to the home page. Remove it if you have no forum
 - The `/header-only/` endpoint is harmless
 
 ### Option 2: Remove Forum-Specific Files
@@ -202,7 +206,9 @@ rm web/templates/website/header_only.html
 # Remove forum specs (optional)
 rm specs/DISCOURSE_*.md
 rm specs/FORUM_INTEGRATION_*.md
-rm specs/CACHING_AND_PRECONNECT_SETUP.md
+
+# Remove the forum theme component (optional)
+rm -r web/discourse-theme/
 ```
 
 Then remove the imports and URL patterns from `web/website/urls.py`:
@@ -239,6 +245,14 @@ Then remove the imports and URL patterns from `web/website/urls.py`:
 # live site does run through logout_with_discourse.)
 ```
 
+Also edit `web/templates/website/_menu.html`: its Forum link uses `{% url 'discourse-session-sync' %}` for logged-in users and a fixed forum address for visitors. Remove both Forum entries, or every page that shows the menu fails with an error once the `discourse-session-sync` pattern is gone.
+
+Other forum pieces outside these files:
+- `scripts/brand/build_skins.py`: its `TARGETS` list writes into `web/website/views/header_only.py` and into the forum component under `web/discourse-theme/`. Remove those two entries, or the skin build fails.
+- `web/utils/security_middleware.py`: remove `_HEADER_ONLY_CSP` and its `/header-only` branch in `ContentSecurityPolicyMiddleware`.
+- `server/conf/settings.py`: remove the Discourse block (the empty `DISCOURSE_URL` and `DISCOURSE_SSO_SECRET` defaults).
+- `web/templates/robots.txt`: remove the `/header-only/` and `/forum/` lines.
+
 ---
 
 ## Customization
@@ -248,6 +262,8 @@ Then remove the imports and URL patterns from `web/website/urls.py`:
 The header iframe approach (`/header-only/`) works with any forum that supports:
 - Custom HTML/CSS/JavaScript
 - Iframe embedding
+
+The header page only allows framing by the forum address written into `web/utils/security_middleware.py` (`_HEADER_ONLY_CSP`). That address is not read from `DISCOURSE_URL`. A forum on a different host must be added there, or browsers will refuse to show the header.
 
 You could adapt this for:
 - **NodeBB**: Similar theme customization system
@@ -282,7 +298,10 @@ If you prefer Discord:
 # Check if endpoint is accessible
 curl https://yourgame.com/sso/discourse/
 
-# Should return: "Missing SSO parameters" (that's good!)
+# Logged out (plain curl): a redirect to the login page. That is expected;
+# the endpoint needs a logged-in game session.
+# Logged in, with no sso/sig parameters: "Missing SSO parameters".
+# Logged in, with no DISCOURSE_SSO_SECRET set: "SSO is not configured".
 ```
 
 ### Header Not Showing
@@ -305,15 +324,14 @@ curl https://yourgame.com/sso/discourse/
 
 The forum integration includes several optimizations:
 
-- **Caching**: Header endpoint cached for 5 minutes
+- **No caching**: the header endpoint is sent with `no-store` and is never cached, because it shows who is logged in
 - **Preconnect**: Browser establishes connection early
 - **CSS Containment**: Isolates iframe rendering
 - **Lazy Loading**: Iframe loads after main content
 
 Expected performance:
 - Initial load: 50-200ms iframe load time
-- Cached: <50ms
-- No impact on game server performance
+- Every forum page view asks the game's web server for the header, since it is never cached
 
 ---
 
@@ -322,9 +340,9 @@ Expected performance:
 ### Keeping Theme Updated
 
 If you update your Django header styling:
-1. Changes automatically apply to forum iframe
-2. No theme updates needed
-3. Cache clears after 5 minutes
+1. Changes to the header template and the site's stylesheet show on the forum at once, because the header is served by the game and never cached.
+2. Skin colour changes are different: rerun `scripts/brand/build_skins.py`, which rewrites `SKIN_INK` in `web/website/views/header_only.py` and the forum component's `skins.gjs`, then re-upload `web/discourse-theme/` as its `README.md` describes.
+3. Palette and type changes in `custom.css` must also be copied into `web/discourse-theme/` by hand (its `README.md`, "Keeping it in step").
 
 ### Discourse Updates
 

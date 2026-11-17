@@ -10,14 +10,13 @@ enables structured, machine-readable data alongside the traditional text
 stream, allowing clients like Telix to provide rich UI features (room maps,
 vitals gauges, chat panels) without fragile screen-scraping.
 
-Gelatinous uses the `gmcp.mudstandards.org` WebSocket subprotocol via the
-Evennia `evennia-mudstandards` fork. In this wire format, BINARY frames
-carry raw ANSI text and TEXT frames carry GMCP messages in the standard
-`"Package.Name json_payload"` format.
+Gelatinous speaks the `gmcp.mudstandards.org` WebSocket subprotocol through
+its own handler, `GmcpWebSocketClient` in `server/conf/gmcp_websocket.py`.
+BINARY frames carry raw ANSI text and TEXT frames carry GMCP messages in the
+standard `"Package.Name json_payload"` format.
 
-> **Correction (2026-09-12):** the subprotocol and the BINARY/TEXT framing
-> are accurate; the attribution is stale. That fork's work landed
-> **upstream**. Evennia 6.1.0 (July 5 2026) ships WebSocket subprotocol
+> **Correction (2026-09-12):** there is no forked Evennia. The
+> `evennia-mudstandards` fork's work landed **upstream**. Evennia 6.1.0 (July 5 2026) ships WebSocket subprotocol
 > negotiation natively — CHANGELOG `[Feat][pull3867]`: "Add WebSocket
 > subprotocol negotiation per MUD Standards proposal. Supports
 > `json.mudstandards.org`, `gmcp.mudstandards.org`,
@@ -37,7 +36,9 @@ carry raw ANSI text and TEXT frames carry GMCP messages in the standard
 > Pattern" before writing any send call.
 
 **Current state**: Gelatinous advertises `"GMCP": "1"` in MSSP but sends
-no custom GMCP packages. All output is plain `msg(text=...)` calls.
+no game GMCP packages. Besides text, the only TEXT frame a GMCP client
+receives is a bare `logged_in` at login, from `session.msg(logged_in={})`
+in `Account.at_post_login` (`typeclasses/accounts.py`).
 
 ---
 
@@ -84,7 +85,7 @@ significantly (exit added/removed, room renamed).
 
 **Trigger**: Override `Character.at_post_move()` or
 `Room.return_appearance()` to call
-`session.msg(oob=("Room.Info", payload))` after the look text.
+`character.msg(**{"Room.Info": [[payload], {}]})` after the look text.
 
 **Payload**:
 
@@ -108,17 +109,20 @@ significantly (exit added/removed, room renamed).
 | `num` | int | Room database ID (`room.id`). Stable across restarts. |
 | `name` | str | Room display name (`room.key`). |
 | `area` | str | Zone or area name. Use room tags with category `"area"`, or fall back to `"Unknown"`. |
-| `type` | str/null | Room type from `room.type` attribute (`"street"`, `"interior"`, `"bridge"`, `"sky"`, `"alley"`, `"corridor"`, or `null`). |
+| `type` | str/null | Room type from the `room.type` attribute (for example `"street"`, `"interior"`, `"market"`, `"sky"`, `"shaft"`, `"rooftop"`), or `null`. The set is open: builders add types, so clients must accept any string. |
 | `outside` | bool | Whether the room is outdoors (`room.outside`). |
 | `exits` | dict | Map of exit name to destination room ID. Cardinal directions use short names (`"north"` not `"n"`). Custom exit names preserved as-is. |
 
 **Implementation notes**:
 - Use `room.id` (the Django model PK) as the stable room identifier, not
   `room.dbref` (which is a string like `"#42"`).
-- Exit destinations: `exit.destination.id` for each exit in
-  `room.exits`. Skip exits with no destination.
+- Exits: build the map from `room._visible_exits(character)`, never from
+  `room.exits`. A secret (view-locked) exit the character has not found
+  must not appear. Skip exits with no destination.
 - Area: Check `room.tags.get(category="area")`. If no area tag exists,
-  use `"Unknown"`.
+  use `"Unknown"`. No room carries an `area` tag today, so as written every
+  room sends `"Unknown"`. `world.wsis.zone_of(room)` already names a
+  room's street or building (the room key before " - ").
 
 ---
 
@@ -158,10 +162,12 @@ from combat resolution and medical tick processing.
 - Round float values to integers for client display simplicity.
 - `blood_max` is always 100 (percentage-based system), but including it
   lets clients render gauges without hardcoding the max.
-- Death threshold is at 85% blood loss (`BLOOD_LOSS_DEATH_THRESHOLD`);
-  unconsciousness at consciousness below 0.3
-  (`CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD / 100`). Clients should not
-  hardcode these -- use the `alive` and `conscious` booleans.
+- Death comes at 85% blood loss (`BLOOD_LOSS_DEATH_THRESHOLD`) or when a
+  lethal body capacity (heart, breathing, digestion, neck, brain) reaches
+  zero. Unconsciousness comes when consciousness falls below 0.3
+  (`CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD / 100`). Both thresholds are
+  untuned placeholders. Clients should not hardcode either -- use the
+  `alive` and `conscious` booleans.
 
 ---
 
@@ -226,12 +232,13 @@ and medical condition application/removal.
 | `grappled_by` | str/null | Name of character grappling this one, or `null`. |
 | `aiming_at` | str/null | Name of character being aimed at, or `null`. |
 | `proximity` | list[str] | Names of characters in melee proximity. |
-| `conditions` | list[str] | Active medical condition types: `"bleeding"`, `"pain"`, `"infection"`, `"unconscious"`. |
+| `conditions` | list[str] | Active medical condition types, from `condition.condition_type`: `"bleeding"`, `"pain"`, `"infection"`, `"consciousness_suppression"`, `"renal_failure"`, `"addiction"`. Unconsciousness is not a condition; it is the `conscious` field of `Char.Vitals`. |
 
 **Implementation notes**:
-- Use display names (`.key`) for character references, not dbrefs.
-  Clients use these for display only -- commands use target names from
-  the text stream.
+- Name each character as this character perceives them:
+  `get_display_name_safe(other, character)` (`world/combat/utils.py`).
+  Never use `.key`, which is the real name. Clients use these names for
+  display only -- commands use target names from the text stream.
 - `conditions` is a list of active condition type strings, not detailed
   severity data. Severity is communicated through the text stream.
 - Only send when state actually changes to avoid flooding the client.
@@ -315,7 +322,7 @@ Each item:
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | str | Item display name. |
-| `dbref` | str | Item dbref for disambiguation in commands. |
+| `dbref` | str | Item dbref. Players cannot type a dbref in commands (Evennia's search accepts one only from builders), so it identifies the item to the client only. Whether payloads carry dbrefs is not decided. |
 | `type` | str | Category: `"weapon"`, `"armor"`, `"item"`. |
 | `worn` | bool | Present and `true` if the item is currently worn. Omitted if not worn. |
 
@@ -329,15 +336,16 @@ Sent when wielded items change (wield, unwield, disarm).
 
 ```json
 {
-  "left": {"name": "Combat Knife", "dbref": "#145"},
-  "right": null
+  "left_hand": {"name": "Combat Knife", "dbref": "#145"},
+  "right_hand": null
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `left` | object/null | Item in left hand, or `null` if empty. |
-| `right` | object/null | Item in right hand, or `null` if empty. |
+The payload is keyed by each grasping slot the body has now, as
+`character.hands` returns it (for example `left_hand`, `right_hand`, or
+the slot of a grasping augment such as a prehensile tail). Each key maps
+to the held item, or `null` if the slot is empty. A severed hand has no
+key.
 
 Each hand item:
 
@@ -350,13 +358,11 @@ Each hand item:
 
 ## Evennia Implementation Pattern
 
-All GMCP messages are sent through Evennia's OOB (Out-Of-Band) system.
-The `evennia-mudstandards` fork routes `oob` kwargs through the
-`gmcp.mudstandards.org` wire format codec, which encodes them as
-WebSocket TEXT frames.
+Each GMCP message is an outputfunc call on `msg()`: the kwarg name becomes
+the GMCP package name, and `GmcpWebSocketClient.send_default` sends it as a
+WebSocket TEXT frame. Nothing routes an `oob` kwarg.
 
-> **Correction (2026-09-12):** the mechanism above is wrong, and the sample
-> code below inherits the error. No codec keys off an `oob` kwarg — the
+> **Correction (2026-09-12):** no codec keys off an `oob` kwarg — the
 > **outputfunc cmdname becomes the GMCP package name**.
 >
 > Evennia normalizes `msg()` kwargs in `evennia/server/sessionhandler.py`:
@@ -407,7 +413,7 @@ def send_room_info(character):
         return
 
     exits = {}
-    for ex in room.exits:
+    for ex in room._visible_exits(character):
         if ex.destination:
             exits[ex.key] = ex.destination.id
 
@@ -422,28 +428,25 @@ def send_room_info(character):
         "exits": exits,
     }
 
-    character.msg(oob=("Room.Info", payload))
+    character.msg(**{"Room.Info": [[payload], {}]})
 ```
 
-> **Note (2026-09-12):** the final line above does not work against either
-> live codec — the in-repo one emits `oob "Room.Info"` with the payload
-> dropped. Against the in-repo codec the working form is
-> `character.msg(**{"Room.Info": [[payload], {}]})`; against stock Evennia
-> 6.1.0's native codec it is `character.msg(room_info=payload)`. See the
-> correction under "Evennia Implementation Pattern" for the trace and the
-> comparison table.
+> **Note (2026-09-12):** the final line is the call shape for the in-repo
+> codec. Against stock Evennia 6.1.0's native codec it is
+> `character.msg(room_info=payload)`. See the correction under "Evennia
+> Implementation Pattern" for the trace and the comparison table.
 
 ### Hook points
 
 | Package | Where to hook |
 |---------|---------------|
-| `Room.Info` | `Character.at_post_move()`, after the look text is sent |
+| `Room.Info` | `Character.at_post_move()`, after the look text is sent; `Character.at_post_puppet()`, after its first look |
 | `Char.Vitals` | After medical state mutations in `world/medical/` |
-| `Char.Stats` | `Character.at_post_login()` and stat modification commands |
+| `Char.Stats` | `Character.at_post_puppet()` and stat modification commands |
 | `Char.Status` | `CombatHandler` state change methods, condition apply/remove |
 | `Comm.Channel.Text` | Channel `.msg()` override or `at_post_channel_msg()` |
-| `Comm.Channel.List` | `Character.at_post_login()` and channel join/leave |
-| `Char.Items.Inv` | `Character.at_get()`, `at_drop()`, `at_give()` |
+| `Comm.Channel.List` | `Character.at_post_puppet()` and channel join/leave |
+| `Char.Items.Inv` | `Character.at_object_receive()` and `Character.at_object_leave()`, which fire for every item moved into or out of the inventory |
 | `Char.Items.Hands` | Wield/unwield commands |
 
 ---
@@ -469,6 +472,20 @@ Telix already has infrastructure for these packages:
 When Gelatinous implements these packages, Telix features activate
 automatically through the existing GMCP dispatch in both the telnet
 and WebSocket shells (`telix_client_shell` and `ws_client_shell`).
+
+---
+
+## Not decided
+
+- Which codec the sends target: the in-repo `GmcpWebSocketClient` (call
+  shape `msg(**{"Package.Name": [[payload], {}]})`) or stock Evennia's
+  native `gmcp.mudstandards.org` wire format (`msg(room_info=payload)`).
+  See "Evennia Implementation Pattern".
+- Whether payloads may carry database ids (the room `num`, item dbrefs).
+  The Design Philosophy keeps internal IDs server-side; the `Room.Info`,
+  `Char.Items.Inv` and `Char.Items.Hands` payloads carry them.
+- Where a room's `area` comes from: new `"area"` tags, or
+  `world.wsis.zone_of`.
 
 ---
 
@@ -501,13 +518,12 @@ and WebSocket shells (`telix_client_shell` and `ws_client_shell`).
 Each package should have tests verifying:
 
 1. **Payload correctness** -- Mock a character/room, call the send
-   function, assert the `msg()` call contains the expected `oob` tuple.
+   function, assert that `msg()` received `{"Room.Info": [[payload], {}]}`
+   (the outputfunc kwarg the send uses).
 
-   > **Note (2026-09-12):** there is no `oob` tuple — see the correction
-   > under "Evennia Implementation Pattern". Assert on the outputfunc
-   > kwarg the send actually uses (`{"Room.Info": [[payload], {}]}` for the
-   > in-repo codec), and prefer the §4 wire-format check as the real
-   > guarantee, since the kwarg shape is codec-specific.
+   > **Note (2026-09-12):** the kwarg shape is codec-specific (see
+   > "Evennia Implementation Pattern"), so prefer the wire-format check
+   > (item 4 below) as the real guarantee.
 2. **Trigger points** -- Verify the GMCP message is sent at the correct
    game events (room entry, damage, channel message).
 3. **Edge cases** -- Room with no exits, character with no medical state,

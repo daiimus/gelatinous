@@ -10,7 +10,7 @@
 
 ## Overview
 
-This specification documents the correct patterns for implementing text-input nodes in Evennia's EvMenu system. These patterns were discovered through trial and error while implementing the Flash Cloning character creation system, which revealed four critical bugs that illuminate EvMenu's non-obvious behavior.
+This specification documents the correct patterns for implementing text-input nodes in Evennia's EvMenu system. These patterns were discovered through trial and error while implementing the Flash Cloning character creation system, which revealed two bugs that illuminate EvMenu's non-obvious behavior.
 
 **Purpose:** Serve as the canonical reference for all future EvMenu implementations in this project.
 
@@ -18,14 +18,7 @@ This specification documents the correct patterns for implementing text-input no
 
 ## Critical Bugs Discovered
 
-When implementing text-input nodes in EvMenu (where users type freeform text rather than selecting numbered options), we encountered four critical bugs that revealed important EvMenu behavior patterns.
-
-> **2026-09-11 (drift audit):** two are documented, not four — `Bug #1:
-> Blank Input Processing` and `Bug #2: Node Transition During Input
-> Processing`. Either two sections were lost before this was committed, or
-> the count was borrowed from the four patterns (A–D) below. The Overview
-> repeats the same "four critical bugs". Nothing in the repo records what
-> the other two were.
+When implementing text-input nodes in EvMenu (where users type freeform text rather than selecting numbered options), we encountered two bugs that revealed important EvMenu behavior patterns.
 
 ---
 
@@ -41,11 +34,11 @@ Invalid name: Name must be 2-30 characters.
 **Root Cause:**
 ```python
 def node(caller, raw_string, **kwargs):
-    if raw_string:  # ❌ WRONG - empty string can still trigger this
+    if raw_string:  # ❌ WRONG - whitespace-only input still triggers this
         # Process input
 ```
 
-**The Issue:** In Python, `if raw_string:` can be `True` for empty strings in some contexts, particularly in EvMenu's input handling.
+**The Issue:** `if raw_string:` is `True` for whitespace-only input such as a single space, which then gets validated as a name. Checking `raw_string and raw_string.strip()` makes blank or whitespace-only input show the prompt instead.
 
 **Solution:**
 ```python
@@ -81,19 +74,16 @@ def first_char_name_first(caller, raw_string, **kwargs):
     return text, options
 ```
 
-**The Issue:** When processing input (i.e., `raw_string` is not empty), returning a string causes EvMenu to:
-1. **Display that string as text** (which is why we saw "first_char_name_last" printed)
-2. **Exit the menu** (which is why the next input became a command)
+**The Issue:** When a node function returns a string, EvMenu:
+1. **Displays that string as the node text** (which is why we saw "first_char_name_last" printed)
+2. **Exits the menu**, because the node has no options (which is why the next input became a command)
 
 **Why This Happens:**
-- EvMenu nodes have **two modes**:
-  1. **Display mode:** `raw_string` is empty → return `(text, options)` tuple to show menu
-  2. **Input mode:** `raw_string` has content → process input and navigate
-  
-- In **display mode**, returning a string is interpreted as error text
-- In **input mode**, returning a string is interpreted as **text to display before exiting**
+- A node function must return `(text, options)`. If it returns a bare string, EvMenu shows that string as the node text, finds no options, and closes the menu. If it returns `None`, the menu also closes. This holds whatever `raw_string` contains.
+- Only a goto-callable (an option's `goto` that is a function) may return a node name, to go to that node, or `None`, to re-display the current node.
+- The "input" and "display" branches inside a node are this project's convention for nodes that are their own `_default` target, not something EvMenu provides.
 
-**Solution - Pattern #1: Return None to Re-Display**
+**Solution - Pattern #1: Call the node itself to re-display**
 ```python
 # ⚠️ WARNING: return None actually EXITS the menu!
 # Use recursive call instead:
@@ -169,7 +159,8 @@ def text_input_node(caller, raw_string, **kwargs):
         # Validate
         if not is_valid(text):
             caller.msg("|rError: Invalid input|n")
-            return None  # ✅ Re-display this node
+            # Re-display this node; a node that returns None closes the menu.
+            return text_input_node(caller, "", **kwargs)
         
         # Store and advance
         caller.ndb.data['field'] = text
@@ -195,8 +186,10 @@ def command_parser_node(caller, raw_string, **kwargs):
     if raw_string and raw_string.strip():
         args = raw_string.strip().lower().split()
         
+        # Re-display by calling this node; a node that returns None
+        # closes the menu.
         if not args:
-            return None  # Re-display
+            return command_parser_node(caller, "", **kwargs)
         
         command = args[0]
         
@@ -204,29 +197,27 @@ def command_parser_node(caller, raw_string, **kwargs):
         if command == "done":
             if not validate_state():
                 caller.msg("|rNot ready yet|n")
-                return None  # Re-display
+                return command_parser_node(caller, "", **kwargs)
             return next_node(caller, "", **kwargs)  # ✅ Advance
         
         # Command: reset - modify state and re-display
         elif command == "reset":
             reset_values()
-            return None  # ✅ Re-display with reset values
+            return command_parser_node(caller, "", **kwargs)  # ✅ Re-display with reset values
         
         # Command: set value - modify state and re-display
         elif command in ["stat1", "stat2"]:
             if len(args) < 2:
                 caller.msg("|rUsage: stat <value>|n")
-                return None
+                return command_parser_node(caller, "", **kwargs)
             try:
                 value = int(args[1])
                 caller.ndb.data[command] = value
             except ValueError:
                 caller.msg("|rValue must be a number|n")
-            return None  # ✅ Re-display with new values
+            return command_parser_node(caller, "", **kwargs)  # ✅ Re-display with new values
         
-        else:
-            caller.msg("|rUnknown command|n")
-            return None
+        # Anything else is ignored, not rejected: fall through and display.
     
     # Display mode
     stat1 = caller.ndb.data.get('stat1', 0)
@@ -244,18 +235,20 @@ Commands: stat1 <value>, stat2 <value>, reset, done
     return text, options
 ```
 
+A node reached by a goto receives the input that chose it as `raw_string` (for example the `3` typed at the previous menu). A self-processing node therefore ignores input it does not recognise and simply displays; it does not reject it. `first_char_grim` in `commands/charcreate.py` does this.
+
 ### Pattern D: Multi-Source Picker with Status Tags
 
-**Use Case:** Location / target pickers whose entries come from more than one underlying source — e.g. surgery's suture picker (open incisions + planned chart steps + severed-organ stumps), the install picker (species-valid slots tagged occupied/empty), the amputate picker (severable containers minus already-severed ones — **2026-09-11 (drift audit):** not so, and not an instance of this pattern: `_list_severable_containers` (`commands/CmdOperate.py:944-963`) returns the species severable table plus augment-declared containers with no severed-state subtraction, and `_node_amputate_location` (`:966-988`) stores bare location strings and renders them untagged via `_render_numbered`). Each source contributes the same kind of entry; tags on each row tell the player *why* an entry is there.
+**Use Case:** Location / target pickers whose entries come from more than one underlying source — e.g. surgery's suture picker (open incisions + planned chart steps + severed-organ stumps), the install picker (species-valid slots tagged occupied/empty). Each source contributes the same kind of entry; tags on each row tell the player *why* an entry is there.
 
 **Use case characteristics:**
 
-* Picker draws from N independent data sources, each potentially contributing the same location/value.
+* Picker draws from N independent data sources, each potentially contributing the same location/value. (The amputate picker is single-source: `severable_containers` already drops severed containers, and its rows carry no tags.)
 * When a single value has multiple sources, the row should tag *all* of them (`(open + planned)`) rather than appear N times.
 * An "all" sentinel entry up top lets the player apply the verb without picking one.
 * Empty-source path needs its own handling — when every source is empty, the menu either offers a sentinel action or short-circuits with an explanation rather than rendering an empty list.
 
-**Reference implementation:** `commands/CmdOperate.py` → `_node_suture_location`, drawing from `_list_open_incisions` (live surgical state) + `_list_planned_incisions` (pending chart steps) + `_list_severed_locations` (severed-organ stumps inferred from the medical state).
+**Reference implementation:** `commands/CmdOperate.py` → `_node_suture_location`, drawing from `_list_open_incisions` (live surgical state) + `_list_planned_incisions` (locations of pending `incise` and `amputate` chart steps, since both leave an open wound) + `_list_severed_locations` (severed-organ stumps inferred from the medical state).
 
 ```python
 def _node_picker(caller, raw_string, **kwargs):
@@ -285,9 +278,10 @@ def _node_picker(caller, raw_string, **kwargs):
     # Build the option list.  Index 0 is the "all" sentinel; subsequent
     # entries are individual picker targets with tags assembled
     # union-style from all matching sources.
+    # Entries are (value, label), value first.
     options_list = [
-        (f"|wall|n  {MUTED}(open + planned + stumps)|n",
-         "all open incisions"),
+        (SUTURE_ALL,  # SUTURE_ALL = "all"
+         f"|wall|n  {MUTED}(open + planned + stumps)|n"),
     ]
     for loc in all_locs:
         tags = []
@@ -295,13 +289,13 @@ def _node_picker(caller, raw_string, **kwargs):
         if loc in planned_locs: tags.append("planned")
         if loc in stump_locs:   tags.append("stump")
         tag = f"{MUTED}({' + '.join(tags)})|n"
-        options_list.append((f"{loc.replace('_', ' ')}  {tag}", loc))
+        options_list.append((loc, f"{loc.replace('_', ' ')}  {tag}"))
 
     # Persist on ndb so the processor can resolve the surgeon's pick.
     caller.ndb._operate_pickable = options_list
     listing = "\n".join(
         f"  {idx}. {label}"
-        for idx, (label, _val) in enumerate(options_list, start=1)
+        for idx, (_val, label) in enumerate(options_list, start=1)
     )
     text = (
         "\n|wSuture|n\n\n"
@@ -314,17 +308,9 @@ def _node_picker(caller, raw_string, **kwargs):
     return text, options
 ```
 
-**The processor unpacks `(label, value)`:**
+Picker entries are always `(value, label)`, value first, and the value is the single word a player would type (`all`, not a phrase). `_parse_pick` matches against the value, never the coloured label (#2553).
 
-> **2026-09-11 (drift audit):** it unpacks `(value, label)` — `pick[0]`, not
-> `pick[1]` (`CmdOperate.py:1429`). The sample also omits the ambiguity branch
-> every live picker carries: `_parse_pick` can return `_Several`, and the
-> #2276 owner ruling — "Owner ruling 2026-08-24: never guess", recorded in
-> `_parse_pick`'s own docstring at `CmdOperate.py:846-849` and implemented at
-> `:866-874` — requires asking rather than taking a candidate:
-> `if isinstance(pick, _Several): caller.msg("Which did you mean?" ...); return None`
-> (`:1422-1425`). Its real signature is `_parse_pick(raw, items, species=None)`
-> (`:837`) and all five live call sites pass the species.
+**The processor unpacks `(value, label)`.** When a typed name matches more than one entry, `_parse_pick` returns `_Several` and the processor asks which one was meant, following the ruling recorded in `_parse_pick`'s docstring: "Owner ruling 2026-08-24: never guess" (#2276). Every live caller passes the target's species.
 
 ```python
 def _process_picker(caller, raw_string, **kwargs):
@@ -333,12 +319,16 @@ def _process_picker(caller, raw_string, **kwargs):
         return "node_top"
     if not raw:
         return None
-    pick = _parse_pick(raw, caller.ndb._operate_pickable or [])
-    if pick is None:
-        caller.msg("|rNo match.|n")
+    species = _species_of_target(caller)
+    pick = _parse_pick(raw, caller.ndb._operate_pickable or [], species)
+    if isinstance(pick, _Several):
+        caller.msg(f"|wWhich did you mean?|n {_name_picks(pick, species)}.")
         return None
-    # Pickable entries are (label, value) tuples — unpack the value.
-    value = pick[1] if isinstance(pick, tuple) else pick
+    if pick is None:
+        caller.msg("|rPick a number or location name.|n")
+        return None
+    # Pickable entries are (value, label) tuples — take the value.
+    value = pick[0] if isinstance(pick, tuple) else pick
     # ... record the chart step / fire the action ...
     return "node_top"
 ```
@@ -349,7 +339,7 @@ def _process_picker(caller, raw_string, **kwargs):
 * Multiple-source tags collapse with `" + "` so `open + planned` reads naturally.
 * The sentinel "all" row's tag describes the *broadest* set the action covers (`(open + planned + stumps)`).
 
-**Sources can be derived from any state.** The suture picker's "stump" source consults the medical state directly — `_list_severed_locations` reads `compute_cut_points` from the severance module so combat-driven amputation (which never goes through the chart) still surfaces. Picker design should ask *"what's the real source of truth for this entry?"* rather than enumerating the obvious surface (e.g. just open incisions). Multi-source pickers are the way to bridge surfaces that don't share a single backing store.
+**Sources can be derived from any state.** The suture picker's "stump" source consults the medical state directly — `_list_severed_locations` reads `compute_cut_points` from the severance module so combat-driven amputation (which never goes through the chart) still surfaces. It subtracts stumps already sutured (`normalize_sutured_stumps`), so only untreated stumps appear. Picker design should ask *"what's the real source of truth for this entry?"* rather than enumerating the obvious surface (e.g. just open incisions). Multi-source pickers are the way to bridge surfaces that don't share a single backing store.
 
 **Testing.** Each source contributes via its own helper; the picker node is then a thin composition. Test the helpers individually and add a single node-level test for each *combination* you care about (a row that's both open and stump should tag both). See `world/tests/test_operate_menu.py` `SutureLocationPicker` for the regression-history-grounded pattern: each historical bug in the picker became one test.
 
@@ -362,37 +352,40 @@ def _process_picker(caller, raw_string, **kwargs):
 - Return recursive call to re-display current node: `return current_node(caller, "", **kwargs)`
 - Call next node function directly when advancing: `return next_node(caller, "", **kwargs)`
 - Use goto-callables for menu option routing (they can return node name strings)
+- Turn off EvMenu's built-in `q`/`look`/`help` by passing `auto_quit=False, auto_look=False, auto_help=False` to the EvMenu constructor (see `_NO_MENU_BUILTINS` in `commands/charcreate.py`). Put in an option dict, they do nothing (#2551).
+- When the node text already lists the options, override `options_formatter` to return an empty string, as `CharCreateEvMenu` does.
 
 ### ❌ DON'T:
-- Return just `if raw_string:` (can trigger on empty input)
+- Check just `if raw_string:` (whitespace-only input passes it)
 - Return node name string during input processing: `return "node_name"`
-- Return `None` (this EXITS the menu, doesn't re-display!)
+- Return `None` from a node function (this EXITS the menu, doesn't re-display!). Only a goto-callable may return `None` to re-display.
 - Forget to pass empty string when calling nodes: `node(caller, "", **kwargs)`
 
 ### 🔍 Debugging:
 If you see node names appearing as text output, you're returning a string during input processing instead of calling the node function.
 
-> **2026-09-11 (drift audit):** this symptom is still live in nine places in
-> `commands/charcreate.py` — the file the "Fixed Files" section below says
-> this bug was fixed in. Each returns a bare node-name string from a **node**
-> function (reached by a string `goto`, so `evmenu.py:839` sets
-> `options = None` and `:998-1000` closes the menu), which for an account
-> with no ACTIVE sleeve also disconnects the session via
-> `_charcreate_exit_callback` (`:597-619`) — respawning accounts included,
-> since their sleeves are archived, not active:
+This applies to any return from a node, not only during input processing: a node with nothing to list must return another node's output (`return _node_top(caller, raw_string, **kwargs)` in `commands/CmdOperate.py`), never its name. `world/tests/test_operate_nodes_never_print_their_goto.py` shows how to test this: assert that the node returns a tuple.
+
+> Nine node returns in `commands/charcreate.py` still hand EvMenu a bare
+> node name, which prints the name and closes the menu. For an account with
+> no active sleeve (respawning accounts included, since their sleeves are
+> archived), `_charcreate_exit_callback` then disconnects the session that
+> ran the menu, if it is still connected:
 >
-> * `first_char_finalize` (`:1506`): `return "first_char_name_first"`
->   (`:1637`) and `return "first_char_confirm"` (`:1643`). The first is the
->   #2550 fix itself — the comment at `:1626-1628` calls it "a route back to
->   the name prompt", and it prints `first_char_name_first` and ends the
->   session instead. #2550's test (`world/tests/test_chargen_name_check_can_fire.py`)
->   exercises `validate_name` only, never the route, so the suite stays green.
-> * `respawn_confirm_template` (`:757`): `:762`.
-> * `respawn_finalize_template` (`:805`): `:813`, `:823`, `:878`.
-> * `respawn_flash_clone` (`:881`): `:887`, `:897`, `:967`.
+> * `first_char_finalize`: `return "first_char_name_first"` when the name was
+>   taken, and `return "first_char_confirm"` on any other creation error. The
+>   first is the #2550 route back to the name prompt; it prints
+>   `first_char_name_first` and ends the session instead.
+>   `world/tests/test_chargen_name_check_can_fire.py` tests `validate_name`
+>   only, never the route.
+> * `respawn_confirm_template`: a bad template index.
+> * `respawn_finalize_template`: no template, no session, creation error.
+> * `respawn_flash_clone`: no old character, no session, creation error. Its
+>   refused-policy branch is correct: it re-displays with
+>   `return respawn_welcome(caller, "")`.
 >
-> Filed as code defects by this audit; the correct re-display is the
-> recursion `first_char_grim` uses, or a goto-callable. Do not read this note
+> These are code defects; the fix is 📋 UNBUILT (no issue). The correct
+> re-display is the recursion `first_char_grim` uses, or a goto-callable. Do not read this note
 > as blessing any of the nine.
 
 ---
@@ -402,10 +395,10 @@ If you see node names appearing as text output, you're returning a string during
 When creating a new EvMenu text-input node:
 
 - [ ] Input validation checks `if raw_string and raw_string.strip():`
-- [ ] Errors return `None` (not node name string)
+- [ ] Errors re-display by calling the node itself: `return this_node(caller, "", **kwargs)`. Never `return None` from a node; that closes the menu. `None` means "re-display" only when a goto-callable returns it.
 - [ ] Successful input calls next node: `return next_node(caller, "", **kwargs)`
 - [ ] Display mode returns `(text, options)` tuple
-- [ ] Options include `{"key": "_default", "goto": "self"}`
+- [ ] Options include `{"key": "_default", "goto": "<this node's own name>"}`
 - [ ] Tested: blank input doesn't trigger validation
 - [ ] Tested: valid input advances to next node
 - [ ] Tested: invalid input re-displays with error message

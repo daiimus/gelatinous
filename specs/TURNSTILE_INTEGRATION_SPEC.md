@@ -9,7 +9,7 @@
 > - A half-configured deployment (one key only) is **off**, not half-on, and logs `"Turnstile is half-configured: … The CAPTCHA is NOT protecting registration. Set both or neither."` naming the missing key (`accounts.py:44-49`).
 > - The widget div *and* the script tag are gated on `turnstile_enabled`, not on the site key (`web/templates/website/registration/register.html:50` and `:83`) — so a missing **secret** key also makes the widget vanish.
 > - `verify_turnstile()` with no secret now **fails closed** (`accounts.py:136-147`); it used to `return True`. Network / JSON / timeout failures fail closed too (`:178-184`).
-> - Pinned by `world/tests/test_registration_captcha.py` (9 tests across `TestOneDecision`, `TestAHalfConfiguredDeploymentSaysSo`, `TestVerificationFailsClosed`).
+> - Pinned by `world/tests/test_registration_captcha.py` (`TestOneDecision`, `TestAHalfConfiguredDeploymentSaysSo`, `TestVerificationFailsClosed`, and, since #3398, `TestTheClientAddressIsTheOneCloudflareSaw` and `TestARefusalSaysWhy`).
 > - Issue #1513 still carries the superseded wording "empty keys cause `views/accounts.py:62-63` to skip verification **and return True**" — the `return True` is gone; only the skip remains.
 >
 > Read every note dated 2026-09-12 below alongside the section it sits in; those sections were written against the pre-#2747 design.
@@ -76,15 +76,10 @@ TURNSTILE_SECRET_KEY = "your-secret-key-here"
 
 ### 3. Install Required Python Package
 
-The Turnstile integration uses the `requests` library for server-side verification:
+The verification uses the `requests` library, imported by `web/website/views/accounts.py`. The repo has no `requirements.txt`; its `docker-compose.yml` names the stock Evennia container image, which must provide `requests`. Outside that image, install it:
 
 ```bash
 pip install requests
-```
-
-Or add to your `requirements.txt`:
-```
-requests>=2.31.0
 ```
 
 ### 4. Enable Account Registration
@@ -94,12 +89,9 @@ Make sure account registration is enabled in `server/conf/settings.py`:
 NEW_ACCOUNT_REGISTRATION_ENABLED = True
 ```
 
-### 5. Restart Evennia
+### 5. Reload
 
-```bash
-evennia stop
-evennia start
-```
+Run `@reload` from inside the game (see `AGENTS.md`, "Reload from inside the game"; a reload needs the owner's go). The keys are read by the Server, so a Portal restart is not needed.
 
 ## Testing
 
@@ -131,6 +123,8 @@ Use these for development/testing without creating a Cloudflare account.
 
 ## How It Works
 
+As built: with both keys empty, registration runs with no CAPTCHA and logs nothing, so a fresh clone works without a Cloudflare account. With one key set, the CAPTCHA is also off, and the server logs an error each time the registration page is shown or sent.
+
 ### Client-Side (Template):
 
 1. Turnstile JavaScript widget loads: `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js">`
@@ -140,17 +134,17 @@ Use these for development/testing without creating a Cloudflare account.
 
 ### Server-Side (View):
 
-1. Form submitted with Turnstile token
-2. `TurnstileAccountCreateView.form_valid()` extracts token
-3. `verify_turnstile()` sends token to Cloudflare API for verification
-4. If verified: Account creation proceeds
-5. If failed: Form error displayed, account not created
+1. Form submitted.
+2. `TurnstileAccountCreateView.form_valid()` asks `turnstile_config()` whether the CAPTCHA is on (both keys set). If it is off, it goes straight to step 4.
+3. If it is on, `verify_turnstile()` sends the token to Cloudflare. A refusal, network error, bad reply or timeout rejects the form with "CAPTCHA verification failed. Please try again." and no account is made.
+4. Email and username are checked against existing accounts (case-insensitive); a duplicate rejects the form.
+5. Evennia creates the account and the player is sent to the login page.
 
 ### Security Features:
 
 - Token validation requires secret key (never exposed to client)
 - Token is single-use (can't be reused)
-- IP address included in verification — only the address Cloudflare saw (`CF-Connecting-IP`, set by the tunnel and unforgeable through it); with no such header the payload carries no `remoteip` at all, which Cloudflare allows. Neither `X-Forwarded-For` (the client's own claim; proxies append) nor `REMOTE_ADDR` is trusted: Evennia's webserver rewrites `REMOTE_ADDR` from that same leftmost claim behind an upstream proxy. Fixed 2026-10-09 (#3398); before that `get_client_ip()` took the leftmost `X-Forwarded-For` element. `remoteip` is optional and can only make verification stricter, never looser, so it was never a security control. A refused verification now logs Cloudflare's `error-codes`, so a genuine "CAPTCHA verification failed" can be diagnosed from the server log; the Turnstile dashboard shows aggregate outcomes only.
+- IP address included in verification — only the address Cloudflare saw (`CF-Connecting-IP`, set by the tunnel and unforgeable through it); with no such header the payload carries no `remoteip` at all, which Cloudflare allows. Neither `X-Forwarded-For` (the client's own claim; proxies append) nor `REMOTE_ADDR` is trusted: Evennia's webserver rewrites `REMOTE_ADDR` from that same leftmost claim behind an upstream proxy. Fixed 2026-10-09 (#3398); before that `get_client_ip()` took the leftmost `X-Forwarded-For` element. `remoteip` is optional and can only make verification stricter, never looser, so it was never a security control. A refused verification now logs Cloudflare's `error-codes`, so a genuine "CAPTCHA verification failed" can be diagnosed from the server log; the Turnstile dashboard shows aggregate outcomes only. The address is read by `world.client_address.from_request`, the same helper the website login door uses (#3734).
 - Verification happens server-side (can't be bypassed client-side)
 
 ## Customization
@@ -170,15 +164,7 @@ The Turnstile widget supports several themes and sizes:
 
 ### Error Messages:
 
-Customize error messages in `web/website/forms.py`:
-
-```python
-cf_turnstile_response = forms.CharField(
-    error_messages={
-        'required': 'Your custom error message here'
-    }
-)
-```
+The message shown when verification fails is set in `TurnstileAccountCreateView.form_valid` (`web/website/views/accounts.py`): "CAPTCHA verification failed. Please try again." The alert shown when someone submits before the widget finishes is in `web/templates/website/registration/register.html`. The `'required'` message on the form field in `web/website/forms.py` is never shown, because the field is optional.
 
 ### Verification Endpoint:
 
@@ -201,34 +187,34 @@ The verification happens at Cloudflare's API:
 **Solutions:**
 - Check `TURNSTILE_SECRET_KEY` in settings
 - Ensure server can reach `challenges.cloudflare.com`
-- Check server logs for specific error messages
+- Check the server log for `Turnstile verification refused: error-codes=[…]` (Cloudflare said no, with its reason) or `Turnstile verification error: …` (Cloudflare could not be reached or answered badly; the registration is refused)
 - Try refreshing the page and verifying again
 
 ### Issue: Widget not appearing
 
 **Causes:**
-- Missing or incorrect site key
+- One or both keys missing (the widget renders only when BOTH `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set; the server log names the missing one)
+- Incorrect site key
 - JavaScript blocked
 - Ad blocker blocking Cloudflare
 - Missing Turnstile script tag
 
 **Solutions:**
-- Verify `TURNSTILE_SITE_KEY` in template context
+- Check that the template context has `turnstile_enabled` true and a non-empty `turnstile_site_key`
 - Check browser console for errors
 - Temporarily disable ad blockers
 - Ensure `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js">` is loaded
 
-### Issue: "TURNSTILE_SECRET_KEY not configured"
+### Issue: server log says "Turnstile is half-configured"
 
 **Solution:**
-- Add `TURNSTILE_SECRET_KEY` to `server/conf/settings.py` or `secret_settings.py`
+- Only one of the two keys is set, so the CAPTCHA is off. Set both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in `server/conf/secret_settings.py`, or neither.
 
 ### Issue: Form submits without verification
 
 **Solution:**
-- Ensure hidden field `id_cf_turnstile_response` exists in form
-- Check JavaScript callback `onTurnstileSuccess()` is firing
-- Verify form validation in template
+- The server checks the token only when BOTH `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set. With both empty, registration has no CAPTCHA. With only one set, it has none either, and the server log shows `Turnstile is half-configured: … Set both or neither.` Set both keys.
+- The browser check (hidden field `id_cf_turnstile_response`, callback `onTurnstileSuccess()`) only stops the form being sent before the widget finishes. It is not the protection: the server refuses an unverified post whatever the browser does.
 
 ## Production Deployment
 
@@ -243,7 +229,7 @@ The verification happens at Cloudflare's API:
 
 ### Environment Variables (Alternative):
 
-Instead of settings files, you can use environment variables:
+`server/conf/settings.py` does not read environment variables; setting them does nothing on its own. To use them, replace the two Turnstile lines in `server/conf/settings.py` with:
 
 ```python
 # In settings.py
@@ -275,7 +261,7 @@ If you encounter issues:
 
 ## Future Enhancements
 
-Potential improvements:
+Potential improvements. 📋 UNBUILT (not decided): none of these is in the code, and none has a ruling or an issue.
 - [ ] Add Turnstile to password reset form
 - [ ] Add Turnstile to contact forms
 - [ ] Implement retry logic for network failures
