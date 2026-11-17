@@ -2010,9 +2010,13 @@ def erase_look(observer: Any, uid: str) -> str:
     that went with them. Owner, 2026-11-16, asked whether what an NPC
     holds against a mask it saw through goes when it forgets who was
     under it, as it does for a mask it watched go on: "Yeah, your
-    assessment is solid." The voices are the voice entries that were
-    erased and no others: a disguised voice the observer had placed
-    by one of them is not reported (#3861, not ruled).
+    assessment is solid." The voices are told the same way (#3861):
+    the voice entries that were erased, and the voices the observer
+    holds no entry for whose won verdict went with one of those. It
+    could tell such a voice only by the name it has just forgotten.
+    Owner, 2026-11-16, asked whether what an NPC noted from a changed
+    voice before it recognised it goes too, as it does for a mask:
+    "You recommendation is fine."
 
     It used to blank the name and keep the entry, so naming the look
     again brought back its links and carried on its seen-count; and it
@@ -2026,7 +2030,8 @@ def erase_look(observer: Any, uid: str) -> str:
 
     # Voices named before a voice recorded its look are told by name and
     # body. Write the look on them while this entry can still be matched.
-    from world.voice import erase_voices_named, settle_older_voices
+    from world.voice import (
+        erase_voices_named, settle_older_voices, won_voice_verdicts)
     settle_older_voices(observer)
 
     # Worked out while the entry is still there to be found.
@@ -2071,9 +2076,15 @@ def erase_look(observer: Any, uid: str) -> str:
                        if look not in memory}
 
     voices_before = set(getattr(observer, "voice_memory", None) or {})
+    verdicts_before = won_voice_verdicts(observer)
     erase_voices_named(observer, name, look_uid=uid, real_sleeve_uid=sleeve)
-    gone_voices = voices_before - set(
-        getattr(observer, "voice_memory", None) or {})
+    voices_after = set(getattr(observer, "voice_memory", None) or {})
+    gone_voices = voices_before - voices_after
+    # The voice twin of `strangers_again` (#3861): a voice the observer
+    # holds no entry for, whose won verdict has just gone. One that
+    # still has an entry is not reported.
+    dropped = verdicts_before - won_voice_verdicts(observer)
+    gone_voices |= {voice for _dbref, voice in dropped} - voices_after
 
     # What the observer filed for itself under those looks and voices
     # goes with them (#3841). Only the observer knows what that is.
