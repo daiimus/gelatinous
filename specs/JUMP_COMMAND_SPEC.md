@@ -52,7 +52,9 @@
 > (`server/conf/at_server_startstop.py`): it resumes every recorded fall
 > at its TRUE remaining time, defers a step that came due during the
 > outage by 2 s so the world is loaded first, and starts a fall for
-> anything found stranded in an air cell that cannot stay up. A
+> any body or item found in an air cell with no fall record that cannot
+> stay up and has a `down` exit to fall through (a body parked at a
+> bare cell, #3581, is left where it is). A
 > logged-out faller keeps its record and is resumed by the reconnect
 > path. The cadence is no longer 0.5 s/story either: it is
 > `FALL_SECONDS_PER_CELL` (1.0 s), and each tick is a real move into the
@@ -73,16 +75,10 @@
 >   The incidental coverage in `test_drop_to_room.py` and
 >   `test_build_tools.py` still exists alongside them.)_
 
-**Status: IMPLEMENTATION COMPLETE** ✅
+Phase 3 (elevated-position combat bonuses, enhanced aim from edges) is 📋 UNBUILT (#1511).
 
-> _(2026-09-11: STALE — superseded by the status banner at the top of this
-> file, which lists this header among the claims that were already FALSE
-> when audited on 2026-08-02. The banner flagged it and left it standing,
-> so the two lines have contradicted each other ever since. Phase 3 still
-> has no code (#1511, open, parked). Left in place per
-> annotate-don't-delete; the banner is authoritative.)_  
 **Location:** `commands/combat/jump.py` - CmdJump class  
-**Integration:** Added to combat cmdset, ready for live testing
+**Integration:** `CmdJump` is in the combat cmdset (`commands/combat/cmdset_combat.py`).
 
 ## Overview
 The `jump` command serves two distinct heroic and tactical functions: **explosive sacrifice** to protect others from blast damage, and **tactical descent** from elevated positions via edge exits. It integrates with existing explosive mechanics and introduces new vertical combat positioning.
@@ -110,11 +106,11 @@ jump across <direction> edge  # Horizontal leap across gaps at same level
      countdown are read at `jump.py:186-188` only to choose which revelation
      branch fires 2.5s later. An unarmed grenade is accepted and answered
      with "...but nothing happens. X wasn't even armed." (`jump.py:428`).)_
-4. **Caller can be in or out of combat** (heroic actions transcend combat state)
+4. **Caller can be in or out of combat**, but is refused while someone holds them in a grapple ("You cannot perform heroic sacrifices while being grappled by X!")
 5. **No proximity requirement** (can jump on explosive from anywhere in room)
 
 #### Timing Mechanics
-- **Timer-based window**: Can only jump on explosive while countdown is active
+- **No timer window**: a jump on any explosive is accepted at any time, armed or not; whether it was live is revealed when the outcome lands (see the note under Validation Requirements)
 - **Instant execution**: No delay once command is entered
   - _(2026-09-11: false as shipped. `jump.py:194-206` computes a
     `revelation_delay` — 2.5s normally, `remaining_time - 0.3` when the fuse
@@ -130,16 +126,19 @@ jump across <direction> edge  # Horizontal leap across gaps at same level
     inheriting it.)_
 - **Damage amplification**: Hero takes ALL explosive damage (100% absorption)
 - **Complete protection**: Everyone else in proximity takes zero damage
+- **Human shield (exception)**: if the hero is holding someone in a grapple in the same room, the room is told the hero leapt "while still holding" them, and the held victim takes the blast instead: twice `blast_damage`, to the chest, while the hero takes none. The hero is told if the blast killed the victim, and the grapple breaks after the blast (the `release_blast` beat). The 2× and 0 shares are fixed numbers in `reveal_outcome` (`handle_explosive_sacrifice`), as built.
 
 #### Damage Calculation
 ```
-Hero damage = explosive.db.blast_damage + positional_bonus
+Hero damage   = explosive.db.blast_damage (10 if unset), to the chest,
+                of explosive.db.damage_type (default "blast"); no bonus
 Others damage = 0 (complete protection)
+Human shield  = the held victim takes 2 x blast_damage; the hero takes 0
 ```
 
 #### Integration with Grenade System
 - **Works with all explosive types**: Standard grenades, flashbangs, smoke grenades, etc.
-- **Property-driven**: Uses existing `db.blast_damage`, `db.fuse_time` properties
+- **Property-driven**: reads `db.is_explosive`, `db.pin_pulled`, the live countdown (`ndb.countdown_remaining`), `db.blast_damage` and `db.damage_type`
 - **Chain reaction prevention**: Hero absorbs damage, explosive doesn't trigger other explosives
 - **Timer system**: Integrates with existing countdown mechanics from throw command
 - **Proximity positioning**: Hero ends up in proximity to explosive (and inherits ALL its proximity relationships)
@@ -180,22 +179,23 @@ Others damage = 0 (complete protection)
 1. **Edge exit must exist** in current room
 2. **Edge must be valid**: `db.is_edge = True` on exit object
 3. **Destination must exist**: Exit leads to valid room below
-4. **Caller movement allowed**: Standard movement restrictions apply
+4. **Caller movement allowed**: refused first of all while someone holds the jumper in a grapple. After the exit checks, the jumper's own gates (a channel, or an escortee who cannot be walked over the edge; `refused_at_the_threshold`) refuse at no cost. Then, in a fight, the jump pays flee's price (see Turn-Based Considerations)
 
 #### Gap Jump Validation Requirements
 1. **Gap exit must exist** in current room
 2. **Gap must be valid**: `db.is_gap = True` on exit object  
-3. **Destination must exist**: Exit leads to valid room at same level
+3. **Far perch must resolve**: `gap_destination` (or the exit's own destination when that is not air) must be a real room that is not air, or the jump is refused on the roof ("The X gap doesn't lead anywhere safe to land.")
 4. **Jump success check**: General Motorics stat check vs gap difficulty
-5. **Caller movement allowed**: Standard movement restrictions apply
+5. **Caller movement allowed**: refused first of all while someone holds the jumper in a grapple. After the exit checks and before the roll, the jumper's own gates (a channel, or an escortee who cannot be walked to the gap; `refused_at_the_threshold`) refuse at no cost, and then, in a fight, the jump pays flee's price (see Turn-Based Considerations)
 
 #### Tactical Advantages of Edge Positions
-- **Elevated combat**: Height advantage for ranged attacks
-- **Protected position**: Not adjacent to ground level - prevents melee advancement
-- **Sniper mechanics**: Enhanced aim and attack capabilities
+- **Elevated combat**: Height advantage for ranged attacks — 📋 UNBUILT (#1511)
+- **Protected position**: `advance`, `charge` and `flee` refuse to cross an edge, a gap or a way into air (`can_leave_by`, `world/gravity.py`), so no melee approach reaches a roof whose only links are such exits
+- **Sniper mechanics**: Enhanced aim and attack capabilities — 📋 UNBUILT (#1511)
 - **Observation**: Can look down on ground level (enhanced reconnaissance)
-  - _(2026-09-16, #3589: **built, downward only, and only through an
-    aim.** Aiming through an edge and looking renders the ground below —
+  - _(2026-09-16, #3589: **built, only through an
+    aim** (over an edge, the ground below; over a gap, the far perch;
+    with nothing open below, such as an interior, the air cell itself). Aiming through an edge and looking renders the ground below —
     the air cell is skipped — and the aimed-room target search sees the
     people standing there, so reconnaissance over a parapet is real. Two
     limits: there is no `look <direction>` verb, so the aim is the only
@@ -219,29 +219,29 @@ Others damage = 0 (complete protection)
 #### Validation Flow
 ```
 1. Parse "jump on <explosive>" syntax
-2. Find explosive object in room
-3. Validate explosive is armed and counting down
-4. Calculate heroic damage (full blast + bonus)
-5. Cancel explosive's normal detonation
-6. Apply damage to hero only
-7. Announce heroic sacrifice
-8. Clean up explosive and timer state
+2. Refuse if someone holds the caller in a grapple
+3. Find the object in the room; refuse if it is not db.is_explosive
+4. Refuse if another hero has already claimed it
+5. Stop its fuse at once if it is live (armed and counting down)
+6. Announce the leap
+7. After the reveal delay (2.5 s, or the fuse's remaining time minus 0.3 s
+   when that is shorter, at least 0.5 s):
+   - live: the hero (or the held victim, see Human shield) takes the
+     damage, the hero takes on the explosive's proximity, the explosive
+     is deleted, and the hero skips their next round
+   - armed but not counting down: the "click" dud line
+   - not armed: the "wasn't even armed" line
 ```
 
 #### Timer System Integration
 ```python
-# Pseudo-code for explosive timing
+# Design sketch, not the shipped code: handle_explosive_sacrifice
+# (commands/combat/jump.py) refuses nothing for being unarmed or expired;
+# it accepts the leap and reveals a dud or an unarmed device later.
 def jump_on_explosive(caller, explosive):
-    if not explosive.db.pin_pulled:
-        return "The explosive is not armed!"
-    
-    current_timer = explosive.ndb.countdown_remaining
-    if current_timer <= 0:
-        return "Too late! The explosive has already detonated!"
-    
-    # Hero takes all damage
-    hero_damage = explosive.db.blast_damage + 10  # heroic bonus damage
-    explosive_damage_type = getattr(explosive.db, "damage_type", "laceration")
+    # Hero takes all damage (no bonus)
+    hero_damage = explosive.db.blast_damage if explosive.db.blast_damage is not None else 10
+    explosive_damage_type = explosive.db.damage_type if explosive.db.damage_type is not None else "blast"
     apply_damage(caller, hero_damage, location="chest", injury_type=explosive_damage_type)
     
     # Cancel normal explosion
@@ -450,7 +450,7 @@ gap_exit.db.gap_width = "medium"         # descriptive only
 ```python
 # Exit object properties for edge designation
 exit.db.is_edge = True
-exit.db.edge_type = "rooftop"     # Optional categorization
+exit.db.edge_type = "rooftop"     # Descriptive only; no runtime reader
 exit.db.edge_difficulty = 8       # Landing-roll base; omit for FALL_EDGE_DIFFICULTY_DEFAULT (8)
 # exit.db.fall_damage = 8         # RETIRED (#3579): damage is FALL_DAMAGE_PER_STORY x cells passed
 
@@ -496,9 +496,10 @@ flier.db.stays_aloft = True        # strict `is True`; the seam for flight / veh
 # those sideways exits are ALSO what the fall announces to — every walkable
 # surface beside a cell a body passes through sees it go by.
 #
-# Future Compatibility: air cells already support flying vehicles/characters —
-# `db.stays_aloft is True` is the single predicate gravity asks, and anything
-# that answers True sits in the cell and watches other people fall past.
+# Future Compatibility: `db.stays_aloft is True` is the single predicate gravity
+# asks, and anything that answers True sits in the cell and watches other
+# people fall past. Walking through air while aloft is 📋 UNBUILT (no issue):
+# the sky block in Exit.at_traverse refuses every walker.
 ```
 
 #### Jump Descent Flow
@@ -540,7 +541,9 @@ cells** rather than dividing the damage — owner's shape: skill turns a
 fall into a shorter fall, so a two-storey drop landed well is free and a
 twelve-storey one is not survivable by skill alone. A **failed leap never
 rolls**, and neither does an **item**: things take no damage at all, they
-arrive and are heard arriving.
+arrive and are heard arriving. A thing whose fall ends, landed or stopped in
+the air, loses any hiding place it had (`_forget_stash`, #3773): it lies in
+plain sight where it was heard to stop.
 
 **Damage** is `FALL_DAMAGE_PER_STORY` (5) × effective cells, `blunt`,
 charged once at the bottom, and it is **filled from the feet up** —
@@ -572,8 +575,10 @@ at the landing room, the grappler yielding.
 `FALL_DAMAGE_PER_STORY`, no roll, no traversal — and with a grappled
 victim, the made split applied to that one storey.
 
-All eleven constants named above are registered in
-`specs/roadmaps/BALANCE_LEDGER.md`, all currently **Tuned? No**.
+All eleven gravity constants (the six named above, plus
+`FALL_BODYSHIELD_FAILED_VICTIM` 1.5, `FALL_BODYSHIELD_FAILED_GRAPPLER` 0.5,
+`FALL_SECONDS_PER_CELL`, `GAP_DIFFICULTY_DEFAULT` and `FALL_MAX_CELLS`) are
+registered in `specs/roadmaps/BALANCE_LEDGER.md`, all currently **Tuned? No**.
 
 #### Gap Jump Flow
 ```
@@ -585,7 +590,7 @@ All eleven constants named above are registered in
 6. **Check for rigged grenades on landing edge** (new security integration)
 7. On failure or critical failure: Fall to failure_room with fall damage
 8. Announce jump attempt and outcome
-9. Consume combat turn (flee-like timing)
+9. A made leap costs no round; a miss costs the next round (on landing, or at once on a slip in place)
 10. Calculate fall damage: rooms_fallen × damage_multiplier
 ```
 
@@ -606,6 +611,18 @@ All eleven constants named above are registered in
 > x cells actually passed, charged once at the bottom, and a failed leap
 > never rolls to land. Step 6 still happens, in
 > `finalize_successful_gap_jump`, on the made branch only.)_
+
+A gap with no air between the surfaces (its exit leads straight to a room
+that is not air): a made leap moves the jumper to the perch at once; a miss
+does not fall. The jumper slips in place on the roof, takes one storey of
+`FALL_DAMAGE_PER_STORY`, and loses the next round (`handle_fall_failure`,
+`commands/combat/jump.py`).
+
+A gap jumper holding someone in a grapple never takes them along. The hold
+breaks only once the leap is real (after the jumper's move has happened, or
+on a slip in place; a refused move keeps it), the victim stays on the roof,
+and the `release_jump` beat is spoken there (`let_go_for_the_leap`, #3684).
+Only an edge descent drags a held victim.
 
 #### Rigged Grenade Integration for Gap Jumps
 
@@ -647,12 +664,11 @@ for obj in destination.contents:
 - **Elevated rooms**: Rooms with edge exits have tactical advantage
 - **Ground rooms**: Normal rooms accessible via edge descent
 - **Sky rooms**: Transit-only spaces for edge/gap movement - **restricted from normal traversal**
-- **Fall rooms**: Failure destinations with fall damage based on room count fallen
+- **Landing**: a fall ends at the first room in the column that is not air; there are no fall rooms (#3580)
 - **3D connectivity**: Sky rooms have bidirectional exits (east sky has west return)
-- **Damage calculation**: Fall damage = rooms fallen × damage multiplier
-- **Bidirectional awareness**: People below can potentially see elevated positions
-- **Edge visibility**: Edge and gap properties visible in room descriptions (future look framework)
-- **Framework building**: Current implementation focuses on mechanics, visibility enhancements later
+- **Damage calculation**: `FALL_DAMAGE_PER_STORY` × cells passed, two cells fewer (`FALL_LANDING_ABSORBED_CELLS`) when an edge descent's landing roll is made
+- **Awareness**: from a roof, aiming over an edge shows the ground below (#3589); seeing a roof from the street is 📋 UNBUILT (#1511)
+- **Edge visibility**: edges and gaps are named in the room's exit prose ("There is an edge to the north.", "There is a gap to the east."); an exit that is both an edge and a gap is listed as an edge
 
 #### Sky Room Traversal Restrictions
 
@@ -672,7 +688,7 @@ for obj in destination.contents:
 
 - **Normal movement blocked**: Characters cannot use standard movement commands (n, s, e, w, up, down) to enter or exit sky rooms
 - ~~**Jump system exempt**: Jump commands can move through sky rooms using `ndb.jump_movement_allowed` flag~~ — _RETIRED (#3579): the flag is deleted; there is no exemption_
-- **Visibility filtering**: Pure sky rooms are hidden from room exit displays (not shown in "Exits:" listing)
+- **Visibility filtering**: Pure sky rooms are hidden from room exit displays (not shown in "Exits:" listing). Inside an air cell no exits are listed at all (`get_custom_exit_display`)
 - **Edge/gap exception**: Sky rooms that are also edges/gaps are visible but blocked by existing edge/gap restrictions
 - **Clear error messages**: Informative feedback when players attempt forbidden movement
 - **Gravity system support**: Fall mechanics work normally through sky rooms
@@ -768,13 +784,14 @@ if destination_is_sky and not (is_edge or is_gap):
 > therefore not about adjacency — a ground-level opponent cannot advance
 > up onto a rooftop because the only exit between the two rooms is a
 > thing you jump off, and `advance` says so: "The only way to X is over
-> the N edge — that is a jump, not a charge." The same predicate is what
+> the N edge -- that is a jump, not an advance." (`charge` says the same,
+> ending "not a charge.") The same predicate is what
 > limits the retreat: on a roof with nothing but edges, the escape route
 > is the jump, and the jump has a price. See "Fights at the edge (#3583)"
 > below.)_
 
 ### Turn-Based Considerations
-- **Jump on explosive**: Immediate action, bypasses turn system (heroic emergency action)
+- **Jump on explosive**: the leap is announced at once and the outcome lands about 2.5 s later; a live sacrifice costs the hero their next round; refused while grappled
 - **Jump off edge**: Counts as movement action if in combat (flee-like timing)
 - **Jump across gap**: Counts as movement action if in combat (flee-like timing)
 - **Position bonuses**: Elevated positions provide combat modifiers
@@ -823,15 +840,16 @@ if destination_is_sky and not (is_edge or is_gap):
 
 > _(2026-09-11: illustrative, not shipped text. Every string below differs
 > from the code — e.g. the sacrifice line is "{actor} makes the ultimate
-> sacrifice, leaping onto X!" (`jump.py:242-262`), the edge departure is
-> "{actor} leaps off the X edge!" (`jump.py:616`), the successful landing is
-> "{actor} lands with athletic grace from above!" (`jump.py:1230`). Shipped
+> sacrifice, leaping onto X!" (`handle_explosive_sacrifice`), the edge
+> departure is "{actor} leaps off the X edge!" (`handle_edge_descent`), the
+> landing line is "{actor} lands with athletic grace from above!" or
+> "{actor} crashes down from above with a bone-jarring impact!"
+> (`world/gravity.py` `_land`). Shipped
 > lines are rendered through `msg_room_identity` with `{actor}`/`{victim}`
 > refs, so the actor is named per-observer rather than as a fixed name.
-> **Defect, not a spec error:** the sacrifice lines interpolate the player's
-> raw typed argument (`self.explosive_name`, at `jump.py:246`, `259`, `385`,
-> `407`, `421`, `428`) instead of the resolved object's name — `jump on
-> gren` announces "...leaping onto gren!".)_
+> The sacrifice lines name the explosive the search found, with its
+> article, not the word the player typed: `jump on gren` announces
+> "...leaping onto the grenade!" (#3354).)_
 
 ### Explosive Sacrifice Messages
 - **Hero message**: "You leap onto the grenade, shielding everyone with your body!"
@@ -897,7 +915,7 @@ exits are the fallback, not the source of truth.
 |---|---|
 | Directional attack (`commands/combat/core_actions.py`) | Fires into `room_through(exit)`. `None` refuses the shot: "You are aiming `<dir>`, but there's nothing down there to hit." |
 | Aiming look (`typeclasses/rooms.py` `return_appearance`) | Renders the ground below rather than the air cell, and composes that room's own layers (graffiti, weather, `@integrate` content). |
-| Aimed-room target search (`typeclasses/rooms.py`) | The unified candidate list is drawn from the room the aim really reaches. |
+| Aimed `look <target>` (`commands/CmdLook.py`, through `Room.aimed_room_for`) | Finds a person (by description) or a thing in the room the aim really reaches, before searching the looker's own reach. |
 | Throw, the **`at`** form (`CmdThrow.find_target`) | Resolves the aimed room through `room_through(find_throw_exit(aim))`, so `throw grenade at thug` finds the thug on the street below and the object flies to the **target's** room. |
 
 Both look paths fall back to the air cell when `room_through` answers
@@ -926,16 +944,17 @@ one. The *aim* reaches downward only.
 
 **Two exposures the adversarial review named; owner rulings 2026-09-16:**
 
-- **The aimed room widens every bare search — FILED #3596, to be
-  addressed.** `Character.get_search_candidates` merges the aimed room's
-  contents into any search made while aiming that supplies no candidate
-  list of its own — so `get shiv` can reach an object in the room you
-  are aiming into. Pre-existing, and inert over an edge only because air
-  cells are empty; #3589 makes an edge behave like a doorway for that
-  widening, and the aimed room is now a populated street. Owner:
+- **The aimed room widens no search (#3596, #3761).**
+  `Character.get_search_candidates` adds nothing from the aimed room.
+  The commands that reach the aimed room name it themselves: the aim
+  view (`Room.return_appearance`), `look <target>` (`commands/CmdLook.py`,
+  which tries a person by description, then a thing, in the aimed room
+  before the looker's own reach), `attack` and `throw ... at`. `put`,
+  `scan`, `diagnose`, `tune`, `remember`, `to`, `whisper` and targeted
+  emotes reach only the room the character stands in. This follows the
+  owner's rulings of 2026-10-24 on the audit recorded on #3596. When the
+  widening was first found, owner 2026-09-16:
   *"Document this as an issue. We'll need to address this somehow."*
-  The issue holds the audit needed (which commands do a bare search with
-  no distance guard after it) and three directions.
 - **The target answers without the shooter's constraints — BY DESIGN.**
   Aiming upward is unbuilt (#1511), but the attack command enrols the
   victim with the shooter as their target
@@ -983,11 +1002,16 @@ can name it: *"The only way to X is over the N edge — that is a jump, not
 a charge."* `advance` asks this before it rolls the grapple drag-resist
 contest, so a grappler who cannot go that way never drags their victim
 into a doomed roll. NPC souls ask it too (`world/souls/jobs.py`'s flee
-job, which reports "cornered — nowhere to flee"). The flags are read
-strictly everywhere — `can_leave_by`, the jump verbs
-(`exit_obj.db.is_edge is not True`) and `Exit.at_traverse` all require a
-literal `True`, so a truthy-but-not-`True` attribute left by an old build
-script cannot be an edge in one place and a plain exit in another.
+job, which reports "cornered — nowhere to flee"). The movement gates read
+the edge and gap flags strictly — `can_leave_by`, the jump verbs' edge and
+gap checks (`exit_obj.db.is_edge is not True`) and `Exit.at_traverse`'s
+edge and gap block all require a literal `True`, so a truthy-but-not-`True`
+attribute left by an old build script cannot be an edge in one gate and a
+plain exit in another. Three readers are not strict: the gap landing's
+search for the return edge (`finalize_successful_gap_jump`, a truthy
+`is_edge`), the exit's look descriptions in `typeclasses/exits.py`, and
+`Exit.at_traverse`'s sky-room block, which reads `is_sky_room` truthily
+where `world.gravity.is_sky` wants a literal `True`.
 
 > Owner: *"It would be refused at the edge… Ideally, very few rooftops
 > will exist without exits though — so ending up on one where all you can
@@ -1046,8 +1070,9 @@ apart:
   and the jump verbs pass True on both halves. Flee is unchanged.)_
 - **The jump goes regardless** — *"You throw yourself at the edge
   regardless."* The only thing that stops it is an opportunity attack
-  leaving the jumper dead or unconscious. It is never refused, and it
-  never costs a round.
+  leaving the jumper dead or unconscious. Paying the price never refuses
+  the jump and never costs a round. The jumper's own gates, a channel or
+  a barred escort, refuse it before anything is paid (#3685).
 - Each roll only happens if there is someone to roll against: no aimer,
   no aim contest; no combat handler or nobody targeting the jumper, no
   disengage roll. Jumping out of an empty room costs nothing, and the
@@ -1072,12 +1097,14 @@ point of the ruling:
 
 | | lost aim contest | lost disengage roll |
 |---|---|---|
-| `flee` | aimer's opportunity attack (next round), flee continues | **blocked**, and `NDB_SKIP_ROUND` |
+| `flee` | aimer's opportunity attack (next round), and the flee ends there | **blocked**, and `NDB_SKIP_ROUND` |
 | `jump off` / `jump across` | aimer's opportunity attack (**immediate**), jump continues | blocker's opportunity attack (**immediate**), **jump continues** |
 
-A jump is never refused and never costs a round — *"You throw yourself at
-the edge regardless."* — and only an attack that leaves the jumper dead
-or unconscious stops it.
+Paying the price never refuses a jump and never costs a round — *"You
+throw yourself at the edge regardless."* — and only an attack that leaves
+the jumper dead or unconscious stops it. The jumper's own gates, a channel
+or a barred escort, refuse the jump earlier, before anything is paid
+(#3685).
 
 _(2026-09-16, #3591: RULED and built. A jump in a fight pays BOTH halves of
 flee's price: the aim contest (`break_aim_lock`) AND the melee disengage
@@ -1155,6 +1182,8 @@ and a fall that runs out of column stops with the impasse message instead
 (see Edge Descent Errors).
 
 ### Message Variations by Context
+`📋 UNBUILT (no issue)`: the lines do not vary by explosive, edge or gap
+type; each verb has one fixed set.
 - **Different explosives**: "Alice dives onto the flashbang!" vs "Alice covers the pipe bomb!"
 - **Edge types**: "Alice leaps from the fire escape!" vs "Alice jumps down from the balcony!"
 - **Gap types**: "Alice vaults across the alley!" vs "Alice bounds between rooftops!"
@@ -1163,11 +1192,11 @@ and a fall that runs out of column stops with the impasse message instead
 
 ### Explosive Sacrifice Errors
 
-> _(2026-09-11: none of the four strings below is in the code. Shipped:
-> `jump.py:158` "You don't see 'X' here."; `jump.py:165` "X is not an
+> _(2026-09-11: none of the four strings below is in the code. Shipped, in
+> `handle_explosive_sacrifice`: "You don't see 'X' here."; "X is not an
 > explosive device." (an object-type check this section omits);
-> `jump.py:420-421` "...but X makes only a small 'click' sound. It was a dud
-> or the timer expired."; `jump.py:428` "...but nothing happens. X wasn't
+> "...but X makes only a small 'click' sound. It was a dud
+> or the timer expired."; "...but nothing happens. X wasn't
 > even armed." The last two are delayed OUTCOMES broadcast to the room, not
 > refusals — see the Validation Requirements note above.)_
 - **Explosive not found**: "You cannot find '<explosive>' to jump on."
@@ -1178,32 +1207,41 @@ and a fall that runs out of column stops with the impasse message instead
 ### Edge Descent Errors
 
 > _(2026-09-11: shipped strings differ and one refusal is missing here.
-> `find_edge_exit` (`jump.py:700-716`) says "There is no exit to the X."
-> (`jump.py:706`) and "The X exit doesn't lead anywhere." (`jump.py:713`);
-> `jump.py:472` "The X exit is not an edge you can jump from.";
-> `jump.py:477` "The X edge doesn't lead anywhere safe to land.". There is
-> no "blocked" refusal at all — walking an edge is blocked instead, in
-> `Exit.at_traverse` (`typeclasses/exits.py:115-119`). Missing from this
-> list: the #2944 refusal at `jump.py:496-524` — "You lean out over the X
+> `find_edge_exit` says "There is no exit to the X." and "The X exit
+> doesn't lead anywhere."; `handle_edge_descent` says "The X exit is not
+> an edge you can jump from." and "The X edge doesn't lead anywhere safe
+> to land.". There is no "blocked" refusal at all — walking an edge is
+> blocked instead, in `Exit.at_traverse`. Besides the grapple block ("You
+> cannot jump while being grappled by X!"), the verb refuses at the
+> threshold, before anything is paid (#3685): a channeling jumper
+> (`refuse_if_channeling`'s own line) and a jumper whose escortee would be
+> barred at the drop (the usher's own refusal). Missing from this
+> list: the #2944 refusal — "You lean out over the X
 > edge and stop. There's nothing to land on down there — no ledge, no fire
-> escape, nothing but air." (`jump.py:520-523`).)_
+> escape, nothing but air.")_
 >
 > _(2026-09-16: **the #2944 refusal is gone** (#3579). It existed to catch
 > an edge into air with no `sky_room`, and `sky_room` is retired — an edge
 > into air is now always legal, because the air cell itself is the
-> destination and the column below it is the fall. Stepping off ALWAYS
-> succeeds. The failure mode that replaces it happens mid-fall, not at
-> the roof: when a cell has no `down` exit, its `down` no longer resolves,
-> or `FALL_MAX_CELLS` (30) is exceeded, the fall **stops cleanly in that
-> cell** — "You come to a stop in open air. There is nothing beneath you
-> here — no ledge, no street, only more sky that nobody has finished.
-> Gravity is patient." — with no damage, no crash and no strand
-> (`world/gravity.py`, `_strand`). The room sees "{actor} hangs in the
-> open air, with nothing beneath." That is the **parked impasse, #3581**:
+> destination and the column below it is the fall. Nothing below the edge
+> refuses the step (the jumper's own gates still can, before anything is
+> paid: #3685). The failure mode that replaces it happens mid-fall, not at
+> the roof: when a cell has no `down` exit or its `down` no longer
+> resolves, the fall **stops cleanly in that cell** — "You come to a stop
+> in open air. There is nothing beneath you here — no ledge, no street,
+> only more sky that nobody has finished. Gravity is patient." — with no
+> damage, no crash and no strand (`world/gravity.py`, `_strand`). The room
+> sees "{actor} hangs in the open air, with nothing beneath." When
+> `FALL_MAX_CELLS` (30) is reached, or a step is refused or fails, the fall
+> also stops with no damage, but the faller reads "Something arrests your
+> fall, and you hang in the open air." and the room "{actor} hangs in the
+> open air." The no-`down` stop is the **parked impasse, #3581**:
 > the code's answer is deliberate and correct; the missing column below
 > the colony's highest crossings is world data (#2945), not a bug in this
 > command. The two gap refusals that DO fire at the roof are the
-> not-a-gap message and the unresolvable-perch message (#3559).)_
+> not-a-gap message and the unresolvable-perch message (#3559); both jump
+> verbs also refuse a channeling jumper or a barred escort before anything
+> is paid (#3685).)_
 - **No edge exit**: "There is no edge to jump off here."
 - **Invalid exit**: "That is not an edge you can jump from."
 - **Blocked exit**: "The edge is blocked - you cannot jump off."
@@ -1212,13 +1250,15 @@ and a fall that runs out of column stops with the impasse message instead
 ### Gap Jump Errors
 
 > _(2026-09-11: **missed by the 2026-08-02 audit** — none of the five
-> strings below ships either. Shipped: `jump.py:706` "There is no exit to
-> the X." (there is no gap-specific not-found message); `jump.py:665` "The X
-> exit is not a gap you can jump across."; `jump.py:681` "The X gap doesn't
-> lead anywhere safe to land.". There is no "blocked gap" refusal and no
-> "You cannot attempt that jump right now." — the only movement-side
-> refusal is the grapple block at `jump.py:637-640`, "You cannot jump while
-> being grappled by X!")_
+> strings below ships either. Shipped: `find_edge_exit` "There is no exit
+> to the X." (there is no gap-specific not-found message);
+> `handle_gap_jump` "The X exit is not a gap you can jump across." and
+> "The X gap doesn't lead anywhere safe to land.". There is no "blocked
+> gap" refusal and no "You cannot attempt that jump right now." Besides
+> the grapple block, "You cannot jump while being grappled by X!", both
+> jump verbs refuse at the threshold, before anything is paid (#3685): a
+> channeling jumper (`refuse_if_channeling`'s own line) and a jumper whose
+> escortee would be barred at the drop (the usher's own refusal).)_
 - **No gap exit**: "There is no gap to jump across here."
 - **Invalid gap**: "That is not a gap you can jump across."
 - **Blocked gap**: "The gap is blocked - you cannot make the jump."
@@ -1236,13 +1276,13 @@ and a fall that runs out of column stops with the impasse message instead
 ### Existing Systems Used
 - **Explosive system**: Uses grenade properties and timer mechanics from throw command
 - **Room system**: Standard room connectivity and movement
-- **Combat handler**: For position-based combat modifiers
+- **Combat handler**: For position-based combat modifiers — `📋 UNBUILT (#1511)`
 - **Damage system**: For heroic damage application
 
 ### New Systems Required
 - **Edge exit flagging**: Property system for marking edge exits
 - **Gap jump system**: Horizontal leap mechanics with success/failure
-- **Vertical combat**: Height-based combat advantages
+- **Vertical combat**: Height-based combat advantages — `📋 UNBUILT (#1511)`
 - **Heroic sacrifice**: Damage absorption mechanics
 - **Timer cancellation**: Ability to interrupt explosive countdowns
 - **Jump skill system**: Stat-based success probability for gap jumps
@@ -1250,7 +1290,7 @@ and a fall that runs out of column stops with the impasse message instead
 - **3D room navigation**: Transit-only sky rooms with bidirectional connectivity
 
 ### Integration with Throw Command
-- **Shared explosive properties**: Uses same `db.blast_damage`, `db.fuse_time` system
+- **Shared explosive properties**: Reads the same `db.blast_damage`, `db.damage_type` and `db.pin_pulled`, and the live countdown `ndb.countdown_remaining` that pulling the pin starts from `db.fuse_time`; the fuse is stopped with `stop_grenade_fuse`
 - **Timer compatibility**: Works with existing countdown mechanics
 - **Proximity system**: Interacts with grenade proximity from throw command
 - **Chain reaction handling**: Prevents chain explosions through sacrifice
@@ -1279,10 +1319,10 @@ and a fall that runs out of column stops with the impasse message instead
 - Horizontal movement with risk elements
 
 ### Phase 3: Combat Integration
-- Elevated position combat bonuses
+- Elevated position combat bonuses — `📋 UNBUILT (#1511)`
 - Enhanced aim system for edge positions
 - Turn-based integration for edge jumping
-- Advanced tactical positioning mechanics
+- Advanced tactical positioning mechanics — `📋 UNBUILT (#1511)`
 
 ## Tactical Scenarios
 
@@ -1291,6 +1331,7 @@ and a fall that runs out of column stops with the impasse message instead
 # Live grenade in room, multiple people in proximity
 jump on grenade
 # Hero takes all blast damage, everyone else unharmed
+# A hero holding someone in a grapple uses them as the shield: they take double, the hero none, and the hold breaks
 # Ultimate team protection at personal cost
 ```
 
@@ -1313,12 +1354,14 @@ jump off edge    # Tactical descent when position compromised
 > off `ndb.aiming_direction`, which only `aim` sets, so you aim first and
 > look second. Line 2's `aim street` is also still wrong in form: aim
 > takes a DIRECTION (`aim north`) or a target, not a room name. See
-> "Aiming over an edge (#3589)" under Room Announcements.)_
+> "Aiming over an edge (#3589)" under Room Announcements. While aiming,
+> `look <target>` also finds a person or a thing in the aimed room
+> (`commands/CmdLook.py`, #3761).)_
 
 ### Gap Crossing
 ```
 # Rooftop-to-rooftop movement
-look across north    # Check destination rooftop
+look across north    # Check destination rooftop (📋 UNBUILT (no issue): there is no `look across`; `aim north`, then `look`, shows the far perch)
 jump across north    # Attempt horizontal leap
 # On success: tactical repositioning
 # On failure: fall to street level or take damage
@@ -1370,10 +1413,10 @@ Player A: jump off edge (when needed for repositioning)
 ## Implementation Notes & Technical Details
 
 ### Direction Mapping System
-Gap jump rigged grenade detection uses opposite direction mapping to find return edges:
+Gap jump rigged grenade detection finds the return edge with `DIRECTION_OPPOSITES` (`world/gravity.py`), the same table the fall announcements use:
 
 ```python
-direction_map = {
+DIRECTION_OPPOSITES = {
     'north': 'south', 'n': 's',
     'south': 'north', 's': 'n', 
     'east': 'west', 'e': 'w',
@@ -1413,13 +1456,11 @@ def finalize_successful_gap_jump(self, destination, origin_room):
         # Look for edge that leads back to origin_room
 ```
 
-### Debug Enhancement
-Comprehensive debug logging added for troubleshooting edge detection:
-- Function entry/exit logging
-- Rigged grenade presence detection  
-- Rigger immunity checking
-- Direction matching results
-- Edge detection success/failure
+### Debug Logging
+The gap landing logs `JUMP_GAP_SUCCESS` to splattercast, and
+`JUMP_GAP_DEBUG` when no origin room is known. `check_rigged_grenade`
+(`commands/explosion_utils.py`) logs nothing when there is no rigged
+grenade or the jumper is its rigger, and nothing logs the direction match.
 
 ## Future Considerations
 
@@ -1444,6 +1485,7 @@ Comprehensive debug logging added for troubleshooting edge detection:
 2. **Death mechanics**: Should heroic sacrifice have special death/injury rules?
 3. **Multiple explosives**: Can you jump on multiple explosives simultaneously?
 4. **Combat state**: Should explosive sacrifice consume combat turn if in combat?
+   _(As built: a real sacrifice skips the hero's next round; see decision 4.)_
 
 ### Edge Exit Mechanics
 1. **Height categories**: Should different edge heights have different effects?
@@ -1453,15 +1495,21 @@ Comprehensive debug logging added for troubleshooting edge detection:
 
 ### Gap Jump Mechanics
 1. **Success calculation**: What stats determine jump success? (Motorics? Athletics?)
+   _(As built: Motorics, a `standard_roll` against the gap's difficulty; see decisions 9 and 12.)_
 2. **Failure consequences**: Damage? Different destination? Equipment loss?
+   _(Answered by #3579: see decision 10.)_
 3. **Gap difficulty scaling**: How to categorize gap difficulty (1-5 scale)?
+   _(As built: a number the roll must meet, default `GAP_DIFFICULTY_DEFAULT` = 10; see decision 12.)_
 4. **Combat integration**: Can you gap jump while in combat? Turn cost?
+   _(Answered by #3583 and #3591: yes; the jumper pays flee's price, which never costs a round; see decision 11.)_
 5. **Motorics check**: Success on success or tie, failure means falling to fall room
+   _(`fall_room` is retired (#3580): a miss falls down the column below the gap; see decision 10.)_
 
 ### System Integration
 1. **Aim system**: Should elevated positions enhance existing aim mechanics?
 2. **Retreat mechanics**: Can you retreat "up" to edges, or only down from them?
 3. **Grappling**: Can you grapple someone off an edge?
+   _(As built: `jump off` while holding someone drags them over the edge with you; `jump across` lets go of them.)_
 4. **Throwing**: Do elevated positions affect throw range/accuracy?
 
 ## Recommended Design Decisions
@@ -1469,18 +1517,23 @@ Comprehensive debug logging added for troubleshooting edge detection:
 Based on the philosophy of heroic action and tactical depth:
 
 1. **Damage bonus**: +10 damage for heroic sacrifice (meaningful cost)
+   _(As built: no bonus. The hero takes the explosive's `blast_damage` (default 10); a hero holding someone in a grapple uses them as the shield, and they take double while the hero takes none.)_
 2. **Death mechanics**: Standard death rules (heroism doesn't change lethality)  
 3. **Multiple explosives**: One at a time (keeps action focused)
 4. **Combat turn**: Bypasses turn system (emergency heroic action)
+   _(As built: a real sacrifice skips the hero's next combat round (`NDB_SKIP_ROUND`); a dud or an unarmed explosive costs nothing.)_
 5. **Height effects**: Binary advantage (simple elevated vs ground)
 6. **Landing position**: Random proximity if room occupied
+   _(📋 UNBUILT (not decided): a landing clears proximity and sets none.)_
 7. **Observation**: Enhanced look/aim range from elevated positions
+   _(📋 UNBUILT (not decided): from a height, aim and look reach only the room below an edge (#3589); nothing extends their range.)_
 8. **Retreat direction**: Can retreat to edges, one-way descent only
+   _(Superseded by the #3583 ruling, "refused at the edge": `flee`, `advance` and `charge` never take an edge, a gap or a way into air (`can_leave_by`), and `retreat` only makes distance in the same room. Leaving by an edge is a jump, which pays flee's price.)_
 9. **Gap success**: General Motorics stat check vs gap difficulty (success on success or tie)
 10. **Gap failure**: Fall to failure_room with distance-based fall damage (rooms fallen × multiplier)
     _(2026-09-11: half-shipped, and the missing half may be deliberate. The
-    distance-based damage is real — `jump.py:887-890` walks
-    `follow_gravity_to_ground` and charges 5 per story, which is exactly
+    distance-based damage is real — the gap failure path walked
+    `follow_gravity_to_ground` and charged 5 per story, which is exactly
     what the owner-ruled movement kernel in
     `specs/PARKOUR_TEMPLATE_LIBRARY.md` §0 prescribes for falls. But
     `exit.db.fall_room` is never consulted on a gap failure: the helper
@@ -1506,7 +1559,11 @@ Based on the philosophy of heroic action and tactical depth:
     authored landing. An apron, awning or terrace that should catch a
     fall is a ROOM in the column (`is_sky_room` False), never an
     attribute. The recommendation's INTENT (distance-based damage rather
-    than a flat number) is what shipped; its mechanism is retired.)_
+    than a flat number) is what shipped; its mechanism is retired. Where
+    the gap exit leads straight to a surface with no air cell between, a
+    miss is a slip in place (`handle_fall_failure`): one storey of
+    `FALL_DAMAGE_PER_STORY` and the next round skipped; a make steps
+    straight onto the perch.)_
 11. **Gap combat**: Counts as movement action if in combat (flee-like timing)
     _(2026-09-16, #3583: restated — "flee-like" now reaches one of
     flee's two contests, not just its timing. Jumping off or across while
@@ -1540,6 +1597,7 @@ Based on the philosophy of heroic action and tactical depth:
     at the point of leaving; the Motorics-vs-`gap_difficulty` takeoff
     roll happens after.)_
 12. **Gap difficulty**: 1-5 scale (trivial to nearly impossible)
+    _(As built: no 1-5 scale. `exit.db.gap_difficulty` is met by a Motorics `standard_roll` (success on a tie); the default is `GAP_DIFFICULTY_DEFAULT` = 10, untuned (`specs/roadmaps/BALANCE_LEDGER.md`).)_
 13. **Jump syntax**: Uses direction-based syntax (`jump off north edge`, `jump across east edge`)
 14. **Proximity inheritance**: Hero inherits ALL proximity relationships from explosive
 15. **Framework focus**: Mechanics first, visibility/discovery enhancements in future look system

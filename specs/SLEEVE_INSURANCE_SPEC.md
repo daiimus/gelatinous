@@ -62,14 +62,15 @@ on what happens to it (§7 Q4).
   stack lives: a second press answers "already on file".
 * **Bought at the terminal by the living presser only.** Key on
   `sleeve_uid_of(presser)`, refuse `None` (the rental precedent,
-  `world/rental.py:233`), refuse a dead, dying, archived or unconscious
+  `world/rental.py` `assign_cube`), refuse a dead, dying, archived or unconscious
   presser. The terminal never samples a held object: a corpse and a severed
   head carry the uid too.
 * **Redeemed only by the body that bought it.** The record stores
   `buyer_dbref`; a payout requires the dead body's id to match. Every
-  archived husk in a PC lineage carries the same uid, and the web archive
-  view will re-archive an old husk and make it `last_character`, so uid
-  alone would let an old husk spend a living body's policy. The mirror
+  archived husk in a PC lineage carries the same uid, so uid alone would
+  let an old husk spend a living body's policy (the web archive view
+  refuses to archive an already-archived body, so it can no longer make an
+  old husk `last_character`). The mirror
   rule at the terminal: "already on file" only when the record's buyer is
   the presser; a record whose buyer is a dead or archived body of the same
   lineage is void, and the presser's purchase replaces it. Otherwise a
@@ -78,10 +79,12 @@ on what happens to it (§7 Q4).
 * **Taken atomically before the body is built, put back if the build
   fails.** Django runs under Twisted's thread pool; the web POST and the
   telnet menu can both read a record before either consumes it. With one
-  store row per uid, "take" is `ServerConfig.objects.filter(db_key=k)
-  .delete()` requiring a count of 1; the loser gets a clean refusal, never
-  a body. A purchase is a `create()`, and an `IntegrityError` is "already
-  on file". The payout is a **sequence of steps, each with its own undo**,
+  store row per uid, a take reads the row for the uid, checks that
+  `buyer_dbref` is the dead body, then deletes that same row by its pk
+  (`filter(pk=row.pk).delete()`), requiring a count of 1, so a door holding
+  a stale read cannot consume a record re-issued under the same key; the
+  loser gets a clean refusal, never a body. A purchase is one INSERT (`_insert` saves a new row), and an
+  `IntegrityError` is "already on file". The payout is a **sequence of steps, each with its own undo**,
   never a database transaction (the web door runs on a pool thread; on
   SQLite `transaction.atomic` across the build would hold the write lock
   against the game loop, and the idmapper cache does not roll back). Verify
@@ -98,13 +101,16 @@ on what happens to it (§7 Q4).
   redeems, and the shelve page says so. Never redeemed while the source
   body can still be revived: refuse while it carries a `death_progression`
   script or is `death_processed` but not yet archived. Do not rely on
-  timing: the web archive view can archive a dying body today.
-* **Payout is keyed to the person who died, not to the post.** Today
-  `_try_resleave` picks its body by the shift's blueprint (`_archived_keeper`
-  takes the newest archived body carrying it) and restores the shift's last
-  snapshot, which belongs to whoever last died on that shift, a hired
-  successor included. Under this spec the dead keeper is identified
-  concretely (§3), and only that person is restored.
+  timing; the web archive view also refuses a dying body
+  (`CharacterArchiveView`).
+* **Payout is keyed to the person who died, not to the post.**
+  `_try_resleave` revives the slot's own dead keeper (the keeper reference,
+  else the `dead_id` stamped when the slot went dark) and restores that
+  body's own imprint, never the shift's last snapshot, which belongs to
+  whoever last died on that shift, a hired successor included. Only a slot
+  that went dark before the stamp existed falls back to the newest archived
+  body of the blueprint (`_archived_body`), and the policy record must still
+  name that exact body (§3).
 
 ### Record shape
 
@@ -125,7 +131,10 @@ sleeve_policy:<uid> = {
 **A standing (perpetual) record** (owner ruling 2026-09-25, Slice C: "a
 way to make a character perpetually insured. Usable for play testing,
 staff, etc.") is the same row flagged `perpetual`, written only by the
-staff verb `@insure` (Admin lock, `commands/CmdInsure.py`). It is TAKEN
+staff verb `@insure` (Admin lock, `commands/CmdInsure.py`: `@insure
+<character>`, `@insure/revoke <character>`, `@insure/status <character>`;
+revoke removes only a standing record, never a player's ordinary
+purchase). It is TAKEN
 like any other record, so two returns racing for it still get one body
 and one refusal, and once the return is verified the payer re-issues it in
 the new body's name (`renew_perpetual`; a flash clone is a new object with
@@ -147,7 +156,7 @@ record that changed hands in between.
 fits), the store the house already moved durable data to. Not a
 `GLOBAL_SCRIPTS` entry: Evennia recreates a managed global script whenever
 its settings entry changes, and the WSIS ring was moved off one for exactly
-that reason (#2672, `world/wsis.py:108-116`). Not on the lobby fixture (a
+that reason (#2672, `world/wsis.py` `_STORE_KEY`). Not on the lobby fixture (a
 re-run build or a deleted terminal would wipe every policy, the #3565
 class). Not on an attribute named `register` (`economy._reconcile_till_tags`
 adopts any such object as a tithed till). Only in-process code writes it
@@ -157,29 +166,31 @@ Phase 1 reads the store directly; a cache comes only after a measurement.
 ## 3 · Where the gate goes (verified against code, 2026-09-25)
 
 **Who the dead keeper is.** The sweep stamps a vacancy when a slot's keeper
-is dead (`posts.py:410-412`); at that moment it must also record the
+is dead (`world/souls/posts.py` `sweep`); at that moment it must also record the
 keeper's `sleeve_uid` and `id` into the slot, before a deleted reference
 reads back as `None`. `imprint.capture` gains `blueprint_key` and `dbref`
 (`restore` ignores them). Then:
 
 | Return path | Body | Gate + take | Notes |
 |---|---|---|---|
-| Archived NPC (essential) | `slot["keeper"]` itself, when it is archived and its `blueprint_key` matches the shift's | in `_try_resleave`, take before the revive, verify after | restore from the body's own `db.imprint`, never the post snapshot; `_archived_keeper` (blueprint-keyed) is retired |
+| Archived NPC (essential) | `slot["keeper"]` itself, when it is archived and its `blueprint_key` matches the shift's | in `_try_resleave`, take before the revive, verify after | restore from the body's own `db.imprint`, never the post snapshot; `_archived_keeper` is retired; its blueprint-keyed lookup survives as `_archived_body`, used only for a slot that went dark before the dead-keeper stamp existed, with the policy record as the identity check |
 | Blueprint rebuild (keeper deleted) | `build_npc(bp_key)` | same call | only when the shift snapshot's `blueprint_key` matches the shift's and its `dbref` matches the stamped keeper; otherwise the outcome is successor and the record is left unspent |
-| PC, telnet respawn | `create_flash_clone` | inside the function, take before `account.create_character`, verify after the full build | the `[4]` option is display only |
-| PC, web respawn | same function | same | the POST reads `account.db.last_character` raw and skips `respawn_candidate()`; enforcement lives in the function, and the POST catches the refusal |
+| PC, telnet respawn | `create_flash_clone` | inside the function, take before `account.create_character`, verify after the full build | `[4]` is offered only when `flash_clone_refusal` returns None; the menu's choice handler (`_respawn_process_choice`) asks again and re-displays the menu on a refusal |
+| PC, web respawn | same function | same | the POST reads the source through `respawn_candidate()` like the GET; enforcement lives in the function, and the POST catches `PolicyRefused` and redirects to the sleeve choice |
 
 **The legacy `post_memory_snapshot`** (once written by `snapshot_keeper_memory`
 with no `sleeve_uid`, `blueprint_key` or `dbref`) is never a payout source; the
-fallback at `posts.py:660` goes. (Both of its writers were removed 2026-10-09,
+fallback that read it in `_try_resleave` is gone. (Both of its writers were removed 2026-10-09,
 #3424; the key is no longer written at all.)
 
-**The sweep's owned branch** (`posts.py:446-459`) gets three outcomes:
+**The sweep's owned branch** (`world/souls/posts.py` `sweep`) has three outcomes:
 *resleeve* (a policy the dead keeper can redeem), *successor* (no policy, a
 blueprint that raises, or `RETURN_ATTEMPTS` failed returns on one vacancy),
 and *hold* for transient states (the keeper is alive elsewhere, dying or not
-yet archived, or a return failed and may be retried). Today every
-`False` hits `continue`, the #3565 "dark forever" shape. An uninsured
+yet archived, or a return failed and may be retried). On SUCCESSOR,
+`sweep` clears the shift's ownership (`_disown_shift`) and falls through to
+the successor offer, so the shift never stays dark forever (the #3565
+shape, when every `False` hit `continue`). An uninsured
 fallthrough clears the shift's ownership, `post_blueprints[shift]`; the
 legacy `post.db.post_blueprint` fallback is gone from the code, and build
 168 removed its four live rows. The archived body is left in Limbo as
@@ -188,7 +199,7 @@ others are.
 **`post_policy` loses its `resleave` value.** The post no longer decides who
 comes back; the person's record does. A post decides only whether strangers
 may be hired: `successor` or `None`. The eleven blueprint `'policy':
-'resleave'` entries, build 098's writes, `posts.py:464` and the NPC_POSTS §4
+'resleave'` entries, build 098's writes, the `resleave` check in `sweep` and the NPC_POSTS §4
 column change in the same PR, **with an in-process data build** that
 censuses live `post_policy` values and rewrites `resleave` to `successor`
 (the Rook's chair too: Q2 accepted that it goes dark after his death, so
@@ -203,24 +214,24 @@ overturned by ruling 5; the chair stays dark for another reason (§7 Q2).
 
 **Two more places or the gate leaks:**
 
-* `ensure_dispatch_operator` respawns "Petra" by name on every server start
-  and reload, policy or not (`world/director/population.py:322-375`). The
-  2026-09-05 ruling (#2762) it cites asks that the desk follow "the same
-  rule every other post follows"; the implementation bypasses that rule
-  with a free resleeve. Retiring it makes the desk follow ruling 5 like
-  every other post; the 2026-08-22 ruling still holds (an empty desk answers
-  in the automation voice). Retire it, `spawn_dispatch_operator`, the import
-  at `routines.py:470` and the call at `:474` only (`ensure_comms_fitted`
-  and `ensure_base_station` stay), and census any blueprint-less Petra it
-  already made.
-* `account.db.last_character` is not written at death: the account is
-  cleared by unpuppet before `archive_character` runs
-  (`death_progression.py:1059-1071`). A web-only player then sees no clone
-  card at all. Resolve the owner at death with
-  `world.ownership.owning_accounts(character)` (the playable-characters
-  record, which survives logout), not a capture taken while puppeted, which
-  is `None` for a player who disconnected mid-death. Test the disconnect
-  case.
+* Nothing respawns "Petra" by name on server start or reload, policy or
+  not: `ensure_dispatch_operator` and `spawn_dispatch_operator` are removed
+  from `world/director/population.py`, and `world/director/routines.py` no
+  longer imports or calls them (`ensure_comms_fitted` and
+  `ensure_base_station` stay). The 2026-09-05 ruling (#2762) asks that the
+  desk follow "the same rule every other post follows"; the dispatch desk
+  follows ruling 5 like every other post, and the 2026-08-22 ruling still
+  holds (an empty desk answers in the automation voice). Build 168
+  censuses any blueprint-less Petra the old spawner made.
+* `account.db.last_character` is written at death even for a player who
+  was offline, because unpuppet clears `character.account` first:
+  `archive_character` resolves the owner with
+  `world.ownership.owning_account(character)` (the playable-characters
+  record first, which survives logout, then the live puppet, then a puppet
+  lock), not a capture taken while puppeted, which is `None` for a player
+  who disconnected mid-death. Without it a web-only player would see no
+  clone card at all. The corpse stamp in `death_progression.py` falls back
+  the same way. Test the disconnect case.
 
 ## 4 · How an NPC goes to buy
 
@@ -228,9 +239,12 @@ overturned by ruling 5; the chair stays dark for another reason (§7 Q2).
   its own planner shape and `plan_for` branch, and a branch in both
   `pressures()` and `pressure()` (the wardrobe pattern); the robot and
   recluse profiles are left out. Pressure 0.0 when this body can redeem a
-  record (uid on file **and** `buyer_dbref` is this body), else a constant
-  just above SOFT (0.60, the provisional-clothing analogue), so it is
-  elected in the soul's own time (band 3), never over a shift.
+  record (uid on file **and** `buyer_dbref` is this body), or when the body
+  has no sleeve uid at all (it could never buy, and a need it can never meet
+  would fault every 15 minutes); else `INSURANCE_PRESSURE`, which is exactly
+  SOFT (0.55). Band 3 breaks ties by profile order, so any need that has
+  actually risen, a meal included, wins over insurance; it is elected in the
+  soul's own time (band 3), never over a shift.
   `_goal_band["insurance"] = 3`.
 * **Who gets the need: every human and synth soul** (owner ruling
   2026-09-25, Q1: "2"). For souls with no rebuild path today (hired
@@ -266,14 +280,15 @@ Null-uid census: 8 of 75 characters, all accountless husks; backfill or
 exclusion is Slice C's (**corrected in Slice C:** that census read the
 attribute without its category and was wrong; every archived sleeve has a
 uid). `InsuranceTerminal`
-(`typeclasses/terminals.py`; `press insure`, `press status`), branded
+(`typeclasses/terminals.py`; buy with `press insure`, or `renew`, `sample`,
+`policy`, `buy`, `cover`; read with `press status` or `info`, or a press
+that names the terminal itself; on a purchase the room sees "The policy
+terminal takes a sample from <actor> and chimes once."), branded
 Thawn-Harrison, built in room #1986 by a build script; `POLICY_PRICE = 0`
 in one place; the `ServerConfig` registry with take/put-back; the census of
-null `sleeve_uid` characters, backfilled in-process before any gate ships.
-Because players can buy from this slice on but the clone gate is Slice C,
-`create_flash_clone` **voids the lineage's record from Slice A on** (no
-gate yet, only consumption), so no clone ever leaves a row its living body
-cannot replace. Play: a developer's test character buys, is refused twice, reads its status.
+null `sleeve_uid` characters (wrong, so nothing was backfilled; see Slice
+C). `create_flash_clone` takes only the dead body's own record
+(`take_policy`, buyer-scoped) and never voids a lineage's record by uid. Play: a developer's test character buys, is refused twice, reads its status.
 
 **Slice B — NPC return. BUILT 2026-09-25 (PR #3672), as below with these
 as-built notes:** the return answers RESLEEVED / HOLD / SUCCESSOR; the
@@ -308,8 +323,8 @@ the premium debit and the Maxwell credit block in `_try_resleave`
 literal is split across two lines and a grep for it is already at zero);
 `_archived_keeper`; the legacy snapshot fallback at `posts.py:660`;
 `spawn_dispatch_operator`; and the stale prose: `posts.py` lines 12, 14,
-27, 319-320, 459 and the `_try_resleave` docstring, `world/npcs/posts.py:
-28-35` (`snapshot_keeper_memory` still says "resleave restores it"),
+27, 319-320, 459 and the `_try_resleave` docstring, `world/npcs/posts.py`
+(since deleted entirely, #3424),
 `world/npcs/blueprints.py:14`, `death_progression.py:1018-1021`. **Tests
 that pin the old rule and must change:** `test_shift_fallthrough` (setUp
 sets `post_policy='resleave'` at :29, so `test_an_unowned_shift_gets_a_
@@ -431,7 +446,7 @@ played live with a test character, then the spec promoted or amended.
    forfeited too (staff re-grants if wanted).
 6. ~~Delay on fallthrough.~~ **Ruled 2026-09-25: "Default behavior makes
    sense."** Each post keeps its own `post_delay` (census 2026-09-09,
-   `posts.py:421`: 72 h on ten posts, 6 h on five, 24 h on two, 600 s on
+   the comment in `world/souls/posts.py` `sweep`: 72 h on ten posts, 6 h on five, 24 h on two, 600 s on
    two) before a successor is offered; a balance-pass number, untouched.
 
 ## 8 · Holes the design closes (from the 2026-09-25 checks)

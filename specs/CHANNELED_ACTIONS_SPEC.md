@@ -1,13 +1,13 @@
 # Channeled Actions Spec — timed, interruptible acts
 
 > **Status:** ✅ **SHIPPED (2026-07-06)** — `world/channeled.py` (the
-> primitive), taxonomy wired (BLOCKED: movement/wield/attack/xmit-tune-
-> toggle + bare `stop` to abort; BREAKING: take_damage, combat enrollment,
+> primitive), taxonomy wired (BLOCKED: the verbs in the §2.2 wiring
+> ledger; bare `stop` or `stop <act>` aborts; BREAKING: take_damage, combat enrollment,
 > grapple establish, unconscious/death, forced movement via at_post_move and,
 > for the hookless door drags, by hand in `drag_victim_to` (#2774, #3663)),
 > graffiti as first consumer (3s + 1s/char, partial-with-ellipsis on
 > interrupt, pro-rata paint, vandalism reports). **Solvent cleaning SHIPPED
-> as second consumer (2026-07-10)**: 3s + 1s/solvent-unit; graffiti scrubs
+> as second consumer (2026-07-10)**: 3s + 1s/solvent-unit (at most 10 units per scrub); graffiti scrubs
 > pro-rata on interruption; **blood breaks down only at completion** (the
 > solvent needs dwell time — bailing mid-scrub leaves the evidence). The
 > wrest/disarm seam remains the next consumer. **Amended 2026-09-11: two
@@ -17,10 +17,15 @@
 > `commands/CmdBreach.py`. Surgery SHIPPED fourth (2026-09-06, #2926
 > owner ruling): `start_procedure` (`world/medical/procedures.py`) opens
 > the channel and the channel IS the procedure timer, so an operation
-> inherits the whole taxonomy without new interruption logic. And
-> wrest/disarm is a §2.3 BREAKING row rather than a consumer — still
-> unwired: neither `resolve_disarm` (`world/combat/actions.py`) nor
-> `CmdWrest` (`commands/CmdInventory.py`) calls `interrupt_channel`.**
+> inherits the whole taxonomy without new interruption logic. Exception: when
+> the surgeon is already channeling, `begin_channel` refuses and that
+> procedure runs on a plain timer instead (the pre-#2926 one), so the
+> channel taxonomy does not apply to it. And
+> wrest/disarm is a §2.3 BREAKING row rather than a consumer, met by the
+> tool rule: when an object the act declared as a tool leaves the actor,
+> the act breaks (`tool_left_hands`, #3376). `resolve_disarm`
+> (`world/combat/actions.py`) and `CmdWrest` (`commands/CmdInventory.py`)
+> move the item with hooks on, so neither calls `interrupt_channel` itself.**
 > Originally: The game's first
 > generic **timed-act primitive**: an action that occupies its actor for a
 > real duration, shows a visible tell, and resolves to a full result on
@@ -47,7 +52,7 @@ learns it for every channeled act in the game.
 ## 1 · The model
 
 One channel per character, ndb-backed (a reload silently kills the act —
-nothing lands, nothing is spent; see §1.2):
+nothing lands, nothing is spent; see §1.1):
 
 ```
 begin_channel(actor,
@@ -56,14 +61,15 @@ begin_channel(actor,
                      #  wall, spray can hissing")
     on_complete,     # full result (the tag lands, paint deducts)
     on_interrupt,    # partial result, receives elapsed fraction
-    key)             # what the actor is doing, for messages ("spraying")
+    key,             # what the actor is doing, for messages ("spraying")
+    tools)           # objects the act needs on the actor; one leaving breaks it
 ```
 
 * **Visible from the first second:** the tell rides the existing placement
   system (`look_place`/`override_place`), so anyone glancing at the room
   sees the act in progress — channels are inherently *public* time.
-* **One at a time:** starting a channel while one runs is refused ("you're
-  busy spraying — stop first").
+* **One at a time:** starting a channel while one runs is refused: "You're
+  busy spraying — 'stop' first."
 * **Progress is linear:** `on_interrupt` receives `elapsed / duration`; the
   consumer decides what a fraction means (graffiti: letters completed).
 
@@ -75,6 +81,10 @@ begin_channel(actor,
   a half-tag on the wall is forensic evidence of an interrupted act.
 * **Reload** → ndb clears; the act evaporates: no result, no cost. Rare and
   acceptable; deduct-at-resolution makes it lossless for the actor.
+  The tell is a persistent placement line and would outlive the reload, so
+  `begin_channel` also writes a persistent `channel_strand` attribute, and
+  `sweep_stranded_tells` (run from `at_server_start`) puts back the earlier
+  placement line wherever the tell is still the line showing (#2774).
 
 ### 1.2 · Deliberate non-goals
 
@@ -93,8 +103,9 @@ plainly does?*
 Perception and speech: a tagger can absolutely talk over their shoulder.
 
 * `look`, glance, reading, examining, all pure perception
-* `say` / `whisper` / `to` / `emote` / `pose` / `think` — communication is
-  hands-free (garbled/deaf gating unaffected)
+* `say` / `whisper` / `to <person>` / `emote` / `pose` / `think` — communication is
+  hands-free (garbled/deaf gating unaffected); `to <radio>` is device work
+  and is BLOCKED (§2.2)
 * Being looked at, spoken to, radio *reception* — passive receipt
 * Inventory inspection (`i`), checking your own state
 
@@ -119,14 +130,15 @@ work because of a mistyped verb:
 > `attack` (`commands/combat/core_actions.py`), `xmit`/`tune`/`toggle`
 > (three sites in `commands/CmdRadio.py`), the radio branch of `to`
 > (`commands/CmdCommunication.py`), and starting another channel.
-> **NOT WIRED — no caller:** `unwield`, `get`, `drop`, `give`, `wear`,
+> **NOT WIRED on that date — each now calls `refuse_if_channeling` (#3376, below):** `unwield`, `get`, `drop`, `give`, `wear`,
 > `remove`, style verbs, `aim`, `throw`, `press` (buttons and kiosks) and
-> `buy` (trading). Consequence in play today: a tagger can `drop` or
+> `buy` (trading). ~~Consequence in play today: a tagger can `drop` or
 > `give` the spray can mid-channel and the full tag still lands, because
 > `_land_tag` re-reads the captured can object rather than the tagger's
-> hands. ~~Owner call pending on whether to finish the list or narrow it~~
+> hands.~~ `drop` and `give` refuse while channeling, and a declared tool
+> leaving the actor breaks the act (#3376, below). ~~Owner call pending on whether to finish the list or narrow it~~
 > **Wired 2026-09-29 (#3685, #3687):** `flee` (`commands/combat/movement.py`)
-> and both jump verbs (`commands/combat/jump.py`) ask `refuse_if_channeling`
+> and both kinds of `jump` (off an edge and across a gap, `commands/combat/jump.py`) ask `refuse_if_channeling`
 > themselves, before paying the price of leaving a fight, rather than
 > letting `at_pre_move` refuse the move after the aim contest and the
 > disengage roll have been charged.
@@ -136,7 +148,10 @@ work because of a mistyped verb:
 > declares the objects an act needs on the actor; `tool_left_hands` (called
 > from `Character.release_slots` and `at_object_leave`) breaks the channel the
 > moment one leaves by ANY route -- drop, give, wrest, disarm, theft -- and
-> `_finish` re-validates as belt-and-braces. Graffiti, solvent and surgery
+> `_finish` re-validates as belt-and-braces: a tool that left by a move with
+> `move_hooks=False` (whose caller did not call `release_slots`) slips past
+> `tool_left_hands`, and `_finish` then lands the act as interrupted at
+> fraction 1.0, never as complete. Graffiti, solvent and surgery
 > declare their tools; future consumers just pass theirs. This also closes
 > the §2.3 "tool leaving your hands" row for wrest/disarm (#3377, #3385).
 >
@@ -161,8 +176,8 @@ immediately:
 | **Being enrolled in combat** (even before the first hit lands) | combat handler `add_combatant` |
 | **Falling unconscious / dying** (bleed-out mid-act) | medical unconscious/death hooks |
 
-> **Clarified by owner ruling 2026-09-13 (#3368):** this row is the **actor** falling unconscious or dying. A **patient** dying under the surgeon's hands does NOT break the surgeon's channel. A procedure is a commitment with expected flatlines (heart/brain transplants pass through death into the 90-second revival window — true of the brain since #3248 built `brain_integrity`, 2026-09-26); the surgeon keeps working, the room sees the death, and `stop` is the exit if things turn. `at_death` still clears the procedure record on the body (#2926) so nothing resolves on a corpse; the surgeon's own channel runs out on its own.
-| **The tool leaving your hands** (disarm, `wrest` the spray can away) | disarm/wrest resolution |
+> **Clarified by owner ruling 2026-09-13 (#3368):** this row is the **actor** falling unconscious or dying. A **patient** dying under the surgeon's hands does NOT break the surgeon's channel. A procedure is a commitment with expected flatlines (heart/brain transplants pass through death into the 90-second revival window — true of the brain since #3248 built `brain_integrity`, 2026-09-26); the surgeon keeps working, the room sees the death, and `stop` is the exit if things turn. `at_death` still clears the procedure record on the body (#2926) so nothing resolves on a corpse; the surgeon's own channel runs out on its own. A patient **dragged away** by a grappler (through a door, by `advance`, or off an edge) is different: `break_victim_acts` calls `take_patient_away` (`world/medical/procedures.py`, #3669), which ends the procedure on them and breaks the surgeon's channel if that channel is timing this procedure. A surgeon channeling something unrelated keeps it. The surgeon is told, and so are the patient and the room when the surgeon was with them (#3681).
+| **The tool leaving your hands** (disarm, `wrest` the spray can away) | `tool_left_hands`, from `Character.release_slots` and `at_object_leave` |
 | **Forced movement** (dragged, thrown, gravity/fall) | movement-resolution seams |
 
 Explicitly **not** breaking: noise, room messages, someone looking at you,
@@ -177,17 +192,24 @@ say the street is chaos; only *contact* breaks concentration.
 * Tell: *"crouched at the wall, spray can hissing."*
 * **Completion:** the full tag lands (existing `GraffitiObject` flow), paint
   deducts 1/char, atmospherics fire as today.
-* **Interruption at fraction f:** `floor(f × len)` letters land **with the
-  ellipsis truncation the paint-out path already renders** — an interrupted
-  `KRAK…` is evidence — and only those letters' paint deducts.
-* **Vandalism becomes committable:** completion *or* interruption files
-  `report_crime("vandalism", room, perp=tagger)` — the severity table has
+* **Interruption:** each full second of work after the 3-second setup lands
+  one letter (`(elapsed − SETUP) ÷ RATE`, rounded down), **with the `...`
+  truncation the paint-out path already renders** — an interrupted
+  `KRAK...` is evidence — and only those letters' paint deducts. Breaking off
+  during the setup lands nothing and costs nothing: "You break off before
+  the nozzle ever touches the wall."
+* **Vandalism becomes committable:** any tag that lands, whole or partial,
+  files `report_crime("vandalism", room, perp=tagger)` (in `_land_tag`); an
+  interruption before the first letter files nothing — the severity table has
   carried `"vandalism": 1` since the crime slice with no caller. The
   duration is what makes the crowd-gated witness *fair*: a 10-char throw-up
   is ~13s of exposure; a 100-char manifesto is ~103s, well past the 40s
   witness window. Length is risk; that's the fiction working.
-* Solvent **cleaning** channels identically (per character removed) in the
-  same slice or the one after.
+* Solvent **cleaning** is a channel too (`_handle_clean_with_solvent`): 3 s
+  setup plus 1 s per solvent unit, at most 10 units (13 s) per scrub. Each
+  unit worked removes one random graffiti character; an interruption counts
+  only the full seconds worked after the setup. Blood breaks down only on
+  completion.
 
 ## 4 · Future consumers (design against, don't build)
 

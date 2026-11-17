@@ -3,8 +3,8 @@
 > **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
-> - "Related logic in `commands/combat/special_actions.py`" — there is none; the command is self-contained in `CmdInventory.py:838`.
-> - Code is ahead of spec: `CmdInventory.py:922` blocks wresting integrated cyberware. No dedicated test module.
+> - "Related logic in `commands/combat/special_actions.py`" — there is none; the command is self-contained in `CmdWrest` (`commands/CmdInventory.py`).
+> - Code is ahead of spec: `CmdWrest` refuses to wrest integrated cyberware. Tests: `world/tests/test_wrest_contest_branches.py` (contest branches) and `world/tests/test_a_failed_wrest_gives_it_back.py` (transfer and restore).
 
 ## Overview
 The `wrest` command enables **non-combat item snatching** from other characters' hands. It serves as the non-combat counterpart to the `disarm` command, allowing quick opportunistic grabbing of objects without entering combat mechanics.
@@ -34,7 +34,7 @@ wrest <object> from <target>
 ### Simplicity Over Complexity
 - **Grit vs Grit contest**: Simple opposed roll using G.R.I.M. system
 - **Grapple disadvantage**: Grappled targets roll with disadvantage (roll twice, take lower)
-- **Instant success only against unconscious/dead**: No contest for incapacitated targets
+- **Instant success only against unconscious/dead**: No contest for incapacitated targets. Consciousness is read from `world.consent.is_conscious`; a target whose state cannot be read is contested. Integrated cyberware cannot be wrested even from the unconscious
 - **Automatic hand selection**: System chooses hands automatically
 - **First-match object selection**: Multiple objects with same name default to first found
 - **No proximity requirements**: Works anywhere in same room (proximity is combat-only)
@@ -46,23 +46,23 @@ wrest <object> from <target>
 ## Technical Implementation
 
 ### Technical Infrastructure Notes
-- **Mr. Hand System**: Fully implemented in `typeclasses/characters.py` with `hands` AttributeProperty
-- **Hand Structure**: Dictionary-based (`{"left": None, "right": None}`) supporting dynamic anatomy
+- **Mr. Hand System**: `Character.hands` (`typeclasses/characters.py`) is a view rebuilt on every read from the species' grasping containers, minus severed or dead ones. What each hand holds is stored in the `held_items` AttributeProperty
+- **Hand Structure**: Dictionary keyed by anatomical container name (`{"left_hand": None, "right_hand": None}` for a human) supporting dynamic anatomy
 - **Hand Management**: Complete `wield_item()`, `unwield_item()`, `list_held_items()` methods available
 - **Combat State Detection**: Existing combat system integration for state validation
-- **Timer System**: 6-second combat round timing available for cooldown implementation
+- **Timer System**: 6-second combat round timing available for cooldown implementation; wrest uses no cooldown (📋 UNBUILT (no issue))
 
 ### Validation Flow
 ```
 1. Check caller not in combat
 2. Check caller has free hand
 3. Validate target exists in same room
-4. Validate object exists in target's hands
+4. Validate object exists in target's hands (integrated cyberware is refused here)
 5. Check if target is grappled (for disadvantage)
 6. Execute Grit vs Grit contest (with disadvantage if target grappled, or instant success if target unconscious/dead)
 7. If successful: Execute transfer
 8. Announce action and result
-9. Apply 6-second cooldown (optional)
+9. Apply 6-second cooldown (optional) — 📋 UNBUILT (no issue): wrest has no cooldown and can be retried at once
 ```
 
 ### Mr. Hand Integration
@@ -70,23 +70,23 @@ wrest <object> from <target>
 - **Target hand selection**: Take from first hand containing the specified object
 - **Object matching**: Use standard object name matching (first match wins)
 - **Dynamic anatomy support**: Works with any hand names in dictionary (third_hand, tail, etc.)
-- **Post-transfer state**: Update both characters' hand dictionaries properly
+- **Post-transfer state**: the victim's hand is freed when the item leaves them; the caller's hand is filled by `wield_item`, which writes `held_items`
 
 #### Mr. Hand System Requirements
 - **Caller validation**: Check `caller.hands` for any hand with `None` value
 - **Target validation**: Check `target.hands.values()` for object presence
-- **Transfer logic**: Use existing `unwield_item()` and `wield_item()` methods for proper state management
-- **State consistency**: AttributeProperty automatically saves dictionary changes
+- **Transfer logic**: move the item to the caller (`move_to`); `Character.at_object_leave` frees the victim's hand (#2468). Then `caller.wield_item(item, free_hand)`. If the caller is not then wielding it, the item goes back to the victim's original hand (#2489, #2536)
 - **Multi-Hand Flexibility**: Dictionary structure naturally supports additional appendages
 
 ### Object Selection Logic
 ```python
 # Pseudo-code for object matching
-def find_object_in_hands(target, object_name):
-    for hand_name, wielded_object in target.hands.items():
-        if wielded_object and object_name.lower() in wielded_object.key.lower():
-            return hand_name, wielded_object
-    return None, None
+def find_object_in_hands(caller, target, object_name):
+    # The caller's standard search, limited to the items in the
+    # target's hands; with several matches the first is taken.
+    held = [item for item in target.hands.values() if item]
+    matches = caller.search(object_name, candidates=held, quiet=True)
+    return matches[0] if matches else None
 
 def find_free_hand(caller):
     for hand_name, wielded_object in caller.hands.items():
@@ -105,9 +105,11 @@ def roll_grit_with_disadvantage(character):
     return min(roll1, roll2)  # Take the lower roll
 
 def is_target_grappled(target):
-    # Check if target has grappled status in combat system
-    # Implementation depends on grapple status tracking
-    return hasattr(target.ndb, 'grappled') and target.ndb.grappled
+    # Grappled = the target's entry in their combat handler's
+    # combatants list has a grappled_by_dbref.
+    handler = target.ndb.combat_handler
+    entry = next(e for e in handler.db.combatants if e["char"] == target)
+    return entry.get("grappled_by_dbref") is not None
 ```
 
 ## Room Announcements
@@ -118,11 +120,15 @@ def is_target_grappled(target):
 - **To room**: "Alice quickly snatches a knife from Bob's hand!"
 
 ### Failure Messages
-- **To caller**: "You try to grab the knife from Bob's hand, but he holds on tight!"
+- **To caller**: "You try to grab the knife from Bob's hand, but they hold on tight!"
 - **To target**: "Alice tries to grab the knife from your hand, but you maintain your grip!"
-- **To room**: "Alice tries to grab a knife from Bob's hand, but he resists!"
+- **To room**: "Alice tries to grab a knife from Bob's hand, but they resist!"
+
+Wresting is never quiet, as built: the room line names the wrester as the one acting, so a hidden wrester is revealed before it is sent, whether the attempt wins or fails (`msg_room_identity`, #3769). The item is named as the wrester sees it, except remains (a corpse or a severed head), which each reader sees under their own name for it (`named_for_each`, #3821).
 
 ### Message Variations by Context
+📋 UNBUILT (no issue): the command sends one fixed success set and one fixed failure set; nothing varies by grapple, weapon or item type.
+
 - **Combat target**: "You quickly grab the phone from Bob while he's grappled!"
 - **Weapon snatch**: "You swiftly wrest the sword from Alice's grip!"
 - **Utility grab**: "You snatch the keys from Bob's hand and prepare to run!"
@@ -138,8 +144,7 @@ def is_target_grappled(target):
 
 ### Edge Cases
 - **Multiple objects same name**: Grabs first match, user must try again for others
-- **Target drops object during attempt**: "The object is no longer in their hands"
-- **Target leaves room**: "Your target is no longer here"
+- **No window to react**: wrest resolves instantly in one call, so the target cannot drop the item or leave mid-attempt
 - **Caller becomes encumbered**: Standard inventory management applies
 
 ## Integration Points
@@ -147,7 +152,7 @@ def is_target_grappled(target):
 ### Existing Systems Used
 - **Mr. Hand system**: For wielding validation and hand management
 - **Combat handler checking**: To verify caller not in combat state
-- **Room validation**: Standard same-room checking
+- **Target lookup**: `resolve_character_target` (`commands/_identity_targeting.py`), the identity pipeline searching the caller's room and skipping anyone the caller is unaware of; only characters with hands qualify
 - **Object searching**: Standard object name matching
 
 ### No Integration Required
@@ -156,7 +161,7 @@ def is_target_grappled(target):
 - **Turn-based mechanics**: Instant execution
 - **Damage system**: No combat implications
 
-> **Added 2026-09-12 — one integration IS required, and it is not wired.** `CHANNELED_ACTIONS_SPEC.md` §2.3's BREAKING table lists "**The tool leaving your hands** (disarm, `wrest` the spray can away) | disarm/wrest resolution" (`specs/CHANNELED_ACTIONS_SPEC.md:144`), and that spec's banner records the gap explicitly (`:20-22`, amended 2026-09-11): neither `resolve_disarm` (`world/combat/actions.py`) nor `CmdWrest` calls `interrupt_channel`. So wresting a spray can out of a tagger's hand today leaves their channel running on an item they no longer hold, and it completes as a full tag. Seven production call sites already do break a channel — `world/combat/grappling.py:75`, `world/combat/utils.py:632`, `typeclasses/characters.py:752`, `:855`, `:1653`, `world/combat/grappling.py` (`drag_victim_to`, both door drags, #3663), `typeclasses/armor_mixin.py:49` — so the pattern is established and wrest is simply unwired. **This is a code gap, not a spec gap** — no GitHub issue tracks it yet.
+> **One integration: channels.** Wrest breaks the victim's channel when the wrested item is one of that channel's tools (`CHANNELED_ACTIONS_SPEC.md` §2.3, "The tool leaving your hands"). `CmdWrest` does not call `interrupt_channel` itself. Moving the item off the victim fires `Character.at_object_leave`, which calls `tool_left_hands` (`world/channeled.py`), and that breaks any running channel that declared the item as a tool (#3376). Graffiti declares the spray can as its tool, so snatching a tagger's can stops the tag where it was (#3377, #3385).
 >
 > The four rows above verify as written: nothing in `CmdWrest` touches proximity, aiming, turn order or damage.
 
@@ -168,14 +173,14 @@ def is_target_grappled(target):
 2. Validate caller not in combat
 3. Validate caller has free hand
 4. Find and validate target in room
-5. Find object in target's hands
+5. Find object in target's hands (integrated cyberware is refused here)
 6. Check target grapple status
 7. Execute Grit vs Grit contest (with disadvantage if target grappled, unless target unconscious/dead)
 8. If successful: Update both hand dictionaries
 9. Announce result to room
 ```
 
-> **Stale 2026-09-12 — third instance of the same no-op.** Step 8 is the flow-chart form of the line corrected under `#### Mr. Hand System Requirements`: nothing updates a hand dictionary, and there is no dictionary to update. The victim's slot is released by `Character.at_object_leave` off `target_object.move_to(caller, quiet=True)` (#2468) and the caller's is written by `wield_item` into `held_items`; assigning into `target.hands` here was the discarded write filed as #2489 / #2536. Step 9 is accurate but partial — caller and target each get a direct `msg()`, and only the third line goes to the room, rendered per-observer through `msg_room_identity` (`commands/CmdInventory.py:1246`, `:1271`).
+> **Stale 2026-09-12 — third instance of the same no-op.** Step 8 is the flow-chart form of the line corrected under `#### Mr. Hand System Requirements`: nothing updates a hand dictionary, and there is no dictionary to update. The victim's slot is released by `Character.at_object_leave` off `target_object.move_to(caller, quiet=True)` (#2468) and the caller's is written by `wield_item` into `held_items`; assigning into `target.hands` here was the discarded write filed as #2489 / #2536. Step 9 is accurate but partial — caller and target each get a direct `msg()`, and only the third line goes to the room, rendered per-observer through `msg_room_identity` (`CmdWrest._announce_success`, `_announce_failure`).
 
 ### Constants Required
 - `MSG_WREST_SUCCESS_CALLER`
@@ -190,8 +195,8 @@ def is_target_grappled(target):
 - `MSG_WREST_OBJECT_NOT_IN_HANDS`
 
 ### Command Location
-- **File**: `commands/CmdInventory.py` — `CmdWrest` (key `"wrest"`), with related logic in `commands/combat/special_actions.py`
-- **Import location**: General inventory commands, not a standalone module
+- **File**: `commands/CmdInventory.py` — `CmdWrest` (key `"wrest"`), self-contained
+- **Import location**: General inventory commands, not a standalone module; added to the character cmdset in `commands/default_cmdsets.py`, and listed in help under **Combat**
 - **Reason**: Works outside combat, different from combat commands
 
 ## Testing Scenarios
@@ -206,7 +211,6 @@ def is_target_grappled(target):
 1. Target not in room
 2. Object not in target's hands
 3. Caller enters combat (command blocked)
-4. Target leaves room during command
 
 ### Integration Tests
 1. Wrest weapon then enter combat with it
@@ -243,7 +247,7 @@ Player A: release bob
 
 ### Why Grit vs Grit Contest?
 - **G.R.I.M. system integration**: Uses established attribute system
-- **Balanced competition**: Both characters have chance to succeed
+- **Balanced competition**: Both characters have chance to succeed: each rolls 1 to their Grit, and the wrester wins ties
 - **Instant resolution**: Single roll determines outcome immediately
 - **Physical nature**: Grit represents physical strength and determination
 - **Roleplay enhancement**: Creates dramatic tension and meaningful stakes
@@ -266,16 +270,10 @@ Player A: release bob
 The Mr. Hand system's dictionary-based design provides excellent flexibility for non-standard anatomy:
 
 #### Current Implementation
-```python
-# Default human anatomy
-hands = AttributeProperty(
-    {"left": None, "right": None},
-    category="equipment",
-    autocreate=True
-)
-```
+`hands` is a property: `{container: held_item_or_None}` for each grasping container the species declares (for a human, `left_hand` and `right_hand`), plus any installed grasping augment, minus severed or dead ones, in the species' display order. What each hand holds is stored in the `held_items` AttributeProperty.
 
 #### Extended Anatomy Examples
+Illustrations of possible slot sets only: slots come from the species' grasping containers, and assigning to `hands` does not change them.
 ```python
 # Alien with three arms
 hands = {"left": None, "right": None, "third_arm": None}
@@ -294,10 +292,9 @@ hands = {"tentacle_1": None, "tentacle_2": None, "tentacle_3": None, "tentacle_4
 The wrest command naturally supports any hand configuration because it uses dictionary iteration:
 
 ```python
-# Find object in any appendage
-for hand_name, held_item in target.hands.items():
-    if held_item and held_item.key.lower() == object_name.lower():
-        return hand_name, held_item
+# Find object in any appendage: standard search over whatever the hands hold
+held = [item for item in target.hands.values() if item]
+matches = caller.search(object_name, candidates=held, quiet=True)
 
 # Find free appendage for wrested item
 for hand_name, held_item in caller.hands.items():
@@ -309,7 +306,7 @@ for hand_name, held_item in caller.hands.items():
 1. **No hardcoded assumptions**: No references to specific hand names like "left" or "right"
 2. **Automatic scaling**: Works with 1 hand, 2 hands, 8 tentacles, etc.
 3. **Graceful degradation**: If a character loses a hand, simply remove it from dictionary
-   - *Corrected 2026-09-12:* nobody removes anything — the derived view omits it. `hands` subtracts severed containers on every read and, since the #526 functional-anatomy gate, also any container whose organs are all dead, which is what finally closed "wield in a hand hanging off a severed arm" (`typeclasses/characters.py:2081-2112`). Benefits 2, 4 and 5 hold as written. Benefit 1 holds for **this command** — `CmdWrest` never names a hand, it iterates the view (`_find_free_hand`, `commands/CmdInventory.py:1116`) — but not for the Mr. Hand system as a whole: `HAND_NAME_ALIASES` hardcodes `left`/`right` (`typeclasses/characters.py:32-37`), and both `wield_item` (`:2290`) and `unwield_item` (`:2352`) default to `hand="right"`, so a defaulted call on a species with no `right_hand` answers "You don't have a right hand."
+   - *Corrected 2026-09-12:* nobody removes anything — the derived view omits it. `hands` subtracts severed containers on every read and, since the #526 functional-anatomy gate, also any container whose organs are all dead, which is what finally closed "wield in a hand hanging off a severed arm" (`Character.hands`, `typeclasses/characters.py`). Benefits 2, 4 and 5 hold as written. Benefit 1 holds for **this command** — `CmdWrest` never names a hand, it iterates the view (`CmdWrest._find_free_hand`, `commands/CmdInventory.py`) — but not for the Mr. Hand system as a whole: `HAND_NAME_ALIASES` hardcodes `left`/`right` (`typeclasses/characters.py`), and both `Character.wield_item` and `Character.unwield_item` default to `hand="right"`, so a defaulted call on a species with no `right_hand` answers "You don't have a right hand."
 4. **Name flexibility**: Hand names can be descriptive ("cybernetic_left", "tentacle_north", etc.)
 5. **Future-proof**: New appendage types require no command modifications
 
@@ -317,7 +314,7 @@ for hand_name, held_item in caller.hands.items():
 - **Wrest works unchanged**: Will automatically handle third hands, tails, tentacles
 - **Disarm compatibility**: Combat disarm command should use same dictionary iteration
 - **Display flexibility**: Hand listings adapt automatically to available appendages
-- **Admin tools**: Easy to modify character anatomy by updating hands dictionary
+- **Anatomy**: a character's hands come from their species' grasping containers (plus any installed grasping augment); a severed or dead hand drops out of the view by itself. Assigning to `hands` only writes `held_items` and does not add or remove a hand
 
 ## Future Considerations
 
@@ -329,7 +326,7 @@ for hand_name, held_item in caller.hands.items():
 
 ### Integration Opportunities
 - **Identity system**: Better target resolution when implemented
-  - *Shipped 2026-09-12 — no longer an opportunity.* `_find_target_in_room` calls `resolve_character_target` (`commands/CmdInventory.py:1124-1129`), the canonical identity-aware helper named by `IDENTITY_RECOGNITION_SPEC` §Command Authoring Rule, so `wrest knife from tall man` resolves on recognition rather than keys, ambiguity gets a disambiguation prompt, and all three announcements render per-observer through `msg_room_identity`.
+  - *Shipped 2026-09-12 — no longer an opportunity.* `CmdWrest._find_target_in_room` calls `resolve_character_target` (`commands/_identity_targeting.py`), the canonical identity-aware helper named by `IDENTITY_RECOGNITION_SPEC` §Command Authoring Rule, so `wrest knife from tall man` resolves on recognition rather than keys, and ambiguity gets a disambiguation prompt. The caller and target lines use each reader's own display names, and the room line is rendered per observer through `msg_room_identity`.
 - **Emote system**: Custom wrest emotes for different scenarios
 - **Messaging system**: More detailed context-aware messages
 - **Animation system**: Visual indicators for successful wrests
@@ -356,5 +353,5 @@ Based on the design philosophy of simplicity and non-combat focus:
 3. **Notifications**: Immediate (clear communication)
 4. **Logging**: Standard command logging only
 5. **Abuse prevention**: Rely on roleplay and admin oversight
-6. **Item protection**: Not initially (keep it simple)
+6. **Item protection**: Not initially (keep it simple). As built, integrated cyberware cannot be wrested (#516); everything else held can be.
 7. **Combat initiation**: No (maintains non-combat nature)

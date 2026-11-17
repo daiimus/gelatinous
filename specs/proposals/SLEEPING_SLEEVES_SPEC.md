@@ -8,7 +8,7 @@
 
 ## Thesis
 
-Today a logged-out character is stoved off-grid
+Today a logged-out character is stowed off-grid
 (`at_post_unpuppet`: room sees "the vacant sleeve is quietly gone",
 body → `location=None`, `prelogout_location` saved). The intended end
 state is the opposite: **the body stays in the world, asleep.** A
@@ -33,10 +33,11 @@ That exposure is the point, not a side effect:
   Cups went 25 → **60 cubes** when it was raised to a z12 roof
   (`scripts/builds/018_qoc_raise.py`, #1775, merged 2026-08-08:
   "+35 cubes (25 -> 60)"). The argument is unaffected — housing got
-  bigger, not smaller — only the numbers moved. Two other documents
-  still print the old figures: `VERTICALITY_AND_BUILDINGS_SPEC.md`
-  §2.3 ("**25 cubes**") and the #2821 docstring in
-  `world/tests/test_cube_rental.py` ("a building running 54 leases").)*
+  bigger, not smaller — only the numbers moved. `VERTICALITY_AND_BUILDINGS_SPEC.md`
+  §2.5 and its status header print the old figures, each with a dated
+  correction next to it. The #2821 docstring in
+  `world/tests/test_cube_rental.py` still says "a building running 54
+  leases", which was the figure when it was written.)*
 
 ## Blocking dependencies (why deferred)
 
@@ -61,8 +62,17 @@ crime, not the machinery: read the list as design axes, the way
 ## The seam
 
 `Character.at_post_unpuppet` (typeclasses/characters.py) is the single
-switch point: replace the stow-away (body off-grid) with a sleeping
-state in place — pose/longdesc to "asleep", the vacant-sleeve line
+switch point. When the last session leaves, it does three things in
+order: it shows the vacant-sleeve line only to observers who can see
+the character (a hidden character leaves unseen); it stands the
+character up and frees any seat it held (#2579), so no seat is held by
+a body that has left; and it saves `db.prelogout_location` and sets
+`location = None`. On the next login, Evennia's default `at_pre_puppet`
+puts the body back from `prelogout_location`. Web character creation
+also writes that attribute (`web/website/views/characters.py`).
+Undecided: whether a sleeper keeps their seat, and whether a hidden
+sleeper stays hidden. The proposal: replace the stow-away (body
+off-grid) with a sleeping state in place — pose/longdesc to "asleep", the vacant-sleeve line
 retired in favor of the body simply staying. `at_post_puppet`'s stir
 line ("stirs as consciousness returns") already reads correctly for
 waking a persisted body. Everything else — what sleep means to combat,
@@ -74,6 +84,11 @@ medical, frisk, drag — is design work for when this revives.
   §5 — current puppet lifecycle messaging.
 - [`DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md`](DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md)
   — what happens when the exposure goes badly.
-- Housing: cube rental + Brackett Arms (shipped; see project history).
+- [`../SLEEVE_INSURANCE_SPEC.md`](../SLEEVE_INSURANCE_SPEC.md) — every
+  character starts uninsured, and an uninsured death is permanent
+  (#3667). This decides what a sleeping body risks.
+- Housing: [`VERTICALITY_AND_BUILDINGS_SPEC.md`](VERTICALITY_AND_BUILDINGS_SPEC.md)
+  §2.5 (cube hotels and the housing guarantee) and §3 (tenancy and the
+  rental kiosk); code in `world/rental.py`.
 - [`GIG_RIPPER_SPEC.md`](GIG_RIPPER_SPEC.md) — the economy sleeping
   bodies would feed.
