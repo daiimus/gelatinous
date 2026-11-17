@@ -11,17 +11,17 @@
 > (corpse/forensics), and
 > [`WEB_RESPAWN_CHARACTER_CREATION_SPEC`](../WEB_RESPAWN_CHARACTER_CREATION_SPEC.md)
 > (decant/sleeve). **§9 STEP 1 SHIPPED (2026-07-04): the DeathRecord tombstone
-> is LIVE** — `world/death_records.py` engraves `{name, born, died, corpse_ref}`
+> is LIVE** — `world/death_records.py` engraves `{sleeve_dbref, name, born, died, corpse_dbref}`
 > on the owning account (`account.db.death_records`) from `archive_character`;
 > the death path stamps the corpse ref post-archive. **Scope decision: EVERY
 > archived sleeve gets a tombstone** (death or manual retirement; `died` = the
 > archive moment). Legacy sleeves backfilled (39 archived + reconstructions
 > from account-linked corpses). The NPC-delete guard (#1022) hardened to a
 > DOUBLE guard (`account is None` AND canonical `db.is_npc`) — an accountless
-> unflagged character archives with a warning, never deletes. §9 steps 2–3
-> (web view, sleeve tag/index) and 4–5 (cleanup gig, morgue IC records) remain
-> unbuilt. **Recent change folded in:** dead NPCs are **deleted**, not archived
-> (#1022) — see §4.
+> unflagged character archives with a warning, never deletes. §9 steps 4–5
+> (cleanup gig, morgue IC records) remain
+> unbuilt. **Recent change folded in:** dead generated NPCs are **deleted**, not archived
+> (#1022); Essential Personnel are archived (#2128) — see §4.
 > **Amendment 2026-09-25 (owner ruling, #3667):** the flash clone is gated
 > on a **sleeve insurance policy** bought in advance at the Thawn-Harrison
 > lobby terminal and consumed at decant. Die uninsured and that person does
@@ -54,15 +54,16 @@ reason about it.
 
 ## 1 · Death trigger — `Character.at_death()`
 
-`typeclasses/characters.py:613`.
+`Character.at_death` in `typeclasses/characters.py`.
 
 - **Idempotency:** guarded by the persistent flag `db.death_processed`. Set to
   `True` immediately (survives reload) so a character can never be processed
   twice, even under combat race conditions. (`ndb.death_processed` mirrors it for
   legacy checks.)
-- **`death_count` is NOT touched here** — it increments exactly once, later, at
-  the definitive point of permanent death (§5), so repeated `at_death()` calls
-  can't inflate the Roman numeral.
+- **`death_count` is NOT touched here** — it goes up once per archive, in
+  `archive_character` (§5): at permanent death, and also when a living sleeve is
+  shelved from the web. Repeated `at_death()` calls can't inflate the Roman
+  numeral.
 - Sets `override_place = "lying motionless and deceased."` (the persistent visual
   tell), breaks stealth (`world.stealth.break_stealth`), and emits the death
   analysis to the `splattercast` audit channel.
@@ -71,23 +72,18 @@ reason about it.
   `ndb.death_curtain_pending`) so the kill message lands first; a 5-second
   `delay()` fallback fires the curtain if combat doesn't. Otherwise the curtain
   shows immediately.
+- Ends any channel the dier was running and any procedure being performed on
+  them (#2926), releases any call they were assigned to (#2255), and logs the
+  death to the souls audit (#2318).
 - Applies the death command-set restrictions (`apply_death_state`).
 
 ## 2 · Death curtain + progression timer (the revival window)
 
-> ⚠️ **The window is not reached by every fatal-looking injury.** A destroyed
-> **brain** sets no lethal capacity, so `is_dead()` stays False and this
-> progression never starts. In practice the *wound* that destroyed it bleeds
-> and kills in ~9 minutes — so this is invisible in ordinary play. It surfaces
-> when the bleed is **stopped**: a stabilised brain-destroyed patient never
-> dies, and the revival gate (which only asks `not is_dead()`) returns them
-> whole. Any bloodless organ destruction hits it directly. See §10.4 and
-> [#3248](https://github.com/daiimus/gelatinous/issues/3248).
->
-> **Closed 2026-09-26 (#3248, "Death with a window"):** a destroyed brain
-> is now a death via `brain_integrity`; getting the brain back inside the
-> window revives it — a brain install only, since #3253 (2026-09-28) made
-> a destroyed soft organ stay destroyed.
+> **A destroyed brain is a death with a window**
+> ([#3248](https://github.com/daiimus/gelatinous/issues/3248), 2026-09-26):
+> `brain_integrity` reaches zero, `is_dead()` turns True and this progression
+> starts. Only a brain install inside the window revives it (#3253,
+> 2026-09-28).
 
 Animation: [`DEATH_CURTAIN_SPEC`](../DEATH_CURTAIN_SPEC.md)
 (`curtain_of_death.py`). On completion it calls `start_death_progression()`,
@@ -99,22 +95,33 @@ Timing constants (`world/combat/constants.py`):
 | Constant | Value | Meaning |
 |---|---|---|
 | `DEATH_PROGRESSION_DURATION` | 90s | total time from death to *permanent* death |
-| `DEATH_PROGRESSION_CHECK_INTERVAL` | 30s | tick cadence (`at_repeat`) |
+| `DEATH_PROGRESSION_CHECK_INTERVAL` | 4s | tick cadence (`at_repeat`): 60% of the 8s message spacing (90 // 11), rounded down |
 | `DEATH_PROGRESSION_MESSAGE_COUNT` | 11 | progression messages spread across the window |
 
 - `at_script_creation` seeds `total_duration`, evenly-spaced `message_intervals`,
   `can_be_revived = True`, and `start_time`.
-- **`at_repeat` (every 30s)** is the heart of the window:
+- **`at_repeat` (every 4s)** is the heart of the window:
   1. `_check_medical_revival_conditions` — **if `medical_state.is_dead()` has
      become False** (someone treated the fatal condition), call
      `_handle_medical_revival()` and abort the death. This is the *only* way back:
      the medical window is real, not cosmetic.
   2. Otherwise send any due progression messages.
   3. When `elapsed >= total_duration`, call `_complete_death_progression()`.
+- **A beheading has no window** (#3835, 2026-11-14). The curtain completes the
+  death as soon as it has told the room (`complete_a_beheading`). `at_start`
+  skips the dying message and `at_repeat` skips the revival check and the
+  progression messages; `at_repeat` finishes the death one tick later if the
+  curtain's completion never ran.
 
 **Revival = medical, not chosen.** A dier comes back only if their vitals stop
 reading as dead within the 90s window (blood/organ treatment). Past the window,
 death is permanent.
+
+The window survives a reload (wall-clock `start_time`). After a crash,
+`at_server_start` re-arms the timer. A death whose curtain was cut off by a
+reload before the progression started is restarted at boot by
+`sweep_wedged_deaths`. When the window closes, `_complete_death_progression`
+interrupts any procedure still running on the body.
 
 ## 3 · Completion → corpse creation
 
@@ -128,8 +135,10 @@ death is permanent.
   `original_account_dbref`, `death_time`, `physical_description`, `sleeve_uid`,
   `sdesc_at_death`, the full identity signature + `apparent_uid_at_death`,
   `height/build/keyword` overrides (captured **then cleared** off the character),
-  gender/skintone, and the medical snapshot (cause, conditions, blood type). Worn
-  items transfer to the corpse via normal drop hooks.
+  gender/skintone, and the medical snapshot (cause, conditions, blood type).
+  Deployed integrated hardware is parked first and what was actually worn is
+  recorded as `corpse.db.worn_at_death`; then everything the character carries
+  moves into the corpse (`move_to`, quiet).
 - The whole method is wrapped in a deliberate guard (#469): a corpse-forge failure
   is logged loudly but never re-raises, so the progression always terminates
   (worst case: "archived without a corpse", never a per-tick retry storm).
@@ -139,26 +148,37 @@ death is permanent.
 `_transition_character_to_death()`. After stopping/deleting the character's
 medical scripts:
 
-- **NPC (`account is None`) → DELETE.** (#1022) The corpse (§3) already holds the
-  full forensic record, so the character husk is deleted outright and the method
-  returns. Without this, every dead NPC used to pile up in Limbo forever as a
-  nameless ghost (the #4590-era leak — some husks were ~12 days old).
+- **No account → depends on the body.** A generated NPC (`db.is_npc` True, not
+  `db.essential`) is DELETED (#1022): the corpse (§3) already holds the full
+  forensic record, so the husk is deleted where it lies and the method returns.
+  Without this, every dead NPC used to pile up in Limbo forever as a nameless
+  ghost (the #4590-era leak — some husks were ~12 days old). An Essential
+  Personnel NPC (`db.is_npc` and `db.essential`) is ARCHIVED to Limbo like a PC,
+  so a resleeve restores the person (#2128). An accountless body without
+  `db.is_npc` is archived with a `DEATH_TRANSITION_WARN` audit line and is never
+  deleted.
 - **PC (has an account) → ARCHIVE.** Move to Limbo (`#2`, `move_hooks=False`),
   unpuppet the session, then `archive_character(reason="death")`.
 
-> The fork guards on `account is None` — only player characters ever carry an
-> account — so it can never delete a PC.
+> The delete needs both `account is None` and `db.is_npc` True, so a PC that
+> dies with no account attached (an offline death) is archived, never deleted.
 
 ## 5 · Archiving — `archive_character()` + the sleeve data model
 
-`typeclasses/characters.py:456`. This is the **sleeve loop's** persistence step,
-PC-only:
+`Character.archive_character` in `typeclasses/characters.py`. This is the
+**sleeve loop's** persistence step. It runs for every dead body that is archived
+rather than deleted (§4), and for a living sleeve shelved from the web:
 
-- `account.db.last_character = self` — seeds the respawn/decant flow.
-- **`death_count += 1`** — the single authoritative increment; drives the Roman
-  numeral suffix (`build_name_from_death_count`, `commands/charcreate.py` — the `:128` anchor is stale, `:164` as of 2026-09-12 —
-  `Jorge → Jorge II → Jorge III …`).
+- The owning account (the `owner` passed in, else `world.ownership.owning_account`,
+  since the body is already unpuppeted, #3667) gets `db.last_character = self`,
+  which seeds the respawn/decant flow.
+- **`death_count += 1`** — on every archive, including a web shelve of a living
+  sleeve (as built); drives the Roman numeral suffix (`build_name_from_death_count`
+  in `commands/charcreate.py`; `Jorge → Jorge II → Jorge III …`).
 - Sets `db.archived = True`, `db.archived_reason`, `db.archived_date`.
+- Adds the `archived` tag (category `sleeve`), the query index.
+- Engraves the tombstone (`world.death_records.add_record`); a failure here
+  never blocks the archive.
 - Moves to Limbo (`#2`) and disconnects sessions with *"Sleeve has been archived.
   Please reconnect to continue."*
 
@@ -171,13 +191,20 @@ PC-only:
 | `db.archived_reason` / `db.archived_date` | `archive_character` | audit / sort |
 | `db.current_sleeve_birth` | charcreate | sleeve age (web "Decant" page) |
 | `db.death_processed` | `at_death` (persistent) | idempotency guard |
+| tag `archived` (cat `sleeve`) | `archive_character` | query index for the active/archived split |
+| `db.death_cause` | `_create_corpse_from_character` (fallback in `_transition_character_to_death`) | PRIOR TERMINATION line on the clone's envelope |
+| `db.imprint` | `_handle_corpse_creation_and_transition` | who the sleeve knew; restored onto a flash clone |
 
 ## 6 · Respawn / decant — closing the sleeve loop
 
 [`WEB_RESPAWN_CHARACTER_CREATION_SPEC`](../WEB_RESPAWN_CHARACTER_CREATION_SPEC.md)
 + telnet `commands/charcreate.py`. With an archived `last_character`, the account
-decants a new sleeve: **3 random templates** or a **flash clone** (inherits stats,
-appearance, sex from the archived sleeve). `death_count` sets the numeral.
+decants a new sleeve: **3 random templates**, or a **flash clone** only if the
+dead sleeve's insurance policy pays for it (#3667, see `SLEEVE_INSURANCE_SPEC.md`);
+picking a template after an insured death forfeits the policy. A flash clone
+inherits GRIM stats, desc and longdescs, sex, skintone, species, `sleeve_uid`,
+height/build/hair, sdesc keyword, stack id, and the imprint of who they knew.
+`death_count` sets the numeral.
 
 > **Addendum (2026-08-04, #1572–#1591):** the decant presentation was
 > rebuilt — finalize paths now move the sleeve to the spawn room
@@ -239,15 +266,19 @@ the design wants:
    `original_character_dbref` as a string; the archived sleeve has no
    back-reference. Reconstructing "which sleeve, died where, of what" means a
    manual join across three objects (character, corpse, medical snapshot).
+   The account's tombstone (§9) holds both `sleeve_dbref` and `corpse_dbref`,
+   which joins sleeve and corpse; the corpse link goes stale once the body is
+   removed.
 3. **The permanent record dies with the body.** All death detail lives on the
    corpse. Because cleanup is a *gig* (§7) — a physical actor hauls the body away —
    once the corpse is removed, the death's history is gone. That's fine for
    in-game forensics (no body, no evidence — correct), but it means a PC's
    **nostalgic sleeve history has no home that survives corpse removal**.
 
-   > **Owner ruling 2026-09-14 -- chrome stays on the corpse; you re-sleeve as a flesh bag.** Death costs you your augments: they remain on the body for the parts trade, and the new sleeve starts as stock species anatomy. This is ALREADY the code's behaviour -- `create_flash_clone` rebuilds `MedicalState` from the species table rather than copying the old organs (`commands/charcreate.py`, "The medical state is REBUILT rather than copied") -- so this line records the rule the secondhand-chrome economy is priced on, not a change.
-4. **NPC deaths still spawn a full corpse + do a teleport dance** even though the
-   husk is immediately deleted (§4). Fine at current scale; worth noting.
+   > **Owner ruling 2026-09-14 -- chrome stays on the corpse; you re-sleeve as a flesh bag.** Death costs you your augments: they remain on the body for the parts trade, and the new sleeve starts as stock species anatomy. This is ALREADY the code's behaviour -- the flash clone is created with fresh organs for its species and never copies the old body's organs (`create_flash_clone`, `commands/charcreate.py`) -- so this line records the rule the secondhand-chrome economy is priced on, not a change.
+4. **NPC deaths still spawn a full corpse** even though the husk is deleted
+   right after (§4). The husk is deleted where it lies, with no Limbo hop. Fine
+   at current scale; worth noting.
 
 > Note: corpse *persistence* is **not** on this list — it's a design feature (§7),
 > not a defect.
@@ -283,6 +314,9 @@ DeathRecord {                     # a tombstone; permanent, survives corpse remo
 }
 ```
 
+The record `world/death_records.py` writes is `{sleeve_dbref, name, born, died,
+corpse_dbref}`; the sleeve's dbref is its key.
+
 The `born` field already exists on the sleeve (`db.current_sleeve_birth`, set at
 decant/creation — §5); the record just engraves it alongside `died`. Name, two
 dates, nothing else — everything a headstone says, and everything it doesn't.
@@ -308,12 +342,12 @@ null.
 > records), so the page printed the same sleeves twice. The only fact the wall
 > carried that the listing lacked was the **date of death**, which is now a
 > `Retired` column on the sleeve row — "retired" because archiving covers both
-> a dead sleeve and a living one shelved from the web, and only the former
-> stamps a date. This matches the table above ("DeathRecord
+> a dead sleeve and a living one shelved from the web, and every archive stamps
+> the date it happened. This matches the table above ("DeathRecord
 > + archived sleeve") and the "keep it minimal" instruction below.
 >
 > Note **archived does not imply dead** — a living sleeve can be shelved from
-> the web — so the column is legitimately empty for some archived rows.
+> the web, and its Retired date is the day it was shelved, not a death.
 
 > **On the OOC exception:** the game's flow is relentlessly in-character —
 > perceived identities, obscured sources, IC records. The sleeve memorial is a
@@ -328,7 +362,8 @@ null.
   evidence leaves with the corpse. Resolves rough edge 3 without an auto-reaper.
 - **Web nostalgia reads one small object**, not a join across corpse + husk +
   medical snapshot (rough edge 2). The stringly `original_character_dbref` becomes
-  a real two-way key via `corpse_ref` + the record id on the sleeve.
+  a two-way key through the tombstone, which holds both `sleeve_dbref` and
+  `corpse_dbref`.
 - **Sleeve listing stops scanning Limbo.** Tag archived sleeves (`sleeve:archived`)
   and/or index by account so listing is a tag/FK query, not an O(n) `db.archived`
   scan of the whole junk drawer (rough edge 1). Limbo stays *storage*, not the
@@ -368,8 +403,6 @@ persist — which is the desired behavior now, and doubles as free playtesting o
    in-character database/file with cause of death as bodies come through;
    player-manipulable (falsify, erase) per the everything-is-a-file direction.
    This is where cause-of-death lives — never on the OOC record.
-6. (Optional) **Skip the corpse teleport dance for NPCs** — spawn the corpse and
-   delete the husk without the intermediate Limbo hop (§4/§8.4).
 
 Step 1 is the whole spine; steps 2–3 are the near-term nostalgia + query wins;
 steps 4–5 wait on the gig economy and the file/records layer respectively.

@@ -47,7 +47,7 @@ object everywhere.
 
 Every `.msg()` on the router does up to two things:
 
-1. **Audit file — always on.** The message is appended to
+1. **Audit file — on, except under a test runner.** The message is appended to
    `server/logs/combat_audit.log` via a **module-owned stdlib
    `logging.handlers.RotatingFileHandler`** (changed #1106, 2026-07-10:
    Evennia's `logger.log_file` recycles its cached handle every 500th
@@ -58,18 +58,24 @@ Every `.msg()` on the router does up to two things:
    microsecond appends. This is the
    durable record for investigating bug reports, cheating
    accusations, and combat disputes.
+   The write is skipped when `world/audit_guard.under_test()` is true
+   (a test runner owns the process), so suite runs never append to the
+   production log (#2328). Tests about the write itself patch
+   `world.combat.debug._under_test` to return `False`.
 
 2. **Splattercast channel — gated.** Only when
    `settings.SPLATTERCAST_LIVE` is `True`. This is the live in-game
    mirror for active debugging sessions. Default `False`. The
    channel object is resolved once and cached per process
-   (`_CHANNEL_CACHE`) — no per-message DB lookup.
+   (`_CHANNEL_CACHE`) — no per-message DB lookup. If the channel
+   does not exist when first looked up, that `None` is cached too,
+   and the live mirror stays silent until the next reload.
 
 ```
 call site → get_splattercast().msg("PREFIX_STATUS: ...")
                  │
-                 ├─ logger.log_file(...)            ← always
-                 │     → server/logs/combat_audit.log
+                 ├─ _get_audit_logger().info(...)   ← always (skipped under a test runner)
+                 │     → server/logs/combat_audit.log (RotatingFileHandler, backupCount=100)
                  │
                  └─ if settings.SPLATTERCAST_LIVE:   ← opt-in
                        cached_channel.msg(...)
@@ -102,19 +108,12 @@ SPLATTERCAST_LIVE = False           # mirror diagnostics to the channel
 CHANNEL_LOG_ROTATE_SIZE = 10_000_000  # audit-log rotation size (10MB)
 ```
 
-Rotation produces numbered generations (`combat_audit.log.1`, …)
-with no count cap — the size knob controls granularity per file,
-not total disk use.  The knob is Evennia's and is shared by
-channel logs.
-
-*(Correction 2026-09-12: the audit log **is** count-capped, and has
-been since #1106. The module-owned handler passes `backupCount=100`
-(`world/combat/debug.py`), so at most 100 generations survive — a
-~1 GB ceiling at the 10 MB size — and the oldest is discarded. The
-uncapped behavior described above was Evennia's `logger.log_file`,
-which stopped carrying these writes in #1106. The knob itself is
-still Evennia's (`settings_default.py`, 1 MB default) and is still
-read by its channel logs.)*
+Rotation produces numbered generations (`combat_audit.log.1` …
+`combat_audit.log.100`). At most 100 survive and the oldest is
+discarded, so at the 10 MB size the log tops out at about 1 GB
+(`_get_audit_logger` passes `backupCount=100`). The size setting
+`CHANNEL_LOG_ROTATE_SIZE` is Evennia's (1 MB default in
+`settings_default.py`), and Evennia's channel logs read it too.
 
 Flip to `True` (and reload) to watch combat live in-game. Leave
 `False` in production — the audit file captures everything either
@@ -123,23 +122,28 @@ way.
 *(2026-09-12: "either way" is about `SPLATTERCAST_LIVE`, which is
 still true of it. The file write itself has one exception the
 sentence predates — it is skipped under a test runner (#3221); see
-the footnote under §2.)*
+§2.)*
 
 ## 5 · Conventions for call sites
 
 * **Never** `ChannelDB.objects.get_channel(...)` for diagnostics.
-  Import from `world/combat/debug.py`.
+  Import from `world/combat/debug.py`. These names are also
+  re-exported from `world/combat/utils.py`, and many call sites
+  import them from there.
 * `world/medical/{core,conditions,utils}.py` import
   `get_splattercast` **function-locally**, not at module level: the
   `world.combat` package `__init__` reaches `world.medical.utils`
   through `handler → attack`, so a module-level import there would be
   circular.
-* The audit file is line-oriented `PREFIX_STATUS: message` text.
-  Keep messages greppable — lead with a stable uppercase prefix.
+* The audit file has one message per line, after a timestamp:
+  `YY-MM-DD HH:MM:SS [-] PREFIX_STATUS: message` (`debug_broadcast`),
+  or `PREFIX_ACTION: message (char_key)` after the timestamp
+  (`log_debug`, `log_combat_action`). Keep messages greppable — lead
+  with a stable uppercase prefix.
 
 ## 6 · Relationship to other specs
 
-* `COMBAT_REFACTOR_SPEC.md` predates this and references the old
+* `roadmaps/COMBAT_REFACTOR_SPEC.md` predates this and references the old
   per-call-site `get_channel` idiom and a "147 splattercast calls"
   count as part of its decomposition planning. Those references
   describe the *pre-#464* state; this spec supersedes them for the

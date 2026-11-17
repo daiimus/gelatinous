@@ -1,6 +1,6 @@
 # Proximity System Architecture Specification
 
-> **Status:** 📋 Proposal — the live dual-proximity system it documents is accurate; the Option-A unification it proposes is NOT implemented.
+> **Status:** 📋 Proposal — the Option-A unification it proposes is NOT implemented.
 
 ## Overview
 The G.R.I.M. Combat System currently operates with dual proximity systems that evolved to handle different use cases. This document outlines the current architecture, identifies the challenges, and proposes a unification strategy.
@@ -10,27 +10,30 @@ The G.R.I.M. Combat System currently operates with dual proximity systems that e
 ### System 1: Combat Proximity (`NDB_PROXIMITY`)
 **Purpose**: Character-to-character melee proximity for combat mechanics
 **Constant**: `NDB_PROXIMITY = "in_proximity_with"`
-**Data Structure**: `character.ndb.in_proximity_with = [list_of_characters]`
+**Data Structure**: `character.ndb.in_proximity_with = {set_of_characters}` (a set; the universal store `ndb.proximity` is a list)
 **Usage Pattern**: Bidirectional character relationships
 
 #### Combat Proximity Characteristics
 - **Scope**: Character-to-character only
 - **Use Cases**: Melee combat, grappling, disarm actions
-- **Establishment**: Combat actions (grapple, melee attack)
-- **Cleanup**: Manual removal, retreat command, movement between rooms
+- **Establishment**: a successful grapple, advance or charge; a melee attack that starts a fight, or that joins one and wins the contested roll; joining combat already grappling; jumping on an explosive (melee links to everyone on the explosive's universal list); and the same-room re-link of fighters after a server reload
+- **Cleanup**: a won retreat (melee links to opponents only), leaving combat (`clear_all_proximity` in `world/combat/utils.py`), exit traversal (`typeclasses/exits.py` at_traverse), and combat movement and falls (`clear_proximity_on_room_change`, called from `world/combat/movement_resolution.py` and `world/gravity.py`)
 - **Integration**: Deep integration with combat handler and special actions
 
 #### Combat Proximity Code Locations
 ```python
 # Primary usage in combat system
 commands/combat/special_actions.py:
-- CmdGrapple: Establishes proximity on successful grapple
+- CmdGrapple: needs no prior proximity ("rush in"); `world/combat/grappling.py` (establish_grapple, resolve_grapple_initiate, resolve_grapple_takeover) establishes it on success
 - CmdDisarm: Requires proximity for disarm attempts
-- CmdReleaseGrapple: Clears proximity relationships
+- CmdReleaseGrapple: queues a release; `resolve_release_grapple` in `world/combat/grappling.py` ends the hold but leaves the pair in melee proximity
 
 # Movement cleanup
 typeclasses/exits.py:
 - at_traverse(): Clears combat proximity on room transitions
+
+world/combat/proximity.py:
+- clear_proximity_on_room_change(): clears both stores when a character changes room without an exit: advance, cross-room charge and grapple drag (world/combat/movement_resolution.py) and each cell of a fall (world/gravity.py)
 ```
 
 ### System 2: Universal Proximity (`NDB_PROXIMITY_UNIVERSAL`)
@@ -42,23 +45,40 @@ typeclasses/exits.py:
 #### Universal Proximity Characteristics
 - **Scope**: Any entity to any entity (characters, objects, grenades)
 - **Use Cases**: Grenade blast zones, object landing proximity, defuse mechanics
-- **Establishment**: Object throws, drops, grenade landings, defuse attempts
+- **Establishment**: Object throws, drops, grenade landings, defuse attempts, and a thrown weapon that hits (the thrower goes on the target's list)
 - **Cleanup**: Manual removal, retreat command, movement between rooms, defuse success
 
 > **Dated note (2026-09-12):** "retreat command" does not hold for universal proximity. `commands/combat/movement.py` (CmdRetreat) contains no reference to `NDB_PROXIMITY_UNIVERSAL` at all, and its resolver `world/combat/movement_resolution.py:resolve_retreat` *reads* the grenade list only to decide whether there is anyone to retreat from (it unions both stores into `all_proximity`); on success it calls `break_proximity` against melee opponents and never touches `NDB_PROXIMITY_UNIVERSAL`. Retreating therefore does not remove you from a grenade's blast list — the same asymmetry family as open defect #2540. This also qualifies "Retreat command must handle both systems" under §Architectural Challenges: it reads both, cleans one.
+
+At detonation, `commands/explosion_utils.py:get_unified_explosion_proximity` adds everyone melee-linked to anyone on the grenade's list (human shields), then drops anyone not in the blast room (#2490). A stale entry left by retreat or by walking out still counts while that person is in the blast room, but does not reach through a wall.
 - **Integration**: Throw command, grenade system, defuse mechanics
 
 #### Universal Proximity Code Locations
 ```python
 # Primary usage in grenade/object system
-commands/CmdThrow.py:
-- Landing proximity: Objects inherit proximity from landing targets
-- Grenade proximity: Blast zone establishment and inheritance
-- Defuse proximity: Dynamic proximity establishment for defuse attempts
+world/combat/throwing.py:
+- assign_landing_proximity(), handle_grenade_landing(): a landed object inherits its target's proximity
+- resolve_weapon_hit(): a thrown weapon that hits puts the thrower on the target's list
+
+commands/CmdExplosives.py:
+- CmdDefuse.establish_mutual_proximity(), clear_grenade_proximity(): defuse attempts and defuse success
+
+commands/explosion_utils.py:
+- check_auto_defuse(): proximity-based automatic defuse
+- get_unified_explosion_proximity(): the blast list at detonation
+
+commands/CmdInventory.py:
+- drop: adds the dropper to the item's list
 
 # Movement cleanup
 typeclasses/exits.py:
 - at_traverse(): Clears universal proximity on room transitions
+
+world/combat/proximity.py:
+- clear_proximity_on_room_change(): clears both stores when a character changes room without an exit (combat movement and falls)
+
+world/gravity.py:
+- _reset_proximity(): empties a falling item's universal list in each cell
 ```
 
 ## Current Implementation Status
@@ -73,11 +93,13 @@ typeclasses/exits.py:
 - ✅ **Throw System**: Object landing and grenade proximity
 - ✅ **Defuse System**: Dynamic proximity establishment
 - ✅ **Grenade Mechanics**: Blast zone management and inheritance
-- ✅ **Movement Cleanup**: Room transition cleanup
+- ✅ **Movement Cleanup**: Room transition cleanup, one-sided: a thrown grenade's list keeps a person who walks out (#2540)
 - ✅ **Auto-defuse**: Proximity-based automatic defuse attempts
 
 ### Cleanup Implementation
 Both systems have identical cleanup patterns in `typeclasses/exits.py`:
+
+Both cleanups are skipped for a victim being dragged in a grapple, so the victim stays linked to the grappler. The advance drag in `world/combat/movement_resolution.py` likewise clears only the grappler and re-links the pair after the move.
 
 > **Dated note (2026-09-12):** still true of `exits.py`, but no longer the whole picture — exit traversal is not the only movement-cleanup site. `world/combat/proximity.py:clear_proximity_on_room_change` was added under #2490 because combat movement (`advance`, a cross-room `charge`, a grapple drag) calls `char.move_to()` directly and never traverses an exit, so `at_traverse` never fired on those paths; it is invoked from `world/combat/movement_resolution.py` and clears both stores. Any later consolidation has to account for the non-traversal path as well.
 ```python
@@ -88,7 +110,9 @@ def at_traverse(self, traversing_object, target_location, **kwargs):
         
     # Universal proximity cleanup  
     if hasattr(traversing_object.ndb, NDB_PROXIMITY_UNIVERSAL):
-        # Clear bidirectional universal proximity relationships
+        # Walk the mover's OWN universal list and remove the mover from each entry.
+        # Throw and landing write only the object's list, so a person a thrown
+        # grenade lists stays on that list after leaving (#2540).
 ```
 
 ## Architectural Challenges
@@ -138,13 +162,15 @@ grenade.ndb.proximity_relationships = [char1, char2, char3]
 2. **Implement unified utilities**: Create common proximity management functions
 3. **Add compatibility layer**: Functions that write to both old and new systems during transition
 
+> This compatibility layer (and its removal in Phase 4, the "Migration Compatibility Layer" block and the data-loss mitigation) conflicts with `DEVELOPMENT_GUIDE.md`, Pull Request Process: "repoint every caller and delete the old name in the same PR: no aliases, wrappers or re-exports left for callers".
+
 #### Phase 2: Combat System Migration
 1. **Update special_actions.py**: Migrate grapple, disarm, release to unified system
 2. **Update combat handler**: Use unified proximity for combat validation
 3. **Test combat functionality**: Ensure no regressions in combat mechanics
 
 #### Phase 3: Universal System Migration
-1. **Update CmdThrow.py**: Migrate grenade and object proximity to unified system
+1. **Update `world/combat/throwing.py`**: Migrate grenade and object proximity to unified system
 2. **Update defuse system**: Use unified proximity for defuse mechanics
 3. **Test grenade functionality**: Ensure blast zones and defuse work correctly
 
@@ -177,6 +203,7 @@ grenade.ndb.proximity_relationships = [char1, char2, char3]
 ### Implementation Details
 
 #### Unified Proximity Utilities
+`world/combat/proximity.py` already holds melee-only helpers: `establish_proximity`, `break_proximity`, `clear_all_proximity`, `get_proximity_list` and `is_in_proximity` (plus `clear_proximity_on_room_change`, which clears both stores). The block below calls two of them by other names: `remove_proximity` is `break_proximity`, and `in_proximity` is `is_in_proximity`.
 ```python
 # world/combat/proximity.py
 def establish_proximity(entity1, entity2):

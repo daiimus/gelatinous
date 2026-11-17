@@ -3,7 +3,7 @@
 > **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
 >
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
-> - "Observer Support: different messages for dying character vs. room observers" — **false**. Animation frames go only to the dying character (`curtain_of_death.py:255-262`); observers get one message at completion.
+> - "Observer Support: different messages for dying character vs. room observers" — **narrower than it reads**. Animation frames go only to the dying character (`DeathCurtain._show_next_frame`); observers get one cause-specific message when the curtain ends.
 > - Config values drifted: spec says `frame_delay = 0.015`, `delay_multiplier = 1.01`, four colours, `DEATH_PROGRESSION_DURATION = 360`. Code ships `0.05`, `1.02`, **two** colours, and **90**.
 
 ## Overview
@@ -34,7 +34,7 @@ This animation system is based on a beautiful and subtle design:
 - **Character Messaging**: Integrates with standard Evennia character messaging
   - **Correction 2026-09-12 (#2469 / #2952):** the *API* is standard —
     `character.msg()` — but the *filter* is not. This game overrides
-    `Character.msg` (`typeclasses/characters.py:288-344`) to drop almost
+    `Character.msg` (`typeclasses/characters.py`) to drop almost
     everything addressed to a dead character: no `from_obj` is blocked
     outright, non-staff and non-`death_progression` senders are blocked, and
     only a `death_curtain=True` kwarg lets the curtain's own traffic through
@@ -52,7 +52,7 @@ This animation system is based on a beautiful and subtle design:
     initial cause line is sent to the victim only, deliberately
     (`:279-280`). Observers do get their own, genuinely different message —
     one cause- and species-keyed template at completion, rendered per
-    watcher by `msg_room_identity` (`:377-382`). So: different messages yes,
+    watcher by `msg_room_identity` (`DeathCurtain._on_animation_complete`). So: different messages yes,
     different frames no, and nothing at all until the curtain ends.
 - **Configurable**: Timing, colors, and characters can be easily adjusted
 
@@ -78,6 +78,11 @@ def at_death(self):
     show_death_curtain(self)
 ```
 
+If the character dies in combat, `Character.at_death` holds the curtain back
+(`ndb.death_curtain_pending`) so the kill message is read first. The attack
+code in `world/combat/attack.py` starts the curtain after the kill message;
+if it has not started 5 seconds later, a fallback in `at_death` starts it.
+
 ### Testing
 
 The curtain is exercised by dying. The legacy `@testdeathcurtain` command
@@ -95,7 +100,7 @@ The animation works through these steps:
 
 1. **Center the Message**: Place the death message in the center of a line filled with block characters (`▓`)
 2. **Create Removal Plan**: Generate a randomized sequence for removing characters
-3. **Progressive Removal**: Remove characters one by one according to the plan
+3. **Progressive Removal**: each frame erases one character, taken from every third step of the shuffled plan (sea or text alike); about halfway through, each frame also erases a growing batch of message letters, and up to four more frames clear what is left of the text
 4. **Color Enhancement**: Apply random red-spectrum colors to remaining characters
 5. **Final Frame**: Show the complete message one last time
    - **Correction 2026-09-12:** the animation never returns to the message.
@@ -109,7 +114,7 @@ The animation works through these steps:
 
 ### Key Functions
 
-**`curtain_of_death(text, width=None)`**: Core animation generator
+**`curtain_of_death(text, width=None, session=None)`**: Core animation generator
 - Creates the sequence of frames for the dripping effect
 - Handles message centering and character removal planning
 - Applies Evennia color codes
@@ -131,10 +136,12 @@ The animation works through these steps:
 
 # Frame progression example:
 "▓▓▓▓▓▓A red haze blurs your vision as the world slips away...▓▓▓▓▓▓"
-"▓▓▓▓▓▓A red h ze blurs your vision as the world slips away...▓▓▓▓▓▓"
-"▓▓▓▓▓▓A red h ze blur  your vision as the world slips away...▓▓▓▓▓▓"
-"▓▓▓▓▓▓A red h ze blur  your vision as the world slip  away...▓▓▓▓▓▓"
+"██████A red h ze blurs your vision as the world slips away...██████"
+"██ ███A red h ze blur  your vision as the world slips away...██████"
+"██ ███A red h ze blur  your vision as the world slip  away...███ ██"
 # ... continues until message dissolves
+# Only the first frame shows ▓; from the second frame on the sea is █, and
+# gaps open in the sea as well as in the words.
 ```
 
 ## Configuration
@@ -142,43 +149,40 @@ The animation works through these steps:
 ### Timing Parameters
 
 ```python
-self.frame_delay = 0.015        # Starting delay between frames
-self.delay_multiplier = 1.01    # Acceleration factor (gets slower)
-# CORRECTION 2026-09-12: the live values are frame_delay = 0.05 and
-# delay_multiplier = 1.02 (curtain_of_death.py:256-257). Measured over 200
-# runs of the shipped generator on the default message at width 78: 33-41
-# frames, scheduled over ~2.3-3.1 s -- not the "~5-10 seconds" claimed twice
-# further down.
+self.frame_delay = 0.05         # first gap between frames, seconds
+self.delay_multiplier = 1.02    # each gap is 2% longer than the last
+# On the default message at width 78: 33-41 frames over about 2.3-3.1 s.
 ```
 
 ### Visual Parameters
 
 ```python
-_get_terminal_width()           # Width of animation area (default 78)
-sea_char = "▓"                  # Character surrounding the message
-replacement_char = "█"          # Character used during dripping
+_get_terminal_width(session)    # client's screen width (at least 60; 78 if unknown); the curtain is one narrower
+SEA_INTACT = "▓"                # the sea in the first frame
+SEA_DRIPPING = "█"              # the sea in every later frame
 ```
 
 ### Color Customization
 
 ```python
-colors = ["|r", "|R", "|y", "|Y"]  # Evennia color codes for effect
+colors = ["|r", "|R"]  # random per character; reset with |n
 ```
 
 ## Evennia Integration
 
 ### Color System Compatibility
-- Uses Evennia's native color codes (`|r`, `|R`, `|y`, `|Y`, `|n`)
+- Uses Evennia's color codes `|r`, `|R` and `|n`
 - Avoids conflicts with color parsing
 - Properly terminates color sequences
 
 ### Messaging Patterns
 - Standard `character.msg()` for dying character
-- `location.msg_contents()` for observers
+- `msg_room_identity()` for observers, so each watcher sees the dying character by the name they know them by
 - Proper exclusion handling for room messaging
 
 ### Performance Considerations
 - Pre-generates all frames for smooth playback
+- Schedules frames with a non-persistent `delay`, so a reload during the curtain cuts it off before the death progression starts; `sweep_wedged_deaths` (`typeclasses/death_progression.py`) starts that progression at the next server start
 - Limits observer messages to reduce spam
 - Uses efficient string operations
 
@@ -222,7 +226,7 @@ show_death_curtain(character, "Your blood pools beneath you...")
 show_death_curtain(character, "Your essence fades into the void...")
 ```
 
-## Recent Enhancements (Sept 2024)
+## Recent Enhancements (Sept 2025)
 
 ### Medical System Integration
 The death curtain now integrates with the medical system for informed death messaging:
@@ -230,21 +234,21 @@ The death curtain now integrates with the medical system for informed death mess
 #### Intelligent Death Cause Messages:
 - **Cause Detection**: Uses existing `debug_death_analysis()` logic to determine death cause
   - **Correction 2026-09-12:** the curtain calls `character.get_death_cause()`
-    (`typeclasses/characters.py:624-662`) at `curtain_of_death.py:266` and
-    `:373`. `debug_death_analysis()` (`characters.py:494`) is a
-    splattercast-only report fired from `at_death` (`characters.py:813`) and
+    (`typeclasses/characters.py`) from `DeathCurtain.start_animation` and
+    `DeathCurtain._on_animation_complete`. `debug_death_analysis()` is a
+    splattercast-only report fired from `Character.at_death` and
     never touches the curtain's path. The logic is **duplicated, not
     shared**, and the copies diverge three ways: `debug_death_analysis`
     lists *every* fatal condition while `get_death_cause` returns only the
-    first in priority order (blood loss first, `:648`); zero `digestion`
-    reads "LIVER FAILURE" in the debug report (`characters.py:536`) but
-    "organ failure" in the player-facing cause (`characters.py:656`); and
+    first in priority order (blood loss first); zero `digestion`
+    reads "LIVER FAILURE" in the debug report but
+    "organ failure" in the player-facing cause; and
     only the player-facing path appends the killing blow via
     `_with_death_blow` (`characters.py:103-121`), so the victim can hear
     "blood loss from a stab wound to the chest" where the debug report says
     just "BLOOD LOSS".
-- **Informed Messaging**: Shows specific causes like "blood loss", "heart failure", "respiratory failure"
-- **Fallback Gracefully**: Returns to beautiful mixed red message if cause detection fails
+- **Informed Messaging**: causes are checked in this order, and the first match wins: blood loss, heart failure, decapitation, a broken neck, brain death, organ failure (a septic spine), respiratory failure, organ failure (digestion), critical injuries. If the killing blow was recorded, it is added after the cause: "blood loss from a stab wound to the chest".
+- **Fallback**: if no cause can be read, the victim is told "Your body succumbs to unknown causes." (or "Your body fails you." if no cause comes back at all). The curtain text itself never depends on the cause.
 
 #### Message Flow:
 1. **Initial Death Messages**: Both victim and observers get cause-specific messages
@@ -264,15 +268,15 @@ The death curtain now integrates with the medical system for informed death mess
      uncoloured; since #3383 removed `@testdeathcurtain <message>`, no caller
      in the tree passes one (the attack path and `at_death` both call
      `show_death_curtain(target)` bare).
-3. **Final Notification**: "Nick Kramer has died." for observers
+3. **Final Notification**: when the curtain ends, observers get one line chosen by cause and species (for a human who bled out: "{actor}'s lifeblood pools crimson around their still form."). When the death window closes, they get "{actor}'s form grows utterly still, life's final spark extinguished forever."
 
 ### Visual Improvements
 Fixed color and centering issues for optimal presentation:
 
 #### Color Code Fixes:
 - **Proper Color Parsing**: Text centering now accounts for color code length
-- **Random Block Coloring**: Each ▓ and █ character gets random |r or |R coloring
-- **Preserved Message Colors**: Original mixed red death message maintains perfect coloring
+- **Random Block Coloring**: each ▓ and █ character gets random |r or |R coloring
+- **Message Colors**: the first frame shows the message in its own colours; from the second frame on, every remaining character, letters included, is randomly |r or |R
 
 #### Centering Algorithm:
 - **Visible Length Calculation**: Strips color codes before calculating padding
@@ -283,7 +287,7 @@ Fixed color and centering issues for optimal presentation:
 Eliminated message conflicts between death curtain and medical system:
 
 #### Medical Message Suppression:
-- **Bleeding Messages**: All "lifeless body" messages suppressed for dead characters
+- **Bleeding Messages**: once a character is dead, the medical script sends no bleeding messages, and it stops ticking (it is kept, stopped, in case of revival)
 - **Clean Narrative**: Death curtain gets exclusive control over death messaging
 - **No Interference**: Medical ticker won't interrupt death animation with bleeding updates
 
@@ -311,9 +315,9 @@ def _strip_color_codes(text):
 
 ## Death Progression Configuration
 
-> **A beheading has no death window (#3835, owner ruling 2026-11-14).** "Is someone really dying if there head is missing? They should be a corpse." When the death is a beheading, the curtain plays for the dying player and tells the room the cause as for any death, and then the progression completes at once: no revival check, none of the dying messages, the two closing lines, and the corpse. The script's next tick is the backstop if that did not happen. Every other death keeps the window described here. That includes a destroyed brain, the other case #330 listed: the owner ruled it a "Death with a window" (#3248, 2026-09-26). The body is dead on the blow, and a new brain put in during the window is the one thing that brings it back, so a brain transplant needs the window.
+> **A beheading has no death window (#3835, owner ruling 2026-11-14).** "Is someone really dying if there head is missing? They should be a corpse." When the death is a beheading, the curtain plays for the dying player and tells the room the cause as for any death, and then the progression completes at once: no revival check and none of the dying messages. A player character gets the two closing lines, the room gets the final "form grows utterly still" line, and the corpse is made. The script's next tick is the backstop if that did not happen. Every other death keeps the window described here. That includes a destroyed brain, the other case #330 listed: the owner ruled it a "Death with a window" (#3248, 2026-09-26). The body is dead on the blow, and a new brain put in during the window is the one thing that brings it back, so a brain transplant needs the window.
 
-The death system consists of two parts: the death curtain animation (~5-10 seconds — **measured 2026-09-12: ~2.3-3.1 s**, 33-41 frames at `frame_delay` 0.05 × 1.02ⁿ, `curtain_of_death.py:256-257`) followed by a configurable death progression timer.
+The death system consists of two parts: the death curtain animation (about 2.3-3.1 seconds, 33-41 frames at `frame_delay` 0.05 × 1.02ⁿ, `DeathCurtain.__init__`) followed by a configurable death progression timer.
 
 ### Configuration Constants
 
@@ -323,7 +327,7 @@ All death progression timing is controlled in `world/combat/constants.py`:
 # Death progression timing
 DEATH_PROGRESSION_DURATION = 90           # Total time before permanent death (seconds)
 DEATH_PROGRESSION_CHECK_INTERVAL = 30     # How often to check and send messages (seconds)
-# CORRECTION 2026-09-12: no longer a literal. world/combat/constants.py:878-879
+# CORRECTION 2026-09-12: no longer a literal. world/combat/constants.py
 # DERIVES it from the other two:
 #     _message_spacing = DEATH_PROGRESSION_DURATION // DEATH_PROGRESSION_MESSAGE_COUNT
 #     DEATH_PROGRESSION_CHECK_INTERVAL = max(1, int(_message_spacing * 0.6))
@@ -331,8 +335,9 @@ DEATH_PROGRESSION_CHECK_INTERVAL = 30     # How often to check and send messages
 # script therefore ticks every 4 s, not 30 s, and re-asserts that from
 # constants on every restart (death_progression.py:196-211, #501 Phase 2) --
 # so editing the number as printed above has no effect at all.
-# specs/proposals/DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md:89 still carries the
-# stale 30 s in its timing table (its :88 row already says 90 s correctly).
+# specs/proposals/DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md still carries the
+# stale 30 s in its timing table and in its `at_repeat` bullet (its
+# DEATH_PROGRESSION_DURATION row already says 90 s correctly).
 DEATH_PROGRESSION_MESSAGE_COUNT = 11      # Number of progression messages to send
 ```
 
@@ -340,31 +345,20 @@ DEATH_PROGRESSION_MESSAGE_COUNT = 11      # Number of progression messages to se
 
 **Production (Default):**
 ```python
-DEATH_PROGRESSION_DURATION = 360          # 6 minutes - full dramatic experience
-# ⚠ NOT WHAT THE WORLD RUNS ON (checked 2026-09-12). world/combat/constants.py:869
-# has shipped 90 since the constant was introduced (commit 0ce97a06,
-# 2025-10-27); `git log -S` finds no other value, so 360 has never been live
-# for a single commit, and the "Testing: 90" line below therefore describes
-# production. The rest of the code is written against 90
-# (world/director/medical.py:74-76, world/tests/test_medic_dispatch_and_triage.py:11-12,
-# issue #2757's title). The same stale 360 s also appears in
-# specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md:213-214 and :330 -- the
-# designated authority for medical behaviour -- and in
-# typeclasses/death_progression.py:14-16.
-# Whether 360 is still the INTENDED production value is an owner question and
-# is left open here. The stale "Default: 360 seconds" comments at
-# constants.py:867 and death_progression.py:14 are a code defect, not a spec one.
+DEATH_PROGRESSION_DURATION = 90           # 90 seconds - what the game runs on
+# Not decided: whether 90 seconds is the intended production window, or
+# 360 seconds (6 minutes) is still wanted.
 ```
 
 **Testing:**
 ```python
-DEATH_PROGRESSION_DURATION = 90           # 90 seconds - faster iteration
-DEATH_PROGRESSION_DURATION = 60           # 60 seconds - very fast testing
+DEATH_PROGRESSION_DURATION = 60           # 60 seconds - faster iteration
+DEATH_PROGRESSION_DURATION = 30           # 30 seconds - very fast testing
 ```
 
 ### How It Works
 
-1. **Death Curtain** → Animation plays (~5-10 seconds) — *measured 2026-09-12: ~2.3-3.1 s (33-41 frames)*
+1. **Death Curtain** → Animation plays (about 2.3-3.1 seconds, 33-41 frames)
 2. **Death Progression** → Timer begins with periodic messages
 3. **Medical Window** → Characters can attempt revival during this time
 4. **Final Death** → After duration expires, permanent death occurs
@@ -401,7 +395,6 @@ The core algorithm elegantly balances:
 - **Flexibility**: Same system works for any message length
 
 ### Performance Characteristics
-- **Memory Efficient**: Generates frames on-demand
 - **Network Friendly**: Sends complete frames, not incremental changes
 - **Server Optimized**: Uses Evennia's delay system for proper scheduling
 

@@ -1,9 +1,6 @@
 # Remote Detonator System Specification
 
 > **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
->
-> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
-> - **No test coverage** for the detonator path (scan / detonate / clear). Grenade fuse tests do not cover it.
 
 ## Status: ✅ IMPLEMENTED
 
@@ -19,7 +16,7 @@ A handheld remote detonator device that can scan and remotely trigger explosive 
 **Key Principle:** Remote detonation **initiates** the explosive's normal behavior, it doesn't bypass it.
 
 - Remote detonation **pulls the pin** and starts the fuse countdown
-- SPDR M9 sticky grenades still get their 6-second countdown to seek/stick
+- SPDR M9 sticky grenades still get their 10-second countdown to seek/stick
 - Rigged explosives still get their 1-second countdown
 - Tactical grenades with 5-second fuses give 5 seconds to react
 - This maintains explosive type diversity and prevents instant-death scenarios
@@ -33,10 +30,12 @@ You: You flip open the red safety cover on your remote detonator and press the l
 
 Operator's Room: {char_name} flips open a red safety cover on their remote detonator and presses a large button. Multiple distant beeps echo from various locations!
 
-Grenade 1 Location: An SPDR M9 grenade beeps and its light begins flashing! [6 seconds]
-Grenade 2 Location: A tactical grenade beeps and activates! [5 seconds]  
-Grenade 3 Location: A rigged SPDR M9 beeps urgently! [1 second]
+Grenade 1 Location: An SPDR M9 grenade beeps and its light begins flashing! [10 seconds]
+Grenade 2 Location: A tactical grenade beeps and its light begins flashing! [5 seconds]
+Grenade 3 Location (a rigged trap): An SPDR M9 grenade beeps and its light begins flashing! [1 seconds]
 ```
+
+*The `[N seconds]` tag is shown only to viewers with Builder permission (#3350; see the note under Sticky Grenades); players see the line without it.*
 
 **Multi-Detonation Messaging:**
 - Operator sees single "multiple beeps" message
@@ -51,12 +50,14 @@ You: You flip open the red safety cover on your remote detonator and press the l
 
 Operator's Room: {char_name} flips open a red safety cover on their remote detonator and presses a large button.
 
-Grenade's Location (if different room): An SPDR M9 grenade beeps and its light begins flashing! [6 seconds]
+Grenade's Location (if different room): An SPDR M9 grenade beeps and its light begins flashing! [10 seconds]
 
 Same Room (if operator and grenade in same location): 
   {char_name} flips open a red safety cover on their remote detonator and presses a large button.
-  An SPDR M9 grenade beeps and its light begins flashing! [6 seconds]
+  An SPDR M9 grenade beeps and its light begins flashing! [10 seconds]
 ```
+
+*The `[N seconds]` tag is shown only to viewers with Builder permission (#3350; see the note under Sticky Grenades); players see the line without it.*
 
 **Cross-Room Messaging Logic:**
 - Operator always sees button press action
@@ -96,7 +97,7 @@ class RemoteDetonator(Item):
 
 > *2026-10-27 (#3779): key renamed `"VECTOR UEM3 detonator"`, desc to match; no key carries a dash followed by digits, because Evennia's `name-N` ordinal form reads the first `-N` it meets and a player could not narrow a twin. Aliases unchanged. The 2026-09-12 note below records the key as it shipped then.*
 >
-> *2026-09-12: the shipped prototype is BRANDED per the everything-branded mandate (`world/prototypes.py:149-163`): key `"VECTOR UEM-3 detonator"`, aliases `["vector", "uem3", "uem-3", "detonator", "remote", "trigger"]`, a VECTOR UEM-3 desc, and tags `("item", "general")` / `("tool", "category")`. The typeclass path and the three `attrs` below still match exactly; the key, aliases and desc below are the pre-brand draft.*
+> *2026-09-12: the shipped prototype is BRANDED per the everything-branded mandate (`REMOTE_DETONATOR` in `world/prototypes.py`): key `"VECTOR UEM-3 detonator"`, aliases `["vector", "uem3", "uem-3", "detonator", "remote", "trigger"]`, a VECTOR UEM-3 desc, and tags `("item", "general")` / `("tool", "category")`. The typeclass path and the three `attrs` below still match exactly; the key, aliases and desc below are the pre-brand draft.*
 
 ```python
 REMOTE_DETONATOR = {
@@ -118,7 +119,7 @@ REMOTE_DETONATOR = {
 
 ### Bidirectional Relationship
 
-> *2026-09-12: both sides store the integer `.id`, never a `#dbref` string — `typeclasses/items.py:1247` `self.db.scanned_explosives.append(explosive.id)` and `:1250` `explosive.db.scanned_by_detonator = self.id`. Lookups rebuild the string (`search_object(f"#{explosive_dbref}")`, `commands/CmdExplosives.py:889`), and the player-facing signature is `e-<id>` (`:778`). Read `dbref` below as "id" throughout, including in the `scan` pseudo-code at §3.*
+> *2026-09-12: both sides store the integer `.id`, never a `#dbref` string — `RemoteDetonator.add_explosive` (`typeclasses/items.py`) runs `self.db.scanned_explosives.append(explosive.id)` and `explosive.db.scanned_by_detonator = self.id`. Lookups rebuild the string (`search_object(f"#{explosive_dbref}")` in the detonator commands, `commands/CmdExplosives.py`), and the player-facing signature is `e-<id>`. Read `dbref` below as "id" throughout, including in the `scan` pseudo-code at §3.*
 
 Each explosive can only be scanned by ONE detonator at a time, but detonators can scan multiple explosives:
 
@@ -150,7 +151,8 @@ detonator.db.scanned_explosives = [explosive_dbref1, explosive_dbref2, ...]
 4. **Automatic Cleanup:**
    - Detonated explosives auto-remove from detonator list
    - Destroyed explosives auto-remove from detonator list
-   - Detonator validates list on command use
+   - The detonator prunes dead entries on `scan`, `detonate list` and `detonate all`; `detonate e-<id>` drops a dead entry when it hits it
+   - A dud is not destroyed: its pin is reset and it stays in the detonator's memory, so it can be detonated again (#2539)
 
 ---
 
@@ -158,7 +160,7 @@ detonator.db.scanned_explosives = [explosive_dbref1, explosive_dbref2, ...]
 
 ### Scan Command
 
-> *2026-09-12 — message drift: the shipped strings are "You scan {key} into {detonator}'s memory." plus separate `  Signature: e-{id}` and `  Capacity: n/20` lines, with the room getting "{actor} points a device at {key}, which emits a soft beep." (`commands/CmdExplosives.py:777-787`). The capacity refusal is "Detonator at maximum capacity (20 explosives)." (`typeclasses/items.py:1226`), not the `(20/20) … Clear some explosives first.` form below. The already-scanned and not-an-explosive refusals do match.*
+> *2026-09-12 — message drift: the shipped strings are "You scan {key} into {detonator}'s memory." plus separate `  Signature: e-{id}` and `  Capacity: n/20` lines, with the room getting "{actor} points a device at {key}, which emits a soft beep." (`CmdScan.func` in `commands/CmdExplosives.py`). The capacity refusal is "Detonator at maximum capacity (20 explosives)." (`RemoteDetonator.add_explosive` in `typeclasses/items.py`), not the `(20/20) … Clear some explosives first.` form below. The already-scanned and not-an-explosive refusals do match.*
 
 **Syntax:** `scan <explosive> with <detonator>`
 
@@ -195,7 +197,7 @@ Room: {char_name} scans a SPDR M9 grenade with their remote detonator, which emi
 
 ### Detonate Single Command
 
-> *2026-09-12 — message drift: there is no blue-LED text anywhere in the code. `commands/CmdExplosives.py:925-950` ships the red-safety-cover pair this spec itself sketches at the top of the file (§Cross-Room Messaging) — "You flip open the red safety cover … A distant beep echoes!" plus "An {key} beeps and its light begins flashing! [N seconds]" to the charge's room. The already-active refusal is "{key} is already detonating!" (`:901`), not "e-1234 is already armed and counting down!". The `[N seconds]` figure is whatever `db.fuse_time` says (10 for an SPDR M9), except on the `rigged_to_exit` branch, which uses `TRAP_FUSE_TIME` (`:911-914`).*
+> *2026-09-12 — message drift: there is no blue-LED text anywhere in the code. `CmdDetonate.detonate_single` in `commands/CmdExplosives.py` sends the red-safety-cover pair this spec itself sketches at the top of the file (§Cross-Room Messaging) — "You flip open the red safety cover … A distant beep echoes!" plus the arming beep from `announce_arming` (countdown tag for builders only). The already-active refusal is "{key} is already detonating!", not "e-1234 is already armed and counting down!". The countdown is `armed_fuse(explosive)`: the charge's own `db.fuse_time` (10 for an SPDR M9, 8 if none is set), or `TRAP_FUSE_TIME` (1) for a rigged trap.*
 
 **Syntax:** `detonate e-<dbref> with <detonator>`
 
@@ -207,12 +209,13 @@ Room: {char_name} scans a SPDR M9 grenade with their remote detonator, which emi
 2. Get explosive object from dbref
 3. Validate explosive still exists and is valid
 4. Check if pin already pulled:
-   - If countdown already active: "e-1234 is already detonating!"
+   - If countdown already active: "<charge name> is already detonating!"
    - If not: Pull pin and start countdown
 5. Trigger explosive's normal pin-pull behavior:
    explosive.db.pin_pulled = True
-   explosive.ndb.countdown_remaining = explosive.db.fuse_time
-   start_fuse_countdown(explosive)
+   explosive.db.hidden = False  # an armed charge cannot stay hidden (#3767)
+   explosive.ndb.countdown_remaining = armed_fuse(explosive)
+   start_grenade_ticker(explosive)
 6. Send detonation messages
 7. Keep explosive in scanned list (will auto-remove on explosion)
 ```
@@ -235,9 +238,9 @@ Observer at grenade location (if different room): A SPDR M9 grenade suddenly act
 
 ### Detonate All Command
 
-> *2026-09-12 — the per-signature report below was never built.* `CmdDetonate.detonate_all` (`commands/CmdExplosives.py:959-1050`) sends the safety-cover line plus "Detonated {n} explosive(s)." and nothing else: `already_active_count` goes only to the splattercast debug channel (`:1046-1050`), and invalid entries are silently skipped (`:984-986`) — never counted, never listed, never reported as `[INVALID - REMOVED]`. The "5 armed, 1 already active, 2 invalid" summary and the ARMED/ALREADY ACTIVE/INVALID display block are UNBUILT, not shipped.
+> *2026-09-12 — the per-signature report below was never built.* `CmdDetonate.detonate_all` (`commands/CmdExplosives.py`) sends the safety-cover line plus "Detonated {n} explosive(s)." and nothing else: `already_active_count` goes only to the splattercast debug channel, and invalid entries are silently skipped — never counted, never listed, never reported as `[INVALID - REMOVED]`. The "5 armed, 1 already active, 2 invalid" summary and the ARMED/ALREADY ACTIVE/INVALID display block are UNBUILT, not shipped.
 >
-> *Also: this door does not honour the trap fuse.* `:990` reads `explosive.db.fuse_time` with no `rigged_to_exit` branch, so mass-detonating a rigged trap gives it 4-10 seconds and announces that to the trap's room, where `detonate e-<id>` gives the same trap 1 second (`:911-914`). Code defect — the surviving half of #2547: the fix commit (`50859edb`, "A trap fuse is short at both doors") edited only the single-target branch, having counted just two `db.fuse_time` readers.
+> `detonate all` and `detonate e-<id>` both take a charge's fuse from `armed_fuse(explosive)`: a rigged trap gets `TRAP_FUSE_TIME` (1 second) through either command, and every other charge gets its own `fuse_time`, or 8 if it has none (#2547, #3348).
 
 **Syntax:** `detonate all with <detonator>`
 
@@ -260,7 +263,7 @@ Observer at grenade location (if different room): A SPDR M9 grenade suddenly act
 You: You flip open the red safety cover and press the DETONATE ALL button. Your remote detonator confirms: 5 explosives armed, 1 already active, 2 invalid.
 
 Your remote detonator displays:
-  e-1234: ARMED (6s) - SPDR M9 grenade
+  e-1234: ARMED (10s) - SPDR M9 grenade
   e-1235: ARMED (8s) - frag grenade  
   e-1236: ARMED (5s) - tactical grenade
   e-1237: ARMED (10s) - demo charge
@@ -273,7 +276,7 @@ Room: {char_name} flips open a red safety cover on their remote detonator and pr
 ```
 
 **Edge Cases:**
-- Empty list: "Your remote detonator has no scanned explosives."
+- Empty list: "<detonator> has no scanned explosives." (after pruning dead entries: "<detonator> has no valid explosives to detonate.")
 - All already active: "All scanned explosives are already detonating."
 - Mixed results: Show detailed breakdown of successes/failures
 
@@ -281,7 +284,7 @@ Room: {char_name} flips open a red safety cover on their remote detonator and pr
 
 ### List Command
 
-> *2026-09-12 — shipped shape: an `EvTable(border="cells", width=78)` framed by `=` rules (`commands/CmdExplosives.py:1137-1204`), not the drawn box below. Same five columns, same `Capacity: n/20` line, same four-state legend, different glyphs. Two real gaps: the TRAP row prints the PROTOTYPE fuse (`:1158-1161`), so a trap that detonates in 1s is listed as "8s (trap)" — a code defect, the same one as `detonate all`, and the reason the "1s (trap)" row below no longer describes the code; and there is no "Dropped at {room}" string — a charge on the ground shows the bare room key (`:1181`). An all-invalid list falls through to "{key} has no scanned explosives." (`:1130`), not "All previously scanned explosives are invalid. List cleared."*
+> *2026-09-12 — shipped shape: an `EvTable(border="cells", width=78)` framed by `=` rules (`CmdDetonateList.func` in `commands/CmdExplosives.py`), not the drawn box below. Same five columns, same `Capacity: n/20` line, same four-state legend, different glyphs. The TRAP row shows the fuse the trap will actually get, `1s (trap)`, from the same `armed_fuse` the two detonate commands use (#3349). There is no "Dropped at {room}" string — a charge on the ground shows the bare room key. An all-invalid list falls through to "{key} has no scanned explosives.", not "All previously scanned explosives are invalid. List cleared."*
 
 **Syntax:** `detonate list with <detonator>` or `detonator list` (if wielded)
 
@@ -295,7 +298,7 @@ Room: {char_name} flips open a red safety cover on their remote detonator and pr
    - Check if exists and valid
    - Get explosive state (pin_pulled, countdown_remaining, location)
    - Auto-remove invalid explosives
-3. Display boxtable with explosive information
+3. Display a table with explosive information
 ```
 
 **Display Format:**
@@ -306,7 +309,7 @@ Room: {char_name} flips open a red safety cover on their remote detonator and pr
 ╠═══════╦══════════════════════╦════════╦═══════════╦════════════════╣
 ║ ID    ║ Device               ║ Status ║ Fuse      ║ Location       ║
 ╠═══════╬══════════════════════╬════════╬═══════════╬════════════════╣
-║ e-123 ║ SPDR M9 grenade      ║ READY  ║ 6s        ║ Armory         ║
+║ e-123 ║ SPDR M9 grenade      ║ READY  ║ 10s       ║ Armory         ║
 ║ e-124 ║ frag grenade         ║ ACTIVE ║ 3s left!  ║ Hallway        ║
 ║ e-125 ║ tactical grenade     ║ READY  ║ 5s        ║ Your inventory ║
 ║ e-126 ║ demo charge          ║ READY  ║ 10s       ║ Storage room   ║
@@ -336,8 +339,8 @@ Status Legend:
 - "Dropped at {room}" if on ground
 
 **Edge Cases:**
-- Empty list: "Your remote detonator has no scanned explosives."
-- All invalid: Auto-clear and show: "All previously scanned explosives are invalid. List cleared."
+- Empty list: "<detonator> has no scanned explosives."
+- All invalid: dead entries are pruned and the same "<detonator> has no scanned explosives." is shown
 
 ---
 
@@ -366,7 +369,7 @@ Room: {char_name} presses several buttons on their remote detonator.
 
 **Edge Cases:**
 - Invalid dbref: "e-1234 is not in this detonator's memory."
-- Explosive doesn't exist: Auto-remove and confirm: "e-1234 no longer exists. Removed from memory."
+- Explosive doesn't exist: removed like any other entry; the confirmation shows the signature in place of the name: "You clear e-1234 (e-1234) from <detonator>'s memory."
 
 ---
 
@@ -394,7 +397,7 @@ Room: {char_name} holds down a button on their remote detonator, which emits a s
 ```
 
 **Edge Cases:**
-- Empty list: "Your remote detonator has no scanned explosives to clear."
+- Empty list: "<detonator> has no scanned explosives to clear."
 
 ---
 
@@ -422,14 +425,14 @@ def remote_detonate_explosive(explosive):
     # Pull the pin (same as manual pull) - use constant
     explosive.db.pin_pulled = True
     
-    # Get fuse time from explosive
-    fuse_time = getattr(explosive.db, 'fuse_time', 8)
+    # Get the fuse: TRAP_FUSE_TIME for a rigged trap, else the charge's own
+    fuse_time = armed_fuse(explosive)
     
     # Set countdown
     explosive.ndb.countdown_remaining = fuse_time
     
     # Start countdown using existing system
-    start_fuse_countdown(explosive)
+    start_grenade_ticker(explosive)
     
     return True, fuse_time
 ```
@@ -439,12 +442,12 @@ def remote_detonate_explosive(explosive):
 **Standard Grenades (frag, tactical, demo):**
 ```python
 # Remote detonation → Pin pulled → Countdown starts → Explosion at location
-# Uses existing explosion logic from CmdThrow.py
+# Uses explode_standalone_grenade in commands/explosion_utils.py
 ```
 
 **SPDR M9 Sticky Grenades:**
 ```python
-# Remote detonation → Pin pulled → 6s countdown
+# Remote detonation → Pin pulled → 10s countdown
 # During countdown: If thrown, still seeks magnetic targets
 # If stuck: Explodes stuck to armor (existing behavior)
 # If on ground: Explodes at ground location (existing behavior)
@@ -454,7 +457,7 @@ def remote_detonate_explosive(explosive):
 ```python
 # Remote detonation → Pin pulled → 1s countdown → Explosion
 # Bypasses trap trigger logic (remote override)
-# Uses existing rigged explosive explosion logic
+# Explodes through explode_standalone_grenade like any remotely armed charge, not the tripwire's own explosion
 # Respects proximity system for damage calculation
 ```
 
@@ -471,8 +474,8 @@ The detonator calls existing explosion paths:
 
 ```python
 # Standard explosive explosion
-# Located in: CmdThrow.py or world/combat/utils.py
-def explode_grenade(grenade):
+# Located in: commands/explosion_utils.py
+def explode_standalone_grenade(grenade):
     """Existing explosion logic"""
     # Get location (room or armor hierarchy)
     # Get proximity list
@@ -483,7 +486,7 @@ def explode_grenade(grenade):
     # Send explosion messages
 
 # Remote detonation simply triggers this:
-remote_detonate(explosive) → pull_pin(explosive) → start_countdown(explosive) → explode_grenade(explosive)
+CmdDetonate → start_grenade_ticker(explosive) (commands/explosion_utils.py) → explode_standalone_grenade(explosive), which deletes the grenade; Item.at_object_delete then removes it from its detonator's list
 ```
 
 ---
@@ -497,7 +500,7 @@ remote_detonate(explosive) → pull_pin(explosive) → start_countdown(explosive
 **Scenario 1: Stuck to Armor**
 ```python
 # SPDR M9 is magnetically stuck to character's plate mail
-# Remote detonation pulls pin → 6s countdown
+# Remote detonation pulls pin → 10s countdown
 # Grenade explodes while stuck to armor (existing behavior)
 # Damage applied to wearer and proximity
 ```
@@ -505,7 +508,7 @@ remote_detonate(explosive) → pull_pin(explosive) → start_countdown(explosive
 **Scenario 2: In Inventory**
 ```python
 # SPDR M9 in character's inventory
-# Remote detonation pulls pin → 6s countdown
+# Remote detonation pulls pin → 10s countdown
 # Character holding live grenade (existing behavior)
 # Can drop before explosion
 ```
@@ -513,7 +516,7 @@ remote_detonate(explosive) → pull_pin(explosive) → start_countdown(explosive
 **Scenario 3: On Ground**
 ```python
 # SPDR M9 on ground in room
-# Remote detonation pulls pin → 6s countdown
+# Remote detonation pulls pin → 10s countdown
 # Explodes at ground location
 # Damages everyone in proximity (existing logic)
 ```
@@ -524,7 +527,7 @@ remote_detonate(explosive) → pull_pin(explosive) → start_countdown(explosive
 ```python
 # Someone manually pulls pin on grenade → countdown starts
 # Remote detonation attempt → check `db.pin_pulled`
-# Message: "That explosive is already detonating!"
+# Message: "<charge name> is already detonating!" (single); `detonate all` skips it silently unless nothing else was armed
 # No re-trigger, countdown continues normally
 ```
 
@@ -532,7 +535,7 @@ remote_detonate(explosive) → pull_pin(explosive) → start_countdown(explosive
 ```python
 # Detonator A detonates grenade → countdown starts
 # Detonator B attempts detonation → check `db.pin_pulled`
-# Message: "That explosive is already detonating!"
+# Message: "<charge name> is already detonating!" (single); `detonate all` skips it silently unless nothing else was armed
 # Prevents exploit of resetting/extending countdown
 ```
 
@@ -547,10 +550,10 @@ remote_detonate(explosive) → pull_pin(explosive) → start_countdown(explosive
 **Scenario 1: Trap Override**
 ```python
 # Rigged explosive set up as trap in doorway
-# Remote detonation pulls pin → 1s countdown (from rigging)
+# Remote detonation pulls pin → 1s countdown (TRAP_FUSE_TIME, via armed_fuse)
 # Explodes BEFORE anyone triggers trap
 # Useful for clearing your own traps safely
-# Uses existing fuse_time (already 1s from rigging process)
+# (was: fuse_time already 1 from rigging; never true, see #2547)
 ```
 
 **Scenario 2: Trap + Remote**
@@ -558,7 +561,7 @@ remote_detonate(explosive) → pull_pin(explosive) → start_countdown(explosive
 # Rigged explosive scanned by detonator
 # Someone triggers trap → `db.pin_pulled` set, 1s countdown starts
 # Remote detonation attempt → check `db.pin_pulled`
-# Message: "That explosive is already detonating!"
+# Message: "<charge name> is already detonating!" (single); `detonate all` skips it silently unless nothing else was armed
 # Cannot re-trigger during countdown
 ```
 
@@ -624,13 +627,10 @@ class RemoteDetonator(Item):
     def remove_explosive(self, explosive):
         # Remove from scanned list
     
-    def detonate_explosive(self, explosive):
-        # Trigger single explosive
+    def get_scanned_count(self):
+        # Validate the list, then count it
     
-    def detonate_all(self):
-        # Trigger all explosives
-    
-    def at_delete(self):
+    def at_object_delete(self):
         """Called when detonator is destroyed"""
         # Clear scanned_by_detonator on all linked explosives
 ```
@@ -638,7 +638,7 @@ class RemoteDetonator(Item):
 **2. Explosive Cleanup Hook** (`typeclasses/items.py`)
 ```python
 # Add to all explosive item classes (or base explosive class)
-def at_delete(self):
+def at_object_delete(self):
     """Called when explosive is destroyed"""
     # Remove from detonator's scanned list if linked
     if hasattr(self.db, 'scanned_by_detonator') and self.db.scanned_by_detonator:
@@ -673,11 +673,11 @@ class CmdClearDetonator(Command):
     """Clear single or all explosives from detonator"""
     # Must be wielding/holding detonator to use
 
-class DetonatorCmdSet(CmdSet):
-    """Command set for detonator commands"""
+# No separate detonator cmdset: the four commands are added to the
+# character cmdset (CharacterCmdSet in commands/default_cmdsets.py)
 ```
 
-**4. Integration Hooks** (`commands/CmdThrow.py` - modify existing functions)
+**4. Integration Hooks** (`commands/CmdThrow.py` - modify existing functions; the game does not do it this way: detonator cleanup runs in `Item.at_object_delete` in `typeclasses/items.py`, and the explosion is `explode_standalone_grenade` in `commands/explosion_utils.py`)
 ```python
 # In existing pull_pin() function:
 def pull_pin(self, grenade):
@@ -709,11 +709,11 @@ def explode_rigged_grenade(grenade):
     # ... existing rigged explosion logic ...
     
     # NEW: Same cleanup as above
-    # Rigged explosives already use 1-second fuse_time from rigging process
-    # Remote detonation uses normal fuse_time (which is already 1s)
+    # (was: rigged explosives already use 1-second fuse_time from rigging; never true, see #2547)
+    # Remote detonation reads TRAP_FUSE_TIME through armed_fuse()
 ```
 
-**5. Utility Functions** (`commands/CmdThrow.py` - add helper functions)
+**5. Utility Functions** (`commands/CmdThrow.py` - add helper functions; not made as helpers: list validation is `RemoteDetonator.validate_scanned_list` in `typeclasses/items.py`, and status and location strings are built inline in `CmdDetonateList.func`)
 ```python
 def validate_detonator_list(detonator):
     """Clean up invalid explosives from detonator list"""
@@ -739,17 +739,17 @@ def get_explosive_location_string(explosive):
 ]
 ```
 
-**2. Explosion Functions** (`commands/CmdThrow.py`)
+**2. Explosion Functions** (`commands/explosion_utils.py`)
 ```python
 # Add cleanup hook to explosion completion
 # Ensure sticky grenades, rigged explosives, standard explosives all clean up
-# Happens automatically via at_delete() hook on explosive objects
+# Happens automatically via at_object_delete() hook on explosive objects
 ```
 
 ### Testing Priorities
 
 1. ✅ Scan explosive with detonator
-2. ✅ Display detonator list with boxtable
+2. ✅ Display detonator list as a table
 3. ✅ Remote detonate single explosive → countdown starts
 4. ✅ Remote detonate all → multiple countdowns
 5. ✅ SPDR M9 remote detonation → still seeks/sticks during countdown
@@ -778,14 +778,14 @@ These decisions were made during the specification phase to resolve implementati
 - **Implementation:** CmdScan, CmdDetonate, CmdDetonateList, CmdClearDetonator all in `commands/CmdExplosives.py`
 
 **3. Rigged Explosive Countdown Timing**
-- **Decision:** Use normal fuse_time (already 1 second from rigging process)
-- **Rationale:** Rigging process already sets `grenade.db.fuse_time = 1`, no special handling needed
-- **Implementation:** Remote detonation calls `pull_pin()` which uses existing `fuse_time` attribute
+- **Decision:** A rigged trap gets `TRAP_FUSE_TIME` (1 second) however it is set off
+- **Rationale:** (was: "Rigging process already sets `grenade.db.fuse_time = 1`, no special handling needed"; nothing ever wrote that, see #2547)
+- **Implementation:** `armed_fuse(explosive)` in `commands/CmdExplosives.py` returns `TRAP_FUSE_TIME` when `db.rigged_to_exit` is set; rigging does not touch the grenade's own `fuse_time`. The detonate commands set `db.pin_pulled`, set the countdown from `armed_fuse()`, announce the arming beep, and start the same `start_grenade_ticker` that `pull` uses
 
 **4. Cleanup Integration Point**
-- **Decision:** Use `at_delete()` hook on explosive objects
+- **Decision:** Use the `at_object_delete()` hook (`Item.at_object_delete` for explosives, `RemoteDetonator.at_object_delete` for the detonator). `at_delete` is not an Evennia hook; until #2590 the cleanup was written under that name and never ran
 - **Rationale:** Catches all deletion scenarios cleanly (explosion, pickup, destroy, etc.)
-- **Implementation:** Add `at_delete()` to explosive item classes to remove from detonator list
+- **Implementation:** `Item.at_object_delete` in `typeclasses/items.py` removes a deleted explosive from its detonator's list
 
 **5. Cross-Room Messaging**
 - **Decision:** Both operator location and grenade location get messages
@@ -800,14 +800,14 @@ These decisions were made during the specification phase to resolve implementati
 - **Implementation:** Check for wielded weapon or held item before allowing detonator commands
 
 **7. Pin State Handling**
-- **Decision:** Pin state doesn't matter for remote detonation
-- **Rationale:** Remote detonation can pull pin even if already pulled (though already-active check prevents re-trigger)
-- **Implementation:** `pull_pin()` sets `db.pin_pulled` internally
+- **Decision:** A charge whose pin is already pulled is not re-armed (see Decisions 1 and 8)
+- **Rationale:** (was: "Pin state doesn't matter for remote detonation"; this contradicted Decisions 1 and 8)
+- **Implementation:** `detonate e-<id>` refuses with "<charge name> is already detonating!" and `detonate all` skips the charge; neither calls `pull_pin()`
 
 **8. Fuse Countdown Preservation**
 - **Decision:** Remote detonation preserves and respects existing fuse countdown
 - **Rationale:** If someone manually pulled pin, remote detonation doesn't interfere with active countdown
-- **Implementation:** Check `db.pin_pulled` before calling `pull_pin()`
+- **Implementation:** Check `db.pin_pulled` before arming the charge
 
 ---
 
@@ -830,7 +830,7 @@ detonate all with <detonator>
   - No confirmation required (embrace chaos)
 
 detonate list with <detonator>
-  - Display boxtable of scanned explosives
+  - Display a table of scanned explosives
   - Shows ID, type, status, fuse time, location
   - Auto-validates and cleans invalid entries
 
@@ -905,4 +905,4 @@ clear all from <detonator>
 
 The remote detonator adds a powerful tactical tool for explosive management while respecting all existing explosive behaviors. By triggering normal pin-pull and countdown logic rather than bypassing it, the system maintains the unique characteristics of each explosive type (SPDR M9 magnetic seeking, rigged explosive trap mechanics, varied fuse times) while enabling complex multi-stage detonation plans.
 
-The bidirectional tracking system ensures clean state management, and the override mechanics prevent conflicts while allowing detonator theft/takeover gameplay. Combined with the boxtable display and capacity management, this creates a robust foundation for explosive-focused tactical gameplay.
+The bidirectional tracking system ensures clean state management, and the override mechanics prevent conflicts while allowing detonator theft/takeover gameplay. Combined with the table display and capacity management, this creates a robust foundation for explosive-focused tactical gameplay.

@@ -1,6 +1,6 @@
 # Multi-Weapon Combat Specification
 
-> **Status:** 📋 Proposal — designed 2026-10-01; slices 1, 2 and 3 shipped 2026-10-05/06, slice 4 (pairs by weapon type, the Tiger claw, the pistol pair) in review 2026-10-06. Covers claws per hand, akimbo profiles by weapon type and count, alternation between held weapons, handguns, the grip, and species with many hands. The fourteen rulings in §14 were decided 2026-10-03 to 2026-10-06. Supersedes defect #3571 (closed with slice 1).
+> **Status:** 📋 Proposal — designed 2026-10-01; slices 1, 2, 3 and 4 shipped 2026-10-05/06 (slice 4, #3719: pairs by weapon type, the Tiger claw, the pistol pair). Covers claws per hand, akimbo profiles by weapon type and count, alternation between held weapons, handguns, the grip, and species with many hands. The fourteen rulings in §14 were decided 2026-10-03 to 2026-10-06. Supersedes defect #3571 (closed with slice 1).
 
 ## 0. Owner rulings (2026-10-01, verbatim)
 
@@ -14,7 +14,7 @@ On the per-hand model: *"The model is good. For combat, we'd alternate between w
 
 Standing rulings this design keeps: active natural cyberweapons take precedence over held weapons (`AUGMENT_ABILITIES_SPEC.md` decision 4, 2026-06-12); a severed limb takes its gear (decision 7); extra grasping limbs buy no extra attacks and no raw damage (the Q2 guardrail in `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`, 2026-06-20): the manipulator count pays through initiative, loadout readiness and disarm resistance only. The event-triggered bonus attacks that exist today (a failed advance or charge) are untouched.
 
-## 1. Why: how the claws stand today
+## 1. Why: how the claws stood before this design (2026-10-01)
 
 - The Nailz tray seats ONE ability, `nailz`, into both hands (`flesh_containers` = left and right hand, `world/prototypes.py`). Each host organ keeps its own `ability_state["nailz"]`, but `_mirror_ability_state` (`world/medical/augments.py`) copies `deployed` and `weapon_dbref` into every host, so both hands point at one `NAILZ_CLAWS` object and one deployed flag. The mirror is called from eight sites in the toggle paths.
 - `get_active_natural_weapon` returns the first deployed host's weapon by dbref and never asks where that object is.
@@ -26,8 +26,8 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 ## 2. Design at a glance
 
 1. **Each hand owns its claws.** Every host organ's `ability_state` is authoritative; the mirror is deleted; each host spawns its own weapon object. Severance takes exactly that hand's claws; reattachment keeps the object it finds on the appendage.
-2. **One door for "what weapon".** `choose_weapon(char, target=None)` in a new `world/combat/weapon_choice.py` returns a `WeaponChoice` and replaces the six selection functions: `get_wielded_weapon`, `get_wielded_weapons`, `is_wielding_ranged_weapon`, `select_weapon_for_engagement` and `find_best_weapon` in `world/combat/utils.py`, and `get_active_natural_weapon` in `world/medical/augments.py`. Every gate, every attack and every line of prose asks it.
-3. **Akimbo is weapon-type data.** `AKIMBO_PROFILES_BY_TYPE` in `world/combat/constants.py` maps a `weapon_type` to profiles keyed by count (owner ruling §14 #14, slice 4; slices 1-3 carried `akimbo_family` and `akimbo_profiles` on each prototype instead). Two items of one type with a row become ONE option with the count-2 profile: one attack, uplifted values, the pair bank with the lead item's name in its lines. One item is its own values and its own bank.
+2. **One door for "what weapon".** `choose_weapon(char, target=None)` in a new `world/combat/weapon_choice.py` returns a `WeaponChoice` and replaces five selection functions: `get_wielded_weapon`, `get_wielded_weapons`, `is_wielding_ranged_weapon` and `select_weapon_for_engagement` in `world/combat/utils.py`, and `get_active_natural_weapon` in `world/medical/augments.py`. `find_best_weapon` (`world/combat/utils.py`) is the NPC draw picker over the whole inventory, not a wield selector, and stays. Every gate, every attack and every line of prose asks it.
+3. **Akimbo is weapon-type data.** `AKIMBO_PROFILES_BY_TYPE` in `world/combat/constants.py` maps a `weapon_type` to profiles keyed by count (owner ruling §14 #14, slice 4; slices 1-3 carried `akimbo_family` and `akimbo_profiles` on each prototype instead). Two items of one type with a row become ONE option with the count-2 profile: one attack, uplifted values, the pair bank (whose lines may name the lead item with `{item_name}`; the `nailz_akimbo` bank does not). One item is its own values and its own bank.
 4. **Alternation is the general rule.** Among the options that can reach the target, the swing rotates in a stable hand order, one option per round. Akimbo groups rotate as one option.
 5. **Toggle acts on every host.** `/nailz` deploys or retracts every living host at once.
 6. **Handguns follow the same rule** without new code: two pistols of different types alternate; two of one type that has a row in `AKIMBO_PROFILES_BY_TYPE` (two light pistols, slice 4) are one attack.
@@ -37,7 +37,7 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 
 **Organs.** Both hands keep the ability name `nailz`. Each host's `organ.ability_state["nailz"]` = `{deployed, weapon_dbref}` is the truth. Delete `_mirror_ability_state` and its eight calls. `_get_or_spawn_weapon` already writes the dbref into the state it is given, so calling it per host yields one object per hand; the install loop that seats the ability into each `flesh_containers` host is unchanged.
 
-**Legacy shared references.** Until the migration (§12) runs, a stored body may still have every host of an ability pointing at one object. Every toggle settles this first, over all living hosts whichever are being toggled (a surgical stow passes one): the host whose hand holds the object keeps the reference, otherwise the first in organ order; the others let go. A host that lets go while deployed: a natural weapon spawns its own at once, off-grid and silent, so the hand keeps fighting; an integrated host's hand never held the shared gun, so its deployed flag (the mirror's word alone) is cleared, and it gains its own gun on its next deploy, as the migration (§12) gives it one up front. Nothing is deleted.
+**Legacy shared references.** A stored body may still have every host of an ability pointing at one object. Every toggle settles this first, over all living hosts whichever are being toggled (a surgical stow passes one): the host whose hand holds the object keeps the reference, otherwise the first in organ order; the others let go. A host that lets go while deployed: a natural weapon spawns its own at once, off-grid and silent, so the hand keeps fighting; an integrated host's hand never held the shared gun, so its deployed flag (the mirror's word alone) is cleared, and it gains its own gun on its next deploy. Nothing is deleted.
 
 **Taking an object back.** On deploy, a host's existing object is used as it stands when it is parked off-grid or on the body. One lying on a severed appendage is carried off: the host unlinks it and spawns its own, and chrome reattachment (§9) is what reclaims the carried one (flesh never reattaches, so a flesh hand's carried claws stay with the appendage). One lying anywhere else is taken back. Taking back presumes one owner: severance settles a shared reference (§9), so no deploy reaches into another body's hand. The anywhere-else case existed because a hand-only sever dropped a deployed forearm gun to the floor, locked and undroppable, while the module still read deployed (#3697, fixed 2026-10-08: the cut leaves integrated hardware to the hardware carry, which folds a surviving arm's gun back inside the arm, parked and retracted; the take-back stays as the safety net).
 
@@ -47,20 +47,20 @@ Standing rulings this design keeps: active natural cyberweapons take precedence 
 - `hit_bonus` (int, default 0): a to-hit term added beside the charge bonus.
 - Pairing is not an item attribute (slice 4): `AKIMBO_PROFILES_BY_TYPE[weapon_type]` = `{count: overrides}`, overrides limited to `damage`, `hit_bonus`, `weapon_type`, `damage_type`. Count 1 is the item's own attributes. Rows: `nailz`, `tiger_claws`, `light_pistol`.
 
-**Constants** in `world/combat/constants.py`: `WEAPON_ATTR_HIT_BONUS`, `AKIMBO_PROFILE_FIELDS`, `AKIMBO_PROFILES_BY_TYPE`, `NDB_LAST_WEAPON_SLOT`. A one-weapon bank is still named by the prototype's `weapon_type`; a pair bank is named by its row in `AKIMBO_PROFILES_BY_TYPE` (slice 4).
+**Constants** in `world/combat/constants.py`: `WEAPON_ATTR_HIT_BONUS`, `WEAPON_ATTR_HANDS_REQUIRED`, `AKIMBO_PROFILE_FIELDS`, `AKIMBO_PROFILES_BY_TYPE`, `NDB_LAST_WEAPON_SLOT`. A one-weapon bank is still named by the prototype's `weapon_type`; a pair bank is named by its row in `AKIMBO_PROFILES_BY_TYPE` (slice 4).
 
 **`NAILZ_CLAWS`** becomes one hand: five blades, placeholder damage 6, `weapon_type` `nailz` (was `tiger_claws` until slice 2), its pair row `{2: {damage: 9, hit_bonus: 1, weapon_type: "nailz_akimbo"}}` (on the prototype until slice 4, in `AKIMBO_PROFILES_BY_TYPE` since). An intact owner keeps today's damage 9.
 
-**`WeaponChoice`** (frozen dataclass): `items` in slot order, `slots`, `lead_slot` (the host container for a natural weapon, the first grasping slot for a held one; the wheel's key), `damage`, `hit_bonus`, `damage_type`, `weapon_type`, `is_ranged`, `natural`; `.item = items[0]`; `.akimbo = len(items) > 1`. `None` means unarmed, as today.
+**`WeaponChoice`** (frozen dataclass): `items` in slot order, `slots`, `lead_slot` (the host container for a natural weapon, the first grasping slot for a held one; the wheel's key), `hands_required`, `damage`, `hit_bonus`, `damage_type`, `weapon_type`, `is_ranged`, `natural`; `.item = items[0]`; `.akimbo = len(items) > 1`. `None` means unarmed, as today.
 
 ## 4. One door: `choose_weapon`
 
 `choose_weapon(char, target=None)` is a pure peek. Rule order:
 
-1. **Candidates** in slot order: natural options, then held items, de-duplicated by object. A future two-slot grip is one option with two slots.
+1. **Candidates** in slot order: natural options, then held items, de-duplicated by object. An object found in two slots is one option with both slots; no command puts one object in two slots, since the grip is implicit (`GRIP_ENFORCEMENT_SPEC.md` §2).
 2. **Real weapons**: if any held item is tagged `weapon`, drop untagged items (the #516 rule). With nothing tagged, keep only the single highest-damage improvised item, so nothing rotates a cigarette.
 3. **Range**: with a target not in melee range, ranged options only; with none, keep all so the existing reach message fires.
-4. **Natural precedence** (decision 4, applied among the options that can reach): if any deployed natural weapon survived the range step, only naturals count. Ruled 2026-10-03 (§14, ruling 2): at range a held pistol fires while the claws stay out; in melee deployed claws win outright and the knife waits. Today natural precedence runs before range, so claws out means claws swing even where they cannot reach, and the reach gate refuses the attack while a loaded gun sits in the other hand.
+4. **Natural precedence** (decision 4, applied among the options that can reach): if any deployed natural weapon survived the range step, only naturals count. Ruled 2026-10-03 (§14, ruling 2): at range a held pistol fires while the claws stay out; in melee deployed claws win outright and the knife waits.
 5. **Akimbo grouping** (§5).
 6. **The wheel** (§6; slice 2): the next option after the last slot that swung. Until slice 2, held weapons kept range-then-max and naturals took the first option.
 
@@ -75,6 +75,8 @@ Grouping runs after the range filter. Members = options of one `weapon_type` tha
 **Nailz placeholders:** one hand d6+6, +0 hit, bank `nailz`; both hands d6+9, +1 hit, bank `nailz_akimbo`. A severed or retracted hand drops n to 1 on the next swing with no state to clear.
 
 **To-hit:** `attacker_roll += choice.hit_bonus`, beside the existing +2 charge bonus in `world/combat/attack.py`; defaults to 0, so no other weapon changes. Damage stays d6 + `choice.damage`; injury type from `choice.damage_type`. Manipulation = min over the group's slots, so the weaker hand drags.
+
+**Grip:** effective skill is also multiplied by `grip_hit_factor(choice, free_slots)` (`world/combat/capacity.py`, `GRIP_ENFORCEMENT_SPEC.md`), where `free_slots` counts the attacker's empty grasping slots. It is 1.0 unless the choice wants more hands than it holds plus the free slots; natural and integrated weapons never under-grip.
 
 **Guardrail:** the uplift belongs to a designed pair, which costs a second implant or item. It is one attack and is never paid per surplus limb.
 
@@ -101,7 +103,7 @@ This replaces "then highest damage" (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`
 
 **Toggle prose.** Base keys stay the all-hosts prose. New keys `deploy_msg_one`, `retract_msg_one`, `deploy_room_one`, `retract_room_one` (constants beside `CYBERWARE_COMMAND_PREFIX`), used when exactly one host changed, whatever was dispatched or lives: a surgical stow of one hand, or a body down to one hand (#3700); an ability without them falls back to its base keys. They carry `{hand}`, pre-interpolated before `msg_room_identity`. `deployed_longdesc` is rewritten as one-hand prose with no `_one` variant: it already renders once per chrome location. Room lines stay on `msg_room_identity`.
 
-`COMBAT_MESSAGE_FORMAT_SPEC.md` gains a bank-pair section when slice 1 ships.
+`COMBAT_MESSAGE_FORMAT_SPEC.md` §Bank pairs holds the authoring rule for pair banks.
 
 ## 8. Toggle
 
@@ -109,7 +111,7 @@ This replaces "then highest damage" (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`
 
 This fixes a latent bug: two forearm shotgun modules mirror one `weapon_dbref`, so the second arm never gets a gun.
 
-`stow_abilities_at` dispatches only the hosts at the procedure location (#3360: hardware elsewhere on the body is left alone); today it retracts both hands. Readouts: `list_abilities` names the hands only when they differ; the cyberware status screen shows "both hands" or "left deployed / right retracted"; the sdesc names the peeked natural option's item. Voice and Jawz have one host (the cyber-jaw hardpoint); nothing changes for them. Blindsight can have two hosts (a targeting processor in each cyber arm): it reads as any-deployed and is unaffected in play, but the per-host toggle and the readouts must cover it like the shotgun pair.
+`stow_abilities_at` dispatches only the hosts at the procedure location (#3360: hardware elsewhere on the body is left alone). Readouts: `list_abilities` names the hands only when they differ; the cyberware status screen shows "both hands" or "left deployed / right retracted"; the sdesc names the first deployed natural weapon's item, in organ order (`get_active_natural_weapons`), not the wheel's peek. Voice and Jawz have one host (the cyber-jaw hardpoint); nothing changes for them. Blindsight can have two hosts (a targeting processor in each cyber arm): it reads as any-deployed and is unaffected in play, but the per-host toggle and the readouts must cover it like the shotgun pair.
 
 ## 9. Severance and reattachment
 
@@ -129,7 +131,7 @@ Aim stays per character and gives no accuracy bonus. Either gun fires under it; 
 
 Akimbo pistols are one row (slice 4): `light_pistol` → `{2: {damage 16, hit_bonus -1, weapon_type: "light_pistol_akimbo"}}` and that bank; any two light pistols pair whatever their make, and the bank says `{item_name}` for the lead pistol. A pair is ONE attack, never two shots. Slice 2 makes the two-hand-grip lines in the heavy pistol, heavy revolver and machine pistol banks hand-neutral.
 
-Out of scope: ammunition (`COMBAT_SYSTEM.md` banner); `hands_required` enforcement (today it only sets a default).
+Out of scope: ammunition (`COMBAT_SYSTEM.md` banner). `hands_required` is enforced by the implicit grip (`GRIP_ENFORCEMENT_SPEC.md`, `grip_hit_factor` in `world/combat/capacity.py`).
 
 ## 11. Many hands
 
@@ -168,9 +170,9 @@ For each living character, for each ability with two or more living hosts, in sl
 ## 13. Slices
 
 - **0 (now):** this spec; the ledger gap (§16). No issue.
-- **1, claws plus the one door — SHIPPED** (PR A #3696 and #3701 on 2026-10-05, PR B #3702 on 2026-10-06; the migration PR C was dropped after the census, §12; #3695 and #3571 closed): per-host toggle; delete the mirror; per-location stow; `is_ability_deployed` and the director; readouts; `get_active_natural_weapons`; `weapon_choice.py` with grouping; repoint the 20 + 1 + 3 + 1 call sites and delete the five old functions; the hit term; manipulation by slots; the `NAILZ_CLAWS` profiles; the bank split; `_one` prose; reattach keeps the object; the migration. Held weapons keep range-then-max, but gates, initiate and the swing agree. Tests: rewrite `test_one_ability_two_hands.py` (one assertion inverts), `test_weapon_autoprioritizer.py`, `test_combat_manipulation_resolver.py`; add a test that both claw banks resolve all four phases. Specs: `AUGMENT_ABILITIES_SPEC.md` §1/§3/§8, `COMBAT_MESSAGE_FORMAT_SPEC.md`, `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md` §6.1. Play, checked via splattercast: deploy, fight akimbo, sever, fight single, surgical stow, chrome reattach.
+- **1, claws plus the one door — SHIPPED** (PR A #3696 and #3701 on 2026-10-05, PR B #3702 on 2026-10-06; the migration PR C was dropped after the census, §12; #3695 and #3571 closed): per-host toggle; delete the mirror; per-location stow; `is_ability_deployed` and the director; readouts; `get_active_natural_weapons`; `weapon_choice.py` with grouping; repoint the 20 + 1 + 3 + 1 call sites and delete the five old functions; the hit term; manipulation by slots; the `NAILZ_CLAWS` profiles; the bank split; `_one` prose; reattach keeps the object. Held weapons keep range-then-max, but gates, initiate and the swing agree. Tests: rewrite `test_one_ability_two_hands.py` (one assertion inverts), `test_weapon_autoprioritizer.py`, `test_combat_manipulation_resolver.py`; add a test that both claw banks resolve all four phases. Specs: `AUGMENT_ABILITIES_SPEC.md` §1/§3/§8, `COMBAT_MESSAGE_FORMAT_SPEC.md`, `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md` §6.1. Play, checked via splattercast: deploy, fight akimbo, sever, fight single, surgical stow, chrome reattach.
 - **2, alternation and handguns — SHIPPED** (issue #3707, owner "Go." 2026-10-06; PRs #3709 and #3711 on 2026-10-06): ordered `Character.hands` (`slot_order`); the ndb cursor `NDB_LAST_WEAPON_SLOT`; `note_weapon_used` after the attack gates; the max rule removed; akimbo groups keep their slot place; the Nailz bank rename; disarm order; pistol bank rewrites. Play: two light pistols; pistol plus knife at range and in melee; arm-gun plus pistol; Nailz plus Jawz.
-- **3, grip enforcement — SHIPPED (`hands_required`; owner ruling 2026-10-06, §14 #13; the implicit grip of GRIP_ENFORCEMENT_SPEC.md, PR #3717 on 2026-10-06):** a two-handed weapon occupies two grasping slots when wielded; one-handed use is refused or penalised by a ruling to come; the wheel treats the grip as one option (§4 step 1 already allows it). Touches wield, get, disarm and the hands view. Design pass first.
+- **3, grip enforcement — SHIPPED (`hands_required`; owner ruling 2026-10-06, §14 #13; the implicit grip of GRIP_ENFORCEMENT_SPEC.md, PR #3717 on 2026-10-06):** a two-handed weapon sits in one hand, and a free grasping slot anywhere on the body is its second hand. With no free slot it is under-gripped: `grip_hit_factor` (`world/combat/capacity.py`) lowers the attacker's skill, and the swing is never refused. The wheel sees one option.
 - **4, content by weapon type (issue #3718, owner rulings 2026-10-06, §14 #14):** pairing moves from per-item attributes to `AKIMBO_PROFILES_BY_TYPE` (rows `nailz`, `tiger_claws`, `light_pistol`; Nailz unchanged in play); the `TIGER_CLAWS` prototype (Voxhaul Tiger claw, one per hand, damage 6, weapons rack 180); banks `tiger_claws`, `tiger_claws_akimbo` (fresh glove prose, 19-23 / 24 per phase) and `light_pistol_akimbo` (16 per phase).
 
 ## 14. Owner rulings
@@ -182,7 +184,7 @@ Decided (slice 1 gates), owner's words verbatim:
 - **#5 `/nailz` in a mixed state retracts every host**; otherwise it deploys every host. 2026-10-05: *"Retract both to sync up makes sense."*
 - **#9 Reattachment keeps the hand's original claw or gun object**, parked back in the body, retracted. 2026-10-05: *"I concur. Keep it."*
 - **#11 Claw accuracy uses the host hand's manipulation**; the fangs stay body-wide. 2026-10-05: *"Per hand makes sense. We want consistency."*
-- **#12 Migration keeps deployed claws deployed** (the second object is spawned at once); the second shotgun arm gaining a gun is called out in the migration's counts as a mechanic change. 2026-10-05: *"Your rec is fine. We're still in pre-alpha."*
+- **#12 Migration keeps deployed claws deployed** (the second object is spawned at once); the second shotgun arm gaining a gun is called out in the migration's counts as a mechanic change. 2026-10-05: *"Your rec is fine. We're still in pre-alpha."* (Overtaken: the migration was dropped 2026-10-06, §12, because the census found nothing to migrate. A toggle settles a legacy share as it goes: a deployed claw host that lets go spawns its own object at once, while a deployed integrated host that lets go is cleared to retracted, `_disown` in `world/medical/augments.py`.)
 
 Decided (slice 2 gates), 2026-10-06, owner's words verbatim:
 
@@ -199,7 +201,7 @@ Slice 1 close-out, 2026-10-06, owner's words: *"Yeah. Clean up is good."* The mi
 
 ## 15. Risks
 
-**`hands_required` (open ruling, §14 #13).** Today `hands_required` is written once at item creation (`typeclasses/items.py`, every item gets 1) and two ranged prototypes declare 2; nothing reads it. "Enforcement" would mean: a two-handed weapon occupies two grasping slots when wielded (so a one-armed body cannot bring a rifle to bear, and the other hand cannot hold a knife while it is up), firing or swinging it with one hand is refused or penalised, and the wheel treats the two-slot grip as one option (§4 step 1 already allows that). It touches wield, get, disarm and the hands view, and it is the one-handed-shooter question the owner has not ruled on. Ruled 2026-10-06: enforcement is wanted, timing is the builder's (§14 #13). It is slice 3 (§13): its own design pass first (grip slots, the one-handed penalty or refusal, what a one-armed body can bring to bear), then the build. The design pass is `GRIP_ENFORCEMENT_SPEC.md` (proposal, 2026-10-06); its §6 lists the five rulings to ask. Correction: five prototypes resolve to `hands_required` 2 (the ranged base plus the anti-material rifle, inherited by four long guns), not two.
+**`hands_required` (§14 #13).** Every item is written 1 at creation (`typeclasses/items.py`). It is enforced by the implicit grip of `GRIP_ENFORCEMENT_SPEC.md` (its rulings in §6, the grip model in §2, all 2026-10-06): a two-handed weapon sits in one hand, and a free grasping slot anywhere on the body is its second hand. With no free slot it is under-gripped, and `grip_hit_factor` (`world/combat/capacity.py`) lowers the attacker's skill; the swing is never refused. Natural and integrated weapons never under-grip. `choose_weapon` carries the value on `WeaponChoice.hands_required`. Prototypes that declare `hands_required` 2: the ranged base (inherited by the long guns), the anti-material rifle, the baseball bat, the staff and the chainsaw.
 
 
 - Slice 1 repoints about 25 call sites; every gate and prose path needs play testing; the suite takes about 53 minutes.
@@ -207,13 +209,9 @@ Slice 1 close-out, 2026-10-06, owner's words: *"Yeah. Clean up is good."* The mi
 - `hit_bonus` is a new term on every roll; it must default to 0 and never be written onto items.
 - `get_combat_message` swallows errors; test both claw banks across all four phases.
 - The weapon must leave the appendage before `organ_item.delete()`.
-- Bodies with two shotgun arms change (two guns); take the census first.
 - Mixed loadouts lose the guaranteed best swing (arm-gun 20 versus pistol); label it a mechanic change.
 - Flesh-hand Nailz harvest and reinstall is unverified (the install writes no provenance).
-- Legacy corpse snapshots sharing a dbref move the one shared object onto each limb as it is cut, so it ends on the last limb cut and the first loses it.
 - `get` can push a deployed arm-gun out of the first full hand.
-- A missed spec refresh leaves the both-hands longdesc rendering twice on chrome hands.
-- Evennia treats module-level dicts in `world/prototypes.py` as prototypes; keep profiles inline (unverified against the Evennia source, which is not in this repo).
 
 ## 16. Balance
 
