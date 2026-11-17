@@ -320,6 +320,26 @@ def remember_voice(observer: Any, target: Any, name: str,
     return True
 
 
+def won_voice_verdicts(observer: Any) -> set:
+    """The won voice verdicts *observer* holds, as their keys:
+    ``(body dbref, voice uid)`` for every stored attempt to tell whose
+    voice it was hearing that succeeded (``voice_discern_cache``,
+    written by :func:`attempt_voice_discern`). A failed attempt is not
+    one.
+
+    :func:`world.identity.erase_look` reads this before and after it
+    erases a name, to tell which verdicts went with it (#3861). The
+    keys are compared and not the voice uids: a verdict made on a body
+    object that no longer exists is never erased, and a new body of
+    the same person can sound the same.
+    """
+    cache = observer.db.voice_discern_cache
+    if not cache:
+        return set()
+    return {key for key in list(cache)
+            if isinstance(key, tuple) and len(key) == 2 and cache[key]}
+
+
 def _won_voice_verdicts_standing_on(observer: Any, uids: Any) -> list:
     """The voices *observer* placed BY WAY OF the entries *uids*.
 
@@ -454,6 +474,10 @@ def erase_voices_named(observer: Any, name: str, *,
 
     The entries go, not just their names, and so do the voices placed
     by way of them; a failed attempt to place a voice stays (#3817).
+    A voice can have a won verdict and no entry here: the observer
+    worked out whose it was and never named it.
+    :func:`world.identity.erase_look` tells the observer about such a
+    voice as well (#3861, :func:`won_voice_verdicts`).
 
     It used to be done by true body: forgetting somebody by name
     blanked every named voice of the same body, whatever the observer

@@ -1055,7 +1055,10 @@ class LLMNpcMixin:
         goes through, with the looks and the voices that have just left
         this NPC's recognition and voice memory. A look it held no
         entry for, and knew only because it saw through it to the
-        forgotten person, is one of them (#3859). Owner, 2026-11-15:
+        forgotten person, is one of them (#3859). So is a voice it
+        held no entry for and could tell only as theirs (#3861): what
+        it filed under that voice goes, also from before it worked
+        out whose it was. Owner, 2026-11-15:
         "This should be identical to what a player loses. Their
         behavior is ideally identical to avoid cheating/hacking." A
         player who forgets a look is left with no memory of it. An NPC
