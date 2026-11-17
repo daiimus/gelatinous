@@ -50,8 +50,8 @@ ingredients (real items; substance contributions + culinary role)
 |---|----------|--------------|
 | 1 | Engine | **the bar engine, generalized** — the station framework the bar spec promised (§2.1 there) gets built HERE, and the bar becomes its first client retroactively |
 | 2 | Front-ends | both — NPC cooks serve (economy) AND players cook at stations (emergent) |
-| 3 | Effects | live on ingredients; additive sum, capped; same substance pipeline `food.py` already uses |
-| 4 | Recipe model | free-cook → save as named dish; **recipes are cyber-brain "files"** (same data family as bar recipes/contacts) — which makes heritage recipes *heirlooms*: stealable, tradeable, giftable, hackable when decking lands |
+| 3 | Effects | live on ingredients; additive sum, capped. Today a dish's effects are declared on the finished item (`drink_effects`, e.g. `{"nutrition": 3}`); the ingredient-sum seam in `world/food.py` (`dish_contributions`) exists but nothing calls it, and every ingredient's `contributions` is empty. This spec makes the sum the source |
+| 4 | Recipe model | free-cook → save as named dish; **recipes are cyber-brain "files"** (same data family as bar recipes/contacts; 📋 UNBUILT (no issue) for bars too: a saved bar recipe is an entry in the bar's `db.menu`, Bars decision #11) — which makes heritage recipes *heirlooms*: stealable, tradeable, giftable, hackable when decking lands |
 | 5 | Culinary roles | the cocktail-role analog: **protein / starch / aromatic / sauce-fat / garnish** — composition drives recognition |
 | 6 | Recognition | a hidden **dish-template library** (the 20-cocktail analog): composition + station type → *soup, skewer, dumpling, congee, curry, flatbread, zakuski plate, stew, pickle plate…* Single-ingredient over heat = *grilled/boiled `<thing>`* |
 | 7 | Balance | **ingredient scarcity**, not rule caps — and scarcity is geographic: supply chains are the lever |
@@ -88,6 +88,14 @@ ingredient flavour notes, derived effects. Prep-method *mechanics*
 (ferment, cure, smoke) defer exactly as the bar deferred them — but the
 fermentory venue is designed against that future.
 
+What exists today: a `BarCounter` menu entry that names a `proto` is
+plated, not mixed — the real dish is spawned onto the counter
+(`world/bar.py` `plate_or_mix`, Bars §7.2, #2342). The Snailery serves its
+food this way. Bars §7.2's rule, that a venue answers to exactly one of
+served / sold / grazed, applies to kitchen venues too. What this spec adds
+is cooking: a dish composed from ingredients at a station, not spawned
+from a fixed prototype.
+
 ## 4 · The venues (the diversity this exists to serve)
 
 Heritage kitchens, each a different table: a **dosa/chaat counter** off
@@ -96,12 +104,12 @@ a **zakuski cellar** near Tsiolkovsky (samovar, black bread, pickles);
 a **bakery** on the Heat Works' steam line when it exists; a
 **third-shift congee window** open when everything else is dark (the
 `{time}` system's first venue — *stale 2026-09-11: clock-driven venue
-hours already ship. `world/souls/engine.py` reads
-`world.gametime.colony_hour` and its `SCHEDULES["vendor"]` band closes
-Auntie Lin's cart off-shift behind an authored `post_closed_msg` (build
-068, 2026-08-17, "so the small-hours hunger gap emerges rather than
-being scripted"), and the Snailery runs day/swing/night keepers (build
-137). The congee window would be a good venue for it, not the first*). Venue *types* beyond menus: **tea
+hours already ship. a counter bound to a post sells only while a keeper is standing the
+running shift (day 06–14, swing 14–22, night 22–06; `world/souls/engine.py`
+`SCHEDULES`, `world/souls/posts.py` `current_shift` and `keeper_on_duty`),
+and otherwise refuses with its authored `post_closed_msg`
+(`typeclasses/shopkeeper.py`). Lin's cart and the Snailery have a keeper
+on all three shifts (#2325). The congee window would be a good venue for it, not the first*). Venue *types* beyond menus: **tea
 house** (lingering, the anti-shift-food), **fermentory** (crocks and
 jars; supplies every kitchen above), **spice stall** (one cell, huge
 sense radius), and the **vat-protein counter** — Greenhaus or Longhaul
@@ -114,8 +122,9 @@ may stand unbranded (the Escallier precedent).
 1. **Engine lift** — build the station framework Bars §2.1 promised:
    extract the bar's station/menu/recognition core; bar and kitchen both
    consume it. `FOOD_RECIPES` in `world/food.py` (Butcher §7 tier 2 as
-   shipped) migrates to engine data — Ottilie unaffected at her counter;
-   her cook block becomes the framework's first food client. Butcher §7
+   shipped) migrates to engine data — Ottilie unaffected at her cart;
+   her cooking step (`typeclasses/butcher.py` `stock_cuts` →
+   `world/food.py` `cook_yields`) becomes the framework's first food client. Butcher §7
    tier 3 (provenance/tainted contributions) rides this engine when it
    lands.
 2. **Pilot venue** — one heritage kitchen end-to-end on the Lin vendor
@@ -141,13 +150,15 @@ may stand unbranded (the Escallier precedent).
   `PROFILES` carries a live `hunger` need (0→1 in 8h human, 16h
   synth/recluse, planner shapes `buy_consume`/`graze`), and #2074
   (closed 2026-08-20) made eating pharmacology — the `nutrition`
-  substance at `world/substances/registry.py:227` eases that meter via
+  substance (`world/substances/registry.py`, effect kind `nourish`, applied
+by `_apply_nourish`) eases that meter via
   `nourish`, and food prototypes already declare
   `drink_effects {"nutrition": N}` (raw cuts, the butcher's dishes, the
   snail skewer). Needs are also **proposed**, in
   `specs/proposals/NPC_NEEDS_AND_GOALS_SPEC.md` (P1–P3 shipped). What
   genuinely does not exist is PLAYER hunger — `nourish` no-ops on a
-  consumer with no meter (registry.py:235, "players, for now") — so the
+  consumer with no meter (`_apply_nourish` returns 0 for anything without
+a soul tag, "players, for now") — so the
   no-chores stance survives; only the absolute wording fails.)*
 
 ## 7 · Open questions (owner)
@@ -161,10 +172,14 @@ may stand unbranded (the Escallier precedent).
    > SETS a dish's number (cook skill, ingredients) is still open, and
    > every dish sits on the default until something does. The one
    > food that declares its own is the ration, the Longhaul MRE, at 2
-   > (#3806).
+   > (#3806). The default is 5, an ordinary hot meal
+   > (`world/souls/constants.py` `FOOD_QUALITY_DEFAULT`), on a scale open
+   > at both ends. A soul counts a meal as worth its quality less 0.1 for
+   > every room it must walk to reach it (`FOOD_WALK_COST_PER_ROOM`).
 2. Should saved dish recipes be *teachable* NPC→player (Nonna teaches a
    snail dish as a favor reward)?
 3. Which pilot venue — dumpling window, or push diversity westward with
    the Bhavani dosa counter first?
 4. Does the vat-protein counter belong to Greenhaus (empire-completing)
-   or Longhaul (logistics-flavored)?
+   or Longhaul (logistics-flavored)? Context: the colony's ration is
+   already Longhaul-branded (the Longhaul MRE, #3806). Still open.

@@ -68,7 +68,7 @@ Build 005 (2026-08-05) ran the Brackett to floor 11; build 009
 the Brackett" — at z19 (`scripts/builds/011_brackett_crown.py:69-94`).
 The Boiler Run crane's cab sits at z17
 (`scripts/builds/032_crane_operator.py:29`) and its container rides
-z1..z16 (`typeclasses/rooms.py:1315-1316`). The 16–18 envelope is
+z1..z16 (`CraneContainer.MIN_Z`/`MAX_Z` in `typeclasses/rooms.py`). The 16–18 envelope is
 already reached in one southwest block; read the half-unused budget as a
 2026-08-05 snapshot, not a current fact.)*
 
@@ -147,19 +147,21 @@ never canon. NPC-run factions remain the only factions.
 
 ## 2 · Settled doctrine (the law, with sources)
 
-**The grid** (`SPATIAL_COORDINATE_SYSTEM_SPEC`, live):
+**The grid** (`proposals/SPATIAL_COORDINATE_SYSTEM_SPEC.md`, live):
 - Coordinates are the data model; **hand-authoring is the authoring
   model**. No `@stack`, no ad-hoc builder commands — floors are rooms,
   stairwells are up/down exit pairs, authored like anything else.
 - `@coordseed` seeds from the **pinned origin** (Central Span, the
   `coordseed_origin:spatial` tag) — never re-frame the world from where
   you happen to stand.
-- Split levels use **sloped-exit tags** (`slope_down`/`slope_up:<exit>`),
+- Split levels use **sloped-exit tags** (`@tag <exit> = slope_down:exit_type`
+  or `slope_up:exit_type`; the return exit carries the opposite tag),
   so the geometry stays derivable; `warp` is reserved for genuinely
   non-Euclidean links.
 - Audit with `@room` (one-surface profile) and `@building <prefix>` /
-  `/radius` (whole-structure drift table). A build is done at **zero
-  geometry contradictions**, not before.
+  `/radius` (whole-structure drift table: type, crowd, coordinates, sense
+  layers, doors). Geometry contradictions come from `@coordseed/check`.
+  A build is done at **zero geometry contradictions**, not before.
 
 **The vertical doctrine** (owner-set 2026-07-25):
 - Open plates — roofs, decks, hull-tops — are **strip rooms tiling
@@ -167,6 +169,13 @@ never canon. NPC-run factions remain the only factions.
 - **Spine links are plain exits; every other applicable direction,
   including diagonals, is a wired edge.** Air cells are deliberate
   negative space: fall lanes now, flight later.
+- **A fall follows the column** (owner ruling 2026-09-16, #3580: "No,
+  it would always follow gravity straight down. Essentially it's checking
+  if it's a skyroom and if it is proceeding down."). A body in an air
+  cell goes down its `down` exits and stops at the first room that is
+  not air. There is no authored landing (`fall_room` is retired), so a
+  ledge meant to catch a fall must be a room in that column. As built,
+  an air cell with no `down` stops the body where it is (#3581).
 - **A moving room keeps its doors** (owner ruling 2026-09-21, #3560).
   A lift, a crane car, anything whose doors open onto different places
   at different times has PERMANENT exit objects that are re-pointed per
@@ -186,8 +195,10 @@ never canon. NPC-run factions remain the only factions.
 - **Every air build closes with the edge audit** — "edges accountable."
   No unexplained adjacency between a plate and the air beside it.
   _(2026-09-16, #3582: the audit is a command now, not a sentence —
-  `@airfill/audit <z>` lists every walkable surface beside air with no
-  edge into it, every gap whose far perch is missing or not one cell
+  `@airfill/audit <z>` lists every walkable surface beside air to its
+  north, south, east or west with no edge into it (a surface touching
+  air only diagonally is counted, not listed, and does not stop the
+  audit reporting "Clean."; `@airfill` never wires a diagonal), every gap whose far perch is missing or not one cell
   across, and every air cell with no `down`; it writes nothing. Paste its
   output in the build issue. A deliberate omission is marked on the room
   with `db.no_edge = "<reason>"` and the audit skips it. Owner ruling
@@ -207,13 +218,15 @@ never canon. NPC-run factions remain the only factions.
   `world.spatial.coordinate_index()`, shared with the crane car, the
   courier and the gravity layer.)_
 
-**Doors and tenancy** (`VERTICALITY_AND_BUILDINGS_SPEC` §2–§3, live):
+**Doors and tenancy** (`proposals/VERTICALITY_AND_BUILDINGS_SPEC.md` §2–§3, live):
 - A door IS the exit, with state; passage requires it open.
 - Access is **biometric grants** — no keys, codes, or cards; forgery is
   the attack surface. Unit doors get the spring-latch autolock.
 - Rentable units carry `residence_building` + `residence_origin` at
   build time — `memory`'s dossier depends on them.
-- B&E is a PvE mechanic: player-rented rooms are not burglary targets.
+- B&E is a PvE mechanic (📋 UNBUILT (no issue)): player-rented rooms are
+  not burglary targets. Its seam is the door's `door_broken` flag, which
+  nothing sets yet.
 
 **The exit graph** (owner-set 2026-08-05): coordinates are truth,
 exits are permission. Every room has a grid address, but the exit
@@ -234,16 +247,22 @@ jumps priced in risk, not corridor exits.
 five-senses descriptions, and it was already behind the world when this
 line was written — the as-built plate of 2026-08-05 is subtitled "589
 rooms" (`scripts/planning/cityplan.py:62`), and 1,069 rooms were on-grid
-by the time `@coordseed` mis-seeded them (`commands/CmdCoordSeed.py:117`,
-#2755). How many of today's rooms carry all four sense layers is not
+by the time `@coordseed` mis-seeded them (the `CmdCoordSeed` help text,
+#2573). How many of today's rooms carry all four sense layers is not
 recorded anywhere in the repo, so treat "246 rooms deep" as a dated
 provenance note, not a current measure. The four rules below are
 unaffected.)*
 - **Five-senses descriptions** are the register — a room ships with its
   sense layers, not "desc now, senses later."
-- Room `type` is load-bearing twice: it routes **crowd-pool** ambience
-  and picks the room's **atlas class**. Set it deliberately; check both
-  surfaces.
+- Room `type` is load-bearing in several places: it routes **crowd-pool**
+  ambience and sets the crowd modifier (`room_type_modifiers` in
+  `world/crowd/crowd_system.py`), picks the room's **atlas class**,
+  decides whether the neighbour glance can see into the room
+  (`OPEN_AIR_ROOM_TYPES` in `world/crowd/crowd_messages.py`), sets the
+  route cost (`ROUTE_COST` in `world/spatial/pathfind.py`) and a
+  witness's role (`world/director/witness.py`), and names the room in a
+  neighbour's exit list ("There is a stairwell to the west"). Set it
+  deliberately; check each surface.
 - The `outside` flag is weather and sky truth — the Toe breach doctrine:
   a hole in the hull means weather comes through it.
 - Props are **seasoned, not stewed** — and branded.
@@ -262,10 +281,13 @@ unaffected.)*
   the sanctioned exception.
 - **Crossings are straight lines** — collinear perch → air → perch,
   verified by query, because a jump's momentum does not turn corners.
-- **A gap exit is three attributes**: `destination` (the air, for
-  jump-off), `gap_destination` (the far perch, where jump-across
-  lands), `sky_room` (the transit air). One-part wiring strands
-  jumpers; build 060 is the cautionary tale.
+- **A gap exit is its `destination` plus three attributes**: the
+  `destination` is the air cell (a jump-off goes there and falls down the
+  column below it), `is_edge` and `is_gap` are literal `True`, and
+  `gap_destination` is the far perch (where a jump-across lands). There
+  is no `sky_room` (retired by #3579). A gap with no usable perch is
+  refused on the roof; build 060 is the cautionary tale of one-part
+  wiring.
 - **Demolitions evacuate occupants first**, and every vertical build
   closes with the audits run as queries: overlap, gap wiring,
   collinearity, and the edge audit.
@@ -283,19 +305,11 @@ now law:
    owner as *classified questions* (anomaly → my reading → proposed
    action) — never as work orders.
 2. **No roof above an `outside` room, ever.** Open sky below is
-   weather truth; the builder refuses it mechanically now.
-   *(Scope note 2026-09-11: "mechanically" is narrower than it reads.
-   The only refusal in the tree is an `assert` inside one one-shot build
-   script — the local `new_roof()` helper in
-   `scripts/builds/001_old_town_roof_skeleton.py:103-104` ("REFUSING roof
-   over OUTSIDE room … open sky below"), from #1697 (CLOSED) — never
-   lifted into shared tooling. `@room` shows the flag
-   (`commands/CmdBuildTools.py:34`) and sets it (`@room/outside on|off`,
-   `:122-127`), but nothing tests the roof/outside relation; `@building`'s
-   drift table (`:133-193`) does not audit it, and no later build
-   re-implements the check. Today the law rests on builder discipline;
-   lifting the check into `@building` would make the sentence literally
-   true.)*
+   weather truth. No shared tool checks it: `@room` shows and sets the
+   flag (`@room/outside on|off`) and `@building` does not test the
+   roof/outside relation, so the builder checks it by hand. Only build
+   001's own script ever refused it (`new_roof()` in
+   `scripts/builds/001_old_town_roof_skeleton.py`, #1697).
 3. **A unit's security perimeter includes its balcony.** Private
    terraces are not roof fabric; nothing public joins them.
 4. **Furniture is demand-driven.** A tower, escape, or plank exists
@@ -315,6 +329,8 @@ now law:
 7. **Read the mechanism before wiring against it.** Copying an
    exemplar's attributes is not understanding it: the escape's roof
    edge shipped without `sky_room` and silently degraded to a walk.
+   (`sky_room` has since been retired, #3579: an edge's destination is
+   now the air cell itself.)
    Before touching jump/fall/door machinery, read its code path.
 8. **Walk it as a player before handing it over.** Mechanism-level
    tests pass things only a player's experience catches (findable
@@ -337,8 +353,12 @@ none are skipped silently.
 2. **The name pass** — venue proper names, street names, unit numbering.
    Names are design; do them sober, first.
 3. **Rooms** — dig, type, `outside`, crowd base, five senses.
-4. **Coordinates** — seed from the origin, tag slopes, run the audit to
-   zero contradictions.
+4. **Coordinates** — give the new rooms their `xyz`, tag slopes, and run
+   `@coordseed/check`: zero contradictions, and no existing room in its
+   "would change coordinate" or "OCCUPIED cell" lists. `@coordseed`
+   refuses to write while any room would land on an occupied cell,
+   unless `/force` is given. Which writer owns `db.xyz` (the seed walk or
+   hand placement) is not decided.
 5. **The column** — strips, spines, edges, air cells; close with the
    edge audit.
 6. **Doors and tenancy** where they apply — grants, latch, residence
@@ -377,12 +397,12 @@ none are skipped silently.
 > play (`scripts/builds/071_constab_fleet_cradle.py:19`,
 > `scripts/builds/121_the_charging_rack.py:32`,
 > `scripts/builds/055_greenhaus_verticals.py:332`; the room type dates to
-> #1110, 2026-07-10, `typeclasses/rooms.py:1257`). Read "Constabulary 3×3
+> #1110, 2026-07-10, `ConstabularyRoom` in `typeclasses/rooms.py`). Read "Constabulary 3×3
 > complex with holding facility" as an EXPANSION of that building — and
 > note no holding facility exists anywhere in the tree yet. (c) **Heat
 > Works** — the site given, (x11, y-9..-11), falls inside the Atmospheric
 > Processor's reserved 7×7 plot, which §1.5 declares empty and reserved
-> and which `scripts/planning/cityplan.py:93` draws as
+> and which `scripts/planning/cityplan.py` draws as
 > `zone(11,-5,5,-11)` = x5..11, y-11..-5. Owner call needed before either
 > is built. (d) **Progress** — none of the five NAMED items has shipped:
 > no Rendering Works, no Heat Works, no holding facility, and none of the
@@ -403,9 +423,6 @@ owner verdict — argue with them.
   legality + §7): sapient corpses → appraisal → cold-room resale, paid
   disposal. Wants the Brackett basement and a sewer connection —
   which makes it the natural *first customer of the sewer layer*.
-- **The Rook, Phase 2** (`project` decision): the ambient broadcast loop
-  around the sealed Brackett basement studio. Small build, mostly
-  systems; the space exists.
 - **Clinic completions**: cyberware-install rooms and the clinic's
   remaining sense layers (`MAXWELL` TODO list) — install space is also
   decking/chrome-economy pre-wiring.
@@ -447,18 +464,21 @@ owner verdict — argue with them.
 
 **Owner-blessed designs awaiting their mechanics (2026-08-05):**
 - **The Brackett fire escape, powered** (rough draft buildable NOW;
-  full version later): the caged west-face escape over Bhavani whose
+  full version later): the caged east-face escape (build 003) whose
   counterweighted bottom ladder is up out of reach — egress always,
   ingress only when someone times your entry with their exit, lowers
   the ladder for you, or beats the **control panel/crank at the
   lowest landing** that lowers the ladder and creates the exit — a
   prime hacking surface, with a manual crank/press fallback. Blocked
-  on: dynamic exit manipulation (not ready).
+  on: the powered, hackable control itself (📋 UNBUILT (no issue)).
+  Re-pointing an exit at runtime already exists: see §2, "A moving room
+  keeps its doors" (`CraneContainer.move_to_level`).
 - **The Shipbreaker mobile gantry**: not a fixed catwalk — a crane
   that **rotates and re-aims its arm**, a movable bridge to multiple
   locales, hackable like the ladder-crank. The yard's industry and a
-  traversal instrument in one. Blocked on: the same exit-manipulation
-  system; build nothing fixed in the yard meanwhile.
+  traversal instrument in one. Blocked on: the same powered, hackable
+  control (📋 UNBUILT (no issue)); build nothing fixed in the yard
+  meanwhile.
 - Both are one future system wearing two clothes: **powered,
   hackable furniture that edits the exit graph at runtime**. When
   decking/hacking design begins, start here.
@@ -525,9 +545,13 @@ solid ideas that lived only in conversation until now):**
   carry the layer (Span Roots x2, Intake Vault west, East Grate);
   **water is the city's soft-fail** (falls ending in the basin land
   safe — the parkour nursery); diving = gear-tiered like hooks.
-- **Hidden exits** as a general mechanic (owner-named): the
-  prerequisite for exciting covert on-ramps; rides the same future
-  arc as the crank panels and auto-closing windows.
+- **Hidden exits** (owner-named) exist as a general mechanic: an exit
+  locked `view:false()` is left out of the exit list, and `search` can
+  find it for that searcher alone, against its `db.search_difficulty`
+  (default 14; `search_hidden_exits` in `world/stealth.py`). The covert
+  on-ramps they were named for, such as climbing in through the
+  fire-escape windows, are 📋 UNBUILT (no issue) and ride the same
+  future arc as the crank panels and auto-closing windows.
 
 **Candidates (unsettled — owner verdict wanted):**
 - **A true market hall**: stalls exist as street props; a roofed market

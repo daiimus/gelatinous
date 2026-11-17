@@ -5,7 +5,7 @@
 > **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
 > - §9 lists `load <ingredients> into <bar>` as a shipped v1 verb. **No `load` command exists** — bottomless house stock (`derive_bar_stock`) replaced it.
 > - §9 lists `clear <bar>`; the shipped verb is `clean` (alias `wipe`).
-> - ~~`db.register` is a stub~~ — **wrong**: it *is* credited on every sale (`typeclasses/bar.py:496`). The real gap was that nothing drained it, so bar income accumulated with no way out. Closed 2026-08-03 by `till <bar>` (owner/staff only), mirroring the butcher's block, which was already a closed loop.
+> - ~~`db.register` is a stub~~ — **wrong**: it *is* credited on every sale (`world/bar.py::_fulfil_from_board`). The real gap was that nothing drained it, so bar income accumulated with no way out. Closed 2026-08-03 by `till <bar>` (owner/staff only), mirroring the butcher's block, which was already a closed loop.
 
 ## 0.1 · Implementation status (2026-06-22)
 
@@ -15,7 +15,9 @@
   `db.desc`, the menu (`₮` currency + operate-orange, column-aligned), and the
   `read menu on <bar>` verb. Wired end-to-end at the Hub & Howl and the Helix
   Lounge.
-- **NPC bartender** (Sully) — takes orders diegetically via the unified speech
+- **NPC bartender** — any NPC standing a counter's `bartender` (or `snailer`)
+  post serves, through `world/bar.py::serve_from_board` (there is no bartender
+  typeclass, #2378; Sully at the Hub & Howl was the first). It takes orders diegetically via the unified speech
   backbone (`say`/`to`/pose all route through `world/speech.py`; a pose that
   references the bartender counts as a directed order), makes the drink, takes
   payment as one wordless gesture (no system text), acknowledges thanks
@@ -28,7 +30,8 @@
   recipe (custom names like *Kyoto Negroni*; remembers the base cocktail), or
   **make a known recipe**. `clear` resets the load.
 - **Two-layer ingredients** (§3) — substance contributions (doses → effects)
-  *plus* a cocktail role + spirit type. ~44-ingredient seeded catalog
+  *plus* a cocktail role + spirit type. 47-ingredient seeded catalog
+  (`world/bar.py::INGREDIENT_CATALOG`)
   (the use-bar menu restocks them; the `@ingredient` testing stand-in was removed 2026-10-09, #3728).
 - **Cocktail recognition** — a hidden 20-template library recognized at mix time
   by loose role-match (roles present, ratios/garnishes ignored), with
@@ -44,12 +47,14 @@
   pour; `chug` (drinks) / `devour` (food) consume every remaining use at once
   (medical items guarded out); `drink 2nd mug` ordinals fixed.
 - **Free snacks** (§10) — bottomless `eat <snack> from <bar>`.
-- **Role gating** — `is_bartender` allows owner/staff and any Builder+ staff.
+- **Role gating** — `BarCounter.is_bartender`: Builder+ staff, an explicit
+  owner/staff entry, whoever is standing the counter's shift, or anyone present at
+  an unbound counter (§8).
 - **Pricing** — currency is the `₮` token (shop-consistent); Hub prices **zeroed
   for now** by request (re-pricing restores the spoken-price/payment path).
 
 **Deferred (designed-for, not built — see §11):** supplier-NPC ingredient
-economy (#6); register + `manage`/`clear`/`deposit` owner tooling (§9); cyber-
+economy (#6); `manage`/`deposit` owner tooling, in-game pricing and staff-list editing (§9); cyber-
 brain recipe files / portability + trade (#11); faction-integrated ownership
 (§8); the reusable crafting-station framework (§2.1); prep-method *mechanics*
 (shipped as flavour-only); per-spin authored tastes.
@@ -105,35 +110,51 @@ register, and owner management.
 | 13 | Serving size | **one drink item with N consumption uses** (sips) — like a cigarette's drags; rides the existing multi-use/dose model, lines up with consumption exactly |
 | 14 | NPC service | NPC bartenders are **fulfil-only**; bar-supply/restock economy **not modeled in v1**. Ordering is **diegetic** — address the bartender via `to`/pose (no `order`/`buy` verb); the NPC matches its menu and fulfils, **pay on order** (§7.1). |
 
+> **What the game does against these decisions.** #6: there are no supplier
+> NPCs, 📋 UNBUILT (no issue); a bar mixes from a bottomless stock
+> (`world/bar.py::bar_stock`). #10: ingredients are added from that stock
+> inside the `use <bar>` menu; loading carried ingredients, or a container of
+> them, is 📋 UNBUILT (no issue). #14: an `order <thing>` verb exists (§7.1,
+> #2342); there is still no `buy` verb at a bar.
+
 ## 2 · The bar object
 
-A new typeclass (working name `BarCounter`, a `Furniture`/`Object` subtype)
-placed in a bar room. It is examinable and exposes role-gated verbs. The Hub &
+`typeclasses/bar.py::BarCounter`, a `Seating` + `Item` fixture placed in a bar
+room: it folds into the room description, cannot be picked up, seats ten
+(`sit at bar`), and declares `db.post_role = "bartender"` so a post can be bound
+to it. It is examinable and exposes role-gated verbs. The Hub &
 Howl's "bent slab of starship hull" and the Helix Lounge's backlit bar are real
 instances today; the Queen of Cups lobby still gets its own.
 
-**State (AttributeProperties):**
+**State (plain `db` attributes):**
 
-- `menu` — recipes this bar serves (list of saved recipe refs + per-bar price).
-- `loaded` — ingredients (or a container of them) loaded in as the crafting input.
-- `surface` — finished drinks rest here for the patron to `get`.
+- `menu` — the board: a list of recipe entries, each carrying its own `price`
+  (§6.1).
+- The load is not an attribute: it is whatever ingredient items
+  (`db.is_ingredient`) sit in the counter's contents; the menu's [a] adds them
+  from stock. Loading a container of ingredients is 📋 UNBUILT (no issue).
+- The surface is not an attribute either: served drinks and dishes are the rest
+  of the counter's contents, for the patron to `get`.
 - `register` — chit balance held by the bar.
 - `owner` — character (or faction, later) who owns it.
 - `staff` — allowlist of characters permitted to bartend/manage.
 - `snacks` — free ambiance snacks offered (§10).
-- `stock` is **not** a concept — ingredients are real items in someone's hands
-  (decision #6), so "being stocked" means having ingredient items on/behind the bar.
+- `stock` — the ingredient keys the bar carries: `db.stock` if a builder set one,
+  else the menu's ingredients plus the base pantry (`world/bar.py::bar_stock`).
+  It is bottomless. Decision #6 (real ingredient items from suppliers) is
+  📋 UNBUILT (no issue); the stock stands in for it.
 
 **The four pillars** (from the reference `examine bar`, reframed around the bar
 as a *crafting station*):
 
 1. **Menu / craft** — `read menu`, and the prepare action: **`use <bar>`**
    (decision #10) — a menu in the style of medical surgery's `operate`, but its own
-   command to avoid confusion. Load ingredients, pick or save a recipe, mix.
-2. **Load + serve surface** — the bar is *loaded* with ingredients (or a container
-   of them) as the crafting input (decision #10, §2.1); finished drinks rest on it
-   for the patron to `get`. `put`/`get`/`clear` move ingredients in and drinks out;
-   `clear` tidies abandoned items.
+   command to avoid confusion. Add ingredients from the bar's stock, pick or save
+   a recipe, mix.
+2. **Load + serve surface** — ingredients are added from the bar's stock inside
+   the `use <bar>` menu ([a]); `put` does not load a bar. Finished drinks and
+   dishes rest on the counter for the patron to `get`. `clean <bar>` (alias
+   `wipe`) clears what was left behind.
 3. **Register** — `deposit $`; the bar is an economic actor (§7).
 4. **Manage** — owner config: menu, prices, staff, recipe management (§8).
 
@@ -179,20 +200,23 @@ the effect magnitudes it adds to a mix, keyed to the existing substance effect
 vocabulary (`world/substances/registry.py`).
 
 ```
-ingredient prototype, e.g. ROTGUT_BASE:
-  db.ingredient = True
-  db.contributions = {"alcohol": 3}            # effect-type → magnitude
-  db.flavour = "raw, paint-stripping"           # for derived drink descriptions
+catalog ingredient, e.g. "grain_mash" (world/bar.py::INGREDIENT_CATALOG):
+  db.is_ingredient = True
+  db.contributions = {"alcohol": 1}            # effect-type → magnitude
+  db.flavour = "raw, paint-stripping grain"     # for derived drink descriptions
   db.consumed_per_use = 1                        # units a mix consumes
+  db.role = "spirit"                             # cocktail role
+  db.spirit = "grain mash"                       # spirit type (role == spirit)
 ```
 
 - **Effect types** reuse the substance registry (alcohol, stim, pain_relief,
   sedation, …) so derived drinks need no new effect engine.
 - **A "garnish"** is just an ingredient with empty/flavour-only contributions —
   it changes the drink's name/description, not its punch.
-- **Sourcing (v1):** ingredients are bought from **supplier NPC vendors** — a
-  chem supplier, a food/produce vendor, an Earth-imports dealer. Real items,
-  real cost; their price is the economic floor under a drink.
+- **Sourcing:** 📋 UNBUILT (no issue) — ingredients are to be bought from
+  **supplier NPC vendors** — a chem supplier, a food/produce vendor, an
+  Earth-imports dealer. Real items, real cost; their price is the economic floor
+  under a drink. Until then a bar's bottomless stock stands in (§2).
 - **Sourcing (later):** harvesting/fishing/synthesis. Per decision #6 these are
   *the same items* acquired via an **extended `harvest` command** (the medical
   harvest verb already exists) — ice from the mines, channel-fish, synth-vats.
@@ -200,9 +224,9 @@ ingredient prototype, e.g. ROTGUT_BASE:
 
 ## 4 · Mixing & effect derivation
 
-**The flow (decision #10):** load ingredient items (or a container of them) into
-the bar, then `use <bar>` — a menu in the style of medical surgery's `operate` — to
-mix the loaded inputs into a drink. The drink's effect profile is the **additive sum of
+**The flow (decision #10):** open `use <bar>` — a menu in the style of medical
+surgery's `operate` — add ingredients from the bar's stock ([a]), then pour the
+loaded inputs into a drink. The drink's effect profile is the **additive sum of
 the inputs' contributions, then capped**.
 
 ```
@@ -241,24 +265,26 @@ Mixing is freeform; a **recipe is a saved, named mix** (decision #5).
   its menu) or **memorized by a character** — it is a **cyber-brain "file,"** the
   same data family as the planned contacts and memory systems. Recipes are
   therefore tradeable assets: sold, taught, copied between brains, stolen, kept
-  secret — an emergent economy atop the ingredient economy. (v1: a recipe is a
-  datum the bar and/or a character holds; the richer file/trading UX rides the
-  cyber-brain-files pass — §12.)
+  secret — an emergent economy atop the ingredient economy. (Today a saved
+  recipe lives only on the bar's menu. A character memorizing a recipe, and
+  trading it, is 📋 UNBUILT (no issue) — it rides the cyber-brain-files pass, §12.)
 
 ## 6 · The output consumable
 
 A made drink is an ordinary **consumable item** carrying the derived effect
 profile mapped onto the existing consumption model:
 
-- `medical_type` / delivery tags = drink (the `drink` verb path).
+- the `drink` delivery tag (category `delivery_method`) plus `db.is_drink` (the
+  `drink` verb path).
 - substance effects = the capped contribution profile → rides `apply_substance`,
   so **alcohol cap, tolerance, and addiction already apply** with zero new code.
 - name + description = the recipe's brand (owner-authored) over the mechanical
   profile.
 - **uses** = the drink is **one item with N consumption uses** (sips), exactly
   like a cigarette's drags (decision #13). Each `drink` spends one use and delivers
-  a dose until the glass is empty — riding the existing multi-use/dose bookkeeping
-  (`db.substance_doses`), so it lines up with the consumption model exactly.
+  a dose until the glass is empty — riding the existing multi-use bookkeeping: the
+  drink carries `db.uses_left` (sips) and `db.drink_effects` (doses applied per sip
+  through `apply_substance`), so it lines up with the consumption model exactly.
 
 This is the payoff of decision #7: recipes don't invent an effect system; they
 compose existing substances into a consumable the pipeline already understands.
@@ -316,19 +342,10 @@ Notes:
   > was never built. There is no `deposit` verb either: the serve path debits the
   > patron and credits the counter itself, with no bartender gesture in between.
   >
-  > **Code defect — unfiled as of 2026-09-11. The mechanism described in this
-  > paragraph is a bug, not the design; do not build on it and do not "correct"
-  > the spec to match it.** In `world/bar.py::_fulfil_from_board` the register
-  > credit sits *inside the `except` arm* of the audit `try` block, and the audit
-  > call it follows passes `other=bar` — a name that is neither a parameter of
-  > that function nor a module global. So every sale raises `NameError`, the bare
-  > handler swallows it, and the register is credited only as a side effect of
-  > that failure; the `coin` audit emitter #2698 shipped never records a bar sale,
-  > and correcting the `NameError` would silently stop crediting every register in
-  > the colony. Regression from PR #3178 (commit 5a5edc5b), which inserted the
-  > try/except above pre-existing lines without re-indenting them.
-  > `world/tests/test_served_at_the_counter.py` asserts the credited total and
-  > passes for this reason, so the suite guards nothing here.
+  > A sale debits the patron, writes a `drink` record to the coin audit with the
+  > counter as the other party, and credits the counter's `register` if it keeps
+  > one (`world/bar.py::_fulfil_from_board`). An audit failure never blocks the
+  > credit.
 - **Pricing:** per-bar, per-recipe (set in `manage`). Floor = ingredient cost;
   margin = the owner's call.
   > **Not reachable from play, checked 2026-09-11.** The *data* shape held — a
@@ -384,8 +401,7 @@ request.
   real ingredient items yet. Real supply is a later pass.
 
 **Dependency:** directed speech — the **`to` command** (rides `say`, targeted at an
-individual; e.g. `Bob [to William]: …`). If `to` isn't built yet it's a prerequisite
-for NPC ordering (pose works in the meantime). NPC intent-parsing beyond a menu-name
+individual; e.g. `Bob [to William]: …`). NPC intent-parsing beyond a menu-name
 match is a tuning concern, not a v1 blocker.
 
 ### 7.2 · Plated dishes — a board can serve food (#2342)
@@ -440,6 +456,13 @@ a shelf would sell to anybody. Sixteen colonists could stand in a restaurant and
 starve. A venue that wants NPC custom needs three things — a board, somebody
 working it, and the `("advertiser", "souls")` **tag** (an indexed tag, never the
 bare attribute).
+
+**The keeper eats from their own board, on the house.** Owner, 2026-11-13
+(#3802): "A and their meal should as a result be complimentary." Option A was
+the keeper making the meal themselves with `prepare`. A soul working a counter
+that serves food prepares the cheapest dish on its board, picks it up and eats
+it, unpaid (`world/souls/actions.py::_feed_at`). This covers food only: a
+keeper is not served a drink at their own bar.
 
 ## 8 · Ownership & staffing
 
@@ -500,13 +523,14 @@ counter object.
 - `eat <snack> from <bar>` — free snacks (§10).
 - `get <drink> from <bar>` — take what was served onto the counter.
 
-**Bartender** (owner or staff)
-- `load <ingredients> into <bar>` (`put … in <bar>`) — load ingredient items, or a
-  container of them, as the crafting input (decision #10).
+**Bartender** (whoever `BarCounter.is_bartender` admits — see §8)
+- Ingredients are added from the bar's stock inside `use <bar>` ([a]). A `load`
+  verb for carried ingredients, or a container of them, is 📋 UNBUILT (no issue);
+  `put … in <bar>` answers that the bar can't hold it.
 - `use <bar>` — opens the crafting menu (in the style of medical `operate`, but
   its own command): mix the loaded inputs free-form or via a known recipe,
   optionally save/brand the result; the drink lands on the bar for the patron.
-- `clear <bar>` — clear abandoned loads/drinks off the bar.
+- `clean <bar>` (alias `wipe`) — clear abandoned loads, drinks and dishes off the bar.
 - `deposit <$> in <bar>` — ring a sale into the register.
 
 **Owner**
@@ -526,27 +550,32 @@ counter object.
 > writes `"price": 0` and nothing in play can change it (see §7).
 
 (Both player and NPC bartenders work the same way — the patron *says* what they
-want (`to <bartender>` / pose) and the bartender makes it: a player loads and
-`use`s the bar, an NPC parses and fulfils from its menu. No `order`/`buy` verb —
-ordering is social, per §7.1.)
+want (`order <thing>`, `to <bartender>` or a pose) and the bartender makes it: a
+player opens `use <bar>` and adds ingredients from stock, an NPC parses and
+fulfils from its menu. There is no `buy` verb at a bar. `order <thing>` is
+directed speech with the target found for you, per §7.1.)
 
 ## 10 · Free snacks
 
 Pure ambiance, near-zero cost: a bar offers a fixed snack list (`db.snacks`),
-`eat <snack> from <bar>` yields a trivial no-effect (or tiny-effect) consumable.
-Colony flavour instead of peanuts/pretzels/pickles: e.g. **brine pods**, **synth-
-jerky**, **ration crackers**. Optional for v1; cheap to add.
+`eat <snack> from <bar>` eats it in place: bottomless, free, and nothing enters
+inventory; any effects a snack carries are applied through `apply_substance`.
+Colony flavour instead of peanuts/pretzels/pickles: every counter starts with
+`DEFAULT_BAR_SNACKS` (**brine pods**, **synth-jerky**, **ration crackers**), and
+any object with `db.snacks` can serve them (#2074).
 
 ## 11 · Build phases
 
 **v1 — ✅ SHIPPED (2026-06-21/22):**
-- ✅ `BarCounter` object + the four pillars + role gating (owner + staff + Builder+).
+- ✅ `BarCounter` object; pillars 1–3 (menu/craft, surface, register via `till`);
+  pillar 4 `manage` 📋 UNBUILT (no issue). Role gating is `BarCounter.is_bartender` (§8).
 - ✅ Ingredients as real items with contribution profiles (+ cocktail identity).
       Supplier-NPC vendors **deferred** — a seeded catalog stands in for now;
       the `@ingredient` spawn stand-in was removed 2026-10-09, #3728.
 - ✅ Free-mix → additive-capped drinks → consumption pipeline.
-- ✅ Save/name/brand recipes; menu. **Pricing** present (zeroed by request);
-      **register** deferred.
+- ✅ Save/name/brand recipes; menu. Pricing is carried on each menu entry (the
+      Hub & Howl board is zeroed by request), but no in-game command sets a
+      price (§7). The register is credited on each sale and drained by `till`.
 - ✅ Two reference bars wired end-to-end (the Hub & Howl, and the Helix Lounge —
       the latter a fully-stocked free-mix shakedown with NPC bartender Sable Vane).
 
@@ -568,7 +597,8 @@ jerky**, **ration crackers**. Optional for v1; cheap to add.
   (decision #11); richer copy/teach/sell/steal flows ride that pass.
 - **Faction-integrated ownership** — factions own bars, favor-gated staff,
   trust/consent for who-acts-at-your-bar (§8).
-- **Non-drink consumables** — the same engine makes food/drugs, not just drinks.
+- **Non-drink consumables from ingredients** — mixing food or drugs from
+  ingredients. A board already serves ready-made dishes (§7.2).
 
 ## 12 · Integration points
 
@@ -601,15 +631,20 @@ are settled; what remains is the deferred-seam work (§11) and tuning:
    turned out not to be settleable as a v1 tuning concern — it served drinks off
    ordinary conversation. "the old man sent me" poured an Old Fashioned and "I'll
    take your word for it" poured `the last word` (#2689), and an addressed
-   question bought a drink and suppressed the reply (#2779). Parsing now runs
-   `resolve_order` → an intent gate (`ORDER_CUES`, `_bare_order`,
-   `_without_cues`, no-question-mark) in front of `resolve_drink`, which tries
-   the board and then `mix_offmenu` against the bar's stock. Still ✅, but the
+   question bought a drink and suppressed the reply (#2779). Parsing is
+   `resolve_order`: it finds the drink first with `resolve_drink` (the board,
+   then `mix_offmenu` from the bar's stock), then tests intent. An addressed
+   line with an order cue (`ORDER_CUES`) passes if what is left after the cue
+   is only the drink and filler (`_without_cues`, `_bare_order`); one without a
+   cue must have no question mark and be only the drink and filler. An
+   overheard line must have no question mark and pass the same
+   drink-and-filler test. Still ✅, but the
    ✅ covers three layers, not one.)*
 3. ✅ **Ingredient contributions** — assigned across the seeded catalog (§3).
 4. **Effect/balance tuning** — `MIX_EFFECT_CAP` and per-sip dose scaling (esp.
    `chug` stacking) are first-pass; "drunk is just a condition," tune in play.
-5. **Owner tooling** — `manage`/`clear`/`deposit` and the register are the main
-   unbuilt v1 commands (§9); spec'd, not yet built.
+5. **Owner tooling** — `manage` (menu, pricing, staff allowlist) and `deposit`
+   are 📋 UNBUILT (no issue) (§9). `clean` and `till` exist, and the serve path
+   credits the register itself.
 6. **Supplier economy** — the ingredient vendor loop (#6) is the biggest deferred
    piece gating "real" scarcity-driven balance.

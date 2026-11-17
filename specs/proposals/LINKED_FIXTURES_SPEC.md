@@ -17,7 +17,7 @@ The obvious approach — a cross-room visibility layer that renders an object
 into rooms it is not in — is a large piece of machinery with hard questions
 attached (line of sight, intervening buildings, z-levels, how far is too far).
 
-**This spec takes the cheaper road, on the owner's call:** place a real object
+**This spec takes the cheaper road** (the owner's design, recorded only in paraphrase in #1504; his own words are not on record): place a real object
 in every room that should see the thing, and link them so they share state. No
 visibility system, no sight lines. Each object is a real object, findable and
 lookable by the normal rules.
@@ -45,6 +45,8 @@ orbital) and simply has no interaction surface.
 with distance, not with a failure message:
 
 > *That's four blocks away. You can see it; you can't reach it.*
+
+📋 UNBUILT (no issue): this needs a branch in `sabotage` and `repair` (`commands/CmdBreach.py`). Today both search only objects with `db.breachable` in the caller's room (`breachable_here`) and answer anything else with "Sabotage what? Nothing here answers to that."
 
 This is the whole reason roles exist. If every face were equally sabotageable,
 players would tamper with whichever one was nearest, and the tower would
@@ -119,15 +121,17 @@ than a prohibition.
 
 ## 6 · The clock tower — the first instance
 
-Nothing new is required for it. The clock tower is:
+Beyond the link layer itself (§5, §8), the tower needs no new rendering. It is:
 
 - a `body` in the tower's own room, with a description carrying `{time}`
 - N `face`s in the streets that see it, each with its own description —
   *"the tower stands over the rooftops to the north, reading {time}"*
 - `link_state = ["clock_skew", "clock_stopped"]`
 
-**Sabotage is already modelled**, by attributes that shipped with the time
-tokens:
+📋 UNBUILT (no issue): no clock tower object or room exists (#3335 asks whether it is still the first instance).
+
+**The state to sabotage already exists**, in the attributes the time tokens
+read (`world/gametime.py`):
 
 | attack | attribute | what it looks like |
 |--------|-----------|--------------------|
@@ -135,6 +139,11 @@ tokens:
 | skew it | `clock_skew` | the face lies, confidently. **Nobody knows.** |
 
 Repair clears the attribute. Both propagate to every face through the link.
+
+📋 UNBUILT (no issue): `sabotage` and `repair` (`commands/CmdBreach.py`) act
+only on objects with `db.breachable` and flip `db.intact`; nothing a player
+does sets `clock_stopped` or `clock_skew`. Which verb stops or skews a clock
+is not decided.
 
 ## 7 · Design consequences worth keeping
 
@@ -182,9 +191,12 @@ architecture accepts in exchange for its simplicity.
 Deliberately not clock machinery:
 
 - **The Boot and the agridome** — landmarks with a presence in several streets.
-- **The Sentinel mast** — already a two-object standard (mast + cabinet); a
-  link group is the natural generalisation, and its powered/wrecked state is
-  exactly the kind of thing that must not disagree between the two.
+- **The Sentinel mast** — two objects (mast + cabinet) that are not copies of
+  one thing: the mast carries `db.intact`, the cabinet its own `radio_on`. The
+  cabinet reads the mast's `db.intact` through `cabinet.db.antenna`
+  (`world/radio.py` `mast_down`, `_antenna_site`), which is read-through (§3),
+  so no copy exists that could disagree. Whether a link group should replace
+  that pointer, sit beside it, or not apply here is not decided (#3335).
 - **Fires, smoke columns, floodlights** — states that several rooms observe.
 - **A barricade seen from both sides**, a sign readable from either face.
 
@@ -208,6 +220,16 @@ Deliberately not clock machinery:
 2. **Does the echo live in the room description or only on `look`?** In the
    description it is always present and risks clutter across dozens of rooms;
    on `look` it is clean but undiscovered. Probably a short line in the
-   description with the detail on `look`.
+   description with the detail on `look`. If the line lives in the room
+   description, it renders with the ROOM's `clock_skew`/`clock_stopped`
+   (`typeclasses/rooms.py` `Room.get_display_desc`), so the room itself must
+   carry the clock attributes and be a member of the group; otherwise a
+   sabotaged tower shows a stopped face object beside a room line that runs.
 3. **Who can repair it?** A skill gate, a tool, a gig contract — or anyone
    with the patience to climb.
+4. **Is this deferred or shelved?** No issue tracks the build (#3335).
+5. **Is the clock tower still first?** No tower object or room exists; the
+   first instance may move to the Boot, the agridome or the Sentinel mast
+   (#3335).
+6. **The Sentinel mast:** should a link group replace `cabinet.db.antenna`,
+   sit beside it, or not apply (#3335)?

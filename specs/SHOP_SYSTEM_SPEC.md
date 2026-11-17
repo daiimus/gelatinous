@@ -13,7 +13,7 @@ This specification defines a container-based shop system for the G.R.I.M. MUD wi
 - **Simple Pricing**: Fixed prices per prototype, stored in container
 - **Buy-Only**: Players can only purchase items. Selling is Phase 2 marketplace feature
 - **Token Currency**: Characters have `tokens` AttributeProperty (default: 0)
-- **Customizable Messages**: Purchase messages configurable per shop via container attributes
+- **Serve flavour**: an item may carry one optional `serve_line`, emoted by the keeper when it is handed over (§8). Counters carry no purchase messages; they were retired by the owner's ruling quoted in §8 (#3413).
 
 ### Phase 2: Dynamic Marketplaces (Future)
 - **Procedural Mazes**: Marketplace rooms that reconfigure on timers
@@ -42,7 +42,7 @@ This specification defines a container-based shop system for the G.R.I.M. MUD wi
 
 5. **AttributeProperty Currency**: All characters have `tokens` AttributeProperty (autocreate, default 0).
 
-6. **Customizable Messaging**: Purchase messages stored on container with placeholder support ({buyer}, {item}, {price}, {shop}).
+6. **Customizable Messaging**: Serve flavour lives on the item (`serve_line`, placeholders `{item}`, `{target}`, `{price}`). The purchase messages that were stored on the container were retired by the owner's ruling quoted in §8 (#3413). The self-service lines at an unmanned counter are fixed text.
 
 7. **Data-Driven Display**: Can names derived from `aerosol_contents` attribute - extensible for future dynamic items.
 
@@ -52,7 +52,7 @@ This specification defines a container-based shop system for the G.R.I.M. MUD wi
 
 10. **Builder-Friendly**: Simple @py commands to set up shops.
 
-11. **Traditional Commands**: No EvMenu - players use `buy <item> from <container>` and `look <container>`.
+11. **Traditional Commands**: No EvMenu. At a store or vending machine, players use `buy <item> from <container>` and `look <container>`. At a manned store they can also say what they want to the keeper. At a cart, speaking is the only way (owner ruling 2026-09-13, above).
 
 ## System Architecture
 
@@ -60,13 +60,17 @@ This specification defines a container-based shop system for the G.R.I.M. MUD wi
 world/shop/
 ├── __init__.py
 ├── utils.py                  # get_prototype_value, format_currency, etc.
+├── service.py                # spoken-order selling, hand_over (serve flavour), STYLES
 
 typeclasses/
 ├── shopkeeper.py             # ShopContainer - prototype inventory manager
+├── butcher.py                # FoodCart - cart, bar model (TAKES_BUY = False)
 ├── characters.py             # Character with tokens AttributeProperty, holographic support
 
+world/souls/posts.py          # post binding and who is on duty (is_bound, keeper_on_duty)
+
 commands/
-├── shop.py                   # CmdBuy with fuzzy matching and customizable messages
+├── shop.py                   # CmdBuy with fuzzy and by-number matching; fixed self-service messages
 └── default_cmdsets.py        # CharacterCmdSet includes CmdBuy
 
 world/prototypes.py           # Merchant prototypes (HOLOGRAPHIC_MERCHANT, etc.)
@@ -83,19 +87,16 @@ world/prototypes.py           # Merchant prototypes (HOLOGRAPHIC_MERCHANT, etc.)
 **Key Attributes:**
 ```python
 self.db.prototype_inventory = {}  # {prototype_key: price}
-self.db.item_inventory = {}       # For future limited stock mode
-# ^ THAT COMMENT IS STALE — corrected 2026-09-11 (re-verification). Limited
-#   stock is LIVE, not future: `add_prototype(key, price, quantity=N)` sets
-#   `is_infinite = False` and fills this dict (`shopkeeper.py:101-105`),
-#   `is_in_stock` gates on it (`:141-148`), `purchase_item` decrements it
-#   (`:298-299`), and the food cart runs entirely on it. It reads as
-#   "future" because it WAS, at Phase 1; left in place for that reason.
+self.db.item_inventory = {}       # {prototype_key: quantity} when stock is limited
+# `add_prototype(key, price, quantity=N)` sets `is_infinite = False` and
+# fills this dict, `is_in_stock` gates on it, `purchase_item` decrements it,
+# and the food cart runs entirely on it.
 #
 # Also set at creation and omitted from this list:
 self.db.markup_percent = 0        # `add_prototype(price=None)` derives the
                                   # price via `calculate_shop_price(base,
                                   # markup)`
-# plus `self.tags.add("till", category="souls")` (`shopkeeper.py:62`), the
+# plus `self.tags.add("till", category="souls")` (`at_object_creation`), the
 # index the souls tithe sweep reads.
 #
 # READ but never initialised here, so None on a plain shelf — which is exactly
@@ -104,6 +105,11 @@ self.db.markup_percent = 0        # `add_prototype(price=None)` derives the
 #   db.post_slots      # post binding, per shift
 #   db.post_keeper     # legacy single-keeper mirror
 #   db.post_closed_msg # the refusal line when nobody is minding it
+#   db.owner, db.staff # legacy bar allowlist; also binds
+# A counter is bound if `post_slots` is set, or if `post_keeper`, `owner`
+# or `staff` was ever assigned, even to someone since deleted
+# (`world.souls.posts.is_bound`). A bound counter with nobody valid
+# present is closed.
 self.db.is_infinite = True        # Infinite stock enabled
 self.db.shop_name = "Shop"        # Display name
 self.db.container_type = "shelf"   # Container type
@@ -131,38 +137,38 @@ self.db.container_type = "shelf"   # Container type
 ```
 
 **Key Methods:**
-- `add_prototype(prototype_key, price)` - Add item to inventory
+- `add_prototype(prototype_key, price=None, quantity=None)` - Add item to inventory; with no price, the price is `calculate_shop_price` of the prototype's `value` (default 10) and `markup_percent`; with a quantity, the shop switches to limited stock
 - `get_price(prototype_key)` - Get price for item
 - `is_in_stock(prototype_key)` - Check availability (always True in infinite mode)
 - `purchase_item(buyer, prototype_key)` - Process purchase, spawn item, deduct tokens
 - `get_display_name_for_prototype(prototype_key, prototype)` - Get display name (handles cans via aerosol_contents)
 - `get_browse_display(viewer)` - Generate inventory listing — numbered
-  `[001]`-style lines (`typeclasses/shopkeeper.py:372`), and it stores the
+  `[001]`-style lines, and it stores the
   number→prototype map on the **viewer's** `ndb.shop_number_map` keyed to this
-  container (`:392-393`), so `buy 002 from shelf` works and one looker's
+  container, so `buy 002 from shelf` works and one looker's
   numbering can never renumber another's. The map used to live on the
   container, which is how a stock change between two looks handed a buyer the
-  wrong dish (#2470; the reasoning is preserved in the comment at `:379-391`)
+  wrong dish (#2470; the reasoning is preserved in the comment in `get_browse_display`)
 - `return_appearance(looker)` - Override look to show inventory
 
 *Two live methods this list omits — added 2026-09-11 (re-verification):*
 
 - `remove_prototype(prototype_key)` - drop an item from both inventories
-  (`typeclasses/shopkeeper.py:107`)
-- `_off_shift_deflection(buyer)` - `typeclasses/shopkeeper.py:150`; when a
+- `_off_shift_deflection(buyer)` - when a
   post-bound counter has no on-duty keeper but one of its OWN off-shift
   keepers is standing there, they say so out loud and name whoever holds the
   shift, and that line becomes the refusal the buyer sees
 
-**Purchase Flow:**
-1. Validate prototype exists in inventory
-2. Check if in stock (infinite mode always True)
-3. Get price from inventory dict
-4. Verify buyer has enough tokens
-5. Spawn item from prototype
-6. Set `item.location = buyer`
-7. Deduct tokens: `buyer.tokens -= price`
-8. Return success and item
+**Purchase Flow** (`purchase_item`):
+1. If the counter is bound to a post and no keeper on shift is present, refuse. One of the counter's own off-shift keepers who is present says why (`_off_shift_deflection`); otherwise the refusal is `db.post_closed_msg`, or the default "Nobody's minding the counter…" line
+2. Refuse if the item is not sold here, or is out of stock
+3. Refuse if the buyer has fewer tokens than the price ("You need N₮ more to afford that.")
+4. Spawn the item, move it to the buyer, and put it in a free hand if there is one (`FoodCart` overrides this to set the dish on its board)
+5. Deduct the tokens (`buyer.tokens -= price`) and record the payment in the souls audit
+6. Break the buyer's hiding (`break_stealth`, #3763)
+7. Credit `db.register` when the counter keeps one
+8. Decrement `item_inventory` when stock is limited
+9. Return `(True, item)`
 
 ### 2. Character Currency System
 
@@ -190,28 +196,9 @@ is_merchant = AttributeProperty(False, category="shop", autocreate=True)
 is_holographic = AttributeProperty(False, category="shop", autocreate=True)
 ```
 
-**Combat Integration:**
-```python
-def validate_attack_target(self, attacker):
-    """Check if character can be attacked (holographic protection)."""
-    if self.is_holographic:
-        # Show glitch messages
-        attacker.msg(f"|cYour attack passes through {self.key}'s holographic form!|n")
-        # ... observer messages ...
-        return (False, None)  # Prevent attack
-    return (True, None)  # Allow attack
-```
+**Combat Integration:** `Character.validate_attack_target()` takes no arguments. It returns `None` when the character can be attacked, or an error string when it cannot (`is_holographic` is True). It sends no messages itself.
 
-**CmdAttack Integration** (`commands/combat/core_actions.py`):
-```python
-# After target resolution
-if hasattr(target, 'validate_attack_target'):
-    can_attack, error_msg = target.validate_attack_target(caller)
-    if not can_attack:
-        if error_msg:
-            caller.msg(error_msg)
-        return
-```
+**CmdAttack Integration** (`commands/combat/core_actions.py`): after resolving the target, `CmdAttack.func` calls `target.validate_attack_target()`. If that returns an error and the target is holographic, the attacker sees "Your attack passes through <name>'s holographic form with a shimmer of static.", the room sees (through `msg_room_identity`) that the attack passes through the flickering projection, and the attack stops. Any other error gives "You cannot attack <name>."
 
 ### 4. Buy Command
 
@@ -231,6 +218,8 @@ buy <item> from <container>
 buy spraypaint from shop
 buy solvent from shop
 ```
+
+`purchase` is an alias. `buy 002 from shelf` (also `2`, `#2` or `#002`) buys by the number in your own last look at that counter. Only the last " from " splits the item from the container, so `buy letter from mother from shelf` works.
 
 **Purchase Flow** (rewritten 2026-09-18, #3413 — the old steps 5-7 were stale):
 1. Refuse if the buyer is channeling (`refuse_if_channeling`, #3376)
@@ -299,21 +288,25 @@ return prototype.get("key", prototype_key)
 **Base Holographic Merchant:**
 ```python
 HOLOGRAPHIC_MERCHANT = {
-    "prototype_parent": "BASE_NPC",
     "key": "holographic merchant",
     "typeclass": "typeclasses.characters.Character",
+    "desc": "A shimmering holographic projection of a merchant. ...",
     "attrs": [
         ("is_merchant", True),
-        ("is_holographic", True),
+        ("is_holographic", True, "shop"),
+        ("merchant_greeting", "Welcome to the shop. Browse my wares."),
     ],
+    "locks": "get:false();puppet:false()",
 }
 ```
 
+The `"shop"` category on `is_holographic` is required: `Character.is_holographic` is an `AttributeProperty(category="shop")`, and the combat guard reads that property, so a flag stored without the category is not seen.
+
 **Specific Merchants (inherit from HOLOGRAPHIC_MERCHANT):**
-- `ARMORY_MERCHANT` - Gunther Steele (weapons)
-- `GENERAL_MERCHANT` - Sal Mendoza (supplies)
-- `MEDIC_MERCHANT` - Dr. Cassandra Voss (medical)
-- `CORNERSTORE_MERCHANT` - Juan Sanchez (corner market)
+- `ARMORY_MERCHANT` - Gunther the Armorer (weapons and armor)
+- `GENERAL_MERCHANT` - Sal the Supplier (general supplies)
+- `MEDIC_MERCHANT` - Dr. Voss (medical supplies)
+- `CORNERSTORE_MERCHANT` - Juan Sanchez (general goods)
 
 **Usage:**
 ```python
@@ -321,11 +314,10 @@ HOLOGRAPHIC_MERCHANT = {
 ```
 
 **Current Behavior:**
-- Merchants are **purely decorative/atmospheric** in Phase 1
-- Shops function without merchant presence (self-service)
-- Merchants receive transaction notifications but don't interact
-- No greeting, dialogue, or attendance requirement
-- Future phases may add merchant interactions and attendance checks
+- A counter bound to a post (`world.souls.posts.is_bound`) sells only while a keeper on shift is standing at it. Otherwise `purchase_item` refuses the sale; if one of the counter's own off-shift keepers is there, they say why out loud.
+- At a manned counter the keeper hands the item over in person (`world.shop.service.hand_over`), and also sells by spoken order.
+- Only an unbound counter (the vending tier) is self-service.
+- The holographic merchant prototypes above are decoration: they stand no post, and no sale depends on them.
 
 ### 7. Utility Functions
 
@@ -333,31 +325,25 @@ HOLOGRAPHIC_MERCHANT = {
 
 **Key Functions:**
 ```python
-# STALE SIGNATURE — corrected 2026-09-11 (re-verification). The live helper
-# (`world/shop/utils.py:8`) is generic and takes THREE arguments:
-#
-#     def get_prototype_value(prototype, attr_name, default=None)
-#
-# It does not hardcode "value", does not coerce to int, and defaults to None
-# rather than 10. Callers supply the attribute and the fallback themselves —
-# `ShopContainer.add_prototype` uses `get_prototype_value(prototype, "value",
-# 10)` (`typeclasses/shopkeeper.py:95`), which is where the 10 now lives.
-# Code written against the one-argument form below raises TypeError.
-def get_prototype_value(prototype):
-    """Extract 'value' attribute from prototype attrs list."""
-    for attr in prototype.get("attrs", []):
-        if isinstance(attr, tuple) and attr[0] == "value":
-            return int(attr[1])
-    return 10  # Default
+def get_prototype_value(prototype, attr_name, default=None):
+    """Raw value of attr_name in a prototype's attrs list, else default.
+    No int conversion. ShopContainer.add_prototype calls it as
+    get_prototype_value(prototype, "value", 10)."""
 
 def format_currency(amount):
     """Format tokens as '150₮' or '0₮' for free items."""
     return f"{amount}₮"
 
 def parse_currency(text):
-    """Parse '150₮' back to integer 150."""
-    # Implementation...
+    """'50', '50₮', '50 tokens', '50 ticks', '50 tabs', '50 kennys' -> 50;
+    None when the text is not a number."""
+
+def calculate_shop_price(base_value, markup_percent=0):
+    """base_value plus markup_percent of it. add_prototype uses this when
+    no price is given."""
 ```
+
+Do not use `validate_purchase`, `deduct_tokens` or `add_tokens` in the same module: nothing calls them, and they read and write `db.tokens`, which no part of the game reads. The wallet is the `Character.tokens` property (category `"shop"`).
 
 ### 8. Serve Flavour — `serve_line` on the item
 
@@ -418,7 +404,7 @@ and never names the keeper itself:
 
 ```python
 ("serve_line", "ladles {item} up out of the broth pot and passes it across "
-               "to {target}, {price} into the tin."),
+               "to {target}, {price} into the till."),
 ```
 
 ```python
@@ -491,7 +477,7 @@ reachable the moment a board-styled keeper stands a plain `ShopContainer`.
 The fix, when it is wanted, is for `CmdBuy` to read the keeper's post style
 rather than defaulting.
 
-## Core Components - Phase 1 (ORIGINAL SPEC - NOT IMPLEMENTED)
+## Currency
 
 ### 1. Currency System (ACTUAL IMPLEMENTATION)
 
@@ -500,7 +486,7 @@ rather than defaulting.
 ```python
 # typeclasses/characters.py
 
-class Character(LivingMixin, DefaultCharacter):
+class Character(ArmorMixin, ClothingMixin, AppearanceMixin, ObjectParent, DefaultCharacter):
     # AttributeProperty for automatic initialization
     tokens = AttributeProperty(0, category="shop", autocreate=True)
 ```
@@ -537,43 +523,37 @@ def format_currency(amount):
 
 def parse_currency(text):
     """
-    Parse currency string back to integer.
-    
-    Args:
-        text (str): Currency string like "150₮"
-        
-    Returns:
-        int: Token amount
-        
-    Example:
-        >>> parse_currency("150₮")
-        150
-    """
-    return int(text.rstrip("₮"))
+    Parse a currency amount from text: "50", "50₮", "50 tokens",
+    "50 ticks", "50 tabs", "50 kennys" (singular forms too).
 
-def get_prototype_value(prototype):
-    """
-    Extract 'value' attribute from prototype attrs list.
-    
-    Evennia prototypes store attributes in 'attrs' as tuples.
-    This handles the list format and provides safe fallback.
-    
-    Args:
-        prototype (dict): Prototype dictionary
-        
     Returns:
-        int: Value attribute, or 10 as default
-        
+        int, or None if the text is not a number
+    """
+    if not text:
+        return None
+    text = text.lower().strip()
+    for term in ["₮", "tokens", "token", "ticks", "tick", "tabs", "tab", "kennys", "kenny"]:
+        text = text.replace(term, "").strip()
+    try:
+        return int(text)
+    except ValueError:
+        return None
+
+def get_prototype_value(prototype, attr_name, default=None):
+    """
+    Return the raw value of `attr_name` from a prototype's attrs list,
+    or `default` if it is not there. No int conversion.
+
     Example:
         >>> proto = {"attrs": [("value", 50), ("weight", 2)]}
-        >>> get_prototype_value(proto)
+        >>> get_prototype_value(proto, "value", 10)
         50
     """
-    for attr in prototype.get("attrs", []):
-        if isinstance(attr, (list, tuple)) and len(attr) >= 2:
-            if attr[0] == "value":
-                return int(attr[1])
-    return 10  # Default fallback
+    attrs = prototype.get("attrs", [])
+    for attr_tuple in attrs:
+        if len(attr_tuple) >= 2 and attr_tuple[0] == attr_name:
+            return attr_tuple[1]
+    return default
 ```
 
 **Usage Examples:**
@@ -593,13 +573,13 @@ char.msg(f"You have {format_currency(char.tokens)}")
 # Get item value from prototype
 from evennia.prototypes.prototypes import search_prototype
 proto = search_prototype("SPRAYPAINT_CAN")[0]
-value = get_prototype_value(proto)
+value = get_prototype_value(proto, "value", 10)
 # value = 50 (from proto's attrs)
 ```
 
 **Currency Lore:**
 
-The **Token (₮)** is standard colonial scrip used throughout Gelatinous. Street slang includes "ticks," "tabs," and "kennys," but the system currently displays the official ₮ symbol
+The **Token (₮)** is standard colonial scrip used throughout Gelatinous. Street slang includes "ticks," "tabs," and "kennys." `parse_currency` accepts all three as input; display always uses the ₮ symbol.
 - **"Tabs"** - From "running a tab," implies debt and company store economics
 - **"Kennys"** - Origin unknown, possibly from a famous debtor or colonial administrator
 
@@ -644,7 +624,7 @@ The following sections describe features from the original specification that we
 
 ### 2. Merchant Template System (NOT IMPLEMENTED)
 
-**Note:** The actual Phase 1 implementation uses regular Evennia prototypes (HOLOGRAPHIC_MERCHANT, ARMORY_MERCHANT, etc.) instead of a dedicated MerchantTemplate system. Merchants are spawned with `@spawn PROTOTYPE_NAME` and have `is_merchant` and `is_holographic` AttributeProperties.
+**Note:** The actual Phase 1 implementation uses regular Evennia prototypes (HOLOGRAPHIC_MERCHANT, ARMORY_MERCHANT, etc.) instead of a dedicated MerchantTemplate system. The holographic merchant prototypes can still be spawned with `@spawn PROTOTYPE_NAME`, but no sale depends on them. The keepers who actually sell are NPCs standing a post (`world.souls.posts`; see `NPC_POSTS_AND_REINCARNATION_SPEC.md`), with the selling competence registered per role in `world/shop/service.py`.
 
 **Original Spec:**
 
@@ -1008,7 +988,7 @@ class Character(DefaultCharacter):
 
 **CmdAttack Integration:**
 
-To make holographic merchants work, add this validation in `CmdAttack.func()` after target resolution:
+`CmdAttack.func()` already calls `validate_attack_target()`, in a different form from the code below (no arguments, returns `None` or an error string); see Core Components §3. Do not add this block:
 
 ```python
 # In commands/combat/core_actions.py, CmdAttack.func()
@@ -1023,6 +1003,8 @@ if hasattr(target, 'validate_attack_target'):
 ```
 
 ### 5. Shop Container System
+
+Original design. The `ShopContainer` the game runs is described under "Core Components - Phase 1" §1 above; this version (list inventory, room upsell, `_give_item_to_buyer`) was not built.
 
 **Design Goals:**
 - Physical containers (shelves, displays, racks) hold shop inventory
@@ -1220,6 +1202,8 @@ class ShopContainer(DefaultObject):
 ```
 
 ### 6. Vending Machine (Automated ShopContainer)
+
+📋 UNBUILT (not decided). No `VendingMachine` class exists. Today a vending machine is an unbound `ShopContainer` (owner ruling 2026-09-13 at the top of this document).
 
 **What is a Vending Machine?**
 
@@ -1585,8 +1569,8 @@ class VendingMachine(ShopContainer):
 >
 > - The `CmdBuy` printed below is headed `# commands/economy/shop_commands.py`.
 >   There is no `commands/economy/` package in this repo. The live command is
->   `commands/shop.py` (`CmdBuy`, registered at
->   `commands/default_cmdsets.py:68, 387`) and is documented under
+>   `commands/shop.py` (`CmdBuy`, registered in
+>   `commands/default_cmdsets.py` `CharacterCmdSet`) and is documented under
 >   "4. Buy Command" near the top of this document.
 > - `buy_from_room`, `get_prototype_by_name`, `VendingMachine`, `restock_slot`
 >   and `set_operational` — all named in this section — have no code anywhere
@@ -1601,11 +1585,10 @@ class VendingMachine(ShopContainer):
 - `look` - See room and all containers
 - `look at shelf` - See items in a specific ShopContainer
 - `look at machine` - See items in a vending machine
-  - *Corrected 2026-09-11 (re-verification): there is no vending machine to
-    look at. No `VendingMachine` typeclass exists in the repo, and this
-    document's own checklist still lists "[ ] Vending machines (original
-    spec)" as unbuilt — so this bullet claims a Phase-1 capability the same
-    document denies.*
+  - A vending machine is an unbound `ShopContainer` (for example the battered
+    cigarette machine) and is looked at like any shelf. There is no
+    `VendingMachine` typeclass, and buying by slot code (`A1`) is
+    📋 UNBUILT (not decided).
 - `buy <item>` or `buy <item> from <container>` - Purchase items
 
 **Phase 2 Marketplaces**: Adds `browse` and `sell` commands:
@@ -1837,6 +1820,18 @@ class CmdHaggle(Command):
 
 ## Error Handling & Edge Cases
 
+> 📋 UNBUILT (not decided): this section is the original design. There is no
+> `world/economy/` package, so none of the constants or validation helpers
+> below exist, nor do `Room.spawn_merchant`, `can_afford` or
+> `ShopContainer.at_object_delete`. Only the holographic attack check is real,
+> and `CmdAttack.func` words it differently (see "Combat Integration" below).
+> The refusals a buyer reads come from `ShopContainer.purchase_item`
+> (`typeclasses/shopkeeper.py`): "That item isn't sold here.", "That item is
+> out of stock.", "You need <amount> more to afford that.", "The item couldn't
+> be retrieved. Contact an admin." and "Something went wrong. Contact an
+> admin." A bought item goes into the first free hand, or into inventory with
+> no message when both hands are full.
+
 ### Economic Constants
 
 ```python
@@ -1956,8 +1951,9 @@ def at_object_delete(self):
 #### Merchant Death During Transaction
 ```python
 # In CmdBuy
-# This is actually fine - transaction completes anyway
-# Buy command doesn't require merchant, only the container
+# A post-bound counter refuses the sale unless a keeper on the running shift
+# is present (ShopContainer.purchase_item -> any_keeper_present). An unbound
+# counter sells with nobody there.
 
 # In CmdSell
 # Also fine - we check for merchant presence and adjust messaging
@@ -2052,7 +2048,8 @@ def validate_container_inventory(prototype_list):
 # Set description
 @desc shop = A well-stocked shop shelf displaying various items.
 
-# Set shop name (the {shop} token in the unmanned-shelf room line, and the browse header)
+# Set shop name (stored, but read by nothing: the {shop} token in the unmanned-shelf
+# room line is the container's own display name, and the browse listing has no header)
 @py shop.db.shop_name = "Juan's Corner Market"
 ```
 
@@ -2073,18 +2070,18 @@ def validate_container_inventory(prototype_list):
 # (re-verification), and this section is labelled ACTUAL IMPLEMENTATION, so a
 # builder follows it verbatim.
 #
-#   SPRAYPAINT_CAN  — real (`world/prototypes.py:511`)
+#   SPRAYPAINT_CAN  — real (`world/prototypes.py`)
 #   FRAG_GRENADE    — real
 #   SPRAY_SOLVENT   — NOT A PROTOTYPE. The solvent can is `SOLVENT_CAN`
-#                     (`world/prototypes.py:535`).
+#                     (`world/prototypes.py`).
 #   MACHETE         — NOT A PROTOTYPE. No `machete` of any casing exists in
 #                     `world/prototypes.py`.
 #
 # `add_prototype` does not raise on a miss: it logs "Prototype 'X' not found"
-# and returns False (`typeclasses/shopkeeper.py:87-89`). So these four lines
+# and returns False (`ShopContainer.add_prototype`). So these four lines
 # build a TWO-item shop in silence, and the "# Output:" line above can never
 # appear. The live general shelf gets it right — `GENERAL_SHELF`
-# (`world/prototypes.py:3509`) stocks "SPRAYPAINT_CAN": 25, "SOLVENT_CAN": 30.
+# (`world/prototypes.py`) stocks "SPRAYPAINT_CAN": 25, "SOLVENT_CAN": 30.
 ```
 
 **Step 3: (Optional) Give a Dish Its Own Serve Line**
@@ -2122,7 +2119,7 @@ def validate_container_inventory(prototype_list):
 # no prototype named `BASE_NPC` anywhere in this repository: the only two
 # occurrences of the string are in THIS document (here and in the
 # HOLOGRAPHIC_MERCHANT snippet under "6. Merchant Prototypes"). The live
-# `HOLOGRAPHIC_MERCHANT` (`world/prototypes.py:3306`) has no
+# `HOLOGRAPHIC_MERCHANT` (`world/prototypes.py`) has no
 # `prototype_parent` at all.
 #
 # The two-tuple `("is_holographic", True)` is wrong here for the same reason
@@ -2217,7 +2214,7 @@ attack merchant
 # Output: Your attack passes through merchant's holographic form!
 #
 # Corrected 2026-09-11 (re-verification): the protection is live, the line is
-# not. `commands/combat/core_actions.py:147` emits
+# not. `CmdAttack.func` (`commands/combat/core_actions.py`) emits
 #
 #   |yYour attack passes through <them>'s holographic form with a shimmer of
 #   static.|n
@@ -2225,7 +2222,7 @@ attack merchant
 # and `<them>` comes from `get_display_name_safe(target, caller)`, so it
 # renders through the attacker's own recognition — it never prints the raw key
 # "merchant". Observers get a separate per-observer line via
-# `msg_room_identity` (`:149-155`).
+# `msg_room_identity`.
 ```
 
 ## Integration with Existing Systems (ACTUAL)
@@ -2235,24 +2232,21 @@ attack merchant
 ```python
 # typeclasses/characters.py
 
-class Character(LivingMixin, DefaultCharacter):
-    """Character with shop/currency support."""
+class Character(ArmorMixin, ClothingMixin, AppearanceMixin, ObjectParent, DefaultCharacter):
     
     # AttributeProperties for automatic initialization
-    tokens = AttributeProperty(0, category="shop", autocreate=True)
     is_merchant = AttributeProperty(False, category="shop", autocreate=True)
     is_holographic = AttributeProperty(False, category="shop", autocreate=True)
+    tokens = AttributeProperty(0, category="shop", autocreate=True)
     
-    def validate_attack_target(self, attacker):
-        """Check if character can be attacked (holographic protection)."""
+    def validate_attack_target(self):
+        """None for a valid target, or a refusal string."""
         if self.is_holographic:
-            attacker.msg(f"|cYour attack passes through {self.key}'s holographic form!|n")
-            attacker.location.msg_contents(
-                f"|c{attacker.key}'s attack phases harmlessly through {self.key}!|n",
-                exclude=[attacker]
-            )
-            return (False, None)
-        return (True, None)
+            return "A holographic merchant cannot be attacked - target validation failed"
+        return None
+
+# The character sends no message. The attacker never sees that string:
+# CmdAttack.func prints its own lines (see "Combat Integration" below).
 ```
 
 ### Prototype Integration
@@ -2262,20 +2256,16 @@ All items in `world/prototypes.py` can be sold in shops:
 ```python
 # Example: Items with value attributes
 #
-# STALE ON ALL THREE COUNTS — corrected 2026-09-11 (re-verification). The real
-# `SPRAYPAINT_CAN` (`world/prototypes.py:511-533`) reads:
+# WRONG ON TWO COUNTS. The real `SPRAYPAINT_CAN` (`world/prototypes.py`) reads:
 #
-#   "key": "can of"                                  # not "can of spraypaint"
+#   "key": "can of spraypaint"
 #   "typeclass": "typeclasses.items.SprayCanItem"    # no `AerosolCan` class
-#                                                    # exists (items.py:937)
+#                                                    # exists
 #   attrs: aerosol_level, max_aerosol, current_color,
 #          aerosol_contents, damage, weapon_type,
 #          damage_type, hands_required             # NO "value" AT ALL
 #
-# The bare key really is "can of": the contents half is supplied at display
-# time by `get_display_name_for_prototype` from `aerosol_contents`, which is
-# the mechanism §5 describes — so the snippet below misrepresents the very
-# example it is illustrating.
+# so the snippet below is wrong on its typeclass and its `value`.
 #
 # 2026-11-10 (#3783): the keys are now the shown names, "can of spraypaint"
 # and "can of solvent". "can of" could not be completed to the shown name by
@@ -2285,7 +2275,7 @@ All items in `world/prototypes.py` can be sold in shops:
 #
 # The missing `value` matters for pricing: `add_prototype("SPRAYPAINT_CAN")`
 # with no explicit price falls through `get_prototype_value(prototype,
-# "value", 10)` to **10**, not 50 (`typeclasses/shopkeeper.py:94-96`). The
+# "value", 10)` to **10**, not 50 (`ShopContainer.add_prototype`). The
 # checklist item "Pricing uses prototype value attributes" holds for
 # prototypes that carry one; this example is not one of them.
 SPRAYPAINT_CAN = {
@@ -2308,13 +2298,17 @@ shop.add_prototype("SPRAYPAINT_CAN", 50)  # Sell for 50₮
 Holographic merchants are protected via `validate_attack_target()`:
 
 ```python
-# In CmdAttack (commands/combat/core_actions.py)
+# In CmdAttack.func (commands/combat/core_actions.py), after the target is resolved
 if hasattr(target, 'validate_attack_target'):
-    can_attack, error_msg = target.validate_attack_target(caller)
-    if not can_attack:
-        if error_msg:
-            caller.msg(error_msg)
-        return  # Attack prevented
+    validation_error = target.validate_attack_target()
+    if validation_error:
+        if getattr(target, "is_holographic", False):
+            caller.msg(f"|yYour attack passes through {get_display_name_safe(target, caller)}'s holographic form with a shimmer of static.|n")
+            # each observer reads "<actor>'s attack passes through <target>'s
+            # flickering projection." through msg_room_identity
+        else:
+            caller.msg(f"You cannot attack {get_display_name_safe(target, caller)}.")
+        return  # stopped before the combat handler is involved
 ```
 
 ### Hands System Integration
@@ -2322,12 +2316,15 @@ if hasattr(target, 'validate_attack_target'):
 Purchased items auto-wield in hands if available:
 
 ```python
-# In CmdBuy._give_item_to_buyer()
-if hasattr(buyer, 'wield_item'):
-    buyer.wield_item(item)  # Automatically equips in hands
-else:
-    # Fallback if no hands system
-    item.location = buyer
+# In ShopContainer.purchase_item (typeclasses/shopkeeper.py)
+item.move_to(buyer, quiet=True)
+hands = getattr(buyer, "hands", None) or {}
+free = next((h for h, held in hands.items() if held is None), None)
+if free:
+    buyer.wield_item(item, free)  # best-effort; otherwise it stays in inventory
+
+# FoodCart.purchase_item (typeclasses/butcher.py) puts the dish back on the
+# cart's board instead.
 ```
 
 ## Testing Checklist - Phase 1 (ACTUAL)
@@ -2359,7 +2356,7 @@ else:
 
 ### Edge Cases
 - [x] Handles None vs 0 tokens correctly (AttributeProperty default)
-- [x] Items spawn to correct location (explicit item.location = buyer)
+- [x] Items spawn to correct location (`move_to` the buyer, then a free hand)
 - [x] Wield integration works correctly
 - [x] Multiple items with same base name distinguished (cans)
 - [x] Free items (0₮) display correctly
@@ -2371,7 +2368,7 @@ else:
 - [ ] Merchant attendance requirement (shops are self-service)
 - [ ] Merchant interactions (greetings, dialogue, reactions)
 - [ ] Merchant AI/personality scripts
-- [ ] Vending machines (original spec)
+- [ ] `VendingMachine` typeclass with slot codes (original spec); a vending machine is an unbound `ShopContainer`
 - [ ] Limited stock mode (infinite only)
 
 > **Four of those five shipped — corrected 2026-09-11 (re-verification).**
@@ -2380,30 +2377,30 @@ else:
 >
 > - **Merchant attendance requirement — SHIPPED.** A post-bound counter
 >   refuses every sale while no keeper stands the running shift
->   (`typeclasses/shopkeeper.py:235-248`, via
->   `world/souls/posts.py:208 any_keeper_present`). Only counters with no
+>   (`ShopContainer.purchase_item`, via
+>   `world/souls/posts.py` `any_keeper_present`). Only counters with no
 >   post binding are self-service.
 > - **Merchant interactions — SHIPPED.** Keepers resolve spoken orders
->   deterministically against the real shelf (`world/shop/service.py:100,
->   :145`) and serve the typed `buy` in person (`commands/shop.py:93-116`).
+>   deterministically against the real shelf (`world/shop/service.py`
+>   `match_from_shelf`, `serve_from_shelf`) and serve the typed `buy` in
+>   person (`CmdBuy.func`, `commands/shop.py`).
 > - **Merchant AI/personality — SHIPPED.** Souls, blueprints
 >   (`world/npcs/blueprints.py`) and the shelf-grounding persona clause at
->   `world/llm/prompt.py:929-939` (complete stock, anti-invention,
+>   `world/llm/prompt.py` `render_persona` (complete stock, anti-invention,
 >   no-haggling, and "never narrate a sale or a handover yourself").
 > - **Limited stock mode — SHIPPED.** `add_prototype(key, price,
 >   quantity=N)` sets `is_infinite = False` and fills `item_inventory`;
 >   `is_in_stock` gates on it and `purchase_item` decrements it
->   (`typeclasses/shopkeeper.py:71-105, 141-148, 298-299`). The food cart
+>   (`ShopContainer.add_prototype`, `is_in_stock`, `purchase_item`). The food cart
 >   runs entirely on it.
-> - **Vending machines — genuinely still unbuilt.** No `VendingMachine`
->   typeclass exists, and none of the original spec's machine surface has
->   code anywhere: no slot codes (A1/B2), no `price_multiplier`, no
->   `restock_slot`, no `set_operational`. What DOES exist is weaker and
->   different: the addendum, and matching comments at
->   `world/service.py:185` and `world/bar.py:826`, record an UNBOUND counter
->   as "the vending tier by construction" — a shelf that sells with nobody
->   behind it. Whether that retires the machine, or the machine is still
->   wanted as its own fixture, is an owner call and is not recorded here.
+> - **Vending machines.** A vending machine is an unbound `ShopContainer`
+>   that sells with nobody behind it, for example the battered cigarette
+>   machine (owner ruling 2026-09-13 at the top of this document: vending
+>   machines are self-serve only). The addendum and the comments in
+>   `world/service.py` and `world/bar.py` call an unbound counter "the
+>   vending tier". No `VendingMachine` typeclass exists, and the original
+>   spec's slot codes (A1/B2), `price_multiplier`, `restock_slot` and
+>   `set_operational` are 📋 UNBUILT (not decided).
 >
 > The three items below this block — dynamic pricing/haggling, marketplace
 > mazes, player-owned shops — remain accurate: no `CmdSell`, no `CmdHaggle`
@@ -2436,12 +2433,12 @@ else:
 
 ---
 
-*This specification provides the foundation for a container-based shop system with template-driven merchants and clear paths for future expansion into dynamic marketplaces and player ownership.*
+*This specification provides the foundation for a container-based shop system, its counters minded by posted NPCs or selling themselves when unbound, with clear paths for future expansion into dynamic marketplaces and player ownership.*
 
 
 ## Addendum (2026-07-25) — the Shopkeeper era
 
-Shipped well past the Phase-1 vending machine (#1293–#1298):
+Shipped well past the Phase-1 self-service shelf (#1293–#1298):
 
 - **Shopkeeper typeclass** (LLM-voiced, transactions deterministic):
   spoken orders resolve against the counter's real shelf and run
@@ -2453,8 +2450,12 @@ Shipped well past the Phase-1 vending machine (#1293–#1298):
   roles through ``world/service.py``), so whoever stands the counter
   sells.)*
 - **Hand delivery**: base ``ShopContainer.purchase_item`` lands the item
-  in the buyer's free hand; bars and the food cart keep their
-  counter/board overrides. Tills: ``db.register`` credits when wired.
+  in the buyer's free hand; the food cart (`FoodCart.purchase_item`) puts
+  it back on its board. Tills: ``db.register`` credits when wired.
+- **Buying breaks hiding**: every completed sale breaks the buyer's
+  stealth, by the typed `buy` or a spoken order (owner, 2026-10-24, #3763:
+  "You have to come out of hiding if you're buying something"), and is
+  written to the souls coin audit as a `purchase` (#2698).
 - **Keeper-served buy**: a manned counter is never self-service — the
   ``buy`` command routes the handover through the keeper's serve emote.
 - **No keeper, no commerce**: a post-bound counter refuses sales while

@@ -8,8 +8,10 @@
 > roles), no cold-room fixture. The world already points at the gig: the
 > butcher refuses sapient corpses with "Ripper trade's not mine — take it
 > elsewhere" (`world/butchery.py` `_refusal_line`), and
-> `world/director/disposal.py` keeps stripped chassis in the yard because
-> they are "the obvious feedstock for the Ripper's cold room". Spec'd
+> `world/director/disposal.py` keeps stripped chassis in the yard. Its
+> docstring still calls them "the obvious feedstock for the Ripper's cold
+> room", but the owner ruled on 2026-09-14 that robots go to a future
+> junkyard salvager, not the Ripper (§2). Spec'd
 > #1277/#1278. **Owner ruling recorded in `BUILDING_PLAYBOOK` §4: "The
 > Ripper stays parked until the Southside stands"** — that banner is
 > labelled 2026-08-25, but the playbook's own 2026-09-11 correction dates
@@ -43,8 +45,12 @@ provides:
    makes body disposal a decision instead of an afterthought.
 2. **A secondhand chrome market.** Cyberware is the colony's most valuable
    portable property, and every corpse with an augment is a walking
-   inventory. Harvested chrome re-enters the install economy (the clinic
-   already fits used organs and reattached augments — the machinery exists).
+   inventory. Harvested chrome re-enters the install economy: the surgical
+   install path (`install` and `operate`, through `_resolve_install` and its
+   siblings in `world/medical/procedures.py`) already refits harvested organs
+   and augments. The clinic NPC does not: it only fits new chrome from its
+   own supply. An NPC doctor fitting a part the patient brings is
+   📋 UNBUILT (no issue).
 3. **Consequence pressure on the sleeve economy.** Re-sleeving is how death
    is survived; the Ripper is what happens to the *body left behind*. A
    victim who re-clones and later learns their old sleeve was parted out has
@@ -57,7 +63,8 @@ surgeon's tools and a fence's ethics. Professionally incurious (the pawn-shop
 virtue, sharpened): where a body came from is *aggressively* not their
 business. They buy quiet, sell quiet, and their real product is discretion.
 
-- **Location:** owner's call — the sewers under construction are the natural
+- **Location:** owner's call — the future sewer layer (unspecced and
+  unbuilt, see `BUILDING_PLAYBOOK` §4) is the natural
   home (off the street grid, behind the phase of respectable commerce), or a
   back room off Hammett's Boot. TBD at build time.
 - **Post:** registered like every named NPC (blueprint + fixture + policy).
@@ -66,12 +73,14 @@ business. They buy quiet, sell quiet, and their real product is discretion.
   a ripper of all people might carry sleeve insurance; owner's call.)
 - **Archetype:** `ripper` — flat, unhurried, transactional; speaks about
   bodies exclusively as inventory; never asks names, never offers them. The
-  few-shot demonstrates `remember`/`feel` (per tuning lesson 3) and the
-  restraint `none`. The deterministic transaction is never a tool.
+  few-shot demonstrates `remember` and the restraint `none` (the
+  "demonstrate, don't describe" rule in `LLM_GAMEMASTER_SPEC`). The
+  Ripper's read on a supplier comes from the engine-owned opinion layer
+  (#2388), not a tool. The deterministic transaction is never a tool.
   *(2026-09-12: **the `feel` tool no longer exists** — #2388 "Opinion: the
   engine owns how an NPC reads a person (retires the `feel` tool)" removed
-  it after this spec was written. `world/llm/prompt.py:103` now reads
-  `BASE_TOOLS = ("look", "remember")`, the tool router shrugs a stray
+  it after this spec was written. `world/llm/prompt.py` `BASE_TOOLS` reads
+  `("look", "remember")`, the tool router shrugs a stray
   `feel` off, and `world/tests/test_opinion.py` asserts `feel` is absent
   from both `TOOLS` and `BASE_TOOLS`. Read this as: demonstrate `remember`
   plus the restraint `none`; the Ripper's read on a supplier comes from the
@@ -79,7 +88,8 @@ business. They buy quiet, sell quiet, and their real product is discretion.
 
 ## 2 · The buy side — corpses in
 
-Mirror of the butcher's `_process_corpse`, inverted guards:
+Mirror of the butcher's `world/butchery.py` `process_corpse` (entered via
+`on_receive`), inverted guards:
 
 ```
 player: `give corpse to ripper`
@@ -92,12 +102,15 @@ player: `give corpse to ripper`
                       named the Ripper as the chassis buyer are corrected.
       freshness gate — decay scales organ viability; past a threshold only
                       the chrome is worth anything (chrome doesn't rot)
-      appraisal    — walk the corpse's REAL medical snapshot:
-                      · BIOLOGICAL organs: each intact organ (hp > 0, not in
-                        removed_organs, container not severed) priced by type;
-                        synth organs priced differently (§3)
-                      · CHROME: every augment organ (is_augment_organ) priced
-                        by its prototype value — undamaged chrome is the
+      appraisal    — walk world.medical.removable.harvestable_organs(corpse),
+                      the predicate both harvest doors use (drops removed
+                      organs, severed containers, 0-HP organs; on a skeletal
+                      body keeps only bones and grafted inorganic parts):
+                      · BIOLOGICAL organs: entries where is_grafted is false,
+                        priced by type; synth organs priced differently (§3)
+                      · CHROME: entries where is_grafted is true, priced
+                        by its prototype value (harvested chrome carries
+                        value, brand and prototype_key, #3490) — undamaged chrome is the
                         payday; a corpse can be worth more than its killer's
                         bounty
       payout       — from a finite till (the post's, per the standing rule)
@@ -119,7 +132,12 @@ that pays worst anyway** (nobody trustworthy is buying those).
 - **Synthetic organs:** durable, non-rotting (species spec) — lower per-unit
   price (grown, not scarce) but decay-immune, so a week-old synth corpse
   still pays. A deliberate asymmetry: synths are worth *killing carefully*
-  and worth *finding late*.
+  and worth *finding late*. The code does not yet exempt synth tissue: the
+  corpse's decay factor (`Corpse.get_decay_factor`) is time-based for every
+  species, `harvestable_organs` drops non-bone synth organs once the body is
+  skeletal, and `_configure_harvested_item` stamps `harvested_at` on synth
+  organs like any organic one. The freshness gate must special-case
+  `synthetic_humanoid` for this asymmetry to hold. 📋 UNBUILT (no issue)
 - **Chrome:** priced from the prototype's value with a used-goods haircut.
   The Ripper pays a fraction; sells at margin (§4). High-end chrome (cyber
   hearts, targeting processors) is the whale trade.
@@ -128,12 +146,14 @@ that pays worst anyway** (nobody trustworthy is buying those).
 
 A `ShopContainer` post fixture (the FoodCart pattern, colder):
 
-- **Used chrome**, buyable and clinic-installable — the existing install
-  pipeline takes harvested augments today. Cheaper than new; the "risk"
+- **Used chrome**, buyable and installable by a surgeon — the surgical
+  install path (`_resolve_install_augment`) takes harvested augments today;
+  the clinic NPC fitting one is 📋 UNBUILT (no issue). Cheaper than new; the "risk"
   texture (failed-install odds, provenance questions) is an open question
   (§7), not assumed.
 - **Transplant organs**, sellable to players carrying them to a doctor — the
-  donor-organ surgery path exists (#610 proved donor kidneys). This quietly
+  donor-organ surgery path exists (`_resolve_install` fits a harvested organ
+  when its `compatible_species` matches the patient). This quietly
   creates the *organ courier* job: buy a heart in the dark, walk it to a
   clinic, someone lives.
 - Stock is real (limited inventory, fed by what suppliers bring), sales
@@ -150,6 +170,10 @@ lying in a room. Murder cleanup as a paid service.
   then the fee is quoted flat and paid like a dish order).
 - What it destroys is *evidence*: the corpse object and everything the
   forensics layer could have read from it.
+- Harvested parts are evidence too: each one carries its source corpse's
+  identity signature, apparent UID and dbref (`_configure_harvested_item` in
+  `world/medical/procedures.py`), so a part that leaves the cold room still
+  traces back to the body.
 - What it does NOT destroy (§6): whatever the world already knows —
   witnesses, dispatch records, the victim's own re-sleeved memory.
 
@@ -161,10 +185,11 @@ This is where the Ripper differs from the butcher in kind, not degree.
 Selling a rat is commerce; selling a person should have *weight*. Proposed
 consequence stack, cheapest first — each independently shippable:
 
-1. **Witness pressure (exists today).** Hauling a sapient corpse through
-   streets is witnessable behavior — the witness/dispatch/BOLO layer already
-   reacts to crime-shaped events. Carrying a body *is* one. No new systems;
-   a wiring decision.
+1. **Witness pressure (machinery exists, not wired).** The witness →
+   dispatch → BOLO funnel (`world/director/crime.py` `report_crime`) exists,
+   but carrying a corpse is not a crime type and raises nothing today. This
+   needs a new crime type and a hook on the carry or give act.
+   📋 UNBUILT (no issue)
 2. **The re-sleeved victim knows *something* (cheap, delicious).** Their
    old sleeve never surfaced. For a PC that's pure roleplay fuel; for a
    named NPC (post keeper), the §P3 memory snapshot means their re-sleeve
@@ -213,7 +238,7 @@ now. The spec is written so (a) upgrades to (b) without rework.
 
 1. **§R1 — Buy side.** The ripper NPC + cold-room post + corpse appraisal
    (organs + chrome) + payout. The Ripper works as a gig from day one:
-   corpses become money. Witness pressure comes free from existing systems.
+   corpses become money. Witness pressure needs the corpse-carrying crime hook (§6.1); it is not free.
 2. **§R2 — Sell side.** Chrome + organs as limited stock; the courier trade;
    till loop closed. (Mirrors the cart's sell-side build exactly.)
 3. **§R3 — Disposal.** The fee service + evidence destruction.

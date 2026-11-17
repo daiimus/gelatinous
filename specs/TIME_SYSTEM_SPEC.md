@@ -1,8 +1,10 @@
 # Time System Specification
 
 > **Status:** ✅ **IMPLEMENTED 2026-07-30** (#301). Canonical clock is
-> `world/gametime.py`; `TIME_FACTOR` is now 1.0. Weather, director broadcasts
-> and the admin readout all read the colony hour from it.
+> `world/gametime.py`; `TIME_FACTOR` is now 1.0. Weather, director broadcasts,
+> the admin readout, crowd density, NPC shift schedules, the chargen decant
+> stamp, the connection screen's year and the website's character dates all
+> read the colony clock from it.
 
 ## Overview
 
@@ -34,7 +36,9 @@ its TST date are the same day in every sense.
 
 It also makes leap years line up: leap rules depend on the year mod 4, 100 and
 400, so a 400-aligned offset cannot change whether a year is leap. Feb 29
-always has a Feb 29 to land on.
+always has a Feb 29 to land on. `_shift_year` still moves a shifted Feb 29 to
+Mar 1 if the target year has none; with a 400-aligned offset that never
+happens.
 
 **The offset must stay a multiple of 400.** The constant carries that warning,
 and `test_weekday_alignment_depends_on_the_offset` pins the fact.
@@ -56,6 +60,14 @@ unlocalised, so durations stay subtraction and nothing depends on a calendar
 offset. Shift on the way out with `format_stamp()`. `wound_timestamp` in
 `world/medical/core.py` uses this.
 
+Forensic evidence (blood pools, graffiti) is stamped the same way, and its
+age is read with `gametime.since()`, which clamps a negative elapsed time to
+zero. A stamp below `LEGACY_RUNTIME_STAMP_MAX` (`typeclasses/objects.py`) is
+a leftover from the older `evennia.utils.gametime` clock, which counts server
+runtime and rewinds on a database restore (#2414); it reads as age 0.
+Harvested organic organs carry `db.harvested_at = stamp()` (#3498); no game
+code reads it.
+
 ### Reading the hour in-world
 
 *(Added to the spec 2026-09-12; shipped earlier and never written down here.)*
@@ -70,8 +82,9 @@ Time is legible through **objects**, not a command — the owner ruling behind
   Text holding no token comes back untouched, so it is safe to run over every
   description.
 - It has **three** call sites, all of them `get_display_desc`: `ObjectParent`
-  (`typeclasses/objects.py:47`), `Room` (`typeclasses/rooms.py:98`) and `Exit`
-  (`typeclasses/exits.py:532`). Only the first is inherited — `Room` composes
+  (`typeclasses/objects.py:47`), `Room` (`Room.get_display_desc`,
+  `typeclasses/rooms.py`) and `Exit` (`Exit.get_display_desc`,
+  `typeclasses/exits.py`). Only the first is inherited — `Room` composes
   its own perception-gated string and never reaches `super()`, and `Exit` does
   not inherit `ObjectParent` at all — so an authored `{time}` rendered
   literally on both until each was wired separately (#2772). That is why the
@@ -94,7 +107,7 @@ Time is legible through **objects**, not a command — the owner ruling behind
 > Three statements in that stretch are code-true: the weather system runs an
 > Earth-like day/night cycle (`TIME_PERIODS`,
 > `world/weather/time_system.py:11`), NPC shifts run on the 24-hour colony
-> clock (`current_shift`, `world/souls/posts.py:70`, over `SCHEDULES`,
+> clock (`current_shift`, `world/souls/posts.py`, over `SCHEDULES`,
 > `world/souls/engine.py:35`), and stored timestamps stay UTC POSIX seconds
 > (`gametime.stamp()`).
 
@@ -187,12 +200,15 @@ The persistence of Earth time in space is driven by three critical practical nec
 ## Implementation Status
 
 ### Current Configuration
-- **TIME_FACTOR**: 2.0 (Evennia default - game time runs twice as fast as real time)
-- **TIME_GAME_EPOCH**: None (uses server start time as epoch)  
-- **TIME_IGNORE_DOWNTIMES**: False (game time pauses during server downtime)
-- **Location**: These settings belong in `server/conf/settings.py`
+`server/conf/settings.py` sets `TIME_FACTOR = 1.0`. `TIME_GAME_EPOCH` and
+`TIME_IGNORE_DOWNTIMES` are not set, so Evennia's defaults apply. Nothing in
+the game reads Evennia's gametime for the hour: the colony clock in
+`world/gametime.py` reads the real wall clock, so server downtime cannot pause
+or shift it.
 
 ### Proposed TST Implementation
+*Not followed: the clock is `world/gametime.py`, which reads the real wall
+clock, so `TIME_IGNORE_DOWNTIMES` is never set; there is no `@time` (#2819).*
 ```python
 # In server/conf/settings.py
 TIME_FACTOR = 1.0              # Real-time sync (1:1 ratio with real world)
@@ -203,20 +219,22 @@ TIME_IGNORE_DOWNTIMES = True   # Maintain continuity during downtime
 ### Integration Points
 - **Infrastructure**: Existing weather/time system in `world/weather/time_system.py` ready for TST
 - **Dependencies**: No breaking changes - only adjustment to time flow rate
-- **Validation**: Use `@time` command to verify synchronization after implementation
+- **Validation**: check with `@weather` (staff), an authored `{time}` token on an object, or `world.gametime.format_now()` from `@py`. There is no `@time` (#2819).
 
 > **Corrected 2026-09-12.** `world/weather/time_system.py` is no longer
 > merely "ready": `TimeSystem.get_current_hour()` delegates to
 > `world.gametime.colony_hour()` (`world/weather/time_system.py:62-67`),
 > and that is the seam weather, the director's on-air line
 > (`world/director/broadcasts.py:54-55`) and the `@weather` staff readout
-> (`commands/CmdAdmin.py:552-553`) all read. The comment there records the
+> (`CmdWeather.func` in `commands/CmdAdmin.py`) all read. The comment there records the
 > bug this closed — the old `time.localtime()` was the CONTAINER's clock,
-> so "night" ran eight hours away from the colony's own night.
+> so "night" ran eight hours away from the colony's own night. The
+> `@weather` readout's "Real time:" line shows colony time, from
+> `colony_now()`.
 >
 > **`@time` is not the validation path; it is not in the player cmdset.**
 > Evennia's stock `CmdTime` was removed from `CharacterCmdSet` by #2819
-> (`commands/default_cmdsets.py:299-300`) because it printed
+> (`CharacterCmdSet.at_cmdset_creation`, `commands/default_cmdsets.py`) because it printed
 > `datetime.now()` — the real-world date, wrong century, wrong timezone —
 > and because `help tokens` states the design premise that *no command
 > tells you the hour*. `world/tests/test_no_clock_command.py` pins its
@@ -231,6 +249,9 @@ TIME_IGNORE_DOWNTIMES = True   # Maintain continuity during downtime
 > carries a time or uptime command.
 
 ### Implementation Steps
+*Not followed: see the note under Proposed TST Implementation. Step 3 cannot
+be done, because there is no `@time` (#2819).*
+
 1. **Edit Configuration**: Add/modify settings in `server/conf/settings.py`:
    ```python
    # Real-time Terran Standard Time synchronization
