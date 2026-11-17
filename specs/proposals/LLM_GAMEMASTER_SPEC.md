@@ -24,7 +24,8 @@
 > *human* input ergonomic that fought the prose model and drifted to conjugated
 > narration under load ("glanceses"); for an NPC, verbs are always 3rd-person to
 > every observer, so the conjugation machinery was unnecessary — `emote` dissolved
-> the format problem at the root. `think` (#787) is a new real RP verb players share.
+> the format problem at the root (the emote command does no conjugation; a code
+> backstop, `_conjugate_action`, corrects a base-form leading verb). `think` (#787) is a new real RP verb players share.
 > The Phase-3 **arbiter (capability + consent gates)** and mechanical-verb routing
 > to the tactical resolver are **not** built yet (consent ties to the deferred
 > Trust/Consent gate). **[STALE 2026-09-12 — the gate is NOT deferred:
@@ -138,7 +139,8 @@ voice/TTS, and any authority over **player** characters (which is a hard line �
    not what Sully knows, unless the fiction shared it.
 6. **Everything is an adapter.** Perception, memory, model, action, and safety
    are **five interfaces** (§9). The reference implementation binds them to one
-   stack (MLX, ChromaDB, Evennia); a reader should be able to swap any one.
+   stack (MLX; embedded records in an Evennia attribute, scored by exact cosine;
+   Evennia); a reader should be able to swap any one.
 7. **Fail safe, fail quiet.** Every failure mode — model down, timeout, malformed
    output, validation reject — degrades to the *current* scripted behaviour or to
    silence, never to a crash or a broken-character leak.
@@ -165,12 +167,12 @@ voice/TTS, and any authority over **player** characters (which is a hard line �
    > right, it simply moved. Everything downstream of it in this
    > document (§2.2, §5, §8, §9) still applies to the *voice* half.
    >
-   > Note the live counter-example this invalidates: the `feel` tool
-   > (`prompt.py`) writes a model-authored free-text valence into
-   > `db.llm_dossiers`, and `_set_valence` says it is "consulted by
-   > trust/consent later" — a model-written value scheduled to feed a
-   > real mechanic. That is Principle 8 in its pre-souls form and needs
-   > to read `souls/thoughts.py` instead of holding its own opinion.
+   > Note the counter-example this invalidated (retired by #2388; see DONE
+   > below): the `feel` tool (`prompt.py`) wrote a model-authored free-text
+   > valence into `db.llm_dossiers`, and `_set_valence` said it was
+   > "consulted by trust/consent later" — a model-written value scheduled to
+   > feed a real mechanic. That was Principle 8 in its pre-souls form and
+   > needed to read `souls/thoughts.py` instead of holding its own opinion.
    >
    > **DONE (#2388).** That counter-example is history, not an open item.
    > The `feel` tool is gone from `world/llm/prompt.py` (`BASE_TOOLS` is
@@ -181,7 +183,9 @@ voice/TTS, and any authority over **player** characters (which is a hard line �
    > `opinion_of`/`opinion_band` over the event log, handed to the voice
    > through `_relationship_line`. Pre-existing
    > `llm_dossiers[uid]["valence"]` strings are left in place but ignored,
-   > as a readable record of what each NPC used to think.
+   > as a readable record of what each NPC used to think. Every new dossier
+   > is still written with `"valence": "neutral"` (`_note_alias`), and that is
+   > ignored too.
    > `NPC_PLATFORM_SPEC` criterion 10 records the same retirement.
 
 ---
@@ -221,6 +225,13 @@ Two processes:
   **intents**. It mutates *nothing* in the world; it only reads (via the snapshot
   it's handed) and writes to its own RAG store.
 
+> **As built**, the game owns the prompt, the memory store and retrieval. The
+> prompt is assembled in the game (`world/llm/prompt.py`, `build_messages`,
+> called from `LLMNpcMixin._try_llm_reply`), and memories are an attribute on
+> the NPC (`db.llm_memories`, scored by `world/llm/memory.py`). The backend is
+> a plain inference endpoint for chat completions and embeddings
+> (`world/llm/client.py`). The diagram above is the original proposal.
+
 The boundary is a **local IPC** (Unix socket or loopback HTTP). This is not an
 incidental detail — it is the mechanism that keeps a multi-second generation
 from freezing the game (§3, §8).
@@ -250,6 +261,9 @@ kinds of decision live in a character, and they want different machinery:
   who it trusts, what it *wants*, and the **decision to** pursue a beat ("this
   one's had enough — throw them out," "I don't like the look of that, I'm
   leaving"). Open-ended, characterful, slow, expensive.
+  *(Narrowed when souls shipped, per the Principle 8 note: how the NPC feels,
+  whom it trusts, what it wants and the decision to act are the souls engine's
+  now; the LLM keeps what the NPC says and how it poses.)*
 - **Tactical / mechanical — a classical NPC AI.** The moment-to-moment
   *resolution*: in a fight, who to target this round, *when* to actually `flee`,
   pathing, retaliation, self-preservation reflexes. Closed-form, fast,
@@ -323,6 +337,11 @@ event, world_snapshot}`; the sidecar returns `{intents[]}`. Neither side shares
 process memory; the sidecar can be restarted, swapped, or moved to another box
 without touching the game.
 
+**As built**, the game sends a standard Chat Completions request over HTTP (the
+assembled `messages`, a `json_schema` for the turn, `max_tokens`, `temperature`;
+`world/llm/client.py`, `request_turn`) and reads back one message whose content
+is the turn object (§5.3).
+
 ---
 
 ## 4 · Model selection
@@ -372,7 +391,7 @@ latency budget or memory). **Map the tier to the box** (§3 co-tenancy):
 **Plug-and-play is a hard requirement, not a nicety** (the user's call): models
 must be swappable *at will* with no code change — a config pointer to a different
 checkpoint (on the NAS, §3) behind the §9 Model adapter. This is what lets the
-same loop run the 8B on production and the 24B on the bench, and lets you chase
+same loop run the 12B on production and the 24B on the bench, and lets you chase
 better tunes as they ship without touching the game.
 
 **Far end of the swap seam — a custom fine-tune.** The eventual goal is a
@@ -424,12 +443,18 @@ Drive this off the **existing perception surface**, not a new omniscient feed:
   rate-limited** — a periodic chance to pursue a want (start a conversation,
   approach someone, follow up on a grudge), bounded so it never floods the serial
   generator (§8). Bulk/background NPCs stay **event-driven only** (initiative off)
-  to keep cost sane.
+  to keep cost sane. 📋 UNBUILT (no issue): there is no initiative tick. The only
+  turns an NPC takes unprompted are a greeting when someone arrives
+  (`notice_presence_change`) and the DJ's station-clock cue
+  (`world/director/broadcasts.py` → `llm_broadcast`).
 
 Each event is normalised to `{npc_id, kind, actor (as perceived), content,
 location, timestamp}` and pushed to the queue. **Debounce**: collapse a burst
 (an actor typing three lines) into one turn so the GM responds to the *situation*,
-not each token. Perception is **identity-gated** at this stage (Principle 3) — the
+not each token. 📋 UNBUILT (no issue): as built there is no event queue or
+debounce. Each line is answered on its own, rate-limited per NPC (4 s directed;
+45 s and a 35% chance ambient), and a line inside the cooldown gets no reply
+(`_try_llm_reply`). Perception is **identity-gated** at this stage (Principle 3) — the
 `actor` is described as *this NPC* would perceive them (sdesc / known-name /
 voice), never the raw object.
 
@@ -449,6 +474,11 @@ The prompt is composed, in priority order, to fit the context budget:
      the RAG layer** (§6) — the NPC mutates over time *because* memory updates this
      half, while the core holds the character together.
 
+   📋 UNBUILT (no issue): as built the persona is `db.llm_persona` (the builder's
+   core) plus fields read live from the NPC (`typeclasses/llm_persona.py`,
+   `build_persona`). There is no mutable half, no versioning, no auto-generator
+   and no write-back.
+
    **One template, two authoring paths** (resolved §11.5): the same card schema is
    **hand-authored by builders** for crafted NPCs *and* **auto-generated** for
    bulk/background NPCs (a generator fills the schema; the immutable core can be
@@ -466,6 +496,15 @@ The prompt is composed, in priority order, to fit the context budget:
 
 Budget discipline: charter + persona + affordances are fixed cost; memory and
 transcript are the elastic middle, trimmed to fit.
+
+**As built** (`world/llm/prompt.py`, `build_messages`), the turn also carries,
+when there is something in them: STATE (the souls mood and where the body is,
+`_soul_state_line`); WHO (the names the NPC knows the person by, the papers that
+vouch for them, and its read on them with the reason, `_relationship_line`);
+RECENTLY (what it has seen happen since its last reply); MEMORY; PRESENT (who
+else is in the room); and up to six recent turns with this person
+(`_recent_history`), filed by look (#3829) and kept in `ndb`, so a reload clears
+them.
 
 **How the NPC refers to people (and itself).** Two refinements keep references
 grounded in identity, not surface description:
@@ -505,7 +544,9 @@ schema:
 - **`memory`** is the model's own nomination of what to remember (the write-back
   seed, §6), with a salience it assigns.
 
-**As shipped** (the concrete contract, backend-constrained via `outlines`): a flat
+**As shipped** (the concrete contract, backend-constrained via `outlines`; the
+request carries a `json_schema` field that only some backends enforce, so on the
+others the shape is not guaranteed): a flat
 per-turn object **`{speech, action, thought, tool, tool_argument}`** — three
 expression channels plus one tool. `action` is a 3rd-person predicate (→ `emote`),
 `speech` is the spoken line (→ `say`), `thought` is private interiority (→ `think`),
@@ -519,6 +560,11 @@ Parse defensively: malformed output → **discard the turn** (fail quiet, §1.7)
 optionally one retry with a "return valid schema only" reminder. Never actuate
 from a partial parse. (Light, non-brittle cleanup only: strip a leading
 self-reference, drop an unbalanced quote, OOC-filter — `parse_turn`.)
+
+**As built** (`parse_turn`, #2729): a truncated JSON reply is salvaged field by
+field (`_salvage_json`) and a prose reply is parsed for quotes and asterisks
+(`_parse_prose`); what they yield is acted on. Nothing is retried. An empty reply
+from the backend goes to the turn's failure path (`on_fail`).
 
 ### 5.4 · Arbitrate — validate, gate, de-conflict
 
@@ -561,7 +607,10 @@ input takes**:
   `action`→`emote` (3rd-person; prepends the per-observer name, resolves char-refs,
   no conjugation), `speech`→`say` (or woven into the emote as an embedded quote, one
   beat), `thought`→`think` (perceiver-gated: actor + Builder/mind-reader). Per-observer
-  identity/voice/hearing rendering applies automatically.
+  identity/voice/hearing rendering applies automatically. On a radio turn,
+  `speech` goes to the real transmit command, `xmit`, unless the model also
+  called the `radio` tool. A refusal leaves the NPC mute, as it would a player,
+  and the refused words are not remembered as said (#3776).
 - **Actions** (the `tool`) → `execute_cmd` on the NPC object (Appendix A). The command
   runs through the normal cmdset, permissions, and system hooks — combat, movement,
   economy all behave exactly as for a player. If the command fails in-world, that
@@ -576,7 +625,11 @@ After actuation, the turn is committed to the NPC's **own memory namespace**:
 
 - Take the model's `memory` nominations (§5.3) plus a deterministic episodic
   record (who was present — as perceived —, what was said/done, outcome,
-  timestamp, location).
+  timestamp, location). **As built** (`LLMNpcMixin._store_memory`): one record
+  per exchange, the text `<handle> said: "<line>" — I answered: "<speech>"`,
+  filed under the look (or the voice, on the radio) with `named_by` and
+  timestamps. Model nominations, who was present, what was done, outcome and
+  location are 📋 UNBUILT (no issue).
 - **Embed and upsert** into the NPC's RAG store under its namespace (§6).
 - Update **structured** relationship state where it exists (e.g. the existing
   `recognition_memory` / voice memory — Appendix A — so "has met, knows the name
@@ -616,21 +669,29 @@ store is a rebuildable semantic index over episodic memory documents.
 - **Forgetting & salience.** Cap per-NPC memory; decay or summarise low-salience
   episodes over time (salience from §5.3 + recency + emotional weight). Unbounded
   memory is both a retrieval-quality problem and a storage one. *Methodology, not
-  a fixed policy — tune in play.*
+  a fixed policy — tune in play.* **As built** (`world/llm/memory.py`): at most 30
+  records per subject; salience is recency with a 7-day half-life plus 0.1 per
+  recall; records without a vector rank last; a repeat strengthens the record it
+  repeats instead of adding one. Summarising is 📋 UNBUILT (no issue). A
+  deliberate erase also exists (`NPC_MEMORY_AND_IDENTITY_SPEC` §5b).
 - **Persona mutation.** Memory is the engine of character growth: experience
   feeds the **mutable half** of the persona card (§5.2.2) — a betrayed NPC becomes
   permanently warier, a regular becomes a friend. The **immutable core stays
   fixed** so growth never dissolves the character. Mechanically this is the
   episodic store plus periodic *consolidation*: salient episodes summarise into
   updated relationship/attitude state on the card. (Consolidation cadence/rules:
-  methodology, tune in play — ties to forgetting & salience above.)
+  methodology, tune in play — ties to forgetting & salience above.) Persona
+  mutation and consolidation are 📋 UNBUILT (no issue).
 - **Lore grounding (future).** The LLM's training carries vast world-knowledge an
   in-fiction NPC shouldn't have. The eventual fix is a **shared, read-only lore
   namespace** (a colony wiki / setting corpus) the context assembler retrieves
   from alongside per-NPC memory — same RAG mechanism, different scope. **For now**
   (decided §11.10) lore is bounded *softly* in the GM charter ("you know the
   colony, your own life, and what you've perceived; don't invent specific external
-  facts"); the corpus replaces the soft boundary when it exists.
+  facts"); the corpus replaces the soft boundary when it exists. As built, the
+  shared charter (`CHARTER_BASE`) has no such clause; the bound is a few
+  archetypes' own lines (colonist, dispatcher, dj) and the charter's rules
+  against inventing detail.
 
 ---
 
@@ -677,10 +738,17 @@ This separation is the whole safety story, and it has hard edges:
 - **Operator visibility.** Log every turn — prompt context summary, raw model
   output, parsed intents, arbiter decisions, actuated commands — to an audit sink
   (the combat-audit pattern is a fit). Add a global **kill switch** that drops all
-  NPCs back to scripted/idle behaviour instantly.
+  NPCs back to scripted/idle behaviour instantly. As built: an opt-in decision
+  log (`LLM_GM_DECISION_LOG` → `server/logs/llm_decisions.log`,
+  `world/llm/decision_log.py`) records the raw model output beside the rendered
+  text. The only switch is the `LLM_GM_ENABLED` setting, which needs a settings
+  change. A full per-turn audit and an instant kill switch are 📋 UNBUILT (no
+  issue).
 - **Failure is safe and quiet** (Principle 7): sidecar down/slow/garbled → the
   NPC falls back to its current scripted behaviour or stays silent. The world
-  never crashes or breaks character because the model did.
+  never crashes or breaks character because the model did. As built, a backend
+  that keeps failing to connect trips a breaker that takes the lane off for a
+  minute (`world/llm/client.py`; §10, Phase 1).
 
 ---
 
@@ -689,13 +757,17 @@ This separation is the whole safety story, and it has hard edges:
 - **One generation at a time per accelerator.** A unified-memory Mac does a
   single generation well; treat the sidecar as a **serial queue**, not a parallel
   pool. Order the queue by priority (a player addressing an NPC outranks idle
-  ambient behaviour).
+  ambient behaviour). 📋 UNBUILT (no issue): as built the game allows up to ten
+  calls in flight at once (`world/llm/detached.py`, `MAX_IN_FLIGHT`), in arrival
+  order with no priority; any serialising is the backend's.
 - **Debounce and coalesce** (§5.1): one turn per *situation*, not per line.
+  📋 UNBUILT (no issue; see §5.1).
 - **Asynchrony end to end.** The game fires a request and continues; when intents
   return, it actuates on the reactor thread. Nothing player-facing ever waits
   synchronously on the model.
 - **Thinking affordance.** For a directly-addressed NPC, a brief "…" / busy beat
-  covers generation latency diegetically and sets expectations.
+  covers generation latency diegetically and sets expectations. 📋 UNBUILT (no
+  issue).
 - **Scale is turns/sec, bounded by the accelerator.** Plan NPC population and
   ambient-tick rates against *one* serial generator. Reconcile this with **active
   characters** (§0.1) by **tiering**: a small set of *crafted/active* NPCs get
@@ -711,7 +783,8 @@ This separation is the whole safety story, and it has hard edges:
 
 ## 9 · Adapter interfaces (the contracts)
 
-The reference build binds these to MLX + ChromaDB + Evennia. An implementer
+The reference build binds these to MLX + embedded records in an Evennia
+attribute (exact cosine) + Evennia. An implementer
 should be able to swap any one without touching the loop. Each is an abstract
 contract, described by responsibility, not signature:
 
@@ -735,7 +808,7 @@ contract, described by responsibility, not signature:
    limits, the OOC guard, audit logging, and the kill switch (§5.4, §7).
 
 The **agent loop (§2.1) is engine-agnostic**; only these five adapters know about
-MLX, ChromaDB, or Evennia.
+MLX, the memory store, or Evennia.
 
 ---
 
@@ -761,7 +834,9 @@ MLX, ChromaDB, or Evennia.
     render in the reactor callback). The thread is one of the game's own
     (`world/llm/detached.py`), not one of Evennia's worker pool: a reload
     waits for every thread in that pool, and a model can take two minutes
-    to answer (#3815). Optional Bearer
+    to answer (#3815). A reload does not wait for a call on the game's own
+    pool: the call is abandoned, its reply is lost, and the backend may
+    be slow for a while as it finishes it. Optional Bearer
     `LLM_GM_API_KEY` for cloud backends. Container reaches a host backend via
     `host.docker.internal`.
   - **MLX sidecar** (`~/llm-gm-spike/sidecar.py`, out-of-repo, native): one valid
@@ -778,10 +853,17 @@ MLX, ChromaDB, or Evennia.
     `_handle_directed_speech` (the generic service intercept, #2350), and only
     then does `_classify_speech` decide whether the LLM answers. One NPC
     typeclass, `LLMNpc`, whose competence comes from the post it stands**): a reactor-side
-    classifier — **directed** (addressed, or names her) always replies; **ambient**
-    (overheard) is cost-gated (cooldown + roll) *and* the model may decline; orders
-    + gratitude paths byte-identical. Two gates: `settings.LLM_GM_ENABLED` +
-    per-NPC `db.llm_driven`; fail-safe to scripted behaviour.
+    classifier — **directed** (her engaged partner, the job's words, a handle the
+    speaker could target her by, the real key for Builders only, or being alone
+    with her; never another NPC) replies, at most once per 4 s; **ambient**
+    (overheard) is cost-gated (cooldown + roll) *and* the model may decline;
+    orders are byte-identical; thanks is noted (a small rise in the NPC's read
+    on the person, #2815) and falls through to the order or the conversation.
+    Two gates: `settings.LLM_GM_ENABLED` + per-NPC `db.llm_driven`; fail-safe to
+    scripted behaviour. A third is the breaker (`world/llm/client.py`): after
+    three transport failures in a row the lane reads as off for 60 s, then lets
+    one probe through; `llm_enabled()` is False meanwhile, so NPCs take the
+    scripted path. An empty or truncated turn does not count as a failure.
   - **No memory, no actions beyond speech/pose** (Phases 2–3). Tests:
     `world/tests/test_bar.py::TestBartenderLLMRouting`. *Deliverable met: in-persona
     conversation that fails safe when the sidecar is off or a gate is down.*
@@ -874,6 +956,7 @@ Phase 1 changes the player-facing default if disabled.
    initiative** (pursue a want unprompted); *bulk/background* NPCs stay
    **event-driven, initiative off**, to bound cost on the serial generator
    (§5.1, §8). *Open sub-question:* the initiative cadence/budget number.
+   📋 UNBUILT (no issue): no initiative is built (§5.1).
 5. ✅ **Persona authoring — resolved: one structured, versioned card, two paths.**
    Hand-authored by builders *and* auto-generated from the same schema (§5.2.2);
    split **immutable core** (author intent) vs **mutable state** (evolves via RAG
@@ -881,7 +964,8 @@ Phase 1 changes the player-facing default if disabled.
    and the auto-generator, and the consolidation rules that write experience back
    into mutable state.
 6. **Memory forgetting policy** — concrete salience/decay/summarisation rules
-   (left as methodology in §6; needs a first cut to tune in play).
+   (left as methodology in §6; needs a first cut to tune in play). A first cut
+   is built; see §6.
 7. **Multi-player scenes** — when several PCs engage one NPC, whose perception/
    turn ordering wins? (v1 may simply serialise by arrival/initiative.)
 8. **GM-authored events** — explicitly deferred (§0.1). When/if the storyteller

@@ -2,7 +2,8 @@
 
 > **Status:** 📋 **PROPOSAL — names APPROVED 2026-08-19** ("grow
 > these as systems allot" — vocabulary is additive over time, not
-> frozen). Named-NPC assignments (§9) still await the red pen. The
+> frozen). Named-NPC assignments (§9): eleven of the twelve rows are applied
+> by `scripts/builds/099_traits.py` (Ossie's is not). The
 > curated exclusion-pair exception was flagged in review as a code
 > issue waiting to happen and is REPLACED by curated-only singleton
 > traits (§6b). Mechanics ride shipped systems only (needs #1961,
@@ -73,9 +74,11 @@ median colonist.**
 | `duty_lead` | shift jitter bias (early/late to post) | Shift-Hound early, Clock-Ghost late |
 | `venue_bias` | advertiser scoring bonus per venue tag | Choir-wired souls drift shrineward |
 
-Resolution: multiplicative for rates, override-toward-extreme for
+Resolution (as built, #2885): multiplicative for `rate:*`; for every
+other dial the last trait in the soul's list to declare it wins. The
+proposal read: multiplicative for rates, override-toward-extreme for
 thresholds/gates when two traits touch the same dial (rare; exclusion
-pairs prevent the contradictions that matter).
+pairs prevent the contradictions that matter). See the note below.
 
 > **Audit note 2026-09-12 — two things here no longer match the build.**
 > (1) The shipped `traits.dial()` compounds `rate:*` multiplicatively as
@@ -159,41 +162,46 @@ Each trait's `voice` is a one-sentence second-person fragment and its
   and poses so the voice and the behavior agree (two-brain law).
 - **STATE line**: unchanged shape (mood + where-and-what); fresh
   wound-class thoughts already surface through the thoughts feed, so
-  a guilty NPC speaks like one without new plumbing.
+  a guilty NPC speaks like one without new plumbing. As built, guilt
+  reaches the voice two ways: it lowers the mood band the STATE line
+  carries, and, for an LLM-driven NPC, it is written as a general
+  memory ("I remember: what I did at <place>.") that is recalled when
+  it is similar to the line being answered. The deed is not named in
+  STATE.
 - Fragments are static system-prompt material — cache-friendly, no
   per-turn cost.
 - **Pose banks**: job steps that pose (dwell, linger, work idle)
   draw from the soul's trait pose banks before the generic defaults —
   the F.E.A.R. lesson: same plan, different body language.
 
-## 6. Trait vocabulary v1 (17 — OWNER RED PEN HERE)
+## 6. Trait vocabulary v1 (18 rollable + 1 curated singleton, §6b — OWNER RED PEN HERE)
 
 Register: colony slang, rust and garden both. All names are data.
 
 | Key | Label | Dials | Ethos | Voice (fragment) |
 |---|---|---|---|---|
-| `ration_burner` | Ration-Burner | hunger ×1.3, soft:hunger 0.45 | relishes a hot meal | "Food is the one honest pleasure left; you notice everyone's plate." |
+| `ration_burner` | Ration-Burner | hunger ×1.3, soft:hunger 0.45 | relishes toil | "Food is the one honest pleasure left; you notice everyone's plate." |
 | `drip_fed` | Drip-Fed | hunger ×0.7 | — | "Eating is refueling; you stopped tasting it years ago." |
-| `dark_adapted` | Dark-Adapted | night affinity, day mood tax | — | "The colony makes sense after 22:00; daylight is for other people." |
-| `sunfollower` | Sunfollower | day affinity, daylight mood glow | — | "You still orient by the sun like the terraform brochures promised." |
+| `dark_adapted` | Dark-Adapted | night affinity, day mood tax (📋 UNBUILT, #2771: declared, read by nothing) | — | "The colony makes sense after 22:00; daylight is for other people." |
+| `sunfollower` | Sunfollower | day affinity, daylight mood glow (📋 UNBUILT, #2771: declared, read by nothing) | — | "You still orient by the sun like the terraform brochures promised." |
 | `dry_circuit` | Dry Circuit | misery_pull 0 | abhors indulgence | "You watched the bottle finish somebody; you drink water and remember." |
 | `rustgut` | Rustgut | misery_pull 0.45 | relishes indulgence | "Drink is maintenance, not weakness; you measure days in staying level." |
-| `hot_solder` | Hot Solder | violence_gate 0.40 | relishes violence (mild) | "Your temper arrives before your reasons do, and it usually wins." |
+| `hot_solder` | Hot Solder | violence_gate 0.40 | relishes violence ("mild" is not built: every relish weighs `RELISH_WEIGHT`) | "Your temper arrives before your reasons do, and it usually wins." |
 | `flinch_coded` | Flinch-Coded | crit:safety 0.70 | abhors violence | "You survived by leaving early; you're not ashamed of the math." |
 | `plate_nerved` | Plate-Nerved | crit:safety 0.95 | — | "Panic is a luxury; you've stood in worse rooms than this one." |
-| `soft_handed` | Soft-Handed | — | abhors violence + theft (heavy) | "You have never hurt anyone and carry that like the last clean thing." |
+| `soft_handed` | Soft-Handed | — | abhors violence + theft ("heavy" is not built: every guilt weighs `GUILT_WEIGHT`) | "You have never hurt anyone and carry that like the last clean thing." |
 | `grudge_etched` | Grudge-Etched | (grudge decay slow — revenge seam) | — | "You forgive nothing; you file it, dated, and keep the file." |
 | `faraday_souled` | Faraday-Souled | social ×0.7 | relishes solitude | "Crowds read you like static; alone, the signal finally clears." |
 | `antenna_up` | Antenna-Up | social ×1.3 | relishes revelry | "You need the room's noise the way other people need the meal." |
-| `greenhaus_handed` | Greenhaus-Handed | venue_bias farm/clinic | relishes care + toil | "Things grow under your hands, and you judge the colony by what it wastes." |
-| `rivet_tight` | Rivet-Tight | price_ceiling: cheapest only | — | "Every token has a job; you count the till twice and trust it once." |
-| `open_valve` | Open-Valve | price_ceiling: best affordable | relishes indulgence (mild) | "Money is for spending before the colony finds a way to take it." |
-| `shift_hound` | Shift-Hound | duty_lead early | relishes toil; guilt on missed shift | "The shift is the spine of the day; everything else hangs off it." |
-| `clock_ghost` | Clock-Ghost | duty_lead late | — (no shame in a lapse); mood tax while working | "Work is a tax on being alive; you pay late and tip nothing." |
+| `greenhaus_handed` | Greenhaus-Handed | venue_bias farm/clinic (📋 UNBUILT, #2771: not declared, `dials` is empty) | relishes care + toil | "Things grow under your hands, and you judge the colony by what it wastes." |
+| `rivet_tight` | Rivet-Tight | price_ceiling 0.5 (the default already buys the cheapest, and only a value above 1.0 changes anything, so as built this does nothing) | — | "Every token has a job; you count the till twice and trust it once." |
+| `open_valve` | Open-Valve | price_ceiling: best affordable | relishes indulgence ("mild" is not built: every relish weighs `RELISH_WEIGHT`) | "Money is for spending before the colony finds a way to take it." |
+| `shift_hound` | Shift-Hound | duty_lead early (📋 UNBUILT, #2771: declared, read by nothing) | relishes toil; guilt on missed shift (📋 UNBUILT, no issue) | "The shift is the spine of the day; everything else hangs off it." |
+| `clock_ghost` | Clock-Ghost | duty_lead late (📋 UNBUILT, #2771: declared, read by nothing) | — (no shame in a lapse); mood tax while working (📋 UNBUILT, no issue) | "Work is a tax on being alive; you pay late and tip nothing." |
 
 Exclusion pairs (generator-roll logic ONLY — never asserted anywhere
 else in code; a soul's stored trait list is always taken as-is):
-`dry_circuit`×`rustgut`, `dark_adapted`×`sunfollower`,
+`ration_burner`×`drip_fed`, `dry_circuit`×`rustgut`, `dark_adapted`×`sunfollower`,
 `flinch_coded`×`plate_nerved`, `soft_handed`×`hot_solder`,
 `rivet_tight`×`open_valve`, `shift_hound`×`clock_ghost`,
 `faraday_souled`×`antenna_up`.
@@ -207,30 +215,48 @@ The founding example, replacing the Rook's forbidden pair:
 
 | Key | Label | Dials | Ethos | Voice |
 |---|---|---|---|---|
-| `wire_loved` | Wire-Loved | social ×1.0 (satisfied only via mediated fixtures — the airwaves advertise to it) | relishes solitude AND revelry-through-the-wire | "You love the whole colony at once and cannot bear it one person at a time." |
+| `wire_loved` | Wire-Loved | none as built (proposed: social ×1.0, satisfied only via mediated fixtures — the airwaves advertise to it) | relishes solitude and communion (no plan carries `communion` yet, §4 note, so only solitude is felt) | "You love the whole colony at once and cannot bear it one person at a time." |
 
 The vocabulary grows this way: when a character needs a
 contradiction, author the contradiction as its own trait.
 
+### 6c. Defects: a machine's traits
+
+A machine does not roll traits (#2136). `registry_for` gives it a
+separate vocabulary, `DEFECTS` (eight, in `world/souls/traits.py`),
+with the same three faces. A unit earns a defect when its
+`maintenance` need comes due: one per overdue service
+(`engine._wear_and_tear`), up to `DEFECT_CAP` (3). A service takes
+the newest one back out (the dwell step in `jobs.py`, when the need
+is `maintenance`). Build 099 clears any human traits a machine was
+rolled before this rule.
+
 ## 7. Generator integration
 
-Every shuttle arrival rolls **1–3 traits** (weights: 2 common),
-uniform over the vocabulary minus exclusions of already-rolled
-traits. Rolls seed identity, not story: the arrival's schedule
-preference, first venue, and voice all fall out of the same roll.
+Every shuttle arrival rolls **two or three traits** as built (two
+three times as often; the proposal said 1–3, weights: 2 common),
+never a curated one, uniform over the vocabulary minus exclusions of
+already-rolled traits (`traits.roll`). Rolls seed identity, not story:
+the arrival's schedule preference, first venue, and voice all fall out
+of the same roll (📋 UNBUILT: schedule and venue #2771; voice is P2,
+§10, no issue).
 Existing generated souls get a one-time backfill roll (build script).
 
 ## 8. Engine integration points (small, all existing files)
 
 - `world/souls/traits.py` (new): registry + `dial(soul, key,
-  default)` + `ethos(soul)` + `voice_of(soul)` — derive-on-read.
+  default)` + `ethos(soul)` + `voice_of(soul)` — derive-on-read. (As
+  built the voice reader is `voice_fragments(soul)`, beside
+  `poses(soul)`; nothing calls either yet, 📋 UNBUILT, P2, no issue.)
 - `needs.py`: rate/threshold lookups consult `traits.dial`.
 - `actions.py`: duress rule at abhorred branches; price_ceiling in
-  ware selection; venue_bias in advertiser scoring.
+  ware selection; venue_bias in advertiser scoring (📋 UNBUILT, #2771).
 - `jobs.py`: guilt/relish thoughts on tagged step completion; trait
-  pose banks before generic poses.
-- `engine.py`: schedule affinity mood tax/glow (one thought-class).
-- `llm_npc.py` / `prompt.py`: persona composition per §5.
+  pose banks before generic poses (📋 UNBUILT, P2, no issue).
+- `engine.py`: schedule affinity mood tax/glow (one thought-class)
+  (📋 UNBUILT, #2771).
+- `llm_npc.py` / `prompt.py`: persona composition per §5 (📋 UNBUILT,
+  P2, no issue).
 - `CmdSoul`: traits on the individual card; dashboard counts unchanged.
 
 ## 9. Named-NPC assignments (PROPOSED — owner approves each)
@@ -276,7 +302,9 @@ Existing generated souls get a one-time backfill roll (build script).
   trait object's shape (dials/ethos/voice) is the template for it.
 - **Relationships/ties**: per-pair weights (Sims/CK3 opinion) — the
   substrate revenge and grief want; sequenced after the owner's
-  memory-distortion conversation.
+  memory-distortion conversation. Per-person opinion has since been
+  built (§12, #2388); NPC-to-NPC ties and trait repricing of opinion
+  are still deferred (§13).
 - **Grudge-Etched's dial** is a forward reference to that revenge
   work; in P1 it is voice + ethos only.
 
@@ -357,8 +385,10 @@ soul's own deeds via `against_my_nature`: Soft-Handed feels guilt when SHE hurts
 someone and forms no stronger view of a stranger who does it in front of her.
 
 The tell is already in §6. **Grudge-Etched is the only real personality trait in
-the list, and the only one whose dial was never implemented** — `(grudge decay
-slow — revenge seam)`, parenthesised. It had nowhere to land, because the thing
+the list, and its dial was never implemented** — `(grudge decay
+slow — revenge seam)`, parenthesised. (It is not the only unwired dial:
+`schedule_affinity`, `duty_lead` and `venue_bias` never were either, #2771; §3
+note.) It had nowhere to land, because the thing
 it needed to modify did not exist.
 
 It exists now (§12). The missing piece is a **temperament axis** whose dials
