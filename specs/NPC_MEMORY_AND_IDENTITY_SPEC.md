@@ -4,8 +4,10 @@
 
 > **Status: 🟡 §8 CORE SHIPPED & LIVE; affordance roadmap ahead (§6).** The full
 > "remember people" loop runs (§8 COMPLETE): episodic memory re-keyed on
-> `apparent_uid`, the `remember`/`feel` tools, per-identity `db.llm_dossiers`
-> (name-history + valence, GM-readable + LLM-surfaced), ambient action-awareness.
+> `apparent_uid`, the `remember` tool (`feel` was retired by #2388), per-identity
+> `db.llm_dossiers` (the names the NPC knows someone by, GM-readable +
+> LLM-surfaced), the engine-derived read on a person (§3), ambient
+> action-awareness.
 > Built on the shipped Phase 2 memory plumbing (`world/llm/memory.py`, the sidecar
 > embedder, `LLMNpcMixin` recall/write). The decided model — memory hangs on the
 > **identity-signature spine**, names are **unverifiable claims**, naming is a
@@ -44,8 +46,9 @@ same spine recognition uses — not object id. Consequences fall out for free:
   connect last week's tab. Realistic, and emergent.
 - Recognition ("who is this?") and episodic memory ("what do I recall about
   them?") share one key. Two reads on one spine.
-- `get_display_name(self)` already hands the NPC the name it has learned, else
-  the sdesc — so the prompt's `speaker_name` is already identity-correct.
+- `_address_handle` hands the model the name this NPC assigned, else the
+  clothing-free short sdesc (on the radio, the voice as this NPC knows it) — so
+  the prompt's `speaker_name` is already identity-correct.
 
 ## 2 · Names are claims, not facts
 
@@ -54,9 +57,11 @@ There is (currently) **no way for an NPC to verify a PC's name.** So a name is a
 
 - Per apparent identity, the NPC records **which names have been claimed, how
   often, and how recently** — a small claim-history, not a single field.
+  📋 UNBUILT (no issue): today the list is flat, deduped and capped at 8, with no
+  counts and no times (§4).
 - Consistency builds trust; a *new* name for an identity the NPC has named
   before is an **inconsistency event** — noticed or not by perceptiveness, and
-  *responded to by personality* (see §3).
+  *responded to by personality* (see §3). 📋 UNBUILT (no issue).
 
 **Decision: an explicit "aliases memory" — the set of names the NPC knows a
 person by** (its coined nickname + every name they've claimed), structured and
@@ -73,7 +78,9 @@ person by** (its coined nickname + every name they've claimed), structured and
 The `remember` tool (§4) sets the *primary* name (the recognition `assigned_name`);
 the aliases memory keeps the **history** around it. It lives alongside / extends
 the recognition entry (which already keys on apparent_uid and links presentations
-via piercing), not a parallel store.
+via piercing), not a parallel store. As built it is a separate attribute,
+`db.llm_dossiers`, keyed by the same apparent_uid; §4 says where it is meant to
+end up.
 
 ### 2b · A verified name requires PROOF (owner ruling 2026-08-29)
 
@@ -100,13 +107,12 @@ nobody introduces themselves as Fat Tony.
 > legitimately be an alias. The live `CLUB_CARD` prototype is exactly that case:
 > a Helix Lounge membership card at `commercial` authority whose own desc says
 > the name on it "is not necessarily the one on anybody's papers"
-> (`world/prototypes.py:5406`). What shipped is a per-observer `attested[]`
-> column on the recognition entry — `{name, issuer, authority, protocol,
-> verified}` — written by `world.identity.attest` (`world/identity.py:2002`),
-> with `official_name()` as a QUERY over authority AND protocol
-> (`world/identity.py:2085`). A `verified_name` property of a person "would
-> collapse the disguise layer the moment it existed"
-> (`world/identity.py:2006-2008`), and `world/tests/test_documents.py` pins two
+> (`CLUB_CARD` in `world/prototypes.py`). What shipped is a per-observer
+> `attested[]` column on the recognition entry — `{name, issuer, authority,
+> protocol, verified}` — written by `world.identity.attest`, with
+> `official_name()` as a QUERY over authority AND protocol. A `verified_name`
+> property of a person "would collapse the disguise layer the moment it
+> existed" (`attest`'s docstring), and `world/tests/test_documents.py` pins two
 > observers holding different, equally honest records of one face
 > (`test_two_observers_can_hold_different_records`).
 
@@ -134,25 +140,29 @@ unmasking — is the rail this runs on. What is missing is the front end.
 >
 > | row | today |
 > |---|---|
-> | a document as an object | ✅ `typeclasses.items.Document` (`typeclasses/items.py:695`) + `SLEEVE_ID` / `COLONY_ID` / `WANTED_NOTICE` / `CLUB_CARD` prototypes (`world/prototypes.py:5350`+) |
-> | a way to SHOW something | ✅ as a CAPABILITY, though there is still no `show` verb and by design never will be — the owner rejected it; READING is the mechanic (`Document.return_appearance`, `typeclasses/items.py:744`), and `remember <papers>` reaches your inventory, the room, and other people's HANDS ONLY (`CmdRemember._find_document`, `commands/CmdCharacter.py:2238` → `world.search.held_by_others`, `world/search.py:374`) |
-> | reading proof → writing + linking | ✅ `identity.attest` (`world/identity.py:2002`) writes `attested[]`; `identity._link_by_papers` (`world/identity.py:2042`) links two faces carrying matching VERIFIED COLONY-tier papers. No `verified_name` field — see the note above |
+> | a document as an object | ✅ `typeclasses.items.Document` (`typeclasses/items.py`) + `SLEEVE_ID` / `COLONY_ID` / `WANTED_NOTICE` / `CLUB_CARD` prototypes (`world/prototypes.py`) |
+> | a way to SHOW something | ✅ as a CAPABILITY, though there is still no `show` verb and by design never will be — the owner rejected it; READING is the mechanic (`Document.return_appearance`, `typeclasses/items.py`), and `remember <papers>` reaches your inventory, the room, and other people's HANDS ONLY (`CmdRemember._find_document`, `commands/CmdCharacter.py` → `world.search.held_by_others`, `world/search.py`) |
+> | reading proof → writing + linking | ✅ `identity.attest` (`world/identity.py`) writes `attested[]`; `identity._link_by_papers` (`world/identity.py`) links two faces carrying matching VERIFIED COLONY-tier papers. No `verified_name` field — see the note above |
 >
 > Also stale, in the row above those: `walk_linked_chain` has **no production
-> caller left** — only tests (`world/identity.py:2690`). The live walk is
-> `linked_family` (`:2732`), which `get_linked_aliases` adopted in #2651 so
+> caller left** — only tests (`world/identity.py`). The live walk is
+> `linked_family`, which `get_linked_aliases` adopted in #2651 so
 > "Also known as" reads the same from either face. That row's ✅ still stands;
 > one of the three functions it names no longer participates.
 >
-> **What is still missing is the NPC-FACING read, so the Billy / Robert Paulson
-> scenario above is not yet playable.** The NPC `look` tool takes no target and
-> only ever perceives the patron (`typeclasses/llm_npc.py:1120` → `_perceive`,
-> `:982`); handing an NPC papers reaches `world.service.receive`
-> (`world/service.py:255`), whose only registered `on_receive` hook in the whole
-> repo is the butcher's corpse handler (`world/butchery.py:75`); and
-> `_relationship_line` (`typeclasses/llm_npc.py:788`) never surfaces
-> `attestations` / `official_name` into the prompt. The PC half is complete —
-> `recall` renders `Papers:` rows at `commands/CmdCharacter.py:2884-2892`.
+> **The NPC-FACING read has been built since this note.** The NPC `look` tool
+> takes a target (#3370, `LLMNpcMixin._look_at`): a person in the room, or a
+> thing in the room or carried by the person it is talking to or by itself.
+> Reading a document writes what it vouches for onto a face the NPC already
+> has a recognition entry for (`Document.return_appearance` →
+> `world.identity.attest`), and the WHO line names the papers that vouch for
+> the person in front of it (`_relationship_line`, #3371). The Billy / Robert
+> Paulson scenario is still not fully playable, for two reasons. Handing papers
+> to an NPC reaches `world.service.receive`, whose only registered `on_receive`
+> hook is the butcher's (`world/shop/service.py`). And recall is scoped to the
+> person the NPC is talking to, so it cannot bring up what it knows about the
+> person in the picture. The PC half is complete: `recall` renders `Papers:`
+> rows (`commands/CmdCharacter.py`).
 
 **Address is a CHOICE, not a lookup.** Which of these an NPC uses out loud is
 the NPC's decision, and the natural selector is opinion (§3): a warm NPC uses
@@ -189,8 +199,8 @@ Three consequences, and they are why the framing matters:
   not on display, and a search that reached them would turn `look` into a
   frisk.
 * **A face known only by paper is a legitimate record.** `times_seen` stays 0
-  and `first_seen` reads "a face on constabulary notice", so the file never
-  claims a meeting that did not happen.
+  and the first-encounter description reads "a face on <the document>", so the
+  file never claims a meeting that did not happen.
 * **The file is an attack surface.** When the net layer lands, a decker reads
   or edits a dossier the same way they read a wanted record, and forgery
   attacks the **protocol** rather than the name. This is already the design:
@@ -204,14 +214,14 @@ all one file.
 > **STATUS 2026-09-12: §2c SHIPPED as designed, 2026-08-30 (#2408 / PR #2409,
 > commit `a6d544f8`).** The `attested[]` column exists on the recognition entry
 > exactly as drawn above — `{name, issuer, authority, protocol}` plus a
-> `verified` flag — written by `world.identity.attest`
-> (`world/identity.py:2002`) and ranked by `attestations()` (`:2076`). The
+> `verified` flag — written by `world.identity.attest` and ranked by
+> `attestations()`. The
 > constraint in the paragraph above held: no second store was grown, and
 > `IDENTITY_RECOGNITION_SPEC` now documents the column on the recognition entry
-> and points back to §2b for its meaning (`:349`). `remember` does reach papers
+> and points back to §2b for its meaning. `remember` does reach papers
 > in your inventory, on the floor, and in another person's HANDS ONLY
-> (`CmdRemember._find_document`, `commands/CmdCharacter.py:2238` →
-> `world.search.held_by_others`, `world/search.py:374` — hands-only on purpose:
+> (`CmdRemember._find_document` → `world.search.held_by_others` — hands-only
+> on purpose:
 > "a search that reached those would quietly turn `look` into a frisk"). The
 > attack-surface half still waits on the net layer, as written; the forgery
 > design it anticipates is drafted in
@@ -320,6 +330,8 @@ Properties:
   the nickname is the personality talking. Free character.
 - **Sticky** — a nickname is kept even after a real name is later claimed (truer,
   funnier). The claimed name is tracked separately (§2).
+  *(Superseded 2026-08-29, #2390: the name set last becomes primary and the old
+  one moves down the alias list; see the amendment at the top of §4.)*
 - **Communicable by PCs**, not auto-shared between NPCs (see §6 gossip).
 
 ## 5 · Disguise / recognition interplay
@@ -397,6 +409,8 @@ What stays:
 
 Nothing an NPC does today makes it forget. The model has a `remember` tool and no `forget` tool, and the command reaches an NPC only when staff type it for one. The door is there for the memory wipe §6 describes.
 
+A resleeve is a separate road (`world/imprint.py`, `restore`). An NPC rebuilt after its death comes back from a backup taken 90 minutes (`GAP`) before it died. People it first met in that stretch come back as strangers, and its long-term memories, moods and reads on people from that stretch are not restored. The names it knew people by (`db.llm_dossiers`) are put back whole, so the WHO line can still say "you know them as ..." about a look the NPC no longer recognises (#3852).
+
 ## 6 · Memory as substrate — affordance roadmap
 
 Once memory hangs on the identity spine it stops being an NPC attribute and
@@ -430,8 +444,9 @@ signature:
   same signatures a photo/recognition match would use.
 - **Cyberware:** the memory store as an augment (cyberbrain) is a cyberware item
   with read/write/damage affordances.
-- **LLM-GM loop:** recall = the MEMORY block; naming/trust updates = tools routed
-  to real commands (`LLMNpcMixin` `_handle_action_tool`).
+- **LLM-GM loop:** recall = the MEMORY block; naming = the `remember` tool, routed
+  to the real command (`LLMNpcMixin` `_handle_action_tool`); the read on a person
+  is written by the engine, not by a tool (§3).
 
 ## 8 · Phasing
 
@@ -446,21 +461,25 @@ signature:
    (no LLM) and consume them on the next reply (`[RECENTLY]` block). The
    observe-≠-react design keeps the single-threaded model from saturating.
    > **CORRECTION 2026-09-12.** Both blocks ship UNBRACKETED — `WHO — …` and
-   > `RECENTLY — …` (`world/llm/prompt.py:1025`, `:1032`). The brackets were
+   > `RECENTLY — …` (`world/llm/prompt.py`, `build_messages`). The brackets were
    > removed on purpose: a small RP model copied the inline `[gloss]` shape
    > straight into its dialogue (a bartender said "Lotta GANES [a nightrunner]
    > beneath the ice"), so an uppercase label plus an em-dash gives the same
    > structural boundary without a token pattern the model reproduces
-   > (`world/llm/prompt.py:1019-1024`). §8.3's `valence` half is also inert now
-   > (#2388) — its live content is the ALIAS list (capped at 8,
-   > `typeclasses/llm_npc.py:828`); the read on a person comes from
-   > `thoughts.opinion_of`. The observe-≠-react mechanism itself is live: a pose
-   > arrives at `at_msg_receive` and is buffered with NO LLM call
-   > (`typeclasses/llm_npc.py:89-91` → `_observe_action`, `:762`), then drained
-   > once by `_drain_actions` (`:775`) on the turn that consumes it.
-5. **§8.5 (#762)** — behaviour-driven valence: the `feel` tool lets the LLM nudge
-   its read from what a person *does*, persona-weighted; surfaces in `[WHO]`,
-   consulted by `TRUST_AND_CONSENT`.
+   > (the comment above those blocks in `build_messages`). §8.3's `valence` half
+   > is also inert now (#2388) — its live content is the ALIAS list (capped at 8,
+   > `_note_alias`); the read on a person comes from `thoughts.opinion_over`.
+   > The observe-≠-react mechanism itself is live: a pose arrives at
+   > `at_msg_receive` and is buffered with NO LLM call (`_observe_action`), then
+   > drained once by `_drain_actions` on the turn that consumes it. A wordless
+   > pose aimed AT the NPC is buffered and also answered. The buffer also takes
+   > arrivals and departures, radio traffic, the NPC's own refused commands,
+   > acts an admin forced it to do, and combat beats (`world/llm/observation.py`).
+   > It keeps the last six lines, each cut to 200 characters
+   > (`LLM_ACTION_BUFFER`).
+5. **§8.5 (#762, retired by #2388)** — the `feel` tool is gone. The NPC's read
+   on a person is the engine's: `souls.thoughts.opinion_over`, handed to the
+   voice in the WHO line (§3). Nothing consults it yet (`NPC_TRAITS_SPEC` §12).
 
 **✅ §8 COMPLETE & LIVE.** The full loop runs: witness behaviour → adjust
 feeling → treat them accordingly next time, keyed on perceived identity, with
@@ -470,19 +489,18 @@ names coined or learned.
 > claims more than the code does, and it rests on item 5 above — which shipped
 > as neither the `feel` tool nor a trust consumer (#2388). "Witness behaviour →
 > adjust feeling" has exactly TWO producers in the whole colony: courtesy
-> `+0.08` (`_note_courtesy`, `typeclasses/llm_npc.py:199`) and being attacked
-> `-0.60` (`world/director/civilians.py:726`). §3 above says the rest out loud —
+> `+0.08` (`_note_courtesy`, `typeclasses/llm_npc.py`) and being attacked
+> `-0.60` (`react_to_attack`, `world/director/civilians.py`). §3 above says the rest out loud —
 > "Poses and other room events still do not" feed it — even though §8.4 ships
 > the machinery that sees them (`_observe_action`,
-> `typeclasses/llm_npc.py:762`). And "treat them accordingly" is NARRATION, not
+> `typeclasses/llm_npc.py`). And "treat them accordingly" is NARRATION, not
 > mechanic: nothing gates service, price, trust or access on the score, by
 > deliberate ruling (`NPC_TRAITS_SPEC` §12, "Balance prerequisite — READ BEFORE
 > WIRING A CONSUMER"). The loop closes through the voice — the WHO line hands
-> the band and the reason to the model (`world/llm/prompt.py:1025`) — and that
+> the band and the reason to the model (`world/llm/prompt.py`, `build_messages`) — and that
 > is the whole of it today.
 
-**Later (roadmap, spec each deliberately):** disguise-merge of memory on piercing
-(§5); photos as identity artifacts (§6); cyberbrain memory store (§6); NPC↔NPC
+**Later (roadmap, spec each deliberately):** photos as identity artifacts (§6); cyberbrain memory store (§6); NPC↔NPC
 gossip (§6); lore namespace.
 
 ## 9 · Open questions
