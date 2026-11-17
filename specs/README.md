@@ -35,14 +35,14 @@ describes how the game works today. Each entry is a running system
 >   `SUBSTANCES_AND_DELIVERY_SPEC`. Read the target spec's own banner
 >   before trusting a row here.
 
-Specs that are **not** shipped live in subfolders and are kept out of this
-index:
+Proposals, roadmaps and archived specs live in subfolders and are kept out
+of this index:
 
-- **`proposals/`** — 📋 designed, nothing built yet.
+- **`proposals/`** — 📋 designed; some are partly or wholly built, and each spec's own banner says how much.
 - **`roadmaps/`** — 🛣 forward build-plans layered on live systems (partial).
 - **`archive/`** — 🗄 task complete or superseded; kept for context only.
 
-Every spec in those folders carries a `> **Status:**` banner at the top.
+Every spec in those folders opens with a banner that gives its status, most as a `> **Status:**` line.
 
 ---
 
@@ -87,11 +87,12 @@ Every spec in those folders carries a `> **Status:**` banner at the top.
 | `PARKOUR_TEMPLATE_LIBRARY.md` | 🧭 Companion to the playbook: the owner-ruled movement kernel (span-1 jumps, any-edge hooks both ways, gear-length tiers, stamina-not-falls) and the eight architectural templates that make street-to-precipice traversal amazing |
 | `CLOTHING_SYSTEM_SPEC.md` | Clothing, coverage-based visibility, layering, dynamic styling |
 | `MODULAR_ARMOR_SYSTEM_SPEC.md` | Armor stacking, plate carriers, tactical targeting |
-| `SHOP_SYSTEM_SPEC.md` | Container-based shops, pricing, inventory (Phase 2 deferred — #302) |
+| `SHOP_SYSTEM_SPEC.md` | 🚧 Container-based shops, pricing, inventory (Phase 1 shipped; Phases 2–3 unbuilt, Phase 2 is #302) |
 | `GRAFFITI_SYSTEM_SPEC.md` | Spray-paint / solvent environmental writing |
 | `NPC_POSTS_AND_REINCARNATION_SPEC.md` | Named NPCs as reconstructible blueprints: posts, watcher, successor, resleeving |
 | `SLEEVE_INSURANCE_SPEC.md` | A personal sleeve policy bought alive at the Thawn-Harrison lobby terminal; a flash clone or NPC return is paid by the dead body's own record or does not happen; `@insure` standing policies for staff/play testing (#3667) |
 | `GIG_PROTOTYPE_BUTCHER_SPEC.md` | The first gig: corpse → condition-gated cuts → cooked dishes, with a closed till loop |
+| `BARS_AND_RECIPES_SPEC.md` | 🚧 Bars, drink recipes and the `use <bar>` mixing menu (§9 owner tooling unbuilt) |
 
 ## Commands
 
@@ -118,6 +119,7 @@ Every spec in those folders carries a `> **Status:**` banner at the top.
 | `WEB_CHARACTER_CREATION_ALIGNMENT.md` | Web/game character-creation parity |
 | `WEB_RESPAWN_CHARACTER_CREATION_SPEC.md` | Web respawn flow |
 | `TURNSTILE_INTEGRATION_SPEC.md` | Cloudflare Turnstile captcha on registration |
+| `TIME_SYSTEM_SPEC.md` | The colony clock: the one source of the game's hour and date (`world/gametime.py`) |
 
 ## Forum Integration (Optional)
 

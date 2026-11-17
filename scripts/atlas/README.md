@@ -4,8 +4,8 @@ The colony draws itself. `world/mapping.py` exports the coordinate
 substrate; everything here renders it. Two renderers share that truth:
 
 - **The live render** (`template3d.html` + `sprites/models.json` +
-  `vendor/three.min.js`) is what `gel.monster/atlas` serves to any
-  logged-in account (`world/atlas.py:build_atlas3d_html`, embedded in
+  `vendor/three.min.js`) is what `gel.monster/atlas/` serves to
+  anyone, logged in or not (`world/atlas.py:build_atlas3d_html`, embedded in
   the site page by `web/website/views/atlas.py`). Free camera, day and
   night baked in, the cockpit HUD, live 'you are here' beacons.
 - **The sprite plate** (`template.html` + `sprites/final/`) is the
