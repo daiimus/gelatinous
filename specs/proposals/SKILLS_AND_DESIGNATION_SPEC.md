@@ -55,7 +55,8 @@ Design consequences, each load-bearing:
 - **Identity-level, not sleeve-level.** The designation survives
   resleeving untouched — it's a record about the *person*, held in
   the manifest, not in the meat. Even a memory-distorted resleeve
-  can look themselves up. (Deliberate interaction with the owner's
+  can read their own record on `score`; looking it up anywhere else is
+  📋 UNBUILT (no issue), see §7 Terminals. (Deliberate interaction with the owner's
   pending distortion conversation: the manifest is the one mirror
   that never lies about who you were — only about who you are.)
 - **The Manifest is a file** (DECKING_MATRIX "everything is a
@@ -110,13 +111,23 @@ char.db.designation = {
     "dept": "life_systems",
     "rank": "chief",
 }
-char.db.skills = {"biosystems": 78, "foodworks": 44}   # 0-150, A-Z displayed
+char.db.skills = {"agrotech": 96, "provisioning": 78}   # 0-150, A-Z displayed
 ```
 
-Both identity-level: written at decant/generation, copied through
-resleeve estate untouched. Absent keys read as 0 (Z — unrated, and
-unprinted on score) — a soul or sleeve predating this spec is simply
+Both identity-level: written at decant/generation and carried across
+resleeving. A flash clone inherits its person's record
+(`ensure_manifest(char, inherit_from=old_character)` in
+`commands/charcreate.py::create_flash_clone`), and an NPC rebuilt at
+its post gets it back from its imprint (`world/imprint.py::restore`).
+A new character made from a template rolls its own.
+`world/manifest.py::ensure_manifest` leaves an existing record alone. Absent keys are unrated: score does not
+print them, and `check_value` returns None for them rather than 0 — a soul or sleeve predating this spec is simply
 unrated at everything until backfilled (build script).
+
+Only people held a berth. A body whose species starts with synth,
+robot or rat gets no record (`world/manifest.py::travelled_as_crew`),
+and an unset species counts as a person. Builds 100 and 162 apply
+this rule; `ensure_manifest` and `roll_person` do not check it.
 
 ## 4. The chart (OWNER RED PEN — all names)
 
@@ -144,6 +155,13 @@ the first — established canon):
 
 **Ranks** (5, weighted): Crewman (common) → Specialist (common) →
 Chief (uncommon) → Officer (rare) → Commander.
+
+`world/manifest.py::roll_designation` picks the vessel evenly, the
+department by `DEPARTMENT_WEIGHTS` (Life Systems 6, Engineering 5,
+Logistics 5, Security 4, Medical 3, Signals 3, Flight Ops 2) and the
+rank by `RANK_WEIGHTS` (Crewman 6, Specialist 5, Chief 2, Officer 1).
+It never rolls Command or Commander, even when one is passed in as an
+override.
 
 **Ranks are FLAVOUR, not mechanics** (owner-ruled 2026-08-20). They
 exist to lend the theme gravitas — a dead chart still printing titles
@@ -203,9 +221,14 @@ resolution system and trust/consent is the mechanical one; Resonance
 carries innate presence. A social skill would fight both. If one
 ever exists it arrives with a system that needs it, not before.
 
-Department seed packages (two core ratings at creation; Chiefs take
-one a band higher, Officers both; plus one weighted random
-off-department rating — nobody is only their job):
+Department seed packages (`world/manifest.py::seed_skills`): two
+core ratings at creation, in the rated band (66–84 on the 0–150
+scale, `BANDS`); a Chief takes the first one listed below in the
+seasoned band (90–108), an Officer takes both there; plus one more rating in
+the rated band, picked evenly from the department's affinity list
+(`DEPARTMENT_AFFINITY`, below), skipping any it already holds —
+nobody is only their job. The master band (120–138) is defined, and
+nothing seeds it.
 
 | Department | Core ratings |
 |---|---|
@@ -218,37 +241,61 @@ off-department rating — nobody is only their job):
 | Logistics & Stores | Systems + Athletics |
 | Signals & Survey | Systems + Piloting |
 
-Security's weighted off-picks lean Melee/Demolitions; Engineering's
-lean Demolitions; Life Systems' lean Athletics (tower work).
+Affinity lists, as built (`DEPARTMENT_AFFINITY`). The extra rating is
+picked evenly from the list, and a rating the person already holds
+is skipped:
+
+| Department | Affinity list |
+|---|---|
+| Command | Firearms, Systems, Subterfuge |
+| Flight & Orbital Ops | Athletics, Systems, Engineering |
+| Engineering & Fabrication | Demolitions, Systems, Piloting |
+| Life Systems | Athletics, Provisioning, Chemistry |
+| Medical & Cryogenics | Chemistry, Subterfuge, Athletics |
+| Security & Marshal Service | Melee, Demolitions, Athletics |
+| Logistics & Stores | Subterfuge, Provisioning, Piloting |
+| Signals & Survey | Stealth, Subterfuge, Systems |
 
 ## 6. Creation flows
 
 - **Player decant** (New Game Experience): the Thawn-Harrison sleeve
-  envelope — already the chargen's branded artifact — now prints the
-  designation. Assigned by weighted roll, Starfleet-Command-esque:
+  envelope — the chargen's branded artifact — prints the designation
+  as its MANIFEST line on a player's first decant
+  (`commands/charcreate.py::first_char_finalize`). The envelopes for
+  a new sleeve from a template and for a flash clone do not print it. Assigned by weighted roll, Starfleet-Command-esque:
   you wake up already being someone. (Whether players get one
   reroll is an owner call; propose: no — the manifest doesn't
   negotiate.)
-- **NPC generation**: shuttle arrivals roll designation first;
-  department then weights the trait roll (NPC_TRAITS_SPEC §7):
+- **NPC generation**: shuttle arrivals and `@spawnmob` people go
+  through `world/souls/population.py::roll_person`, which rolls the
+  traits first and the designation after, independently of each
+  other. 📋 UNBUILT (no issue): roll the designation first and let the
+  department weight the trait roll (NPC_TRAITS_SPEC §7):
   Security leans Plate-Nerved, Life Systems leans Greenhaus-Handed /
   Sunfollower, Signals leans Faraday-Souled, Logistics leans
   Rivet-Tight. Personality correlates with vocation without being
   determined by it.
-- **Backfill**: one build script rolls designations + skills for
-  every existing soul and PC sleeve-holder, department-weighted by
-  their current role where one exists (Vance rolls Medical, not
-  randomly).
+- **Backfill**: build 100 (`scripts/builds/100_the_manifest.py`)
+  gives the named cast in its `CAST` list the designations in §9 and
+  rolls everyone else's at random. Build 164
+  (`scripts/builds/164_backfill_the_last_sleeves.py`) stamps player
+  sleeves through `ensure_manifest`, one roll per person, shared by
+  all of that person's sleeves. Nothing weights a roll by a soul's
+  current role.
 
 ## 7. Where it shows
 
-- **`score`/sheet**: one line — `Chief, Life Systems — SBL-0117
-  Halcyon Days`.
-- **LLM persona**: the designation joins the trait voice fragments
+- **`score`/sheet**: two rows, `Posting: Chief, Life Systems` and
+  `Vessel:  SBL-0117 Halcyon Days`, then the rated skills best first
+  (at most six), each as its A–Z letter, or `(no ratings on file)`.
+  Someone with no record reads `Designation: NONE ON FILE`. The
+  one-line form (`world/manifest.py::designation_line`) is used by
+  `@soul`, the decant envelope and the build-100 roster.
+- 📋 UNBUILT (no issue): **LLM persona**: the designation joins the trait voice fragments
   (a Signals officer talks like one); STATE untouched.
 - **`@soul`**: designation on the individual card.
-- **Terminals**: the Manifest as a readable file — look anyone up by
-  name. (Forgery arrives with decking, not before.)
+- 📋 UNBUILT (no issue): **Terminals**: the Manifest as a readable
+  file — look anyone up by name. (Forgery arrives with decking, not before.)
 - **Social truth**: no mechanical deference in v1. Whether the
   constabulary salutes a Security designation, whether a Command
   officer can requisition anything at all — future content, owner's
@@ -258,11 +305,15 @@ lean Demolitions; Life Systems' lean Athletics (tower work).
 
 - The XP system (owner: it WILL come, for skills and stats both —
   but chargen is destiny until it does; nothing here ticks per use).
-- Combat math changes (close_protection is flavor + procedures only).
+- Combat math changes.
 - Department factions/pay/privileges (WSIS-adjacent — owner-pending).
 - Manifest forgery (decking-gated).
 
 ## 9. Named-NPC designations (PROPOSED — owner approves each)
+
+Build 100 (`scripts/builds/100_the_manifest.py`, `CAST`) gives these
+designations to the named cast in the world, as built. No ruling on
+them is recorded on #2138.
 
 | NPC | Designation | Why |
 |---|---|---|

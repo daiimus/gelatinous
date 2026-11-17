@@ -37,7 +37,11 @@ requirement. The mind is the base. The voice is the hook.
 ## 3 · Laws
 
 1. **One driver per body.** The souls engine drives. The director is a
-   *source of work*, not a second walker (#2373).
+   *source of work*, not a second walker (#2373). Two things take a body
+   away from the souls engine: a fight (while the body is in combat,
+   `think()` steps only the crime steps `grapple`, `rob` and `disengage`),
+   and pinning (`engine.pin`: a pinned soul does not think and is not
+   dispatched; `@spawnmob` makes pinned people).
 2. **Competence belongs to the post, not the person.** An ability
    bolted to a typeclass cannot be inherited by whoever takes the shift
    next (`AnsweringFixture`, #2350, #2352).
@@ -101,7 +105,10 @@ Recorded because the reasoning is not obvious and the next person will
 reasonably think it is wrong.
 
 `tick_hunt` came off the 45s director tick and became a souls goal, offered at
-**band 4, above patrol**. Band 4 looks far too low for a security response —
+**band 4, above patrol**. Band 4 is offered in this order: `comms` (take out and
+switch on a pocketed or switched-off radio), `off_duty` (leave the post after the
+shift), `hunt`, `provision` (an errand for a ration, kept under the hunt so a unit
+never leaves an intruder for a snack), then `patrol`. Band 4 looks far too low for a security response —
 below hunger, below duty. It is not a judgement that hunting matters less than
 eating. **It is where the hunt already sat.**
 
@@ -142,7 +149,7 @@ would have started one.
 
 The last real split, designed here rather than half-started.
 
-**Today.** `dispatch.dispatch()` calls `assignment.assign()`, which
+**Before #2384.** `dispatch.dispatch()` calls `assignment.assign()`, which
 records the responder in a module-level `_ACTIVE` dict and starts its
 own travel with `on_arrive=_on_scene`. `security_arrival` then drives
 the body — `aim`, `attack`, `emote`, `xmit` — and holds it there with a
@@ -183,15 +190,17 @@ than silenced, so a band-0 safety need can still reach it and a dead
 unit's job clears like any other.
 
 **Order, smallest verifiable step first.** *(Note 2026-09-12: all four
-shipped. 1 = `security.watch_once()`, #2383. 2 = the `respond` step at
-`world/souls/jobs.py:400`, plus a `stand_down` step this plan did not
+shipped. 1 = `security.watch_once()`, #2383. 2 = the `respond` step in
+`world/souls/jobs.py` `step_job()`, plus a `stand_down` step this plan did not
 anticipate. 3 = the band-0 job written in `assignment.assign()`. 4 = the
 early return deleted from `think()`.)*
 
 1. `security._watch_tick` becomes tick-once rather than `delay`-chained.
    Behaviour identical; only the caller changes.
 2. New `respond` step in `jobs.py`: runs the arrival handler on first
-   entry, `_watch_tick` on each later beat.
+   entry (`assignment.run_arrival`), then the role's watch handler on each
+   later beat (`assignment.run_watch`; for security that is
+   `security.watch_once`, the tick-once half of `_watch_tick` from step 1).
 3. `assign()` writes the job instead of starting travel. `_ACTIVE` stays
    — it is the finite-pool bookkeeping that makes "overwhelm the force"
    a real tactic — but stops being a silence switch.
@@ -199,7 +208,7 @@ early return deleted from `think()`.)*
 
 **Risks.** This is the crime-response chain and it is combat-adjacent
 (`_engage` issues real `attack` commands). `test_director_security`
-carries three pre-existing baseline failures, so that file cannot be a
+carried three pre-existing baseline failures, so that file could not be a
 clean signal — pin new behaviour with new tests. *(Note 2026-09-12: those
 three were fixed in #2381 — two faked combat with a bare
 `NDB_COMBAT_HANDLER` attribute after `_in_combat` gained a liveness check,
@@ -209,7 +218,8 @@ SILENT: crimes simply go unanswered, and nothing shouts.
 
 **Criterion 9 follows from it.** *(Note 2026-09-12: it did — #2386. The
 hunt is a souls goal at band 4 in `_desired_goal`, and `routines.tick_npc`
-returns `souls` for any souled body. §5b above is the current account;
+never moves a souled body: it returns `souls`, or `none`/`skip` before that
+check is reached. §5b above is the current account;
 this paragraph is the prediction that produced it.)* Once dispatch is a job, the only thing
 the 45s tick still DRIVES is the hunt; the rest is maintenance sweeps.
 Move the hunt to a souls goal the way patrol went, and the two

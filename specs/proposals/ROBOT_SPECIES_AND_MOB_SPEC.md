@@ -1,14 +1,14 @@
 # Robot Species & MOB Spec — Mechanical Bodies, Control Modes, and the Police MOB
 
-> **Status:** 📋 Proposal — not implemented. Designs **robots** as a
+> Designs **robots** as a
 > fully-inorganic **species** (the next rung on the shipped `synthetic_humanoid`
 > pattern + the existing `inorganic` organ machinery), plus the **control modes**
 > that animate them (autonomous-deterministic, autonomous-LLM, PC remote-control)
 > and the **police MOB** as the showcase — our **first MOB NPC**, and the first
 > concrete consumer of `NPC_DISPATCH_AND_SIMULATION_SPEC` (LEO response) and
-> `STEALTH_AND_DETECTION_SPEC` (the deterministic awareness/hunt loop). The
-> **species/anatomy is buildable now**; the MOB behaviour and remote-control are
-> gated on those specced-but-unbuilt systems.
+> `STEALTH_AND_DETECTION_SPEC` (the deterministic awareness/hunt loop). PC
+> remote-control is 📋 UNBUILT (no issue) and waits on the parked possession
+> pipeline.
 
 ---
 
@@ -17,7 +17,7 @@
 We want machines in the world: some **piloted by players** (a drone, a proxy
 body), some **autonomous NPCs**. The first real use is **police** — a security
 robot that patrols, notices trouble, challenges, and escalates, deterministically
-and cheaply (no LLM). Robots are also the cleanest possible **first MOB**: a
+and cheaply (no LLM in those steps; the unit talks through one). Robots are also the cleanest possible **first MOB**: a
 mechanical body sidesteps the full organic medical model and leans on
 infrastructure the game already shipped for synthetics and cyberware.
 
@@ -49,7 +49,7 @@ And they extend a pattern that's **already shipped**:
 * `SPECIES_DEFINITIONS["synthetic_humanoid"]` exists, **derived from human** via
   `_derive_synthetic_humanoid(base)` (deepcopy + targeted overrides: cobalt
   blood, `infection_immune`, durability multiplier, no-rot decay names →
-  "deactivated synth / inert chassis / stripped frame").
+  "deactivated synth / inert synth chassis / stripped synth frame").
 * The **`inorganic` organ flag** is live across the medical stack — the
   inorganic-organ filter (`world/medical/core.py`, #516), the cyberware-status
   readout, the **inorganic severed-part prose path**
@@ -59,8 +59,9 @@ And they extend a pattern that's **already shipped**:
   (`world/medical/medical_messages.py`).
 
 A robot is therefore **`_derive_robot(...)`** — the synthetic pattern taken all
-the way to fully mechanical. (Open question §8: derive from `synthetic_humanoid`
-to inherit no-rot/infection-immune/durability, or from `human` directly.)
+the way to fully mechanical. It derives from `human` (deepcopy + overrides),
+parallel to `_derive_synthetic_humanoid`; there is no shared inorganic helper
+(see §8).
 
 ### 3.1 · Capacity-organ remap (components, not organs)
 
@@ -70,27 +71,41 @@ organs to components and rename:
 
 | Human organ → capacity | Robot component | Capacity |
 |---|---|---|
-| brain → consciousness | **CPU / processor core** | consciousness (a **vital**) |
-| heart → blood_pumping | **power core / battery** | power (the second **vital**) |
+| brain → consciousness, brain_integrity | **processor core** | consciousness; brain_integrity (a **vital**) |
+| heart → blood_pumping | **power core** | blood_pumping (a **vital**) |
 | eyes → sight | **optical sensors** | sight |
 | ears → hearing | **audio sensors** | hearing |
 | limbs → moving / manipulation | **actuators / manipulators** | moving / manipulation |
-| jaw+tongue → talking | **vocalizer** | talking |
-| lungs → breathing | *(dropped)* | — |
-| kidneys → blood_filtration | *(dropped)* | — |
+| jaw+tongue → talking | **mandible servo, vocal modulator** | talking |
+| lungs → breathing | **cooling units** | breathing (a **vital**) |
+| stomach, liver → digestion | **fuel cell, fluid reclaimer** | digestion (a **vital**) |
+| kidneys → blood_filtration | **coolant filters** | blood_filtration |
 
-* **All components flagged `inorganic`** → reuses the medical filter, the
-  inorganic severed prose, the cyberware-status readout, no-sepsis.
-* **Death = capacity-derived, already.** Destroy the **CPU** (consciousness → 0)
-  or the **power core** (the blood_pumping-slot vital → 0) and the existing
-  capacity-death model deactivates the unit; the "mechanical stillness" death
-  messaging is already authored.
+The organs and capacities are human's, unchanged; only the names differ
+(`organ_display` in `_derive_robot`). Pruning breathing and blood_filtration
+is 📋 UNBUILT (no issue), deferred in `_derive_robot`.
+
+* **Per-component `inorganic` flags** are 📋 UNBUILT (no issue), deliberately
+  deferred in `_derive_robot`: `is_augment_organ` (`world/medical/core.py`)
+  would treat inorganic components as installed chrome. No-sepsis comes from
+  the species `infection_immune` flag, and severed-part prose from the robot
+  table in `world/anatomy/severed_parts.py`.
+* **Death = capacity-derived.** Destroying the processor core
+  (brain_integrity → 0) kills, with the revival window every brain death has;
+  destroying the power core (blood_pumping), both cooling units (breathing),
+  the fuel cell and fluid reclaimer together (digestion), or the neck servo
+  column (neck_integrity) also kills (`LETHAL_CAPACITY_NAMES`,
+  `world/medical/constants.py`). Consciousness 0 is a knockout, not death.
+  The robot has its own amber death lines (`"robot"` in
+  `world/medical/medical_messages.py`).
 * **Fluid:** robots leak **hydraulic/coolant fluid** for flavour (visually
-  distinct pools, like cobalt does), but the bleed-to-death/infection course is
-  suppressed (`infection_immune`); the vital threat is component HP, not blood
-  level. (Open question §8: keep a fluid-loss analog or go fully bloodless.)
-* **No rot** → decay names become salvage states: *deactivated unit → inert
-  chassis → stripped frame / scrapped hulk* (mirror the synth decay override).
+  distinct pools, like cobalt does). As built, a robot can die of fluid loss
+  the same way a human dies of blood loss; only infection is suppressed
+  (`infection_immune`). (Open question §8: keep fluid-loss death or go fully
+  bloodless.)
+* **No rot** → decay names become salvage states: *deactivated robot → inert
+  robot chassis → wrecked robot chassis → stripped robot frame*
+  (`decay_corpse_names` in `_derive_robot`).
 
 ### 3.2 · Repair, not heal
 
@@ -106,18 +121,19 @@ capability landed in a different shape, as a **service**: see the sibling
 (`world/souls/needs.py` `CLINIC_SERVICE = {"robot": "repair"}`), the
 mechanic's bench kit and `restock_mechanic` (`world/director/medical.py`), and
 species-gated supplies that refuse organic kit on a chassis
-(`world/medical/utils.py` `serves_species`). This document does not
-cross-reference that spec anywhere. Component swap also
+(`world/medical/utils.py` `serves_species`). Component swap also
 means robots are the natural home for **salvage** (a stripped frame yields parts).
+Today a destroyed security unit's shotgun arm module is stripped and the
+chassis is kept in the scrapyard (`strip_and_junk`,
+`world/director/disposal.py`); a general salvage verb is 📋 UNBUILT (no issue).
 
 ### 3.3 · What's reused vs. new
 
 | Reused (shipped) | New (this spec) |
 |---|---|
-| Species framework, `_derive_*` pattern, `inorganic` flag, no-sepsis, mechanical-death messaging, capacity-derived death, severance/longdesc/decay routing | The `robot` species definition (component remap + names), the repair verb, salvage, control modes (§4), the police MOB (§5) |
+| Species framework, `_derive_*` pattern, no-sepsis (`infection_immune`), capacity-derived death, severance/longdesc/decay routing | The `robot` species definition (component names, amber fluid, decay names, its own death, bleed and severed-part lines, `longdesc_flex_nouns`), the police MOB (§5); 📋 UNBUILT (no issue): per-component `inorganic` flags, the repair verb, general salvage, PC remote-control (§4), hacking, the grapple/cuff rung |
 
-The anatomy is **mostly assembly of shipped parts** — which is why it's buildable
-now, ahead of the dispatch/awareness systems the MOB needs.
+The anatomy is **mostly assembly of parts the game already had**.
 
 ---
 
@@ -127,7 +143,10 @@ The species is inert until something drives it. Three modes, same body:
 
 * **Autonomous — deterministic (the police MOB, §5).** A hardcoded behaviour
   state machine fed by the **stealth awareness meter** and the **dispatch
-  director**. **No LLM** — cheap, scalable, the right fit for patrolling units.
+  director**. Detention, hunt and force never wait on a model. As built, each
+  unit is still an `LLMNpc` with `SECURITY_BOT_PERSONA` for conversation, and
+  it carries a soul (robot needs profile) (`spawn_secbot`,
+  `world/director/population.py`).
 * **Autonomous — LLM.** A character robot (a quirky android bartender, a
   companion unit) via the existing `LLMNpcMixin` / `llm_driven`, acting through
   **real in-game commands** like every other LLM NPC (the standing mandate).
@@ -152,11 +171,12 @@ end-to-end — deterministically.
 > route → arrive → **BOLO scan-and-match** → challenge/question →
 > watch → return-to-post (#853/#863/#867, `world/director/security.py`).
 > That covers the *Challenge* step keyed off a reported crime. The
-> **Patrol** and **Detect** steps below remain ahead: Detect specifies the
-> stealth **awareness meter** (`STEALTH_AND_DETECTION_SPEC` §4, unbuilt) —
-> the shipped high-confidence *watch cycle* is an interim stand-in the
-> awareness meter will subsume. *Escalate/Restrain* stay sequenced behind
-> the trust gate, as below.
+> **Patrol** step walks the unit's `db.patrol_beat` (`world/director/routines.py`).
+> The **Detect** step is the stealth **awareness meter** (`world/stealth.py`)
+> driving the deterministic hunt (`tick_hunt`, `world/director/hunt.py`). The
+> high-confidence *watch cycle* (`watch_once`, `security.py`) runs alongside
+> the hunt; it was not replaced. The grapple/cuff *Restrain* rung is
+> 📋 UNBUILT (no issue), as below.
 
 **Behaviour state machine** (hardcoded; consumes the specced systems):
 
@@ -172,7 +192,12 @@ Patrol (routine) ─▶ Detect ─▶ Challenge ─▶ Escalate ─▶ Restrain 
   graph (`SPATIAL_COORDINATE_SYSTEM_SPEC` pathfinder).
 * **Detect** — the **stealth awareness meter** (`STEALTH_AND_DETECTION_SPEC` §4):
   a crime/threat/hidden suspect raises awareness → suspicious → searching. The
-  bot *is* the deterministic AI that spec was built to showcase.
+  bot *is* the deterministic AI that spec was built to showcase. A hunt needs
+  cause (`_has_cause`, `world/director/hunt.py`, recorded there as decided
+  2026-07-03): the target is on the wanted record, or an unresolved incident is
+  hot where they were sensed or where the unit stands. Without cause, a hidden
+  person is noticed but never hunted, and a pardon mid-hunt stands the unit
+  down silently (`_engage`).
 * **Challenge / Escalate** — verbal warning → show of force → restraint, via
   **real commands**.
 
@@ -239,10 +264,30 @@ Patrol (routine) ─▶ Detect ─▶ Challenge ─▶ Escalate ─▶ Restrain 
   > able-to-resist players are subject to the same consent rules … Reserve
   > the seam now"), and `TRUST_AND_CONSENT_SPEC` §6 is "NPC participation —
   > self-action only".
-* **Dispatch backup** — escalation raises a `WorldEvent` so more units converge
-  (alert propagation), and a downed bot is itself an event.
-* **Lethality / jurisdiction** — non-lethal by default (deterrence, restraint);
-  jurisdiction is a `dispatch` role scope. Lethal force tuned conservatively.
+* **Dispatch backup** — when a hunt reacquires its target, the unit challenges,
+  radios for backup, raises a `disturbance` `WorldEvent`, and sets every other
+  security unit searching at the sighting room (`_engage`, `propagate_alert`,
+  `world/director/hunt.py`). A unit critically damaged on a call radios a
+  mayday once and holds the scene (`_mayday`, `security.py`). A destroyed unit
+  raises no event: it goes silent and its call closes as `unit_lost`
+  (`security_death`). A unit that finds a downed unit carries it home
+  (`recover_casualty`, `world/director/medical.py`), and the wreck's shotgun
+  arm module is stripped and the chassis left in the scrapyard
+  (`strip_and_junk`, `world/director/disposal.py`).
+* **Lethality / jurisdiction** — as built, a matched subject who is not
+  fighting gets an aim lock, and violence in progress gets the arm gun and
+  `attack` (`_engage`, `security.py`). The design intent here was non-lethal
+  by default (deterrence, restraint), jurisdiction as a `dispatch` role scope,
+  and lethal force tuned conservatively; a non-lethal mode and jurisdiction
+  scoping are 📋 UNBUILT (not decided).
+* **Calls and intel** — a face on the force-wide wanted record is challenged
+  even when it has nothing to do with the call (`_scan_wanted`). A unit's
+  sightings stay local until it returns to post and syncs them
+  (`sync_bot_intel` in `security_completion`). A phoned-in call is closed on
+  the call ledger as unfounded, detained, checked or unit_lost, and the unit
+  radios the outcome (`close_call_for`). Units are spawned and respawned at the
+  security base with a built-in transceiver (`spawn_secbot`,
+  `factory_fit_comms`, `world/director/population.py`).
 
 Because every step reads an existing system, the police bot is **integration
 glue, not new mechanics** — the proof that the world-sim primitives compose.
@@ -253,14 +298,14 @@ glue, not new mechanics** — the proof that the world-sim primitives compose.
 
 | System | Relationship |
 |---|---|
-| **Species / anatomy** (`SPECIES_AUTHORING`, `world/anatomy`) | `robot` species via `_derive_robot`; `inorganic` components; capacity-death; repair/salvage. |
+| **Species / anatomy** (`SPECIES_AUTHORING`, `world/anatomy`) | `robot` species via `_derive_robot`; capacity-death; per-component `inorganic` flags, a repair verb and general salvage are 📋 UNBUILT (no issue). |
 | **Dispatch** (`NPC_DISPATCH_AND_SIMULATION_SPEC`) | The police MOB is its first consumer — patrol routines, LEO response, alert propagation, materialization/LOD. |
 | **Stealth** (`STEALTH_AND_DETECTION_SPEC`) | The bot's deterministic awareness meter drives detect→challenge→pursue; the showcase for the non-LLM hunt. |
 | **Coordinates** (`SPATIAL_COORDINATE_SYSTEM_SPEC`) | Patrol beats, pursuit pathfinding, last-known-position search. |
 | **Trust** (`TRUST_AND_CONSENT_SPEC`) | Lawful restraint — a bot must subdue a conscious citizen before acting; the concrete "authority NPC" case. |
 | **Phase / net** (`PHASE_LAYER_SPEC`) | **Hacking seam:** a robot is a prime target for net intrusion (a decker seizes/blinds a police bot) — a cross-phase causal bridge (net→meat). Reserved. |
-| **Identity** (`IDENTITY_RECOGNITION_SPEC`) | A bot has an sdesc / serial identity; citizens recognise "unit 47" via the normal recognition path. |
-| **LLM** (`LLM_GAMEMASTER_SPEC`) | Optional control mode for *character* bots; never required for police units. |
+| **Identity** (`IDENTITY_RECOGNITION_SPEC`) | A unit is keyed by finish ("a <finish> security robot", `ROBOT_FINISHES`) and calls itself "Unit <id>" (its database id) on the radio. A recognisable serial identity is 📋 UNBUILT (no issue). |
+| **LLM** (`LLM_GAMEMASTER_SPEC`) | Optional control mode for *character* bots. Police units talk through it (`SECURITY_BOT_PERSONA`); their detention, hunt and force never depend on it. |
 
 ---
 
@@ -271,7 +316,7 @@ glue, not new mechanics** — the proof that the world-sim primitives compose.
 | **1 — Robot species** | `_derive_robot` (component remap, names, inorganic, no-rot, fluid, decay/salvage names); a spawnable chassis prototype | Shipped species framework — **buildable now** |
 | **2 — Simple autonomous bot** | A stationary/short-patrol NPC with no dispatch (sanity test of the body + basic behaviour) | Phase 1 |
 | **3 — Repair & salvage** | Field/workbench repair verb; stripped-frame salvage | Phase 1 |
-| **4 — Police MOB** | The §5 behaviour state machine | Dispatch + stealth-awareness (specced, unbuilt) |
+| **4 — Police MOB** | The §5 behaviour state machine; its grapple/cuff rung is 📋 UNBUILT (no issue) | Dispatch + stealth-awareness |
 | **5 — PC remote-control** | Pilot a robot; the two-body link | Parked possession pipeline |
 | **6 — Hacking** | Net intrusion seizes/blinds a bot | Phase/net (specced, unbuilt) |
 
@@ -290,8 +335,10 @@ world-sim stack and the parked possession work.
   flavour leak, no bleed-out/infection; component HP is the threat.
 * **Repair verb scope.** Field-repair vs. workbench; who can repair (skill/tool
   gating, consistent with parked stats — lean tool-gated).
-* **Power as a resource.** Is the power core just a vital HP pool, or also a
-  *charge* that depletes (a bot needs recharging)? Charge adds logistics
+* **Power as a resource.** A souled robot already has a depleting `charge`
+  need and a `maintenance` need (`PROFILES["robot"]`, `world/souls/needs.py`);
+  the power core organ is only an HP vital. Is the power core just a vital HP
+  pool, or also a *charge* that depletes (a bot needs recharging)? Charge adds logistics
   (downtime, charging stations) — reserve unless wanted.
 * **Remote-control vulnerability & lag.** The pilot's exposed body, link-loss
   behaviour, and whether piloting has perceptual latency. Tied to the possession

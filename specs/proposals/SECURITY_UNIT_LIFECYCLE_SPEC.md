@@ -12,8 +12,6 @@ the §3 race reachable (#2286).
 > `strip_and_junk` report was also discarded, radioing "Armament
 > secured." off a wreck that was still armed (#2765). Both closed; the
 > §1/§4/§5/§7/§8 notes below mark the prose that predates all of this.
-> This file is also still filed under `specs/proposals/`, which
-> `specs/README.md` describes as "designed, nothing built yet".
 **Depends on:** `world/director/population.py` (the respawn loop),
 `world/souls/*` (Phase 2 — units are souls), the mechanic post
 **~~Blocks on:~~ UNBLOCKED 2026-08-24** — repair is real: the bench
@@ -26,8 +24,8 @@ and `operate` charts a chassis in its own words (#2262).
 
 > **Note 2026-09-12 (drift audit):** read this section as the PRE-BUILD
 > problem statement, kept for the reasoning. `maintain_security_complement`
-> (`world/director/population.py:465`) and the armament-as-organ
-> paragraph (`factory_fit_armament`, same file, line 91) still describe
+> (`world/director/population.py`) and the armament-as-organ
+> paragraph (`factory_fit_armament`, same file) still describe
 > the live code exactly. "Nothing recovers the casualty, nothing repairs
 > anything, and the remains stay where they fell" no longer does —
 > recovery is `world/director/medical.py::recover_casualty` plus the
@@ -59,6 +57,15 @@ street, and nobody ever comes for it.
 Two different outcomes off two different states, which the medical layer
 already distinguishes: a unit that is *disabled* and one that is
 *finished*.
+
+> **How it runs:** only the downed branch starts. A destroyed unit is
+> never picked up: `notice_casualty` → `recover_casualty`
+> (`world/director/medical.py`) is the only way a recovery starts, and
+> `find_casualty` skips the dead (#2757). The wreck stays where it fell,
+> with its arm still fitted. The destroyed branch of the `deliver` step
+> (`strip_and_junk`) runs only when a unit dies while it is being carried
+> home. So the §3 race over a dead unit's arm does not happen in play.
+> Whether recovery should pick up destroyed units: 📋 UNBUILT (not decided).
 
 ## 3. Why this is content, not housekeeping
 
@@ -115,7 +122,8 @@ already runs, using the real verbs.
 
 **Repair belongs to the mechanic**, whose post is the reason
 `maintenance` is deliberately advertised NOWHERE (owner ruling,
-2026-08-23).
+2026-08-23). Servicing a unit on shift and rebuilding one that was
+dropped are the same person's work, and should share a bench.
 
 > **Note 2026-09-12 (drift audit):** superseded the next day. `maintenance`
 > is advertised — at the bench, and only while somebody is standing
@@ -125,14 +133,18 @@ already runs, using the real verbs.
 > in `world/souls/salience.py::_work_mechanic`: "a machine cannot fix
 > itself: `maintenance` advertises only at a STAFFED bench". The
 > ruling's point — that this is the mechanic's work, not a wall
-> fitting's — is what the staffed advertiser implements. Servicing a unit on shift and rebuilding one that was
-dropped are the same person's work, and should share a bench.
+> fitting's — is what the staffed advertiser implements.
 
 **A repaired unit keeps its defects; a replacement does not.** A chassis
 that goes to the junkyard takes its quirks with it, and a fresh one out
 of the alcove starts clean (#2254). So repairing a paranoid secbot has
 to actually treat the paranoia — otherwise destroying it remains the
 cheaper cure, which is a funny incentive to leave lying around.
+
+How it runs: each completed maintenance service at the staffed bench
+clears the unit's newest defect, one per service (the dwell step in
+`world/souls/jobs.py`, through `clear_defect` in `world/souls/traits.py`).
+Nothing else clears a defect, so a damage repair clears none.
 
 ## 6. Answered (owner, 2026-08-24)
 
@@ -144,6 +156,10 @@ cheaper cure, which is a funny incentive to leave lying around.
   Feedstock for the Ripper's cold room and for parts, and it lets
   Kaspar Salvage accumulate a visible history of the force's bad
   nights.
+
+  > **Superseded in part, owner 2026-09-14:** robots go to a future
+  > junkyard salvager, not the Ripper, and the Ripper refuses robots
+  > (`GIG_RIPPER_SPEC` §2). The chassis still stays in the yard.
 
   > **Note 2026-09-12 (drift audit):** the yard is not Kaspar's — §4's
   > table already corrects this. Build 128 tagged **The Midden — Middle
@@ -157,6 +173,11 @@ cheaper cure, which is a funny incentive to leave lying around.
   the arm and be gone. Recovery usually wins on quiet streets; a
   prepared thief usually wins. That is the stakes §3 asks for.
 
+  How it runs: no unit is sent to a downed unit. Recovery starts only
+  when another unit thinks while standing in the same room
+  (`notice_casualty`, called from `think()` in `world/souls/engine.py`),
+  so the window is set by patrol traffic, not by a timer.
+
 ## 7. Closed: the assignment leak (#2280)
 
 Found while comparing damaged-unit scenes. Nothing cleared an
@@ -169,11 +190,9 @@ again.
 > **Note 2026-09-12 (drift audit):** the early return is gone. #2384
 > (closed 2026-08-29) replaced the assignment boolean with a band-0
 > `respond` job, so an assigned soul is arbitrated rather than silenced
-> — `world/souls/engine.py:421` now reads "An assignment used to return
-> here", and the only early exit left in `think()` is `_in_combat`.
-> The same stale explanation still stands in `release_on_death`'s own
-> docstring (`world/director/assignment.py`), which is where this
-> paragraph took it from. Everything else here holds: `release_on_death`
+> — `think()` in `world/souls/engine.py` now carries the comment "An
+> assignment used to return here", and the early exits left in `think()` are a pinned soul and `_in_combat`.
+> Everything else here holds: `release_on_death`
 > settles through `close_call_for(assignment, "unit_lost", npc)` and
 > `unit_lost` has no line in `_CALL_OUTCOME_LINES`.
 
@@ -183,6 +202,12 @@ and it would have stood at the bench forever. `release_on_death` now
 settles the call as `unit_lost` and frees the soul. The unit does not
 transmit — a destroyed unit does not key a mic, and its going silent
 mid-call is the signal.
+
+The recovering unit does radio. It sends "Unit N down. Recovering." when
+it takes the errand (`recover_casualty`), and on delivery either "Unit N
+recovered." or, for a unit that died on the way, "recovered, not
+repairable" with whether the armament came off (the `deliver` step in
+`world/souls/jobs.py`).
 
 ## 8. Known trap for the recovery build
 

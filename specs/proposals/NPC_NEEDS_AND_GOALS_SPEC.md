@@ -15,13 +15,12 @@
 > **P4a succession LIVE 2026-08-18** (#2009; build 072: five posts
 > registered, vacancy watcher, living-claim — first hire Noel Dudnik
 > claimed the Kettle day shift unprompted). Remaining: P4b
-> crime/witness + rebuild policies (combat-hardening gated), P5 gig
+> crime/witness + the generator fallback (combat-hardening gated), P5 gig
 > emission (backburnered). `world/souls/` (needs/actions/jobs/economy/
 > engine) + `@soul` diagnostic + closed treasury/wages/tithe loop; first
 > generated resident Martha van Schmidt (#8130) living the caretaker
 > loop — Brackett lobby post, Unit 1A via the real kiosk, meals at real
-> tills. Remaining ladder: P2 named NPCs (Auntie Lin first), P3
-> mood/thoughts, P4 succession, P5 gig emission (backburnered). Design
+> tills. Design
 > sections below are unchanged. ELABORATES
 > [`NPC_DISPATCH_AND_SIMULATION_SPEC`](NPC_DISPATCH_AND_SIMULATION_SPEC.md)
 > §4 (Roles & routines) — that section imagined fixed schedules; this
@@ -75,6 +74,22 @@ Plan depth is capped (≤4); plan invalidation just re-plans next tick
 (cheap at this depth). The `@soul` readout shows the chain and why
 each link bound — legibility survives the hybrid.
 
+> **What the planner does (`actions.plan_for`).** There is no search.
+> Each goal has one authored chain of at most four steps, and the
+> planner checks its preconditions (cash, stock, an open counter, a real
+> route) before handing it out. A plan that cannot be made, or a job
+> that faults, cools that goal for fifteen minutes
+> (`engine.GOAL_COOLDOWN_SECONDS`) and the soul turns to its next need.
+> There is no `mug` action: a `soul_lawless` soul that cannot afford
+> food or its craving, and whose mood is below its `violence_gate` dial,
+> falls back to one fixed robbery chain (travel, `grapple`, `rob`,
+> `disengage`) against the nearest NPC carrying at least 3 tokens that
+> is not a robot or a security unit (`_find_mark`). A soul whose traits
+> abhor violence or theft takes that chain only when the need is
+> critical (`_permits`). 📋 UNBUILT (not decided): the backward-chaining
+> planner over an action library with preconditions, effects and costs,
+> and a `@soul` readout of why each link bound.
+
 ## 3 · Needs
 
 Per-soul decaying meters, 0.0–1.0, ticked by the LOD clock (§7):
@@ -82,10 +97,10 @@ Per-soul decaying meters, 0.0–1.0, ticked by the LOD clock (§7):
 | Need | Decays by | Satisfied by (advertisement tags) | Critical behavior |
 |---|---|---|---|
 | `hunger` | time | food vendors, owned food items | detour to nearest advertiser |
-| `rest` | time awake | home (cube/bunk), flop spots | go home; collapse if ignored |
+| `rest` | time awake | home (cube/bunk); flop spots 📋 UNBUILT (no issue) | go home; collapse if ignored 📋 UNBUILT (no issue) |
 | `social` | time alone | bars, vendors with keepers, crowds | visit a social advertiser |
 | `duty` | time off-post during shift | the NPC's own post | return to post |
-| `safety` | violence/threat events | distance from threat | flee/report (dispatch seam) |
+| `safety` | violence/threat events 📋 UNBUILT (no issue): nothing raises it yet, so its flee is never chosen | distance from threat | flee/report (dispatch seam) |
 
 `cash` is a **resource, not a meter** — earned at posts (wage tick),
 spent at tills. Broke NPCs skip paid satisfiers (the poor eat worse:
@@ -95,17 +110,22 @@ emergent, free). Mood/thoughts are Phase 3 (§9) — deliberately NOT v1.
 > above is the v1 shape; §12 calls it "the shipped table, unchanged",
 > and it no longer matches `world/souls/needs.py::PROFILES`. Two
 > differences. **`duty` is not a meter** — it never decays and holds no
-> pressure; duty is the §5 band-3 SCHEDULE goal, read off the shift
+> pressure; duty is the §5 band-2 SCHEDULE goal, read off the shift
 > clock (`engine.py` returns `(2, "duty")` for a soul with a post on
 > shift), and `needs.py::_snapshot` treats a stored `duty` key as a
 > legacy artefact to tolerate. **Four derived needs have since joined
 > the human (and synth) profile**, all zero-write and computed on read:
 > `craving` (shape `vice`, #2076), `wardrobe` (shape `dress`, #2104),
 > `health` (shape `clinic`, §14) and `insurance` (shape `insure`, #3667:
-> 0.60 while no sleeve policy in this body's name is on file, a band-3
+> 0.55, the soft threshold, while no sleeve policy in this body's name is on file, a band-3
 > want that walks the soul to the Thawn-Harrison lobby terminal in their
 > own time; 0.0 once covered, or for a body with no sleeve signature).
 > `cash`-as-a-resource and the broke-skip-paid rule both still hold.
+> Thresholds are SOFT 0.55 and CRITICAL 0.85 by default; a soul's traits
+> can move each threshold and each decay rate (`traits.dial`:
+> `soft:<need>`, `crit:<need>`, `rate:<need>`). With no addiction
+> overdue, a mood of −0.25 or lower still gives a craving of 0.60 for a
+> drink (`needs.craving_state`, #2076).
 
 > **A soul uses what it carries before it buys more (#2244, #3793).**
 > `hunger` and `craving` both check the pockets first and name what
@@ -261,19 +281,26 @@ through real verbs, so the witness/dispatch/heat chain treats NPC-on-
 NPC crime exactly like player crime. Players can stumble into,
 interrupt, or profit from any of it.
 
+What the game does so far: a soul buys through the real `order` and
+`buy` verbs, and robs through `grapple` and then `pickpocket`; the mark
+resists only as far as the grapple contest lets it
+(`jobs.step_job`). 📋 UNBUILT (no issue): the target's own tree
+answering an approach (accepting, refusing, resisting or fleeing).
+
 ## 3.6 · Posts, shifts, and consequence continuity
 
 The **post** (from the reincarnation spec) is the continuity spine:
-a persistent object with SHIFT SLOTS (day/night), independent of any
+a persistent object with SHIFT SLOTS (day/swing/night), independent of any
 occupant. Souls hold assignments; `duty` drives the commute. When a
 shift-holder dies en route (see the worked example below), nothing
 announces it — the post is simply unstaffed, patron jobs FAULT at the
 counter, and the truth propagates only through perception: the next
 shift arrives and finds the corpse, the absence, or the looted till,
 then reacts per its own tree (report on the real 911 band / grieve /
-loot / flee). Vacancy detection (the §P2 watcher) eventually
-advertises the empty post; some resident's `claim_vacant_post` goal
-answers. The bar heals, changed. **Worked example (acceptance test):
+loot / flee). The vacancy watcher (§13) stamps the slot dark
+and, after the grace period and unless the dead keeper's own sleeve
+policy brings them back, hands a `claim` job to the nearest unemployed
+soul that can walk there. The bar heals, changed. **Worked example (acceptance test):
 Bob's bad night** — commute → mugged by a desperate resident via real
 grapple/rob verbs → unstaffed bar faults → night shift discovers →
 report → dispatch → corpse lifecycle → succession. Every link is an
@@ -311,7 +338,10 @@ targets, and grudges all carry `apparent_uid` handles. Dossier valence
 IS disposition-toward-a-person: it modifies utility (fear raises
 flee-weight near your mugger; earned favor discounts prices and opens
 solicitations), and P3 thoughts write into the same episodic store the
-voice already recalls from. NPC↔NPC gossip (memory spec §6) is how
+voice already recalls from. A soul does keep an opinion of each person
+by apparent identity (`thoughts.add_opinion`: being attacked writes one,
+being thanked nudges one), and the voice reads it. 📋 UNBUILT (no
+issue): opinion changing any decision, price or flee weight. NPC↔NPC gossip (memory spec §6) is how
 soul-state propagates socially. And because recognition is
 sleeve-based, a criminal who resleeves walks past his victims
 unrecognized — grudges cling to the abandoned body. Consequence
@@ -366,11 +396,20 @@ Venues and objects already exist; they gain a declaration:
 
 ```python
 obj.db.advertises = {"hunger": 0.8, "social": 0.3}   # Lin's cart
-room.db.advertises = {"rest": 1.0}                    # your own cube
 ```
 
-Discovery = grid query within a radius, scored by
-`need_pressure × advertised_value ÷ (1 + distance)`. New venues become
+Rest is not advertised: a soul sleeps only in its own home
+(`db.soul_home`, `actions.plan_for`).
+
+Discovery: every object tagged `advertiser` (category `souls`) whose
+`db.advertises` names the need, within 30 cells (the larger of the x and
+y differences, plus the level difference), scored
+`advertised_value ÷ (1 + distance)`, then kept only if the soul has a
+real route to it as itself (`actions._advertisers`, `_reachable_only`).
+Need pressure picks the goal, not the venue. A fixture with
+`db.advertise_staffed` offers only while a keeper is standing the
+running shift there; one with `db.advertise_scope = "room"` serves only
+someone in that room or someone whose home it is. New venues become
 part of NPC life by adding one attribute — no soul code changes. (The
 shipped shop/food/rental/bar systems each get their advertisement in
 Phase 1 as data, not code.)
@@ -378,18 +417,33 @@ Phase 1 as data, not code.)
 ## 5 · The think tree
 
 Priority bands, evaluated top-down each think-tick; first band with an
-eligible goal wins; within a band, utility ranks:
+eligible goal wins; within a band, the highest pressure wins and ties go
+by profile order. Band numbers are the code's (`engine._desired_goal`,
+`_goal_band`); the lowest wins:
 
-1. **Survive** — flee active threat, escape fire/damage (hooks the
-   existing combat/dispatch machinery; always preempts).
-2. **Critical needs** — any meter past its critical threshold.
-3. **Schedule/duty** — shift hours at post (time-system blocks: work /
-   social / sleep, per role).
-4. **Elevated needs** — meters past their soft threshold, by utility.
-5. **Idle color** — wander home range, existing ambient behavior.
+0. **Survive** — flee when `safety` passes its critical threshold, and a
+   dispatched call (a `respond` job, planned at this band). Preempts
+   everything. 📋 UNBUILT (no issue): nothing raises `safety` yet (§3).
+1. **Critical needs** — any profile need past its critical threshold,
+   except `wardrobe`.
+2. **Schedule** — first, being undressed (`wardrobe` at 1.0); then the
+   shift (`on_duty`: the work block of the soul's `day` 06–14, `swing`
+   14–22, `night` 22–06 or `always` schedule, plus up to an hour past its
+   end covering until the next keeper arrives, `HOLDOVER_HOURS`); then
+   sleep (the sleep block, for a soul with a home, once rest is 0.30 or
+   more). Each soul reads the clock with its own offset of up to ±15
+   minutes (`shift_jitter_hours`). Work handed out inside a shift (a
+   courier's run, a unit's recovery) and a post claim also run at this
+   band.
+3. **Elevated needs** — any profile need past its soft threshold.
+4. **Idle** — in order: ready a radio (`comms`), leave the post after the
+   shift for a perch or home (`off_duty`), hunt an intruder (security
+   units), put a ration in an empty pocket (`provision`), walk the patrol
+   beat. Otherwise the soul does nothing.
 
-Satisfied goals are skipped (a fed soul never evaluates eating). The
-current patrol system becomes simply the security role's band-3 duty.
+Satisfied goals are skipped (a fed soul never evaluates eating), and so
+is a goal whose plan failed in the last fifteen minutes. Patrol is idle
+work: the director supplies the route and the soul walks it (#2373).
 
 ## 6 · Jobs — goals decompose into real commands
 
@@ -405,21 +459,28 @@ job eat_out(target=Lin's cart):
 
 Steps can fail (no stock, no cash, blocked path) → the job **faults**:
 recorded on the soul (visible in §8 tooling), goal re-ranked next tick.
-Interruption law inherits patrols': assigned/fighting/travelling souls
-are not nudged; band-1 preempts everything. Every band below it holds
+Interruption law: a soul in combat does not think, except to carry on
+its robbery steps. A running job is replaced only by a goal in a
+strictly better band than the one it was planned under, and the
+replacement stops its feet. Band 0 (Survive, and a dispatched call)
+preempts everything. Every band below it holds
 one step through an interruption: a soul that has ordered at a counter
 collects the order first, and only Survive does not wait for that
 (§3, #3796).
 
 ## 7 · LOD — souls cost nothing until watched
 
-Tick rate per soul by player proximity (director-owned, like patrols):
+Think rate per soul by player proximity, computed by the souls heartbeat
+(one beat every 30 s, `engine.lod_for`):
 
 | LOD | Condition | think-tick |
 |---|---|---|
-| hot | player in room/adjacent | every heartbeat |
-| warm | player within N cells | ~4× heartbeat |
-| cold | nobody near | ~180s, coarse |
+| hot | a player in the same room | every beat |
+| warm | a player within 5 cells on the same level (`WARM_RADIUS`) | every 2nd beat (~60 s) |
+| cold | nobody near | every 6th beat (~180 s) |
+
+A soul with a stimulus waiting (`salience.pending`) thinks on the next
+beat whatever its LOD.
 
 Cold souls still act through real commands (the world stays honest; no
 offstage teleporting) — they simply think rarely. Ephemeral crowd
@@ -428,11 +489,17 @@ NPCs (the census population) stay out of scope: souls are for the
 
 ## 8 · Tooling is first-class (ship WITH Phase 1, not after)
 
-`@soul <npc>` — the diagnostic: LOD + tick age, need meters, the full
-goal ranking with utilities and skip reasons, current job + step
-pointer, recent faults. If a soul misbehaves, this command must answer
-why in one screen. A `@soul/all` summary lists every ensouled NPC,
-LOD, and current goal — the colony's dance card.
+`@soul <npc>` (Builders) — the diagnostic: role, profile, schedule, LOD,
+mood and the decayed thoughts, traits, home, post and till, tokens and
+wages owed, every need's pressure against the default soft and critical
+thresholds, goals cooling down, the running job's goal and step, and the
+last faults. If a soul misbehaves, this command must answer why in one
+screen. 📋 UNBUILT (no issue): the goal ranking with utilities and skip
+reasons, and the tick age. `@soul` alone is a colony dashboard (souls,
+posts manned and open, economy, mood, health alarms); `@soul all` lists
+every soul's goal, LOD, hunger, rest, tokens, fault count and location,
+and raises an error when any soul has the robot profile, which has no
+hunger or rest.
 
 ## 9 · Build ladder
 
@@ -502,7 +569,11 @@ steps, payday (full vs partial), plan-failure faults, the flee step.
 The log is capped (~20); each thought's contribution decays with a
 half-life (~6 game-hours), so **mood is DERIVED on read** — the
 clamped sum of decayed valences around a neutral center, banded for
-display (grim / low / level / bright). No mood attribute exists.
+display (grim / low / level / bright). No mood attribute exists. At most
+three thoughts of one key are kept (`STACK_CAP`), so a lasting condition
+reads as one misery. A wound (acting against one's own nature, or any
+thought recorded as one) fades with a three-day half-life. Mood bands:
+bright from +0.25, level from −0.10, low from −0.40, grim below.
 
 **Consumption, phase-3 scope (deliberately narrow):**
 
@@ -510,7 +581,10 @@ display (grim / low / level / bright). No mood attribute exists.
    sees exactly why a soul feels how it feels.
 2. **The RAG feed:** for `llm_driven` souls, a thought worth
    remembering (|valence| ≥ 0.2) also becomes an episodic record via
-   the existing embed→`make_record`→`prune` path, written with an
+   `world.llm.memory.remember` (an embedding, then deduplicate, store and
+   prune; only while the LLM is enabled), so a repeated thought
+   strengthens one memory rather than filling the budget with copies,
+   written as "I remember: <note>." with an
    EMPTY subject — the memory module already treats empty-subject
    records as "general" and surfaces them inside any scoped
    conversation when semantically relevant. Lin grumbles about the
@@ -518,10 +592,12 @@ display (grim / low / level / bright). No mood attribute exists.
    because anything scripted her to. The two-brain law holds: the
    thought DECIDED nothing; the voice narrates a state the engine
    produced.
-3. **No deterministic behavior modulation yet.** Mood gating utility
-   (desperation discounts, snap decisions) belongs to the
-   transgressive-library work (§9.4+) — wiring it now would be tuning
-   a dial nobody can see the consequences of.
+3. **Mood gates two decisions, and nothing else.** A `soul_lawless`
+   soul turns to robbery only while its mood is below its
+   `violence_gate` dial (`actions.plan_for`), and a mood of −0.25 or
+   lower gives a pull toward a drink with no habit behind it
+   (`needs.craving_state`). 📋 UNBUILT (no issue): mood weighing any other
+   choice (desperation discounts, snap decisions).
 
 ## 12 · Heterogeneous profiles — bots and synths in the same fold
 
@@ -532,20 +608,27 @@ needs TABLE assumed a human. A **profile** makes that table data:
 
 Planner **shapes** are the small set of ways a need gets satisfied:
 `buy_consume` (advertiser + till + eat), `dwell_home` (travel home +
-occupy), `dwell_venue` (travel to advertiser + occupy), `post`
-(duty), `flee`. Every existing plan is already one of these; profiles
-just choose which needs use which.
+occupy), `dwell_venue` (travel to advertiser + occupy), `vice` (the
+craving), `dress` (wardrobe), `clinic` (health), `insure` (insurance),
+`graze` (eat off a serving fixture) and `flee`. Duty has no shape: it is
+the schedule band's goal, planned directly (`actions.plan_for`).
+Profiles choose which needs use which.
 
-- **human** — the shipped table, unchanged.
+- **human** — the §3 table, with the derived needs listed under it.
 - **synth** (synthetic humanoid species) — same shape as human,
   different dials: hunger at half rate (durable metabolism), rest
   lighter, social unchanged. A synth resident is a human resident
   with slower appetites, not a special case.
 - **robot** (security units et al.) — `charge` (the battery: rises
   toward critical over ~12h, satisfied by `dwell_venue` at anything
-  advertising `charge`) and `maintenance` (very slow, same dwell). No
-  hunger, no social, no rest, no schedule blocks — duty belongs to
-  the director (below). Robots hold no wallets in v1; their upkeep is
+  advertising `charge`) and `maintenance` (very slow, same dwell), and
+  `health`, derived from its medical conditions, which sends a unit to
+  whatever advertises `repair` rather than `treatment`
+  (`needs.CLINIC_SERVICE`, #2262). No hunger, no social, no rest. A
+  unit's schedule is `always`: its shift never ends and it never sleeps
+  (`engine.SCHEDULES`); its post, dispatched calls, patrol and hunt are
+  soul jobs (the precedence law below). Robots hold no wallets in v1; their upkeep is
+  the colony's power bill, not a wage.
 
   **UPDATED 2026-08-24.** The dispatch console was the first `charge`
   advertiser. It no longer advertises anything: a radio bolted to a
@@ -561,7 +644,18 @@ just choose which needs use which.
   will therefore fault weekly with no plan for maintenance. That fault
   is the vacancy for the three-shift mechanic, not a defect in the
   engine.
-  the colony's power bill, not a wage.
+
+  **Maintenance is now offered by one STAFFED fixture (#2261):** the
+  service bench in the Constabulary secure corridor advertises it with
+  `db.advertise_staffed`, so it serves only while a mechanic is standing
+  the running shift there (`actions._advertisers`). Off shift the need
+  has no plan, and that fault is the vacancy.
+
+- **recluse** — every need met inside a sealed home, and given only by
+  an explicit profile, never from species. Hunger is eaten with the real
+  `eat` verb off a serving fixture (`graze`, #2074), rest is taken at
+  home, and social is a `dwell_venue` advertiser that serves only its
+  own room (`advertise_scope`, #2096).
 
 Profile resolution: explicit `ensoul(..., profile=)` wins; otherwise
 derived from species (`robot` → robot, synthetic → synth, else
@@ -569,14 +663,15 @@ human).
 
 **The precedence law (one driver at a time):**
 
-    combat  >  director assignment (dispatch/patrol)  >  souls
+    combat  >  souls
 
-The souls engine already yields to combat; it now also yields to
-`is_assigned` — exactly as the patrol heartbeat does — so a secbot's
-patrols and dispatch responses remain director-owned, and its soul
-claims the body only when nothing more urgent does (in practice: a
-critical battery walks it to the cradle between assignments). Two
-systems never fight over one body.
+Combat owns the body: a soul in combat does not think, except to carry
+on its robbery steps (`grapple`, `rob`, `disengage`), which are made to
+run inside a fight (`engine.think`). Otherwise the souls engine drives,
+and director work arrives as jobs: a dispatched call is a `respond` job
+planned at the Survive band, so nothing outranks it (#2384); a patrol
+beat and a hunt are idle-band goals whose route and rules stay in the
+director (#2373). Two systems never fight over one body.
 
 ~~**Companions are excluded** from ensoulment for now: Vesper's agentic
 tool loop is its own driver, and the handshake between that loop and
@@ -618,18 +713,25 @@ generator identity was invented to fake.
 
 **Post records** live on the fixture that IS the post — the counter
 for venues, the room for roomed posts: `db.post_role`,
-`db.post_schedule`, `db.post_wage_rate`, `db.post_policy`
-(`successor` | `none`; whether the named keeper returns is their own
-sleeve policy's business since #3667), `db.post_delay` (vacancy grace before succession),
-`db.post_vacant_since`. Registered posts are tagged
+`db.post_wage_rate`, `db.post_policy` (`successor`; any other value
+leaves a stranger's slot dark; whether the named keeper returns is their
+own sleeve policy's business, #3667), `db.post_delay` (vacancy grace
+before succession, six hours by default, `DEFAULT_DELAY`; 0 means at
+once), `db.post_slots` (one slot per shift, each with its `keeper` and
+`vacant_since`) and `db.post_blueprints` (shift → the named person who
+owns it). Registered posts are tagged
 (`post`/souls — the indexed path).
 
 **The vacancy watcher** rides the souls heartbeat (staggered, every
 ~10 beats): a registered post whose keeper is dead, deleted, or
-desouled gets stamped vacant. Once `post_delay` elapses under policy
-`successor`, the sweep offers the post to the nearest eligible
-unemployed soul (human/synth profile, no post, not mid-job) by
-handing it a band-2 claim job — travel there for real, then a `claim`
+desouled gets stamped vacant. Once `post_delay` elapses, a shift
+that names a keeper (`post_blueprints`) first waits on that keeper's own
+sleeve policy (`posts._try_resleave`, #3667). Otherwise, under policy
+`successor`, the sweep offers the shift down the list of unemployed
+souls, nearest first: not a robot, not pinned, with no post, not on a
+hunger, flee or claim job, and with no order waiting on a counter
+(leisure does not count as busy). The first one who can walk there gets
+a band-2 claim job — travel there for real, then a `claim`
 step that binds post/venue/schedule/wage, re-keeps the counter, and
 emits a `new_job` thought. One succession per sweep, never while
 combat is live at the post (the reincarnation spec's de-confliction
@@ -642,10 +744,14 @@ social by day, first in line when a counter goes dark. (The fuller
 `obtain_cash` arbitration — beg/work/mug — belongs to P4b.)
 
 **Deliberately deferred to P4b (gated on a combat-hardening pass):**
-the crime/witness chain (Bob's bad night end-to-end), transgressive
-action libraries and disposition gates, mood modulating utility, and
-the blueprint-rebuild policies (`resleave`, generator fallback) from
-the reincarnation spec's own ladder.
+the crime/witness chain (Bob's bad night end-to-end) and the generator
+fallback from the reincarnation spec's own ladder. What the game does
+meanwhile: a `soul_lawless` soul that cannot afford food or its craving
+robs when its mood is below its `violence_gate` dial (§2); traits that
+abhor violence or theft hold until the need is critical, and acting
+against them leaves a guilt thought that fades over days
+(`jobs._conscience`); a dead keeper with a sleeve policy on file is
+brought back (`posts._try_resleave`).
 
 ## 14 · The rescue loop & the health economy (P4b counterweights)
 
@@ -656,8 +762,9 @@ certainty. Three layers, cheapest first, each shippable alone:
 
 **Layer 1 — the health drive (the walking wounded self-deliver).**
 A `health` need on human/synth profiles whose pressure is DERIVED from
-the medical state already stored (bleeding, conditions, organ damage —
-zero writes, the purest compute-on-read need). The Maxwell clinic
+the stored medical conditions: 0.12 for each condition, plus 0.35 while
+any of them is bleeding (`needs.health_pressure`; zero writes, the
+purest compute-on-read need). The Maxwell clinic
 advertises `treatment`; a conscious wounded soul walks in like a
 hungry one walks to a counter.
 
@@ -666,11 +773,15 @@ billed.** The clinic will always stop fatal bleeding, catch the dying,
 and run the existing resleeve pipeline — nobody dies on the doorstep.
 Restorative treatment costs tokens, paid into Maxwell's own till
 (tagged, tithed, wage-paying — the closed loop's health sector). The
-`treat` job step: doctor present (keeper rule), fee affordable → pay,
-and the DOCTOR treats through the real verbs (bandage/wound care,
-doctor-driven `execute_cmd` — messaging and two-brain law intact);
-broke → free triage only if actively dying, else the soul limps off
-faulted. THE POOR CARRY THEIR BEATINGS — survival is the floor,
+`treat` job step: someone in the room holding the doctor job
+(`service.job_of`) treats through the real verbs (`world.clinic.treat`,
+doctor-driven `execute_cmd` — messaging and two-brain law intact). The
+clinic bandages first and bills after: 8 tokens (`TREAT_FEE`) into the
+clinic's till, and a painkiller for a soul that paid. A soul that cannot
+pay is bandaged free if it is bleeding, and otherwise leaves faulted
+with a `turned_away` thought. A clinic with nothing to treat with turns
+the soul away without charging. After a visit, `health` is not chosen
+again for 30 minutes. THE POOR CARRY THEIR BEATINGS — survival is the floor,
 wholeness is a purchase.
 
 **Layer 2 — the field medic (the race).** A generated soul hired into

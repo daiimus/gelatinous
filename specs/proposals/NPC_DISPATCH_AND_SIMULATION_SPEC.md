@@ -16,7 +16,8 @@
 > `ANSWER_COOLDOWN` was EXTRACTED, not deleted: `AnsweringFixture` in
 > `typeclasses/items.py` still carries it at 4.0s (#2216). `FALLBACK_LINE`
 > survives renamed as `DESK_FALLBACK_LINES` in `world/director/dispatch.py`.
-> The civic LANE is live — `CIVIC_LLM_*` settings, `client.civic_enabled`,
+> The civic lane's code is in place (off unless `CIVIC_LLM_ENABLED` is set;
+> plain-code matching works without it) — `CIVIC_LLM_*` settings, `client.civic_enabled`,
 > `world/director/radio_report.py` — it was the console's half of the VOICE
 > that moved to the operator. `_clean_reply`, `CHATTER_LINES` and `[CONTEXT]`
 > are genuinely gone.)*
@@ -25,19 +26,27 @@
 > |---|---|
 > | console classifies + speaks | `world/souls/salience.py` senses; whoever holds the chair judges and answers |
 > | `_clean_reply` backstops | `world.director.dispatch.desk_discipline`, applied by `salience.filter_for_duty` |
-> | grounding via `[CONTEXT]` | the operator's `STATE` block, from a real call record |
-> | an unattended desk still dispatched | **no operator, no dispatch** — `seated_base_station` is the whole gate |
+> | grounding via `[CONTEXT]` | the operator's prompt line from the verdict on the call she is answering (`ndb.dispatch_verdict`, `_dispatch_board_line`) |
+> | an unattended desk still dispatched | **no operator, no dispatch for player radio calls**: a call on 911MHz is judged only by whoever sits at the powered console (`world.radio.seated_base_station`). Witness reports, a unit on the scene, patrol and hunt flags and explosions raise their event directly and roll units whether or not anyone is at the desk. With nobody at the desk, the drained-pool "No units available" line is not sent. |
 >
 > **A report is now a CALL** (`world/director/calls.py`, #2246): a
 > persistent record on the `ServerConfig` ledger carrying the caller's
 > verbatim words, the place they named, what they said about the
-> person, which units rolled, and a status. It is what responders read,
-> what the dispatcher grounds on, and what gets closed.
+> person, which units rolled, and a status. Responders close it
+> (`detained`, `checked`, `unfounded`, `unit_lost`) through the `call_id` in
+> the event payload, and it outlives a reload. The dispatcher's reply is
+> grounded in the verdict for the call she is answering
+> (`ndb.dispatch_verdict`), not in the ledger. Nothing reads the ledger back
+> yet.
 >
 > **The SHELF item below — "false-report consequences" — is half
 > built.** A unit finding nothing now closes its call `unfounded` and
 > says so on the air (#2256). What remains is the strike record against
-> the caller's voice UID.
+> the caller's voice UID. A radio call ends `detained` (high match held),
+> `checked` (lookalike questioned), `unfounded` (nothing found) or
+> `unit_lost` (the responder destroyed; said nowhere on air). Each call
+> stores the caller's voice UID (`calls._voice_of`); 📋 UNBUILT (no issue):
+> anything that counts strikes against it.
 >
 > **BOLOs carry provenance** (#2247). A `uid` is a presentation hash and
 > may only travel machine-to-machine, because nobody says a hex digest
@@ -52,7 +61,7 @@
 
 
 > **Status:** 🟡 Proposal — **dispatch core SHIPPED & LIVE** (2026-06-27, #853);
-> **RADIO REPORTS ROLL REAL UNITS (2026-07-11):** player traffic on 911MHz is classified by the civic lane's structured-verdict contract (constrained decoding, `world/director/radio_report.py`) and a CONFIRMED report raises a real `WorldEvent` — two-signal gate (report flag AND type enum agree), plain-code location resolution against room names (fallback: the caller's room), 120s scene debounce, severity per the FRUGAL LADDER (#1182, user call: violence and explosions are what call in more units — radio assault 2, all other radio reports 1; witnessed CRIME_SEVERITY now murder 3 / assault-mugging-robbery 2 / all nonviolent incl. sabotage 1; explosions and engaged-unit backup keep 2). Caller UNVERIFIED by design: false reports drain the finite pool (swatting is a mechanic). NPC/witness traffic never re-classifies (no double dispatch). **CLASSIFIER JUDGMENT (#1180, 11/11 live battery):** reasoning-first schema — required leading `event_summary` forces the model to articulate what is physically happening before judging (field order = generation order under constrained decoding); emergency-in-progress bar with per-enum definitions; few-shot exemplars covering the observed failures (gossip/'drinking all the recyc', wordplay/'fire that boils tea', requests). Failure at any layer = silence. **GROUNDED VOICE LANE (2026-07-11, user: 'Copy. Coffee. Units rolling.'): the lanes are SEQUENCED — the verdict classifies first, then the operator's reply gets the finding as [CONTEXT] (chatter→channel discipline / confirmed+dispatched→units announce themselves / held→do-not-claim), and `_clean_reply` carries a deterministic no-false-units backstop: any units-moving claim is struck unless dispatch actually moved units this turn. Exemplars retrained — she never announces units; units announce themselves. **VOICE-LANE BACKSTOPS, all deterministic in `_clean_reply` (#1172–#1184, each from a live transcript):** units-claim strike now UNCONDITIONAL (true claim → bare 'Dispatch copies.'; units own the announcement); PRESENCE backstop ('I'll be there in a minute' struck — she never leaves the desk; 'I'd really like to' survives by test: wanting is flirt, arriving is a lie); PARROT guard (short chatter reply adding no words of her own struck; courtesy filler doesn't count as hers); stutter scrub (consecutive duplicate sentences collapse); operator-name label strip ('Petra: "..."'); chatter rejections/failures draw from rotating CHATTER_LINES (incl. the house-band redirect) never the traffic-inviting FALLBACK_LINE. **BANTER REGISTER (#1174, user: interlopers get to vibe with dispatch):** chatter grounding invites one dry human line before the brush-off; banter exemplar in Petra's register; ANSWER_COOLDOWN 10s→4s for conversational rhythm; desk doctrine in both registers ('chained to this desk — never promise to go anywhere, meet anyone, or bring anything'). **EMERGENT (unscripted, keep):** secbots are LLMNpc — `_hear_radio` band comprehension means units editorialize in persona ('Request oversight on unauthorized use of 911MHz' after a swatting spree). **SHELF:** false-report consequences via voice-UID strike record (voice signatures + 'finds nothing' scene logs + BOLO all exist; modulator = counter-tradecraft).** **The receipt is the UNITS' voices (2026-07-11, user call — the console restating the operator's ack was an echo): each dispatched responder keys up its own staggered 'Unit <id> responding — <where>.' through the real `xmit` verb + comms organ (wrecked organ/downed unit = honest silence); the drained-pool 'No units available' stays dispatch's announcement.** **REACHABILITY GATE (2026-07-11, same arc): dispatch orders ARE radio traffic — `world.radio.hears_emergency_band` (comms organ or powered carried radio on 911MHz) gates BOTH `find_responders` and the console's availability count. A deafened unit (shot ear, snatched walkie) stands at post, never rolls, and drops off Petra's 'units on the line' — ear-sniping neutralizes without destroying. **ORDER-RANGE PHYSICS SHIPPED (2026-07-13, #1208):** `world.radio.order_reaches` — the dispatch ORDER itself is radio traffic: the console transmits at mast-backed reach (wrecked mast = walkie range), repeaters regenerate command one hop, the unit's ears extend the link (reciprocity), and only clear/fuzzy grades move a unit (static/gone don't parse). Gates BOTH `find_responders` and Petra's availability count. Switched-off console fails CLOSED (the spec's physical gate); no authored console or off-grid rooms fail open. Full sabotage chain now honest: wreck the mast → distant witnesses can't report in AND distant units can't be commanded — the colony's law shrinks to walkie radius around the station until someone repairs the steel.**
+> **RADIO REPORTS ROLL REAL UNITS (2026-07-11):** player traffic on 911MHz is classified first by plain-code word matching (`classify_report`, `world/director/radio_report.py`); the civic lane's structured verdict (constrained decoding) is asked only for traffic no word matched, and only when the lane is enabled and a CONFIRMED report raises a real `WorldEvent` — two-signal gate (report flag AND type enum agree), plain-code location resolution against room names (fallback: the caller's room), 120s scene debounce, severity per the FRUGAL LADDER (#1182, user call: violence and explosions are what call in more units — radio assault 2, all other radio reports 1; witnessed CRIME_SEVERITY now murder 3 / assault-mugging-robbery 2 / all nonviolent incl. sabotage 1; explosions and engaged-unit backup keep 2). Caller UNVERIFIED by design: false reports drain the finite pool (swatting is a mechanic). NPC/witness traffic never re-classifies (no double dispatch). **CLASSIFIER JUDGMENT (#1180, 11/11 live battery):** reasoning-first schema — required leading `event_summary` forces the model to articulate what is physically happening before judging (field order = generation order under constrained decoding); emergency-in-progress bar with per-enum definitions; few-shot exemplars covering the observed failures (gossip/'drinking all the recyc', wordplay/'fire that boils tea', requests). Failure at any layer = silence. **GROUNDED VOICE LANE (2026-07-11, user: 'Copy. Coffee. Units rolling.'): the lanes are SEQUENCED — the verdict classifies first, then the operator's reply gets the finding as [CONTEXT] (chatter→channel discipline / confirmed+dispatched→units announce themselves / held→do-not-claim), and `_clean_reply` carries a deterministic no-false-units backstop: any units-moving claim is struck unless dispatch actually moved units this turn. Exemplars retrained — she never announces units; units announce themselves. **VOICE-LANE BACKSTOPS, all deterministic in `_clean_reply` (#1172–#1184, each from a live transcript):** units-claim strike now UNCONDITIONAL (true claim → bare 'Dispatch copies.'; units own the announcement); PRESENCE backstop ('I'll be there in a minute' struck — she never leaves the desk; 'I'd really like to' survives by test: wanting is flirt, arriving is a lie); PARROT guard (short chatter reply adding no words of her own struck; courtesy filler doesn't count as hers); stutter scrub (consecutive duplicate sentences collapse); operator-name label strip ('Petra: "..."'); chatter rejections/failures draw from rotating CHATTER_LINES (incl. the house-band redirect) never the traffic-inviting FALLBACK_LINE. **BANTER REGISTER (#1174, user: interlopers get to vibe with dispatch):** chatter grounding invites one dry human line before the brush-off; banter exemplar in Petra's register; ANSWER_COOLDOWN 10s→4s for conversational rhythm; desk doctrine in both registers ('chained to this desk — never promise to go anywhere, meet anyone, or bring anything'). **EMERGENT (unscripted, keep):** secbots are LLMNpc — `_hear_radio` band comprehension means units editorialize in persona ('Request oversight on unauthorized use of 911MHz' after a swatting spree). **SHELF:** false-report consequences via voice-UID strike record (voice signatures + 'finds nothing' scene logs + BOLO all exist; modulator = counter-tradecraft).** **The receipt is the UNITS' voices (2026-07-11, user call — the console restating the operator's ack was an echo): each dispatched responder keys up its own staggered 'Unit <id> responding — <where>.' through the real `xmit` verb + comms organ (wrecked organ/downed unit = honest silence); the drained-pool 'No units available' stays dispatch's announcement.** **REACHABILITY GATE (2026-07-11, same arc): dispatch orders ARE radio traffic — `world.radio.hears_emergency_band` (comms organ or powered carried radio on 911MHz) gates BOTH `find_responders` and the console's availability count. A deafened unit (shot ear, snatched walkie) stands at post, never rolls, and drops off Petra's 'units on the line' — ear-sniping neutralizes without destroying. **ORDER-RANGE PHYSICS SHIPPED (2026-07-13, #1208):** `world.radio.order_reaches` — the dispatch ORDER itself is radio traffic: the console transmits at mast-backed reach (wrecked mast = walkie range), repeaters regenerate command one hop, the unit's ears extend the link (reciprocity), and only clear/fuzzy grades move a unit (static/gone don't parse). Gates BOTH `find_responders` and Petra's availability count. Switched-off console fails CLOSED (the spec's physical gate); no authored console or off-grid rooms fail open. Full sabotage chain now honest: wreck the mast → distant witnesses can't report in AND distant units can't be commanded — the colony's law shrinks to walkie radius around the station until someone repairs the steel.**
 > remaining layers below. Designs the **director**: a hardcoded, deterministic
 > world-simulation engine that manages the NPC population (spawn / despawn /
 > routine / death) and **dispatches** them in response to world events — routing
@@ -172,13 +181,18 @@ rule.)
 
 A **population registry** (`world/director/population.py`) is the census: who
 exists, their role, home region, state, and whether they are persistent or
-ephemeral.
+ephemeral. 📋 UNBUILT (no issue) as a general registry;
+`world/director/population.py` holds the security base complement and the
+civilian pool.
 
 * **Persistent NPCs** — named, durable citizens (Sable the bartender, Doctor
   Vance, companions). They have stable identity, recognition memory, voice.
 * **Ephemeral / flash-temp NPCs** — spawned for a shift, a gig, or an event
   (a flash-temp mining crew, a LEO response squad) and **despawned** when the
   reason ends. The bulk of the visible population is ephemeral.
+
+*Superseded (see RECONCILIATION): spawn-on-approach and virtualization are
+abandoned; cold souls stay instantiated. Kept for the reasoning.*
 
 **Level-of-detail (LOD) — spawn-on-approach.** The director does **not**
 instantiate the whole city. Off-screen population is **virtual** — a row of
@@ -198,6 +212,10 @@ leaks corpses nor depopulates permanently.
 
 Each NPC has a **role** defining its spawn rules, schedule, event
 subscriptions, and jurisdiction. Roles are data-authored, not hardcoded per-NPC.
+
+📋 UNBUILT (no issue) as written. A role is the string `db.role` (dispatch
+roles `security` and `medic`); civilian roles are data in `CIVILIAN_ROLES`
+(`world/director/civilians.py`).
 
 ```python
 @dataclass(frozen=True)
@@ -240,21 +258,42 @@ Events are raised by the world: combat (assault), the mining system (incident),
 the time system (shift change), the medical system (death), the gig system
 (task posted). They land on a bus the **dispatcher** consumes.
 
+The types raised: `assault`, `vandalism`, `sabotage`, `pickpocketing` (the
+instrumented acts, through `report_crime`); `assault`, `disturbance`, `fire`,
+`medical` and `crime` (player radio calls, `radio_report.apply_verdict`);
+`medical` (a downed body a soul notices, called in by a crowd witness);
+`disturbance` (a patrol wanted-flag, a hunt reacquire, an explosion).
+`raise_event` (`world/director/dispatch.py`) logs the incident and hands it
+straight to `dispatch`. 📋 UNBUILT (no issue): `mining_incident`,
+`shift_change`, `death` and `gig` events, and a real bus.
+
 **The dispatcher** (`world/director/dispatch.py`):
 
-1. **Match** — find candidate responders by `role.responds_to`, `jurisdiction`,
-   and **coordinate proximity** (`rooms_within` / straight-line distance).
+1. **Match** — every Character whose `db.role` or `db.soul_role` responds to
+   the event type (`ROLE_RESPONDS_TO`), minus the instigator, pinned souls,
+   units that cannot hear the emergency band (`hears_emergency_band`) and units
+   the dispatch order cannot reach by radio (`order_reaches`); ranked by travel
+   steps (`path_length`). 📋 UNBUILT (no issue): `jurisdiction`.
 2. **Select** — pick responder count from `severity`; nearest-first by travel
    path. Materialize a flash-temp squad if no standing responders exist (a LEO
    van rolls in; an S&R crew is deployed).
 3. **Route** — A\* over the real exit graph (coordinate spec §5) toward the
    event; respects locks, warps, and collapsed tunnels automatically.
 4. **Monitor** — track arrival, resolution, and casualties; a responder death
-   re-enters the bus as a new event. *(Arrival tracking + role-keyed handlers
-   ✅ #863; casualty-monitoring ⬜.)*
+   re-enters the bus as a new event. *(A responder that dies holding a call
+   has its call closed `unit_lost`, silently: a destroyed unit does not
+   transmit (`release_on_death`, `security_death`). A critically damaged unit
+   radios one mayday and holds the scene (`_mayday`). 📋 UNBUILT (no issue): a
+   responder death raising a new event.)*
 5. **Resolve** — on completion, return standing NPCs to routine; despawn the
    flash-temp squad after a grace period. *(Linger → return-to-post ✅ #863;
    flash-temp despawn ⬜ — the population layer.)*
+
+A dispatched responder is driven by the souls engine, not seized by the
+director. `assign` (`world/director/assignment.py`) writes a band-0 `respond`
+job: travel to the scene, run the role's arrival handler, watch once per beat,
+travel back to post, stand down. Band 0 outranks every other goal, so a unit
+does not leave a call. `travel_to` is used only for a responder with no soul.
 
 *(Steps 1–3 shipped in #853 minus `jurisdiction` scoping and flash-temp
 materialization, both ⬜ pending the population layer.)*
@@ -290,21 +329,27 @@ Each link, and the play it creates:
   before the report goes out. Multiple witnesses **corroborate** (sharpen the
   BOLO) or **conflict** — and witnesses **can mislead** (a false description
   sends the force after the wrong profile; manipulating witnesses is play).
+  📋 UNBUILT (no issue): one scene yields at most one witness, and a witness's
+  description is always accurate. A witness may refuse to report
+  (`report_posture` "never") or call it in at twice the speed ("fast").
 * **Reports travel by radio** (`RADIO_COMMS_SPEC`, the colony's primary comms).
   No transmission → the force never learns. Disrupting comms is a first-class
   criminal avenue: snatch the walkie from a witness's hand, break the rooftop
-  antenna, jam the band. Until radio ships, dispatch's report step is an
-  acknowledged *magic placeholder*.
+  antenna, jam the band (📋 UNBUILT (no issue)). Reports ride real radio
+  (`world/radio.py`).
 
   *(Stale 2026-09-12: radio SHIPPED — `world/radio.py`, `RADIO_COMMS_SPEC`
   Phases 1–2. The witness spawns carrying a real `WALKIE_TALKIE` on 911MHz
   and `witness_report` gates on it (#1009/#1020); nothing in the report step
   is a placeholder any more.)*
 * **The BOLO is a perception-graded descriptor, not a handle.** What the event
-  carries is *what witnesses saw*: a clear witness yields the perp's
-  `apparent_uid` (the identity system's presentation hash); a poor/distant one
-  yields only a coarse descriptor (build/height); one who *recognised* the perp
-  yields a name. On scene, a responder **scans who it can currently perceive**
+  carries is *what witnesses saw*, and the BOLO says how it was learned. Only a
+  security unit on the scene passes the perp's `apparent_uid` (the identity
+  system's presentation hash), and only that can produce a high-confidence
+  match. A human witness passes what anyone could describe: height, build, and
+  the colour and garment of what they wore. A radio caller passes whatever
+  words they used. Either one gives at most a low-confidence match.
+  📋 UNBUILT (no issue): a witness who *recognised* the perp giving a name. On scene, a responder **scans who it can currently perceive**
   (perception-gated — stealth/blindness apply) and matches against the BOLO.
   Consequences fall out of the identity system for free: **flight** (not
   present), **disguise/re-sleeve** (UID changes → BOLO stale), **blending**
@@ -313,6 +358,13 @@ Each link, and the play it creates:
   action is **tiered**: high confidence → detain; low confidence → challenge /
   question / observe (friction, not instant injustice). A coarse BOLO can put
   an innocent lookalike in the hot seat — and a smart perp exploits that.
+  On scene (`world/director/security.py` `security_arrival`, `watch_once`): a
+  matched or wanted suspect who is already fighting is not detained; the unit
+  deploys its arm gun and attacks, once per call. Otherwise high confidence
+  means a challenge and a hold at aim (`_aim_lock`), low confidence means
+  questioning, and no match means the unit logs the scene. A face on the
+  force-wide wanted record is challenged even when the current call is about
+  something else.
 * **Intel is hybrid and syncs at base.** A bot's identifications are **per-bot**
   knowledge until it **returns to base and syncs**, only then joining the
   force-wide wanted record. The force knows your face *eventually*; a given bot
@@ -323,7 +375,8 @@ Each link, and the play it creates:
 * **Attention & triage are bounded.** A responder continuously triages its
   assigned event against what it *perceives en route* — an armed individual, an
   active assault, graffiti-in-progress — by severity × immediacy × proximity.
-  It can be **preempted / distracted** (bait play). At the force level,
+  It can be **preempted / distracted** (bait play). 📋 UNBUILT (no issue):
+  en-route triage and preemption; a unit on a call finishes it. At the force level,
   **capacity is finite** (a configured pool of security bots + deployment
   dynamics, later): multiple incidents force allocation, some go unanswered —
   **overwhelming the force is an intended heist tactic**.
@@ -347,23 +400,30 @@ a shop container; vandalism *is* the graffiti command. The crime layer
 (§5.1), and raises the event. Anything the systems permit, you can do — the
 only question is whether you were *seen*.
 
-| Crime | The act | Severity (1–5, tunable) | How the force learns |
+| Crime | The act | Severity = units sent (`CRIME_SEVERITY`) | How the force learns |
 |---|---|---|---|
-| Shoplifting | stealth-take from a shop | 1 | often never; stocktake shrinkage later (no BOLO) |
+| Shoplifting | stealth-take from a shop | 1 | often never; stocktake shrinkage later (no BOLO). 📋 UNBUILT (no issue): no act raises this type, and there is no stocktake |
 | Vandalism | graffiti on property | 1 | witnessed-in-the-act only |
-| Pickpocketing | `pickpocket` (tokens) | 1–2 | victim notices late/never; coarse BOLO |
-| Mugging | threaten/grapple → frisk → steal | 2–3 | **the victim reports** (if alive, conscious, able) |
-| Armed robbery | wielded weapon + take (shop/NPC) | 3–4 | victim + crowd witnesses; good BOLO |
-| Assault | combat on an unwilling target | 3–4 | loud — crowd-gated witnesses |
-| Murder | death | 5 | **discovered via the corpse** → forensic BOLO off `signature_at_death` (`world/forensics.py`, exists) |
-| Sabotage | break antenna / infrastructure | 2–3 | discovered when the hole is noticed |
+| Pickpocketing | `pickpocket` / `steal` | 1 | only a failed lift is noticed: the victim and onlookers who can see the thief go Alert, and a crowd-gated witness may call in a theft with no BOLO (a sourceless incident the hunt reads); a clean lift is never reported |
+| Mugging | threaten/grapple → frisk → steal | 2 | **the victim reports** (if alive, conscious, able). 📋 UNBUILT (no issue): no act raises this type |
+| Armed robbery | wielded weapon + take (shop/NPC) | 2 | victim + crowd witnesses; good BOLO. 📋 UNBUILT (no issue): no act raises this type |
+| Assault | combat on an unwilling target | 2 | loud — crowd-gated witnesses |
+| Murder | death | 3 | **discovered via the corpse** → forensic BOLO off `signature_at_death` (`world/forensics.py`). 📋 UNBUILT (no issue): a death raises no event and nothing reads `signature_at_death` into a BOLO; a killing is reported, if at all, as the assault that led to it |
+| Sabotage | `sabotage <structure>` (a long, visible act) | 1 | witnessed at commission: crowd-gated witness and BOLO, if a report can still reach anyone |
+
+Severity is the number of units `dispatch` sends (at least one). The values
+are `CRIME_SEVERITY` in `world/director/crime.py`, the frugal ladder recorded
+in the status banner (#1182). The table's "Armed robbery" is keyed `robbery`.
 
 **Three report paths** (what actually varies per crime):
 1. **Witnessed at commission** — the §5.1 chain as designed (loud crimes).
 2. **Victim-reports** — the victim *is* the witness; everything in §5.1 applies
    to them (silence, snatch the walkie, intimidate). A mugging done right
-   leaves a victim who *chooses* not to report.
-3. **Discovered later** — quiet crimes raise events off the *evidence*:
+   leaves a victim who *chooses* not to report. 📋 UNBUILT (no issue): every
+   report comes from a spawned crowd witness or a unit on the scene, never
+   the victim.
+3. **Discovered later** — 📋 UNBUILT (no issue): nothing raises an event off
+   evidence. Quiet crimes raise events off the *evidence*:
    stocktake shrinkage (no BOLO), a found corpse (**forensic BOLO** — degraded,
    cold-trail), a district gone radio-dark. Note the grim emergent truth:
    unwitnessed murder is *quieter* than assault — finishing the job silences
@@ -406,8 +466,11 @@ only question is whether you were *seen*.
   proximity-as-membership).
 * **The report step** — the victim runs the §5.1 witness pipeline on
   themselves: delay (the interdiction window), then report if able.
+  📋 UNBUILT (no issue): a victim never reports; a failed theft is called in
+  by a spawned crowd witness.
 
-**Heat — the spatio-temporal crime map.** Crimes accumulate **heat** at their
+**Heat — the spatio-temporal crime map.** 📋 UNBUILT (no issue; OPEN, see
+RECONCILIATION). Crimes accumulate **heat** at their
 coordinates over time (decaying), and heat **dictates patrol allocation**:
 hot districts draw patrols, quiet ones thin out. Getting away with quiet crime
 is consequence-*free for you* but raises district heat — the world responds to
@@ -419,7 +482,7 @@ cold-by-design is player knowledge worth having.
 
 **Dependency:** mugging/shoplifting/pickpocketing need the **theft verbs**
 (`steal`/`pickpocket`/frisk-reveal, `STEALTH_AND_DETECTION_SPEC` §6.2) —
-specced, unbuilt; crime pulls them forward in the build order.
+`commands/CmdTheft.py` and `frisk`.
 
 *(Stale 2026-09-12: the theft verbs SHIPPED 2026-07-03 —
 `commands/CmdTheft.py` (`CmdSteal`, `CmdPickpocket`), registered in
@@ -453,7 +516,7 @@ to make the *default* free.
 
 **Third-party action safety.** When a dispatched NPC acts **on a player**
 (a security bot restrains, a companion touches, a ganger shoves), that action
-must route through the future **trust/consent gate** (`TRUST_AND_CONSENT_SPEC`,
+must route through the **trust/consent gate** (`world/consent.py`, `TRUST_AND_CONSENT_SPEC`,
 flagged SUPER IMPORTANT). *(Stale 2026-09-12: the gate SHIPPED IN FULL
 2026-07-03 — `world/consent.py` (`check_consent` / `can_contest` /
 `is_restrained`) plus the `trust`/`distrust` commands. It is a live
@@ -464,8 +527,8 @@ consent rules as player-initiated ones. Reserve the seam now.
 ## 7 · Worked examples
 
 * **Assault → LEO response.** Combat raises `assault` at a room. Dispatcher
-  matches `security_bot` / LEO by jurisdiction + proximity, materializes a squad
-  if none stand nearby, routes them via A\* to the scene, monitors. If a player
+  matches `security` units by travel distance (📋 UNBUILT (no issue):
+  jurisdiction, and materializing a squad if none stand nearby), routes them via A\* to the scene, monitors. If a player
   is present when they arrive and severity is high, the dispatcher (LEO) may get
   an LLM line ("Hands where I can see them"); otherwise it acts on templated
   commands.
@@ -508,10 +571,10 @@ consent rules as player-initiated ones. Reserve the seam now.
   **first MOB consumer**: a security-robot patrol/detect/challenge/restrain state
   machine that exercises this spec end-to-end (routines, LEO response, alert
   propagation, the trust-gated lawful restraint) — deterministically, no LLM.
-* **Radio comms (`RADIO_COMMS_SPEC`, 📋 drafted #859).** The colony's primary comms and
+* **Radio comms (`RADIO_COMMS_SPEC`, `world/radio.py`).** The colony's primary comms and
   the carrier for §5.1's report link: witness reports, dispatch orders, and the
-  base intel-sync all ride radio. Jamming/antenna sabotage/walkie-snatching cut
-  the chain. Until it ships, the report step is a magic placeholder.
+  base intel-sync all ride radio. Jamming (📋 UNBUILT (no issue))/antenna
+  sabotage/walkie-snatching cut the chain.
 
   *(Stale 2026-09-12: SHIPPED, not 📋 drafted — `RADIO_COMMS_SPEC` Phases 1–2
   are live in `world/radio.py`, including range/antennae, mast repeaters and
@@ -520,7 +583,8 @@ consent rules as player-initiated ones. Reserve the seam now.
 * **Identity & recognition (`IDENTITY_RECOGNITION_SPEC`) — the BOLO substrate.**
   §5.1's identification runs on `apparent_uid` (presentation hash): disguise/
   re-sleeve defeats a BOLO and resets a wanted record; recognition memory is
-  what lets a witness yield a *name*.
+  what lets a witness yield a *name* (📋 UNBUILT (no issue): no BOLO carries a
+  name).
 * **Crowd system — witness generation.** Crowd level decides whether a crime
   has a witness at all; a witness materializes as a real NPC (§5.1).
 
@@ -528,7 +592,7 @@ consent rules as player-initiated ones. Reserve the seam now.
 
 | Phase | Scope | Notes |
 |---|---|---|
-| **3 — Event bus & dispatcher** | ✅ **CORE SHIPPED** (#853): `WorldEvent`, `ROLE_RESPONDS_TO`, `find_responders` (nearest-by-travel), `dispatch` (severity-scaled), `travel_to` (the routine-movement primitive too), `@dispatch` (removed 2026-10-09, #3728). Monitor/resolve + a real event bus still ahead. | The "dispatch system" proper |
+| **3 — Event bus & dispatcher** | ✅ **CORE SHIPPED** (#853): `WorldEvent`, `ROLE_RESPONDS_TO`, `find_responders` (nearest-by-travel), `dispatch` (severity-scaled), `travel_to` (the routine-movement primitive too), `@dispatch` (removed 2026-10-09, #3728). Monitor/resolve: `world/director/assignment.py`. 📋 UNBUILT (no issue): a real event bus; `raise_event` hands every event straight to `dispatch`. | The "dispatch system" proper |
 | **1 — Population registry & LOD** | 🟡 **security-base slice SHIPPED** (#901): `world/director/population.py` — `@patrol/base` designates the base room (spawn/sync/**respawn**: the heartbeat maintains `db.security_complement`, cycling one alcove replacement per tick; census self-heals — dead units just fall out of the count); one shared `spawn_secbot` factory (a secbot is always "a {finish} **security robot**", #903). Still ahead: the general registry, ephemerals-at-scale, spawn-on-approach LOD *(contradiction note 2026-09-12: the RECONCILIATION block above calls §3's spawn-on-approach/virtualization ABANDONED — cold souls stay instantiated — so this row's "still ahead" reads the opposite way; the other two items are unaffected)*, **the anti-small-worlding presentation layer (§10)**. | Needs coordinate proximity (spatial Phase 1 ✅) |
 | **2 — Roles & routines** | 🟡 **patrol beats SHIPPED** (#899): `db.post` (assignments return to base) + `db.patrol_beat` loops via the **GLOBAL_SCRIPTS heartbeat** (45s; #908 — hand-created script rows never arm, learned hard) — **but the FEET moved (#2373): a souled body's beat is a band-4 souls goal now (`world/souls/actions._patrol_plan`), walked by the 30s `souls_heartbeat`. `director_routines` still ticks at 45s and still owns what a beat IS — route, stagger, cadence, waypoint hook, complement respawn — but `routines.tick_npc` returns `souls` for a souled body and walks only an unsouled one. Two schedulers reading each other's attributes over the same bodies was the bug; one driver per body is the fix**; waypoint hook = the security wanted-sweep (**Patrol→Detect by composition**: a flagged face raises a `disturbance` the patroller answers) — **still `routines.at_waypoint`, but role-branched now: security sweeps, a civilian gets a role-authored ambient beat (`civilians.ambient_beat`). A souled body reaches the hook through the souls `patrol_mark` step (#2373); an unsouled one — which every freshly spawned civilian still is — reaches it from the 45s tick exactly as before**; `@patrol` command family; first live beat = the two-district figure-eight over the Central Span. ~~Still ahead: time-of-day schedules, non-security routines.~~ **Both landed, but outside this ladder (see RECONCILIATION, §4): non-security routines shipped as the ambient civilian layer — `world/director/civilians.py`, haunts sampled around wherever the civilian appears and walked at a slower `patrol_cadence`, a role-authored `ambient_beat` at every stop, managed live by `@civilians` (removed 2026-10-09, #3728; the heartbeat loop owns the census); and time-of-day shipped as the souls tripartite 8h clock — `SCHEDULES` day/swing/night plus `on_duty`/`soul_hour` (`world/souls/engine.py`) and `current_shift` (`world/souls/posts.py`) — i.e. as WANTS against a clock, not as the routine schedules this row meant.** | Needs spatial Phase 2 ✅ |
 | **4 — Deterministic interaction vocabulary** | Templated NPC↔NPC / NPC↔PC exchanges via real commands | Zero-LLM baseline |

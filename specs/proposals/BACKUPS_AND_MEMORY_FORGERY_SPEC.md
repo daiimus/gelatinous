@@ -7,9 +7,10 @@
 > the Thawn-Harrison terminal is required for a flash clone, and an
 > uninsured death does not bring that person back (a fresh character is
 > still allowed). See `specs/SLEEVE_INSURANCE_SPEC.md`.
-> §1 documents **shipped** behaviour (traced from
-> `world/souls/posts.py`, `typeclasses/death_progression.py`); §2
-> onward is proposal.
+> §1 describes current behaviour (`world/imprint.py`,
+> `world/souls/posts.py`, `typeclasses/death_progression.py`,
+> `commands/charcreate.py::create_flash_clone`, `world/insurance.py`);
+> §2 onward is proposal.
 >
 > **§1 AND §8.2 ARE STALE (noted 2026-09-11).** They were written on
 > 2026-08-21 between 20:26 and 20:38 (PRs #2186, #2187). Eighteen
@@ -49,10 +50,11 @@ reason this spec is short.
 > #2191 / issue #2190).** The live record is built by
 > `world/imprint.py::capture()`; `world/souls/posts.py::_imprint_of()`
 > is a thin alias kept so this module's callers read as they did. The
-> record also carries three fields added since and missing from the
-> block below: `opinions` (#2388), and `designation` + `skills`
-> (#2800) — the last two restored with **no** cutoff, because a
-> service record is not an episode.
+> record also carries five fields added since and missing from the
+> block below: `opinions` (#2388); `designation` + `skills` (#2800),
+> restored with **no** cutoff, because a service record is not an
+> episode; and `blueprint_key` + `dbref` (#3667), so that a post's
+> rebuild restores only a snapshot of its own keeper (`_try_resleave`).
 
 ```python
 {
@@ -73,21 +75,26 @@ reason this spec is short.
   *stores* for a post-holder. Backups are therefore **institutional** —
   a policy covering staff, not a consumer product. PCs get none.
   **No longer true (noted 2026-09-11):** the call is
-  `snapshot_imprint()` (`typeclasses/death_progression.py:534`), and it
-  is only half the death path — ten lines further down the same method
+  `snapshot_imprint()` (called from
+  `typeclasses/death_progression.py::DeathProgressionScript._handle_corpse_creation_and_transition`),
+  and it is only half the death path — right after it the same method
   writes `character.db.imprint = imprint.capture(character)` for
   **everyone** (PR #2189, closing #2188), and `create_flash_clone`
   restores from it through the same `world/imprint.py::restore()` an
   NPC resleeve uses. Post-holders additionally get the per-shift record
-  described below. What is *institutional* today is the **premium and
-  the restore policy**, not the existence of a backup.
+  described below. Nothing about a return is institutional: every return, a player's
+  or a keeper's, is paid by the dead body's own sleeve policy, bought
+  at the Thawn-Harrison terminal (`world/insurance.py`, #3667).
 * **Storage:** on the post fixture, `db.post_memory_snapshots[shift]`.
   One record per shift, **overwritten**.
 * **Restore:** `_try_resleave()` brings the dead keeper back when their
   own sleeve policy pays (#3667; the till premium is gone): the archived
   body is revived and restored from its own `db.imprint`, or a
   never-archived keeper is rebuilt from a snapshot that names their
-  blueprint and body, with everything earlier than `taken_at`. The body
+  blueprint and body. Either way `world/imprint.py::restore()` brings
+  back the memories, thoughts and opinions from before `taken_at`, and
+  the faces and voices first met before it; dossiers, designation and
+  skills come back whole. The body
   inherits the recorded `sleeve_uid`, so the face is the same face.
 * **The gap:** `taken_at = died_at - world/imprint.py::GAP` (5400s).
   The last ~90 minutes never made the backup. `GAP` is the only place
@@ -111,6 +118,12 @@ Replace the constant with an event.
 
 * A character visits a terminal (Thawn-Harrison, clinics, a black
   clinic at a markup) and takes a backup. `taken_at` is *now*.
+* The Thawn-Harrison lobby terminal
+  (`typeclasses/terminals.py::InsuranceTerminal`) takes a DNA sample and
+  files a sleeve **policy**, an off-body record keyed by sleeve uid
+  (`world/insurance.py::buy_policy`, #3667). It captures no imprint: the
+  imprint is still stamped on the body at death. An on-demand backup
+  could extend that terminal and that store.
 * The gap stops being a number in the source and becomes **how long
   you left it** — a fact about the character, visible in play, and
   their own fault.
@@ -278,16 +291,26 @@ stays **institutional**. Players already resleeve free via
 sleeve_uid`) and deliberately leaves the brain empty — *"flash clones
 have empty brains and recognise nobody"*.
 
+> **SUPERSEDED in part (owner ruling 2026-09-25, #3667):** players do
+> not resleeve free. A flash clone needs a sleeve policy bought in
+> advance at the Thawn-Harrison terminal, and an uninsured death does
+> not bring that person back. See `specs/SLEEVE_INSURANCE_SPEC.md` §1.
+
 > **The rationale was overtaken the same night (noted 2026-09-11).**
 > Since PR #2189 (closing #2188) a flash clone is *not* empty: every
 > death stamps `character.db.imprint`, and `create_flash_clone` calls
-> `world/imprint.py::restore()` on it, so a PC wakes knowing the faces,
+> `world/imprint.py::restore()` on it, so a PC whose policy pays wakes knowing the faces,
 > the voices, and — since #2800 — the designation and skills the record
-> held, minus the gap. The quoted line still stands in
-> `IDENTITY_RECOGNITION_SPEC` §Flash Clone Interaction, which is stale
-> the same way. **Whether the RULING survives is an owner call:** PCs
-> now have a backup in everything but insurer, premium and history. There is no perm-death to
-soften and no premium to charge, so coverage would buy nothing today.
+> held, minus the gap. `IDENTITY_RECOGNITION_SPEC` §Flash Clone Interaction now says
+> recognition is restored from the imprint, but its §Organic Memory
+> still says flash clones "start with empty recognition memory", which
+> is stale the same way. **The owner answered on 2026-09-25 (#3667):** players are
+> in the insurance loop, which supersedes the free resleeve above; see
+> `specs/SLEEVE_INSURANCE_SPEC.md` §1, ruling 6. An uninsured death is
+> permanent for that character; the account can still start a fresh one.
+> The policy is bought at the Thawn-Harrison terminal, and its price
+> (`world/insurance.py::POLICY_PRICE`) is 0 until the economy is
+> balanced (owner ruling 2026-09-25).
 
 > Worth noting for later: this is **coherent, not inconsistent**. A PC
 > without a backup wakes recognising nobody; an NPC with one wakes
@@ -295,12 +318,16 @@ soften and no premium to charge, so coverage would buy nothing today.
 > coverage is ever revisited, that is the value it sells — not
 > survival.
 >
-> **Superseded (noted 2026-09-11):** a PC with no policy still wakes
-> holding the imprint stamped at their own death, so memory is no
-> longer the line between the two. What the cast has and players do
-> not is the **insurer**: a premium, a body rebuilt for them, a record
-> held off-body where somebody else can reach it — and that last part,
-> not memory, is what PC coverage would actually sell.
+> **Superseded (noted 2026-09-11, and again by #3667):** a PC with no
+> sleeve policy does not come back: the flash clone is refused
+> (`commands/charcreate.py::create_flash_clone`,
+> `world/insurance.py::flash_clone_refusal`), and the account can only
+> start a fresh character. An insured PC wakes holding the imprint
+> stamped at their death, minus the gap. Players and the cast buy the
+> same policy at the same terminal. What only the cast has is the post's
+> per-shift copy of a keeper's imprint (`db.post_memory_snapshots`). No
+> insurer-held backup and no backup history exists for anyone:
+> 📋 UNBUILT (not decided, see §9).
 
 **8.3 — History depth.** How many past selves does an insurer keep,
 and does a stale restore cost less than a fresh one? *(Open.)*
@@ -322,8 +349,9 @@ Thawn-Harrison secret. Changes every conversation about it. *(Open.)*
   one mind runs two bodies (§8.4). The largest thing in this spec.
 * Personal backups — **ruled out** for now (§8.2), not merely gated.
   **Partly overtaken (noted 2026-09-11):** the personal *record*
-  already ships — `character.db.imprint`, stamped at every death and
-  restored free at decant (PR #2189 / issue #2188). What remains ruled
+  exists — `character.db.imprint`, stamped at every death and
+  restored at decant only when the dead body's own sleeve policy pays
+  (PR #2189 / issue #2188; the policy gate is #3667). What remains ruled
   out is the **product**: insurer-held storage, on-demand capture, a
   premium, history. Read §8.2's note before building on this line.
 

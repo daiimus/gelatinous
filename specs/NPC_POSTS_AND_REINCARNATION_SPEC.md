@@ -1,6 +1,8 @@
 # NPC Posts & Reincarnation Spec
 
-> **Status:** ✅ §P1 + §P2 SHIPPED. §P3 (memory snapshot/restore at death
+> **Status:** ✅ §P1 SHIPPED; §P2 except the vacant desc (unbuilt on purpose,
+> owner ruling 2026-09-08 below) and the generator identity (`build_successor`
+> has no caller: a successor is an existing idle soul). §P3 (memory snapshot/restore at death
 > for re-sleeve) PARTLY built — the snapshot is written and read, but see
 > the drift note below.
 >
@@ -30,7 +32,10 @@
 >
 > **Owner-decided values (unchanged):** successor 24h / re-sleeve 8h; the
 > till/stock are the POST's (successors inherit); Del + Sully are
-> INSTITUTIONS (re-sleeve).
+> INSTITUTIONS (re-sleeve). (As built: one delay per post, `db.post_delay`,
+> gates the return and the succession alike; with none set, `DEFAULT_DELAY`
+> (6 h) applies, and 0 means at once. The blueprints' `delay_hours` fields
+> have no reader.)
 > **SUPERSEDED 2026-09-25 (#3667):** whether a keeper returns is no longer
 > the post's or the institution's call. It is the person's own sleeve
 > policy, bought alive at the Thawn-Harrison terminal; a post decides only
@@ -43,7 +48,8 @@ This spec sells a pillar — *"the new butcher doesn't know you're the
 ratcatcher… murder deletes social capital"* — implemented by
 `build_successor` rebuilding a stranger from the blueprint with empty
 dossiers. **`build_successor` has no production caller and never has.**
-What runs instead offers the vacant slot to the nearest idle SOUL.
+What runs instead offers the vacant slot to the nearest idle SOUL who can
+walk there.
 
 The souls layer arrived after this spec and changed the ground under it.
 Measured live 2026-09-08: 78 souls, 49 holding posts, 29 idle. Three
@@ -52,7 +58,8 @@ replacement tiers now exist, and they match the owner's stated ideal —
 cover losses… some might be resleeves and be consistent"*:
 
 1. **Re-sleeve** — the same person returns, memories intact
-   (`_try_resleave`), **when their own sleeve policy pays** (#3667). Healthy.
+   (`_try_resleave`), **when their own sleeve policy pays** (#3667), and only
+   on a shift that carries their blueprint name. Healthy.
 2. **Succession** — an idle soul takes the post (`_eligible_candidates`
    → `do_claim`). Works mechanically.
 3. **Generation** — `world/souls/population.sweep` seeds new residents.
@@ -69,13 +76,18 @@ its own issue rather than assumed:
   largest gap and it is independent of succession.
 * **The idle pool is the colony, not a labour reserve.** Those 29 are
   gangers, scavvers, salarymen, hawkers, an addict, a DJ, a grower —
-  all with homes, one blueprinted. `_eligible_candidates` filters only
-  on has-no-post / not-mid-survival-task / not-a-robot and then sorts by
-  DISTANCE, so the butcher's block can go to a ganger.
+  all with homes, one blueprinted. `_eligible_candidates` takes souls
+  with no post and a location, not pinned in time, not on a
+  hunger/safety/claim/treat job, without an order waiting on a counter, and
+  not robots, sorted nearest first; the sweep offers down that list and
+  skips anyone who cannot walk there. So the butcher's block can still go
+  to a ganger.
 * **The generation loop cannot see that.** `SEED_TARGET_UNEMPLOYED = 2`
   against an `unemployed_count` of 29, so it never fires — while the
   labour reserve in the sense that matters is roughly zero. One counter
-  carries two meanings of "unemployed".
+  carries two meanings of "unemployed". `unemployed_count` also leaves out
+  lawless and pinned souls; the hiring list leaves out pinned souls but not
+  lawless ones.
 
 **`build_successor` must not simply be wired.** It builds a genuine
 stranger (random name and face from the pools, same trade, empty
@@ -111,9 +123,9 @@ breaks silently the first time a soul with history returns to the pool.
 ## 0 · Purpose
 
 Killing a named NPC should be **consequential, not catastrophic — and never
-cheap**. Today it is catastrophic for the world (the butcher gig dies with
-Ottilie, forever, until a builder hand-remakes her) and cheap for the killer
-(no interesting consequence — the service just vanishes). The sleeve lifecycle
+cheap**. Without posts it would be catastrophic for the world (the butcher gig would
+die with its keeper, forever, until a builder hand-remade her) and cheap for
+the killer (no interesting consequence — the service would just vanish). The sleeve lifecycle
 already answers "what does death mean here" for PCs; this spec extends the
 same worldview to NPCs, with the colony's class system baked in:
 
@@ -141,16 +153,19 @@ personality + scenario), `llm_driven`, stats, placement line, and **post
 binding**. The `spawn_secbot` / `spawn_civilian(role, anchor)` factories are
 the proven shape; this extends it from role-generic to person-specific.
 
-- Lives in `world/npcs/blueprints.py` (one registry, one builder), or one
-  module per district if it grows.
+- Lives in `world/npcs/blueprints.py`: the `BLUEPRINTS` registry, `build_npc`
+  (the builder in use), the unwired `build_successor`, and `verify_blueprint`.
 - **Dual-mode identity:** a blueprint carries either a FIXED identity (used by
   re-sleeve — Ottilie is Ottilie) or a GENERATOR (used by successor — roll a
   new name from the namebanks, new face/build from the identity pools, new
   flavor from `mob_flavor`; the trade-specific kit and archetype stay). The
   civilian spawner's `dress_from_role` wardrobe-pool pattern is the precedent
   for successor wardrobe variety.
+  > As built: every blueprint has a fixed identity. The generator mode exists
+  > as `build_successor`, has no caller, and must not be wired as-is (see
+  > "Succession: the drift"). A successor is an existing idle soul.
 - **Side benefit (why this ships first):** blueprints make the existing roster
-  *reproducible* — today Ottilie/Del/Marta exist only as live DB state from
+  *reproducible* — without one, a named NPC exists only as live DB state from
   imperative shell sessions. A blueprint is also a backup, a test fixture,
   and cheap content for the next market NPC.
 
@@ -201,6 +216,8 @@ makes them *administrative*:
   > through the minutes in which the colony clock still names their own
   > shift, wherever they are standing. A post with a single slot has no
   > relief at all, so its keeper covers the whole of `HOLDOVER_HOURS`.
+  > `HOLDOVER_HOURS` is one hour, a provisional value until the balance
+  > pass.
 - **The post persists through death.** The cart keeps its stock, till, and
   prices while unstaffed — commerce pauses, property remains. (Deterministic
   transactions gate on the keeper being present: no butcher, no grinding.)
@@ -263,6 +280,11 @@ service lives in `world/bar.py` — so nothing accumulates in
 The director heartbeat (the same `GLOBAL_SCRIPTS` loop that runs patrol beats
 and the security complement) gains a **posts sweep**:
 
+0. Before the posts, the sweep writes `soul_fixture` onto any keeper that
+   lacks it (`stamp_fixtures`), and releases any keeper whose post fixture
+   or post room has been deleted (`release_the_orphaned`, #3563): their
+   post, venue, fixture and wage are cleared and their role falls back to
+   their civic role, so they count as unemployed and can be hired again.
 1. For each registered post: is `db.post_keeper` alive, intact, and at (or
    near) the post? A deleted/dead keeper stamps `post_vacant_since` and swaps
    the vacant desc.
@@ -276,28 +298,49 @@ and the security complement) gains a **posts sweep**:
    > keeper holds nothing; that is a build error now, not a case. The stamp
    > lands on that slot's `vacant_since` and emits `post_vacant`. No desc
    > swap.
-2. When `now - post_vacant_since > post_delay`, ask the dead keeper's own
-   sleeve policy (`_try_resleave`, #3667), which answers one of three:
+2. When the slot's `vacant_since` is older than `post_delay`, and the shift
+   carries a blueprint name (`db.post_blueprints[shift]`) whose namesake is
+   not alive anywhere outside Limbo, ask the dead keeper's own sleeve policy
+   (`_try_resleave`, #3667). A shift with no blueprint name skips this step:
+   `do_claim` writes none, so a soul hired through succession does not come
+   back to the post, policy or not, and the shift is offered as below. When
+   asked, the policy answers one of three:
    - **RESLEEVED** → the archived body is revived on a record that names
      that exact body, and restored from its own imprint; a keeper who was
      never archived is rebuilt from the blueprint only from a snapshot that
-     is this namesake's own. Arrival renders as a return ("the butcher is
-     back at her cart, moving like the week never happened").
-   - **HOLD** → the keeper is alive elsewhere, or still on the table; the
-     next sweep asks again.
-   - **SUCCESSOR** → no policy (or a blueprint that cannot build): the
-     shift stops carrying the dead keeper's name, and a `successor` post
-     offers it to the nearest idle soul, dossiers **empty**; arrival renders
-     as a claim ("someone new has the cart — younger, warier, the same
-     cleaver"). A `None` post does nothing, forever. The vacancy *is* the
-     content.
+     is this namesake's own. The body wakes in the Thawn-Harrison
+     Decantation Chamber, not at the post (the code cites owner ruling
+     2026-08-20), and walks back to work. The return gives the keeper a
+     "resleeved" thought (the last hours before the dark are gone) and
+     plays the emote "is back at the post, moving like the week never
+     happened.", which is seen in the chamber.
+   - **HOLD** → the body is still on the table (death progression running,
+     or dead but not yet archived), or a return failed and may be tried
+     again; the next sweep asks again. If the shift's namesake is alive
+     somewhere else, the sweep does not ask the policy at all: a
+     `successor` post offers the shift to a stranger.
+   - **SUCCESSOR** → no policy, a blueprint that cannot build, a keeper
+     who was never archived and has no per-shift snapshot naming this
+     blueprint and this body, or `RETURN_ATTEMPTS` (3) failed returns on
+     one vacancy (each failed attempt puts the policy back on file, and the
+     count is kept on the slot as `return_failures`): the shift stops
+     carrying the dead keeper's name, and a `successor` post offers it down
+     the list of idle souls, nearest first, skipping any who cannot walk
+     there. The soul who takes it walks to the post (`_offer` gives it a
+     claim job), dossiers **empty**, and on arrival poses "steps in behind
+     the post, taking stock of the work left undone." The per-post arrival
+     lines in the blueprints have no reader (see §1.2). A `None` post does
+     nothing, forever. The vacancy *is* the content.
 3. Same de-confliction rules as the security loop: one replacement per sweep,
    never while combat is live at the post.
 
 ## 2 · Memory across death
 
 Dossiers (`db.llm_dossiers`) and episodic memory (`db.llm_memories`) live on
-the NPC object and die with it. The policy decides what should survive:
+the NPC object. A blueprinted (essential) keeper's body is archived to Limbo
+at death, not deleted, and keeps its own imprint (`db.imprint`), which a
+return restores; a body that is deleted loses them, apart from the
+per-shift copy on the post. The policy decides what should survive:
 
 - **Snapshot at death:** the corpse-creation hook (or the watcher's vacancy
   stamp) copies the keeper's dossiers + memories onto the POST
@@ -309,7 +352,9 @@ the NPC object and die with it. The policy decides what should survive:
   > voice, as well as dossiers and episodic memory — because it shares
   > `world/imprint.py` with the player's flash clone and so cannot drift
   > from it. The singular `db.post_memory_snapshot` is **no longer
-  > written** (2026-10-09, #3424): nothing had read it since #3672, and its
+  > written** (2026-10-09, #3424): nothing in the running game has read it since #3672
+  > (the one-time build `scripts/builds/085_restore_the_cast.py` still falls
+  > back to it), and its
   > two writers (`snapshot_imprint`'s legacy branch and
   > `world/npcs/posts.snapshot_keeper_memory`, both removed) disagreed on
   > shape. Two live fixtures still carry an inert copy from 2026-08-20.
@@ -323,7 +368,10 @@ the NPC object and die with it. The policy decides what should survive:
   > local to this system: `world/imprint.GAP` (5400s, ~90 minutes) sets the
   > backup's `taken_at`, and `restore` drops every memory, thought, opinion
   > and newly-met face from inside it — so murder stays a mystery for the
-  > player's flash clone and the NPC keeper alike, through one code path.
+  > player's flash clone and the NPC keeper alike, through one code path. Dossiers, the service record
+  > (`designation`) and `skills` are not cut by the gap; they come back
+  > whole. The record also carries the body's `sleeve_uid`, and `restore`
+  > writes it back onto the new body.
   > (`world/imprint.GAP` is the only home for this number; the duplicate `RESLEAVE_GAP` in `world/souls/posts.py` was deleted in #3389 and its one importer, `scripts/builds/085_restore_the_cast.py`, now calls `imprint.cutoff_of()`.) The premium is real: debited from the post's own till — or
   > `db.post_insurer` where the post has none — and credited to the clinic's
   > Thawn-Harrison billing terminal (**SUPERSEDED 2026-09-25, #3667:** the
@@ -334,20 +382,25 @@ the NPC object and die with it. The policy decides what should survive:
   > it simply keeps earning: the cart sells noodles toward its own keeper's
   > resurrection. (All of that is the void model; as built since #3667 the
   > policy record is consumed by the return, taken before the body is
-  > built and put back if the build fails. The snapshot is not cleared.)
+  > built and put back if the build fails. The snapshot is not cleared. A
+  > standing policy granted by staff is not spent: the return re-issues it
+  > in the returned body's name, `world/insurance.renew_perpetual`.)
 - **`successor` discards it** — the empty book is the point. The per-shift
   record stays on the post but is never loaded into the new keeper. (The
   "GM-readable archaeology" copy this line once promised was never given a
   reader and was removed under #3424; `examine` on the fixture shows the
   per-shift record, which is the same knowledge.)
-- **`none`** — the snapshot is the NPC's estate; nothing consumes it.
+- **`None` (no policy)** — no stranger is hired, and the slot stays dark.
+  A named keeper with their own sleeve policy still returns to a shift
+  that carries their blueprint name. The snapshot stays on the post.
 
 ## 3 · The sleeve fiction (why this is coherent, not gamey)
 
 > **SUPERSEDED 2026-09-25 (owner rulings, #3667).** Employer-paid insurance
 > from a post's till, the premium paid to the clinic, and the "like a PC"
 > claim below are wrong: PCs resleeve free today, and the owner called this
-> section "likely hallucinated". Sleeve insurance is a **personal** policy
+> section "likely hallucinated". (Since #3673 a PC also needs a personal
+> policy to come back; it costs 0 tokens, `world/insurance.POLICY_PRICE`.) Sleeve insurance is a **personal** policy
 > bought in advance at a Thawn-Harrison terminal, keyed to the buyer's sample,
 > and consumed at payout. See `specs/SLEEVE_INSURANCE_SPEC.md`.
 > §4's "policy" column becomes: who has bought one.
@@ -398,9 +451,10 @@ Nobody needs a new metaphysics — only a premium they can or can't pay.
 
 - **Delays:** hours or days? (Lean: successor = days — absence should be felt;
   re-sleeve = shorter — insurance is efficient.)
-- **Does a successor inherit the till?** (Lean: yes — the cart's property, not
-  the keeper's; robbing the till is a separate crime with its own spec-less
-  charm.)
+- ~~**Does a successor inherit the till?**~~ Recorded at the top of this
+  spec as owner-decided: the till and stock are the post's, and successors
+  inherit. The code agrees: the till is the fixture's `db.register`, and
+  `do_claim` makes the fixture the new keeper's venue.
 - **Witnessed murder:** does the post snapshot let a successor *know* who
   killed their predecessor (a seeded `feel: wary` against the killer's
   apparent identity), or is a truly blank book cleaner? (Lean: blank for P2;
@@ -410,7 +464,11 @@ Nobody needs a new metaphysics — only a premium they can or can't pay.
 - ~~**Who registers posts**~~ **DECIDED (owner, 2026-07-24): data-driven, no
   builder command.** The post binding, policy, and delay are FIELDS of the
   blueprint; the watcher iterates the blueprint registry, and registration is
-  the deploy cycle. Owner's standing principle: builder tooling will
+  the deploy cycle. (As built: a post is registered by
+  `world/souls/posts.register_post` in a numbered build script, which writes
+  the policy and delay onto the fixture and tags it; the sweep iterates the
+  tagged fixtures. The `post` fields inside each blueprint are not read, and
+  where they differ from the fixture, the fixture is what runs.) Owner's standing principle: builder tooling will
   eventually be designed as an extensive, comprehensive suite — one deliberate
   project. Until then, ad-hoc builder commands are tech debt (each one is a
   future migration), so content-adjacent config stays in data.
