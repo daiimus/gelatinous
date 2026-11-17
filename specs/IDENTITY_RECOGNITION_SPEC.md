@@ -35,7 +35,7 @@ The decisions this system rests on, in the owner's words, newest last. Each row 
 | 2026-11-16 | "Yeah, your assessment is solid." (Asked with three cases of an NPC that knows a person, is hit by that person in a mask, and is then made to forget the person: it watched the mask go on; it saw through the mask; it has a name of its own for the masked figure. "Do you agree with changing case 2 and leaving case 3?") | When an AI NPC forgets somebody, a look it has no name of its own for and knows only because it saw through it to that person goes too, with everything recorded under it, as a look it watched arrive already does. A look it has given a name of its own stays, and its read on that look stays with it, whenever it was earned. What it wrote down while it still called that look by the forgotten name goes, as it did before (#3841). | #3859 | Recognition System, the `forget` command; `NPC_MEMORY_AND_IDENTITY_SPEC.md` §5b |
 | 2026-11-16 | "You recommendation is fine." (Asked with an NPC that hears an unfamiliar voice on the radio, later learns a person's name and voice, then recognises the unfamiliar voice as theirs, and is then made to forget the person. What it noted after recognising the voice already went. "Do you want the second row changed as I recommended, or parked until memory wipes exist in play?" The second row: what it noted before it recognised the voice goes too.) | When an AI NPC forgets somebody, what it noted from a voice before it recognised that voice as theirs goes too, as what it noted afterwards already did. (As built: a voice the NPC holds no entry for, whose stored recognition goes with the name, is reported to it as forgotten. A voice that has an entry of its own is not reported. That second sentence is what the code does, by analogy with a look, #3859; the owner was not asked it.) | #3861 | Recognition System, the `forget` command; `NPC_MEMORY_AND_IDENTITY_SPEC.md` §5b |
 
-**Not ruled yet:** whether naming somebody in person may overwrite a name already given to that voice; whether a forced memory wipe earns a fresh see-through roll; whether what an AI NPC filed under a look or a voice goes with a forgotten name in two leftover cases, where it stays today: the look or voice has only a blank entry, or the see-through or voice recognition was stored for a body object that no longer exists (#3863).
+**Not ruled yet:** whether naming somebody in person may overwrite a name already given to that voice (recorded on closed #3825; no open issue); whether a forced memory wipe earns a fresh see-through roll (recorded on closed #3825; no open issue); whether what an AI NPC filed under a look or a voice goes with a forgotten name in two leftover cases, where it stays today: the look or voice has only a blank entry, or the see-through or voice recognition was stored for a body object that no longer exists (#3863); whether a voice the AI NPC holds an entry of its own for is reported to it as forgotten when the name goes (#3861: not reported, as built by analogy with a look; the owner was not asked).
 
 ## Core Concepts
 
@@ -104,7 +104,7 @@ When a body is transformed — death, decapitation, limb severance, organ harves
 
 **Default — forensic chain only.** Every body-derived surface carries `apparent_uid_at_death` and `source_signature` stamped at the moment of transformation. Investigators reach the original character through `autopsy`, `sever`, blood-pool extraction, or any future tracing surface. Look-time recognition (the "this is someone I know" surface) does NOT fire for these — there's no face to recognise. Applies to: severed limbs (`Appendage`), harvested organs (`Organ`), blood pools, future cyberware items, and any future scene-attribution surface (graffiti spray, fingerprints, etc.).
 
-**Exception — the head carries the face.** `SeveredHead` is the only surface that propagates face-side identity (`sleeve_uid` + the full identity-signature axes a face contributes to) alongside the forensic chain. Look-time recognition fires on a severed head the same way it does on a live body: an observer who remembers the source character sees the assigned name; a stranger sees the head's sdesc. The body, post-decapitation, falls back to forensic-only — `Corpse.get_display_name` short-circuits tertiary recognition when `db.head_severed` is True, exactly because the face left with the head.
+**Exception — the head carries the face.** `SeveredHead` is the only surface that propagates face-side identity (`sleeve_uid` + the full identity-signature axes a face contributes to) alongside the forensic chain. Look-time recognition fires on a severed head the same way it does on a live body: an observer who remembers the source character sees the assigned name; a stranger sees the head's sdesc. The body, post-decapitation, falls back to forensic-only — `Corpse.recognised_as` names nobody for a corpse whose anatomy shows the head gone (`_is_headless`), exactly because the face left with the head.
 
 **Why this is the only rule needed.** A corpse with an intact head is just the live-body case continuing post-death: face still visible, recognition still fires until decay obscures it. A corpse with a severed head is the default case (forensic-only) with the head as a separate carrier of face-side identity. No other transformation in the system propagates a face — limbs don't have one, organs don't have one, blood doesn't have one, a prosthetic arm doesn't have one. So no other surface needs face-side propagation.
 
@@ -166,7 +166,7 @@ Derived from the cross-product of height and build. Players select height and bu
 
 ### Keyword List
 
-Players select their keyword via `describe keyword`. Keywords are gender-gated: feminine-presenting and gender-neutral keywords are available to female characters, masculine-presenting and gender-neutral to male characters. The `appear` command allows selecting **any keyword from the full catalog** regardless of the character's gender — a male character can disguise as a "woman" and vice versa. This is available to all characters, not restricted by access level.
+Players select their keyword via `describe keyword`. Keywords are gender-gated: feminine-presenting and gender-neutral keywords are available to female characters, masculine-presenting and gender-neutral to male characters, and all three lists to a character of neutral gender. The `appear` command allows selecting **any keyword from the full catalog** regardless of the character's gender — a male character can disguise as a "woman" and vice versa. This is available to all characters, not restricted by access level.
 
 **Feminine-presenting (24):**
 female, girl, lass, woman, matron, grandma, hag, granny, madam, tomboy, chick, gal, chica, vixen, diva, dame, sheila, mona, bimbo, bitch, lady, senorita, chola, devotchka
@@ -193,16 +193,16 @@ Format: `"wielding {article} {weapon}"` — e.g., `"wielding a kitchen knife"`.
 
 #### Clothing-based Feature
 
-The system selects the most visually prominent worn item. Prominence is determined by:
-1. Outermost layer (what's on top)
-2. Largest coverage area (full-body > torso > head > extremities)
-3. If multiple items tie, the most recently equipped takes precedence
+The system picks one worn item (`Character.get_distinguishing_feature`):
+1. The coverage map gives the outermost item at each body location.
+2. Non-disguise items are preferred (see below).
+3. Of those, the item at the alphabetically first body location is used. Coverage size and the order things were put on are not read.
 
 Format: `"in {article} {item_sdesc}"` — e.g., `"in a leather jacket"`, `"in red power armor"`, `"in a tattered lab coat"`
 
 Items use a `worn_sdesc_short` attribute for this clause — a brief, recognizable noun phrase. When unset, the selector falls back to the item's `key`.
 
-**Disguise items are deprioritised.** When a wearer has any non-disguise clothing, the feature selector partitions the worn items and prefers the non-disguise pool. The disguise pool is consulted only when nothing else is worn — the *naked-but-masked* carve-out. Without this carve-out, a lone balaclava would yield no feature clause; with it, observers still get `"a tall lean masked droog in a black balaclava"`. When real clothing is added, the feature shifts to that clothing and the balaclava's contribution falls back to the disguise adjective only (see [Disguise Adjective](#disguise-adjective)): `"a tall lean masked droog in a black trenchcoat"`.
+**Disguise items are deprioritised.** When a wearer has any non-disguise clothing, the feature selector partitions the worn items and prefers the non-disguise pool. The disguise pool is consulted only when nothing else is worn — the *naked-but-masked* carve-out. Without this carve-out, a lone balaclava would yield no feature clause; with it, observers still get `"a tall lean masked droog in a black balaclava"`. When real clothing is added, the feature shifts to that clothing and the balaclava's contribution falls back to the disguise adjective only (see [Disguise Adjective](#disguise-adjective)): `"a tall lean masked droog in a black trenchcoat"`. An item flagged `disguise_silent_feature` (contact lenses, for example) is never the feature clause; it still counts in the identity signature.
 
 #### Hair-based Feature
 
@@ -227,10 +227,10 @@ This makes the character harder to distinguish — which is realistic.
 
 ### Hair Attributes
 
-Two new attributes selected at character creation:
+Two attributes selected at character creation, stored as `AttributeProperty`s in the `identity` category (read `char.hair_color`; `db.hair_color` reads `None`):
 
-- **`db.hair_color`** — e.g., "red", "black", "blonde", "white", "brown", "gray", "blue", "green", "pink", "purple", "silver", "auburn" (or None/bald)
-- **`db.hair_style`** — e.g., "cropped", "short", "long", "braided", "dreaded", "mohawk", "ponytail", "shaved sides", "curly", "straight", "matted", "slicked" (or None/bald)
+- **`hair_color`** — e.g., "red", "black", "blonde", "white", "brown", "gray", "blue", "green", "pink", "purple", "silver", "auburn" (or None/bald)
+- **`hair_style`** — e.g., "cropped", "short", "long", "braided", "dreaded", "mohawk", "ponytail", "shaved sides", "curly", "straight", "matted", "slicked" (or None/bald)
 
 Combined for display: `"{hair_color} {hair_style} hair"` → `"red dreaded hair"` or shorthand like `"red dreadlocks"`. The exact phrasing can use a small mapping table for natural-sounding combinations (e.g., "dreaded" + color → `"{color} dreadlocks"`).
 
@@ -240,7 +240,7 @@ Combined for display: `"{hair_color} {hair_style} hair"` → `"red dreaded hair"
 describe keyword <word>
 ```
 
-Changes the player's keyword component only. Validates against the gender-gated keyword list. The physical descriptor and distinguishing feature cannot be set this way — they reflect reality.
+Changes the player's keyword component only. A word on the list for the character's gender is accepted. A catalog word gated to another gender is refused. Any other word is checked as a custom keyword (`validate_custom_keyword`); if it passes, it is accepted and logged as a `KeywordEvent`. The physical descriptor and distinguishing feature cannot be set this way — they reflect reality.
 
 The keyword is also editable from the interactive `describe` editor (bare
 `describe` → item `2 Keyword`), which presents the gender-gated catalog as a
@@ -250,7 +250,8 @@ replacement and the only path for **custom** (off-catalog) keywords.
 
 ```
 > describe keyword droog
-You will now appear as "a lanky droog in a leather jacket" to those who don't know you.
+Changed keyword from man to droog.
+You now appear as: lanky droog in a leather jacket
 ```
 
 ---
@@ -281,7 +282,7 @@ Self-perception (`"You"`) is **not** returned by `get_display_name`; it is handl
 
 ### Who is this to me? One answer for the eye and the keyboard
 
-Every surface that names a person to an observer asks the same question, and since #3811 they all get the same answer: the room listing and every broadcast (`Character.get_display_name`), the `look` header (`get_look_header`), a typed name (`world.search`), and a name a dot-pose is aimed at (`world.emote`).
+Every surface that names a person to an observer asks the same question, and since #3811 they all get the same answer: the room listing and every broadcast (`Character.get_display_name`), the `look` header (`get_look_header`), a typed name (`world.search`), and a name a dot-pose is aimed at (`world.emote`). Two open defects are known exceptions: a corpse or a severed head rolls even when asked with `decided_only` (#3849), and a head cut from a body that died under an `appear` disguise is a stranger to whoever watched it come off (#3848).
 
 ```mermaid
 flowchart TD
@@ -310,7 +311,7 @@ What writes each thing the chart reads:
 | the chart reads | written by | cleared by |
 |---|---|---|
 | a name on a look | `remember <them> as <name>` | `forget` |
-| whose name a look answers to because you watched it arrive (`witnessed_from`, on the entry for that look; it holds the uid of the NAMED entry, which is the look that went only when that look carried the name itself) | being in the room, conscious, when their look changes, if you held a name for the look that went (§Unmasking Moments); and being in the room, able to see, when a corpse or a severed head you were shown a name for is dressed or stripped (#3833; Identity Across Surfaces, "What a body wears, for identity") | `forget`: the entry that carried the name is erased, and the pointer is cleared on every entry that pointed at it (#3825) |
+| whose name a look answers to because you watched it arrive (`witnessed_from`, on the entry for that look; it holds the uid of the NAMED entry, which is the look that went only when that look carried the name itself) | being in the room, conscious, able to see and perceiving them, when their look changes, if you held a name for the look that went (§Unmasking Moments); and being in the room, able to see, when a corpse or a severed head you were shown a name for is dressed or stripped (#3833; Identity Across Surfaces, "What a body wears, for identity") | `forget`: the entry that carried the name is erased, and the pointer is cleared on every entry that pointed at it (#3825) |
 | the link (`linked_to`) | the same hook; also `remember` on a look you have SEEN THROUGH (it links to the entry you saw through to, #3813), and matching papers | `forget`, on every entry that pointed at the erased one (#3825). It is not read for a name. `recall` and an NPC's memories use it to hold several names for one person together |
 | a see-through verdict (`disguise_pierce_cache`) | the first time you LOOK at a look you hold no name for (no entry, or an entry that leads to none), on a body you have named under another (§Disguise Piercing) | `forget`, for a WON verdict that stands on the name being forgotten; one that stands on another name you hold for the same body stays, and a lost one always stays (#3817, #3825) |
 
@@ -323,7 +324,7 @@ Two rules fall out of it, and both were owner rulings on 2026-11-13:
 
 **One rule, applied after the cells, decides who goes on knowing (`_keep_knowing`).** If the observer held a name for the look that has just gone, by any route (its own name, a name read through `witnessed_from`, or a stored see-through), and holds none for the look that has arrived once the cell has done its work, the arriving look's `witnessed_from` is set to the entry that name is stored on. An entry is made for the arriving look if the cell made none, which is the case of somebody who had only seen through the old look; that one entry also takes the same `linked_to`. The cells ask what entries an observer holds. The ruling is about what they know, and the two came apart every time the rule was written as a fact about one cell: an old look held blank but seen through, an arriving look that already led to a name, somebody with no entry at all. `witnessed_from` is always written pointing straight at a named entry, so there is no chain to walk through and no loop to form.
 
-`forget` and `recall` follow the same answer. `recall` reads out the entry of the person the room is naming, which is the entry seen through to when the look itself has none or only a blank one. `forget` takes the name away where it is stored (the look's own entry, or the entry that what you watched or the see-through led to), through either of its doors, **and with it that entry's `witnessed_from` and the `witnessed_from` of every entry that pointed at it**: after `forget`, the look that carried the name names nobody, and neither does any look that was known through it. Naming the face again later is new knowledge about the face; it does not bring the masked look back. Without the second half, forgetting "Ghost", a name given to a masked figure, left the figure answering to "Tamsin" under a message saying they would now appear as their description. Since #3825 the entry itself is erased and the links to it with it: two names joined only through the forgotten look stand alone again (see the `forget` command below). The other look keeps its own name, as it always did: forgetting "Batman" leaves "Bruce" alone. From there the observer stands where anybody stands who did not watch, and may still see through on the roll.
+`forget` and `recall` follow the same answer. `recall` reads out the entry of the person the room is naming, which is the entry seen through to when the look itself has none or only a blank one. `forget` takes the name away where it is stored (the look's own entry, or the entry that what you watched or the see-through led to), through either of its doors, **and with it that entry's `witnessed_from` and the `witnessed_from` of every entry that pointed at it**: after `forget`, the look that carried the name names nobody, and neither does any look that was known through it. Naming the face again later is new knowledge about the face; it does not bring the masked look back. Since #3825 the entry itself is erased and the links to it with it: two names joined only through the forgotten look stand alone again (see the `forget` command below). The other look keeps its own name, as it always did: forgetting "Batman" leaves "Bruce" alone. From there the observer stands where anybody stands who did not watch, and may still see through on the roll.
 
 A dot-pose is typing, not looking. The pose resolver builds a handle for everybody in the room before it has matched anything, so it asks for what is already decided (`get_display_name(actor, decided_only=True)`) and rolls nothing. It asked for the plain display name before, so a pose could roll for somebody the actor had not looked at and land on a name `look` had just said was not there.
 
@@ -331,7 +332,9 @@ The surfaces that ask the question about a uid and not a person in front of you 
 
 ### `get_display_name` Override
 
-The central hook. Currently returns `self.key` (Evennia default). Overridden on Character:
+> **⚠️ Superseded: original sketch.** The block below was the first design. There is no `recall_name` and no `has_identity_overlay`, and the staff overlay was never built. The running order is the chart in §Who is this to me?, as built in `Character.get_display_name` (`typeclasses/characters.py`): a name held for the look (`get_assigned_name`, which follows `witnessed_from`), then the see-through (a roll, or only a stored verdict when `decided_only` is set), then the sdesc with its article.
+
+The central hook. Evennia's default returns `self.key`; Character overrides it:
 
 ```python
 def get_display_name(self, looker, **kwargs):
@@ -376,9 +379,12 @@ recognition_memory = {
                                         # explicit `remember`. Throttled to one
                                         # write per RECOGNITION_BUMP_THROTTLE_SECONDS
                                         # per UID per observer.
-        "times_seen": int,              # Count of explicit `remember` invocations
-                                        # for this entry. Does NOT track passive
-                                        # perception — see `last_seen` for recency.
+        "times_seen": int,              # Raised by each explicit `remember` of
+                                        # this look. Starts at 1 for a new named
+                                        # entry and an unmasking stub, 0 for a
+                                        # face known only from papers. Does NOT
+                                        # track passive perception — see
+                                        # `last_seen` for recency.
 
         # Spatial context
         "location_first_seen": str,     # Room name/key where first encountered
@@ -393,11 +399,15 @@ recognition_memory = {
 
         # Player-authored
         "notes": str,                   # Free-text notes (player-written)
+                                        # 📋 UNBUILT (no issue): written as "" only
         "tags": [str],                  # Player-assigned tags ("dangerous", "merchant", "ally")
+                                        # 📋 UNBUILT (no issue): written as [] only
 
         # System-derived
         "confidence": float,            # 0.0-1.0, Resonance-influenced recognition certainty
+                                        # 📋 UNBUILT (no issue): written as 1.0 only
         "relationship_valence": str,    # "hostile", "neutral", "friendly", "unknown"
+                                        # 📋 UNBUILT (no issue): written as "neutral" only
         "lost_contact": bool,           # True once the entry's UID has not matched any
                                         # observable character for an extended period,
                                         # OR once the observer witnessed the presentation
@@ -430,6 +440,14 @@ recognition_memory = {
                                         # "aka:" row in `memory`. Absent on
                                         # entries that were never linked — read
                                         # it with `.get`.
+        "witnessed_from": str | None,   # Uid of the NAMED entry whose name this
+                                        # look answers to because the observer
+                                        # watched it arrive (#3811). Set by
+                                        # `_keep_knowing`; read for the name by
+                                        # `resolve_assigned_name`; cleared by
+                                        # `forget` (#3825). Absent on entries
+                                        # made by `remember` or papers — read
+                                        # it with `.get`.
 
         # Documentary proof (see NPC_MEMORY_AND_IDENTITY_SPEC.md §2b)
         "attested": [                   # Names a DOCUMENT vouched for. Written
@@ -456,6 +474,7 @@ recognition_memory = {
         ],
 
         # Interaction log (capped, rolling window)
+        # 📋 UNBUILT (no issue): written as [] only
         "recent_interactions": [
             {
                 "timestamp": str,       # ISO timestamp
@@ -479,7 +498,7 @@ The flag therefore carries a mild dual semantic — "this presentation hasn't be
 
 The inverse — clearing the flag back to `False` on re-meet — is handled by `world/identity.py:bump_recognition_recency` (passive perception path), by the recognition writer in `_remember_target` (explicit `remember` path), and by cells C and D of the unmasking broadcast (refreshing the new entry). A future player command may allow explicit pruning of lost-contact entries; auto-pruning is intentionally **not** done.
 
-**Passive recency on perception:** Recency fields on existing recognition entries (`last_seen`, `location_last_seen`, `sdesc_at_last_encounter`) are refreshed without an explicit `remember` whenever the observer perceives a target whose Apparent UID is already in their memory. This is implemented by `world/identity.py:bump_recognition_recency`, invoked from `Character.at_post_move` via `_refresh_recognition_recency`: on every room entry the observer scans the new room's contents and bumps each known UID. Writes are throttled to one bump per `RECOGNITION_BUMP_THROTTLE_SECONDS` (provisional 300s = 5 minutes) per UID per observer, so extended co-location does not spam AttributeProperty writes. The helper is **strictly opt-in for already-remembered UIDs** — it never creates entries; entry creation remains the exclusive responsibility of the `remember` command. The `times_seen` counter is intentionally **not** incremented by passive perception; it counts explicit `remember` invocations only. Stealth/sneaking/hidden mechanics are a known future delta — when those land, they will need to suppress this hook for hidden targets.
+**Passive recency on perception:** Recency fields on existing recognition entries (`last_seen`, `location_last_seen`, `sdesc_at_last_encounter`) are refreshed without an explicit `remember` whenever the observer perceives a target whose Apparent UID is already in their memory. This is implemented by `world/identity.py:bump_recognition_recency`, invoked from `Character.at_post_move` via `_refresh_recognition_recency`: on every room entry the observer scans the new room's contents and bumps each known UID. Writes are throttled to one bump per `RECOGNITION_BUMP_THROTTLE_SECONDS` (provisional 300s = 5 minutes) per UID per observer, so extended co-location does not spam AttributeProperty writes. The helper is **strictly opt-in for already-remembered UIDs** — it never creates entries. Entries are created by `remember` (of a person, or of papers) and by the unmasking hook for an eyewitness (cell B and `_keep_knowing`, §Unmasking Moments); passive perception never creates one. The `times_seen` counter is intentionally **not** incremented by passive perception; only `remember` raises it. A target the observer cannot perceive (hidden) is skipped (`can_perceive`, #3773).
 
 ### Remembering Names
 
@@ -493,18 +512,20 @@ Stores the name in the rememberer's recognition memory under the target's curren
 
 ```
 > remember tall man as Jorge
-You will now recognize a tall lanky man as Jorge.
+You will now recognize tall man in a grey coat as Jorge.
 
 > remember 2nd lanky dude as Sketchy Pete
-You will now recognize a lanky man with a leather jacket as Sketchy Pete.
+You will now recognize lanky dude in a leather jacket as Sketchy Pete.
 ```
 
 If the target is already remembered under a different name:
 
 ```
 > remember Jorge as Johnny Twoshoes
-You now know Jorge (previously 'Jorge') as Johnny Twoshoes.
+You now know Johnny Twoshoes (previously 'Jorge') as Johnny Twoshoes.
 ```
+
+As built, the rename line reads the name after the new one is written, so it prints the new name twice; the first-naming line prints the sdesc without its article. Both are filed as a defect (#3867).
 
 **`forget` command:**
 
@@ -536,7 +557,7 @@ It replaced a `forget` that blanked `assigned_name` and kept the entry, so that 
 recall <target>
 ```
 
-Inspects a single recognition entry: assigned name (if any), what they looked like at first encounter, where, when, and how many times you've seen them. Same target resolution as `forget`.
+Inspects a single recognition entry: assigned name (if any), what they looked like at first encounter, where, when, and how many times you've seen them. Resolves somebody present first, then a remembered name. As built, when the typed word fits more than one thing present, `recall` takes the first match and does not ask which (unlike `forget`; filed as a defect, #3868); if that first match is not a person, it falls back to the remembered names.
 
 **`memory` command:**
 
@@ -563,7 +584,7 @@ Recognition data lives directly on the Character as an `AttributeProperty` (`typ
 **Storage:** `Character.recognition_memory` (dict, AttributeProperty), keyed by **Apparent UID**.
 
 **Properties:**
-- Populated by explicit player action (`remember` command)
+- Populated by explicit player action (`remember`, of a person or of papers) and by the unmasking hook for an eyewitness (§Unmasking Moments)
 - Future: auto-populated by Resonance-driven proximity detection
 - Lost on character deletion. When recognition migrates to the brain organ (future medical-system work), it will be lost on brain destruction — moot for the current character (brain destruction = death) but relevant for brain-transplant scenarios.
   - **Accuracy note (2026-09-11, settled 2026-09-26):** on 2026-09-11 the runtime did NOT do this — `_compute_is_dead` excluded `consciousness`, so a destroyed brain read as unconsciousness and killed only through the head wound's bleed. **#3248** (owner ruling "Death with a window") then built brain death as the structural `brain_integrity` capacity — not through `consciousness`, which stays the awake axis ("Conscious capacity 0 should not be death") — so the parenthetical is true again; getting the brain back inside the death window (an install, or in-place repair) revives the body. See `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` Category A. The point this bullet is making is unaffected either way: recognition memory currently lives on the Character, so brain loss only becomes a storage concern once it moves to the brain organ and transplants exist.
@@ -586,12 +607,12 @@ Same data model as organic memory, different storage and capabilities:
 
 ### Memory and Resonance
 
-Resonance ("Social Connection & Empathy", currently 0 mechanical uses) becomes the governing stat for organic memory:
+Resonance ("Social Connection & Empathy") is meant to govern organic memory. Today its one use here is the target's side of the see-through roll:
 
-- **Memory persistence** — Higher Resonance → organic memories persist indefinitely. Low Resonance → risk of memory decay over time (entries lose confidence, eventually drop out).
-- **Auto-recognition** — Future: at high Resonance, spending extended time in proximity with someone can auto-populate a recognition entry (you develop an intuitive sense of who they are without formal introduction).
+- **Memory persistence** — 📋 UNBUILT (no issue). Higher Resonance → organic memories persist indefinitely. Low Resonance → risk of memory decay over time (entries lose confidence, eventually drop out).
+- **Auto-recognition** — 📋 UNBUILT (no issue). At high Resonance, spending extended time in proximity with someone can auto-populate a recognition entry (you develop an intuitive sense of who they are without formal introduction).
 - **Disguise perception** — **Shipped.** Disguise piercing uses an opposed Intellect (observer) vs Resonance (target) roll with a familiarity bonus capped at `DISGUISE_PIERCE_FAMILIARITY_CAP` and a per-vector penalty of `DISGUISE_PIERCE_VECTOR_PENALTY` (worn `disguise_essential` items + active overrides). See the [Disguise Piercing](#disguise-piercing) section for the full contract.
-- **Confidence** — The `confidence` field in memory entries is influenced by Resonance. Higher confidence means the name displays with certainty; at low confidence, the display could show uncertainty: `"Jorge(?)"` or `"someone who might be Jorge"`.
+- **Confidence** — 📋 UNBUILT (no issue). The `confidence` field in memory entries is influenced by Resonance. Higher confidence means the name displays with certainty; at low confidence, the display could show uncertainty: `"Jorge(?)"` or `"someone who might be Jorge"`.
 
 Exact thresholds and formulas are a tuning concern — the architecture supports Resonance as an input to all these systems.
 
@@ -673,7 +694,7 @@ Disguise has three independent layers, each controllable on its own and combinin
 
 | Layer | Controlled by | What it affects |
 |-------|--------------|-----------------|
-| **Presentation overrides** | `appear` command | Per-axis: height, build, keyword, (future) voice |
+| **Presentation overrides** | `appear` command | Per-axis: height, build, keyword. Voice is a separate axis (`world/voice.py`), not an `appear` override |
 | **Disguise items** | Equipping/removing tagged clothing | Distinguishing feature + identity signature (when essential) |
 | **Body modification** (future) | Pharmaceuticals / cybernetics | `describe` + identity signature |
 
@@ -752,9 +773,9 @@ flowchart TD
 **Key properties:**
 
 - Same character + same overrides + same essential items → **same Apparent UID, every time.** Observers who tagged this combination before will auto-recognize it again. This is the *organic recurring identity* property.
-- Change any signature input → **different Apparent UID.** Observers who tagged the prior signature see a stranger. This is the *unmasking* property.
+- Change any signature input → **different Apparent UID.** Observers who tagged the prior signature see a stranger, unless they watched the change, in which case they keep the name (#3811; §Unmasking Moments). This is the *unmasking* property.
 - Two different characters wearing the same overrides + items → **different Apparent UIDs** (different salt). Visual collision but no recognition collision. Impersonation is *visual*, not *systemic*.
-- Items reference by **type**, not instance. Replacing a destroyed balaclava with another balaclava of the same type preserves the signature. The exact "type ID" representation is defined by the disguise-item taxonomy in Phase 3.5; the engine consumes a sorted tuple of stable string identifiers.
+- Items reference by **type**, not instance. Replacing a destroyed balaclava with another balaclava of the same type preserves the signature. Items hash by their `disguise_type_id` (a string), as a sorted tuple; an essential item with none is skipped with a warning (`get_essential_item_type_ids`).
 
 **Tradecraft as gameplay:**
 
@@ -766,8 +787,8 @@ The `appear` command is the player's interface to presentation overrides. Each o
 
 ```
 appear taller / shorter                     — height axis (one step on the HEIGHTS scale)
-appear bulkier / fatter                     — build axis, one step heavier
-appear thinner / leaner                     — build axis, one step lighter
+appear fatter                               — build axis, one step heavier
+appear thinner                              — build axis, one step lighter
 appear <keyword>                            — keyword axis (full catalog, gender filter
                                               bypassed)
 appear <persona name>                       — adopt a saved persona (clean swap)
@@ -790,7 +811,7 @@ The composed sdesc descriptor (`gaunt`, `burly`, etc.) is recomputed from the ov
 **What `appear` does NOT change:**
 - Distinguishing feature (auto-derived from worn items + hair)
 - `describe` (looking directly reveals real physical detail until body-mod layers exist)
-- Voice (deferred to future communication-system integration)
+- Voice. Voice is a separate identity axis with its own UID and memory (`world/voice.py`; `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md` §4). `@voice` and a cyber-jaw voice modulator change it; `appear` does not.
 - The character's real `sleeve_uid` (the underlying body identity)
 
 ### Pronouns Under Disguise
@@ -802,7 +823,7 @@ Pronouns must follow the disguise. A character presenting as "a woman" should be
 1. If the character has an active `keyword_override`, look the override up in the runtime keyword catalog (`ServerConfig` entries under keys `identity.feminine_keywords` / `identity.masculine_keywords` / `identity.neutral_keywords`, falling back to the `_DEFAULT_FEMININE_KEYWORDS` / `_DEFAULT_MASCULINE_KEYWORDS` / `_DEFAULT_NEUTRAL_KEYWORDS` frozensets in `world/identity.py` when a key is unset).
    - Match in the feminine list → render as `she/her/hers`.
    - Match in the masculine list → render as `he/him/his`.
-   - Match in the neutral list, **or no match anywhere** (e.g. a custom `describe keyword` keyword such as `ronin` or `wraith`, which carries no gender metadata in `KeywordEvent`) → render as `they/them/theirs` (singular they).
+   - Match in the neutral list, **or no match anywhere** (a fallback: `appear` accepts only catalog keywords, so an override normally matches a list) → render as `they/them/theirs` (singular they).
 2. If the character has **no** active `keyword_override`, pronouns derive from the character's real `gender` property as today (no behavior change for undisguised characters).
 
 **Implementation surface (engine PR):**
@@ -811,7 +832,7 @@ A single helper, conceptually `get_apparent_gender(char)`, returns one of `"male
 
 **No explicit `gender_override` axis in Phase 3.** Derivation is sufficient: a player who wants to be referred to with a different pronoun set picks a keyword from the desired gender list (the full catalog is available via `appear <keyword>`, gender filter bypassed). An explicit override axis is noted in Future Hooks for the case where a player wants a custom keyword *and* a non-neutral pronoun set.
 
-**Custom-keyword consequence:** Keywords minted via `describe keyword` (logged as `KeywordEvent` rows) have no gender field on the model. They will always render neutral under this rule. This is acceptable — custom keywords are deliberately ambiguous, and forcing the player to also pick from the gendered catalog if they want gendered pronouns matches the deliberate-tradecraft theme of the system.
+**Custom-keyword consequence:** A custom keyword set with `describe keyword` (logged as a `KeywordEvent` row) is the character's own `sdesc_keyword`, not an override, so pronouns stay on the real gender. A custom keyword can become a `keyword_override` only after staff approve it into one of the gendered lists (`@keywords`), because `appear` accepts catalog keywords only. The "no match anywhere" branch above is a fallback.
 
 ### Personas — Player-Facing Persona Recall
 
@@ -828,7 +849,7 @@ A persona is a **player-private snapshot** of presentation overrides, captured a
 - A **freeform notes field** for player annotations *(reserved field, currently always empty)*
 - A **created-at timestamp** and the **room name** where it was saved
 
-**Pronouns are not stored separately.** Restoring a persona restores its `keyword_override`, and pronouns derive from that keyword via the rule in §Pronouns Under Disguise. A persona that captured a feminine keyword automatically restores feminine pronouns when adopted; a persona that captured a custom keyword automatically restores neutral pronouns. No persona field is needed for gender.
+**Pronouns are not stored separately.** Restoring a persona restores its `keyword_override`, and pronouns derive from that keyword via the rule in §Pronouns Under Disguise. A persona that captured a feminine keyword automatically restores feminine pronouns when adopted; a persona that captured a neutral keyword restores neutral pronouns. No persona field is needed for gender.
 
 **Personas do NOT generate identities.** They are pure recall aids. When a player adopts a persona, the system applies the captured overrides as a **clean swap** — overwriting all three axes including any unset axes (so adoption produces an exact replay of the saved state, never a merge). The resulting Apparent UID is derived from the restored state, not from the persona itself. Two personas with identical overrides + item-type composition will yield the same Apparent UID — they are just labels in the player's memory.
 
@@ -859,7 +880,7 @@ graph LR
 - `appear` — show current overrides + active persona
 - `appear taller | shorter` — nudge perceived height one step on the `HEIGHTS` scale; refuses at the extremes (an unreachable axis value is itself a tell)
 - `appear thinner | fatter` — same on the `BUILDS` scale
-- `appear <keyword>` — present as the given keyword; validated against the full keyword catalog (gender filter does not apply to disguise). New keywords are introduced via `describe keyword`, not via `appear`.
+- `appear <keyword>` — present as the given keyword; validated against the full keyword catalog (gender filter does not apply to disguise). `describe keyword` lets a player wear a custom keyword and logs it (`KeywordEvent`); it joins the catalog that `appear` accepts only when staff approve it (`@keywords`).
 - `appear <persona name>` — restore a saved persona (clean swap)
 - `stop appearing` — clear all overrides and any adopted-persona pointer; the only canonical clear verb (no aliases)
 - `remember me as <persona name>` — snapshot current overrides as a persona; allowed even with no axes set (intentional — supports saving a baseline)
@@ -867,7 +888,7 @@ graph LR
 - `personas` — list saved personas, recency-sorted (newest first); the active persona, if any, is marked with `*`
 - `persona <name>` — inspect a single persona's snapshot
 
-**Resolution order for `appear <arg>`:** persona name → axis nudge keyword (`taller`/`shorter`/`thinner`/`fatter`/`bulkier`/`leaner`) → keyword catalog. Persona names take precedence so a player can always reach their own personas; cross-namespace uniqueness (below) prevents real ambiguity.
+**Resolution order for `appear <arg>`:** persona name → axis nudge keyword (`taller`/`shorter`/`thinner`/`fatter`) → keyword catalog. Persona names take precedence so a player can always reach their own personas; cross-namespace uniqueness (below) prevents real ambiguity.
 
 **Manual axis change after persona adoption** dissociates the active-persona pointer (with an explicit message) but leaves the persona definition intact. The player can re-adopt it later with `appear <name>`. The `db.active_persona` pointer is also cleared by `stop appearing` and by deleting the active persona via `forget`.
 
@@ -880,17 +901,18 @@ The same rule applies in reverse: assigning a recognition name that collides wit
 
 ### Disguise Items
 
-A disguise item is a clothing/equipment item with two declarative properties:
+A disguise item is a clothing/equipment item with these declarative properties:
 
 - **`is_disguise_item`** (`bool`): marks the item as belonging to the disguise taxonomy. Disguise items provide a future Phase 5 perception-roll bonus to the disguiser.
 - **`disguise_essential`** (`bool`): marks the item as identity-essential. Essential items contribute to the identity signature (their type is hashed into the Apparent UID); non-essential items contribute only visually through the existing distinguishing-feature derivation.
 - **`disguise_weight`** (`int`, default `1`): per-item pierce-penalty weight. When worn (and `disguise_essential = True`), the item counts as this many vectors in the `_count_disguise_vectors` calculation. Heavy concealment (full prosthetic mask, hooded robe) can scale piercing difficulty independently of how many items are involved; `0` lets an essential item pin the identity signature without making piercing harder. Negative values are clamped to `0`; non-numeric values fall back to `1`. No effect on non-essential items.
+- **`disguise_type_id`** (`str`): the type an essential item is hashed by in the identity signature. Items of the same type count once. An essential item with none is skipped with a warning (`get_essential_item_type_ids`).
 
 Examples:
-- **Essential**: balaclava, full mask, cowl, wig, contacts, prosthetic face, voice modulator (when voice integration lands)
+- **Essential**: balaclava, full mask, cowl, wig, contacts, prosthetic face
 - **Non-essential**: gloves, scarf, signature jacket, distinguishing hat
 
-The item taxonomy itself (which items exist, their categories, quality tiers) is designed in **Phase 3.5**, a separate cut after the foundation lands. The foundation only needs the two flags to function correctly with zero defined disguise items.
+Defined disguise items (a balaclava, a face mask, a respirator) are prototypes in `world/prototypes.py`. Quality tiers are 📋 UNBUILT (no issue); see Future Hooks.
 
 ### Disguise Adjective
 
@@ -967,13 +989,13 @@ Personas persist indefinitely until explicitly deleted, regardless of whether th
 
 Because disguise is continuous, "breaking" simply means changing signature inputs.
 
-**Voluntary `stop appearing`:** Clears all overrides and any active-persona pointer. If no essential items are equipped, the Apparent UID returns to the real `sleeve_uid` and observers who know the real identity auto-recognize. If essential items are still equipped, the signature still differs from real — only the override contribution is removed.
+**Voluntary `stop appearing`:** Clears all overrides and any active-persona pointer. If no essential items are equipped, the Apparent UID returns to the bare-signature UID (the hash of the real `sleeve_uid` with no overrides and no essential items) and observers who know the real identity auto-recognize. If essential items are still equipped, the signature still differs from real — only the override contribution is removed.
 
 **Death:** All active overrides clear; the corpse stores both `real_sleeve_uid` and a snapshot of the identity signature active at time of death (for forensic gameplay — investigators can reconstruct what the character looked like when they died).
 
-**Admin / GM strip:** Staff command clears all overrides on a target. Equipped items are unaffected (use existing strip commands for those).
+**Admin / GM strip:** 📋 UNBUILT (no issue). Staff command clears all overrides on a target. Equipped items are unaffected (use existing strip commands for those).
 
-**Essential item removed (voluntary or forcible):** Signature changes → Apparent UID changes → observers who tagged the prior signature see a stranger. The "unmasking" moment is mechanical: the signature change *is* the reveal. Equipping the same item type again restores the signature and the recognition.
+**Essential item removed (voluntary or forcible):** Signature changes → Apparent UID changes → observers who tagged the prior signature see a stranger, unless they watched the change, in which case they keep the name (#3811). The "unmasking" moment is mechanical: the signature change *is* the reveal. Equipping the same item type again restores the signature and the recognition.
 
 **Essential item destroyed:** Same effect as removal. If a unique-instance item is destroyed, the player must acquire another item *of the same type* to recover the signature. (Hence: items hash by type, not dbref — buying a new balaclava restores the "balaclava-wearing" identity.)
 
@@ -988,14 +1010,14 @@ A disguised character (overrides: `tall man` + essential cowl + non-essential ca
 1. Someone rips off the cowl (forcible removal).
 2. The signature changes: cowl is no longer in the essential-items set.
 3. The Apparent UID recomputes to a new value.
-4. The observer's recognition no longer auto-resolves: "Batman" was tagged against the *previous* UID. They now see the new sdesc as a stranger — `"a tall man in a black cape"` — and may deduce the connection from context, but the system does not auto-link the two identities.
+4. An observer who watched the cowl come off goes on knowing them (#3811). The unmasking hook gives the new look an entry whose `witnessed_from` points at the "Batman" entry, and the name is read through it (§Who is this to me?), so they still see "Batman". Somebody who walks in afterwards has no entry for the new look and sees a stranger — `"a tall man in a black cape"` — unless they hold a name for the same body under another look and see through it on the roll (§Disguise Piercing).
 5. If the cowl is re-equipped, the signature returns to its prior value and the observer's "Batman" tag fires again.
-6. If the disguised character then does `stop appearing`, both overrides and the active-persona pointer are cleared — the Apparent UID returns to the real `sleeve_uid` (or wherever the remaining signature inputs lead, modulo any still-equipped essential items). Observers who knew the real identity may now auto-recognize the character.
+6. If the disguised character then does `stop appearing`, both overrides and the active-persona pointer are cleared — the Apparent UID returns to the bare-signature UID (or wherever the remaining signature inputs lead, if essential items are still equipped). Observers who knew the real identity may now auto-recognize the character.
 
 ### Recognition Interactions
 
 - **Stranger meets disguised character:** Observer sees the disguised sdesc; no auto-recognition. Observer can `remember` them by a name, which binds to the current Apparent UID.
-- **Observer who knew real identity meets the disguised character:** The observer's recognition entry was keyed on the Apparent UID of the *undisguised* signature (real `sleeve_uid` + no overrides + no essential items). The disguise produces a *different* Apparent UID; no auto-recognition. The observer sees the disguised sdesc as a stranger.
+- **Observer who knew real identity meets the disguised character:** The observer's recognition entry was keyed on the Apparent UID of the *undisguised* signature (real `sleeve_uid` + no overrides + no essential items). The disguise produces a *different* Apparent UID; no auto-recognition. The observer sees the disguised sdesc as a stranger, unless they see through it on the roll (§Disguise Piercing).
 - **Observer WATCHES a character they know change their look** (the mask goes on in front of them): they go on knowing them. The unmasking hook gives the observer an unnamed entry for the new look that records whose name it now answers to (`witnessed_from`: the named entry that the look which went resolved to), and the name is read through that record (#3811; §Who is this to me?). The entry's `linked_to` is set as it always was and is not what the name is read through. No roll is made. It works the same the other way round: an observer who has named only the masked figure and watches the mask come off keeps that name for the face.
 - **Observer meets the same disguised character a second time, same signature:** Auto-recognition fires (same Apparent UID); observer sees the previously-assigned name.
 - **Observer meets the same disguised character a second time, different signature** (e.g., one essential item swapped): Different Apparent UID; observer sees a stranger.
@@ -1013,8 +1035,9 @@ This is the bridge that keeps disguise legible after the fact. Without it, a sig
 - **`apply_signature_change`** (`world/identity.py`) — a context manager that wraps any mutation that may change the actor's identity signature. Captures observers + old signature *before* the mutation, then dispatches `_broadcast_unmasking` *after*, but only if the signature actually changed.
 - **Wrapped mutation sites:**
   - `commands/CmdCharacter.py`: `_clear_all_overrides` (source `stop_appearing`), `_nudge_height` (`override:height`), `_nudge_build` (`override:build`), `_set_keyword_override` (`override:keyword`), `_adopt_persona` (`persona:<name>`).
-  - `typeclasses/clothing_mixin.py`: `wear_item` (`wear_item`) and `remove_item` (`remove_item`) — guarded so the wrap is skipped unless the item has `disguise_essential = True`.
-- **Observer collection** — `_collect_unmasking_observers` walks the actor's room, filters to `Character` instances excluding the actor, and drops anyone whose `is_unconscious()` returns truthy (defensive `AttributeError` handling treats failure as conscious).
+  - `typeclasses/clothing_mixin.py`: `wear_item` (`wear_item`) and `remove_item` (`remove_item`) — guarded so the wrap is skipped unless the item has `disguise_essential = True`. When the caller passes an action line (`action_template`), as the `wear` and `remove` commands do, the hook sends each observer one combined line instead of the cell prose below (`_broadcast_unmask_with_action`: the action, plus "revealing they are none other than ..." where it applies), and the hide of whoever does it breaks before the change (#3769). The cell prose is for changes with no action line: `appear`, `stop appearing`, persona adoption, and wear or remove called with none.
+  - Remains: `dress` on a corpse or a severed head (`commands/CmdClothing.py`: `_dress_corpse`, `_dress_appendage`), `undress` on remains (`_undress_remains`) and `get ... from` remains (`commands/CmdInventory.py`) wrap the change in `apply_remains_change`, which writes only the eyewitness rule (§Identity Across Surfaces, "What a body wears, for identity").
+- **Observer collection** — `_collect_unmasking_observers` walks the actor's room (for remains held in somebody's hand, the room the holder stands in, `_room_holding`) and keeps everyone but the actor who has a recognition memory, can see (`can_see`), perceives the actor (`can_perceive`, #2647), and is not unconscious (`is_unconscious()`; an error there counts as conscious).
 
 **Broadcast matrix.** For each observer, the hook evaluates whether the observer's recognition memory contains the old UID, the new UID, both, or neither, and writes accordingly:
 
@@ -1069,7 +1092,7 @@ This is the bridge that keeps disguise legible after the fact. Without it, a sig
 | Cell | Prose |
 |------|-------|
 | A | (never reaches the hook) |
-| B | `"{new_sdesc} steps into view where {old_sdesc} stood a moment ago."` |
+| B | `"{new_sdesc} steps into view where {old_name or old_sdesc} stood a moment ago."` (the observer's own name for the old look when that entry has one) |
 | C | silent — the observer already knew the new presentation; nothing to learn |
 | D | `"You realize that {old_sdesc}, who you call {old_name}, and {new_sdesc}, who you call {new_name}, are the same person."` |
 
@@ -1097,7 +1120,7 @@ sequenceDiagram
     Coll-->>CM: [MJ, May, Ned] (conscious, in-room, not self)
     CM->>Bcast: broadcast(old_uid, new_uid, observers)
     par per-observer cell decision
-        Bcast->>MJ: knew old(Spider-Man), no new → cell B<br/>flip Spider-Man entry lost_contact=True<br/>auto-create stub for new_uid, linked_to=Spider-Man uid<br/>msg "Peter steps into view where Spider-Man stood..."
+        Bcast->>MJ: knew old(Spider-Man), no new → cell B<br/>flip Spider-Man entry lost_contact=True<br/>auto-create stub for new_uid, linked_to=Spider-Man uid<br/>witnessed_from=Spider-Man entry (#3811)<br/>msg "a lanky man steps into view where Spider-Man stood..."
     and
         Bcast->>May: no old, knew new(Peter) → cell C<br/>refresh Peter entry last_seen<br/>silent
     and
@@ -1105,15 +1128,15 @@ sequenceDiagram
     end
 ```
 
-> **Worked example — Peter unmasks in front of three observers.** Peter Parker (real `sleeve_uid = peter-uuid`) has been operating with `keyword_override="vigilante"` plus an essential mask. **MJ** has only ever met "Spider-Man" — she knows the masked Apparent UID. **Aunt May** has only ever met "Peter" — she knows the bare Apparent UID. **Ned** has met both presentations on separate occasions and tagged each. Peter pulls off the mask inside `apply_signature_change`. The old UID (Spider-Man) and new UID (Peter) differ, so `_broadcast_unmasking` walks the room: MJ hits **cell B** (new auto-stub linked to her Spider-Man entry, lost-contact flag on the old, narrative prose), May hits **cell C** (her Peter entry just gets a `last_seen` refresh, no prose), Ned hits **cell D** (both entries refreshed, link forged new→old, prose calling out the realization by name). All three observers now hold a forward chain `Peter UID → Spider-Man UID`, and `get_linked_aliases` will surface "Also known as Spider-Man" in MJ's and Ned's `recall` output.
+> **Worked example — Peter unmasks in front of three observers.** Peter Parker (real `sleeve_uid = peter-uuid`) has been operating with `keyword_override="vigilante"` plus an essential mask. **MJ** has only ever met "Spider-Man" — she knows the masked Apparent UID. **Aunt May** has only ever met "Peter" — she knows the bare Apparent UID. **Ned** has met both presentations on separate occasions and tagged each. Peter pulls off the mask inside `apply_signature_change`. The old UID (Spider-Man) and new UID (Peter) differ, so `_broadcast_unmasking` walks the room: MJ hits **cell B** (new auto-stub linked to her Spider-Man entry, lost-contact flag on the old, narrative prose), May hits **cell C** (her Peter entry just gets a `last_seen` refresh, no prose), Ned hits **cell D** (both entries refreshed, link forged new→old, prose calling out the realization by name). MJ and Ned now hold a forward chain `Peter UID → Spider-Man UID`; May's cell writes no link, so she holds none. `get_linked_aliases` will surface "Also known as Spider-Man" in MJ's and Ned's `recall` output. MJ, who had named only Spider-Man, also keeps calling the bare face "Spider-Man": her new entry records `witnessed_from` her Spider-Man entry (#3811).
 
 ### Disguise Piercing
 
-When an observer sees a character whose current Apparent UID is **not** in their recognition memory, the display-name pipeline gives them one more chance: if they've previously remembered the same underlying sleeve under a *different* presentation (the "bare-face entry"), an opposed Intellect-vs-Resonance roll decides whether they see through the disguise.
+When an observer sees a character whose current look they hold **no name** for (no entry for its Apparent UID, or an entry that leads to no name), the display-name pipeline gives them one more chance: if they've previously remembered the same underlying sleeve under a *different* presentation (the "bare-face entry"), an opposed Intellect-vs-Resonance roll decides whether they see through the disguise.
 
 This is the standing complement to the eyewitness Unmasking Moments hook (§Unmasking Moments). Unmasking handles the case where the observer *witnesses* a transition; piercing handles the case where the observer encounters a familiar sleeve already wearing a disguise they did not see go on.
 
-**Trigger.** `Character.get_display_name(looker)` (and its richer sibling `get_look_header`) first try a direct `recognition_memory[apparent_uid]` lookup. On miss, they call `world.identity.attempt_display_pierce(looker, self, apparent_uid)` before falling back to the articled sdesc. The pierce wrapper:
+**Trigger.** `Character.get_display_name(looker)` (and its richer sibling `get_look_header`) first ask for a name held for the look (`get_assigned_name`, which follows `witnessed_from`). When there is none, they call `world.identity.attempt_display_pierce(looker, self, apparent_uid)` before falling back to the articled sdesc. The pierce wrapper:
 
 1. Calls `find_entries_by_real_sleeve_uid(looker, self.sleeve_uid)` to gather every entry the looker has for this underlying sleeve.
 2. Filters out the current `apparent_uid` (the disguised presentation can't pierce itself) and any candidate without an `assigned_name`.
@@ -1127,7 +1150,7 @@ This is the standing complement to the eyewitness Unmasking Moments hook (§Unma
 
 Success condition: `(observer_roll + familiarity) > (target_roll + penalty)`. Ties favour the target (the disguise holds).
 
-**Caching.** The outcome is cached permanently per `(observer, target, apparent_uid)` triple on `observer.db.disguise_pierce_cache = {(target.dbref, apparent_uid): bool}`. This mirrors the corpse forensic-recovery contract (`typeclasses/corpse.py:_attempt_forensic_recognition`): one careful look determines the verdict, no re-roll abuse on every `look`. The cache key includes `apparent_uid` so changing the disguise (puts on a hat, swaps a coat) re-rolls; the previous presentation's cached outcome is irrelevant to the new one.
+**Caching.** The outcome is cached permanently per `(observer, target, apparent_uid)` triple on `observer.db.disguise_pierce_cache = {(target.dbref, apparent_uid): bool}`. This mirrors the corpse forensic-recovery contract (`typeclasses/corpse.py:_attempt_forensic_recognition`): one careful look determines the verdict, no re-roll abuse on every `look`. The cache key includes `apparent_uid` so changing the look (an override, or an essential disguise item put on or taken off) re-rolls; the previous presentation's cached outcome is irrelevant to the new one. Other clothing (a hat, a coat) does not change the Apparent UID, so the stored verdict stands.
 
 Observers or targets without a `dbref` are not cached and re-roll on every call (keeps the cache bounded; no junk keys for tooling that walks characters without a real observer). The cache survives reloads (it's on `db`, not `ndb`) and persists across sessions — by design: a player who has decided "I do not recognise this person" should not be magically reset to undecided on a server restart.
 
@@ -1187,10 +1210,11 @@ sequenceDiagram
     Roll->>Roll: cache[(Clark.dbref, uid)] = True
     Roll-->>Pierce: "Superman"
     Pierce-->>Disp: "Superman"
-    Disp-->>Lois: "Superman (a tall man in glasses)"
+    Disp-->>Lois: "Superman"
+    Note over Lois: look header (get_look_header):<br/>"Superman (a tall man in glasses)"
 ```
 
-> **Worked example — Lois Lane scrutinises Clark Kent.** Lois has tagged Clark's *Superman* presentation (no glasses, no "reporter" keyword) and seen him fly four times (`times_seen = 4`). When she runs into "a tall man in glasses" at the Daily Planet, the disguised Apparent UID misses her memory; the pierce path finds her Superman entry as the sole candidate. Opposed roll: Lois rolls **12** on Intellect; Clark rolls **9** on Resonance. Add Lois's familiarity bonus (**+4**, under the cap of 5) and subtract Clark's disguise penalty (**+2** to his side: glasses essential item of weight 1, plus one keyword override). Final: **16 > 11**, pierce succeeds, outcome cached on Lois — she now sees `"Superman (a tall man in glasses)"` and will keep seeing it until Clark changes his signature.
+> **Worked example — Lois Lane scrutinises Clark Kent.** Lois has tagged Clark's *Superman* presentation (no glasses, no "reporter" keyword) and seen him fly four times (`times_seen = 4`). When she runs into "a tall man in glasses" at the Daily Planet, the disguised Apparent UID misses her memory; the pierce path finds her Superman entry as the sole candidate. Opposed roll: Lois rolls **12** on Intellect; Clark rolls **9** on Resonance. Add Lois's familiarity bonus (**+4**, under the cap of 5) and subtract Clark's disguise penalty (**+2** to his side: glasses essential item of weight 1, plus one keyword override). Final: **16 > 11**, pierce succeeds, outcome cached on Lois — she now sees `"Superman"` (and `look` shows `"Superman (a tall man in glasses)"`) and will keep seeing it until Clark changes his signature.
 
 **Who never reaches the roll.** An observer who watched the look change holds `witnessed_from` on their entry for it and gets the name through that (§Who is this to me?). The roll is for an observer who holds NO NAME for the look in front of them: no entry at all, or an entry that leads to none, such as a look they forgot.
 
@@ -1198,7 +1222,7 @@ sequenceDiagram
 
 **Surface.** On success, the looker sees the bare-face entry's `assigned_name` in place of the articled sdesc — same surface as ordinary recognition. The `get_look_header` path further attaches the *current* (disguised) sdesc in parentheses, so the looker sees `"Bruce (a tall figure in a black coat)"` rather than the stranger fallback.
 
-**No auto-link.** Piercing surfaces a name but does **not** write `linked_to` on the disguised presentation's entry — there is no entry to link, by definition. If the looker subsequently runs `remember <pierced name>`, the freshly-created entry is linked to the entry they see through to (`world.identity.seen_through`, which reads the stored verdict and never rolls): the bare-face entry the pierce matched against. The look chain therefore reads new → bare-face, the same shape `recall` / `memory` already render for unmasking-witnessed transitions. **A look the looker has not seen through is linked to nothing**, whatever other entries they hold for the same true body (#3813). The first implementation of this paragraph (2026-05-15) left that condition out and linked every newly named look by `real_sleeve_uid`, which the looker has no way to know; naming a masked stranger whose disguise had held and then typing `recall` printed the name given to their bare face, and an AI-driven NPC that named a masked figure was told "these are the same person". Two names are joined only by what the observer earned: a watched change (the unmasking broadcast), a won see-through (here), or papers (`attest`).
+**No auto-link.** Piercing surfaces a name but does **not** write `linked_to` on the disguised presentation's entry — there is no entry to link, by definition. If the looker subsequently runs `remember <pierced name>`, the freshly-created entry is linked to the entry they see through to (`world.identity.seen_through`, which reads the stored verdict and never rolls): the bare-face entry the pierce matched against. The look chain therefore reads new → bare-face, the same shape `recall` / `memory` already render for unmasking-witnessed transitions. **A look the looker has not seen through is linked to nothing**, whatever other entries they hold for the same true body (#3813). (The first version, 2026-05-15, linked every newly named look by `real_sleeve_uid`, which the looker has no way to know; #3813 removed that.) Two names are joined only by what the observer earned: a watched change (the unmasking broadcast), a won see-through (here), or papers (`attest`).
 
 ### Impersonation
 
@@ -1229,14 +1253,14 @@ These mechanics are not implemented in the foundation cut; they are noted to con
 These are designed into the architecture but not implemented yet:
 
 - **Per-axis Resonance checks on `appear`**: Currently always succeeds. Future: per-axis difficulty, opposed or threshold rolls, with failure meaning the override doesn't take effect or appears unconvincing.
-- **Clothing coverage gating**: No coverage requirement for now. Future: certain overrides require minimum body coverage to be plausible (e.g., can't `appear bulkier` while shirtless because there's no padding to sell it). Boots/shoes can sell height changes; bulky clothing can sell build changes.
+- **Clothing coverage gating**: No coverage requirement for now. Future: certain overrides require minimum body coverage to be plausible (e.g., can't `appear fatter` while shirtless because there's no padding to sell it). Boots/shoes can sell height changes; bulky clothing can sell build changes.
 - **Disguise item quality tiers**: All disguise items equal in foundation. Future: cheap rubber mask vs. high-tech prosthetic affects perception bonuses.
 - **Perception checks (shipped)**: See [Disguise Piercing](#disguise-piercing). Opposed Intellect-vs-Resonance with familiarity bonus and per-vector penalty.
 - **Active impersonation detection (Phase 5)**: Resonance-based hints when a *fresh* signature (different `sleeve_uid`) closely matches a known identity (e.g., *"this person reminds you of someone..."*).
 - **Forcible item removal via grapple**: Requires grapple-system integration for stripping equipment from a grappled character.
 - **Pharmaceutical / biomod items**: Consumable or implanted modifications that override `describe` and contribute to the identity signature (extending the signature function with body-mod inputs). Closes the last gap: with body mods, even direct `look` reveals a different person. Pharmaceuticals would be temporary (wears off over time), potentially expensive/rare, and could carry side effects (stat penalties, addiction).
 - **Photos / identity artifacts**: Captured signature snapshots usable as recipes (own personas) or investigation tools (others'). Salt-acquisition mechanics enable true impersonation gameplay. Ties into Phase 4 (cybernetics) where digital identity data becomes hackable and forgeable.
-- **Voice modulation**: Integration with say/whisper/communication so voice becomes part of the identity signature for observers who can hear but not see (or in addition to visual identification).
+- **Voice modulation**: Built as its own axis, not as part of the identity signature: voice has its own UID and memory, a listener who cannot see can place a voice they know, and a cyber-jaw voice modulator changes it (`world/voice.py`; `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md` §4).
 - **Web UI integration**: Personas designed to mirror the planned identity/contact archive system; eventual web UI surface for managing personas, photos, and contact memory in one place.
 - **Salt-acquisition mechanics for true impersonation**: Stolen contact cards, hacked digital identities, and other adversarial means by which an impostor can acquire the original's salt and become auto-recognized as them.
 - **Explicit `gender_override` axis**: Phase 3 derives pronouns from `keyword_override` against the catalog's gender lists, so a player who wants gendered pronouns picks a gendered keyword. A future explicit override axis would let a player pair a custom (`describe keyword`) keyword with a chosen pronoun set without forcing them through a catalog keyword. Deferred until a real player need surfaces.
@@ -1248,6 +1272,7 @@ These are designed into the architecture but not implemented yet:
 The identity test suite mixes two patterns:
 
 - **Fast unit tests** (`world/tests/test_identity.py`, `test_identity_commands.py`, `test_unmasking.py`, `test_character_identity.py`, `test_corpse_identity.py`) use `unittest.TestCase` with fake observer/target/room objects defined per-module. Most pierce/unmasking/recognition logic is covered this way for speed and isolation. Shared schema helpers live in `world/tests/_identity_helpers.py` (notably `make_recognition_entry`, which keeps fake entries in sync with the production schema).
+- **One module per rule** pins the newest rules: `test_an_eyewitness_keeps_the_name.py` (#3811), `test_a_lost_see_through_is_for_good.py` (#3817), `test_forgetting_is_forgetting.py` and `test_forgetting_someone_forgets_their_voice.py` (#3825), `test_identity_is_in_the_face.py` (#3831, #3832, #3834), `test_recall_knows_them_from_either_side.py`, `test_remember_does_not_guess_between_faces.py`, and for AI NPCs `test_an_npc_that_forgets.py`, `test_an_npc_that_forgets_loses_its_read.py`, `test_an_npc_forgets_a_look_it_saw_through.py` and `test_an_npc_forgets_a_voice_it_placed.py` (#3841, #3851, #3859, #3861).
 - **End-to-end integration tests** (`world/tests/test_pierce_integration.py`, `test_unmasking_integration.py`) use `evennia.utils.test_resources.EvenniaTest` with real `Character` typeclasses, real `recognition_memory`, and real persistent attributes. These catch regressions that mock-based suites cannot — typeclass wiring, `AttributeProperty` round-trips, and hooks like `at_post_move` that depend on real Evennia object lifecycle.
 
 **`evennia test` uses the live development database.** Tests that touch the keyword catalog must patch `world.identity.ServerConfig.objects.conf` to return a deterministic value (typically `None` to force the default-frozenset fallback); otherwise they pick up live `KeywordEvent` rows and become non-reproducible. The `attempt_disguise_pierce` path performs a local import of `world.combat.dice.opposed_roll` — patches must target `world.combat.dice.opposed_roll`, not `world.identity.opposed_roll`.
@@ -1259,7 +1284,7 @@ docker exec gelatinous evennia test --settings settings.py \
     world.tests.test_identity
 ```
 
-Run the full identity surface:
+Run the whole suite (all of `world.tests`, not only identity):
 
 ```
 docker exec gelatinous evennia test --settings settings.py world.tests
@@ -1289,6 +1314,8 @@ def msg_room_identity(
     char_refs,
     exclude=None,
     pre_resolved_refs=None,
+    addressed_refs=None,
+    acting=("actor",),
     **kwargs,
 ):
     """Send identity-aware message to all observers in a room.
@@ -1306,6 +1333,8 @@ def msg_room_identity(
             See "Action Broadcast Sdesc Stability" below.
     """
 ```
+
+`acting` names the placeholders whose referent is acting; each is revealed from hiding before the line is sent (#3769). Pass `acting=()` for an announcement that is not an act. `addressed_refs` names the placeholders the line is aimed at; those observers receive `addressed=True` (#3211). Observers with no connected session and no `at_msg_receive` override are skipped (`_hears_broadcasts`, #2640).
 
 Usage:
 ```python
@@ -1327,7 +1356,7 @@ With 20 observers and 2 character references: 40 dict lookups + 40 string replac
 
 **NPC memory storage**: An NPC that has encountered 500 unique characters stores a dict with 500 keys. Each entry is ~500 bytes of metadata. Total: ~250KB per well-traveled NPC. Acceptable.
 
-**Scaling concern**: The real cost is not runtime performance but **refactoring scope**. Every `msg_contents()` call and every `.key` reference in message strings across the codebase must be converted to use `msg_room_identity` or route through `get_display_name`. This is a large, methodical effort (Phase 2).
+**Scaling concern**: The real cost is not runtime performance but **refactoring scope**. Every `msg_contents()` call and every `.key` reference in message strings across the codebase must be converted to use `msg_room_identity` or route through `get_display_name`. This was the Phase 2 sweep (§Phase 2 — Consistency).
 
 ### Action Broadcast Sdesc Stability
 
@@ -1379,6 +1408,10 @@ msg_room_identity(
 )
 ```
 
+The shipped version is `commands/CmdClothing.py:_snapshot_actor_names`;
+it takes the observers from `world.perception.perceivers(location,
+{caller})` rather than every object in the room.
+
 The snapshot is **defensive**: every placeholder in `char_refs` is
 captured, not only the one known to mutate today.  This protects future
 multi-actor templates (e.g. a forced-equip command with both
@@ -1403,7 +1436,7 @@ placeholder defensively for exactly this reason.
 **Article grammar.**  The same neutral-introduction broadcasts that
 benefit from the snapshot also need indefinite-article grammar on the
 item being acted upon: `"puts on a black balaclava"` not
-`"puts on black balaclava"`.  Use `world.grammar.get_article` (or the
+`"puts on black balaclava"`.  Use `world.grammar.with_article` (or the
 `_articled` helper in `commands/CmdClothing.py`) when interpolating an
 item key into the template; for lists of items use
 `evennia.utils.utils.iter_to_str` over `[_articled(k) for k in keys]`.
@@ -1424,13 +1457,11 @@ When a player types a targeting string (e.g., `attack jorge` or `attack tall man
 2. **Assigned names** — Check the player's recognition memory for any character in the room whose assigned name matches the input. "Assigned name" here is the name the room shows the player for that character as they stand (`world.identity.get_known_name`): one the player gave the look, one read through a witness link, or one already seen through to (#3811; §Who is this to me?)
 3. **sdescs** — Match against visible characters' sdescs (partial matching, case-insensitive)
 4. **Ordinals** — `"2nd tall man"` uses the existing ordinal system (`get_search_query_replacement`)
-5. **Real keys** — Fall through to standard Evennia search (matches `.key` and aliases)
+5. **Everything else** — standard Evennia search over the pool, which holds things, the searcher, the room and any body seen as its key. For a searcher who is not staff it holds nobody whose real name is hidden (#3816)
 
 ### Implementation Approach
 
-Override `Character.get_search_candidates()` (already exists at `characters.py:515-556`) to inject recognition-aware search results for the searching character. Alternatively, add a custom search hook that checks the searcher's recognition memory.
-
-The existing `CmdAttack` manual substring search (`core_actions.py:110-120`) must be updated to search against assigned names and sdescs, not just `.key`.
+Built: `Character.search` runs the identity matcher on an ordinary search, and `Character.get_search_candidates` gates every pool (presence, #3637; identity, #3816). `CmdAttack` resolves its target through `resolve_character_target`.
 
 ### Command Authoring Rule
 
@@ -1545,7 +1576,7 @@ Canonical implementations of this pattern:
 
 #### Detached-parts filter (Stage 1 carve-out, Phase 2.10)
 
-A second carve-out at the identity stage. `Appendage` / `SeveredHead` items participate in the identity surface — they carry `signature_at_death` / `apparent_uid_at_death` for forensic chain so investigators can trace a severed limb back to its source. But **surgical commands target whole-body patients only**; detached parts route through `autopsy` / `sever` / `harvest` instead. When a body and its severed head are in the same room (e.g. `operate 1st rat` after decapitation), the ordinal pick from the identity match could otherwise silently land on whichever the room iteration orders first — usually the head, since severed parts spawn after the body.
+A second carve-out at the identity stage. `Appendage` / `SeveredHead` items carry identity for forensics and recognition by sight — `signature_at_death` / `apparent_uid_at_death` for forensic chain so investigators can trace a severed limb back to its source — but they have no `get_sdesc`, so the identity matcher (`world.search._has_identity`) never picks them. **Surgical commands target whole-body patients only**; detached parts route through `autopsy` / `sever` / `harvest` instead. The filter below is defensive: it keeps that true if a detached part ever gains a `get_sdesc`, when `operate 1st rat` after a decapitation could otherwise land on the head, which spawns after the body.
 
 `CmdSurgical._resolve_target` filters detached parts out of the stage-1 candidate set before invoking the identity helper:
 
@@ -1606,8 +1637,8 @@ if sdesc == target_key:
 
 If multiple characters match the same target string:
 - Ordinals resolve: `"2nd tall man"` → second matching character
-- If no ordinal and multiple matches, prompt the player: `"Which one? There are two tall men here."`
-- Assigned names should be unique within a player's recognition memory (reassignment overwrites)
+- If no ordinal and multiple matches, an ordinary search lists them (`"Multiple matches for '<query>':"` with a numbered list); `resolve_character_target` answers `"Multiple targets match '<query>'. Please be more specific."`
+- A name already given to another look, a persona name or a keyword is refused (`"You already remember someone else as '<name>'."`). Re-naming the same look replaces its name.
 
 ### Emote / Dot-Pose Targeting Parity
 
@@ -1637,6 +1668,8 @@ agrees with the one on screen and nothing is rolled by typing.
 ---
 
 ## Staff Vision
+
+> 📋 UNBUILT (not decided). Nothing in this section is built. Today staff (`world.search.may_use_real_names`) may reach a person by their real name in a search, and nothing on screen shows a real name or says that the privilege was used (#3818).
 
 Staff see real names via a cyberware effect auto-granted to all staff characters. This is not a special-case code path — it's the same cyberware system available to players (future).
 
@@ -1678,30 +1711,26 @@ Flash clones inherit physical attributes from the original body, including `slee
 | `hair_style` | Yes | Physically identical |
 | `sex` | Yes | Physically identical |
 | `sdesc_keyword` | Yes | Same player preference |
-| Brain organ | New (empty) | Fresh brain → blank recognition memory |
+| Recognition memory | Restored from the imprint | Faces and voices known as of the last backup (`world/imprint.py`) |
 | `key` | Modified | Incremented numeral (Jorge → Jorge II) |
 | `stack_id` | Yes | Same consciousness |
 
 ### Consequences
 
 - **Others recognize the clone**: Anyone whose recognition entry was tagged against Jorge's undisguised Apparent UID (derived from Jorge's `sleeve_uid` + no overrides + no essential items) auto-recognizes Jorge II in his undisguised state — Jorge II's `sleeve_uid` is inherited, so his undisguised Apparent UID matches Jorge's. Recognition entries tagged against Jorge in disguise transfer the same way: same body + same overrides + same items = same UID.
-- **Clone recognizes nobody**: Jorge II starts with an empty brain. Every person is a stranger. This is a significant gameplay consequence of death and resleeving.
+- **Clone wakes knowing who the dead body knew, as of its last backup**: `create_flash_clone` restores the faces and voices the dead body knew from the imprint taken at death (`world/imprint.py`). The backup is dated `GAP` (90 minutes) before the death, so anyone first met in that gap is a stranger to the clone. NPC resleeves use the same capture and restore.
 - **Digital memory (future)**: If the original backed up their cyberbrain, the clone could restore contacts. Without backup, digital memory is also lost.
 - **The clone's system `key` (Jorge Jackson II)** is not what others see — they see whatever name they previously assigned to that sleeve_uid, or the sdesc if they never met the original.
 
 ---
 
-## Forensic Integration (Future)
+## Forensic Integration
 
 Recognition ties into the existing partial forensic system:
 
 ### Blood Pools (`typeclasses/objects.py`)
 
-Blood pools currently store the character's name. With recognition:
-- The forensic display routes through the investigator's recognition memory
-- If the investigator recognizes the bleeder's sleeve_uid: `"This blood appears to belong to Jorge."`
-- If not: `"This blood appears to belong to a lanky man."` (or just `"someone"` if no sdesc data is stored on the blood pool)
-- Blood pools should store `sleeve_uid` and `sdesc_at_time` in addition to the existing character name
+Each bleeding incident stores the bleeder's name (kept for staff, never shown to players), `sleeve_uid`, `signature` and `apparent_uid`; no `sdesc_at_time`. `look` at a pool counts sources and never names them. `inspect <pool>` names a bleeder ("Bleeder's signature, matching <name>") only to an investigator who already holds a name for that look (§Forensic Recognition Engine).
 
 ### Corpses (`typeclasses/corpse.py`)
 
@@ -1725,9 +1754,9 @@ Corpses already preserve forensic data (original name, dbref, physical descripti
 | `advanced` | < 1 w | blanked | Fails | Intellect ≥ 5 |
 | `skeletal` | ≥ 1 w | n/a | Blocked | Blocked |
 
-**Pass 1 — natural recognition.** `world.identity.get_apparent_uid_for_decay(corpse, stage)` mirrors `get_apparent_uid` but blanks the `sleeve_uid` axis at `moderate` and `advanced`. Worn items and override axes are preserved, so a recognizable jacket continues to anchor the signature through light decay; a fresh memory keyed to `(sleeve_uid + jacket)` simply no longer matches once the body axis is blanked. At `fresh` and `early` the degraded UID equals the fresh UID, so ordinary recognition works.
+**Pass 1 — natural recognition.** `world.identity.get_apparent_uid_for_decay(corpse, stage)` mirrors `get_apparent_uid` but blanks the `sleeve_uid` axis at `moderate` and `advanced`. Disguise items the body wears and override axes are preserved, so a mask continues to anchor the signature through light decay; a fresh memory keyed to `(sleeve_uid + mask)` simply no longer matches once the body axis is blanked. At `fresh` and `early` the degraded UID equals the fresh UID, so ordinary recognition works.
 
-**Pass 2 — forensic recovery.** If the degraded lookup misses but `get_apparent_uid(corpse)` (the fresh-equivalent UID) is in memory, the looker rolls Intellect (`world.combat.dice.roll_stat(looker, "intellect", default=1)`) against the stage DC. On success the assigned name is returned; on failure the decay name is returned. The roll outcome is cached permanently in `corpse.db.forensic_recognition_cache = {looker.dbref: bool}` — a single careful examination per `(observer, corpse)` pair determines the verdict, which prevents re-roll abuse on every `look`. Anonymous lookers (no dbref) are not cached and re-roll on each call.
+**Pass 2 — forensic recovery.** If the degraded lookup misses but `get_apparent_uid(corpse)` (the fresh-equivalent UID) is in memory, the looker rolls Intellect (`world.combat.dice.roll_stat(looker, "intellect", default=1)`) against the stage DC. On success the name is shown as `<decay name> (<name>)`; on failure, the decay name alone. The Intellect roll itself is stored permanently in `corpse.db.forensic_recognition_cache[(looker.dbref, uid)]` and compared against each door's own DC, so a look at DC 5 and an `inspect` at DC 3 share one roll and each keeps its own difficulty (#2622). This prevents re-roll abuse on every `look`. Anonymous lookers (no dbref) are not cached and re-roll on each call.
 
 **Skeletal hard cutoff.** The skeletal stage short-circuits both passes and returns the decay name even with a guaranteed-pass roll. Programmatic `sleeve_uid` queries (admin commands, future forensic tooling) continue to work — only the display-name path is blocked.
 
@@ -1739,9 +1768,8 @@ The two-pass recognition algorithm above is factored into
 `typeclasses.identity_bearer.IdentityBearerMixin` so multiple
 typeclasses can share the same recognition surface without
 duplicating the implementation.  `Corpse` inherits the mixin
-unchanged; the upcoming `SeveredHead` super-item (severed-head v2)
-will inherit the same mixin so heads recognise on-sight identically
-to corpses.
+unchanged; `SeveredHead` inherits the same mixin, so a head is
+recognised on sight as a corpse is.
 
 **Contract** (duck-typed; subclass must supply):
 
@@ -1768,7 +1796,7 @@ photos). It exposes:
 - `attempt_forensic_recognition()` — Intellect roll vs DC with
   permanent per-`(observer, evidence)` cache, mirroring
   `attempt_disguise_pierce` semantics.
-- `render_forensic_report()` — single-tier five-section renderer
+- `render_forensic_report()` — single-tier six-section renderer
   (identity axes + fuzzy time-of-death + cause of death + wounds +
   organ inventory + worn essentials) over the preserved signature
   and death-time medical snapshot.  **Never** assigns a name;
@@ -1782,7 +1810,7 @@ photos). It exposes:
 **Shipped consumer**: `commands/forensics.py:CmdInspect` (key
 `inspect`, alias `autopsy` for muscle-memory continuity) routes
 corpses, severed heads, AND blood pools through the engine. Single-
-tier report.  Slated to retire as a standalone command when
+tier report.  📋 UNBUILT (not decided): slated to retire as a standalone command when
 `inspect` becomes a procedure type under `operate` (only
 performable on a deceased body the surgeon is operating on);
 the alias keeps the legacy command name working through the
@@ -1839,12 +1867,22 @@ an assigned name* — invariant across evidence types.
 - Anonymous lookers (no dbref) re-roll every call; subjects
   without a recoverable UID short-circuit to
   `RecognitionResult(False, None, False)` without rolling.
+- `evidence_uid(subject)` — the look a roll is filed under: the
+  death-time look while the snapshot stands, else the look the
+  corpse presents now.
+- `carry_forensic_roll(looker, cache_owner, old_uid, new_uid)` — when
+  remains are dressed or stripped, somebody they were naming who
+  watched the change has their roll filed under the new look as well
+  (#3833; called from `world.identity.apply_remains_change`).  A
+  failed roll is not carried, and nothing is written over a roll
+  already filed under the new look.
 
 **Report rendering (Surface B)**:
 
 - `render_forensic_report(subject, *, observer)` — single-tier
-  five-section report (PR #186):
-  1. Identity axes (height / build / keyword).
+  six-section report (PR #186):
+  1. Disguise axes — the height, build and keyword overrides in
+     force at death; each reads "indeterminate" when there was none.
   2. Apparent time of death — fuzzy bucket from
      `AUTOPSY_TIME_BUCKETS` (aligned with `CORPSE_DECAY_*`).
   3. Apparent cause of death — `corpse.db.death_cause`.
@@ -1877,7 +1915,7 @@ no switches, help category `Forensics`):
 
 - `inspect <corpse|severed_head|blood_pool>` — Intellect vs
   `AUTOPSY_DC_BASIC` → forensic report.
-- **Corpses / severed heads** render the unified five-section
+- **Corpses / severed heads** render the unified six-section
   report (identity axes, fuzzy ToD, cause, wounds, organ
   inventory, worn essentials).
 - **Blood pools** dedupe `bleeding_incidents` by `apparent_uid`
@@ -1893,7 +1931,7 @@ no switches, help category `Forensics`):
   already holds the revealed UID in `recognition_memory` with an
   `assigned_name` set.
 
-**Forward path**: `inspect` is slated to become a procedure type
+**Forward path** (📋 UNBUILT, not decided): `inspect` is slated to become a procedure type
 under the `operate` charting menu — only performable on a deceased
 body the surgeon is operating on.  When that lands, this
 standalone command surface retires.  The `autopsy` alias remains
@@ -1926,9 +1964,11 @@ Per `(observer, evidence)` cache stored on the evidence object
 (`cache_owner.db.<cache_attr>` — defaults to
 `"forensic_recognition_cache"` for backward compatibility with
 the pre-PR-E corpse path).  Permanent across server restarts.
-A second examination by the same character silently re-renders
-the cached outcome rather than rolling again — rewards single
-careful examination and prevents Intellect re-roll abuse.
+A second examination by the same character compares the stored
+roll against that examination's DC rather than rolling again —
+rewards single careful examination and prevents Intellect re-roll
+abuse.  Entries written before #2622 are bare booleans and replay
+the verdict they recorded.
 
 ### Recognition contract guarantees
 
@@ -1944,12 +1984,13 @@ careful examination and prevents Intellect re-roll abuse.
 
 - Photo capture/display gameplay.
 - Multi-UID linking gameplay (`link_subjects` is a primitive).
-- Memory decay & active impersonation detection (spec L1668
-  Phase 5).
+- Memory decay & active impersonation detection (§Phase 5 —
+  Resonance Mechanics).
 - Sleeve-swap awareness (blocked on resleeving system).
 - Skeletal-bone harvest (cracked-bone marrow extraction) — deferred
-  past PR-186; skeletal corpses currently refuse `inspect` and
-  harvest.
+  past PR-186. *(As built: skeletal remains refuse `inspect` and
+  soft-tissue harvest, but a bone can still be harvested from them and
+  takes the `desiccated` tier; `_resolve_harvest`, #227.)*
 - ~~Severed-head super-item carrying full identity signature~~ —
   ✅ shipped in PR #194 (`SeveredHead`); see "Severed-Head
   Super-Item" subsection below.
@@ -1979,6 +2020,16 @@ state, and the harvest command mutates it in place so subsequent
 autopsies render the removed organ as `absent`.
 
 ### Command contract
+
+> *(Superseded: this is the PR #188 contract, for corpses only. `harvest
+> <organ> from <target>` (alias `extract`, help category Medical) is now
+> a surgical procedure on a corpse, a severed part or a living patient
+> (`commands/CmdSurgical.py:CmdHarvest`, resolved by
+> `world/medical/procedures.py:_resolve_harvest`). It needs an open
+> incision at the organ's container (surface organs excepted) and a
+> surgical kit, and it rolls through the procedure's own
+> `roll_procedure`, not Motorics vs `HARVEST_DC_BASIC`. See
+> `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`.)*
 
 - **Roll**: Motorics vs `HARVEST_DC_BASIC`.  Natural
   `HARVEST_CRIT_FAIL` (= 1) destroys the organ — zeroes
@@ -2049,6 +2100,10 @@ ORGAN_CONDITION_BY_DECAY = {
 }
 ```
 
+`HARVEST_DC_BASIC` and `HARVEST_CRIT_FAIL` are still defined in
+`world/combat/constants.py`, but nothing outside that file reads them
+now. `ORGAN_CONDITION_BY_DECAY` is still read by `_resolve_harvest`.
+
 Flagged for balance review once the black-market organ-trade
 gameplay loop lands.  `HARVEST_DC_BASIC` matches `AUTOPSY_DC_BASIC`
 intentionally — both are "basic forensic competency" gates.
@@ -2069,7 +2124,7 @@ intentionally — both are "basic forensic competency" gates.
 
 ## Surgical Sever (PR #190)
 
-`sever <location> from <corpse>` detaches a limb (or the head) from
+`sever <location> from <corpse>` (aliases `amputate`, `shear`) detaches a limb (or the head) from
 a corpse, spawning a :class:`typeclasses.items.Appendage` item into
 the severer's inventory.  Sibling to PR-188 harvest; shares the
 forensic-chain provenance pattern and the death-time medical
@@ -2124,8 +2179,11 @@ had.
 
 ### Severable partition
 
-The canonical limb partition from
-:meth:`world.medical.core.Organ._is_limb_container` plus `head`:
+The severable set is per species
+(`SPECIES_DEFINITIONS[species]["severable_containers"]` in
+`world/anatomy/species.py`; a rat has its own), plus any grafted augment
+that declares itself severable (`world.medical.removable.severable_containers`,
+#3380). `SEVERABLE_CONTAINERS` is the human set:
 
 ```python
 SEVERABLE_CONTAINERS = frozenset({
@@ -2181,7 +2239,7 @@ This split means: a witness who knew the deceased recognizes the
 generic decaying body until autopsied — matching real-world
 forensic intuition.
 
-Recognition-tier DCs for severed heads mirror live-character tiers
+Recognition-tier DCs for severed heads mirror the corpse tiers
 (moderate DC 3, advanced DC 5, skeletal hard-cutoff with no roll
 path); decay-name mapping is fresh/early → `"human head"`,
 moderate/advanced → `"rotting head"`, skeletal → `"skeletal head"`.
@@ -2306,8 +2364,9 @@ Flagged for balance review alongside the harvest economy work.
 - Limb-attached worn-item retention (severing an arm with a watch
   on does **not** transfer the watch to the appendage in v1).
   *(Update: now implemented for the **living-character** sever path —
-  see "Combat-Driven Severance → Phase B → Item-retention rule".  The
-  corpse-side `CmdSever` still leaves worn items on the corpse.)*
+  see "Combat-Driven Severance → Phase B → Item-retention rule".
+  Since #3577 garments worn only inside the cut travel with the part on
+  every door, the corpse-side `sever` included.)*
 - Reattachment / cybernetic limb prosthetics.
 - Per-organ unbundling from severed limbs.
 
@@ -2335,17 +2394,19 @@ the head is a first-class forensic peer of the source corpse:
   disembodied head would lie.  Head-container entries from the
   corpse's `removed_organs` list are carried over so pre-sever
   harvests stay visible.
-- **Worn-items contract**: `get_worn_items()` returns `[]` — heads
-  carry no clothing in v1 (renderer compatibility shim).
+- **Worn-items contract**: `get_worn_items()` returns the disguise
+  items the head wears, from its own worn record, so a head in a mask
+  presents the masked look until the mask comes off (#3832).
 - **Severing a SeveredHead is refused**: heads are terminal; the
   `CmdSever` isinstance gate remains `Corpse`-only.
 
 **Accepted targets ✅ (PR #196 / PR #441)**: `CmdInspect` (key
-`inspect`, alias `autopsy`) and `CmdHarvest` accept either a
-`Corpse` or a `SeveredHead` — the isinstance gate is
-`(Corpse, SeveredHead)`.  `CmdInspect` additionally accepts a
+`inspect`, alias `autopsy`) accepts either a `Corpse` or a
+`SeveredHead` — the isinstance gate is `(Corpse, SeveredHead)`.
+`harvest` accepts anything with an organ snapshot: a corpse, a severed
+part or a living patient (§Surgical Harvest).  `CmdInspect` additionally accepts a
 `BloodPool` for room-floor bleeder forensics.  Inspecting a head
-renders the standard five-section report against the trimmed
+renders the standard six-section report against the trimmed
 head-container snapshot (brain / eyes / ears / etc.); harvest
 extracts head-container organs honoring the carry-forward
 `removed_organs` list.  `CmdSever` remains `Corpse`-only.
@@ -2673,9 +2734,9 @@ recognition reveal under any circumstance).
 
 ### Organ Default Descriptions (PR-G ✅ — corrected in PR #204)
 
-`world/medical/constants.py` ships an `ORGAN_DISPLAY` table sibling
-to `ORGANS`, carrying display names and condition-keyed prose for
-every harvestable organ (26 entries × 3 conditions: pristine /
+`world/anatomy/organs.py` ships an `ORGAN_DISPLAY` table,
+carrying display names and condition-keyed prose for
+every harvestable organ (27 entries × 3 conditions: pristine /
 damaged / putrid).  The prose is short, clinical, and physically
 anchored — enough to ground the player in the organ's current state
 without staff ever setting a custom `db.desc`.
@@ -2720,9 +2781,9 @@ slough, or dissolve.  Issue #213 captured this in two ways:
 2. **Four-tier prose**: bone entries in `ORGAN_DISPLAY` carry a
    fourth `desiccated` condition tier in addition to the three
    soft-tissue baseline (`pristine` / `damaged` / `putrid`).  The
-   `desiccated` prose surfaces once issue #227 relaxes the
-   skeletal-stage harvest gate to allow bone harvest from
-   skeletal-stage corpses; until then it ships forward-compatible.
+   `desiccated` prose is what a bone harvested from skeletal
+   remains gets: the skeletal-stage gate refuses soft tissue only
+   (`_resolve_harvest`, #227).
 3. **Vocabulary split**: bone prose deliberately avoids the soft-
    tissue register (`weeping`, `slurry`, `pulp`, `slough`,
    `serum`, `frothy`, `slime`, `fetid`, `pus`, `swollen`,
@@ -2811,7 +2872,10 @@ in three phases (A → C), each its own PR.
 - **Limb loss is survivable** — capacity loss only, never a death
   trigger and no special bleeding model in v1.  Only the neck path kills
   (via `neck_integrity`), and it routes through the normal death →
-  corpse pipeline.
+  corpse pipeline.  *(Overtaken by owner ruling 2026-11-14, #3835: a
+  beheading is a death, not a dying. The body becomes a corpse as soon
+  as the death curtain has told the room, with no death window and no
+  revival check; see Phase C below.)*
 - **Worn / wielded items stay with the part** — see the item-retention
   rule under Phase B.
 
@@ -2828,9 +2892,10 @@ live.
 - **`neck_integrity` body capacity** in `BODY_CAPACITIES`:
   `organs: ["cervical_spine"]`, `directly_fatal: True`.
 - **Death wiring** — `MedicalState.is_dead()` reads `neck_integrity`
-  alongside the existing blood-pumping / breathing / digestion / blood
-  loss checks; a destroyed cervical spine drives the capacity to 0.0 and
-  is immediately fatal.
+  alongside the other fatal capacities (blood pumping, breathing,
+  digestion, brain integrity) and the blood-loss floor; a destroyed
+  cervical spine drives the capacity to 0.0 and is immediately fatal.
+  `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` holds the full list.
 - **Hit routing** — `neck` resolves to `cervical_spine` (single-organ
   container, so `select_target_organ` is deterministic).
 - **Pre-migration safety net** — a persisted medical state that predates
@@ -2901,10 +2966,10 @@ mirroring the corpse-side helpers but leaving the character alive.
 - **`SEVER_HAND_BY_CONTAINER`** (`world/combat/constants.py`) maps
   `left_arm` / `left_hand` → `"left"`, `right_arm` / `right_hand` →
   `"right"`; legs are deliberately absent.
-- **Decapitation is *not* handled here** — a lethal neck hit routes
-  through the death → corpse pipeline (Phase C), where the existing
-  `apply_sever_to_corpse` head path and `SeveredHead` take over.  This
-  path is survivable limb loss only.
+- **Decapitation is *not* handled here** — a lethal neck hit takes its
+  own path (Phase C): the head comes off at the blow
+  (`spawn_severed_head_for_living`) and the body becomes a corpse with
+  no death window.  This path is survivable limb loss only.
 
 ### Phase C — Combat Trigger & Weapon Gate (#247 ✅ — PR #248)
 
@@ -2924,33 +2989,43 @@ Wires the damage pipeline into the Phase A / B machinery.
   `save_medical_state` and **before** the death handler (so the
   decapitation flag is set before `at_death` kicks off the asynchronous
   corpse pipeline).  Gated on `injury_type in SEVERING_INJURY_TYPES`:
-  - **Neck** — a destroyed cervical spine is already lethal via
-    `neck_integrity`, and the corpse does not yet exist, so the limb
-    cannot be severed synchronously.  Instead the dying character is
-    flagged `db.decapitation_pending = True`.
+  - **Neck** — a destroyed cervical spine is lethal via
+    `neck_integrity`.  The character is flagged
+    `db.decapitation_pending = True` and the head comes off at once:
+    `spawn_severed_head_for_living` puts a `SeveredHead` in the room,
+    strips the head cluster from the body, and moves garments worn only
+    there onto the head (#343, #3577).
   - **Any other severable limb** (arm / hand / thigh / shin / foot;
     `head` is excluded — living decapitation routes through the neck) —
     survivable.  `apply_sever_to_character` runs synchronously; `died`
     stays `False`.
-- **Deferred decapitation realisation** — the asynchronous death
-  pipeline reads the flag.  At the tail of
-  `DeathProgressionScript._create_corpse_from_character` (right before
-  `return corpse`, once the corpse is fully populated with longdesc /
-  wound / identity snapshots), `spawn_severed_head_for_corpse(corpse)`
-  fires when `db.decapitation_pending` is set.  That helper mirrors the
-  manual `CmdSever` head path: spawn a `SeveredHead` in the room,
-  `configure_from_sever(location_name="head", ...)`, record the sever in
-  `corpse.db.severed_locations`, and `apply_sever_to_corpse(corpse,
-  "head")` to fan the head-cluster prose / wounds onto the head and
-  stamp the corpse's stump wound.  The corpse therefore ends up headless
-  with its identity-gating `head_severed` flag set, exactly as a manual
-  decapitation would — see "Sever-Head Identity Surface".
+- **Decapitation realisation** — a beheading is a death, not a dying
+  (owner ruling 2026-11-14, #3835).  Once the death curtain has told the
+  room, it calls `complete_a_beheading`, which builds the corpse at
+  once: no death window, no revival check, no dying messages.  At the
+  tail of `DeathProgressionScript._create_corpse_from_character`, a body
+  whose head already came off (`db.head_severed_at_decap`) gets only the
+  corpse-side bookkeeping: `head` is added to
+  `corpse.db.severed_locations` and `apply_sever_to_corpse(corpse,
+  "head")` clears the head-cluster prose / wounds and stamps the stump.
+  Only if the living-side spawn failed does
+  `spawn_severed_head_for_corpse(corpse)` build the head off the corpse
+  instead, as it did before #343.  The corpse is therefore headless, read
+  from its severance record (`Corpse._is_headless`), not from the
+  `head_severed` flag, and recognised by nobody at a glance, exactly as
+  after a manual decapitation — see "Sever-Head Identity Surface".
 
 **Identity consequence**: combat decapitation produces the same
 forensic surface as surgical decapitation — a `SeveredHead` carrying the
 face-side identity signature (recognisable by witnesses who knew the
 deceased) and a headless corpse whose look-time recognition is gated to
 the decay-tier fallback until autopsied.
+
+**Surgery is the second door.** Amputating a living patient's head with
+the `amputate` procedure (`world/medical/procedures.py:_resolve_amputate`)
+calls the same `spawn_severed_head_for_living`, which sets the same
+`decapitation_pending` flag, so the death is the same death with no
+window.
 
 ### Out of scope (deferred past Phase C)
 
@@ -2969,12 +3044,14 @@ the decay-tier fallback until autopsied.
 
 | Attribute | Type | Default | Set By | Persists Across Clones |
 |---|---|---|---|---|
-| `db.sleeve_uid` | UUID (str) | Generated at creation | System | Yes (flash clones inherit) |
-| `db.height` | str | Selected at chargen | Chargen | Yes |
-| `db.build` | str | Selected at chargen | Chargen | Yes |
-| `db.hair_color` | str or None | Selected at chargen | Chargen / `@hair` | Yes |
-| `db.hair_style` | str or None | Selected at chargen | Chargen / `@hair` | Yes |
-| `db.sdesc_keyword` | str | Selected at chargen | `describe keyword` | Yes |
+| `sleeve_uid` | UUID (str) | Generated at creation | System | Yes (flash clones inherit) |
+| `height` | str | Selected at chargen | Chargen | Yes |
+| `build` | str | Selected at chargen | Chargen | Yes |
+| `hair_color` | str or None | Selected at chargen | Chargen | Yes |
+| `hair_style` | str or None | Selected at chargen | Chargen | Yes |
+| `sdesc_keyword` | str or None | None (a gender default is used when unset) | `describe keyword` | Yes |
+
+All six are `AttributeProperty(..., category="identity")` on `Character`: read them as `char.sleeve_uid`, not `char.db.sleeve_uid`, which reads `None`.
 
 `sdesc_physical` is not stored — it is computed on access from `height` and `build` via the descriptor table.
 
@@ -2992,7 +3069,7 @@ The distinguishing feature is not stored — it is computed on access from worn 
 
 | Attribute | Type | Purpose |
 |---|---|---|
-| `db.sdesc_short` | str or None | Brief recognizable description for sdesc feature clause (e.g., "leather jacket", "red power armor") |
+| `worn_sdesc_short` (AttributeProperty) | str (default `""`) | Brief recognizable description for sdesc feature clause (e.g., "leather jacket", "red power armor") |
 
 ---
 
@@ -3006,8 +3083,8 @@ The table below tracks the original Phase 2 audit surface. All rows have been re
 | Shield messages | `world/combat/attack.py:232-268` | ✅ | First-person msgs use `get_display_name_safe(target, observer)`; observer broadcast at line 263 uses `msg_room_identity` with three char_refs |
 | Normal movement (Evennia defaults) | `typeclasses/characters.py` (`Character.announce_move_from/to`) | ✅ | Per-observer override routes broadcasts through `msg_room_identity`; honors caller `msg=`/`mapping=` by delegating to `super()`. Phase 2 Φ₅, PR #166 |
 | Communication (say/whisper/emote) | `commands/CmdCommunication.py` | ✅ | Custom `CmdSay` / `CmdWhisper` / `CmdEmote` overrides ship per-observer rendering |
-| Death curtain filter | `typeclasses/characters.py:155-222` | n/a | Uses verb-substring matching (`' says, "'`, `' tells you'`, etc.) in `_is_social_message`, not `.key`. Intentional design; out of per-observer-rendering scope |
-| CmdAttack target resolution | `commands/combat/core_actions.py:118` | ✅ | Uses `resolve_character_target(...)` — recognition-aware |
+| Death curtain filter | `typeclasses/characters.py` (`Character._is_social_message`) | n/a | Uses verb-substring matching (`' says, "'`, `' tells you'`, etc.) in `_is_social_message`, not `.key`. Intentional design; out of per-observer-rendering scope |
+| CmdAttack target resolution | `commands/combat/core_actions.py` (`CmdAttack`) | ✅ | Uses `resolve_character_target(...)` — recognition-aware |
 | Exit drag messages | `typeclasses/exits.py:327` | ✅ | Uses `msg_room_identity` with `{grappler}` / `{victim}` char_refs |
 | Room character listing | `typeclasses/rooms.py:410` | ✅ | Uses `get_display_name(looker)` |
 | Combat movement messages | `commands/combat/movement.py` | ✅ | First-person msgs use `get_display_name(observer)`; room broadcasts converted to `msg_room_identity` in Phase 2 Φ₃ (PR #160) |
@@ -3051,8 +3128,10 @@ G.R.I.M. distribution:
 1. **Height selection** — short, below-average, average, above-average, tall
 2. **Build selection** — slight, lean, athletic, average, stocky, heavyset
 3. **Hair color selection** — from approved list, or bald/none
-4. **Hair style selection** — from approved list (contextual based on color choice), or bald/none
-5. **Preview** — confirmation screen showing the assembled sdesc, e.g. `"You will appear as 'a lanky man with red dreadlocks' to strangers."`
+4. **Hair style selection** — from the full approved list, whatever the colour; choosing bald at step 3 skips this step
+5. **Confirm** — after G.R.I.M. distribution, a summary of name, sex, height, build, hair and G.R.I.M. (not the composed sdesc)
+
+The web form asks height and build only; it does not ask hair.
 
 **Sdesc keyword is _not_ chosen during chargen.** New characters get a
 gender-appropriate default (`DEFAULT_SDESC_KEYWORDS[gender]` —
@@ -3069,11 +3148,13 @@ context for what a keyword is.
 ### Sleeve UID Assignment
 
 - New characters: generate a fresh UUID via `uuid.uuid4()`
-- Flash clones: inherit `sleeve_uid` from the original character (in `create_flash_clone()` at `commands/charcreate.py:293`)
+- Flash clones: inherit `sleeve_uid` from the original character (in `commands/charcreate.py:create_flash_clone`)
 
 ---
 
 ## Migration Strategy
+
+> 📋 UNBUILT (not decided). No backfill command exists, and nothing prompts a player at login. Every character gets a `sleeve_uid` when it is created (`Character.at_object_creation`). A character with no height or build is seen by its key until those are set (`Character.get_sdesc`). There is no `@hair` command; hair is set at chargen.
 
 Existing characters need identity attributes backfilled. Use a one-off staff command in the `@fixchar` pattern (that command itself was removed 2026-10-09, #3728):
 
@@ -3118,8 +3199,9 @@ Per-phase detail below.
 - Grammar engine (articles, possessive, objective, self-perception)
 - Chargen updates
 - Flash clone `sleeve_uid` inheritance
-- identity backfill migration (one-off staff command)
-- Staff identity overlay (permission-based stopgap)
+- *(Two items once listed here were never built: the identity backfill
+  command (§Migration Strategy) and the staff identity overlay
+  (§Staff Vision, 📋 UNBUILT (not decided)).)*
 
 ### Phase 2 — Consistency
 
@@ -3134,7 +3216,7 @@ Per-phase detail below.
 - Fix `CmdAttack` target resolution
 - Fix drag messages, death filter pattern matching
 - Target resolution with sdescs, assigned names, and ordinals
-- `sdesc_short` attribute on items
+- `worn_sdesc_short` attribute on items
 - Distinguishing feature auto-derivation from worn items
 
 **Conversion Status — `msg_contents()` → `msg_room_identity()` sweep:**
@@ -3166,7 +3248,7 @@ Sites that broadcast **only** non-character text (item names, constant prose) ar
 - DB attributes for active overrides on character — **shipped**: `db.height_override`, `db.build_override`, `db.keyword_override`, `db.active_persona`, `db.personas`
 - `db.disguise_essential` flag on items — contributes to identity signature when worn — **shipped** (signature wiring in `world/identity.py:get_essential_item_type_ids`; concrete item prototypes ship in Phase 3.5)
 - `db.is_disguise_item` flag on items — Phase 5 perception bonus hook (defined but inert in Phase 3) — **shipped (flag schema only)**
-- Hook `get_sdesc()` / `get_display_name()` to consume override axes and Apparent UID — **shipped** (`typeclasses/characters.py:946,989`)
+- Hook `get_sdesc()` / `get_display_name()` to consume override axes and Apparent UID — **shipped** (`typeclasses/characters.py`: `Character.get_sdesc`, `Character.get_display_name`)
 - Recognition memory re-keyed on Apparent UID — **shipped**
 - Orphaned-entry handling: `lost_contact` boolean flag + render annotation in `memory` / `recall`; never auto-pruned — **shipped**. Lazy evaluation at render time: `world/identity.py:mark_lost_contact_entries` is invoked by `commands/CmdCharacter._refresh_lost_contact` from `CmdMemory.func` and `CmdRecall.func`, flipping `lost_contact = True` for entries whose Apparent UID is not currently visible and whose `last_seen` is older than `LOST_CONTACT_THRESHOLD_SECONDS` (`world/identity.py`; provisional 30 in-game days, balance-pass tuning value). The inverse — clearing back to `False` — is handled by the existing recognition writer in `_remember_target` on re-meet **and** by the passive recency bumper `world/identity.py:bump_recognition_recency` whenever a remembered observer perceives a remembered target. Render annotation `|y(lost contact)|n` appears next to the assigned name in both `memory` (table cell) and `recall` (entry header).
 - Passive recognition recency on perception — **shipped**. `world/identity.py:bump_recognition_recency` refreshes `last_seen` / `location_last_seen` / `sdesc_at_last_encounter` (but not `times_seen`) for already-remembered targets, throttled by `RECOGNITION_BUMP_THROTTLE_SECONDS` (300s). Wired into `typeclasses/characters.py:Character.at_post_move` via `_refresh_recognition_recency`, which iterates the new room's `Character` contents and bumps each remembered target. Stealth/sneaking/hidden suppression is a known future-work delta.
@@ -3186,7 +3268,7 @@ Sites that broadcast **only** non-character text (item names, constant prose) ar
 - Corpse apparent-UID propagation — **shipped** (PR #133). `typeclasses/corpse.py` carries `sleeve_uid`, `get_worn_items()`, a recognition-aware `get_display_name`, and `at_object_leave` invalidation so worn-item removal from a corpse re-derives its apparent presentation. Observers who tagged the deceased under a particular signature continue to auto-recognize the body under that same signature; stripping the body changes the signature and breaks the recognition tag, mirroring the live-character semantics.
 - Lifecycle integration:
   - Death: clears overrides; corpse stores `real_sleeve_uid` + `last_active_signature` snapshot — **shipped** (PR #133 + Issue #182). Corpse `sleeve_uid` propagation and presentation-aware recognition shipped in PR #133. Issue #182 closed the remaining gaps: `_create_corpse_from_character` now stores the full identity-signature 5-tuple as `corpse.db.signature_at_death` alongside the existing `apparent_uid_at_death` hash (so forensic consumers can reconstruct component axes — the hash alone is one-way), and `_clear_all_overrides(character)` runs after the snapshot to wipe `height_override` / `build_override` / `keyword_override` / `active_persona` on the dead Character (snapshot-before-clear ordering preserves the death-moment disguise). `world.identity.render_signature_summary(signature)` provides a stable keyed view over the 5-tuple for future forensic-reconstruction consumers (cf. Future Hooks: photo evidence, signature snapshots as evidence, multi-UID linking).
-  - Sleeve swap (flash clone / resleeving): salt is `real_sleeve_uid`, so personas don't carry across bodies; persona records remain on the player — **🔵 Deferred** until the resleeving system lands. Behavior holds today by virtue of `sleeve_uid` inheritance (`commands/charcreate.py:386-388` — flash clones reuse the dead character's `sleeve_uid`, so bare-faced Apparent UIDs match across the respawn boundary) + persona storage on the Character. No explicit flash-clone-aware code path exists yet; the explicit awareness work is parked pending the resleeving design.
+  - Sleeve swap (flash clone / resleeving): salt is `real_sleeve_uid`, so personas don't carry across bodies; persona records remain on the player — **🔵 Deferred** until the resleeving system lands. Behavior holds today by virtue of `sleeve_uid` inheritance (`commands/charcreate.py:create_flash_clone` — flash clones reuse the dead character's `sleeve_uid`, so bare-faced Apparent UIDs match across the respawn boundary) + persona storage on the Character. `create_flash_clone` also restores recognition from the imprint and needs a sleeve policy (#3667); personas stay on the dead Character.
   - Item destruction: removing/destroying essential item changes signature → Apparent UID changes → observers see stranger — **shipped** (covered by the unmasking-moments wiring on `remove_item`; destruction routes through removal).
 - No observer-side disguise metadata — recognition system stays transparent to disguise mechanics
 - No auto-equip / auto-remove on persona swap — disguise emerges from observable state
@@ -3212,8 +3294,8 @@ Sites that broadcast **only** non-character text (item names, constant prose) ar
 - Specific essential-item prototypes (balaclava, hood, cowl, mask, etc.) with appropriate `disguise_essential` and `is_disguise_item` flags — **shipped** (PR #132). BALACLAVA plus 12 Phase 3.5 prototypes in `world/prototypes.py`.
 - Tagging conventions for "same type" matching (so a replacement balaclava restores signature) — **shipped** (#178, PR #179): `disguise_type_id` is the keying field consumed by `get_essential_item_type_ids`; per-prototype rationale is recorded inline above each prototype and summarised in the "Taxonomy decisions" subsection below. Lock-in regression tests live in `world/tests/test_disguise_prototypes.py`.
 - Distinguishing-feature interaction with disguise items (which items suppress which features) — **shipped** (#176): hair fallback suppression is driven by the unified clothing-coverage system (item lists `"hair"` in `coverage` → fallback skipped). The legacy `covers_hair` boolean has been removed. `"hair"` is now a first-class body location in `DEFAULT_LONGDESC_LOCATIONS` and leads the `ANATOMICAL_DISPLAY_ORDER` head region, which is ordered by organic recognition — hair, then eyes, then the head and face, followed by ears and neck (#238). Broader suppression conventions (e.g. mask-suppresses-face) follow naturally from coverage lists; no parallel flags required.
-- Item-driven sdesc fragment contributions (cohesion with `sdesc_short` from Phase 2) — **shipped** (#180): all 13 disguise prototypes' `worn_sdesc_short` values verified to produce grammatical `format_clothing_feature` clauses. Fixed `mirrorshades` slipping through `_PLURALIA_TANTUM_NOUNS` (would render as `"in a mirrorshades"`); added renderer-cohesion regression test that walks every prototype.
-- Sub-visible disguise items (`disguise_silent_feature`) — **shipped** (issue #174). Items flagged `disguise_silent_feature=True` are excluded from the distinguishing-feature partition in `get_distinguishing_feature` (`typeclasses/characters.py:908–925`) while remaining fully participant in the disguise / Apparent UID system (signature, recognition memory, swap detection). Sole current user: `COLORED_CONTACTS` — contacts sit on the eye, so observers register eye colour rather than "person in colored contacts." Extension point for future sub-visible items (dental prosthetics, scent maskers, etc.). Orthogonal to the Class A / Class B `disguise_adjective` axis (sdesc adjective injection) and to the `"hair"` coverage-list entry (hair feature suppression, #176).
+- Item-driven sdesc fragment contributions (cohesion with `worn_sdesc_short` from Phase 2) — **shipped** (#180): all 13 disguise prototypes' `worn_sdesc_short` values verified to produce grammatical `format_clothing_feature` clauses. Fixed `mirrorshades` slipping through `_PLURALIA_TANTUM_NOUNS` (would render as `"in a mirrorshades"`); added renderer-cohesion regression test that walks every prototype.
+- Sub-visible disguise items (`disguise_silent_feature`) — **shipped** (issue #174). Items flagged `disguise_silent_feature=True` are excluded from the distinguishing-feature partition in `get_distinguishing_feature` (`typeclasses/characters.py`, `Character.get_distinguishing_feature`) while remaining fully participant in the disguise / Apparent UID system (signature, recognition memory, swap detection). Sole current user: `COLORED_CONTACTS` — contacts sit on the eye, so observers register eye colour rather than "person in colored contacts." Extension point for future sub-visible items (dental prosthetics, scent maskers, etc.). Orthogonal to the Class A / Class B `disguise_adjective` axis (sdesc adjective injection) and to the `"hair"` coverage-list entry (hair feature suppression, #176).
 - Pharmaceutical / biomod items for `describe` override — **deferred** (depends on body-mod system; tracked under Future Hooks).
 - Photos / identity artifacts — **deferred** (tracked under Future Hooks).
 
@@ -3245,13 +3327,15 @@ Lock-in regression tests live in `world/tests/test_disguise_prototypes.py` (`Tes
 - Cyberbrain organ/implant (depends on cyberware system)
 - Digital memory storage (same data model as organic)
 - Digital ID exchange command
-- Memory backup/restore mechanics
+- Memory backup/restore mechanics. *(A fixed imprint at death exists for organic memory: `world/imprint.py`, #2188. Backups a character takes at a terminal are proposed in `specs/proposals/BACKUPS_AND_MEMORY_FORGERY_SPEC.md`.)*
 - Hackable/forgeable contact entries
-- Staff identity overlay migrated from permission check to cyberware
+- Staff identity overlay migrated from permission check to cyberware (📋 UNBUILT (not decided): there is no permission-check overlay to migrate; §Staff Vision)
 
 ### Phase 5 — Resonance Mechanics
 
 **Scope:** Give Resonance full mechanical integration. (Disguise piercing landed early — see [Disguise Piercing](#disguise-piercing) — and uses Intellect-vs-Resonance, not opposed-Resonance.)
+
+📋 UNBUILT: none of the items below is built. `world.identity.erase_look` (#3825), today called only by `forget`, is the function a memory-loss item would call.
 
 - Memory decay curves (low Resonance → memory loss over time)
 - Auto-recognition from proximity + time + high Resonance
@@ -3264,7 +3348,7 @@ Lock-in regression tests live in `world/tests/test_disguise_prototypes.py` (`Tes
 
 ## Appendix: Adjacent Room Sightings
 
-The existing adjacent room sighting system (`rooms.py:440-474`) already shows characters in neighboring rooms anonymously: `"You see a lone figure to the north."` or `"You see a group of N people standing to the north."` This is consistent with the recognition model — at distance, you can't make out details. No changes needed to this system.
+The existing adjacent room sighting system (`typeclasses/rooms.py`, `get_adjacent_character_sightings`) already shows characters in neighboring rooms anonymously: `"You see a lone figure to the north."` or `"You see a group of people standing to the north."` This is consistent with the recognition model — at distance, you can't make out details. No changes needed to this system.
 
 ---
 
@@ -3272,11 +3356,11 @@ The existing adjacent room sighting system (`rooms.py:440-474`) already shows ch
 
 For reference, the existing forensic data preserved by the system:
 
-**Blood pools** (`typeclasses/objects.py:468+`): character name, severity, timestamp, age progression, forensic descriptions.
+**Blood pools** (`typeclasses/objects.py`, `BloodPool`): character name, severity, timestamp, age progression, forensic descriptions.
 
 **Corpses** (`typeclasses/corpse.py`): original character name/dbref, account dbref, death time, cause of death, medical conditions, wounds at death, physical description, longdesc data, skintone, gender. Decay stages: fresh (<1h), early (<1d), moderate (<3d), advanced (<1w), skeletal (>1w).
 
-`sleeve_uid` has been added to corpse forensic data (PR #133) — corpses participate in the recognition pipeline. PR-E adds a `signature` + `apparent_uid` field to each blood-pool incident (data prep only — no consumer command yet); see §"Forensic Recognition Engine" for the engine surface that will read them once a blood-pool examination command lands.
+`sleeve_uid` has been added to corpse forensic data (PR #133) — corpses participate in the recognition pipeline. PR-E adds a `signature` + `apparent_uid` field to each blood-pool incident, read by `inspect <blood pool>` (PR #441); see §"Forensic Recognition Engine".
 
 ---
 
@@ -3286,7 +3370,7 @@ The recognition memory data model is designed to port into a retrieval-augmented
 
 ### Why RAG
 
-Recognition memory starts as simple dict lookups by `sleeve_uid`, but future use cases require semantic retrieval:
+Recognition memory is simple dict lookups keyed by Apparent UID, but future use cases require semantic retrieval:
 
 - **Player recall**: `remember the docks` → find all memories with spatial context matching "docks"
 - **NPC behavior**: An NPC needs to assess "have I met this person before, and should I be hostile?" based on past interaction history
@@ -3341,6 +3425,8 @@ Either works. ChromaDB has a larger community and more documentation. LanceDB ha
 **`all-MiniLM-L6-v2` is recommended for Phase 1** — small footprint, fast on CPU, sufficient quality for short memory documents (100-500 tokens each). Can upgrade to `nomic-embed-text` later if retrieval quality needs improvement.
 
 **LLM synthesis — deferred**
+
+*(Update: an LLM layer for NPCs now exists, behind configurable endpoints and tied to no one model or backend (`AGENTS.md`, Design Laws; `specs/proposals/LLM_GAMEMASTER_SPEC.md`). The vector index described in this appendix is 📋 UNBUILT: no vector store is in the repository.)*
 
 The LLM layer (interpreting retrieved memories into natural language responses) is a separate decision. Options when the time comes:
 
