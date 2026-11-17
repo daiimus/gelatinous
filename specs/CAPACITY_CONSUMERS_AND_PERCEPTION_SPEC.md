@@ -1,6 +1,6 @@
 # Capacity Consumers & Perception Spec
 
-> **Status:** ✅ **SHIPPED & LIVE** — verified against code 2026-08-02: `world/perception.py:179` `can_perceive`, capacity consumed throughout `world/medical/`, tests in `test_capacity_chrome.py` and `test_combat_capacity_sight.py`.
+> **Status:** ✅ **SHIPPED & LIVE** — verified against code 2026-08-02: `world/perception.py` `can_see` / `can_hear` / `can_smell` / `blocked_senses`, capacity consumed throughout `world/medical/`, tests in `test_capacity_chrome.py` and `test_combat_capacity_sight.py`.
 
 > **Status: ✅ MOSTLY SHIPPED & LIVE** (as of 2026-06-20). What began as a
 > design proposal is now built: the performance capacities consume across
@@ -19,7 +19,7 @@
 > single-blob room-desc **five-senses decomposition** *shipped* (#623 / #624) —
 > `Room.get_display_desc` (`typeclasses/rooms.py`) composes the description
 > from only the sense layers the looker can perceive, and §5 carries the ✅
-> marker. The other three deferrals (voice-descriptor-as-identity, §4.6
+> marker. The other deferrals (voice-descriptor-as-identity, §4.6
 > multi-voice disambiguation, the full-perception sensory suite, the
 > social-blocked capacities) still hold as written.
 
@@ -83,7 +83,7 @@ A capacity effect only lands if a *consumer system* exists.
 | `moving` | movement / flee / future jump-athletics (per-effector resolver) | ✅ shipped (dodge, §6); flee/jump future |
 | `talking` | **voice production** (the voice triangle, §4); social/negotiation (resonance-gated) | ✅ voice-production shipped (garble); social **system-blocked, NOT skill-blocked** |
 | `blood_filtration` | infection course, renal failure (existing condition substrate) | ✅ shipped (§7) |
-| `eating` | **consumption benefit** (existing consume pipeline; buff model, no hunger) | blocked — needs the food/drink buff; rides delivery tags |
+| `eating` | **consumption benefit** (existing consume pipeline; buff model, no hunger) | not built — not blocked: rides the existing consume pipeline (delivery tags) once the food/drink buff exists (§2.1) |
 | `hearing`→trade, `*`→work_speed | trade price, crafting/work | blocked (no trade/work system); `hearing→trade` vestige dropped |
 
 > **Note 2026-09-11 (two true-ups on this table).** (1) "vestige dropped" is the
@@ -176,35 +176,50 @@ placeholder; the real consumers are below.)
 | sdesc | **vocal description + ending** |
 | apparent UID (visual signature) | **voice signature** |
 | recognition memory → assign a name | **voice memory** → assign a name |
-| `describe keyword` | **`@voice`** (+ expanded `describe` menu) |
+| `describe keyword` | **`@voice`** (+ expanded `describe` menu: 📋 UNBUILT (no issue)) |
 | visual disguise / mask | **voice modulator** (cyber) |
 
 Reuses the IDENTITY_RECOGNITION pipeline as a *second axis* — not a new system.
 
 ### 4.3 The `@voice` system
-A player assigns their **vocal description** (the color: "gravelly baritone")
+A player assigns their **vocal description** (the color, one word: "gravelly")
 plus an **ending** (the grammatical cap: drawl / rasp / lilt / cadence / …) —
 both **curated** (a bounded vocabulary, like visual keywords; not free garbage).
-Set via an expanded `describe` menu *and* a fast `@voice` path. That pair *is*
-the voice signature others silently remember and name.
+Set with `@voice` (📋 UNBUILT (no issue): a voice page in the `describe` menu).
+The voice signature is the body's sleeve UID plus that pair and whether a
+modulator is on (`world/voice.py` `get_voice_signature`); changing any of them
+gives a new voice UID. Others learn a voice only by `remember <person in front
+of them> as <name>`, never by hearing alone.
 
 ### 4.4 Speech rendering
-`Bob says, *speaking Common, in a gravelly baritone drawl* "My name's Robert."`
+`Bob says, *speaking Common, in a gravelly drawl* "My name's Robert."`
+(The phrase is shown only to those who can see Bob, on a 25% roll per
+utterance; a garbled voice shows "in a slurred, broken voice" every time.)
 - `*…*` = voice flavor; `<language>` slot present-but-always-`Common` (languages
   are future, the slot is future-proofed).
 
 ### 4.5 The resolution chain (core mechanic)
 "Who said it" resolves by channel, gated by the *listener's* capacities:
 1. **Can see the speaker** (`sight`) → name if known, else visual sdesc.
-2. **Can't see, can hear** (`hearing`) → name if the *voice* is known, else the
-   voice descriptor ("A gravelly baritone drawl says…").
+2. **Can't see, can hear** (`hearing`) → name if the listener places the *voice*
+   (the §9 2c roll), else "someone". 📋 UNBUILT (no issue): the voice
+   descriptor as a stand-in name ("A gravelly drawl says…"). Over radio the
+   speaker's voice phrase always follows "A voice", and an NPC brain hears "a
+   <description> voice" (RADIO_COMMS_SPEC §2.4).
 3. **Neither** → "someone."
 
-A mask defeats channel 1, not 2; a voice modulator defeats channel 2; blindness
+A mask defeats channel 1, not 2; a voice modulator does not defeat channel 2 outright (it changes the voice
+and adds 3 to the speaker's side of the placing roll, so a listener who named
+the natural voice may still place it); blindness
 drops you to 2; deafness removes 2. This chain is the payoff of the whole
 sight+hearing design.
 
 ### 4.6 Rendering heuristic (decided — "polite, contextual")
+📋 UNBUILT (no issue), except the can-see branch: `world/speech.py`
+`visible_voice_flavor` shows the voice phrase on a 25% roll per utterance
+(`VOICE_FLAVOR_SPRINKLE_CHANCE`), and a garbled voice every time. Nothing counts
+unseen voices or keeps scene memory.
+
 The voice cue renders when it carries **attribution value**, with a light
 **flavor** sprinkle otherwise. Per listener per utterance:
 - **Can't see + 2+ distinct unseen voices in earshot** → **always** render
@@ -225,7 +240,8 @@ Voice recognition needs both ends, tying three capacities + three augments:
   at all (wrecked jaw → no usable signature). Restored by **CYBER_JAW** (built).
 - **Listener's `hearing`** → can they receive it (cyber ears restore).
 - **Voice modulator** → disguises the signature (anonymize v1; *mimic a specific
-  voice* later, integrated with the existing `impersonate` disguise command).
+  voice* later, integrated with the existing `impersonate` disguise command:
+  📋 UNBUILT (no issue)).
 - Three sides, three chrome answers. This wires `talking` (otherwise blocked on
   social) into something concrete now.
 
@@ -294,8 +310,7 @@ perception-gated). Tests: `test_room_five_senses.py`.
 > authoring path named here is wrong. Today sense layers are authored straight
 > onto `room.db.sense_descs` by the build scripts (`scripts/builds/*.py`) and
 > **read back** by `@room` (`commands/CmdBuildTools.py` `CmdRoomProfile`, which
-> lists the authored layers). `CmdRoomProfile`'s own help text still points at
-> the removed command — a code-side stale reference, not a spec fix.
+> lists the authored layers).
 
 ## 6 · Manipulation & Moving — the per-effector resolver (decided)
 
@@ -315,8 +330,8 @@ surplus effectors**, both measured against the **species baseline** derived
 > `_resolve_capacity_contribution` and shared with the body-wide method), read
 > by its two consumers `manipulation_hit_factor` and `moving_dodge_factor`
 > (`world/combat/capacity.py`); the meta-bonus half (b) is separate again —
-> `surplus_limb_initiative_bonus` and the one door `choose_weapon` (`world/combat/weapon_choice.py`)
-> (`world/combat/utils.py`), see §6.1. One resolver returning both halves was
+> `surplus_limb_initiative_bonus` (`world/combat/utils.py`) and the one door
+> `choose_weapon` (`world/combat/weapon_choice.py`), see §6.1. One resolver returning both halves was
 > the design; two collaborating layers is what exists.
 
 ### 6.1 Manipulation — two distinct outputs
@@ -559,11 +574,24 @@ is the content lift) → per-effector resolver (manipulation/moving).
      mirroring disguise piercing: `attempt_voice_discern` runs opposed
      Intellect-vs-Resonance, familiarity buff, modulator penalty, **weighted by
      the listener's `hearing` capacity** (the consumer — `hearing` finally lands),
-     cached per presentation; forget drops a won placement and keeps a lost one (#3817). **Decided simplification:**
+     cached per presentation; forget drops a won placement and keeps a lost one (#3817). As built: no roll happens unless the listener has named some voice of that
+     body with `remember`; the verdict is stored per body and voice UID and never
+     rolled again, so a lost one stands even if the voice is named afterwards.
+     Familiarity counts how many times the listener has named the voice it places
+     by. A deaf character learns no voice (#2809). Forgetting a name erases the
+     voices named together with that face and the won placements that rested on
+     them (`world/identity.py` `erase_look`); an AI NPC also drops what it filed
+     under those voices, including a changed voice it could place only by that
+     name (#3861). **Decided simplification:**
      an unrecognised/undiscerned voice is *not* attributed (no descriptor) — it
      renders as "someone"; the voice-descriptor-as-identity ("a gravelly drawl
      says…") and the §4.6 multi-voice disambiguation are **deferred**. Wired into
-     `say` (per-observer; 2a flavour now confined to the can-see branch). Tests in
+     `say`, `to`, `whisper` and the room lines of a radio transmission (the `xmit`
+     mutter, `to <radio>,`, a comms organ), per-observer; 2a flavour now confined
+     to the can-see branch. Radio reception places the voice by the same roll
+     (`world/radio.py` `_render_radio_line`). A speaker hidden from the observer
+     by stealth is placed by voice even when the observer can see
+     (`_speaker_concealed`). Tests in
      `test_voice_identity.py`. **Headline payoff live: a blind listener recognises
      a known voice; a stranger's stays "someone."**
 3. **Perception render** — capacities gate LOOK sensory categories + compensatory
@@ -595,7 +623,7 @@ is the content lift) → per-effector resolver (manipulation/moving).
    revision.~~
    **✅ Superseded 2026-09-11 — the Q2 breadth bonuses are in:**
    **loadout-readiness** via the one door `choose_weapon`
-   (`world/combat/utils.py`, called from `process_attack` in
+   (`world/combat/weapon_choice.py`, called from `process_attack` in
    `world/combat/attack.py`); **initiative** via `surplus_limb_initiative_bonus`
    (`world/combat/utils.py`), added to the `d20 + motorics` initiative roll —
    triangular increments capped at 4 surplus limbs, so `+0/+1/+3/+6/+10` for a
@@ -621,8 +649,7 @@ is the content lift) → per-effector resolver (manipulation/moving).
      chrome-arm seam. Multiplied into the attacker's motorics in `attack.py`,
      completing the stack (ranged: motorics × sight × manipulation; melee:
      motorics × manipulation × light-sight; dodge: motorics × moving). Breadth
-     meta-bonuses (Q2: initiative/disarm-resist/loadout) remain a future combat
-     revision. Tests: `test_combat_manipulation_resolver.py`.
+     meta-bonuses (Q2): see §6.1. Tests: `test_combat_manipulation_resolver.py`.
 
 Each layer ships standalone value. The five-senses *description model* (§5) is
 the one piece worth pinning early so earlier layers don't contradict it.
@@ -639,8 +666,10 @@ locomotion restored, no special-case needed:
 - `CYBER_LEFT_EAR` / `CYBER_RIGHT_EAR` → `hearing`.
 - `CYBER_LEG` → `moving` (side-agnostic `augment_organs` chassis).
 - `VOICE_MODULATOR` → a jaw-hardpoint module hosting a `voice_modulator`
-  ability (the voice-disguise; shifts the voice UID so recognition fails).
-  `/modulate`. `world/voice.py` `is_voice_modulated` reads the deployed state
+  ability (the voice-disguise; shifts the voice UID, so a listener who named
+  the natural voice must win the placing roll against a penalty of 3, §9 2c).
+  `/modulate`. Obtainable only by staff spawn today: no clinic, shop or loot
+  table carries it. 📋 UNBUILT (no issue). `world/voice.py` `is_voice_modulated` reads the deployed state
   off the organ, so destroying or losing the module ends the disguise (#2484).
 
 The `*_override` conditions (`sight_override`/`hearing_override`/`moving_override`/
