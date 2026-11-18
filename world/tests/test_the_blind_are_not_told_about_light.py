@@ -1,8 +1,8 @@
 """Sight-only weather prose lives in the bucket that can be gated (#2734).
 
 `atmospheric` is never perception-gated -- that is its documented
-contract (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC`: *"olfactory /
-tactile / atmospheric never gated"*). Sight-only lines were authored
+contract (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC` §5.1: *"Tactile /
+gustatory / atmospheric are never gated"*). Sight-only lines were authored
 into it anyway:
 
     clear_dawn / midday / dusk / night

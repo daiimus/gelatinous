@@ -1,1023 +1,180 @@
 # Webclient Screen Size Detection Specification
 
-> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02. Issue #304 was stale and is closed.
->
-> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
-> - The file paths here are wrong: the spec says the plugin lives at `web/static/webclient/js/plugins/screensize.js`. **That path does not exist** — this repo replaced Evennia's GoldenLayout client with a bespoke one and the logic is in `js/gel.js:455-521`.
-> - "Phase 3: GoldenLayout Integration" is moot — there is no GoldenLayout in this webclient.
-
-## Document Information
-
-**Version:** 1.0  
-**Date:** 2025-01  
-**Status:** Screen-size detection is in `web/static/webclient/js/gel.js`
-(`measureScreen()`, `sendScreenSize()`, `onResize()`). It is not a plugin. The
-§Implementation Plan below is the original 2025 plugin design and does not
-describe the code.  
-**Related Systems:** G.R.I.M. Combat System, Evennia Webclient  
+The webclient measures how many characters fit in its output pane and reports
+that width and height to the server, the way a telnet client does with NAWS
+(Negotiate About Window Size, RFC 1073). Server code that formats to the
+screen reads the reported width from the session. The logic lives in
+`web/static/webclient/js/gel.js` (`measureScreen()`, `sendScreenSize()`,
+`onResize()`). It is not a plugin: this repo replaced Evennia's GoldenLayout
+webclient with its own client, one bare script with no plugin architecture,
+no GoldenLayout, no jQuery and no font picker.
 
 ---
 
-## Table of Contents
+## When the client reports
 
-1. [Problem Statement](#problem-statement)
-2. [Research Findings](#research-findings)
-3. [Proposed Solution](#proposed-solution)
-4. [Technical Design](#technical-design)
-5. [Implementation Plan](#implementation-plan)
-6. [Testing Strategy](#testing-strategy)
-7. [Risks & Mitigation](#risks--mitigation)
-8. [Future Enhancements](#future-enhancements)
+- **On connect.** `ws.onopen` calls `sendScreenSize()`.
+- **After a resize.** `onResize()` waits until 250 ms after the last resize
+  (`RESIZE_DEBOUNCE_MS = 250`, an inline timer) and then calls
+  `sendScreenSize()`. Resize events fire continuously while a window is
+  dragged; the debounce means one report after the user stops, not one per
+  event.
+- `onResize()` is bound to `window.visualViewport` when the browser has that
+  API, and to `window` only otherwise. A `visualViewport` resize fires on
+  device rotation and when the virtual keyboard shows or hides, so both are
+  re-measured without an `orientationchange` listener.
+- **There is no font-change and no layout-change trigger.** A font change
+  takes effect at the next resize or reconnect.
 
----
+The character cell is re-measured on every report; nothing is cached.
 
-## Problem Statement
+## How the client measures (`measureScreen()`)
 
-### Current Behavior
+1. **The character cell.** A hidden probe span holding `"MMMMMMMMMM"` (ten
+   characters) is built once. On every call it takes the font family, font
+   size and line height of `#output-inner` (#3396), so a font change at the
+   600px breakpoint is picked up at the next measurement.
+2. The cell width is the probe's `getBoundingClientRect()` width divided by
+   10, and the cell height is the probe's height. Both are fractional. Reason:
+   whole-pixel `offsetWidth` under-measured a 13px cell by enough to report a
+   phone one column and one row too wide.
+3. If the probe measures zero, an 8 × 16 px cell is assumed.
+4. **The usable area** is the client area of `#output` minus its four
+   computed paddings, read on every call (#3397). Reason: the phone rule pads
+   `#output` `6px 8px`, less than the desktop, so fixed desktop figures
+   understated a phone's screen by up to a cell.
+5. Columns are the usable width ÷ cell width, rounded down, never below 40.
+   Rows are the usable height ÷ cell height, rounded down, never below 10.
+   There is no ceiling.
 
-> **Re-audited 2026-09-12 —** read this subsection as the pre-implementation
-> state, not as today's. Under the ✅ SHIPPED banner its opening sentence
-> ("does not dynamically detect or report the actual browser window dimensions
-> to the server") reads as a live statement and is false: the client measures
-> and reports on connect (`web/static/webclient/js/gel.js:183`) and on every
-> debounced resize (`gel.js:509-522`). Items 1-3 below were the real
-> motivation and were fixed; item 4 was never accurate as written — see the
-> note on it.
+`gel.js` does no logging (it contains no `console.` call) and assigns nothing
+to `window`, so there is no console-callable measuring function.
 
-The Evennia webclient currently defaults to a fixed screen width of 78 characters (defined by `settings.CLIENT_DEFAULT_WIDTH`) and does not dynamically detect or report the actual browser window dimensions to the server. This results in:
+## What goes over the wire
 
-1. **Suboptimal Display**: Text formatting, tables, and combat messages may not fully utilize available screen space
-2. **Inconsistent Experience**: Telnet clients automatically negotiate screen size via NAWS protocol (RFC 1073), but webclient users have no equivalent
-3. **Manual Configuration Required**: Users must manually set screen dimensions if they want accurate sizing
-4. **Combat System Impact**: The G.R.I.M. combat system uses screen width for formatting combat messages, art, and status displays
+- `sendScreenSize()` sends `{screenwidth, screenheight}` as the GMCP package
+  `Client.Options`, in a websocket TEXT frame (`sendGMCP()` in `gel.js`).
+- `server/conf/gmcp_websocket.py` translates `Client.Options` into Evennia's
+  `client_options` inputfunc (`evennia/server/inputfuncs.py`).
+- Evennia stores the values in `session.protocol_flags` as `SCREENWIDTH` and
+  `SCREENHEIGHT`, each keyed by window ID:
 
-> **Re-audited 2026-09-12 — two of the three clauses are false; the "art" one
-> holds.** No file under `world/combat/` reads screen width directly
-> (`grep -rn 'SCREENWIDTH|client_width|get_client_size|terminal_width' world/combat/`
-> returns nothing), and combat **messages** are never wrapped or boxed to a
-> width — they are emitted verbatim from the per-weapon tables in
-> `world/combat/messages/`. There is no width-aware combat **status display**
-> either: the `COMBAT` banner sketched in §User Impact below does not exist
-> anywhere in the code. The **art** clause is true, indirectly but genuinely —
-> `world/combat/attack.py:739` and `:757` call `show_death_curtain()`, and
-> `typeclasses/curtain_of_death.py:29` scales that art to the reported width,
-> so combat is what drives the most visible consumer of this feature.
->
-> The four `SCREENWIDTH` consumers in the whole repo are
-> `world/utils/boxtable.py:26` (`get_terminal_width()`, reached only from
-> `commands/CmdArmor.py:9`), `typeclasses/death_progression.py:37`,
-> `typeclasses/curtain_of_death.py:28` and `commands/CmdCharacter.py:29` — the
-> armour table, the death sequence and the character sheet. Note that all four
-> clamp with `max(60, detected_width)` (`boxtable.py:27`,
-> `curtain_of_death.py:29`, `death_progression.py:38`, `CmdCharacter.py:30`),
-> so anything a client reports below 60 columns is discarded. The client
-> itself floors at 40 columns (`measureScreen()` in `gel.js`), so a phone that
-> reports 40–59 columns still gets output 60 wide. Whether that is wanted is
-> not decided.
+  ```python
+  session.protocol_flags["SCREENWIDTH"] = {0: 120}   # window 0 is 120 characters wide
+  session.protocol_flags["SCREENHEIGHT"] = {0: 40}   # window 0 is 40 lines tall
+  ```
 
-> Nothing in this repo's own code reads the reported height (`SCREENHEIGHT`).
-> The client sends it and Evennia stores it, but only Evennia's own code can
-> use it.
+  Window ID 0 is the main window. Evennia supports several windows per
+  session; the webclient uses one.
+- Evennia reads them back through `ServerSession.get_client_size()`
+  (`evennia/server/serversession.py`) and `Command.client_width()`.
+- Telnet clients reach the same inputfunc through Evennia's NAWS handler
+  (`evennia/server/portal/naws.py`).
 
-### Telnet vs Webclient Comparison
+## Defaults
 
-| Feature | Telnet (NAWS Protocol) | Webclient (Current) | Webclient (Proposed) |
-|---------|------------------------|---------------------|----------------------|
-| **Width Detection** | ✅ Automatic | ❌ Static (78 chars) | ✅ Automatic |
-| **Height Detection** | ✅ Automatic | ❌ Static (24 lines) | ✅ Automatic |
-| **Window Resize** | ✅ Updates on resize | ❌ No updates | ✅ Updates on resize |
-| **Font Changes** | ✅ Terminal handles | ❌ No detection | ✅ Detects & updates |
-| **Protocol** | Telnet NAWS bytes | None | `client_options` inputfunc |
+- Evennia 6.1.0 ships `CLIENT_DEFAULT_WIDTH = 78` and
+  `CLIENT_DEFAULT_HEIGHT = 45` (`evennia/settings_default.py`). This repo does
+  not override either.
+- The server uses 78 only if no size was ever reported.
 
-> **Re-audited 2026-09-12 — three cells in this table are wrong:**
-> - **"Static (24 lines)"** — Evennia 6.1.0 ships `CLIENT_DEFAULT_HEIGHT = 45`
->   (`evennia/settings_default.py:835`) and this repo does not override it.
->   `CLIENT_DEFAULT_WIDTH = 78` (line 833) is correct.
-> - **"Font Changes → ✅ Detects & updates"** did not ship as an event hook, and
->   until 2026-10-10 the measuring probe was built once (`if (!probeEl)`) and
->   never re-read the font, so the `@media (max-width: 600px)` drop from 14px
->   to 13px (`web/static/webclient/css/webclient.css:305-307`) left the
->   reported size stale until reload. **Fixed by #3396:** `measureScreen()`
->   now reads the pane's font on every call, so every resize re-measures the
->   cell. In the same change (#3397) the usable area subtracts the pane's
->   computed padding instead of the desktop literals 20/16, which understated
->   a phone's screen by up to a cell. There is still no font-change *event*;
->   a font change takes effect at the next resize or reconnect.
-> - **"Protocol → `client_options` inputfunc"** is right only at the far end.
->   The wire format is GMCP `Client.Options` (`gel.js:506`), translated to the
->   inputfunc by `server/conf/gmcp_websocket.py:168-170`.
+## Telnet and webclient compared
 
-### User Impact
+| Feature | Telnet (NAWS) | Webclient |
+|---|---|---|
+| **Width detection** | Automatic | Automatic |
+| **Height detection** | Automatic | Automatic |
+| **Window resize** | Updates on resize | Updates 250 ms after the last resize |
+| **Font changes** | Terminal handles | No font-change event; picked up at the next resize or reconnect |
+| **Protocol** | Telnet NAWS bytes | GMCP `Client.Options`, translated to the `client_options` inputfunc |
 
-**Combat System Example:**
-```
-Current (78 chars):
-===============================================================================
-|r COMBAT |n Attacker vs Defender
-===============================================================================
+## The client's font
 
-Desired (120 chars):
-========================================================================================================================
-|r COMBAT |n Attacker vs Defender - Round 3 - Initiative: 15 vs 12 - Proximity: CLOSE
-========================================================================================================================
-```
+- `web/static/webclient/css/webclient.css` sets
+  `--font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace`
+  at `--font-size: 14px` and `--line-height: 1.4`.
+- The only variation is `@media (max-width: 600px)`, which drops the font
+  size to 13px. There is no user-selectable family and no size range, so
+  crossing that breakpoint is the one font change this client has, and
+  `measureScreen()` re-measures it on the next resize.
+- The font is monospace, so every character has the same width and one
+  measured cell stands for all of them. Columns, tables and ASCII art line up.
 
----
+## Who uses the reported size
 
-## Research Findings
+There are four readers of `SCREENWIDTH` in this repo:
 
-### Evennia Server Architecture
+| Reader | What it formats |
+|---|---|
+| `get_terminal_width()` in `world/utils/boxtable.py`, reached only from `commands/CmdArmor.py` | the `armor` table |
+| `_get_terminal_width()` in `typeclasses/death_progression.py` | the death sequence |
+| `_get_terminal_width()` in `typeclasses/curtain_of_death.py` | the death curtain |
+| `_get_terminal_width()` in `commands/CmdCharacter.py` | the character sheet |
 
-#### 1. Client Options InputFunc
+- **All four clamp with `max(60, detected_width)`.** Anything a client
+  reports below 60 columns is discarded. The client floors at 40 columns, so
+  a phone that reports 40–59 columns still gets output 60 wide.
+- **Combat.** No file under `world/combat/` reads screen width. Combat
+  messages are never wrapped or boxed to a width: they are emitted verbatim
+  from the per-weapon tables in `world/combat/messages/`. There is no
+  width-aware combat status display. Combat does drive the most visible
+  consumer: `_handle_kill()` in `world/combat/attack.py` calls
+  `show_death_curtain()`, and `typeclasses/curtain_of_death.py` scales the
+  curtain to the reported width. The curtain is sent only to the character
+  who died, at that character's reported width.
+- **Height.** Nothing in this repo's own code reads `SCREENHEIGHT`. The client
+  sends it and Evennia stores it, but only Evennia's own code can use it.
 
-**Location:** `evennia/server/inputfuncs.py` lines 187-267
+## Checking it in play
 
-The server expects screen dimensions via the `client_options` inputfunc:
+Per the house rule, these must be played in the live game, not asserted from
+a helper.
 
-```python
-def client_options(session, *args, **kwargs):
-    """
-    Handle client option updates.
-    
-    Kwargs:
-        screenwidth (int): Screen width in characters
-        screenheight (int): Screen height in lines
-        # ... other options
-    """
-```
+- **What the client sent.** `gel.js` never logs. Watch the outgoing
+  `Client.Options` GMCP frame in the browser DevTools, **Network → WS**
+  messages pane.
+- **What the server stored.** Inside the game container (not over SSH), in
+  `evennia shell`:
 
-**Storage:** Dimensions are stored in `session.protocol_flags`:
-```python
-session.protocol_flags["SCREENWIDTH"] = {0: width}
-session.protocol_flags["SCREENHEIGHT"] = {0: height}
-```
+  ```python
+  from evennia.server.sessionhandler import SESSIONS
+  session = SESSIONS.get()[0]  # First session
+  width, height = session.get_client_size()
+  print(f"Width: {width}, Height: {height}")
+  ```
 
-**Retrieval:** Commands access dimensions via:
-```python
-# In Command class
-def client_width(self):
-    if self.session:
-        return self.session.protocol_flags.get(
-            "SCREENWIDTH", {0: settings.CLIENT_DEFAULT_WIDTH}
-        )[0]
-    return settings.CLIENT_DEFAULT_WIDTH
-
-# In ServerSession class
-def get_client_size(self):
-    flags = self.protocol_flags
-    width = flags.get("SCREENWIDTH", {}).get(0, settings.CLIENT_DEFAULT_WIDTH)
-    height = flags.get("SCREENHEIGHT", {}).get(0, settings.CLIENT_DEFAULT_HEIGHT)
-    return width, height
-```
-
-#### 2. Telnet NAWS Protocol
-
-**Location:** `evennia/server/portal/naws.py`
-
-Telnet clients negotiate screen size automatically:
-```python
-class Naws:
-    """
-    Implements NAWS (Negotiate About Window Size) - RFC 1073
-    """
-    def negotiate_sizes(self, width, height):
-        """Send screen dimensions via telnet protocol bytes"""
-        self.sessionhandler.data_in(
-            self.protocol,
-            text="",
-            type="client_options",
-            screenwidth={0: width},
-            screenheight={0: height}
-        )
-```
-
-**Key Insight:** Telnet clients send dimensions via protocol negotiation. Webclient needs JavaScript equivalent.
-
-### Evennia Webclient Architecture
-
-#### 1. Plugin System
-
-**Location:** `evennia/web/static/webclient/js/plugins/`
-
-Evennia webclient uses a plugin-based architecture with standardized callbacks:
-
-```javascript
-let plugin_name = (function () {
-    // Plugin initialization
-    var init = function () {
-        console.log('Plugin initialized');
-    }
-    
-    // Called after layout is ready
-    var postInit = function () {
-        // Setup UI interactions
-    }
-    
-    // Add settings to options dialog
-    var onOptionsUI = function (parentdiv) {
-        // Add settings controls
-    }
-    
-    // Called when layout changes
-    var onLayoutChanged = function () {
-        // Respond to layout changes
-    }
-    
-    return {
-        init: init,
-        postInit: postInit,
-        onOptionsUI: onOptionsUI,
-        onLayoutChanged: onLayoutChanged
-    }
-})();
-window.plugin_handler.add("plugin_name", plugin_name);
-```
-
-#### 2. GoldenLayout Integration
-
-**Location:** `evennia/web/static/webclient/js/plugins/goldenlayout.js`
-
-GoldenLayout manages multiple panes and window resizing:
-
-```javascript
-// Line 828: Window resize handler already exists
-$(window).bind("resize", scrollAll);
-
-function scrollAll() {
-    myLayout.updateSize();
-    $(".content").each(function() {
-        let scrollHeight = $(this).prop("scrollHeight");
-        let clientHeight = $(this).prop("clientHeight");
-        $(this).scrollTop(scrollHeight - clientHeight);
-    });
-}
-```
-
-**Key Insight:** Resize handler exists but only updates scroll position, not character dimensions.
-
-#### 3. Font Plugin
-
-**Location:** `evennia/web/static/webclient/js/plugins/font.js`
-
-Users can select font family and size:
-
-```javascript
-// Line 67: Font size changes CSS directly
-var onFontSize = function (evnt) {
-    var size = $(evnt.target).val();
-    $(document.body).css("font-size", size+"em");
-    localStorage.setItem("evenniaFontSize", size);
-}
-
-// Default font: DejaVu Sans Mono at 0.9em
-// Sizes range from 0.4em to 2.0em
-```
-
-**Key Insight:** Font changes affect character width measurements. Plugin must detect font changes.
-
-#### 4. Message Communication
-
-**Location:** `evennia/web/static/webclient/js/evennia.js`
-
-Client sends messages to server via:
-
-```javascript
-// Send client options
-Evennia.msg("client_options", [], {
-    screenwidth: width,
-    screenheight: height
-});
-
-// Server receives as inputfunc call
-```
-
-**Key Insight:** Communication protocol already established, just need to send dimensions.
-
-### CSS & Font Rendering
-
-**Location:** `evennia/web/static/webclient/css/webclient.css`
-
-```css
-/* Line 19: Default monospace font */
-body {
-    font-size: .9em;
-    font-family: 'DejaVu Sans Mono', Consolas, Inconsolata, 'Lucida Console', monospace;
-    line-height: 1.4em;
-}
-
-/* Line 302: Content divs where text is displayed */
-.content {
-    border: 1px solid #C0C0C0;
-    background-color: black;
-    padding: 1rem;
-    overflow-y: auto;
-}
-```
-
-**Key Insight:** Monospace fonts ensure consistent character width, but width varies by font selection.
+  Width and height match the last outgoing `Client.Options` frame.
+- **Accuracy.** Measure the `#output` width in DevTools and compute
+  `(width - padding) / char_width`. The reported width is within ±2
+  characters of it. A reasonable cell is roughly 7–12px wide and 14–20px
+  tall.
+- **Resize and debounce.** Resize the window significantly (for example to
+  half width), wait 350 ms (the 250 ms debounce plus a buffer), and check that
+  one new frame was sent, not a stream during the drag. Rapidly resizing
+  several times over 2 seconds sends 1–2 frames, not 10+.
+- **Font change.** The only one available is crossing the 600px breakpoint;
+  the next resize re-measures it.
+- **Memory.** Take a heap snapshot, resize the window 20 times, force garbage
+  collection, take another: no significant growth (< 1MB).
+- **Consumers.** Be killed in combat and watch the curtain fill your own
+  window. The other two observable consumers are `armor` and the character
+  sheet. All clamp at 60, so nothing can be tested below 60 columns.
+- **Browsers.** Chrome, Firefox, Safari and Edge, plus mobile on iOS and
+  Android: width accuracy, height accuracy, resize and font change.
 
 ---
 
-## Proposed Solution
+## Unbuilt
 
-### Overview
+### Logging and error handling — 📋 UNBUILT (no issue)
 
-> The client does not do this as a plugin. `web/static/webclient/js/gel.js` is
-> one bespoke script with no plugin architecture. It reports the size once on
-> connect and again 250 ms after the last resize; it has no font-change or
-> layout-change trigger.
+Add logging and error handling to the measuring code. `gel.js` does no
+logging.
 
-Create a new webclient plugin (`screensize.js`) that:
+### Manual override option — 📋 UNBUILT (no issue)
 
-1. **Measures** character dimensions using a hidden test element
-2. **Calculates** width and height in characters based on visible content area
-3. **Reports** dimensions to server via `client_options` inputfunc
-4. **Updates** automatically on window resize, font changes, and layout changes
-5. **Integrates** seamlessly with existing plugin architecture
+Let users set the dimensions by hand from an options dialog:
 
-### Design Principles
-
-1. **Non-Invasive**: Plugin-based approach, no core Evennia modifications
-2. **Monospace-Aware**: Accurate measurement of monospace character width
-3. **Responsive**: Immediate updates on window/font changes
-4. **Fault-Tolerant**: Graceful fallback to defaults if measurement fails
-5. **Performance-Conscious**: Debounced updates to avoid excessive server communication
-
----
-
-## Technical Design
-
-### Architecture Diagram
-
-> This diagram is the 2025 plugin design. The code path is: on connect
-> (`ws.onopen`) or 250 ms after the last window or `visualViewport` resize
-> (`onResize()`), `measureScreen()` measures a hidden probe against `#output`,
-> `sendScreenSize()` sends it as a GMCP `Client.Options` text frame,
-> `server/conf/gmcp_websocket.py` turns that into the `client_options`
-> inputfunc, and Evennia stores it in `protocol_flags` as SCREENWIDTH and
-> SCREENHEIGHT. There is no GoldenLayout, no `#screensize-tester` and no
-> font-change event.
-
-```mermaid
-graph TD
-    subgraph BROWSER["Browser Window"]
-        subgraph GL["GoldenLayout Container"]
-            subgraph CONTENT[".content div (Main Pane)"]
-                VTA["Visible Text Area\n(calculate character dimensions)"]
-            end
-        end
-        HIDDEN["Hidden Test Element\n#screensize-tester\n(measure monospace char width/height)"]
-    end
-
-    RESIZE["Window Resize Event"]
-    FONT["Font Change Event"]
-
-    subgraph PLUGIN["screensize.js Plugin"]
-        MEASURE["measureCharacterDimensions()"]
-        CALC["calculateScreenSize()"]
-        SEND["sendDimensionsToServer()"]
-        HANDLE["handleResize() — debounced"]
-        FONTCHANGE["handleFontChange()"]
-    end
-
-    subgraph SERVER["Evennia Server"]
-        INPUT["inputfuncs.client_options()"]
-        PROTO["session.protocol_flags\nSCREENWIDTH / SCREENHEIGHT"]
-        CMD["Command.client_width()"]
-    end
-
-    BROWSER --> RESIZE & FONT
-    RESIZE --> HANDLE
-    FONT --> FONTCHANGE
-    HANDLE & FONTCHANGE --> MEASURE --> CALC --> SEND
-    SEND -->|"client_options msg"| INPUT --> PROTO --> CMD
-```
-
-### Component Design
-
-> **Re-audited 2026-09-12 — spec vs. `web/static/webclient/js/gel.js`:**
->
-> | Spec says | Code does |
-> |---|---|
-> | `measureCharacterDimensions()` | inlined in `measureScreen()` — `gel.js:455` |
-> | `calculateScreenSize()` | same function, `gel.js:455-501` |
-> | `sendDimensionsToServer()` | `sendScreenSize()` — `gel.js:503-507` |
-> | `debounce(func, wait)` helper | inline `resizeTimer` — `gel.js:509-515` |
-> | probe text `"M"` | `"MMMMMMMMMM"` ÷ 10, measured fractionally with `getBoundingClientRect()` — `gel.js:467, 480-481` (better; still not what is written) |
-> | probe font refreshed each call | **yes, since #3396 (2026-10-10):** the probe is built once (`gel.js:463`) but re-fonted from the pane's computed style on every call (`gel.js:462, 470-472`) |
-> | container `$(".content[types*='main']")` → `.content` → `#messagewindow` | `#output` — `gel.js:491`; no jQuery, no `.content`, no `#messagewindow` in this client |
-> | padding read from CSS | **yes, since #3397 (2026-10-10):** the four computed paddings of `#output` are subtracted on every call — `gel.js:491-495` (the desktop literals `- 20` / `- 16` used to understate a phone's screen, where `webclient.css:315-317` pads `6px 8px`) |
-> | clamp 20-500 / 10-200 | `Math.max(40, …)` / `Math.max(10, …)`, no ceiling — `gel.js:497-498` |
-> | fallback 78 × 24 | fallback char cell 8px × 16px — `gel.js:484-485` |
-> | `Evennia.msg("client_options", …)` | `sendGMCP("Client.Options", size)` — `gel.js:506`, a TEXT frame (`gel.js:237-241`) → `server/conf/gmcp_websocket.py:168-170` |
-> | debounce 500 ms | `RESIZE_DEBOUNCE_MS = 250` — `gel.js:29` |
-> | `Evennia.emitter.on("connection_open")` + `postInit` | `ws.onopen` → `sendScreenSize()` — `gel.js:183` |
-> | `console.log` / `console.warn` diagnostics | none — `gel.js` contains zero `console.` calls |
->
-> Two of these rows were defects rather than harmless renames, and are fixed
-> (#3396, #3397, 2026-10-10): the probe is re-fonted on every call and the
-> padding is the stylesheet's. The fix also measures the cell fractionally,
-> because whole-pixel `offsetWidth` under-measured a 13px cell by enough to
-> report a phone one column and one row too wide once the padding was exact.
-
-#### 1. Character Dimension Measurement
-
-**Challenge:** Calculate pixel width/height of a single monospace character.
-
-**Solution:** Create hidden test element with known monospace character.
-
-```javascript
-function measureCharacterDimensions() {
-    // Create or reuse test element
-    let tester = document.getElementById("screensize-tester");
-    if (!tester) {
-        tester = document.createElement("span");
-        tester.id = "screensize-tester";
-        tester.style.visibility = "hidden";
-        tester.style.position = "absolute";
-        tester.style.whiteSpace = "pre";
-        tester.style.fontFamily = window.getComputedStyle(document.body).fontFamily;
-        tester.style.fontSize = window.getComputedStyle(document.body).fontSize;
-        tester.textContent = "M"; // Use 'M' for monospace width
-        document.body.appendChild(tester);
-    } else {
-        // Update font properties in case they changed
-        tester.style.fontFamily = window.getComputedStyle(document.body).fontFamily;
-        tester.style.fontSize = window.getComputedStyle(document.body).fontSize;
-    }
-    
-    const charWidth = tester.offsetWidth;
-    const charHeight = tester.offsetHeight;
-    
-    return { width: charWidth, height: charHeight };
-}
-```
-
-**Why 'M'?** In monospace fonts, all characters have the same width. 'M' is typically the widest character in proportional fonts, but in monospace it's standard width.
-
-#### 2. Screen Size Calculation
-
-**Challenge:** Determine how many characters fit in the visible content area.
-
-**Solution:** Find main content div, measure usable area, divide by character dimensions.
-
-```javascript
-function calculateScreenSize() {
-    // Get character dimensions
-    const { width: charWidth, height: charHeight } = measureCharacterDimensions();
-    
-    if (charWidth === 0 || charHeight === 0) {
-        console.warn("screensize: Invalid character dimensions, using defaults");
-        return {
-            width: 78,  // CLIENT_DEFAULT_WIDTH
-            height: 24  // CLIENT_DEFAULT_HEIGHT
-        };
-    }
-    
-    // Find the main content div (goldenlayout main pane)
-    // Priority: tagged "main", first .content, or fallback to #messagewindow
-    let contentDiv = $(".content[types*='main']").first();
-    if (contentDiv.length === 0) {
-        contentDiv = $(".content").first();
-    }
-    if (contentDiv.length === 0) {
-        contentDiv = $("#messagewindow");
-    }
-    
-    if (contentDiv.length === 0) {
-        console.warn("screensize: No content div found, using defaults");
-        return { width: 78, height: 24 };
-    }
-    
-    // Get usable area (subtract padding and borders)
-    const paddingLeft = parseInt(contentDiv.css("padding-left")) || 0;
-    const paddingRight = parseInt(contentDiv.css("padding-right")) || 0;
-    const paddingTop = parseInt(contentDiv.css("padding-top")) || 0;
-    const paddingBottom = parseInt(contentDiv.css("padding-bottom")) || 0;
-    
-    const usableWidth = contentDiv.width() - paddingLeft - paddingRight;
-    const usableHeight = contentDiv.height() - paddingTop - paddingBottom;
-    
-    // Calculate character dimensions
-    const widthInChars = Math.floor(usableWidth / charWidth);
-    const heightInChars = Math.floor(usableHeight / charHeight);
-    
-    // Sanity checks
-    const finalWidth = Math.max(20, Math.min(500, widthInChars)); // 20-500 chars
-    const finalHeight = Math.max(10, Math.min(200, heightInChars)); // 10-200 lines
-    
-    return { width: finalWidth, height: finalHeight };
-}
-```
-
-#### 3. Server Communication
-
-**Challenge:** Send dimensions to server using established protocol.
-
-**Solution:** Use `client_options` inputfunc via Evennia.msg().
-
-```javascript
-function sendDimensionsToServer() {
-    const { width, height } = calculateScreenSize();
-    
-    console.log(`screensize: Reporting dimensions: ${width}x${height}`);
-    
-    // Send to server via client_options inputfunc
-    Evennia.msg("client_options", [], {
-        screenwidth: width,
-        screenheight: height
-    });
-}
-```
-
-#### 4. Event Handling
-
-**Challenge:** Detect when screen size changes (window resize, font change, layout change).
-
-**Solution:** Hook into multiple event sources with debouncing.
-
-```javascript
-// Debounce helper to avoid excessive updates
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Debounced resize handler (500ms delay)
-const debouncedResize = debounce(function() {
-    console.log("screensize: Window resized");
-    sendDimensionsToServer();
-}, 500);
-
-// Window resize event
-$(window).on("resize", debouncedResize);
-
-// Font change detection
-// Hook into font plugin if available
-if (window.plugins && window.plugins["font"]) {
-    // Wrap font change handlers
-    const originalOnFontSize = window.plugins["font"].onFontSize;
-    if (originalOnFontSize) {
-        window.plugins["font"].onFontSize = function(...args) {
-            originalOnFontSize.apply(this, args);
-            // Font size changed, remeasure after CSS updates
-            setTimeout(sendDimensionsToServer, 100);
-        };
-    }
-    
-    const originalOnFontFamily = window.plugins["font"].onFontFamily;
-    if (originalOnFontFamily) {
-        window.plugins["font"].onFontFamily = function(...args) {
-            originalOnFontFamily.apply(this, args);
-            // Font family changed, remeasure after CSS updates
-            setTimeout(sendDimensionsToServer, 100);
-        };
-    }
-}
-
-// GoldenLayout change event
-function onLayoutChanged() {
-    console.log("screensize: Layout changed");
-    // Give layout time to stabilize
-    setTimeout(sendDimensionsToServer, 200);
-}
-```
-
-**Note on Debouncing:** Window resize events fire continuously while dragging. Debouncing with 500ms delay ensures we only measure after user stops resizing.
-
-#### 5. Initialization
-
-**Challenge:** Send initial dimensions when client connects.
-
-**Solution:** Hook into Evennia connection and GoldenLayout initialization.
-
-```javascript
-var init = function () {
-    console.log('Screensize plugin initialized');
-    
-    // Send initial dimensions when connected
-    Evennia.emitter.on("connection_open", function() {
-        console.log("screensize: Connection opened");
-        // Give GoldenLayout time to initialize
-        setTimeout(sendDimensionsToServer, 1000);
-    });
-}
-
-var postInit = function () {
-    console.log('Screensize plugin post-init');
-    
-    // Send dimensions after layout is ready
-    setTimeout(sendDimensionsToServer, 500);
-}
-```
-
-### Full Plugin Code Structure
-
-```javascript
-/*
- * Evennia Webclient Screen Size Detection Plugin
- * 
- * Automatically detects browser window dimensions and reports to server
- * via client_options inputfunc, similar to telnet NAWS protocol.
- */
-
-let screensize_plugin = (function () {
-    "use strict"
-    
-    // Configuration
-    const DEBOUNCE_DELAY = 500;        // ms to wait after resize
-    const MIN_WIDTH = 20;              // minimum reasonable width
-    const MAX_WIDTH = 500;             // maximum reasonable width
-    const MIN_HEIGHT = 10;             // minimum reasonable height
-    const MAX_HEIGHT = 200;            // maximum reasonable height
-    const DEFAULT_WIDTH = 78;          // fallback width
-    const DEFAULT_HEIGHT = 24;         // fallback height
-    
-    // Private functions
-    function measureCharacterDimensions() { /* ... */ }
-    function calculateScreenSize() { /* ... */ }
-    function sendDimensionsToServer() { /* ... */ }
-    function debounce(func, wait) { /* ... */ }
-    
-    // Debounced resize handler
-    const debouncedResize = debounce(function() {
-        sendDimensionsToServer();
-    }, DEBOUNCE_DELAY);
-    
-    // Plugin callbacks
-    var init = function () { /* ... */ }
-    var postInit = function () { /* ... */ }
-    var onLayoutChanged = function () { /* ... */ }
-    
-    // Public API
-    return {
-        init: init,
-        postInit: postInit,
-        onLayoutChanged: onLayoutChanged
-    }
-})();
-
-// Register plugin
-window.plugin_handler.add("screensize", screensize_plugin);
-```
-
----
-
-## Implementation Plan
-
-### Phase 1: Core Plugin Development
-
-**Files to Create:**
-- `web/static/webclient/js/plugins/screensize.js`
-
-**Tasks:**
-1. ⬜ Create plugin skeleton with init/postInit callbacks (there is no plugin; `gel.js` is one bare script)
-2. ✅ Implement `measureCharacterDimensions()` function
-3. ✅ Implement `calculateScreenSize()` function
-4. ✅ Implement `sendDimensionsToServer()` function
-5. ⬜ Add debounce utility function (`onResize()` debounces with an inline timer instead)
-6. ✅ Hook window resize events
-7. ✅ Hook Evennia connection events
-8. ⬜ Add logging and error handling (`gel.js` does no logging)
-
-**Acceptance Criteria:**
-- Plugin loads without errors
-- Dimensions are measured accurately
-- Server receives `client_options` messages
-- Window resize triggers updates (debounced)
-- Initial dimensions sent on connection
-
-### Phase 2: Font Integration
-
-**Files to Modify:**
-- `web/static/webclient/js/plugins/screensize.js` (add font detection)
-
-**Tasks:**
-1. ⬜ Detect when font plugin changes font size
-2. ⬜ Detect when font plugin changes font family
-3. ⬜ Re-measure dimensions after font changes
-4. ✅ Update test element with current font properties
-
-No font-change hook exists; this client has no font picker. The probe takes its
-font from `#output-inner` on every measurement (#3396), so a font change is
-picked up at the next resize or reconnect.
-
-**Acceptance Criteria:**
-- Font size changes trigger dimension updates
-- Font family changes trigger dimension updates
-- Measurements use correct font properties
-
-### Phase 3: GoldenLayout Integration
-
-**Files to Modify:**
-- `web/static/webclient/js/plugins/screensize.js` (add layout detection)
-
-**Tasks:**
-1. ⬜ Implement `onLayoutChanged()` callback
-2. ⬜ Detect when main pane is resized
-3. ⬜ Detect when layout configuration changes
-4. ⬜ Target correct content div for measurement
-
-This client has no GoldenLayout; `measureScreen()` always measures `#output`.
-
-**Acceptance Criteria:**
-- Layout changes trigger dimension updates
-- Main pane is correctly identified
-- Multi-pane layouts are handled gracefully
-
-### Phase 4: Testing & Validation
-
-**Tasks:**
-1. ⬜ Test with different fonts (DejaVu, Consolas, Fira Mono, etc.)
-2. ⬜ Test with different font sizes (0.4em to 2.0em)
-3. ⬜ Test with different window sizes
-4. ⬜ Test with different browsers (Chrome, Firefox, Safari, Edge)
-5. ⬜ Test with mobile/responsive layouts
-6. ⬜ Test with GoldenLayout pane changes
-7. ⬜ Verify server receives correct dimensions
-8. ⬜ Verify combat system uses new dimensions
-
-**Acceptance Criteria:**
-- All manual tests pass
-- No console errors
-- Dimensions are accurate (±2 characters)
-- Server protocol_flags are updated correctly
-
-### Phase 5: Documentation
-
-**Files to Create/Update:**
-- `web/static/webclient/js/plugins/README_SCREENSIZE.md` (plugin documentation)
-
-**Tasks:**
-1. ⬜ Document plugin architecture
-2. ⬜ Document configuration options
-3. ⬜ Document browser compatibility
-4. ⬜ Document known limitations
-5. ⬜ Update the relevant `specs/*.md` with the shipped feature
-6. ⬜ Update project documentation if needed
-
----
-
-## Testing Strategy
-
-> **Re-audited 2026-09-12 — four of these procedures cannot be run as written.**
-> - **Test 1** calls `screensize_plugin.measureCharacterDimensions()` from the
->   console. `gel.js` is a bare IIFE that assigns nothing to `window`, so no
->   such global exists and no such method exists; the step raises a
->   `ReferenceError`.
-> - **Tests 2, 3 and 4** all say "check console for dimension report".
->   `gel.js` never logs — the file contains no `console.` call. Observe the
->   outgoing `Client.Options` GMCP frame in the DevTools **Network → WS**
->   messages pane instead, or read it back server-side as Test 5 describes.
->   Test 4 additionally needs a font picker this client does not have; the only
->   font change available is crossing the 600px breakpoint
->   (`webclient.css:305-307`), which `measureScreen()` re-measures on the
->   next resize since #3396.
-> - **Test 5 is the sound one** and still works unchanged:
->   `session.get_client_size()` (`evennia/server/serversession.py:230-241`)
->   reads exactly the flags this path writes. Run it inside the game container,
->   not over SSH.
-> - **Test 6 needs rewording, not replacing.** Combat *messages* are not
->   formatted to the reported width (see the note in §Problem Statement), but
->   combat does drive a width-aware consumer: `world/combat/attack.py:739`
->   and `:757` call `show_death_curtain()` and
->   `typeclasses/curtain_of_death.py:29` scales it to the reported width. So
->   be killed in combat and watch the curtain fill your own window: the
->   curtain is sent only to the character who died, at that character's
->   reported width. The other two
->   observable consumers are `armor` (via `world/utils/boxtable.py`) and the
->   character sheet (`commands/CmdCharacter.py:29`). All of them clamp at
->   `max(60, …)`, so nothing can be tested below 60 columns.
->
-> Per the house rule, whatever replaces these must be played in the live game,
-> not asserted from a helper.
-
-#### Test 1: Character Measurement
-
-**Objective:** Verify accurate monospace character width measurement
-
-**Steps:**
-1. Open browser console
-2. Run `screensize_plugin.measureCharacterDimensions()`
-3. Verify returned width/height are reasonable (e.g., 7-12px width, 14-20px height)
-4. Change font size via options
-5. Re-run measurement
-6. Verify dimensions change proportionally
-
-**Expected:** Character dimensions match CSS-computed font size
-
-#### Test 2: Screen Size Calculation
-
-**Objective:** Verify accurate character-based screen dimensions
-
-**Steps:**
-1. Open webclient in 1920x1080 window
-2. Check console for dimension report
-3. Manually measure content div width in DevTools
-4. Calculate expected characters: `(width - padding) / char_width`
-5. Compare with reported dimension
-
-**Expected:** Reported width within ±2 characters of calculated
-
-#### Test 3: Window Resize
-
-**Objective:** Verify resize detection and debouncing
-
-**Steps:**
-1. Open webclient
-2. Note initial dimensions in console
-3. Resize window significantly (e.g., half width)
-4. Wait 350 ms (250 ms debounce plus buffer)
-5. Check console for new dimension report
-
-**Expected:** New dimensions reported once, not continuously during resize
-
-#### Test 4: Font Changes
-
-**Objective:** Verify font change detection
-
-**Steps:**
-1. Open webclient options
-2. Note initial dimensions
-3. Change font size from 0.9 to 1.5
-4. Wait 200ms
-5. Check console for dimension update
-
-**Expected:** New dimensions reflect larger font (fewer characters fit)
-
-### Integration Testing
-
-#### Test 5: Server Communication
-
-**Objective:** Verify server receives dimensions correctly
-
-**Steps:**
-1. Connect to game via webclient
-2. SSH to server
-3. Open Evennia Python shell: `evennia shell`
-4. Run:
-```python
-from evennia.server.sessionhandler import SESSIONS
-session = SESSIONS.get()[0]  # First session
-width, height = session.get_client_size()
-print(f"Width: {width}, Height: {height}")
-```
-
-**Expected:** Width/height match the last outgoing `Client.Options` frame (DevTools → Network → WS)
-
-#### Test 6: Combat System Integration
-
-**Objective:** Verify G.R.I.M. combat uses correct width
-
-**Steps:**
-1. Connect via webclient
-2. Resize window to 120+ character width
-3. Initiate combat with NPC
-4. Observe combat message formatting
-
-**Expected:** Combat messages use full width (not defaulting to 78)
-
-### Browser Compatibility Testing
-
-| Browser | Version | Width Accuracy | Height Accuracy | Resize | Font Change | Status |
-|---------|---------|----------------|-----------------|--------|-------------|--------|
-| Chrome  | Latest  | ⬜ Test       | ⬜ Test        | ⬜ Test | ⬜ Test    | ⬜ Pass |
-| Firefox | Latest  | ⬜ Test       | ⬜ Test        | ⬜ Test | ⬜ Test    | ⬜ Pass |
-| Safari  | Latest  | ⬜ Test       | ⬜ Test        | ⬜ Test | ⬜ Test    | ⬜ Pass |
-| Edge    | Latest  | ⬜ Test       | ⬜ Test        | ⬜ Test | ⬜ Test    | ⬜ Pass |
-| Mobile  | iOS     | ⬜ Test       | ⬜ Test        | ⬜ Test | ⬜ Test    | ⬜ Pass |
-| Mobile  | Android | ⬜ Test       | ⬜ Test        | ⬜ Test | ⬜ Test    | ⬜ Pass |
-
-### Performance Testing
-
-#### Test 7: Resize Performance
-
-**Objective:** Verify debouncing prevents excessive server messages
-
-**Steps:**
-1. Open browser DevTools Network tab
-2. Filter for websocket messages
-3. Rapidly resize window multiple times over 2 seconds
-4. Count outgoing `Client.Options` text frames (DevTools → Network → WS)
-
-**Expected:** 1-2 messages sent, not 10+
-
-#### Test 8: Memory Leaks
-
-**Objective:** Verify no memory leaks from event handlers
-
-**Steps:**
-1. Open webclient in Chrome DevTools
-2. Take heap snapshot
-3. Resize window 20 times
-4. Force garbage collection
-5. Take another heap snapshot
-6. Compare retained size
-
-**Expected:** No significant memory growth (< 1MB)
-
----
-
-## Risks & Mitigation
-
-### Risk 1: Inaccurate Measurements
-
-**Risk:** Character width calculation may be inaccurate due to font rendering differences.
-
-**Probability:** Medium  
-**Impact:** Medium
-
-**Mitigation:**
-- Use hidden test element with actual monospace character
-- Use `getBoundingClientRect()` on a ten-character probe, which gives the fractional rendered width
-- Apply the font family, size and line height of `#output-inner`
-- Add sanity checks (min/max bounds)
-- Provide manual override option in future enhancement
-
-**Fallback:** If the probe measures zero, an 8×16 px cell is assumed, and the reported size is never below 40 columns or 10 rows. The server uses 78 only if no size was ever reported.
-
-### Risk 2: Font Plugin Conflicts
-
-> Does not apply to this client: it has no font plugin, so nothing is wrapped
-> and there is no periodic re-measure.
-
-**Risk:** Wrapping font plugin handlers could break if plugin architecture changes.
-
-**Probability:** Low  
-**Impact:** Medium
-
-**Mitigation:**
-- Check for plugin existence before wrapping
-- Preserve original handler behavior
-- Use try/catch around plugin interaction
-- Provide alternative: re-measure periodically (every 60s)
-
-**Fallback:** If font plugin unavailable, only detect window resize (still better than static)
-
-### Risk 3: GoldenLayout Incompatibility
-
-> Does not apply to this client: it has no GoldenLayout, and measurement always
-> targets `#output`.
-
-**Risk:** Finding correct content div may fail with custom layouts.
-
-**Probability:** Low  
-**Impact:** Low
-
-**Mitigation:**
-- Use priority fallback chain: main pane → first .content → #messagewindow
-- Test with multiple layout configurations
-- Document expected layout structure
-- Graceful degradation to defaults
-
-**Fallback:** Measure #messagewindow if GoldenLayout unavailable
-
-### Risk 4: Performance Issues
-
-**Risk:** Frequent measurements could impact browser performance.
-
-**Probability:** Low  
-**Impact:** Low
-
-**Mitigation:**
-- Debounce resize events (250 ms)
-- Only measure on significant events (not every frame)
-- The character cell is re-measured on every report; nothing is cached
-- Avoid DOM manipulation during measurement
-
-**Fallback:** Increase debounce delay if performance issues reported
-
-### Risk 5: Mobile/Touch Devices
-
-**Risk:** Mobile devices may report inaccurate dimensions or resize unexpectedly.
-
-**Probability:** Medium  
-**Impact:** Low
-
-**Mitigation:**
-- Test on iOS and Android
-- Handle orientation changes
-- Account for virtual keyboard appearance
-- Consider device-specific CSS (@media queries)
-
-**Fallback:** Mobile users can use static defaults if dynamic detection problematic
-
----
-
-## Future Enhancements
-
-### Phase 6: Manual Override Option
-
-**Description:** Allow users to manually set dimensions via options dialog.
-
-**UI Design:**
 ```
 Options Dialog:
 ├── Screen Size Detection
@@ -1026,251 +183,38 @@ Options Dialog:
 │   └── Manual Height: [____] lines (disabled if auto)
 ```
 
-**Benefits:**
-- Users can override if automatic detection inaccurate
-- Useful for accessibility tools
-- Allows users to prefer specific width (e.g., 80 chars for nostalgia)
+- Users can override if automatic detection is inaccurate.
+- Useful for accessibility tools.
+- Lets users prefer a specific width (for example 80 characters).
 
-### Phase 7: Orientation Change Detection
+### Visibility change optimisation — 📋 UNBUILT (no issue)
 
-> **Re-audited 2026-09-12 — already delivered, by a better route.** `gel.js`
-> binds its resize handler to `window.visualViewport` when the API is present
-> and falls back to `window` only otherwise (`gel.js:518-522`), and a
-> visualViewport resize fires on rotation *and* on virtual-keyboard show/hide —
-> covering the `orientationchange` listener sketched below plus the
-> "virtual keyboard" mitigation listed under §Risk 5. Rotation across the
-> 600px breakpoint used to keep the old cell size, because the probe kept the
-> font it was built with; since #3396 (2026-10-10) the probe is re-fonted on
-> every measurement, so rotation re-measures correctly. No event hook was
-> added and none is needed for that.
+Pause measurement while the tab is hidden (`visibilitychange`), and resume
+and re-measure when it is shown again. Reduces CPU use when the tab is in the
+background and saves battery on mobile, while still updating when the user
+returns.
 
-**Description:** Detect mobile device orientation changes.
+### Telemetry — 📋 UNBUILT (no issue)
 
-**Implementation:**
-```javascript
-window.addEventListener("orientationchange", function() {
-    setTimeout(sendDimensionsToServer, 300);
-});
-```
-
-**Benefits:**
-- Better mobile experience
-- Handles tablet rotation
-- Responsive to device context
-
-### Phase 8: Visibility Change Optimization
-
-**Description:** Pause measurements when tab is not visible.
-
-**Implementation:**
-```javascript
-document.addEventListener("visibilitychange", function() {
-    if (document.hidden) {
-        // Pause resize listener
-    } else {
-        // Resume and re-measure
-        sendDimensionsToServer();
-    }
-});
-```
-
-**Benefits:**
-- Reduced CPU usage when tab backgrounded
-- Battery savings on mobile
-- Still updates when user returns
-
-### Phase 9: Advanced Telemetry
-
-**Description:** Optional telemetry to help tune defaults.
-
-**Data Collected (anonymously):**
-- Screen width distribution (histogram)
-- Font preferences (which fonts/sizes most common)
-- Browser/OS combinations
-- Mobile vs desktop ratio
-
-**Benefits:**
-- Improve default values based on real usage
-- Identify common screen sizes for testing
-- Optimize font recommendations
-
-**Privacy:** Only if user opts in, all data anonymized
+Optional telemetry to help tune defaults: screen width distribution, font
+preferences, browser/OS combinations, mobile vs desktop ratio. Used to improve
+default values, find common screen sizes for testing and optimise font
+recommendations. Only if the user opts in, and all data anonymised.
 
 ---
 
-## Appendices
+## Not decided
 
-### Appendix A: Evennia File Locations
-
-**Server-Side:**
-```
-evennia/server/
-├── inputfuncs.py              # client_options() handler
-├── serversession.py           # get_client_size() method
-└── portal/
-    └── naws.py                # Telnet NAWS reference implementation
-```
-
-**Webclient:**
-```
-evennia/web/
-├── static/webclient/
-│   ├── js/
-│   │   ├── evennia.js         # Core websocket communication
-│   │   └── plugins/
-│   │       ├── goldenlayout.js    # Window management
-│   │       ├── font.js            # Font selection
-│   │       └── options2.js        # Options system
-│   └── css/
-│       └── webclient.css      # Default styling
-└── templates/webclient/
-    └── base.html              # Plugin loading order
-```
-
-**Our Implementation:**
-```
-web/static/webclient/js/gel.js   # measureScreen(), sendScreenSize(), onResize()
-server/conf/gmcp_websocket.py    # Client.Options → client_options inputfunc
-```
-
-### Appendix B: Browser API Reference
-
-**Character Width Measurement:**
-```javascript
-// Create test element
-const span = document.createElement("span");
-span.textContent = "M";
-span.style.fontFamily = "monospace";
-span.style.fontSize = "1em";
-span.style.visibility = "hidden";
-document.body.appendChild(span);
-
-// Measure
-const width = span.offsetWidth;   // Actual rendered width
-const height = span.offsetHeight; // Actual rendered height
-
-// Clean up
-document.body.removeChild(span);
-```
-
-**Computed Styles:**
-```javascript
-const styles = window.getComputedStyle(element);
-const fontSize = styles.fontSize;      // e.g., "14.4px"
-const fontFamily = styles.fontFamily;  // e.g., "DejaVu Sans Mono, monospace"
-```
-
-**jQuery Dimension Methods:**
-```javascript
-const $div = $(".content").first();
-const width = $div.width();            // Inner width (no padding/border)
-const outerWidth = $div.outerWidth();  // Includes padding/border
-const padding = {
-    left: parseInt($div.css("padding-left")),
-    right: parseInt($div.css("padding-right"))
-};
-```
-
-### Appendix C: Protocol Flags Structure
-
-**Database Storage:**
-```python
-# In ServerSession
-self.protocol_flags = {
-    "SCREENWIDTH": {
-        0: 120  # windowID 0 (main window) is 120 characters wide
-    },
-    "SCREENHEIGHT": {
-        0: 40   # windowID 0 is 40 lines tall
-    },
-    # Other flags...
-}
-```
-
-**Why `{0: width}` format?**
-Evennia supports multiple windows per session (though webclient currently only uses one). WindowID 0 is the main window. This structure allows future expansion for multi-window support.
-
-### Appendix D: Monospace Font Considerations
-
-**Why Monospace Matters:**
-- All characters have identical width
-- Simplifies column-based formatting
-- Tables and ASCII art align correctly
-- Single measurement represents all characters
-
-**Default Fonts (in priority order):**
-1. DejaVu Sans Mono (custom webfont)
-2. Consolas (Windows)
-3. Inconsolata (Google Fonts)
-4. Lucida Console (fallback)
-5. Generic monospace (system default)
-
-> **Re-audited 2026-09-12 —** that is upstream Evennia's stack (its
-> `webclient.css:18-19` really is `.9em` / `'DejaVu Sans Mono', Consolas,
-> Inconsolata, 'Lucida Console', monospace`), not this client's, and the
-> scaling table below it describes a font picker this client does not have.
-> `web/static/webclient/css/webclient.css:41-43` defines
-> `--font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace`
-> at `--font-size: 14px` / `--line-height: 1.4`, and the only variation is the
-> single `@media (max-width: 600px)` step to 13px (`webclient.css:305-307`).
-> There is no 0.4em-2.0em range and no user-selectable family, so the one
-> font change this client can actually experience is the breakpoint — which
-> `measureScreen()` re-measures on the next resize since #3396 (`gel.js:462`).
-
-**Font Size Scaling:**
-```
-Base: 1.0em = ~10px character width
-0.4em = ~4px  → ~200 chars @ 1920px width
-0.9em = ~9px  → ~110 chars @ 1920px width (default)
-2.0em = ~20px → ~50 chars  @ 1920px width
-```
-
-### Appendix E: Glossary
-
-| Term | Definition |
-|------|------------|
-| **NAWS** | Negotiate About Window Size - Telnet protocol (RFC 1073) for screen size negotiation |
-| **inputfunc** | Evennia server-side function that processes client input messages |
-| **protocol_flags** | Server-side storage for client capabilities and settings |
-| **GoldenLayout** | JavaScript library for drag-and-drop window management |
-| **Debouncing** | Delaying function execution until after rapid events stop firing |
-| **Monospace Font** | Font where all characters have identical width (e.g., Courier, Consolas) |
-| **em** | CSS unit relative to font size (1em = current font size) |
-| **offsetWidth** | DOM property returning element's rendered width including padding/border |
-| **clientWidth** | DOM property returning element's inner width excluding borders |
-| **Evennia.msg()** | Client-side function to send messages to Evennia server |
-| **Plugin Callback** | Function called by plugin system at specific lifecycle points |
+- The client floors at 40 columns, but all four server readers clamp to at
+  least 60, so a phone reporting 40–59 columns gets output 60 wide. Whether
+  that is wanted is not decided.
 
 ---
 
-## Approval & Sign-Off
+## Related documents
 
-**Reviewed By:** _________________  
-**Date:** _________________  
-
-**Approved By:** _________________  
-**Date:** _________________  
-
-**Implementation Assigned To:** _________________  
-**Target Completion:** _________________  
-
----
-
-**Document History:**
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2025-01-XX | AI Agent | Initial draft based on comprehensive research |
-
----
-
-**Related Documents:**
-- `AGENTS.md` - Agent operational reference: conventions, deploy workflow, file map
-- `specs/COMBAT_SYSTEM.md` - Combat system user documentation
+- `AGENTS.md` — agent operational reference: conventions, deploy workflow, file map
+- `specs/COMBAT_SYSTEM.md` — combat system
 - Evennia Documentation: [Web Client](https://www.evennia.com/docs/latest/Components/Webclient.html)
 - Evennia Documentation: [Inputfuncs](https://www.evennia.com/docs/latest/Components/Inputfuncs.html)
 - RFC 1073: [Telnet NAWS Protocol](https://www.ietf.org/rfc/rfc1073.txt)
-
----
-
-**End of Specification**

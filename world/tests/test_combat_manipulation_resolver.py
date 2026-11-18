@@ -1,6 +1,6 @@
 """
 Tests for the per-effector manipulation resolver
-(CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §6.1, build layer 4b).
+(CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §6.1).
 
 The defining property (§6.1 Q1): weapon handling scopes to the *specific
 gripping hand*, not the body-wide average — a one-armed character with a

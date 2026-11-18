@@ -196,8 +196,8 @@ consequence stack, cheapest first — each independently shippable:
    seeded grudge — "someone sold my body" — against whoever the post's
    snapshot last saw them with. The grudge rides the engine-owned
    opinion/valence layer (#2388), not a tool call.
-   `NPC_POSTS_AND_REINCARNATION_SPEC` §P3 still describes it as a seeded
-   `feel`. Lean: v2, not v1.
+   `NPC_POSTS_AND_REINCARNATION_SPEC` §6 (Witnessed murder) and §5 Unbuilt
+   (Succession as WSIS fodder) still describe it as a seeded `feel`. Lean: v2, not v1.
 3. **Sleeve-UID traceability (the real teeth, later).** Corpses carry
    identity (`sleeve_uid`, recognition surfaces). A sold PC corpse could
    leave a *trace* in the Ripper's ledger — a hackable/discoverable record

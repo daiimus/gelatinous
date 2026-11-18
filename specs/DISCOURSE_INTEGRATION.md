@@ -1,68 +1,24 @@
 # Discourse Forum Integration
 
-> **Status:** ✅ **SHIPPED & LIVE** — SSO, the header iframe, the theme component and the colour scheme are all in production on forum.gel.monster. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 15 claim(s) false, annotated inline**.
+The game's Django site is the sign-in provider for a Discourse forum
+(forum.gel.monster). A player signed in to the game is signed in to the forum
+through DiscourseConnect (SSO). The forum hides its own header and shows the
+game site's header in an iframe, served from `/header-only/`. A theme
+component and a colour scheme make the forum look like the site, and the
+site's skins carry over to it. Logging out of one logs out of the other.
 
-## Complete Setup Guide for Gelatinous
-
-This document provides everything you need to integrate a Discourse forum with your Evennia game.
-
-**Note**: This is completely optional. See `FORUM_INTEGRATION_GUIDE.md` for a discussion of whether you need forum integration at all.
-
----
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Prerequisites](#prerequisites)
-3. [Step 1: Configure Django (Game Side)](#step-1-configure-django-game-side)
-4. [Step 2: Configure Discourse SSO](#step-2-configure-discourse-sso)
-5. [Step 3: Apply Color Palette](#step-3-apply-color-palette)
-6. [Step 4: Create Theme Component](#step-4-create-theme-component)
-7. [Step 5: Add HTML](#step-5-add-html)
-8. [Step 6: Add CSS](#step-6-add-css)
-9. [Step 7: Add JavaScript](#step-7-add-javascript)
-10. [Testing](#testing)
-11. [Troubleshooting](#troubleshooting)
-
----
-
-## Overview
-
-This integration provides:
-- **Single Sign-On (SSO)**: Log in once, access both game and forum
-- **Visual Consistency**: Django header embedded in forum
-- **Session Sync**: Logout from one logs out of both
-- **Custom Styling**: Forum themed to match game
-
-**What you'll be setting up:**
-- Django SSO provider (already implemented in code)
-- Discourse DiscourseConnect (SSO consumer)
-- Custom Discourse theme with embedded Django header
-- Color palette matching your game's aesthetic
-
----
-
-## Prerequisites
-
-1. **Running Discourse instance**
-   - Self-hosted or managed hosting
-   - Admin access required
-
-2. **Django settings access**
-   - Ability to edit `server/conf/secret_settings.py`
-   - Ability to restart server
-
-3. **Shared secret**
-   - Generate a secure random string (32+ characters)
-   - Use same secret in both Django and Discourse
+The forum is optional. See `FORUM_INTEGRATION_GUIDE.md` for whether a game
+needs one at all. Without a forum the Django code still works: the SSO
+endpoints return errors when SSO is not configured, and nothing else breaks.
 
 ---
 
 ## Step 1: Configure Django (Game Side)
 
-### 1.1 Add Settings
+### Settings
 
-Edit `server/conf/secret_settings.py`:
+Set these in `server/conf/secret_settings.py`, then reload the server
+(`evennia reload`, or `docker-compose restart` under Docker):
 
 ```python
 # Discourse SSO Configuration (Optional)
@@ -71,112 +27,120 @@ DISCOURSE_URL = "https://forum.yourgame.com"      # Your forum URL
 DISCOURSE_API_KEY = "your-discourse-api-key"      # For logout sync (optional)
 ```
 
-Two more settings are optional. `DISCOURSE_INTERNAL_URL` is the forum address
-used for the server-to-server logout API calls; it falls back to
-`DISCOURSE_URL`. `DISCOURSE_LOGOUT_REDIRECT` (default `/`) is where the game
-sends a user after the forum logs them out.
+| setting | meaning |
+|---|---|
+| `DISCOURSE_SSO_SECRET` | shared secret; the same string goes in Discourse's `discourse connect secret` |
+| `DISCOURSE_URL` | forum URL |
+| `DISCOURSE_API_KEY` | optional; lets game logout end the forum session through the forum API |
+| `DISCOURSE_INTERNAL_URL` | optional; forum address for the server-to-server logout API calls; falls back to `DISCOURSE_URL` |
+| `DISCOURSE_LOGOUT_REDIRECT` | optional, default `/`; where the game sends a user after the forum logs them out |
 
-### 1.2 Generate Shared Secret
+The secret is a random string of 32 or more characters, for example:
 
 ```bash
-# Generate a secure random secret
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-### 1.3 Restart Server
+Setting up a forum also needs a running Discourse instance (self-hosted or
+managed) with admin access.
 
-```bash
-# If using Docker
-docker-compose restart
+### Endpoints
 
-# Or direct Evennia
-evennia reload
-```
+| route | what it does |
+|---|---|
+| `/sso/discourse/` | SSO authentication. Requires a signed-in game session: a visitor who is not signed in is redirected to the game's login page. Signed in, with no `sso`/`sig` parameters, it answers "Missing SSO parameters". With no shared secret set, it answers "SSO is not configured". |
+| `/sso/discourse/logout/` | where the forum sends a user after forum logout (see "Forum logout" below) |
+| `/sso/discourse/session-sync/` | sends a signed-in user to the forum's own sign-in, so they arrive signed in |
+| `/auth/logout/` | game logout (POST, `logout_with_discourse`); with `DISCOURSE_API_KEY` set it also ends the forum session through the forum API |
+| `/forum/` | redirects to `DISCOURSE_URL`, or to `/` if that is unset |
+| `/header-only/` | the header page the forum iframes |
 
-**That's it for Django!** The SSO endpoints are already implemented:
-- `/sso/discourse/` - SSO authentication
-- `/sso/discourse/logout/` - Logout handler
-- `/sso/discourse/session-sync/` - Session sync
-- `/header-only/` - Header iframe endpoint
+The game sends the forum only email, external id, username and name. It
+sends no avatar and no bio.
+
+### Forum logout
+
+The game accepts the forum's logout redirect (`/sso/discourse/logout/`) from a
+signed-in user only when the browser sends a Referer whose host is the
+`DISCOURSE_URL` host. A missing or different Referer is refused with 403
+("Invalid logout request"). If `DISCOURSE_URL` is not set, every signed-in
+logout through this route is refused with 403. A visitor who is not signed in
+is simply redirected.
+
+### Origins written by hand
 
 Not everything follows `DISCOURSE_URL`. The forum origin is also written by
-hand into the header page's CSP `frame-ancestors` (`_HEADER_ONLY_CSP` in
-`web/utils/security_middleware.py`), the iframe menu's Forum link
-(`web/templates/website/_menu_iframe.html`) and the skin messages in
-`web/static/website/js/skins.js`. The game-site origin is written by hand as
-`SITE_ORIGIN` in the forum component's `skins.gjs`. Change all of these if the
-forum or the site moves.
+hand into:
+
+- the header page's CSP `frame-ancestors` (`_HEADER_ONLY_CSP` in
+  `web/utils/security_middleware.py`);
+- the iframe menu's Forum link (`web/templates/website/_menu_iframe.html`);
+- the skin messages in `web/static/website/js/skins.js`.
+
+The game-site origin is written by hand as `SITE_ORIGIN` in the forum
+component's `skins.gjs`, and in the forum-side header component's head markup
+and listener (below). Change all of these if the forum or the site moves.
 
 ---
 
 ## Step 2: Configure Discourse SSO
 
-### 2.1 Enable DiscourseConnect
+### DiscourseConnect
 
-1. Go to **Discourse Admin** → **Settings** → **Login**
-2. Enable: `enable discourse connect` = `true`
-3. Set: `discourse connect url` = `https://yourgame.com/sso/discourse/`
-4. Set: `discourse connect secret` = (same secret from Django settings)
-5. Set: `logout redirect` = `https://yourgame.com/sso/discourse/logout/`
+In **Discourse Admin → Settings → Login**:
 
-### 2.2 Optional SSO Settings
+- `enable discourse connect` = `true`
+- `discourse connect url` = `https://yourgame.com/sso/discourse/`
+- `discourse connect secret` = the same secret as `DISCOURSE_SSO_SECRET`
+- `logout redirect` = `https://yourgame.com/sso/discourse/logout/`
+- `enable local logins` = `false` (recommended: SSO only)
 
-```
-sso overrides avatar = true          # Use avatars from Django
-sso overrides bio = true             # Use bio from Django
-sso overrides email = true           # Trust Django email
-sso overrides name = true            # Use Django display name
-```
+### Overrides and account identity
 
-The game sends only email, external id, username and name. It sends no avatar
-and no bio, so the avatar and bio overrides have nothing to apply.
+On the installed forum (Discourse 2026.8.0, checked 2026-10-10, #3743) the
+setting names `sso overrides avatar`, `sso overrides bio`,
+`sso overrides email` and `sso overrides name` do not exist; stored rows
+under those names do nothing. Only `discourse_connect_overrides_avatar` is in
+force. The email, name and username overrides are **off** (`auth_overrides_*`
+at their defaults). Since the game sends no avatar and no bio, an avatar or
+bio override has nothing to apply.
 
-> **Re-checked against the installed forum (Discourse 2026.8.0) on 2026-10-10 (#3743):**
-> the four `sso overrides ...` names above no longer exist in Discourse. Rows written
-> under them on 2025-10-18 are dead; only `discourse_connect_overrides_avatar` is in
-> force, and the email, name and username overrides are **off** (`auth_overrides_*`
-> at their defaults). That is safe today because a game account's email is set once,
-> at registration, unique in any letter case, and never changeable: a forum
-> account's address is therefore held by exactly one live game account, and that
-> uniqueness, not email verification, is what keeps forum sign-on safe (verification
-> is off by owner decision). Two rules follow:
->
-> - **If the game ever gains an email-change path, turn `auth_overrides_email` on
->   with it**, or a freed address can be registered by someone else and matched to
->   the old forum account.
-> - **Deleting a game account must also retire its forum account**, for the same
->   reason (one orphan was deleted on 2026-10-10). 📋 UNBUILT (no issue): no
->   game code calls the forum when an account is deleted. Role sync is
->   📋 UNBUILT, #3744.
->
-> The forum's developer-address list (`DISCOURSE_DEVELOPER_EMAILS`, compose file in
-> the infra repo) names the two root game accounts; it promotes a matching user to
-> admin on login, so it must never name an address no live game account holds.
+Overrides off is safe because a game account's email is set once, at
+registration, is unique in any letter case, and can never be changed. A
+forum account's address is therefore held by exactly one live game account.
+That uniqueness, not email verification, is what keeps forum sign-on safe
+(verification is off by owner decision). Two rules follow:
 
-### 2.3 Disable Local Logins (Recommended)
+- **If the game ever gains an email-change path, turn `auth_overrides_email`
+  on with it**, or a freed address can be registered by someone else and
+  matched to the old forum account.
+- **Deleting a game account must also retire its forum account**, for the
+  same reason. 📋 UNBUILT (no issue): no game code calls the forum when an
+  account is deleted.
 
-```
-enable local logins = false          # Force SSO only
-```
+Role sync is 📋 UNBUILT, #3744.
+
+The forum's developer-address list (`DISCOURSE_DEVELOPER_EMAILS`, compose
+file in the infra repo) names the two root game accounts. It promotes a
+matching user to admin on login, so it must never name an address no live
+game account holds.
 
 ---
 
 ## Step 3: Apply Color Palette
 
-### 3.1 Create Color Scheme
+### The palette
 
-1. Go to **Admin** → **Customize** → **Colors**
-2. Click **+ New Color Scheme**
-3. Name it: "Domino's Gambit". The skins script finds palettes by name, so the name must match exactly.
+Create it in **Admin → Customize → Colors → + New Color Scheme**. Name it
+exactly "Domino's Gambit": the skins script finds palettes by name. The live
+scheme is Discourse colour scheme id 21.
 
-### 3.2 Set Color Values
-
-Use these values (matching the live site palette in `STYLING_SPEC.md` /
-`custom.css` — the Atlas register: ink ground, bone text, amber accent):
+The values match the site palette in `STYLING_SPEC.md` / `custom.css` (the
+Atlas register: ink ground, bone text, amber accent):
 
 ```
 Primary (text):           #d8d3c4   (bone)
-Primary-medium:           #a9a49a   (live: #8f8d82, see note)
+Primary-medium:           #8f8d82   (--terminal-text-muted)
 Primary-low-mid:          #6b6f78
 Secondary (background):   #0b0e14   (ink)
 Tertiary (accent):        #e0a86f   (amber)
@@ -191,146 +155,97 @@ Success (confirmations):  #5fd38d   (jade — STATE only)
 Love (likes):             #e0a86f
 ```
 
-If the scheme you are replacing had a `tertiary-med-or-tertiary` override, set
-it too — otherwise the old accent bleeds through in a handful of places.
+The `tertiary-med-or-tertiary` override is set to `#e0a86f`. If a scheme being
+replaced had that override, set it too, or the old accent bleeds through in a
+handful of places.
 
-> **Checked against the live scheme 2026-09-11** (Discourse colour scheme id
-> 21, "Domino's Gambit").
-> Thirteen of the fourteen values above are exactly what production carries,
-> and the `tertiary-med-or-tertiary` override is indeed set, to `#e0a86f`.
-> The exception is **`primary-medium`, which is `#8f8d82` live, not
-> `#a9a49a`** — `#8f8d82` is the site's `--terminal-text-muted`
-> (`custom.css`, and `STYLING_SPEC.md` § Color Palette), so the live value is
-> the one that honours this section's own "matching the live site palette"
-> promise. `#a9a49a` and `#6b6f78` appear nowhere in `custom.css` or
-> `STYLING_SPEC.md`. `#a9a49a` is also what the tracked component declares at
-> `web/discourse-theme/about.json`, so that file carries the same stale value
-> — harmless in itself, since colour schemes do not travel with components,
-> but it means the repo does not record the palette that is actually serving.
+`primary-medium` is `#8f8d82` on the live scheme, the site's
+`--terminal-text-muted` (`custom.css`, `STYLING_SPEC.md` § Color Palette).
+The tracked component's `web/discourse-theme/about.json` declares
+`#a9a49a` instead, so the repository does not record the value that is
+serving. This is harmless in itself, because colour schemes do not travel with
+components. `#a9a49a` and `#6b6f78` appear nowhere in `custom.css` or
+`STYLING_SPEC.md`.
 
-### 3.3 Apply to Theme
+### Applying it: the light slot only
 
-1. Go to **Admin** → **Customize** → **Themes**
-2. Select your default theme
-3. Under **Colors**, select your scheme
-4. **Save**
+Select the scheme on the parent theme (**Admin → Customize → Themes**, the
+default theme, **Colors**, **Save**). The live parent theme is Foundation
+(theme -1): `color_scheme_id = 21` ("Domino's Gambit") and an **empty**
+`dark_color_scheme_id`. **Empty is the only correct value** for the dark slot.
 
-> **⚠ There are TWO colour-scheme slots, and both matter.** A theme has
-> `color_scheme_id` (light) and `dark_color_scheme_id` (dark). Discourse serves
-> the dark one to anyone whose OS is in dark mode. Setting only the light slot
-> looks *exactly* like the change never applied — the old palette keeps showing,
-> accent and all.
->
-> ~~This palette is already dark, so put it in **both** slots unless you have
-> built a genuine light variant.~~ **Superseded 2026-09-11: leave the dark
-> slot empty (see the correction below).**
->
-> **CORRECTION 2026-09-11 — do NOT fill the dark slot.** The advice above was
-> written to fix the 2026-08-02 stale-dark bug (a dark slot still pointing at
-> an *old* palette), and it went on to cause a worse one. Once the skin
-> easter egg shipped (2026-08-03/04), any browser carrying a `gel_skin` cookie
-> made Discourse emit two palette stylesheets — the skin under
-> `media=(prefers-color-scheme: light)` and the parent theme's default under
-> `media=(prefers-color-scheme: dark)` — so on a dark-mode OS the default
-> always won and `skins.gjs` then bailed as "already applied", because it
-> reads the light link and nothing else. Every browser with a resident skin
-> cookie (i.e. the signed-in daily one) was stuck while fresh cookie-less
-> windows worked, which is why it presented as "signed-in users can't change
-> themes but logged-out can". Reported and fixed live on **2026-08-10**
-> (#1898) by setting Foundation's `dark_color_scheme_id` back to empty,
-> restoring the single `media=all` stylesheet the skins component is designed
-> against.
->
-> Every palette we ship is dark-styled, so the light slot alone serves
-> everyone from one stylesheet — which is exactly what
-> `web/discourse-theme/javascripts/discourse/api-initializers/skins.gjs` is
-> built against. Live state today: Foundation (theme -1) has
-> `color_scheme_id = 21` ("Domino's Gambit") and an empty
-> `dark_color_scheme_id`. **Empty is the only correct value** — see
-> `STYLING_SPEC.md` § Discourse Integration, which carries the full account.
->
-> **Colour schemes do not travel with theme components.** Installing a component
-> that declares `color_schemes` in `about.json` does not create the scheme —
-> build it by hand as above, or via the API, and select it on the parent theme.
+A theme has two slots: `color_scheme_id` (light) and `dark_color_scheme_id`
+(dark). Discourse serves the dark one to anyone whose OS is in dark mode. If
+the dark slot points at an old palette while only the light one was changed,
+it looks exactly as if the change never applied: the old palette keeps
+showing, accent and all.
+
+Why the dark slot stays empty: every palette shipped is dark-styled, so the
+light slot alone serves everyone from one `media=all` stylesheet, which is
+what `web/discourse-theme/javascripts/discourse/api-initializers/skins.gjs` is
+built against. With a dark slot set, a browser carrying a `gel_skin` cookie
+gets two palette stylesheets: the skin under
+`media=(prefers-color-scheme: light)` and the parent theme's default under
+`media=(prefers-color-scheme: dark)`. On a dark-mode OS the default wins, and
+`skins.gjs`, which reads only the light link, treats the skin as already
+applied. Every browser with a skin cookie (the signed-in one) is then stuck
+on the default while cookie-less windows work (#1898). Filling the dark slot
+with this palette was once this guide's advice; #1898 (2026-08-10) replaced it
+with the empty dark slot. `STYLING_SPEC.md` § Discourse Integration carries
+the full account.
+
+**Colour schemes do not travel with theme components.** Installing a
+component that declares `color_schemes` in `about.json` does not create the
+scheme. Build it by hand as above, or through the API, and select it on the
+parent theme.
 
 ---
 
-## Step 4: Create Theme Component
+## Step 4: Create Theme Components
 
-The typography, palette and skin switching are in the component tracked at
-`web/discourse-theme/`. Install and update it as its `README.md` says. The
-header iframe script (`theme-initializer.gjs`) lives only on the forum and is
-not tracked in this repository.
+Two components sit on the parent theme:
 
-### 4.1 Create Component
+- **Domino's Gambit**, tracked at `web/discourse-theme/`: typography, palette
+  declaration and skin switching (`skins.gjs`). Install and update it as its
+  `README.md` says.
+- **The header component**, which hides the Discourse header and iframes
+  `/header-only/`. On the live forum it is the "Gelatinous" component
+  (Discourse theme id 1). Its listener
+  (`discourse/api-initializers/theme-initializer.gjs`) lives only on the forum
+  and is not tracked in this repository.
 
-1. Go to **Admin** → **Customize** → **Themes**
-2. Click **Install** → **Create New**
-3. Name: "Django Header Integration"
-4. Type: **Theme Component**
-5. Click **Create**
+To create a header component on a new forum: **Admin → Customize → Themes →
+Install → Create New**, name "Django Header Integration", type **Theme
+Component**, **Create**. Then edit the main theme (not the component), add it
+under **Included Components**, and **Save**.
 
-### 4.2 Add to Main Theme
+## Step 5: Add HTML (head markup)
 
-1. Edit your main theme (not the component)
-2. Scroll to **Included Components**
-3. Select "Django Header Integration"
-4. **Save**
-
----
-
-## Step 5: Add HTML
-
-> **Stale as of 2026-09-11 — production does not do this.** The live
-> component's `head_tag` (Discourse theme id 1, last modified 2026-07-30,
-> three days before this file was stamped verified) ships the `<iframe>`
-> itself, inline, rather than an empty container for JavaScript to fill:
->
-> ```html
-> <div id="gel-django-header-container">
->   <iframe
->     id="gel-django-header-iframe"
->     src="https://gel.monster/header-only/"
->     frameborder="0"
->     scrolling="no"
->     style="width: 100%; height: 80px; border: none; display: block; background: #0b0e14;">
->   </iframe>
-> </div>
-> <link rel="preconnect" href="https://gel.monster">
-> <link rel="dns-prefetch" href="https://gel.monster">
-> ```
->
-> That is the field verbatim (only trailing whitespace removed). Two
-> consequences worth knowing: the `iframeCreated` machinery in Step 7 has no
-> counterpart in the live component, and "Correct domain in JavaScript
-> `iframe.src`" under Troubleshooting sends you looking in the wrong place —
-> the domain lives in this markup. Note also the inline
-> `background: #0b0e14`: the *container* was moved to `var(--secondary)` by
-> #1528 but this literal was not. It is only visible for the instant before
-> the iframe document paints its own skin ground, so it is cosmetic rather
-> than the seam bug #1528 fixed.
-
-1. Edit the "Django Header Integration" component
-2. Click **Edit HTML**
-3. Select `</head>` section
-4. Paste:
+The component's `head_tag` ships the iframe itself, inline. The live field:
 
 ```html
-<link rel="preconnect" href="https://yourgame.com">
-<link rel="dns-prefetch" href="https://yourgame.com">
-<div id="gel-django-header-container"></div>
+<div id="gel-django-header-container">
+  <iframe
+    id="gel-django-header-iframe"
+    src="https://gel.monster/header-only/"
+    frameborder="0"
+    scrolling="no"
+    style="width: 100%; height: 80px; border: none; display: block; background: #0b0e14;">
+  </iframe>
+</div>
+<link rel="preconnect" href="https://gel.monster">
+<link rel="dns-prefetch" href="https://gel.monster">
 ```
 
-5. Replace `https://yourgame.com` with your actual domain
-6. **Save**
-
----
+The site domain lives in this markup (the iframe `src`), not in the
+component's JavaScript. The inline `background: #0b0e14` is a literal; the
+container's ground is `var(--secondary)` (#1528). The literal shows only for
+the instant before the iframe document paints its own skin ground, so it is
+cosmetic, not the seam bug #1528 fixed.
 
 ## Step 6: Add CSS
 
-1. Still editing the component
-2. Go to **Common** → **CSS**
-3. Paste this **entire CSS**:
+In the component, **Common → CSS**:
 
 ```css
 /* ===== DJANGO HEADER IFRAME INTEGRATION ===== */
@@ -399,168 +314,73 @@ body {
   body {
     padding-top: 80px;
   }
-  
+
   #main-outlet {
     margin-top: 80px !important;
   }
-  
+
   #gel-django-header-container {
     height: 80px;
   }
-  
+
   #gel-django-header-iframe {
     height: 80px;
   }
-  
+
   .sidebar-wrapper {
     top: 80px !important;
   }
 }
 ```
 
-4. **Save**
+The live component's mobile media query uses **60px** for all five values
+(`body` padding, `#main-outlet` margin, container, iframe, `.sidebar-wrapper`),
+not the 80px above. Which is right is not decided (see "Not decided"); do not
+change either side from this document.
 
----
+## Step 7: Add JavaScript (the forum-side listener)
 
-## Step 7: Add JavaScript
+`theme-initializer.gjs` on the header component:
 
-> **Stale as of 2026-09-11 — the listing below is not what production runs.**
-> The live forum-side file is
-> `discourse/api-initializers/theme-initializer.gjs` on the "Gelatinous"
-> component (Discourse theme id 1). It was last modified **2025-10-21** — two
-> days after this listing was written, and nine months before this document's
-> verification date — so it has not matched the listing at any point since.
-> Production differs in four ways:
->
-> 1. It creates no iframe. The iframe is static markup in the component's
->    `head_tag` (see Step 5), so `createHeaderIframe`, the `iframeCreated`
->    flag and the `api.onPageChange` hook have no counterpart in production.
-> 2. On a `gel-header-height` message it sets **both** `iframe.style.height`
->    and `container.style.height`, and nothing else — it never touches
->    `body.paddingTop`, `#main-outlet` or `.sidebar-wrapper`. An open dropdown
->    therefore overlays the page rather than pushing it down.
-> 3. Logout is an `addEventListener('hashchange', …)` redirecting to
->    `https://gel.monster/logout`, not a one-shot hash read that clears
->    `_forum_session` / `_t` and returns to the site root. (That URL 404s; the
->    real route is `/auth/logout/`, `web/website/urls.py:58`. The mechanism is
->    vestigial either way — nothing sets `#logout`, and the header's logout is
->    a POST form, `_menu_iframe.html:176`.)
-> 4. It carries none of the skin protocol that now shares this channel.
->
-> The authoritative description of the live listener is **"The header height
-> contract"** below, which this listing contradicts on point 2.
-
-1. Still editing the component
-2. Go to **Common** → **JavaScript**
-3. Paste:
-
-```javascript
-import { apiInitializer } from "discourse/lib/api";
-
-export default apiInitializer("1.8.0", (api) => {
-  let iframeCreated = false;
-  
-  function createHeaderIframe() {
-    // Prevent multiple iframes - check if already created
-    if (iframeCreated) return;
-    
-    const container = document.getElementById('gel-django-header-container');
-    if (!container) return;
-    
-    // Check if iframe already exists in DOM
-    const existingIframe = document.getElementById('gel-django-header-iframe');
-    if (existingIframe) {
-      iframeCreated = true;
-      return;
-    }
-    
-    // Mark as created immediately to prevent race conditions
-    iframeCreated = true;
-    
-    container.classList.add('loading');
-    
-    const iframe = document.createElement('iframe');
-    iframe.id = 'gel-django-header-iframe';
-    iframe.src = 'https://yourgame.com/header-only/'; // CHANGE THIS
-    iframe.frameBorder = '0';
-    iframe.scrolling = 'no';
-    iframe.title = 'Game Navigation';
-    
-    iframe.onload = function() {
-      container.classList.remove('loading');
-    };
-    
-    container.appendChild(iframe);
-  }
-  
-  // Handle height updates from Django header iframe
-  window.addEventListener('message', (event) => {
-    if (event.origin !== 'https://yourgame.com') return; // CHANGE THIS
-    
-    if (event.data.type === 'gel-header-height') {
-      const iframe = document.getElementById('gel-django-header-iframe');
-      const height = event.data.height;
-      
-      if (iframe) {
-        iframe.style.height = height + 'px';
-        document.body.style.paddingTop = height + 'px';
-        
-        const mainOutlet = document.getElementById('main-outlet');
-        if (mainOutlet) {
-          mainOutlet.style.marginTop = height + 'px';
-        }
-        
-        const sidebar = document.querySelector('.sidebar-wrapper');
-        if (sidebar) {
-          sidebar.style.top = height + 'px';
-        }
-      }
-    }
-  });
-  
-  // Create header on initial load and page changes
-  api.onPageChange(() => {
-    createHeaderIframe();
-  });
-  
-  // Handle logout redirect
-  if (window.location.hash === '#logout') {
-    document.cookie = '_forum_session=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    document.cookie = '_t=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-    window.location.href = 'https://yourgame.com/'; // CHANGE THIS
-  }
-});
-```
-
-4. **IMPORTANT**: Replace all instances of `https://yourgame.com` with your actual domain
-5. **Save**
+- creates no iframe (the iframe is in the head markup);
+- on a `gel-header-height` message from the site origin, sets **both**
+  `iframe.style.height` and `container.style.height`, and nothing else. It
+  never touches `body` padding, `#main-outlet` or `.sidebar-wrapper`, so an
+  open dropdown overlays the page rather than pushing it down;
+- carries none of the skin protocol that shares this channel (that is
+  `skins.gjs`);
+- has a `hashchange` listener that redirects `#logout` to
+  `https://gel.monster/logout`. That URL 404s (the real route is
+  `/auth/logout/`), and the mechanism is vestigial: nothing sets `#logout`,
+  and the header's logout is a POST form in `_menu_iframe.html`.
 
 ---
 
 ## The header height contract
 
 The header is an iframe, and an iframe **clips its own content**. Anything the
-header needs to draw below its own height — an account dropdown, a flash
-message — is invisible unless the parent is told to grow. That contract spans
-both sides, and every piece of it is load-bearing.
+header draws below its own height (an account dropdown, a flash message) is
+invisible unless the parent is told to grow. The contract spans both sides,
+and every piece of it is load-bearing.
 
-**Site side** (`web/templates/website/header_only.html`):
+**Site side** (`web/templates/website/header_only.html`) posts its height to
+the parent:
 
 ```js
 window.parent.postMessage({ type: 'gel-header-height', height: measuredHeight() },
                           TARGET_ORIGIN);
 ```
 
-The same message also carries `skin` (the header's `data-skin`, default
-`atlas`), and the header sends it again whenever its skin changes. The forum
+The same message carries `skin` (the header's `data-skin`, default `atlas`),
+and the header sends it again whenever its skin changes. The forum
 component's `skins.gjs` reads it, and also sends `gel-skin` and
 `gel-skin-query` messages into the iframe, which the header's `skins.js`
 answers. The header page picks its first-paint ground colour on the server
 from the `gel_skin` cookie (`SKIN_INK` in `web/website/views/header_only.py`,
 which must match each skin's `--terminal-bg-dark` in `custom.css`).
 
-**Forum side** (the theme component's `theme-initializer.gjs`) listens, checks
-the origin, and sets **both** the iframe and its container:
+**Forum side** (`theme-initializer.gjs`) listens, checks the origin, and sets
+both the iframe and its container:
 
 ```js
 if (event.origin !== 'https://gel.monster') return;
@@ -579,29 +399,31 @@ container.style.height = newHeight;
    *document* clipping the menu at its own 80px box, and until the body is
    tall enough the reported height stays wrong. On open, the body takes a
    `min-height` containing the menu; cleared on close.
-3. **Do not disable dropdowns in CSS.** An earlier attempt shipped
-   `.dropdown-menu { display: none !important }` with the note "they render
-   outside bounds". That was true then, but `display: none` also denies the
-   menu the layout the measurement depends on — with it, the protocol
-   silently measures nothing. **If dropdowns ever need removing, remove the
-   markup, not the layout.**
+3. **Do not disable dropdowns in CSS.** `.dropdown-menu { display: none !important }`
+   denies the menu the layout the measurement depends on, and the protocol
+   then silently measures nothing. **If dropdowns ever need removing, remove
+   the markup, not the layout.**
 4. **Every link needs `target="_top"`.** Without it, navigation loads the
    destination *inside* the 80px header frame.
 
-### The header must never be cached
+### The header is never cached
 
-`/header-only/` is auth state — it names the logged-in account and renders a
-different menu for anonymous visitors. It was previously
-`Cache-Control: max-age=300, private`, which meant the forum header could keep
-saying "Logged in as X" for five minutes after logout, and made template
-changes appear not to ship. `private` stops shared caches, not the browser's.
-It is now `no_store, no_cache, must_revalidate, private`.
+`/header-only/` is auth state: it names the logged-in account and renders a
+different menu for anonymous visitors. It is sent
+`no_store, no_cache, must_revalidate, private` (`header_only` in
+`web/website/views/header_only.py`). `private` alone stops shared caches, not
+the browser's; a cached header keeps saying "Logged in as X" after logout and
+makes template changes appear not to ship. Because it is never cached, a
+change to the header's styling shows on the forum on the next page load, with
+no theme update.
+
+---
 
 ## Forum branding is not inherited
 
-Discourse serves its own icons and does **not** pick anything up from the
-game site. Four settings decide how the forum appears in a tab, a bookmark, a
-phone home screen and a shared link:
+Discourse serves its own icons and picks up nothing from the game site. Four
+settings decide how the forum appears in a tab, a bookmark, a phone home
+screen and a shared link:
 
 | setting | used for |
 |---------|----------|
@@ -610,249 +432,151 @@ phone home screen and a shared link:
 | `large_icon` | PWA / manifest |
 | `apple_touch_icon` | iOS home screen |
 
-All four were empty, so the forum showed Discourse's stock icon while the
-game site showed the brand mark. They are uploads, not URLs — set them in
+Left empty, the forum shows Discourse's stock icon while the game site shows
+the brand mark. They are uploads, not URLs: set them in
 **Admin → Settings → Branding**, or create an `Upload` and assign it.
 
-> Uploading via `rails runner` fails with `EPERM` if the file was placed with
-> `docker cp`: `image_optim` rewrites the image **in place** and the copied
-> file is not owned by the `discourse` user. `chown discourse:discourse` it
-> first.
+Uploading via `rails runner` fails with `EPERM` if the file was placed with
+`docker cp`: `image_optim` rewrites the image **in place**, and the copied
+file is not owned by the `discourse` user. `chown discourse:discourse` it
+first.
+
+---
+
+## Bootstrap versions
+
+Only the Bootstrap CSS is synced: both `base.html` and `header_only.html` load
+Bootstrap CSS 4.6.0 (jsDelivr). The JavaScript is not version-matched:
+
+| page | Bootstrap JS | jQuery |
+|---|---|---|
+| `base.html` | 4.0.0 (maxcdn) | 3.2.1 slim |
+| `header_only.html` | 4.6.2 (jsDelivr) | 3.6.0 |
+
+Both CDN sets are allowlisted deliberately (`_SCRIPT_CDNS` and `_STYLE_CDNS`
+in `web/utils/security_middleware.py`). Keep the header's Bootstrap CSS the
+same version as the main site's.
+
+---
+
+## Performance
+
+- **No caching**: the header endpoint is sent with `no-store` (see above).
+- **Preconnect**: the head markup's `preconnect` / `dns-prefetch` let the
+  browser open the connection early.
+- **CSS containment**: `contain: layout style` isolates iframe rendering.
+- **Fixed height**: 80px is pre-allocated, preventing layout reflow.
+
+Expected: initial load 50–200ms iframe load time; cached load under 50ms; no
+impact on game server performance.
+
+---
+
+## Discourse updates
+
+**If the admin panel says an upgrade is required, that means REBUILD the
+container, not press the upgrade button.**
+
+Discourse updates in two tiers. The admin UI upgrade (`docker_manager`)
+handles the **app tier**: `bundle install`, `pnpm install`, migrations and
+`assets:precompile`. It cannot touch the **image tier** (Ruby, Node, Postgres,
+system libraries), which is baked into `discourse/base`.
+
+`docker_manager` compares the running Ruby and base image against what core
+expects and flags `upgrade_required` when either is behind. **It only
+warns.** It still lets you press upgrade, and the git pull happens *before*
+`bundle install` can fail, so a version-skewed site ends up on code it cannot
+run, with no rollback. Symptoms: every page 500s with errors like
+`undefined method 'generate_import_map'` or a missing JS package.
+
+Recovery: the pulled source is only in the container's writable layer, so
+`git reset --hard <previous-commit>` inside the container plus
+`docker restart` restores service. `sv restart unicorn` is **not**
+sufficient: it restarts the runit wrapper but can leave the old unicorn
+master alive serving stale code from memory.
+
+After a major Discourse upgrade, test SSO login, header display, theme
+component behaviour and the colour scheme, **in dark mode too** (see "Applying
+it: the light slot only").
+
+---
 
 ## Testing
 
-### Test SSO Login
+**SSO login.** Signed in to the game, open the forum and click "Login". The
+browser goes to the Django SSO endpoint, signs in with no password prompt,
+and returns to the forum signed in.
 
-1. **Open forum while logged into game**
-2. Click "Login" on forum
-3. Should redirect to Django SSO endpoint
-4. Should auto-login without password prompt
-5. Should redirect back to forum as logged-in user
+**Header display.** On the forum, the Django header shows at the top, the
+Discourse header is hidden, and the header matches the main site exactly.
 
-### Test Header Display
+**Logout sync.** Signed in to both, click "Log Out" in the header on the
+forum. Both the game and the forum are logged out; a forum refresh shows
+logged out.
 
-1. **Navigate to forum**
-2. Should see Django header at top
-3. Discourse header should be hidden
-4. Header should match main site exactly
-
-### Test Logout Sync
-
-1. **While logged into both**
-2. Click "Log Out" from header (on forum)
-3. Should logout from both Django and Discourse
-4. Refresh forum - should be logged out
-
-### Test Mobile
-
-1. **View forum on mobile device or narrow browser**
-2. Header should show hamburger menu
-3. Menu should collapse properly
-4. Height on mobile: open question. This document says 80px; the live
-   component was measured at 60px on 2026-09-11. See the Mobile Layout Issues
-   note under Troubleshooting; settle it on a real device.
+**Mobile.** On a phone or narrow browser, the header shows the hamburger
+menu, and the menu collapses properly. The mobile height is not decided (see
+"Not decided"); settle it on a real device.
 
 ---
 
 ## Troubleshooting
 
-### SSO Not Working
+**Can't log in to the forum.** Check `DISCOURSE_SSO_SECRET` is set in Django,
+the same secret is in Discourse, `discourse connect url` points at the Django
+endpoint, and the user is signed in to the game first. Not signed in,
+`curl -i https://yourgame.com/sso/discourse/` answers with a redirect to the
+game's login page, which proves the route exists; a plain `curl` never
+reaches the SSO checks (see "Endpoints" for the signed-in answers).
 
-**Symptom**: Can't login to forum
+**No header on the forum.** Check the theme component is active, the browser
+console (F12) shows no JavaScript errors, `/header-only/` is reachable
+(`curl https://yourgame.com/header-only/` returns HTML with a navbar), and the
+iframe `src` in the component's head markup has the right domain.
 
-**Check**:
-1. `DISCOURSE_SSO_SECRET` set in Django
-2. Same secret in Discourse settings
-3. `discourse connect url` points to correct Django endpoint
-4. User is logged into Django first
+**Forum logout shows "Invalid logout request" (403).** See "Forum logout":
+the Referer must name the `DISCOURSE_URL` host, and `DISCOURSE_URL` must be
+set.
 
-**Debug**:
-```bash
-# Test SSO endpoint while not signed in
-curl -i https://yourgame.com/sso/discourse/
-# Output: a redirect to the game's login page = the route exists
-```
+**Forum colours don't match the game.** Check the scheme is selected on the
+parent theme (and the dark slot is empty), the component CSS is saved, and
+hard-refresh the browser (Cmd+Shift+R or Ctrl+Shift+R).
 
-The endpoint requires a signed-in game session, so a plain `curl` never reaches
-the SSO checks. Signed in, with no `sso`/`sig` parameters, it answers "Missing
-SSO parameters". If no shared secret is set, it answers "SSO is not
-configured".
+**Both Discourse and Django headers show.** Check the CSS has
+`.d-header { display: none !important; }`, the component is included in the
+main theme, and the head markup holds exactly one `#gel-django-header-iframe`.
 
-### Header Not Showing
-
-**Symptom**: No header visible in forum
-
-**Check**:
-1. Theme component is activated
-2. JavaScript has no errors (check browser console: F12)
-3. `/header-only/` endpoint is accessible
-4. Correct domain in the iframe `src` in the component's head markup (Step 5)
-
-**Debug**:
-```bash
-# Test header endpoint
-curl https://yourgame.com/header-only/
-# Should return HTML with navbar
-```
-
-### Forum Logout Shows "Invalid logout request"
-
-**Symptom**: Logging out on the forum lands on a 403 page
-
-**Check**: the game only accepts the forum's logout redirect from a signed-in
-user when the browser sends a Referer whose host is the `DISCOURSE_URL` host.
-A missing or different Referer is refused with 403. If `DISCOURSE_URL` is not
-set, every signed-in logout through this route is refused with 403. A visitor
-who is not signed in is simply redirected.
-
-### Colors Wrong
-
-**Symptom**: Forum colors don't match game
-
-**Check**:
-1. Color Palette is applied to theme
-2. CSS is saved in theme component
-3. Hard refresh browser (Cmd+Shift+R or Ctrl+Shift+R)
-
-### Double Headers
-
-**Symptom**: See both Discourse and Django headers
-
-**Check**:
-1. CSS has `.d-header { display: none !important; }`
-2. Theme component is included in main theme
-3. The component's head markup holds exactly one `#gel-django-header-iframe`
-
-### Mobile Layout Issues
-
-**Symptom**: Header looks wrong on mobile
-
-**Check**:
-1. Mobile CSS media query is present
-2. Both heights are 80px (not 60px)
-3. Django Bootstrap version matches (4.6.0)
-
-> **Neither of these describes production, measured 2026-09-11.**
->
-> - The live component's mobile media query is **60px** for all five values
->   (`body` padding, `#main-outlet` margin, container, iframe,
->   `.sidebar-wrapper`). Its `scss` field was last edited 2026-08-04; this
->   document has said 80px since the 2025-10-19 consolidation, and the two
->   disagreed through all three later "make the spec match the code" passes
->   (#1439, #1480, #1508) without anyone catching it. Note also that
->   `theme-initializer.gjs` resizes only the container and the iframe —
->   `body { padding-top }` and `#main-outlet { margin-top }` keep whatever the
->   media query gave them, so if the mobile header does not rest at exactly
->   60px the two disagree and content sits under it. Settling this needs a
->   real device; do not "fix" either side from this doc.
-> - Bootstrap is **not** version-matched. `base.html` loads Bootstrap CSS
->   4.6.0 with Bootstrap **JS 4.0.0** (maxcdn) and jQuery **3.2.1 slim**;
->   `header_only.html` loads Bootstrap CSS 4.6.0 with Bootstrap **JS 4.6.2**
->   (jsDelivr) and jQuery **3.6.0**. Only the CSS is synced, and both CDN sets
->   are allowlisted deliberately in `web/utils/security_middleware.py:24-30`.
-4. No font-size overrides in header_only.html
+**Header looks wrong on mobile.** Check the mobile media query is present and
+there are no font-size overrides in `header_only.html`. The forum listener
+resizes only the container and the iframe; `body { padding-top }` and
+`#main-outlet { margin-top }` keep whatever the media query gave them, so if
+the mobile header does not rest at exactly the media query's height, the two
+disagree and content sits under the header. Bootstrap JS is not
+version-matched between the pages (see "Bootstrap versions").
 
 ---
 
-## Performance Notes
+## Unbuilt
 
-The integration includes several optimizations:
-
-- **No caching**: the header endpoint is sent with `no-store`. It shows who is signed in, so it must never be cached (see "The header must never be cached").
-- **Preconnect**: Browser establishes connection early
-- **CSS Containment**: Isolates iframe rendering (`contain: layout style`)
-- **Fixed Height**: Prevents layout reflow (80px pre-allocated)
-
-**Expected Performance**:
-- Initial load: 50-200ms iframe load time
-- Cached load: <50ms
-- No impact on game server performance
+- 📋 UNBUILT (no issue): retiring the forum account when a game account is
+  deleted. No game code calls the forum when an account is deleted (see
+  "Overrides and account identity").
+- 📋 UNBUILT, #3744: role sync.
 
 ---
 
-## Maintenance
+## Not decided
 
-### Updating Header Styling
-
-When you update Django header CSS:
-1. Changes automatically apply to forum iframe
-2. No theme updates needed
-3. The header is never cached, so changes show on the next page load.
-
-### Discourse Updates
-
-> **⚠ If the admin panel says an upgrade is required, that means REBUILD the
-> container — not press the upgrade button.**
->
-> Discourse splits updates in two tiers. The admin UI upgrade (`docker_manager`)
-> handles the **app tier**: it runs `bundle install`, `pnpm install`, migrations
-> and `assets:precompile`. It cannot touch the **image tier** — Ruby itself,
-> Node, Postgres, system libraries — because those are baked into
-> `discourse/base`.
->
-> `docker_manager` compares the running Ruby and base image against what core
-> expects and flags `upgrade_required` when either is behind. **It only warns.**
-> It will still let you press upgrade, and the git pull happens *before*
-> `bundle install` can fail — so a version-skewed site ends up on code it cannot
-> run, with no rollback. Symptoms: every page 500s with errors like
-> `undefined method 'generate_import_map'` or a missing JS package.
->
-> Recovery, if it happens: the pulled source is only in the container's writable
-> layer, so `git reset --hard <previous-commit>` inside the container plus
-> `docker restart` restores service. Note `sv restart unicorn` is **not**
-> sufficient — it restarts the runit wrapper but can leave the old unicorn
-> master alive serving stale code from memory.
-
-After major Discourse upgrades, test:
-- SSO login flow
-- Header display
-- Theme component functionality
-- Color scheme application — **check dark mode too**, see below
-
-### Keeping Bootstrap Versions Synced
-
-Ensure `header_only.html` uses same Bootstrap version as main site:
-```html
-<!-- Current: Bootstrap 4.6.0 -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/...">
-```
+- **Mobile header height.** The CSS in this document uses 80px in the mobile
+  media query; the live component uses 60px (measured 2026-09-11). Which is
+  right needs a real device. Do not "fix" either side from this document.
 
 ---
 
-## Summary
+## Related documents
 
-✅ **Django Side**: SSO endpoints already implemented, just add settings
-✅ **Discourse Side**: Configure SSO, apply theme component
-✅ **Result**: Seamless integration with unified login and consistent UI
-
-The integration is production-ready and handles edge cases gracefully. If you skip the forum entirely, the Django code works fine (returns errors for unconfigured SSO endpoints but doesn't break anything).
-
----
-
-## Quick Reference
-
-**Django Settings**:
-- `DISCOURSE_SSO_SECRET` - Shared secret
-- `DISCOURSE_URL` - Forum URL
-- `DISCOURSE_API_KEY` - API key (optional, for logout sync)
-- `DISCOURSE_INTERNAL_URL` - forum address for the logout API calls (optional; falls back to `DISCOURSE_URL`)
-- `DISCOURSE_LOGOUT_REDIRECT` - where to send a user after forum logout (optional, default `/`)
-
-**Django Endpoints**:
-- `/sso/discourse/` - SSO authentication
-- `/sso/discourse/logout/` - Logout handler
-- `/sso/discourse/session-sync/` - sends a signed-in user to the forum's own sign-in, so they arrive signed in
-- `/auth/logout/` - game logout (POST); with `DISCOURSE_API_KEY` set it also ends the forum session through the forum API
-- `/forum/` - redirects to `DISCOURSE_URL`, or to `/` if that is unset
-- `/header-only/` - Header iframe
-
-**Discourse Settings**:
-- `enable discourse connect` = true
-- `discourse connect url` = `https://yourgame.com/sso/discourse/`
-- `discourse connect secret` = (shared secret)
-- `logout redirect` = `https://yourgame.com/sso/discourse/logout/`
-
-**Files to Update**:
-- `server/conf/secret_settings.py` - Django SSO config
-- Discourse theme component - HTML, CSS, JavaScript
-- Discourse color palette - Match game colors
+- `FORUM_INTEGRATION_GUIDE.md`: whether a game needs a forum.
+- `STYLING_SPEC.md` § Color Palette and § Discourse Integration: the site
+  palette and the full colour-slot account.
+- `web/discourse-theme/README.md`: installing and updating the Domino's
+  Gambit component.

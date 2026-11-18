@@ -229,7 +229,9 @@ class Organ:
         bound conditions still surface in that case since they live
         directly on ``self``.
 
-        See ``specs/HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`` line 1396+
+        See ``specs/HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`` § Unbuilt >
+        Treatment and consumption ('Tool appropriateness') and
+        § Configuration constants (``TOOL_EFFECTIVENESS_MODIFIERS``)
         for the per-condition treatment mapping that pairs with the
         condition subclasses; the three-tier model categorises which
         treatments target which conditions.

@@ -1,7 +1,5 @@
 # Grammar Engine Specification
 
-> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
-
 ## Overview
 
 The Grammar Engine (`world/grammar.py`) is a standalone utility module providing
@@ -13,20 +11,12 @@ across the game: emote, speech, voice and radio, identity, clothing,
 appearance and longdescs, combat, medical, stealth, shops, souls, rooms and
 many commands.
 
-This spec is the canonical reference for the engine. The Emote/Pose,
-Identity/Recognition, and Clothing specs all delegate grammar concerns here.
-
-> **2026-09-11 — one of those three delegations does not exist.**
-> `CLOTHING_SYSTEM_SPEC.md:29` and `EMOTE_POSE_SPEC.md:409` do point here, and
-> `EMOTE_POSE_SPEC.md:1082` now names this document canonical and its own
-> Appendix A/B a pre-extraction leftover. `IDENTITY_RECOGNITION_SPEC.md` never
-> got the rewrite: it names **`EMOTE_POSE_SPEC.md`** as "the canonical grammar
-> engine specification" twice (in its design principles and in its grammar
-> engine section) and sends readers there again for the posing system, so a reader
-> following that spec is sent to a section that now forwards back here. The
-> code side of the claim is sound — `world/grammar.py` is imported by
-> `world/emote.py`, `world/identity.py` / `world/identity_utils.py`,
-> `typeclasses/clothing_mixin.py` and eight `world/combat/*` modules.
+This spec is the canonical reference for the engine. `CLOTHING_SYSTEM_SPEC.md`
+and `EMOTE_POSE_SPEC.md` delegate grammar concerns here.
+`IDENTITY_RECOGNITION_SPEC.md` does not: it names `EMOTE_POSE_SPEC.md` as "the
+canonical grammar engine specification" (in its design principles and in its
+grammar engine section) and sends readers there for the posing system, and
+that section forwards back here.
 
 ---
 
@@ -46,16 +36,13 @@ rewrite in `with_article`, which turns "a bowl of noodles" into "the
 bowl of noodles" — is not colour-safe and does not need to be.
 
 **Markup is not text.** Any rule that inspects "the first character" or
-asks "does this begin with a vowel" must look past it. The first three
-functions below did not, and all were wrong in production; the
-`pluralize_noun` defect was not about markup but was fixed with them (#2207):
+asks "does this begin with a vowel" must look past it (#2207):
 
-| function | was | now |
-|---|---|---|
-| `capitalize_first` | `\|rblood` → `\|Rblood` — uppercased the colour code, changing red to bright red, and left the word lowercase | capitalises the first *visible* letter, markup untouched |
-| `get_article` / `with_article` | `\|555interior` → `"a interior"` | reads the visible text, so `"an"` |
-| `is_pluralia_tantum` | `\|wpair of slippers\|n` judged differently from `pair of slippers` (#2643) | reads the visible text |
-| `pluralize_noun` | `boots` → `bootss` | already-plural nouns are returned unchanged |
+| function | rule |
+|---|---|
+| `capitalize_first` | capitalises the first *visible* letter, markup untouched: `\|rblood` keeps its colour code (uppercasing it would turn red into bright red) and the word is capitalised |
+| `get_article` / `with_article` | reads the visible text, so `\|555interior` gets `"an"` |
+| `is_pluralia_tantum` | reads the visible text, so `\|wpair of slippers\|n` is judged the same as `pair of slippers` (#2643) |
 
 `_visible()` strips markup for **decisions only** — the original string
 is always what gets returned, so colour survives. The markup pattern also
@@ -69,19 +56,9 @@ functions, and that contract is worth more than sharing one regex.
 
 ## Verb Conjugation
 
-Converts base-form verbs to third-person singular present tense.
-
-```python
-def conjugate_third_person(verb: str) -> str:
-    """Convert base-form verb to third-person singular present.
-
-    Args:
-        verb: Base form ("lean", "catch", "try").
-
-    Returns:
-        Conjugated form ("leans", "catches", "tries").
-    """
-```
+`conjugate_third_person(verb)` converts a base-form verb to third-person
+singular present tense ("lean" → "leans", "catch" → "catches", "try" →
+"tries").
 
 **Irregular table** (checked after the modals):
 
@@ -139,37 +116,29 @@ cases emerge.
 normalises an `-s` form to the plural with `inflect.plural_verb` (`leans` →
 `lean`, `is` → `are`, `has` → `have`, `was` → `were`). Empty input, modals
 and irregular past tense pass through unchanged. Known wart: `focuses`
-becomes `focuse`. The emote renderer uses it for the actor's own line
-(whether it should is not decided, see Subject-Verb Agreement).
+becomes `focuse` (recorded in #3197 so it is not rediscovered). The emote
+renderer uses it for the actor's own line (whether it should is not decided,
+see Subject-Verb Agreement).
 
 ---
 
 ## Noun Number
 
-```python
-def pluralize_noun(noun: str) -> str:
-    """Singular → plural ("hand" → "hands", "foot" → "feet").
-
-    Returns the input unchanged when it is already plural ("boots").
-    """
-
-def singularize_noun(noun: str) -> str:
-    """Plural → singular ("eyes" → "eye", "feet" → "foot").
-
-    Returns the input unchanged when it is already singular. First-letter
-    capitalization is preserved.
-    """
-```
+- `pluralize_noun(noun)` — singular → plural ("hand" → "hands", "foot" →
+  "feet"). Returns the input unchanged when it is already plural ("boots"
+  stays "boots", never "bootss") (#2207).
+- `singularize_noun(noun)` — plural → singular ("eyes" → "eye", "feet" →
+  "foot"). Returns the input unchanged when it is already singular.
 
 Both wrap the `inflect` singleton and preserve leading capitalization. They
 share one test for "already plural": `inflect.singular_noun` is asked in
 lowercase, and its candidate counts only if `inflect.plural` turns it back
-into the word. `inflect` reports `False` for most singulars but also chops
-words that merely end in -s — "ass" → "as", and "as" pluralizes to "a" — so
-before the round trip (#2691) `pluralize_noun` left "ass" alone as a plural
-and `singularize_noun` turned it into "as", which missed the longdesc
-vocabulary and was conjugated as a verb. Note `inflect.plural_noun` mangles
-an already-plural input (`"eyes"` → `"eyess"`), so number-flexing first
+into the word. This round trip is needed because `inflect` reports `False`
+for most singulars but also chops words that merely end in -s — "ass" →
+"as", and "as" pluralizes to "a" — so without it "ass" would be left alone
+as a plural and singularized to "as", which misses the longdesc vocabulary
+and is conjugated as a verb (#2691). Note `inflect.plural_noun` mangles an
+already-plural input (`"eyes"` → `"eyess"`), so number-flexing first
 normalizes to the singular base.
 
 ---
@@ -183,25 +152,17 @@ words to a target **number** — `"plural"` for a collapsed both-sides pair,
 `"singular"` for a lone survivor or single side. Tokens are opt-in: untouched
 words render verbatim (the engine never rewrites un-braced prose).
 
-```python
-def flex_noun(body: str, number: str) -> str:
-    """Render a noun token ("eye", "eyes", "an eye") to *number*.
-
-    Input-form-agnostic. On a plural render a leading indefinite article is
-    dropped and the noun pluralised; on a singular render the noun is
-    singularised and the article re-agreed (a/an). Leading case preserved.
-    """
-
-def flex_verb(word: str, number: str) -> str:
-    """Render a verb token ("accents", "accent", "is", "are") to *number*.
-
-    Plural → base/plural form ("accent", "are"); singular → third-person
-    singular ("accents", "is"). Modals ("could", "can", …) are returned
-    unchanged. Irregulars (be/have/do/was) use a closed
-    bidirectional table; regulars normalise via ``inflect.plural_verb`` then
-    re-conjugate. Leading case preserved.
-    """
-```
+- `flex_noun(body, number)` renders a noun token ("eye", "eyes", "an eye")
+  to *number*, whatever form it is written in. On a plural render a leading
+  indefinite article is dropped and the noun pluralised; on a singular render
+  the noun is singularised and the article re-agreed (a/an). Leading case
+  preserved.
+- `flex_verb(word, number)` renders a verb token ("accents", "accent", "is",
+  "are") to *number*. Plural → base/plural form ("accent", "are"); singular →
+  third-person singular ("accents", "is"). Modals ("could", "can", …) are
+  returned unchanged. Irregulars (be/have/do/was) use a closed bidirectional
+  table; regulars normalise via `inflect.plural_verb` then re-conjugate.
+  Leading case preserved.
 
 **Noun-vs-verb autodetect (deterministic, closed-set rule)** — performed by
 the caller (`AppearanceMixin._substitute_longdesc_tokens`), not by POS
@@ -210,30 +171,31 @@ vocabulary — the pair base nouns from the species's pair table (for humans
 `eye`, `ear`, `arm`, `hand`, `thigh`, `shin`, `foot`) plus the species's
 curated body-noun set (for humans `leg`, `shoulder`, `hip`, `knee`, …) —
 optionally preceded by `a`/`an`. Any other braced **single** word is a
-**verb**. A multi-word token that is neither an article+noun nor
-`{they <verb …>}` (see below) is left literal and logged.
+**verb**.
 
-> **2026-09-11 — the vocabulary is species-derived, one multi-word token is
-> resolved, and this rule has two doors.** The caller builds the set from the
-> species registry — `get_species_longdesc_flex_nouns` and
-> `get_species_pair_keys` in `world/anatomy/species.py`, called from
-> `AppearanceMixin._flex_noun_vocabulary` (#350/#356);
-> `world.combat.constants.PAIR_MERGE_KEYS` and `LONGDESC_FLEX_NOUNS` are
-> derived views of the human table, kept for callers with no species context.
-> `{they <verb>}` is resolved rather than
-> left literal: head `they` plus a verb tail agrees with the **person's**
-> number, not the body part's (the `person_number` argument of
-> `AppearanceMixin._substitute_longdesc_tokens`), which is what `{they are}` /
-> `{they turn}` in the shipped rat and synth longdescs rely on
-> (`world/mob_flavor/longdescs_rat.py`). Other multi-word braces are still
-> left literal and logged. Singular flex is also side-aware: with `side` set, a
-> pair-keyed noun renders `"right arm"`, and `{an arm}` becomes
-> `"a right arm"` (`AppearanceMixin._substitute_longdesc_tokens`, #341). The
-> corpse and severed-part renderer mirrors all of this in a second
-> implementation, `world/anatomy/longdesc_tokens.py:_flex_body_tokens` (with
-> the person-verb mirror in `_flex_person_verbs`), which adds a reserved-token
-> set `_UPSTREAM_TOKENS` (#2722) the living path lacks — a change to the
-> rule has to land in both.
+The vocabulary comes from the species registry —
+`get_species_longdesc_flex_nouns` and `get_species_pair_keys` in
+`world/anatomy/species.py`, called from `AppearanceMixin._flex_noun_vocabulary`
+(#350/#356). `world.combat.constants.PAIR_MERGE_KEYS` and `LONGDESC_FLEX_NOUNS`
+are derived views of the human table, kept for callers with no species
+context.
+
+**Multi-word tokens.** `{they <verb>}` is resolved: head `they` plus a verb
+tail agrees with the **person's** number, not the body part's (the
+`person_number` argument of `AppearanceMixin._substitute_longdesc_tokens`).
+`{they are}` / `{they turn}` in the rat and synth longdescs rely on this
+(`world/mob_flavor/longdescs_rat.py`). Any other multi-word token that is
+neither an article+noun nor `{they <verb …>}` is left literal and logged.
+
+**Side-aware singular.** With `side` set, a pair-keyed noun renders
+`"right arm"`, and `{an arm}` becomes `"a right arm"`
+(`AppearanceMixin._substitute_longdesc_tokens`, #341).
+
+**Two implementations.** The corpse and severed-part renderer mirrors all of
+this in `world/anatomy/longdesc_tokens.py` (`_flex_body_tokens`, with the
+person-verb mirror in `_flex_person_verbs`), which adds a reserved-token set
+`_UPSTREAM_TOKENS` (#2722) the living path lacks. A change to the rule has to
+land in both.
 
 **Scope** — only brace words whose grammatical number tracks the body part
 (the part noun and verbs whose subject **is** that part). A main-clause verb
@@ -257,29 +219,10 @@ token.
 
 ### Phoneme-aware article selection
 
-```python
-import inflect
-
-_engine = inflect.engine()
-
-def get_article(noun_phrase: str, definite: bool = False) -> str:
-    """Get the appropriate article for a noun phrase.
-
-    Args:
-        noun_phrase: The noun phrase ("lanky man", "athletic dame").
-        definite: If True, return "the". If False, return "a"/"an".
-
-    Returns:
-        Article string: "a", "an", or "the".
-    """
-    if definite:
-        return "the"
-    # colour markup is stripped before the choice
-    return _indefinite_article(_visible(noun_phrase))
-```
-
-`_indefinite_article` takes the article from `inflect`'s `a()` and caches up
-to 4,096 answers (#462).
+`get_article` returns `"the"` when `definite` is True. Otherwise it strips
+colour markup and takes `"a"` or `"an"` from `_indefinite_article`, which
+asks `inflect`'s `a()` and caches up to 4,096 answers (#462). Examples:
+`"lanky man"` → `"a"`, `"athletic dame"` → `"an"`.
 
 **Context rules** (applied by callers, not the grammar engine):
 
@@ -292,12 +235,10 @@ to 4,096 answers (#462).
 Some English nouns exist only — or idiomatically, in sdesc context — in
 plural form and reject the indefinite article: `"blue jeans"` is
 grammatical, `"*a blue jeans"` is not. The engine maintains a curated
-frozenset of such nouns and exposes a detector:
-
-```python
-def is_pluralia_tantum(noun_phrase: str) -> bool:
-    """Return True if the head noun of *noun_phrase* is pluralia tantum."""
-```
+frozenset of such nouns, `_PLURALIA_TANTUM_NOUNS` in `world/grammar.py`
+(50 entries across seven categories), and `is_pluralia_tantum(noun_phrase)`
+returns True if the head noun of the phrase is in it. The category comment
+above the frozenset in `world/grammar.py` lists only four of them.
 
 **Categories covered:**
 
@@ -306,19 +247,10 @@ def is_pluralia_tantum(noun_phrase: str) -> bool:
 | True pluralia tantum garments | jeans, pants, trousers, shorts, leggings, overalls |
 | Paired-noun garments (idiomatic plural) | boots, shoes, gloves, socks, sneakers |
 | Eyewear | glasses, goggles, sunglasses, binoculars |
-| Two-bladed/handled tools | scissors, pliers, tweezers, tongs, shears |
-| Garment sets / uniforms | scrubs, fatigues |
-| Paired weapons | knuckles |
+| Two-bladed/handled tools | scissors, pliers, tweezers, tongs, shears, clippers |
+| Garment sets / uniforms (#1212/#1213) | scrubs, fatigues |
+| Paired weapons (#1212/#1213) | knuckles |
 | Other | trunks |
-
-> **2026-09-11 —** this table has never been complete. `_PLURALIA_TANTUM_NOUNS`
-> already carried an `# other` group (`trunks`) and `clippers` in the same
-> commit that created this document, so those two rows document day-one
-> behaviour rather than later drift; the *garment sets / uniforms* and *paired
-> weapons* groups were added afterwards by #1212/#1213. The frozenset now holds
-> 50 entries across seven categories (`_PLURALIA_TANTUM_NOUNS` in
-> `world/grammar.py`), and the module's own category comment above it still
-> lists only four.
 
 **Head-noun rule.** Detection inspects only the *head* of the noun
 phrase — the last token before the earliest prepositional break in the
@@ -335,16 +267,11 @@ detection is unreliable for pluralia tantum: it returns `"jean"` for
 
 ### Article composition
 
-```python
-def with_article(noun_phrase: str, definite: bool = False) -> str:
-    """Return *noun_phrase* prefixed with the appropriate article.
-
-    Pluralia-tantum nouns receive no indefinite article — "blue jeans"
-    is returned bare, never "*a blue jeans". The definite article "the"
-    is grammatical with both singular and plural nouns and is applied
-    uniformly when *definite* is True.
-    """
-```
+`with_article(noun_phrase, definite=False)` returns the phrase prefixed with
+its article. Pluralia-tantum nouns receive no indefinite article — "blue
+jeans" is returned bare, never "*a blue jeans". The definite article "the"
+is grammatical with both singular and plural nouns and is applied uniformly
+when `definite` is True.
 
 | Input | `definite=False` | `definite=True` |
 |---|---|---|
@@ -359,48 +286,26 @@ A phrase that already begins with `a`, `an` or `the` keeps its own article;
 with `definite=True` a leading `a`/`an` becomes `the`. Empty input is
 returned as is.
 
-### Per-item override (deferred)
-
-A future enhancement could allow individual prototypes to override
-pluralia-tantum classification via an item attribute (e.g. for an
-ironic singular `"Pair O' Jeans"` artifact). This is **deferred** until
-a real one-off case demands it; the centralized set is sufficient for
-all current prototypes.
-
 ---
 
 ## Pronoun Transformation
 
-```python
-def transform_pronoun(
-    pronoun: str,
-    target_person: str,
-    gender: str = "neutral",
-) -> str:
-    """Transform a first-person pronoun to the target perspective.
+`transform_pronoun(pronoun, target_person, gender="neutral")` transforms a
+first-person pronoun ("I", "me", "my", "mine", "myself") to the target
+perspective: `target_person` is `"second"` (actor self-view) or `"third"`
+(observer view). `gender` is `"male"`, `"female"` or `"neutral"`, and is used
+only for third person.
 
-    Args:
-        pronoun: First-person pronoun ("I", "me", "my", "mine", "myself").
-        target_person: "second" (actor self-view) or "third" (observer view).
-        gender: "male", "female", or "neutral". Only used for third person.
+**Gender mapping** (`GENDER_MAP`) from the character `sex` attribute:
 
-    Returns:
-        Transformed pronoun string.
-    """
-```
-
-**Gender mapping** from character `sex` attribute:
-
-```python
-GENDER_MAP = {
-    "male": "male",
-    "female": "female",
-    "ambiguous": "neutral",
-    "neutral": "neutral",
-    "nonbinary": "neutral",
-    "other": "neutral",
-}
-```
+| `sex` | grammar gender |
+|---|---|
+| `male` | `male` |
+| `female` | `female` |
+| `ambiguous` | `neutral` |
+| `neutral` | `neutral` |
+| `nonbinary` | `neutral` |
+| `other` | `neutral` |
 
 Output is always lowercase. In the third person an unknown gender uses the
 neutral table. A word not in the table is returned lowercased. Any
@@ -412,19 +317,8 @@ See `EMOTE_POSE_SPEC.md` Appendix B for the complete transformation tables.
 
 ## Possessive Forms
 
-For display names used by the identity system and emote rendering:
-
-```python
-def possessive(name: str) -> str:
-    """Form the possessive of a name or noun phrase.
-
-    Args:
-        name: "Jorge", "a lanky man", "you".
-
-    Returns:
-        "Jorge's", "a lanky man's", "your".
-    """
-```
+For display names used by the identity system and emote rendering,
+`possessive(name)` forms the possessive of a name or noun phrase:
 
 | Input | Output | Notes |
 |---|---|---|
@@ -454,93 +348,70 @@ The conjugation function pairs with the subject reference:
 | Named character | Third-person singular | "Jorge leans back." |
 | Sdesc (singular) | Third-person singular | "A lanky man leans back." |
 
-Before #3197 the rendering pipeline did this: the actor saw the verb
-exactly as typed, and everyone else saw it through
-`conjugate_third_person()`. Today the actor's verb goes through
-`conjugate_second_person()` (`leans` → `lean`, `is` → `are`) and the
-observer's through `conjugate_third_person()`; both are skipped for `-ing`
-participles (`_should_conjugate` in `world/emote.py`). Which of the two the
-actor's view should do is not decided (see the note below).
+In the emote renderer (`render_for_observer` in `world/emote.py`) the actor's
+verb goes through `conjugate_second_person()` (`leans` → `lean`, `is` →
+`are`; modals and irregular past pass straight through) and the observer's
+through `conjugate_third_person()`. Both are skipped for `-ing` participles
+(`_should_conjugate` in `world/emote.py`). This came in with #3197
+(2026-09-10), on the reasoning that a player who types `.leans` reads "You
+leans" while the room reads correctly.
 
-> **2026-09-11 — the code no longer does this, and the change reverses an
-> owner ruling. OWNER DECISION NEEDED — treat neither half as settled.**
-> The actor branch now runs the typed verb through `conjugate_second_person`
-> (`render_for_observer` in `world/emote.py`; `world/grammar.py`), which normalises
-> an `-s` form down to the plural/second-person form (`leans` → `lean`,
-> `is` → `are`) and passes modals and irregular past straight through; both
-> branches are gated by `_should_conjugate` (`world/emote.py`) so `-ing`
-> participles are untouched. It landed as #3197 (2026-09-10) on the reasoning
-> that a player who types `.leans` reads "You leans" while the room reads
-> correctly.
->
-> **The same change already landed once and was reverted the same day.**
-> `to_base_form` (#2210, 2026-08-21) did exactly this and was removed hours
-> later by owner ruling — #2211 *"Revert #2210: I invented the input, then
-> changed the engine to accept it"*, #2212 *"Nobody types '.stands'"*. The
-> ruling: `.` is first-person authoring, so the verb a player types is always
-> a base form; the third-person input was invented by a probe and read back as
-> a live bug; and normalising it makes `.stands` and `.stand` render
-> identically, erasing the signal that the author reached for the wrong
-> command. #3197 cites none of those three and reaches its evidence the same
-> way (typing `.leans` on a testbed). `conjugate_second_person("stands")` is
-> `"stand"` today, so the collapse #2212 objected to is back.
->
-> The earlier behaviour described above is what the #2211/#2212 revert
-> **restored**; the code is the half that moved. One
-> accepted wart of the shipped path, recorded in #3197 so it is not
-> rediscovered: `inflect` normalises `focuses` to `focuse`.
+**This reverses an owner ruling. OWNER DECISION NEEDED — treat neither half
+as settled.** The same normalisation landed once before as `to_base_form`
+(#2210, 2026-08-21) and was removed hours later by owner ruling — #2211
+*"Revert #2210: I invented the input, then changed the engine to accept it"*,
+#2212 *"Nobody types '.stands'"*. The ruling: `.` is first-person authoring,
+so the verb a player types is always a base form; the third-person input was
+invented by a probe and read back as a live bug; and normalising it makes
+`.stands` and `.stand` render identically, erasing the signal that the author
+reached for the wrong command. What the #2211/#2212 revert restored is: the
+actor sees the verb exactly as typed, and everyone else sees it through
+`conjugate_third_person()`. #3197 cites none of those three and reaches its
+evidence the same way (typing `.leans` on a testbed).
+`conjugate_second_person("stands")` is `"stand"`, so the collapse #2212
+objected to is back. Which of the two the actor's view should do is not
+decided (see Not decided).
 
 ---
 
 ## Capitalization
 
-```python
-def capitalize_first(text: str) -> str:
-    """Capitalise the first alphabetic character of a string."""
-```
-
-Unlike `str.capitalize()`, this preserves the case of all subsequent
-characters and handles leading non-alpha characters (e.g. opening
-quotes). Used by the emote pipeline for sentence-initial rendering.
+`capitalize_first(text)` capitalises the first alphabetic character of a
+string. Unlike `str.capitalize()`, it preserves the case of all subsequent
+characters and handles leading non-alpha characters (e.g. opening quotes).
+Used by the emote pipeline for sentence-initial rendering.
 
 ---
 
 ## Placement Clause
 
-```python
-def placement_clause(raw_input: str) -> str:
-```
-
-Turns a placement into the clause the room renderer expects
-(`Room.get_display_characters` supplies "is"/"are" itself). It strips outer
-quotes and a leading `me is`, `me are`, `is` or `are`, and ends the clause
-with a full stop when it has no terminal punctuation. Empty input is
-returned as is. `@temp_place` (`commands/CmdCharacter.py`) and the souls
-layer (`world/souls/jobs.py`) both go through it (#2465, #2913).
+`placement_clause(raw_input)` turns a placement into the clause the room
+renderer expects (`Room.get_display_characters` supplies "is"/"are" itself).
+It strips outer quotes and a leading `me is`, `me are`, `is` or `are`, and
+ends the clause with a full stop when it has no terminal punctuation. Empty
+input is returned as is. `@temp_place` (`commands/CmdCharacter.py`) and the
+souls layer (`world/souls/jobs.py`) both go through it (#2465, #2913).
 
 ---
 
 ## Ordinals
 
-```python
-def ordinal(number: int) -> str:
-```
-
-`1` → `"1st"`, `2` → `"2nd"`, `3` → `"3rd"`, `11`–`13` → `"11th"`–`"13th"`,
-`111` → `"111th"`. Used by the crane (`typeclasses/crane.py`) and room prose
-(`typeclasses/rooms.py`) for floor numbers (#2472).
+`ordinal(number)`: `1` → `"1st"`, `2` → `"2nd"`, `3` → `"3rd"`, `11`–`13` →
+`"11th"`–`"13th"`, `111` → `"111th"`. Used by the crane
+(`typeclasses/crane.py`) and room prose (`typeclasses/rooms.py`) for floor
+numbers (#2472).
 
 ---
 
 ## Default Sdesc Keywords
 
-```python
-DEFAULT_SDESC_KEYWORDS = {
-    "male": "man",
-    "female": "woman",
-    "neutral": "person",
-}
-```
+`DEFAULT_SDESC_KEYWORDS`:
+
+| grammar gender | keyword |
+|---|---|
+| `male` | `man` |
+| `female` | `woman` |
+| `neutral` | `person` |
 
 Used as the keyword when a character has none of its own (none set with
 `describe keyword`, no override): looked up by grammar gender each time it
@@ -549,17 +420,44 @@ output of `GENDER_MAP`, not the raw `sex` attribute.
 
 ---
 
+## Deliberately not built
+
+### Per-item override (deferred)
+
+A future enhancement could allow individual prototypes to override
+pluralia-tantum classification via an item attribute (e.g. for an
+ironic singular `"Pair O' Jeans"` artifact). This is **deferred** until
+a real one-off case demands it; the centralized set is sufficient for
+all current prototypes.
+
+---
+
+## Not decided
+
+- **The actor's own verb.** Whether the actor's view should show the verb
+  exactly as typed (the #2211/#2212 ruling) or normalise it through
+  `conjugate_second_person` (#3197). OWNER DECISION NEEDED — see
+  Subject-Verb Agreement.
+- **A typed `-s` form.** Whether typing the `-s` form of a verb is ordinary
+  input or a mistake (see Verb Conjugation and Subject-Verb Agreement).
+
+---
+
 ## Testing
 
 The core tests are in `world/tests/test_grammar.py` (plain `unittest`, no
-Evennia). Run via:
+Evennia): `evennia test world.tests.test_grammar`. Further grammar tests are
+under `world/tests/`.
 
-```
-evennia test world.tests.test_grammar
-```
+---
 
-Colour safety, partitives, past tense, the actor's own pose and ordinals
-have their own files under `world/tests/`:
-`test_grammar_colour_safety.py`, `test_a_pair_of_slippers_keeps_its_article.py`,
-`test_a_past_tense_verb_takes_no_s.py`, `test_your_own_pose_reads_correctly.py`,
-`test_the_crane_says_2nd_not_2th.py`.
+## Related documents
+
+- `EMOTE_POSE_SPEC.md` — the emote/pose renderer that uses this engine;
+  Appendix B holds the pronoun transformation tables. Its Appendix A
+  conjugation table is a pre-extraction leftover; this document is canonical
+  for conjugation.
+- `IDENTITY_RECOGNITION_SPEC.md` — sdescs, names and recognition.
+- `CLOTHING_SYSTEM_SPEC.md` — clothing descriptions.
+- `LONGDESC_SYSTEM_SPEC.md` — the paired-longdesc collapse that consumes the
+  number-flexing tokens.

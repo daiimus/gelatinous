@@ -1,80 +1,76 @@
 # Bug Command Specification
 
-> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02.
-
 ## Overview
 
-The `@bug` command allows players and staff to submit bug reports directly to the GitHub repository as issues. This integrates in-game feedback with the development workflow while maintaining appropriate privacy boundaries.
-
-**Current Status**: ✅ **Production Ready** - All planned features implemented and deployed.
-
-## Features
-
-- **@bug**: Interactive workflow for creating detailed bug reports with title, category, and description
-- **@bug/list**: View the 10 most recent bug reports from GitHub
-- **@bug/show <number>**: View full details of a specific bug including all comments (supports `#15` format)
-- **Rate Limiting**: a daily cap per account (`BUG_REPORT_DAILY_LIMIT`, default 30), shared by all of that account's characters
-- **Privacy-Conscious**: No email addresses or sensitive player data exposed
-- **GitHub Integration**: Issues automatically created with proper formatting and labels
+The `@bug` command lets players and staff file bug reports from inside the game. Each report becomes an issue in the GitHub repository. Players can also list recent reports and read any issue with its comments. Reports carry enough context to debug, but no private player data. The command is `CmdBug` in `commands/CmdBug.py`, added to the default cmdset in `commands/default_cmdsets.py`.
 
 ## Design Principles
 
-1. **Accessible**: All players can report bugs
-2. **Privacy-Conscious**: No email addresses or sensitive player data exposed
-3. **Context-Rich**: Captures technical environment for debugging
-4. **Generous Rate Limiting**: Players can report up to 30 bugs per day
-5. **Developer-Friendly**: Issues created with proper formatting and labels
+1. **Accessible**: all players can report bugs. Nothing in the command is staff-gated (see "Read-only switches").
+2. **Privacy-conscious**: no email addresses or sensitive player data are exposed.
+3. **Context-rich**: each report captures the technical environment for debugging.
+4. **Generous rate limiting**: a daily cap per account, 30 by default, and no cooldown between reports (trust players).
+5. **Developer-friendly**: issues are created with proper formatting and labels.
 
 ---
 
 ## Command Syntax
 
-### Basic Usage
-```
-@bug
-```
-Opens an interactive workflow for creating detailed bug reports:
-1. Enter a title (minimum 10 characters)
-2. Select a category from a menu
-3. Write detailed description in a multi-line editor
+| command | does |
+|---|---|
+| `@bug` | opens the interactive report workflow: title, category, description |
+| `@bug/list` | shows the 10 most recent player reports from GitHub |
+| `@bug/show <number>` or `@bug/show #<number>` | shows one issue in full, with all its comments |
 
-`bug` (without the @) works too. A plain `@bug` takes no text: `@bug <text>` only prints the usage line. A blank title cancels the report. Every GitHub call runs in a background thread, so a slow GitHub does not freeze the game (#460); `/list` and `/show` first print a "Fetching..." line.
+- `bug` (without the @) works too.
+- A plain `@bug` takes no text. `@bug <text>` only prints the usage line. There is no one-line report form: it encouraged poor reports.
+- Every GitHub call runs in a background thread (`run_async`, through `_run_github_call`), so a slow GitHub does not freeze the game (#460). `/list` and `/show` first print a "Fetching..." line.
+- Both configuration checks (see "Configuration") run before any switch is handled, so with bug reporting unconfigured `@bug/list` and `@bug/show` refuse too.
 
-### List Recent Bugs
-```
-@bug/list
-```
-Shows the 10 most recent bug reports from GitHub (open and closed). Only issues labelled `player-reported` (those filed with `@bug`) are listed. `@bug/show` displays any issue number in the repository, not only player reports.
+### `@bug` — filing a report
 
-### View Bug Details
-```
-@bug/show <number>
-@bug/show #<number>
-```
-Displays full details of a specific bug report including:
-- Issue title, state, and category
-- Creation and last update dates
-- Full description
-- All comments from GitHub
-- Direct link to the issue
+1. Enter a title of at least 10 characters. A blank title cancels the report.
+2. Pick a category from a numbered menu.
+3. Write the description in a multi-line editor. It must be at least 10 characters.
 
-Examples:
-- `@bug/show 15`
-- `@bug/show #15`
+Before the menu opens, the daily cap is checked: a capped player is refused before the editor opens (#3367). See "Rate Limiting".
+
+### `@bug/list`
+
+Shows the 10 most recent reports (open and closed). Only issues labelled `player-reported` (those filed with `@bug`) are listed. `@bug/list` takes no count: any text after it is ignored, and it always shows the 10 newest player reports.
+
+### `@bug/show <number>`
+
+Shows any issue number in the repository, not only player reports. A leading `#` is accepted (`@bug/show 15` and `@bug/show #15` are the same). It shows:
+
+- the issue title, state and category;
+- creation and last-update dates;
+- the full description;
+- all comments from GitHub;
+- a direct link to the issue.
+
+An issue that does not exist gives "Issue #99999 not found." (for `@bug/show 99999`).
+
+### Read-only switches
+
+Nothing in this command is staff-gated. `CmdBug.locks` is `cmd:all()`, and neither `show_bug_list` nor `show_bug_detail` checks permissions, so every player can run `@bug/list` and `@bug/show`. The only switches are `list` and `show` (`CmdBug.switch_options`).
 
 ---
 
 ## GitHub Issue Format
 
 ### Issue Title
-The player's title input is used directly as the issue title (no [BUG] prefix).
+
+The player's title is used directly as the issue title, with no `[BUG]` prefix. `sanitize_title` escapes it (see "Input Validation") and caps it at 100 characters.
 
 ### Issue Labels
+
 - `bug` (always applied)
 - `player-reported` (always applied)
-- `<category>`: always one of `combat`, `medical`, `movement`, `items`, `commands`, `web`, `world`, `social`, `system`, `other`. At the menu the digit or the word picks a category, and anything else picks `other`.
+- `<category>`: always one of `combat`, `medical`, `movement`, `items`, `commands`, `web`, `world`, `social`, `system`, `other`. At the menu the digit or the word picks a category, and anything else picks `other`. `get_labels` adds the category only if it is one of these ten.
 
 ### Issue Body Template
+
 ```markdown
 **Reported By:** <account_username>
 **Location:** <room #dbref>
@@ -94,135 +90,71 @@ The player's title input is used directly as the issue title (no [BUG] prefix).
 - **Server:** play.gel.monster
 - **Commit:** <git commit hash>
 ```
-The commit is the short (7-character) hash of `master`, read once per server process from the git checkout, or from `git rev-parse --short HEAD` if that file cannot be read; it is "unknown" if neither works.
 
-### Privacy Considerations
+The commit is the short (7-character) hash of `master`, read once per server process from the git checkout (`.git/refs/heads/master`) and cached for the life of the process. The `git` command line (`git rev-parse --short HEAD`) is only a fallback, used if that file cannot be read. The hash is "unknown" if neither works (`get_git_commit_hash` and `_compute_git_commit_hash`).
 
-**✅ INCLUDED:**
+### Privacy
+
+**Included:**
 - Account username (display name, not email)
 - Current room #dbref (for context)
 - Git commit hash (for version tracking)
 
-**❌ EXCLUDED:**
+**Excluded:**
 - Email addresses
 - Character names
 - Character G.R.I.M. stats
 - Room descriptive names (only #dbref)
 - Account IP addresses
 - Session information
+- Internal account IDs (the reporter is named by account username only)
 - Personal identifying information
 - Timestamps (GitHub Issues tracks creation time automatically)
 
 ---
 
-## Technical Implementation
+## GitHub API
 
-### File Structure
-```
-commands/
-  CmdBug.py          # New command implementation
-  default_cmdsets.py # Add CmdBug to default cmdset
-
-server/conf/
-  secret_settings.py # Store GITHUB_TOKEN and GITHUB_REPO (gitignored)
-```
-
-### GitHub API Integration
-
-**Endpoint:**
-```
-POST https://api.github.com/repos/daiimus/gelatinous/issues
-```
-The `owner/repo` part comes from `settings.GITHUB_REPO`.
-
-**Authentication:**
-- Personal Access Token (PAT) stored in `secret_settings.py`
-- Required scope: `public_repo` (for issue creation in public repositories)
-  - Note: If repository were private, would need full `repo` scope
-- Token format: `GITHUB_TOKEN = "ghp_your_token_here"`
-
-**Request Headers:**
-```python
-{
-    "Authorization": f"token {GITHUB_TOKEN}",
-    "Accept": "application/vnd.github.v3+json",
-    "User-Agent": "Gelatinous-MUD-Bug-Reporter"
-}
-```
-
-**Request Payload:**
-```python
-{
-    "title": sanitize_title(player_title),  # the player's title, @/# escaped, max 100 characters, no prefix
-    "body": formatted_issue_body,
-    "labels": ["bug", "player-reported", category]  # get_labels adds the category only if it is one of the ten known ones
-}
-```
-
-### Dependencies
-- `requests` library (HTTP client for GitHub API)
-- `json` (standard library, payload formatting)
-- `datetime` (standard library: the UTC date for the daily cap and the time until it resets)
-- `django.conf.settings` (token, repository and daily limit)
-- `git` command line (to get current commit hash)
-
-> **Correction 2026-09-11:** `json` is not imported — see the corrections
-> under "Technical Implementation → Dependencies" below, which apply to
-> this list too. Missing here as well: `run_async` (#460) and `re`
-> (#2527).
+- Issues are created by a `POST` to `https://api.github.com/repos/daiimus/gelatinous/issues` (`create_github_issue`). The `owner/repo` part comes from `settings.GITHUB_REPO`.
+- The request authenticates with a personal access token from `settings.GITHUB_TOKEN` (`Authorization: token ...`), asks for the GitHub v3 JSON format, and sends the User-Agent `Gelatinous-MUD-Bug-Reporter`.
+- The payload is the sanitized title, the formatted body (`format_issue_body`) and the labels from `get_labels`.
+- The token needs the `public_repo` scope (issue creation in a public repository). If the repository were private it would need the full `repo` scope.
 
 ---
 
 ## Rate Limiting
 
-### Per-Player Limits
-- **Daily Limit:** `settings.BUG_REPORT_DAILY_LIMIT` (default 30) bug reports per account per day (resets at midnight UTC). The cap is checked twice: when `@bug` is typed, so a capped player is refused before the editor opens (#3367), and again at save (`_save_callback`), which takes the slot at once, before GitHub is called (#2526). If GitHub then fails, the slot is given back, unless the count has already rolled over to a new day.
-- **Cooldown:** None (no delay between reports)
-- **Storage:** `account.db.bug_report_count` (reports today) and `account.db.bug_report_date` (the UTC date of that count)
+- **Daily limit:** `settings.BUG_REPORT_DAILY_LIMIT` (default 30) reports per account per day, shared by all of that account's characters. It resets at midnight UTC, the same moment for every account.
+- **Checked twice:** when `@bug` is typed, so a capped player is refused before the editor opens (#3367), and again at save (`_save_callback`), which takes the slot at once, before GitHub is called (#2526). If GitHub then fails, the slot is given back (`refund_report_count`), unless the count has already rolled over to a new day.
+- **Reset:** `check_rate_limit` compares the stored date with today's UTC date. On a new day it sets the count to 0 and the date to today. The report is allowed while the count is below the limit. With the default, the 30th report of a day succeeds and the 31st is refused.
+- **Cooldown:** none; there is no delay between reports.
+- **Storage:** `account.db.bug_report_count` (reports today) and `account.db.bug_report_date` (the UTC date of that count).
 
-### Rate Limit Messages
+### Rate limit messages
 
-> **Correction 2026-09-11:** neither string is what a player sees.
-> The refusal is two lines and does not say "try again tomorrow" —
-> "You've reached the daily limit of 30 bug reports." then "The limit
-> resets in {time}." (`func` and `_save_callback` in `commands/CmdBug.py`), which is what the
-> "Rate Limit Reached" flow further down shows. The remaining-count line
-> is not conditional on the limit being "approached": it is sent after
-> **every** successful report (`_on_created`), as "You have N bug
-> reports remaining today.", merely highlighted in yellow when N ≤ 5.
-> The "30" in the refusal was a hardcoded literal while the limit itself
-> read `BUG_REPORT_DAILY_LIMIT` — fixed under #3408 (2026-09-15): the
-> tracked `settings.py` now declares the default, every read is a plain
-> settings lookup, the refusal interpolates it and the help names no number.
-```python
-# When the limit is reached (on typing @bug, and again at save)
-f"You've reached the daily limit of {limit} bug reports."
-f"The limit resets in {time}."
+When the limit is reached (on typing `@bug`, and again at save), the player reads two lines (`func` and `_save_callback`):
 
-# After every successful report (the number is yellow when it is 5 or less)
-f"You have {remaining} bug reports remaining today."
+```
+You've reached the daily limit of {limit} bug reports.
+The limit resets in {time}.
 ```
 
-### Reset Logic
-```python
-def check_rate_limit(account):
-    today = datetime.now(UTC).date()
-    last_date = account.db.bug_report_date
-    
-    if last_date != today:
-        # New day, reset counter
-        account.db.bug_report_count = 0
-        account.db.bug_report_date = today
-    
-    count = account.db.bug_report_count or 0
-    return count < settings.BUG_REPORT_DAILY_LIMIT
+The limit is read from `BUG_REPORT_DAILY_LIMIT`, never written as a number (#3408). `{time}` comes from `get_time_until_reset`.
+
+After **every** successful report (`_on_created`) the player reads:
+
 ```
+You have {remaining} bug reports remaining today.
+```
+
+The number is yellow when it is 5 or less.
 
 ---
 
 ## User Experience Flow
 
 ### Interactive Bug Report Flow
+
 ```
 > @bug
 
@@ -272,7 +204,7 @@ Opening editor...
 > I tried to rig a grenade to the north exit.
 > I expected it to explode when someone walked through.
 > Instead, nothing happens and the grenade vanishes.
-> 
+>
 > Steps:
 > 1. Get grenade from inventory
 > 2. Type "rig grenade to north"
@@ -289,6 +221,7 @@ You have 29 bug reports remaining today.
 ```
 
 ### List Recent Bugs
+
 ```
 > @bug/list
 
@@ -308,6 +241,7 @@ Showing 10 most recent reports. Visit GitHub for full history.
 ```
 
 ### View Bug Details
+
 ```
 > @bug/show 44
 
@@ -355,7 +289,7 @@ Steps:
 Comments (2):
 
 1. daiimus (2025-10-22)
-Thanks for the report! I can reproduce this. The issue is in the exit trigger 
+Thanks for the report! I can reproduce this. The issue is in the exit trigger
 system not properly handling deferred explosions. Working on a fix.
 
 2. daiimus (2025-10-23)
@@ -366,6 +300,7 @@ until the trigger fires. Will be in next deployment.
 ```
 
 ### Rate Limit Reached
+
 ```
 > @bug
 
@@ -374,6 +309,7 @@ The limit resets in 4 hours, 23 minutes.
 ```
 
 ### Short Title Error
+
 ```
 > @bug
 
@@ -388,7 +324,12 @@ Title too short. Please provide at least 10 characters.
 Bug report cancelled.
 ```
 
+### Description Too Short
+
+Saving the editor with an empty description, or one under 10 characters, gives "Details too short. Minimum 10 characters required." and "Bug report cancelled."; nothing is filed.
+
 ### Editor Cancellation
+
 ```
 > @bug
 
@@ -402,7 +343,10 @@ Opening editor...
 Bug report cancelled.
 ```
 
+Only "Bug report cancelled" is shown. After a successful save, quitting the editor does not show it.
+
 ### Network Error
+
 ```
 > @bug
 
@@ -414,34 +358,30 @@ Failed to create bug report: Request timed out. Please try again.
 Please try again in a moment. If the problem persists, contact staff.
 ```
 
+All text colors are readable: no dark gray is used; text is white or cyan.
+
 ---
 
-## Technical Implementation
+## Menu and Editor
 
-### EvMenu Integration
-The command uses Evennia's EvMenu system for the interactive workflow:
-- `node_title`: Prompts for bug title (text input node)
-- `_validate_title_input`: Goto callable that validates title
-- `node_category`: Category selection menu (numbered options)
-- `node_open_editor`: Opens EvEditor for detailed description
+### The menu (EvMenu)
 
-**Key Settings:**
-- `cmd_on_exit=None` - Prevents default "look" command when menu exits
-- Uses goto callables instead of node functions for validation steps
-- The editor opens inside the last menu node (`node_open_editor`), which then returns `None, None` to close the menu. There is no delay.
+`start_detail_editor` runs the workflow on Evennia's EvMenu:
 
-### EvEditor Integration
-Multi-line editor for bug descriptions. **The editor is stock Evennia
-and its commands are Evennia's** — this command supplies callbacks, not
-key bindings, and does not subclass or override `EvEditor` (#2525).
+- `node_title` asks for the title (text input).
+- `_validate_title_input` is a goto callable that validates the title. Validation steps use goto callables, not node functions.
+- `node_category` is the numbered category menu.
+- `node_open_editor` opens the editor for the description. The editor opens inside this last node, which then returns `None, None` to close the menu. There is no delay.
+- The menu runs with `cmd_on_exit=None`, so no "look" command runs when the menu exits and none lands in the editor buffer.
 
-- `loadfunc`: Returns empty string (blank buffer)
-- `savefunc`: Creates GitHub issue if description valid (min 10 chars).
-  **Returns a truthy value on submit**, which is the only thing that
-  clears the editor's `_unsaved` flag — without it a second `:w` files
-  the report again (#2524)
-- `quitfunc`: Shows cancellation message only if save wasn't called
-- Uses flag `caller.ndb._bug_editor_saved` to track save state
+### The editor (EvEditor)
+
+The editor is stock Evennia and its commands are Evennia's. This command supplies callbacks, not key bindings, and does not subclass or override `EvEditor` (#2525).
+
+- `loadfunc` returns an empty string (blank buffer).
+- `savefunc` (`_save_callback`) creates the GitHub issue if the description is valid (at least 10 characters). It **returns a truthy value on submit**, which is the only thing that clears the editor's `_unsaved` flag; without it a second `:w` would file the report again (#2524).
+- `quitfunc` (`_quit_callback`) shows the cancellation message only if save was not called.
+- The flag `caller.ndb._bug_editor_saved` tracks whether save was called.
 
 **Editor keys, as Evennia defines them:**
 
@@ -451,34 +391,16 @@ key bindings, and does not subclass or override `EvEditor` (#2525).
 | `:q!` | quit without saving — cancels |
 | `:q` | quit; with an unsaved buffer this **prompts** *"Save before quitting?"*, and `SaveYesNoCmdSet` treats everything except a literal `no`/`n` as yes — a bare Enter included |
 
-An earlier version of this spec described `:q` and `:q!` as synonyms
-that both cancel. They are not, and the code never did that; the spec
-was wrong, not the implementation. Making `:q` cancel outright would
-mean overriding a core Evennia class, which this project does not do.
+`:q` and `:q!` are not synonyms: `:q` with an unsaved buffer can submit the report. Making `:q` cancel outright would mean overriding a core Evennia class, which this project does not do.
 
-### Dependencies
-- `evennia.commands.default.muxcommand.MuxCommand` - For switch support
-- `evennia.utils.evmenu.EvMenu` - Interactive menu system
-- `evennia.utils.eveditor.EvEditor` - Multi-line text editor
-- `requests` library (HTTP client for GitHub API)
-- `json` (standard library, payload formatting)
-- `datetime` (standard library: the UTC date for the daily cap and the time until it resets)
-- `django.conf.settings` (token, repository and daily limit)
-- `git` command line (to get current commit hash)
+---
 
-> **Corrections 2026-09-11** (apply to both Dependencies lists in this
-> file — this one and the one under "GitHub API Integration"): `json` is
-> **not** imported. `requests` handles serialisation through its `json=`
-> kwarg and `.json()` (`create_github_issue` in `commands/CmdBug.py`); the imports are at the
-> top of that file. Two real dependencies are missing from both lists:
-> `evennia.utils.utils.run_async`, which carries every
-> GitHub call off the reactor thread (#460), and `re`, which the
-> mention/xref sanitizer needs (#2527). The `git` command line is a
-> *fallback* only: the hash is read from `.git/refs/heads/master` first
-> and cached for the process lifetime (`get_git_commit_hash` and `_compute_git_commit_hash`).
+## Errors
 
-### Network Failures
+### Network failures
+
 `create_github_issue` does not message the player. It returns `(False, message)`, with one of these messages:
+
 - timeout: "Request timed out. Please try again."
 - no connection: "Unable to connect to GitHub. Please try again later."
 - HTTP 401: "GitHub authentication failed. Please contact staff."
@@ -490,192 +412,40 @@ mean overriding a core Evennia class, which this project does not do.
 `_on_created` then shows "Failed to create bug report: <message>" and "Please try again in a moment. If the problem persists, contact staff.", and gives the daily slot back (#2526).
 
 ### Input Validation
-`sanitize_description` cuts the text at 5000 characters (adding "[Description truncated at 5000 characters]"), strips it, and puts a zero-width space after `@` in `@name` and after `#` in `#123`, so the public issue pings no one and links to no other issue (#2527). Markdown and HTML are left as typed. `sanitize_title` gives the title the same treatment and caps it at 100 characters.
 
-### Missing Configuration
+`sanitize_description` cuts the text at 5000 characters (adding "[Description truncated at 5000 characters]"), strips it, and puts a zero-width space after `@` in `@name` and after `#` in `#123`, so the public issue pings no one and links to no other issue (#2527). Markdown and HTML are left as typed. `sanitize_title` gives the title the same treatment and caps it at 100 characters. The category is checked against the list of ten (`get_labels`).
 
-> **Correction 2026-09-11:** the block below is close but not the live
-> code. There are **two** gates, not one — `GITHUB_TOKEN` and then
-> `GITHUB_REPO` (`CmdBug.func`) — and the message is two
-> lines: "Bug reporting is not currently configured." followed by "Please
-> contact staff directly to report bugs." Both gates run before any
-> switch is dispatched, so `@bug/list` and `@bug/show` refuse too.
-```python
-if not hasattr(settings, 'GITHUB_TOKEN') or not settings.GITHUB_TOKEN:
-    caller.msg("|rBug reporting is not currently configured.|n")
-    caller.msg("Please contact staff directly to report bugs.")
-    return
-# then the same check, with the same two lines, for GITHUB_REPO
+### Missing configuration
+
+There are two gates in `CmdBug.func`: first `GITHUB_TOKEN`, then `GITHUB_REPO`. If either is missing or empty, the player reads two lines:
+
 ```
+Bug reporting is not currently configured.
+Please contact staff directly to report bugs.
+```
+
+Both gates run before any switch is handled, so `@bug`, `@bug/list` and `@bug/show` all refuse.
 
 ---
 
-## Admin Features
+## Security
 
-> **Correction 2026-09-11: nothing in this command is staff-gated.**
-> `locks = "cmd:all()"` (`CmdBug.locks` in `commands/CmdBug.py`) and neither
-> `show_bug_list` nor `show_bug_detail` checks permissions, so every
-> player can run `@bug/list` and `@bug/show` — as "Command Syntax" above
-> already documents them. Read this heading as "Read-only switches", not
-> as an access boundary.
+### Token
 
-### List Recent Issues
-```
-@bug/list
-```
+- The token is stored in `secret_settings.py`, which is gitignored.
+- The token is never logged or shown in error messages.
+- The token scope is the minimum required: `public_repo`; full `repo` only if the repository were private.
 
-`@bug/list` takes no count. Any text after it is ignored, and it always shows the 10 newest player reports. Its output is shown under "User Experience Flow" → "List Recent Bugs" above.
+### Abuse
 
-### Future Admin Commands (Phase 2)
-- `@bug/close <issue_number>` - Close an issue from in-game
-- `@bug/comment <issue_number> <comment>` - Add comment to issue
-- `@bug/search <query>` - Search existing issues
-
-> **Note 2026-09-11:** mis-phased — read the heading as "Phase 3". "Phase
-> 2" is marked ✅ COMPLETE below with a different, finished list, and
-> `close`/`comment` appear there again as "Admin close/comment commands
-> from in-game" under **Phase 3: Future Enhancements (Not Currently
-> Planned)**. `@bug/search` is not listed in any phase. None of the three
-> exist: `switch_options = ("list", "show")`, `CmdBug.switch_options` in `commands/CmdBug.py`.
-
----
-
-## Security Considerations
-
-### Token Security
-- ✅ Store token in `secret_settings.py` (gitignored)
-- ✅ Never log or display token in error messages
-- ✅ Restrict token scope to the minimum required (`public_repo`; full `repo` only if the repository were private)
-
-### Input Sanitization
-- ✅ Limit description length (5000 characters)
-- Escape `@name` mentions and `#123` references with a zero-width space, in the title and the description (#2527); markdown is left as typed
-- ✅ Validate category against whitelist
-
-### Rate Limiting
-- ✅ 30 reports per account per day
-- ✅ Prevent spam/abuse
-- ✅ No cooldown between reports (trust players)
-
-### Data Privacy
-- ✅ No email addresses exposed
-- ✅ No G.R.I.M. stats leaked
-- ✅ Only #dbref for location (not descriptive room name)
-- ✅ Account username only (not internal IDs)
-
----
-
-## Testing Strategy
-
-### Manual Testing Checklist
-- [x] Interactive workflow creates issue successfully
-- [x] Title validation enforces 10 character minimum
-- [x] Category selection menu displays all options
-- [x] EvEditor opens and accepts multi-line input
-- [x] EvEditor :wq saves and submits report
-- [x] EvEditor :q! cancels without submitting
-- [x] Rate limiting enforces 30/day limit
-- [x] Rate limit resets at midnight UTC
-- [x] GitHub link is returned and functional
-- [x] @bug/list shows recent 10 issues
-- [x] @bug/show displays full issue details and comments
-- [x] @bug/show supports both "15" and "#15" formats
-- [x] Error handling for network failures
-- [x] Error handling for invalid GitHub token
-- [x] Privacy: no emails or stats in issues
-- [x] No spurious "look" command in editor buffer
-- [x] No "Bug report cancelled" after successful save
-- [x] All text colors are readable (no dark gray)
-
-### Test Cases
-```python
-# Test 1: Full workflow
-@bug
-# Enter title: "Test bug report title"
-# Select category: 1 (Combat)
-# Enter description: "This is a test\nwith multiple lines"
-# :wq
-# Expected: Issue created with all data
-
-# Test 2: Title too short
-@bug
-# Enter title: "test"
-# Expected: Error message, workflow cancelled
-
-# Test 3: Empty description
-@bug
-# Enter valid title and category
-# Enter nothing in editor, just :wq
-# Expected: Error about minimum 10 characters
-
-# Test 4: Cancel in editor
-@bug
-# Complete workflow but type :q! instead of :wq
-# Expected: "Bug report cancelled" message only
-#
-# NOTE: :q is NOT a synonym for :q!. With an unsaved buffer it prompts
-# "Save before quitting?" and submits on anything but a literal no/n.
-
-# Test 5: Rate limiting
-# Create 30 reports rapidly
-# Expected: 30th succeeds, 31st shows rate limit message
-
-# Test 6: List command
-@bug/list
-# Expected: Shows 10 most recent issues with links
-
-# Test 7: Show command
-@bug/show 15
-# Expected: Shows full issue details with comments
-
-# Test 8: Show command with # prefix
-@bug/show #15
-# Expected: Same as Test 7
-
-# Test 9: Show non-existent issue
-@bug/show 99999
-# Expected: "Issue #99999 not found."
-```
-
----
-
-## Implementation Phases
-
-### Phase 1: Core Functionality ✅ COMPLETE
-- ✅ Interactive EvMenu workflow for title and category
-- ✅ EvEditor for detailed multi-line descriptions  
-- ✅ GitHub issue creation via API
-- ✅ Rate limiting (30/day)
-- ✅ Privacy-conscious issue format
-- ✅ Error handling
-- ✅ @bug/list command for viewing recent issues
-
-### Phase 2: Completed Enhancements ✅ COMPLETE
-- ✅ Fixed EvMenu cmd_on_exit causing "look" in editor
-- ✅ Fixed duplicate cancellation messages
-- ✅ Removed quick @bug <message> format (encouraged poor reports)
-- ✅ Simplified help text
-- ✅ Added @bug/show command for viewing full issue details
-- ✅ Support for both "15" and "#15" formats in @bug/show
-- ✅ Replaced all unreadable dark gray colors with white/cyan
-- ✅ Display issue comments from GitHub in-game
-
-**Status**: All planned features implemented. System is production-ready.
-
-### Phase 3: Future Enhancements (Not Currently Planned) ⏳
-The following features could be added in the future if needed:
-- ⏳ Duplicate detection before creating issues
-- ⏳ Issue status tracking/notifications for players
-- ⏳ Admin close/comment commands from in-game
-- ⏳ Player notification when their bugs are resolved
-- ⏳ Attachment support (command history, combat logs)
-- ⏳ Integration with staff channels for new bug alerts
+The daily cap per account prevents spam and abuse. There is no cooldown between reports (trust players).
 
 ---
 
 ## Configuration
 
 ### secret_settings.py
+
 ```python
 # GitHub Bug Reporting Configuration
 GITHUB_TOKEN = "ghp_your_personal_access_token_here"
@@ -684,35 +454,17 @@ BUG_REPORT_DAILY_LIMIT = 30
 ```
 
 ### settings.py
+
 ```python
 BUG_REPORT_DAILY_LIMIT = 30
 ```
-`settings.py` declares one default, `BUG_REPORT_DAILY_LIMIT = 30` (#3408). It then imports `secret_settings.py`, which can override it. It gives no default for `GITHUB_TOKEN` or `GITHUB_REPO`, so both must be set in `secret_settings.py`. If either is missing, `@bug`, `@bug/list` and `@bug/show` all refuse.
+
+`settings.py` declares one default, `BUG_REPORT_DAILY_LIMIT = 30` (#3408). It then imports `secret_settings.py`, which can override it. It gives no default for `GITHUB_TOKEN` or `GITHUB_REPO`, so both must be set in `secret_settings.py`. If either is missing, `@bug`, `@bug/list` and `@bug/show` all refuse. Every read of the limit is a plain settings lookup, and the help text names no number (#3408).
 
 ---
 
-## Success Metrics
+## In-Game Help
 
-### Adoption
-- Number of bug reports submitted per week
-- Percentage of players who use the command
-- Average time to first bug report (new players)
-
-### Quality
-- Actionable bug reports (contain enough info to reproduce)
-- False positive rate (non-bugs reported as bugs)
-- Duplicate report rate
-
-### Developer Impact
-- Bugs fixed from player reports vs. other sources
-- Average time from report to fix
-- Player satisfaction with bug resolution
-
----
-
-## Documentation
-
-### In-Game Help
 ```
 > help @bug
 
@@ -738,15 +490,44 @@ game tells you how many you have left.
 Be clear and descriptive - good bug reports help us fix issues faster!
 ```
 
-### Player Documentation
-The interactive workflow guides players through creating good bug reports:
-- Title must be at least 10 characters
-- Category selection from numbered menu
-- EvEditor instructions shown before opening
-- Minimum 10 characters required in description
+The workflow itself guides players toward good reports: the 10-character title minimum, the numbered category menu, the editor instructions shown before the editor opens, and the 10-character description minimum.
 
 ---
 
-*This specification reflects the implemented system as of October 2025.*
+## Success Metrics
 
-````
+### Adoption
+- Number of bug reports submitted per week
+- Percentage of players who use the command
+- Average time to first bug report (new players)
+
+### Quality
+- Actionable bug reports (contain enough info to reproduce)
+- False positive rate (non-bugs reported as bugs)
+- Duplicate report rate
+
+### Developer Impact
+- Bugs fixed from player reports vs. other sources
+- Average time from report to fix
+- Player satisfaction with bug resolution
+
+---
+
+## Unbuilt
+
+Not currently planned; these could be added in the future if needed. None exists today: the only switches are `list` and `show`.
+
+- 📋 UNBUILT (no issue) — `@bug/close <issue_number>`: close an issue from in-game (admin).
+- 📋 UNBUILT (no issue) — `@bug/comment <issue_number> <comment>`: add a comment to an issue (admin).
+- 📋 UNBUILT (no issue) — `@bug/search <query>`: search existing issues (admin; not placed in any phase).
+- 📋 UNBUILT (no issue) — Duplicate detection before creating issues.
+- 📋 UNBUILT (no issue) — Issue status tracking/notifications for players.
+- 📋 UNBUILT (no issue) — Player notification when their bugs are resolved.
+- 📋 UNBUILT (no issue) — Attachment support (command history, combat logs).
+- 📋 UNBUILT (no issue) — Integration with staff channels for new bug alerts.
+
+---
+
+## Related
+
+- `commands/CmdBug.py` — the command (`CmdBug`).

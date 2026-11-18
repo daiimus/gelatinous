@@ -2,693 +2,180 @@
 
 ## Overview
 
-Implement the respawn character creation flow (templates + flash clone) on the Django website to match the telnet EvMenu experience. This allows users to respawn characters via the web interface with the same options available in-game.
+The website's "Decant Sleeve" page gives a player the same respawn choice the telnet decant menu gives: three rolled templates and, when the dead body is insured, a flash clone. With no sleeve to respawn from, the same page is the first-character form with manual GRIM allocation. The page is `CharacterCreateView` in `web/website/views/characters.py`; it reuses the telnet code in `commands/charcreate.py` (`generate_random_template`, `create_character_from_template`, `create_flash_clone`). Sleeve policies and the flash-clone gate are specified in `specs/SLEEVE_INSURANCE_SPEC.md`.
 
-> **2026-09-25 (#3667, sleeve insurance Slice C):** the flash clone is no
-> longer unconditional. Both doors offer the card only when
-> `world.insurance.flash_clone_refusal(old_body)` is None: the body is
-> archived with reason `death` and holds its own sleeve policy (bought
-> alive at the Thawn-Harrison lobby terminal). Otherwise the card gives way
-> to the refusal text, and a POST that reaches `create_flash_clone` anyway
-> gets `PolicyRefused`, which the view shows as a message. A shelved body
-> (web archive, reason `manual`) is never cloned back. Passages below that
-> say "if archived character exists" are the pre-gate description. See
-> `specs/SLEEVE_INSURANCE_SPEC.md`.
+## The two doors
 
-## Current State
+**Telnet** (`commands/charcreate.py`):
+- **First character**: custom stat allocation, 300 points across GRIM.
+- **Respawn**: an EvMenu with 3 random templates and the flash clone option (or its refusal, #3667).
+- **Confirm**: the confirm node (`respawn_confirm_template`) shows the template's rolled sex and offers only decant / back (#3358, owner ruling A).
 
-### Telnet Character Creation (commands/charcreate.py)
-- **First character**: Custom stat allocation (300 points across GRIM)
-- **Respawn**: EvMenu with 3 random templates + flash clone option
-- **Flash clone**: Inherits stats, appearance, sex from archived character
-- **Roman numerals**: Auto-appends based on death_count. Every sleeve
-  carries a Roman numeral suffix — first sleeve renders as `Jorge
-  Jackson I`, first clone as `Jorge Jackson II`, etc. (issue #50).
+**Web** (`web/website/views/characters.py`):
+- **Respawn**: when `account.respawn_candidate()` returns an archived sleeve, the page shows three rolled templates and the flash clone card (or its refusal, #3667).
+- **First character**: otherwise `CharacterCreateView.get` checks the active-sleeve limit, then shows the manual GRIM form.
 
-### Web Character Creation (web/website/views/characters.py)
-- **Respawn**: when `account.respawn_candidate()` returns an archived sleeve, the page shows three rolled templates and the flash clone card (or its refusal, #3667)
-- **First character**: otherwise `CharacterCreateView.get` checks the active-sleeve limit, then shows the manual GRIM form
+## The Decant Sleeve page (GET)
 
-## Desired Behavior
+`CharacterCreateView.get` chooses the flow by asking `account.respawn_candidate() is not None`.
 
-When a user visits the "Decant Sleeve" page:
+- `Account.respawn_candidate` (typeclasses/accounts.py) returns `last_character` only when that sleeve is ARCHIVED. When the attribute points at a living or a deleted sleeve it clears the attribute and returns None (#2615). Both doors use it, so they agree about what is respawnable.
+- **Respawn branch** (`show_respawn_interface`):
+  - rolls 3 templates with `generate_random_template()` and stores them in the Django session for the POST;
+  - passes the templates, the old character, `flash_clone_name` and `flash_clone_refusal` to `web/templates/website/character_respawn_create.html`;
+  - heads the page "Your previous sleeve has been archived. Select a new sleeve to decant into.";
+  - shows one card per template: name, its rolled sex, and numeric GRIM;
+  - shows the flash clone card: the name the clone wakes as (with its generation numeral), the old body's sex and GRIM. When the clone is refused, the refusal text replaces the card (see Flash clone);
+  - has no sex selection (#3358, ruling A). The only controls are the `sleeve_choice` radios and the Decant Sleeve button.
+- **First-character branch**: after the max-character check, the view falls through to the standard form (`super().get(...)`): manual stat allocation, unchanged.
 
-1. **If `account.respawn_candidate()` returns a sleeve** (an archived `last_character`; respawn scenario):
-   - Display respawn interface with:
-     - 3 randomly generated character templates (name, stats)
-     - Flash clone option (if the dead body holds its own sleeve policy; else the refusal, #3667)
-     - ~~Sex selection~~ **Corrected 2026-09-13 (#3358, owner ruling A):** there is NO sex selection on either door. The sleeve is decanted with the sex `generate_random_template` rolled (its first name is drawn from the bank keyed to that roll). Telnet's confirm node shows the rolled sex and offers only decant / back.
-   - Submit creates character using selected template/clone
-   
-2. **If no `last_character`** (first character):
-   - Display existing manual stat allocation form
-   - No changes to current behavior
+The respawn page is styled to the game's dark dissolution/body-horror aesthetic and works at phone width.
 
-## Technical Requirements
+## Templates (`generate_random_template`)
 
-### 1. View Logic (web/website/views/characters.py)
+A template is a dict:
 
-> *Corrected 2026-09-12 — this pseudo-code is not what shipped, on two
-> points a reader would otherwise copy:*
-> - *The gate is `account.respawn_candidate() is not None`, not a raw
->   `db.last_character` read (`CharacterCreateView.get`). Since
->   #2615 the helper (`Account.respawn_candidate` in typeclasses/accounts.py) requires the
->   referenced sleeve to be ARCHIVED and clears the attribute when it points
->   at a living or deleted one, because the telnet login read the attribute
->   raw and the two doors disagreed about what is respawnable.*
-> - *`show_first_character_form()` was never written. The first-character
->   branch falls through to `super().get(...)` inline
->   after a max-character check the pseudo-code does not show.
->   `show_respawn_interface()` and `handle_respawn_submission()`
->   DO exist as named.*
-
-```python
-class CharacterCreateView(EvenniaCharacterCreateView):
-    def get(self, request, *args, **kwargs):
-        """Determine which character creation flow to show."""
-        account = request.user
-        
-        # Check for respawn scenario
-        if account.db.last_character:
-            return self.show_respawn_interface(request, account)
-        else:
-            return self.show_first_character_form(request)
-    
-    def show_respawn_interface(self, request, account):
-        """Display template selection + flash clone options."""
-        # Generate 3 random templates (reuse generate_random_template())
-        # Pass old character data for flash clone option
-        # Render respawn template
-        
-    def show_first_character_form(self, request):
-        """Display existing manual stat allocation form."""
-        # Current behavior - no changes
-```
-
-### 2. Template Generation
-
-Reuse existing template generation logic from `commands/charcreate.py`:
-
-```python
-from commands.charcreate import generate_random_template
-
-templates = [generate_random_template() for _ in range(3)]
-```
-
-**Template structure:**
 ```python
 {
     'first_name': str,
     'last_name': str,
     'name': str,            # "First Last", for display
-    'sex': 'male' | 'female' | 'ambiguous',   # rolled first; the first name is drawn to match
-    # three stats get 25-100 points each, the fourth the rest of 300 (max 150); then shuffled
+    'sex': 'male' | 'female' | 'ambiguous',
     'grit': int,
     'resonance': int,
     'intellect': int,
     'motorics': int,
     'height': str,
     'build': str,
-    'hair_color': str | None,   # both hair keys are None about 15% of the time (bald)
+    'hair_color': str | None,
     'hair_style': str | None
 }
+```
 
-### 3. Flash Clone Logic
+- The sex is rolled first; the first name is drawn from the name bank keyed to that roll.
+- GRIM: three stats get 25-100 points each, the fourth gets the rest of 300 (max 150); then the four are shuffled.
+- Both hair keys are None about 15% of the time (bald).
+
+## Flash clone
+
+### When it is offered (#3667, sleeve insurance Slice C)
+
+Both doors offer the flash clone only when `world.insurance.flash_clone_refusal(old_body)` is None: the body was archived with reason `death` and holds its own sleeve policy (bought alive at the Thawn-Harrison lobby terminal). Otherwise the card gives way to the refusal text. A POST that reaches `create_flash_clone` anyway gets `PolicyRefused`, which the view shows as a message. A shelved body (web archive, reason `manual`) is never cloned back. See `specs/SLEEVE_INSURANCE_SPEC.md`.
+
+### What a clone inherits
 
 > **Owner ruling 2026-09-14:** a flash clone inherits GRIM, appearance, sex and imprint -- **not augments**. Chrome stays on the corpse; the clone's medical state is rebuilt from the species table (`create_flash_clone`). You come back a flesh bag.
 
-Reuse existing flash clone creation from `commands/charcreate.py`:
+`create_flash_clone(account, old_character)`:
+- Inherits: GRIM stats, appearance (desc, longdesc), sex, skintone, species (the medical state is rebuilt when it differs from the new body's), `sleeve_uid`, height, build, hair colour and style, sdesc keyword, the imprint (who they knew at the last backup, `world.imprint.restore`), `death_count`, `stack_id` and the manifest designation (`ensure_manifest(..., inherit_from=old_character)`).
+- Records the old body in `previous_clone_dbref`.
+- Does not inherit augments (ruling above).
+- Names the clone with `build_name_from_death_count()` (generation numerals, below). `death_count` is not incremented here; archival already did it.
+- Leaves the archived body in `account.characters` (see the comment in `create_flash_clone`); the archived tag keeps it out of the active count.
+
+## Submitting (POST)
+
+The POST carries one field:
 
 ```python
-from commands.charcreate import create_flash_clone
-
-# When user selects flash clone option
-character = create_flash_clone(account, old_character)
+{'sleeve_choice': 'template_0' | 'template_1' | 'template_2' | 'flash_clone'}
 ```
 
-**Flash clone behavior:**
-- Inherits: GRIM stats, appearance (desc, longdesc), sex, skintone, species (the medical state is rebuilt when it differs from the new body's), `sleeve_uid`, height, build, hair colour and style, sdesc keyword, the imprint (who they knew at the last backup, `world.imprint.restore`), `death_count`, `stack_id` and the manifest designation (`ensure_manifest(..., inherit_from=old_character)`); it records the old body in `previous_clone_dbref`
-- Does not inherit augments (ruling above)
-- Auto-names: Uses `build_name_from_death_count()` for Roman numerals
-- Increments: death_count already incremented during archival
+No sex is posted. `CharacterCreateView.post` sends any POST carrying `sleeve_choice` to `handle_respawn_submission`:
 
-### 4. Django Templates
+- **Template** (`template_0` to `template_2`): the three templates `show_respawn_interface` stored in the session at GET are read back. If they are gone, the player is told the session expired and sent back to the create page. Otherwise `create_character_from_template` makes the sleeve with the sex the template was rolled with (`template.get('sex', 'ambiguous')`; the default only covers a template dict missing the key). Then `world.insurance.forfeit_policy` deletes the dead body's own sleeve policy, a perpetual one included (#3667).
+- **Flash clone**: `account.respawn_candidate()` is asked again and `create_flash_clone` is called. It spends an ordinary policy and re-issues a perpetual one in the new body's name (`renew_perpetual`). A `PolicyRefused` shows its text and sends the player back to the choice. The view never sets the clone's sex; `create_flash_clone` inherits it.
+- **Both**: the new sleeve is taken off the grid (see "Web-created sleeves stay off the grid"), `last_character` is cleared, the stored templates are dropped from the session, and the player is redirected to Character Management with a success message.
 
-Create new template: `web/templates/website/character_respawn_create.html`
+## How a sleeve becomes respawnable
 
-**UI Structure:**
-```
-Sleeve Decantation
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`archive_character()` sets `account.db.last_character = character` and increments `character.death_count`. It finds the owner through `world.ownership.owning_account`, so this holds with no live puppet. A sleeve can be archived by death or from the web; only a death can be flash-cloned (#3667).
 
-Your previous sleeve has been archived.
-Stack integrity: 98.7%
+## Sex: no selection on either door
 
-Available Sleeves:
+Neither door offers a sex choice (#3358, owner ruling A, 2026-09-13). A template sleeve is decanted with the sex `generate_random_template` rolled; a flash clone takes the dead body's sex.
 
-┌─────────────────────────────────────────────┐
-│ [Radio] Template 1: [Name]                  │
-│         Grit: XX  Resonance: XX             │
-│         Intellect: XX  Motorics: XX         │
-└─────────────────────────────────────────────┘
+*Overturned intention:* this spec first planned a Male / Female / Ambiguous selector on the respawn page, for templates and flash clones. It was removed from the web page on purpose, because a template rolls its sex first and draws a gendered first name from it, so a selector let the two contradict each other. Ruling A (#3358, 2026-09-13) then removed it from telnet too: no sex selection on either door.
 
-┌─────────────────────────────────────────────┐
-│ [Radio] Template 2: [Name]                  │
-│         Grit: XX  Resonance: XX             │
-│         Intellect: XX  Motorics: XX         │
-└─────────────────────────────────────────────┘
+## Generation numerals
 
-┌─────────────────────────────────────────────┐
-│ [Radio] Template 3: [Name]                  │
-│         Grit: XX  Resonance: XX             │
-│         Intellect: XX  Motorics: XX         │
-└─────────────────────────────────────────────┘
+- Every sleeve carries a Roman numeral suffix built from `death_count`: the first sleeve renders as `Jorge Jackson I`, the first clone as `Jorge Jackson II`, and so on (issue #50).
+- A trailing word is stripped as a generation numeral only when it follows a space, is uppercase, and is exactly the form `int_to_roman` would write (`split_roman_suffix`, `roman_value`, #3359). A name that merely ends in numeral letters is left whole.
+- The web Manage Sleeves sort uses the same parser.
 
-┌─────────────────────────────────────────────┐
-│ [Radio] FLASH CLONE: [Old Name II]          │
-│         Preserves your previous identity    │
-│         Grit: XX  Resonance: XX             │
-│         Intellect: XX  Motorics: XX         │
-└─────────────────────────────────────────────┘
+## Character limit and superusers
 
-Sex: [Male] [Female] [Ambiguous]
-<!-- Corrected 2026-09-13 (#3358, ruling A): the sex picker above was removed from telnet too; both doors take the template as rolled. -->
+- `at_character_limit` (typeclasses/accounts.py) counts `active_sleeves` (tag-indexed) against `MAX_NR_CHARACTERS`. It drives the "Decant Sleeve" menu item: the item is hidden when the account is at the limit.
+- Neither `at_character_limit` nor the web create view's own limit check has a superuser bypass. `Account.check_available_slots` still lets superusers and Developers past the slot limit.
+- Reason: superusers are meant for administrative access, not regular play, so a superuser backup account is subject to the same rules as regular players.
 
-[Decant Sleeve Button]
-```
+## Manage Sleeves
 
-### 5. Form Handling
+- `CharacterManageView` lists every sleeve on the account, archived ones included, sorted by name and then by generation numeral.
+- Each row (`character_manage_list.html`) shows the designation (with numeral), decanted date, retired date (deaths only), status (Archived or Active), and an Archive link on active sleeves.
+- No image, no GRIM, no death count (the numeral carries it) and no sex field.
 
-**POST data structure:**
-```python
-{
-    'sleeve_choice': 'template_0' | 'template_1' | 'template_2' | 'flash_clone',
-    # Corrected 2026-09-12 — 'sex' is NOT posted. The shipped form has no sex
-    # input at all (character_respawn_create.html: the only controls are the
-    # sleeve_choice radios and the submit button), and the
-    # handler reads the sex the template was generated with:
-    #     template_sex = template.get('sex', 'ambiguous')
-    # web/website/views/characters.py `handle_respawn_submission`, under the comment
-    # "Use the template's pre-assigned sex (not user selection)".
-    #
-    # This was REMOVED ON PURPOSE, not lost: commit 802985d9 (2025-10-21,
-    # "Improve respawn UI with random gender and better colors") deleted the
-    # three name="sex" radios, its own changelog line reading "Remove manual
-    # sex selection (templates use pre-assigned gender)" — templates roll a
-    # sex first and draw a gendered first name from it, so a selector let the
-    # two contradict each other.
-    #
-    # Both doors take the sex the template was rolled with: telnet's
-    # confirm node (`respawn_confirm_template`) shows it and offers only
-    # decant / back (#3358, owner ruling A).
-}
-```
+## Stat display
 
-**Processing** (`CharacterCreateView.post` sends any POST carrying `sleeve_choice` to `handle_respawn_submission`):
+- GRIM is a 1-150 scale on a 300-point budget (`GRIM_MIN = 1` / `GRIM_MAX = 150` in web/website/forms.py, applied to all four stat fields).
+- The respawn cards (character_respawn_create.html) and the post-creation success message (`handle_respawn_submission`, `form_valid`) show numeric GRIM.
+- Tier words come from `STAT_DESCRIPTORS` (world/combat/constants.py): `@stats` / `score` (commands/CmdCharacter.py) and the web character detail page (`get_stat_descriptor`, called from `OwnerOnlyCharacterDetailView`) show them. See specs/proposals/DESCRIPTIVE_STAT_SYSTEM_SPEC.md.
 
-- **Template** (`template_0` to `template_2`): the three templates `show_respawn_interface` stored in the Django session at GET are read back. If they are gone, the player is told the session expired and sent back to the create page. Otherwise `create_character_from_template` makes the sleeve with the sex the template was rolled with, and `world.insurance.forfeit_policy` deletes the dead body's own sleeve policy, a perpetual one included (#3667).
-- **Flash clone**: `account.respawn_candidate()` is asked again and `create_flash_clone` is called. It spends an ordinary policy and re-issues a perpetual one in the new body's name (`renew_perpetual`). A `PolicyRefused` shows its text and sends the player back to the choice.
-- **Both**: the new sleeve is taken off the grid (see the bug fix below), `last_character` is cleared, and the stored templates are dropped from the session.
+## Web-created sleeves stay off the grid until first puppet
 
-## Data Flow
+A character made on the web (first-time or respawn) must not stand in the world as an unpuppeted body, looking like an NPC, before the player first connects. Both web paths (`handle_respawn_submission` and `form_valid` in web/website/views/characters.py) do what Evennia's own unpuppet does.
 
-### Respawn Flow
-```
-User Archives Character (web or death; only a DEATH can be flash-cloned, #3667)
-  ↓
-archive_character() sets (owner resolved via world.ownership.owning_account,
-so this holds with no live puppet):
-  - account.db.last_character = character
-  - character.death_count += 1
-  ↓
-User Visits "Decant Sleeve"
-  ↓
-View asks account.respawn_candidate() (archived sleeve only; clears a stale pointer)
-  ↓
-Generate 3 Random Templates
-  ↓
-Display Respawn Interface:
-  - Template Option 1
-  - Template Option 2  
-  - Template Option 3
-  - Flash Clone Option (the name the clone wakes as, or the refusal, #3667)
-  ↓
-User Selects Option
-  ↓
-POST Handler Creates Character:
-  - Template: create_character_from_template(), then forfeit_policy(old body)
-  - Flash Clone: create_flash_clone() (spends the policy; a perpetual one is re-issued to the new body)
-  - Both: new sleeve taken off the grid, last_character cleared
-  ↓
-Redirect to Character Management
-```
+### Creation
+1. The view creates the character in Limbo (#2), the staging room (`form_valid`; `get_start_location` on the respawn paths).
+2. It sets `db.prelogout_location` to the START_LOCATION room (Limbo if that lookup fails), then sets `location = None`.
+3. The character exists in the database but not in the game world.
+4. A `WEB_CHAR_CREATE` line goes to splattercast naming the character, the path (first-time or respawn), and the room it will be restored to on login.
 
-## Implementation Checklist
+### First login
+1. The player connects.
+2. The game's own `Account.at_post_login` (typeclasses/accounts.py) puppets the account's single active sleeve; `AUTO_PUPPET_ON_LOGIN` is False. With no active sleeve it starts the telnet decant menu instead, and with several it shows a picker.
+3. Evennia's built-in `at_pre_puppet` (`DefaultCharacter`, evennia/objects/objects.py) sees `location is None` and restores the character to `db.prelogout_location` (or home).
+4. The character appears in the game world. On this first puppet `Character.at_post_puppet` sees `decant_announce_pending`, plays the decant scene to the room and shows the player the sleeve-policy card; later logins show "{actor} stirs as consciousness returns."
 
-### Phase 1: View Logic
-- [ ] Add `get()` method to detect respawn vs first character
-- [ ] Create `show_respawn_interface()` method
-- [ ] Import and use `generate_random_template()` function
-- [ ] Pass context data to template (templates, old_character, `flash_clone_name`, `flash_clone_refusal`)
+### Later sessions
+- **Quit**: `Character.at_post_unpuppet` posts an in-fiction exit line to the room, stands the body up, stores `prelogout_location` and sets location to None.
+- **Login**: the character is restored from the None location by `at_pre_puppet`, as above.
 
-### Phase 2: Template Creation
-- [ ] Create `character_respawn_create.html`
-- [ ] Style respawn interface to match game theme (dark, dissolution aesthetic)
-- [ ] Add radio buttons for template selection
-- [ ] ~~Add sex selection buttons~~ (reversed: no sex selection on either door, #3358 ruling A)
-- [ ] Add flash clone option display
+### NPCs and player characters
+- NPCs (made with `@spawnnpc`) are never puppeted, have no session and no account, and always stand in a room. This mechanism does not touch them.
+- Web-created player characters have no session until login, sit at `location = None` until then, and are restored to a room on first puppet: the same mechanics as quit/disconnect.
 
-### Phase 3: Form Processing
-- [ ] Create respawn form handler in `post()` method
-- [ ] Import `create_flash_clone()` function
-- [ ] Import `create_character_from_template()` function
-- [ ] Handle template selection + creation
-- [ ] Handle flash clone selection + creation
-- [ ] Add error handling and user feedback messages
+### Why `location = None`
+- It is Evennia's standard way to keep an unpuppeted player character out of the world, so restoration needs no custom hook: Evennia's own `at_pre_puppet` does it (the game's `at_post_puppet` / `at_post_unpuppet` overrides change only the room lines and posture).
+- It needs no special case for NPCs.
+- Rejected: leaving the character at START_LOCATION behind a visibility check (needs a custom `access()` override and a way to tell NPCs from player characters); parking it in Limbo (needs special handling on login and extra location management).
 
-### Phase 4: Testing
-- [ ] Test first character creation (should still show form)
-- [ ] Archive a character, verify respawn interface appears
-- [ ] Test template selection and character creation
-- [ ] Test flash clone selection and character creation
-- [ ] Verify Roman numeral naming works (Jorge → Jorge II)
-- [ ] ~~Test sex selection for both templates and flash clone~~ (reversed: no sex selection, #3358 ruling A)
-- [ ] Verify stat inheritance for flash clones
-- [ ] Test appearance inheritance (desc, longdesc) for flash clones
+## Edge cases
 
-### Phase 5: Polish
-- [ ] Add loading states for form submission
-- [ ] Style to match Gelatinous Monster aesthetic
-- [ ] Add helpful tooltips/descriptions
-- [ ] Ensure mobile responsiveness
-- [ ] Add confirmation messages on success
-
-## Edge Cases
-
-1. **Template generation fails**: Show error, fallback to manual form 📋 UNBUILT (no issue; not decided): `show_respawn_interface` does not catch a failure in `generate_random_template`, so the page errors
-2. **No last_character but all characters archived**: the web view treats this as a first character. Telnet login instead points `last_character` at the most recently archived sleeve and offers the respawn menu (`Account.at_post_login`). The two doors differ here; which is wanted is not decided.
-3. **last_character deleted from DB**: Handle gracefully, show manual form
+1. **Template generation fails**: see Unbuilt.
+2. **No `last_character` but all characters archived**: see Not decided.
+3. **`last_character` deleted from the database**: `respawn_candidate()` clears the pointer and the page shows the manual form.
 4. **Concurrent creation attempts**: Flash clone: two doors racing for one policy get one body and one refusal (the atomic `take_policy` in `create_flash_clone`). Template: only dropping the stored templates from the session after success stops a second submission.
-5. **Invalid sex selection**: Validate and default to 'ambiguous'
-   - *Moot as of 2026-09-12 — no sex is submitted on the web respawn path
-     (commit 802985d9 removed the input), so there is nothing to validate.
-     The `.get('sex', 'ambiguous')` default survives as the fallback for a
-     template dict missing the key (`handle_respawn_submission` in web/website/views/characters.py).*
+5. **Invalid sex**: nothing to validate; no sex is submitted on the web respawn path. The `.get('sex', 'ambiguous')` default in `handle_respawn_submission` is the fallback for a template dict missing the key.
 
-## Success Criteria
+## Unbuilt
 
-- [ ] Users with archived characters see respawn interface on web
-- [ ] Templates generate correctly with random stats (300 point total)
-- [ ] Flash clone inherits the body and identity listed under Flash Clone Logic, not augments (offered only to an insured death since #3667)
-- [ ] Roman numeral naming works correctly
-- [ ] The created sleeve takes the template's rolled sex, or the dead body's sex for a flash clone (no sex selection, #3358 ruling A)
-- [ ] First-time users still see manual stat allocation form
-- [ ] All creation paths persist character correctly to database
-- [ ] UI matches game's dissolution/body-horror aesthetic
+- **Template generation fails → show an error and fall back to the manual form.** 📋 UNBUILT (no issue; not decided): `show_respawn_interface` does not catch a failure in `generate_random_template`, so the page errors.
+- Loading states on form submission. 📋 UNBUILT (no issue)
+- Helpful tooltips/descriptions on the respawn page. 📋 UNBUILT (no issue)
+- Regenerate templates without a page refresh (AJAX). 📋 UNBUILT (no issue)
+- Preview character appearance before decanting. 📋 UNBUILT (no issue)
+- A "Randomize All" button for template generation. 📋 UNBUILT (no issue)
+- Edit template stats before decanting (within the 300-point limit). 📋 UNBUILT (no issue)
+- A character comparison view (side-by-side stats). 📋 UNBUILT (no issue)
+- Descriptive stat adjectives (e.g., "Mighty" instead of "5") on the respawn cards and in the decant success message; the web character detail page (`get_stat_descriptor`) and `@stats` already show tier words. 📋 UNBUILT (no issue)
 
-## Future Enhancements
+## Not decided
 
-- [ ] Allow regenerating templates without page refresh (AJAX)
-- [ ] Preview character appearance before decanting
-- [ ] Add "Randomize All" button for template generation
-- [ ] Allow editing template stats before decanting (within 300 point limit)
-- [ ] Add character comparison view (side-by-side stats)
-- [ ] Add descriptive stat adjectives (e.g., "Mighty" instead of "5") to the respawn cards and the decant success message; the web character detail page (`get_stat_descriptor`) and `@stats` already show tier words
+- **No `last_character`, but every character on the account is archived.** The web view treats this as a first character. Telnet login instead points `last_character` at the most recently archived sleeve and offers the respawn menu (`Account.at_post_login`). The two doors differ here; which is wanted is not decided.
 
----
+## Related documents
 
-## Implementation Completed (January 2025)
-
-### Phase 1: COMPLETED ✅
-
-**Implementation Summary:**
-Phase 1 was successfully implemented with respawn interface, template generation, flash clone functionality, and sex selection. During testing, several critical bugs were discovered and fixed.
-
-**Completed Components:**
-
-1. **View Logic** (`web/website/views/characters.py`)
-   - ✅ `get()` method detects respawn vs first character
-   - ✅ `show_respawn_interface()` generates 3 templates + flash clone
-   - ✅ `handle_respawn_submission()` processes template/clone selection
-   - No sex selection on the respawn page: a template sleeve takes its rolled sex, a flash clone the dead body's (#3358, ruling A)
-   - ✅ Imports `generate_random_template()` and `create_flash_clone()`
-
-2. **Template Creation** (`web/templates/website/character_respawn_create.html`)
-   - ✅ Respawn interface matches dissolution aesthetic
-   - ✅ Radio buttons for template selection
-   - ✅ Flash clone option with preview
-   - No sex selection: each card shows its sleeve's sex (#3358, ruling A)
-   - ✅ Thematic styling with dark colors
-
-3. **Form Processing**
-   - ✅ Respawn POST handler implemented
-   - ✅ Template selection and character creation working
-   - ✅ Flash clone selection and creation working
-   - ✅ Roman numeral naming integrated
-   - ✅ Sex inheritance for flash clones (automatic from old character)
-
-4. **Testing Results**
-   - ✅ First character creation works (shows manual form)
-   - ✅ Respawn interface appears for archived characters
-   - ✅ Template selection creates characters correctly
-   - ✅ Flash clone preserves stats, appearance and sex (not augments)
-   - ✅ Roman numeral naming works correctly
-   - ✅ Mobile responsive design verified
-
-### Bugs Discovered and Fixed During Testing
-
-#### 1. Menu Visibility Bug (Superuser Bypass)
-**Issue:** "Decant Sleeve" menu item was showing for superusers even when at character limit (MAX_NR_CHARACTERS=1), allowing access to character creation when it should be hidden.
-
-**Root Cause:** `typeclasses/accounts.py` `at_character_limit` property had a superuser bypass:
-```python
-if self.is_superuser:
-    return False  # Never at limit for superusers
-```
-
-**Fix:** Removed superuser bypass entirely (commit `bccfae3`):
-- Deleted the `if self.is_superuser: return False` logic
-- Added defensive coding (since replaced: `at_character_limit` counts `active_sleeves`, tag-indexed, against `MAX_NR_CHARACTERS`)
-- Now applies character limit consistently to ALL users including superusers
-- Menu properly hides when at limit for everyone
-
-**Rationale:** Superuser backup accounts (like Drivel) should respect game rules. Superusers aren't meant for regular play, just administrative access.
-
-#### 2. Roman Numeral Parsing Bug (Name Truncation)
-**Issue:** Names ending in letters that are valid Roman numerals were being truncated. "Drivel" became "Drive II" (the "L" was interpreted as Roman numeral 50).
-
-**Root Cause:** `commands/charcreate.py` line 130 used regex pattern `r'^(.*?)\s*([IVXLCDM]+)$'` which matched any trailing Roman numeral letters even without whitespace.
-
-**Fix:** Changed regex pattern to require whitespace (commit `d5caa42`; the regex has since been replaced by `split_roman_suffix` / `roman_value`, #3359, see Design Decision 3):
-```python
-# Old pattern (too aggressive)
-r'^(.*?)\s*([IVXLCDM]+)$'
-
-# New pattern (requires space before numeral)
-r'^(.+?)\s+([IVXLCDM]+)$'
-```
-
-**Result:** 
-- "Drivel" stays "Drivel" (no space before L)
-- "Drivel II" correctly strips to "Drivel" (space before II)
-- Only explicitly formatted Roman numerals are stripped
-
-#### 3. Flash Clone Sex Inheritance Bug
-**Issue:** Flash clone was overriding inherited sex with 'ambiguous' default from POST data, instead of preserving the original character's sex.
-
-**Root Cause:** `web/website/views/characters.py` `handle_respawn_submission()` was reading `sex` from POST data and applying it to both template-based characters AND flash clones. Flash clones already inherit sex automatically in `create_flash_clone()`.
-
-**Fix:** Removed sex override for flash clone option (commit `00e2ff3`):
-```python
-# For flash clone, don't read sex from POST
-if sleeve_choice == 'flash_clone':
-    character = create_flash_clone(account, old_character)
-    # Sex already inherited automatically
-else:
-    # Template-based creation uses POST sex
-    sex = request.POST.get('sex', 'ambiguous')
-    character = create_character_from_template(account, template, sex)
-```
-
-> *Superseded 2026-09-12 — the flash-clone half of this fix survives
-> (web/website/views/characters.py `handle_respawn_submission`; `create_flash_clone`
-> inherits it in commands/charcreate.py). The `else` half does not: `request.POST` is
-> never read for sex any more. Commit 802985d9, later the same day, deleted
-> the sex radios entirely, and the template branch now reads
-> `template.get('sex', 'ambiguous')` (`handle_respawn_submission`). Nothing posts
-> a sex field, so "Template-based creation uses POST sex" is no longer true
-> of any path.*
-
-**Result:** Flash clones now properly maintain their original sex (male/female) across respawns without manual selection.
-
-#### 4. UI Cleanup (Manage Sleeves Display)
-**Issue:** Character list page (`character_manage_list.html`) had redundant and unnecessary display elements.
-
-**Changes Made** (commit `f7688c9`):
-- ❌ Removed placeholder `<img>` tag (will be account-level feature later)
-- ❌ Removed "GRIM Stats:" label (redundant, stats are self-evident)
-- ❌ Removed "Deaths: X" field (redundant with Roman numeral in character name)
-- Manage Sleeves shows designation (with numeral), decanted date, retired date (deaths only), status (Archived or Active), and an Archive link on active sleeves (`character_manage_list.html`); no GRIM badges and no sex field
-
-**Result:** Cleaner, more focused character list showing only necessary information.
-
-### Attempted Enhancement (Rolled Back)
-
-#### Template Filter for Descriptive Stats
-**Attempted:** Add Django template filter to show descriptive adjectives for GRIM stats instead of numbers (e.g., "Mighty" for Grit 5, "Frail" for Grit 1).
-
-**Implementation:**
-- Created `web/website/templatetags/__init__.py`
-- Created `web/website/templatetags/character_filters.py` with `stat_descriptor` filter
-- Imported `STAT_DESCRIPTORS` from `world/combat/constants.py`
-- Modified templates to use `{{ object.grit|stat_descriptor:"grit" }}`
-
-**Result:** 500 errors on Manage Sleeves page. Issue persisted through:
-- Simplified filter (just return numeric value)
-- Full Django restart (`docker-compose restart evennia`)
-- Server reload attempts
-
-**Decision:** Rolled back entirely (commit `babd0b4` reverting commits `b3cf3df`, `94683a3`, `6d2a4ab`):
-- Deleted `web/website/templatetags/` directory
-- Restored numeric stat display
-- Back to stable state
-
-**Lessons Learned:**
-- Django template filter system has specific registration requirements
-- Issue likely related to app configuration or import paths
-- Numeric display is clean and functional - descriptive adjectives can be revisited later
-- Template filters require careful Django app structure
-
-### Design Decisions Documented
-
-1. **Sleeve Display:** Manage Sleeves lists every sleeve on the account, archived ones included, sorted by name and then by generation numeral (`CharacterManageView`). Archived sleeves stay in `account.characters` (see the comment in `create_flash_clone`); the archived tag keeps them out of the active count. *(This item once recorded a latest-iteration-only page as intentional; the code does not do that.)*
-
-2. **Superuser Treatment:** The Decant Sleeve menu item (`at_character_limit`) and the web create view's own limit check have no superuser bypass; `Account.check_available_slots` still lets superusers and Developers past the slot limit. They're meant for administrative access, not regular gameplay. The backup account Drivel is subject to the same rules as regular players.
-
-3. **Roman Numeral Formatting:** A trailing word is stripped as a generation numeral only when it follows a space, is uppercase, and is exactly the form `int_to_roman` would write (`split_roman_suffix`, `roman_value`, #3359). The web Manage Sleeves sort uses the same parser.
-
-4. **Flash Clone Sex Inheritance:** Flash clones inherit sex automatically from the archived character. The respawn UI has no sex selection: a template sleeve takes the sex it was rolled with (#3358, ruling A).
-
-5. **Numeric Stats Display:** UI shows numeric stat values (1-10 scale) rather than descriptive adjectives.
-
-   > *Corrected 2026-09-12 — wrong on the scale, and overtaken on the
-   > adjectives. GRIM is a **1-150** scale on a 300-point budget
-   > (`GRIM_MIN = 1` / `GRIM_MAX = 150` in web/website/forms.py, applied
-   > to all four stat fields), never 1-10. Manage Sleeves shows
-   > no stats at all any more (character_manage_list.html); numeric
-   > GRIM values survive on the respawn cards
-   > (character_respawn_create.html) and in the post-creation
-   > success message (`handle_respawn_submission`, `form_valid`).*
-   >
-   > *The ROLLBACK itself is accurately recorded — `web/website/templatetags/`
-   > does not exist. But "descriptive system can be added later" has since
-   > happened, in game and on the web: `STAT_DESCRIPTORS`
-   > (world/combat/constants.py) is imported by commands/CmdCharacter.py
-   > and rendered as tier words by `@stats`/`score`, and the web character
-   > detail page shows the same words (`get_stat_descriptor`, called from
-   > `OwnerOnlyCharacterDetailView`).
-   > See specs/proposals/DESCRIPTIVE_STAT_SYSTEM_SPEC.md. Only the respawn
-   > cards and the decant success message stay numeric.*
-
-### Current State (Post-Phase 1)
-
-**Status:** Phase 1 fully functional and deployed to production (play.gel.monster)
-
-**Verified Working:**
-- ✅ Menu visibility respects character limit (including for superusers)
-- ✅ Respawn interface generates templates correctly
-- ✅ Flash clone preserves stats, sex and appearance (not augments)
-- ✅ Roman numeral naming works without false positives
-- Template-based sleeves take the sex they were rolled with; there is no sex selection (#3358, ruling A)
-- ✅ Character list displays cleanly with essential info only
-- ✅ First character creation still uses manual form (unchanged)
-
-**Commits:**
-- `bccfae3` - Remove superuser bypass from at_character_limit
-- `d5caa42` - Fix Roman numeral regex pattern
-- `00e2ff3` - Fix flash clone sex inheritance  
-- `f7688c9` - Clean up Manage Sleeves display
-- `babd0b4` - Revert template filter changes (rollback)
-
-**Next Steps:**
-Phase 1 is complete and stable. Future phases can focus on polish, AJAX template regeneration, appearance preview, and other enhancements listed above.
-
----
-
-## Bug Fix: Web-Created Characters Appearing as Visible NPCs (January 2025)
-
-### Problem Statement
-
-**Issue:** Characters created via web interface (both first-time and respawn) were appearing as visible NPCs in the game world before the player ever connected via telnet.
-
-**Symptoms:**
-- Web-created characters visible in START_LOCATION as unpuppeted objects
-- Appeared identical to NPCs created via @spawnnpc command
-- Characters became puppeted only on first telnet login
-- Violated expected "invisible until first login" behavior
-
-**Root Cause:** Characters created via web were:
-1. Created with `location = START_LOCATION`
-2. Left unpuppeted (no active session)
-3. Remained visible because location was not None
-
-### Solution: Mimic Evennia's Standard Unpuppet Behavior
-
-**Key Insight from Evennia Source Code:**
-
-From `evennia/objects/objects.py` `DefaultCharacter` class:
-
-**`at_post_unpuppet()` (lines 3288-3321):**
-```python
-def at_post_unpuppet(self, account=None, session=None, **kwargs):
-    if not self.sessions.count():
-        # only remove this char from grid if no sessions control it anymore.
-        if self.location:
-            # Save location for restoration
-            self.db.prelogout_location = self.location
-            # Make invisible by removing from grid
-            self.location = None
-```
-
-**`at_pre_puppet()` (lines 3237-3259):**
-```python
-def at_pre_puppet(self, account, session=None, **kwargs):
-    if self.location is None:
-        # Restore character from invisible storage
-        location = self.db.prelogout_location if self.db.prelogout_location else self.home
-        if location:
-            self.location = location
-            self.location.at_object_receive(self, None)
-```
-
-**Conclusion:** Setting `character.location = None` is Evennia's standard mechanism for making unpuppeted player characters invisible.
-
-### Implementation
-
-Modified `web/website/views/characters.py` in two places:
-
-#### 1. Respawn Character Creation (`handle_respawn_submission`)
-
-```python
-# After character creation...
-# WEB-CREATED CHARACTERS: Make invisible until puppeted
-# Set location to None (standard Evennia unpuppet behavior)
-# This makes them invisible in room until first puppet/login
-# Save spawn location for restoration during at_pre_puppet
-spawn_location = ObjectDB.objects.get_id(settings.START_LOCATION)
-if not spawn_location:
-    spawn_location = character.location  # the Limbo staging room
-character.db.prelogout_location = spawn_location
-character.location = None
-
-# Debug logging
-get_splattercast().msg(
-    f"WEB_CHAR_CREATE: {character.key} created via web (respawn), "
-    f"location set to None for invisibility. "
-    f"Will be restored to "
-    f"{getattr(spawn_location, 'key', '?')} on telnet login."
-)
-```
-
-#### 2. First-Time Character Creation (`form_valid`)
-
-```python
-# After character creation...
-# WEB-CREATED CHARACTERS: Make invisible until puppeted
-# Set location to None (standard Evennia unpuppet behavior)
-# This makes them invisible in room until first puppet/login
-# Save spawn location for restoration during at_pre_puppet
-# (spawn_location: the START_LOCATION room, else Limbo, looked up before creation)
-character.db.prelogout_location = spawn_location
-character.location = None
-
-# Debug logging
-get_splattercast().msg(
-    f"WEB_CHAR_CREATE: {character.key} created via web (first-time), "
-    f"location set to None for invisibility. "
-    f"Will be restored to "
-    f"{getattr(spawn_location, 'key', '?')} on telnet login."
-)
-```
-
-### Behavior Flow
-
-#### Web Character Creation
-1. **Character Created**: the view creates the character in Limbo (#2), the staging room (`form_valid`; `get_start_location` on the respawn paths)
-2. **Made Invisible**: `db.prelogout_location` is set to the START_LOCATION room (Limbo if that lookup fails), then `location = None`
-3. **Invisible State**: Character exists in database but not in game world
-4. **Debug Logging**: Splattercast message confirms invisibility
-
-#### First Telnet Login
-1. **Account Login**: Player connects via telnet
-2. **Auto-Puppet**: the game's own `Account.at_post_login` (typeclasses/accounts.py) puppets the account's single active sleeve; `AUTO_PUPPET_ON_LOGIN` is False. With no active sleeve it starts the telnet decant menu instead, and with several it shows a picker.
-3. **at_pre_puppet Hook**: Evennia's built-in hook detects `location is None`
-4. **Restoration**: Character restored to `db.prelogout_location` (or home)
-5. **Visible & Active**: Character appears in the game world. On this first puppet `Character.at_post_puppet` sees `decant_announce_pending`, plays the decant scene to the room and shows the player the sleeve-policy card; later logins show "{actor} stirs as consciousness returns."
-
-#### Subsequent Sessions
-- **Normal puppet/unpuppet cycle**: Standard Evennia behavior
-- **Quit**: `Character.at_post_unpuppet` posts an in-fiction exit line to the room, stands the body up, stores `prelogout_location` and sets location to None
-- **Login**: Character restored from None location (standard)
-
-### NPCs vs Player Characters
-
-#### NPCs (Created via @spawnnpc)
-- **Never puppeted**: No session, no account
-- **Always visible**: Location is always a room
-- **Behavior unchanged**: Continue working as before
-
-#### Player Characters (Web-created)
-- **Initially unpuppeted**: No session until telnet login
-- **Initially invisible**: `location = None`
-- **Visible when puppeted**: Restored to room on first puppet
-- **Standard Evennia behavior**: Matches quit/disconnect mechanics
-
-### Why This Solution Is Superior
-
-**Alternative 1: Leave at START_LOCATION, add visibility check**
-- ❌ Requires custom `access()` override in Character typeclass
-- ❌ Requires distinguishing NPCs from player chars
-- ❌ More complex, error-prone
-
-**Alternative 2: Move to Limbo**
-- ❌ Requires special handling on login
-- ❌ Less standard Evennia pattern
-- ❌ Extra location management
-
-**Current Solution (location=None)**
-- ✅ Standard Evennia behavior (mimics quit/disconnect)
-- ✅ Restoration needs no custom hook: Evennia's own `at_pre_puppet` does it (the game's `at_post_puppet` / `at_post_unpuppet` overrides change only the room lines and posture)
-- ✅ Automatic restoration via built-in `at_pre_puppet`
-- ✅ Simple, clean, maintainable
-- ✅ No special case logic for NPCs
-
-### Files Modified
-- `web/website/views/characters.py`:
-  - `handle_respawn_submission()`: Added location=None after respawn creation
-  - `form_valid()`: Added location=None after first-time creation
-  - Debug logging added to both methods
-
-### Testing Checklist
-- [ ] Create character via web (first-time)
-- [ ] Verify character not visible in START_LOCATION
-- [ ] Login via telnet
-- [ ] Verify auto-puppet works
-- [ ] Verify character appears in START_LOCATION
-- [ ] Verify the decant scene plays to the room on first puppet
-- [ ] Create character via web (respawn)
-- [ ] Verify same invisibility behavior
-- [ ] Verify NPCs created via @spawnnpc still visible
-- [ ] Verify quit/login cycle works normally
-
-### References
-- Evennia Source: `evennia/objects/objects.py` (DefaultCharacter class)
-  - `at_post_unpuppet()`: Lines 3288-3321
-  - `at_pre_puppet()`: Lines 3237-3259
-- Evennia GitHub: https://github.com/evennia/evennia
-
-### Conclusion
-
-Web-created characters now seamlessly integrate with Evennia's standard visibility mechanics. By setting `location = None` immediately after web creation, we achieve the desired "invisible until first puppet" behavior without a custom restoration hook or special case logic. The solution is elegant, maintainable, and follows Evennia best practices.
-
-````
+- `specs/SLEEVE_INSURANCE_SPEC.md`: sleeve policies, the flash-clone gate, `forfeit_policy`, `renew_perpetual`.
+- `specs/proposals/DESCRIPTIVE_STAT_SYSTEM_SPEC.md`: GRIM tier words.
+- Evennia `DefaultCharacter` (`evennia/objects/objects.py`): `at_pre_puppet`, `at_post_unpuppet`.

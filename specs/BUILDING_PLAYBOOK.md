@@ -1,13 +1,11 @@
 # The Building Playbook — why we build, how we build, what remains
 
-> **Status:** 🧭 LIVING DOCUMENT (2026-08-05). Not a system spec — the
-> working doctrine for architecting the rest of the city. §1–§3 are
-> settled law distilled from shipped practice and owner calls scattered
-> across `VERTICALITY_AND_BUILDINGS_SPEC`, `SPATIAL_COORDINATE_SYSTEM_SPEC`,
-> and two months of builds; they change only when a build teaches us
-> something. §4 is the ledger of the remaining city and is *meant* to be
-> argued with — entries marked **candidate** are unsettled until the
-> owner says otherwise.
+Not a system spec: the working doctrine for architecting the rest of the
+city. §1–§3 are settled law, distilled from practice and from owner calls
+across `VERTICALITY_AND_BUILDINGS_SPEC`, `SPATIAL_COORDINATE_SYSTEM_SPEC`
+and the builds; they change only when a build teaches us something. §4 is
+the ledger of the remaining city and is *meant* to be argued with —
+entries marked **candidate** are unsettled until the owner says otherwise.
 
 ---
 
@@ -56,21 +54,13 @@ argue with §4; they do not argue with this section.
 **The bowl.** The colony sits in a crater roughly **twenty stories**
 deep. The skyline lives inside that envelope: the tallest building
 tops out around **sixteen to eighteen** (the height that "feels tall"),
-just under the rim. Today's tallest builds reach ~8 — the city has
-used less than half its vertical budget. The crater wall is the city's
-outermost facade and the honest end of every map.
-*(Correction 2026-09-11: "reach ~8" was true the day this was written —
-the as-built plate labels the Brackett "BRACKETT 8"
-(`scripts/planning/cityplan.py:65`) — and was overtaken within 48 hours.
-Build 005 (2026-08-05) ran the Brackett to floor 11; build 009
-(2026-08-07) added floors 12–15 plus a roof deck at z16; build 011
-(2026-08-07) put the antenna platform — "the highest walkable point of
-the Brackett" — at z19 (`scripts/builds/011_brackett_crown.py:69-94`).
-The Boiler Run crane's cab sits at z17
-(`scripts/builds/032_crane_operator.py:29`) and its container rides
-z1..z16 (`CraneContainer.MIN_Z`/`MAX_Z` in `typeclasses/rooms.py`). The 16–18 envelope is
-already reached in one southwest block; read the half-unused budget as a
-2026-08-05 snapshot, not a current fact.)*
+just under the rim. The crater wall is the city's outermost facade and
+the honest end of every map. One southwest block already reaches that
+envelope: the Brackett has a roof deck at z16 and its antenna platform —
+"the highest walkable point of the Brackett" — at z19
+(`scripts/builds/011_brackett_crown.py`); the Boiler Run crane's cab sits
+at z17 (`scripts/builds/032_crane_operator.py`) and its container rides
+z1..z16 (`CraneContainer.MIN_Z`/`MAX_Z` in `typeclasses/rooms.py`).
 
 **The organism.** The colony's purpose is **terraforming; everything
 else is an offshoot of it.** The water cycle is the city's skeleton:
@@ -103,7 +93,8 @@ fabric, and funnels where paths must cross). Interiors obey
 count — one atrium gallery with the park ten stories down beats a
 hundred corridor rooms. A room exists only if players can meet in it
 or it is a rung on a route. The 16–18-story anchor's identity (Thawn
-grown upward, or a new name) is an **owner call, pending**.
+grown upward, or a new name) is an **owner call, pending** (see Not
+decided).
 
 **Southside: the wall and the Processor.** The fringes build **into
 the crater face** — unorthodox structures, slope-and-terrace geometry
@@ -113,8 +104,9 @@ dominates the colony** from the plot the street grid was drawn
 around: bounded by **Maxwell (north), Pessoa (south), the Spillane
 (east), and Riveter's Way (west)** — a 7×7 block, empty since
 seeding, **reserved** — with the **main gate at Volta & Riveter's**.
-One street off the channel's south bank, so the water cycle is
-physically tight: ice below, works in the block, basin across
+`scripts/planning/cityplan.py` draws it as `zone(11,-5,5,-11)` =
+x5..11, y-11..-5. One street off the channel's south bank, so the water
+cycle is physically tight: ice below, works in the block, basin across
 Maxwell. Industrial-sacred register; plausibly the one silhouette
 that reaches the rim.
 
@@ -147,7 +139,7 @@ never canon. NPC-run factions remain the only factions.
 
 ## 2 · Settled doctrine (the law, with sources)
 
-**The grid** (`proposals/SPATIAL_COORDINATE_SYSTEM_SPEC.md`, live):
+**The grid** (`proposals/SPATIAL_COORDINATE_SYSTEM_SPEC.md`):
 - Coordinates are the data model; **hand-authoring is the authoring
   model**. No `@stack`, no ad-hoc builder commands — floors are rooms,
   stairwells are up/down exit pairs, authored like anything else.
@@ -189,36 +181,35 @@ never canon. NPC-run factions remain the only factions.
   combat advance and charge relocate without asking the lock and refuse
   only an air destination. Only the LEAP scales with distance; the
   descent's landing roll is fixed (`DESCENT_DIFFICULTY`). `CraneContainer`
-  is the shipped example of the whole rule; `ElevatorCar` shares the
-  first half (its `out` exit is re-pointed per floor, and its landing
+  (`move_to_level`) is the example of the whole rule; `ElevatorCar` shares
+  the first half (its `out` exit is re-pointed per floor, and its landing
   doors refuse in `at_traverse` while the car is away, staying visible).
 - **Every air build closes with the edge audit** — "edges accountable."
-  No unexplained adjacency between a plate and the air beside it.
-  _(2026-09-16, #3582: the audit is a command now, not a sentence —
-  `@airfill/audit <z>` lists every walkable surface beside air to its
-  north, south, east or west with no edge into it (a surface touching
-  air only diagonally is counted, not listed, and does not stop the
-  audit reporting "Clean."; `@airfill` never wires a diagonal), every gap whose far perch is missing or not one cell
-  across, and every air cell with no `down`; it writes nothing. Paste its
-  output in the build issue. A deliberate omission is marked on the room
-  with `db.no_edge = "<reason>"` and the audit skips it. Owner ruling
-  2026-09-16: the generator stays; `@airfill` now stamps a roof's way
-  into air as an edge only, and a gap only with a computed far perch
-  (#3415).)_
-  _(2026-09-16, #3589: **"walkable surface" now has one definition,
-  shared.** `@airfill`'s private `_is_walkable_surface` moved to
-  `world/gravity.py` as `is_surface` — a rooftop (`db.type ==
-  "rooftop"`) or any outdoor room (`db.outside is True`) that is not
-  itself air — and `CmdBuildTools` imports it from there. The same
-  predicate now decides what a shot over an edge can reach: an interior
-  straight below an air cell reads as an unbuilt roof in the way and the
-  shot finds nothing. So a plate that the audit will not link is also a
-  plate nobody can snipe onto, by construction. The cell-addressed
-  lookup behind the fill moved with it: `_room_cell_index` is now
-  `world.spatial.coordinate_index()`, shared with the crane car, the
-  courier and the gravity layer.)_
+  No unexplained adjacency between a plate and the air beside it. The
+  audit is a command, `@airfill/audit <z>` (#3582). It lists every
+  walkable surface beside air to its north, south, east or west with no
+  edge into it; a surface touching air only diagonally is counted, not
+  listed, and does not stop the audit reporting "Clean." (`@airfill`
+  never wires a diagonal). It also lists every gap whose far perch is
+  missing or not one cell across, and every air cell with no `down`. It
+  writes nothing. Paste its output in the build issue. A deliberate
+  omission is marked on the room with `db.no_edge = "<reason>"` and the
+  audit skips it.
+- **The generator stays** (owner ruling 2026-09-16, #3415): `@airfill`
+  stamps a roof's way into air as an edge only, and a gap only with a
+  computed far perch.
+- **"Walkable surface" has one definition, shared** (#3589): `is_surface`
+  in `world/gravity.py` — a rooftop (`db.type == "rooftop"`) or any
+  outdoor room (`db.outside is True`) that is not itself air.
+  `CmdBuildTools` (`@airfill`) imports it from there. The same predicate
+  decides what a shot over an edge can reach: an interior straight below
+  an air cell reads as an unbuilt roof in the way and the shot finds
+  nothing. So a plate that the audit will not link is also a plate nobody
+  can snipe onto, by construction. The cell-addressed lookup behind the
+  fill is `world.spatial.coordinate_index()`, shared with the crane car,
+  the courier and the gravity layer.
 
-**Doors and tenancy** (`proposals/VERTICALITY_AND_BUILDINGS_SPEC.md` §2–§3, live):
+**Doors and tenancy** (`proposals/VERTICALITY_AND_BUILDINGS_SPEC.md` §2–§3):
 - A door IS the exit, with state; passage requires it open.
 - Access is **biometric grants** — no keys, codes, or cards; forgery is
   the attack surface. Unit doors get the spring-latch autolock.
@@ -241,17 +232,7 @@ withhold. Scope: this governs the STREET fabric; on plates the
 vertical doctrine still wires every rim as an edge, because edges are
 jumps priced in risk, not corridor exits.
 
-**The room itself** (practice, 246 rooms deep):
-*(Provenance note 2026-09-11: 246 is inherited from
-`SPATIAL_COORDINATE_SYSTEM_SPEC:20`'s ~2026-06-27 count of rooms carrying
-five-senses descriptions, and it was already behind the world when this
-line was written — the as-built plate of 2026-08-05 is subtitled "589
-rooms" (`scripts/planning/cityplan.py:62`), and 1,069 rooms were on-grid
-by the time `@coordseed` mis-seeded them (the `CmdCoordSeed` help text,
-#2573). How many of today's rooms carry all four sense layers is not
-recorded anywhere in the repo, so treat "246 rooms deep" as a dated
-provenance note, not a current measure. The four rules below are
-unaffected.)*
+**The room itself** (practice):
 - **Five-senses descriptions** are the register — a room ships with its
   sense layers, not "desc now, senses later."
 - Room `type` is load-bearing in several places: it routes **crowd-pool**
@@ -297,7 +278,7 @@ unaffected.)*
 ## 2.5 · Build 001's laws (learned under review, 2026-08-05)
 
 The first Head Builder arc was reviewed room by room; every verdict is
-now law:
+law:
 
 1. **Audits find anomalies; the owner classifies them.** A sealed
    room may be a prize, an unwired gap may be a security perimeter,
@@ -329,9 +310,8 @@ now law:
 7. **Read the mechanism before wiring against it.** Copying an
    exemplar's attributes is not understanding it: the escape's roof
    edge shipped without `sky_room` and silently degraded to a walk.
-   (`sky_room` has since been retired, #3579: an edge's destination is
-   now the air cell itself.)
-   Before touching jump/fall/door machinery, read its code path.
+   (`sky_room` is retired, #3579: an edge's destination is the air cell
+   itself.) Before touching jump/fall/door machinery, read its code path.
 8. **Walk it as a player before handing it over.** Mechanism-level
    tests pass things only a player's experience catches (findable
    windows, message registers, ambience). The builder walks the build
@@ -347,7 +327,6 @@ none are skipped silently.
    Architecture follows the brief; parkour affordances arise from the
    building's own logic (a fire escape exists for fire; the on-ramp
    is a consequence). A build with no brief is the water tower.
-
 1. **Recon** — the live atlas plus `@building`/`@room` over the site.
    Agree the footprint and column on the grid before any digging.
 2. **The name pass** — venue proper names, street names, unit numbering.
@@ -358,7 +337,7 @@ none are skipped silently.
    "would change coordinate" or "OCCUPIED cell" lists. `@coordseed`
    refuses to write while any room would land on an occupied cell,
    unless `/force` is given. Which writer owns `db.xyz` (the seed walk or
-   hand placement) is not decided.
+   hand placement) is not decided (see Not decided).
 5. **The column** — strips, spines, edges, air cells; close with the
    edge audit.
 6. **Doors and tenancy** where they apply — grants, latch, residence
@@ -377,41 +356,24 @@ none are skipped silently.
 
 ## 4 · The remaining city — the ledger
 
-> **ACTIVE PROGRAM (owner-set, 2026-08-25): the SOUTHSIDE.** The
-> Braddock–Kaspar–Pessoa band and its Spillane frontier: Greenhaus
-> Verticals + cisterns SHIPPED; next up the owner's Constabulary 3×3
-> complex with holding facility (owner's own vision — feeds the future
-> mines), the Rendering Works on west Pessoa (approved in principle;
-> digester underworks ramp = a sealed future sewer mouth), the Heat
-> Works on Spillane's scorched west wall (x11, y-9..-11), and Pessoa
-> infill (Boiler Run works, House of Selves, laundry, shift-bunks,
-> brewery). The Ripper stays parked until the Southside stands. The
-> UNDERWORKS remains deliberately unspecced — it will be inspired by
-> what gets built above it.
->
-> *(Corrections 2026-09-11, four: (a) **Date** — the program was recorded
-> 2026-08-11, not 08-25: PR #1946 (closing #1945) opened and merged that
-> day as commit `818d47b3`, which is the commit that added this banner.
-> (b) **Constabulary** — a Colonial Constabulary already stands: Lobby,
-> Elevator Car, Secure Corridor on floor 2 and Rooftop (South) are all in
-> play (`scripts/builds/071_constab_fleet_cradle.py:19`,
-> `scripts/builds/121_the_charging_rack.py:32`,
-> `scripts/builds/055_greenhaus_verticals.py:332`; the room type dates to
-> #1110, 2026-07-10, `ConstabularyRoom` in `typeclasses/rooms.py`). Read "Constabulary 3×3
-> complex with holding facility" as an EXPANSION of that building — and
-> note no holding facility exists anywhere in the tree yet. (c) **Heat
-> Works** — the site given, (x11, y-9..-11), falls inside the Atmospheric
-> Processor's reserved 7×7 plot, which §1.5 declares empty and reserved
-> and which `scripts/planning/cityplan.py` draws as
-> `zone(11,-5,5,-11)` = x5..11, y-11..-5. Owner call needed before either
-> is built. (d) **Progress** — none of the five NAMED items has shipped:
-> no Rendering Works, no Heat Works, no holding facility, and none of the
-> Pessoa infill list ("Boiler Run" is still only a crane brand). Southside
-> building did continue after the program was set, though — the Escallier
-> Snailery on Pessoa (build 066, 2026-08-10, #1948) and the Community
-> Thrift on Kaspar (build 092, 2026-08-20, "the Community Thrift,
-> Southside") — so the program is stalled on its named list, not
-> abandoned.)*
+**The active program: the SOUTHSIDE** (owner-set 2026-08-11, PR #1946,
+closing #1945). The Braddock–Kaspar–Pessoa band and its Spillane
+frontier. The program's named list:
+- the owner's Constabulary 3×3 complex with holding facility (owner's
+  own vision — feeds the future mines). A Colonial Constabulary already
+  stands (`ConstabularyRoom` in `typeclasses/rooms.py`, #1110); this item
+  is an EXPANSION of that building, and its holding facility is new;
+- the Rendering Works on west Pessoa (approved in principle; digester
+  underworks ramp = a sealed future sewer mouth);
+- the Heat Works on Spillane's scorched west wall (x11, y-9..-11). That
+  site falls inside the Atmospheric Processor's reserved 7×7 plot (§1.5);
+  an owner call is needed before either is built (see Not decided);
+- Pessoa infill: Boiler Run works, House of Selves, laundry, shift-bunks,
+  brewery.
+
+The Ripper stays parked until the Southside stands. The UNDERWORKS
+remains deliberately unspecced — it will be inspired by what gets built
+above it.
 
 What the city still owes us, ranked by how much is already decided.
 **Spec'd** items have documents; **named** items exist as owner calls in
@@ -424,20 +386,10 @@ owner verdict — argue with them.
   disposal. Wants the Brackett basement and a sewer connection —
   which makes it the natural *first customer of the sewer layer*.
 - **Clinic completions**: cyberware-install rooms and the clinic's
-  remaining sense layers (`MAXWELL` TODO list) — install space is also
-  decking/chrome-economy pre-wiring.
-  *(Notes 2026-09-11: (1) **`MAXWELL` resolves to nothing in this repo** —
-  no document by that name exists here; the only repo-wide matches are a
-  plate caption (`scripts/planning/channel.py:65`) and the build script
-  `scripts/builds/074_maxwell_health_economy.py`. The probable referent is
-  the out-of-repo "Maxwell Medical Clinic" project note, whose TODO reads
-  exactly "cyberware-install + sense-layers"; either name it properly or
-  restate the TODO here, because as written a reader cannot reach it.
-  (2) The install MECHANIC has since shipped — `world/clinic.py:49
-  CLINIC_CYBERWARE`, `:103 parse_medical_request` (returns `('install',
-  speech)`), `:201 resolve_cyberware` (#2354 2026-08-28, #3046
-  2026-09-08) — so what remains under this entry is the ROOM, not the
-  capability.)*
+  remaining sense layers — install space is also decking/chrome-economy
+  pre-wiring. The install mechanic itself is in `world/clinic.py`
+  (`CLINIC_CYBERWARE`, `parse_medical_request`, `resolve_cyberware`;
+  #2354, #3046); what this entry owes is the room, not the capability.
 
 **Named in doctrine, undesigned:**
 - **The underground**: the ice mines feeding the terraformer (§1.5),
@@ -449,18 +401,18 @@ owner verdict — argue with them.
   basin, vertical farm structures, rooftop green spaces — the
   solarpunk thread (§1.5). Each is a build; together they are the
   colony's metabolism on display.
-- **Climbing-hooks content**: the mechanic is now **doctrine-ruled**
+- **Climbing-hooks content**: the mechanic is **doctrine-ruled**
   (see `PARKOUR_TEMPLATE_LIBRARY.md` §0: both directions, any edge,
   gear-length tiers, deployed lines thread room descs and can be cut,
-  failure burns stamina not falls) but not yet built. The rooftop
+  failure burns stamina not falls) but not built. The rooftop
   archipelago, the Boot hull, and Thawn's tower faces are the obvious
-  first ascents; every build from today pre-wires the seams per the
-  template library.
+  first ascents; every build pre-wires the seams per the template
+  library.
 - **The tower you run up**: decking is explicitly gated on verticality's
   texture — "the corp tower you run up." Thawn-Harrison is the standing
   corp presence and its courtyard/cathedral register is already art;
   whether the run-up tower IS Thawn or a new build is an **owner
-  call**.
+  call** (see Not decided).
 
 **Owner-blessed designs awaiting their mechanics (2026-08-05):**
 - **The Brackett fire escape, powered** (rough draft buildable NOW;
@@ -489,30 +441,23 @@ owner verdict — argue with them.
   rough drafts of all three.
 
 **Captured from the architecture sessions (2026-08-06 sweep —
-solid ideas that lived only in conversation until now):**
-- **The Dark Alley building** — the colony's ONE true alley (a
-  dead-end cell off Maxwell at (-8,-5)) is surrounded by empty lots:
-  it was carved ahead of its block. Build a modest 2-3 story rooming
+solid ideas that lived only in conversation until then):**
+- **The Dark Alley building** — the Dark Alley (a dead-end cell off
+  Maxwell at (-8,-5)) is a true alley surrounded by empty lots: it
+  was carved ahead of its block. Build a modest 2-3 story rooming
   house/workshop beside it whose back door and escape face the alley
   — the alley-backed F1 in its correct fiction, and the proposed
   proving build for the corrected process.
-  *(Count note 2026-09-11: "the colony's ONE true alley" is stale — see
-  the alley-carving law below. The (-8,-5) cell and its empty lots are
-  unchanged; only the census moved.)*
-- **The alley-carving law**: the city has an alley deficit (one true
-  alley colony-wide) while the roofscape needs alleys as its
-  driveways — new ground blocks carve their back alleys as part of
-  the block.
-  *(Count correction 2026-09-11: no longer one. Build 063 (2026-08-10,
-  PR #1934) dug **Overflow Alley** at (13,-15,0) — `type: "alley"`,
-  outside=True, a walkable dead-end spur off the Spillane under Cistern
-  No. 3's legs (`scripts/builds/063_cistern_three_real.py:35-41`, reached
-  by `Spillane (12,-15,0) --east--> Overflow Alley` at `:13`), and
-  `VERTICALITY_AND_BUILDINGS_SPEC` now cites it as the sanctioned
-  landmark-on-legs exception. (Shipbreaker Alley still does not count:
-  it is typed `market`, and build 001 classified it an open-air yard —
-  the ruling §2.5 law 2 came from.) The deficit argument and the law
-  stand; the census does not.)*
+- **The alley-carving law**: the city has an alley deficit while the
+  roofscape needs alleys as its driveways — new ground blocks carve
+  their back alleys as part of the block. **Overflow Alley** at
+  (13,-15,0) (build 063, PR #1934) is also a true alley:
+  `type: "alley"`, outside=True, a walkable dead-end spur off the
+  Spillane under Cistern No. 3's legs (`scripts/builds/063_cistern_three_real.py`),
+  which `VERTICALITY_AND_BUILDINGS_SPEC` cites as the sanctioned
+  landmark-on-legs exception. Shipbreaker Alley does not count: it is
+  typed `market`, and build 001 classified it an open-air yard — the
+  ruling §2.5 law 2 came from.
 - **The heel-void nook** at (-9,-18,0): the one roomless ground cell
   in the Brackett block, boxed between the Boot's heel and the
   tenement's east wall. A genuinely hidden space for when the block
@@ -525,19 +470,14 @@ solid ideas that lived only in conversation until now):**
   (cut stair) / z9 finger / z13 (**the cliff bar — prize**) / z12
   valve-landing / z16 / z18 → the ONE rim terminus at z20, with the
   Braddock cut-stair as the free route. ~20 rooms; the hard-ring
-  exemplar; buildable almost entirely against existing mass.
-  *(Premise note 2026-09-11: the ladder above transcribes the source
-  plate faithfully — `scripts/planning/corridors.py:58-64` lists z7 / z10
-  / z9 / z13 ★ cliff bar / z12 valve / z16 / z18, `:90` the V→rim ladder
-  at z20, `:91` the Braddock cut stair as the free route — but the plate
-  was drawn against an 8-storey Brackett: it labels the trailhead "THE
-  BRACKETT ARMS 8 (exists)" (`:54`) and jumps roof(z8) → Terrace I(z7) at
-  `:78`. Builds 009 and 011 (2026-08-07) then carried the tower to a roof
-  deck at z16 and a mast platform at z19, so the z8 roof this whole
-  corridor hangs off no longer exists; the design needs re-deriving
-  before it is built. Re-derive from coordinates, not from the plate's
-  E/W captions — those read swapped against game space (east = +x since
-  #1690).)*
+  exemplar; buildable almost entirely against existing mass. The source
+  plate (`scripts/planning/corridors.py`) was drawn against an
+  8-storey Brackett and hangs the corridor off a z8 roof (roof(z8) →
+  Terrace I(z7)); the Brackett now carries a roof deck at z16 and a mast
+  platform at z19, so that z8 roof does not exist and the design needs
+  re-deriving before it is built. Re-derive from coordinates, not from
+  the plate's E/W captions — those read swapped against game space
+  (east = +x since #1690).
 - **The Central Channel design sheet** (owner-deferred, "later", but
   the analysis was blessed as interesting): quays are Tolliver/
   Maxwell as-built; raft lanes + clear barge fairway at z-1; racks
@@ -582,3 +522,28 @@ The connective tissue, so individual builds sum to a city:
 - **Doctrine lives here**: when a build fights the playbook and wins,
   the playbook changes in the same PR. When it fights and loses, the
   build changes. Silence is the only wrong outcome.
+
+## Not decided
+
+- **The Northside anchor** (§1.5): whether the 16–18-story anchor is
+  Thawn grown upward or a new name — owner call, pending.
+- **The run-up tower** (§4): whether the tower decking runs up IS Thawn
+  or a new build — owner call.
+- **The Heat Works site** (§4): its given site, (x11, y-9..-11), lies
+  inside the Processor's reserved plot (x5..11, y-11..-5). Owner call
+  needed before either is built.
+- **Who owns `db.xyz`** (§3 step 4): the seed walk or hand placement.
+- **The Ripper's den** (§4): `GIG_RIPPER_SPEC` §6 (legality) and §7 are
+  pending owner review.
+- **The candidates** (§4): market hall, port, gate-anchor site — each
+  awaits an owner verdict.
+
+## Related documents
+
+- `proposals/SPATIAL_COORDINATE_SYSTEM_SPEC.md` — the grid.
+- `proposals/VERTICALITY_AND_BUILDINGS_SPEC.md` — doors, tenancy,
+  verticality.
+- `PARKOUR_TEMPLATE_LIBRARY.md` — the movement kernel and ascent
+  templates, companion to §1.5.
+- `NPC_POSTS_AND_REINCARNATION_SPEC.md` — durable posts.
+- `proposals/GIG_RIPPER_SPEC.md` — the Ripper's den.

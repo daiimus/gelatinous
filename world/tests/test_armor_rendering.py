@@ -14,7 +14,7 @@ Run via::
     evennia test world.tests.test_armor_rendering
 
 Aligns with ``specs/IDENTITY_RECOGNITION_SPEC.md`` §"Phase 2 —
-Consistency" Conversion Status.
+Consistency".
 """
 
 from unittest import TestCase
