@@ -1,5 +1,5 @@
 """
-Combat capacity consumers (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §9 layer 1).
+Combat capacity consumers (CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §3, 'Combat wiring').
 
 Body capacities (``world/medical/core.py`` ``calculate_body_capacity``) are
 computed from organ health but, historically, only the *lethal* ones gated

@@ -23,7 +23,7 @@ gate and reached them fine. So for the entire named cast opinion only
 ever moved UP: **thanking Sable changed her read on you, stabbing her
 did not.** The strongest negative signal in the game was dropped for
 exactly the characters designed to remember it.
-`NPC_MEMORY_AND_IDENTITY_SPEC.md:204-205` states the write as shipped;
+`NPC_MEMORY_AND_IDENTITY_SPEC.md` §3 ("What feeds it") states the write as shipped;
 the code was the stale side.
 
 The write now asks "does this victim have a memory", not "does this

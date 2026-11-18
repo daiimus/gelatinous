@@ -1,41 +1,14 @@
 # Capacity Consumers & Perception Spec
 
-> **Status:** ✅ **SHIPPED & LIVE** — verified against code 2026-08-02: `world/perception.py` `can_see` / `can_hear` / `can_smell` / `blocked_senses`, capacity consumed throughout `world/medical/`, tests in `test_capacity_chrome.py` and `test_combat_capacity_sight.py`.
-
-> **Status: ✅ MOSTLY SHIPPED & LIVE** (as of 2026-06-20). What began as a
-> design proposal is now built: the performance capacities consume across
-> combat (sight/manipulation/moving), voice & identity (talking/hearing),
-> perception (sight/hearing), and the metabolic sim (blood_filtration), with
-> chrome + transplants to remediate each. Per-piece **✅ SHIPPED** markers are
-> inline throughout; the build ladder is §9. **Still deferred:**
-> voice-descriptor-as-identity + the §4.6 multi-voice disambiguation; base
-> single-blob room-desc **five-senses decomposition** (§5 — next up); a
-> full-perception sensory suite (the blindsight upgrade); and the
-> social/skill-blocked capacities (§2.1, waiting on systems that don't exist).
-> Balance numbers are tuned in play. §0 below frames the *original* problem
-> this solved.
-
-> **⚠️ Deferred-list true-up 2026-09-11.** One entry above is stale: the base
-> single-blob room-desc **five-senses decomposition** *shipped* (#623 / #624) —
-> `Room.get_display_desc` (`typeclasses/rooms.py`) composes the description
-> from only the sense layers the looker can perceive, and §5 carries the ✅
-> marker. The other deferrals (voice-descriptor-as-identity, §4.6
-> multi-voice disambiguation, the full-perception sensory suite, the
-> social-blocked capacities) still hold as written.
-
-## 0 · Purpose
-
 The body-capacity system (`world/medical/core.py` → `calculate_body_capacity`,
-species `body_capacities` tables) computes a rich set of `0.0–1.0` capacity
-floors from organ health — but today only the **lethal** capacities
-(`blood_pumping`/`breathing`/`digestion`/`neck_integrity`) and `consciousness`
-are *consumed* (death + unconscious gates). The "performance" capacities
-(`sight`, `hearing`, `moving`, `manipulation`, `talking`, `eating`,
-`blood_filtration`) are computed but **inert** — a wrecked arm aims as well as
-a healthy one, a blown leg doesn't slow you, blinded eyes don't hurt ranged.
-
-This spec defines how those capacities drive gameplay — the "graduated
-consequence layer" between *fine* and *dead/unconscious*.
+species `body_capacities` tables) computes `0.0–1.0` capacity floors from
+organ health. The **lethal** capacities
+(`blood_pumping`/`breathing`/`digestion`/`neck_integrity`) and
+`consciousness` drive the death and unconscious gates. This spec covers the
+**performance** capacities (`sight`, `hearing`, `smell`, `moving`,
+`manipulation`, `talking`, `eating`, `blood_filtration`): how they drive
+gameplay as the "graduated consequence layer" between *fine* and
+*dead/unconscious*, and how chrome and transplants remediate them.
 
 ## 1 · Core model (decided)
 
@@ -63,7 +36,7 @@ consequence layer" between *fine* and *dead/unconscious*.
   baseline (extra eyes/ears/arms).
 - **One capacity, many consumers.** A capacity is an *input* feeding multiple
   independent consumer systems (combat, identity recognition, the LOOK
-  renderer). "It's all connected."
+  renderer, and more — see §5). "It's all connected."
 - **Setting-agnostic, cyberpunk-themed.** Crippling injury is remediated by a
   **chrome augment OR a harvested-organ transplant** — both RipperDoc work,
   chrome and wetwork side by side (a cyber kidney *and* a donor kidney both
@@ -71,35 +44,21 @@ consequence layer" between *fine* and *dead/unconscious*.
   are **separate systems that integrate**, not one baked into the other. A
   grimdark reskin would relabel the flavor, not the mechanics.
 
-## 2 · Wireable now vs blocked
+## 2 · Capacity → consumer matrix
 
 A capacity effect only lands if a *consumer system* exists.
 
-| Capacity | Real consumers (this spec) | Status |
+| Capacity | Consumers | Not built / blocked |
 |---|---|---|
-| `sight` | combat (ranged/melee), identity recognition, LOOK visual layer | ✅ shipped (combat, recognition, perception render) |
-| `hearing` | LOOK auditory layer, **voice recognition**, acoustic/flashbang conditions | ✅ shipped (voice discern, deaf gating, perception); flashbang-deafness future |
-| `manipulation` | weapon handling (per-effector resolver) | ✅ shipped (per-hand resolver, §6) |
-| `moving` | movement / flee / future jump-athletics (per-effector resolver) | ✅ shipped (dodge, §6); flee/jump future |
-| `talking` | **voice production** (the voice triangle, §4); social/negotiation (resonance-gated) | ✅ voice-production shipped (garble); social **system-blocked, NOT skill-blocked** |
-| `blood_filtration` | infection course, renal failure (existing condition substrate) | ✅ shipped (§7) |
-| `eating` | **consumption benefit** (existing consume pipeline; buff model, no hunger) | not built — not blocked: rides the existing consume pipeline (delivery tags) once the food/drink buff exists (§2.1) |
-| `hearing`→trade, `*`→work_speed | trade price, crafting/work | blocked (no trade/work system); `hearing→trade` vestige dropped |
-
-> **Note 2026-09-11 (two true-ups on this table).** (1) "vestige dropped" is the
-> *design* ruling of §2.1 ("drop / re-scope rather than honor"), not a data
-> change — `hearing` still declares `"affects": ["trade_price_improvement"]` in
-> `world/anatomy/species.py`, read by nothing, and §11 still words it as pending
-> ("is to be dropped"), so the two sections read differently. Actually deleting
-> the declaration is **Phase 13** of
-> `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` (the `modifiers`/`affects`
-> re-audit) — Phase 4 explicitly *excludes* `affects` lists, which "wait on
-> substrate-resolution decisions" — and is not done. (2) The table is missing a
-> capacity that *is* consumed today: **`smell`** (`world/anatomy/species.py`,
-> organ `nose`, `total_loss_penalty: "anosmia"`) — `world/perception.py`
-> `can_smell` gates the olfactory sense category on it (threshold 0.15,
-> `smell_override` seam), shipped with the #637 / #638 primitive move. No chrome
-> nose prototype exists yet, and nothing produces an anosmia condition.
+| `sight` | combat (ranged/melee, §3), identity recognition (§4.5), perception: LOOK visual layer and every `can_see` reader (§5) | — |
+| `hearing` | perception: LOOK auditory layer and every `can_hear` reader (§5), **voice recognition** (§4.5), deaf gating of speech content (§4.4) | flashbang deafness and the acoustic-event layer (§4.1) |
+| `smell` | perception: the olfactory sense category (`can_smell`, §5) | chrome nose; any source of anosmia (§5) |
+| `manipulation` | weapon handling (per-hand scoping, §6.1) | — |
+| `moving` | dodge (§6.2) | flee, movement speed, jump/athletics, the locomotion floor (§6.2) |
+| `talking` | **voice production** (the voice triangle, §4.7: garble) | social/negotiation (resonance-gated) — **system-blocked, NOT skill-blocked** (§2.1) |
+| `blood_filtration` | infection course, renal failure (§7) | — |
+| `eating` | — | **consumption benefit** (existing consume pipeline; buff model, no hunger) — not blocked: rides the existing consume pipeline (delivery tags) once the food/drink buff exists (§2.1) |
+| `hearing`→trade, `*`→work_speed | — | trade price, crafting/work: blocked (no trade/work system); `hearing→trade` is dropped by design (§2.1) |
 
 ### 2.1 · Blocked-capacity shapes (pin the shape so future system-builders snap in correctly)
 
@@ -125,17 +84,22 @@ A capacity effect only lands if a *consumer system* exists.
   on a general crafting/work system. *Natural first hook when we do wire it:* the
   **operate/surgery** flow (it is already a "work" action) — a one-eyed,
   low-`manipulation` surgeon is measurably worse (slower, higher complication
-  chance). Noted, not built; surgery stays unscaled until we choose to open this.
+  chance). Surgery stays unscaled until we choose to open this.
 - **`hearing` → trade.** A RimWorld seed vestige ("hearing affects haggling").
   Thematically weak; hearing's real consumers are perception (§5), voice-recog
   (§4), and acoustic hazards. **Drop / re-scope** rather than honor. If anything
-  ever gates negotiation it is `talking`, not `hearing`.
+  ever gates negotiation it is `talking`, not `hearing`. The species table
+  (`world/anatomy/species.py`) still declares `"affects":
+  ["trade_price_improvement"]` on `hearing`, read by nothing. Deleting that
+  declaration belongs to the `modifiers`/`affects` re-audit, **Phase 13** of
+  `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` (Phase 4 there excludes
+  `affects` lists, which "wait on substrate-resolution decisions").
 
 ## 3 · Sight (worked example — decided)
 
 **Organs:** `left_eye` + `right_eye`, 0.5 each → `1.0` (both) / `0.5` (one eye)
 / `0.0` (blind). It is **whole-body** — you don't *wield* eyes — so it dodges
-the effector resolver and is the clean first slice to prove the model.
+the effector resolver.
 
 **Consumers:**
 - **Combat — ranged (the big one):** multiplicative, **steeper-than-linear**
@@ -148,6 +112,12 @@ the effector resolver and is the clean first slice to prove the model.
 - **LOOK renderer:** gates the *visual* sensory category (§5); losing it drops
   visual and **enriches** the remaining senses (compensatory).
 
+**Combat wiring.** `world/combat/capacity.py` `sight_hit_factor()` multiplies
+the attacker's motorics term in `world/combat/attack.py` `process_attack`, on
+piecewise curves (ranged steep, melee light). The `sight_override` condition
+suppresses the penalty (the chrome seam; no augment sets it yet), and so does
+combat blindsight (§12).
+
 **Augment hook:** a cyber sense-enhancer is a single suppress-modifier across
 *all* layers at once — nulls the melee penalty, restores visual-ID (or grants
 a chrome-recognition channel), tells the renderer "treat visual as present."
@@ -157,21 +127,23 @@ One augment, coherent everywhere — the integration paying off.
 
 **Organs:** `left_ear` + `right_ear`, 0.5 each → both / one-ear (`0.5`, mono)
 / deaf (`0.0`). A **perception + identity** capacity, not a combat one. (The
-species table's only declared `affects` is `trade_price` — blocked — so it's a
-placeholder; the real consumers are below.)
+species table's only declared `affects` is `trade_price` — dropped by design,
+§2.1; the real consumers are below.)
 
 ### 4.1 Consumers
 - **LOOK auditory layer:** `hearing` gates whether you receive the auditory
-  sensory category; deaf → it drops, others enrich.
+  sensory category; deaf → it drops, others enrich (§5).
 - **Voice recognition (the centerpiece):** a parallel identity channel — hear a
-  *known voice* → recognize the speaker even when you can't see them.
+  *known voice* → recognize the speaker even when you can't see them (§4.5).
+- **Speech content:** a deaf listener does not hear the words (§4.4).
 - **Acoustic / flashbang:** not the combat loop. A **flashbang → temporary
   deafness condition** is buildable now (grenades + condition system → a
-  time-limited hearing-suppression condition). The broader acoustic-event layer
-  (gunshots/explosions/shouting experienced differently by the deaf) is future.
+  time-limited hearing-suppression condition); not built. The broader
+  acoustic-event layer (gunshots/explosions/shouting experienced differently by
+  the deaf) is future.
 
 ### 4.2 Voice mirrors the visual identity stack
-| Visual (exists) | Voice (new, parallel) |
+| Visual | Voice (parallel) |
 |---|---|
 | sdesc | **vocal description + ending** |
 | apparent UID (visual signature) | **voice signature** |
@@ -181,36 +153,96 @@ placeholder; the real consumers are below.)
 
 Reuses the IDENTITY_RECOGNITION pipeline as a *second axis* — not a new system.
 
-### 4.3 The `@voice` system
+### 4.3 The `@voice` system and the voice signature
 A player assigns their **vocal description** (the color, one word: "gravelly")
 plus an **ending** (the grammatical cap: drawl / rasp / lilt / cadence / …) —
 both **curated** (a bounded vocabulary, like visual keywords; not free garbage).
-Set with `@voice` (📋 UNBUILT (no issue): a voice page in the `describe` menu).
-The voice signature is the body's sleeve UID plus that pair and whether a
-modulator is on (`world/voice.py` `get_voice_signature`); changing any of them
-gives a new voice UID. Others learn a voice only by `remember <person in front
-of them> as <name>`, never by hearing alone.
+The vocabulary lives in `world/voice.py` and is config-overridable;
+`voice_phrase` composes the pair.
+
+Set with `@voice` (`commands/CmdCharacter.py`: set / view / list / clear).
+📋 UNBUILT (no issue): a voice page in the `describe` menu.
+
+The voice signature (`world/voice.py` `get_voice_signature`) is the body's
+`sleeve_uid` plus that pair and whether a modulator is on, so everyone has a
+stable, recognisable voice. Changing any of them gives a new voice UID;
+`get_apparent_voice_uid` is the voice parallel of the apparent UID. The modulator slot works like a mask: it is
+derived from the deployed jaw module, not a character flag (#2484; §12).
+
+**The `talking` garble gate.** A wrecked jaw (low `talking`) replaces the
+phrase with `garbled_voice_phrase` ("in a slurred, broken voice") — the
+`talking` capacity's consumer (§4.7).
+
+**Voice memory.** The Character carries a `voice_memory` AttributeProperty
+(`remember_voice` / `erase_voices_named` / `get_assigned_voice_name`). Others
+learn a voice only by `remember <person in front of them> as <name>`, never
+by hearing alone. `remember <target>` / `forget <target>` teach / clear the
+voice alongside the face, skipping garbled speakers. A deaf character learns
+no voice (#2809). A voice is forgotten with the look it was named with, and
+the entry goes (#3825; see IDENTITY_RECOGNITION_SPEC, the `forget` command).
 
 ### 4.4 Speech rendering
 `Bob says, *speaking Common, in a gravelly drawl* "My name's Robert."`
-(The phrase is shown only to those who can see Bob, on a 25% roll per
-utterance; a garbled voice shows "in a slurred, broken voice" every time.)
-- `*…*` = voice flavor; `<language>` slot present-but-always-`Common` (languages
-  are future, the slot is future-proofed).
+- `*…*` = voice flavor. The `<language>` slot is present but always `Common`
+  (the slot is future-proofed; see Not decided).
+- The voice phrase is shown only to those who can see Bob, on a 25% roll per
+  utterance; a garbled voice shows "in a slurred, broken voice" every time
+  (§4.6).
+
+**Hearing gates speech content, not just attribution.**
+- `say`: a deaf + sighted listener sees "{name} says something you can't make
+  out"; deaf + blind is suppressed entirely.
+- Poses / emotes: `world/emote.py` `process_speech` redacts quoted speech to
+  `"..."` for a deaf observer (both `render_dot_pose` and the traditional
+  `render_emote` route through it); the visible action still shows (visual
+  gating is the perception layer, §5).
+- Whisper to a deaf target is redacted too.
+- The speaker always reads their own words.
 
 ### 4.5 The resolution chain (core mechanic)
-"Who said it" resolves by channel, gated by the *listener's* capacities:
+"Who said it" resolves by channel, gated by the *listener's* capacities
+(`world/voice.py` `resolve_speaker_attribution`; `can_see` / `can_hear` read
+`sight` / `hearing`, with override-condition seams for chrome eyes/ears):
 1. **Can see the speaker** (`sight`) → name if known, else visual sdesc.
-2. **Can't see, can hear** (`hearing`) → name if the listener places the *voice*
-   (the §9 2c roll), else "someone". 📋 UNBUILT (no issue): the voice
-   descriptor as a stand-in name ("A gravelly drawl says…"). Over radio the
-   speaker's voice phrase always follows "A voice", and an NPC brain hears "a
-   <description> voice" (RADIO_COMMS_SPEC §2.4).
+2. **Can't see, can hear** (`hearing`) → name if the listener places the
+   *voice* (the discern roll below), else "someone". 📋 UNBUILT (no issue): the
+   voice descriptor as a stand-in name ("A gravelly drawl says…"). Over radio
+   the speaker's voice phrase always follows "A voice", and an NPC brain hears
+   "a <description> voice" (RADIO_COMMS_SPEC §2.4).
 3. **Neither** → "someone."
 
-A mask defeats channel 1, not 2; a voice modulator does not defeat channel 2 outright (it changes the voice
-and adds 3 to the speaker's side of the placing roll, so a listener who named
-the natural voice may still place it); blindness
+**Decided simplification:** an unrecognised / undiscerned voice is *not*
+attributed (no descriptor) — it renders as "someone". A blind listener
+recognises a known voice; a stranger's stays "someone."
+
+**Placing a voice (the discern roll).** Discerning a voice is always a
+determination, mirroring disguise piercing: `attempt_voice_discern` runs
+opposed Intellect-vs-Resonance, with a familiarity buff and a modulator
+penalty, **weighted by the listener's `hearing` capacity**.
+- No roll happens unless the listener has named some voice of that body with
+  `remember`.
+- The verdict is cached per presentation: stored per body and voice UID and
+  never rolled again, so a lost one stands even if the voice is named
+  afterwards.
+- Familiarity counts how many times the listener has named the voice it
+  places by.
+- A modulator adds 3 to the speaker's side of the roll.
+- `forget` drops a won placement and keeps a lost one (#3817). Forgetting a
+  name erases the voices named together with that face and the won placements
+  that rested on them (`world/identity.py` `erase_look`); an AI NPC also drops
+  what it filed under those voices, including a changed voice it could place
+  only by that name (#3861).
+
+**Where the chain applies.** `say`, `to`, `whisper` and the room lines of a
+radio transmission (the `xmit` mutter, `to <radio>,`, a comms organ),
+per-observer. Radio reception places the voice by the same roll
+(`world/radio.py` `_render_radio_line`). A speaker hidden from the observer by
+stealth is placed by voice even when the observer can see
+(`world/voice.py` `_speaker_concealed`).
+
+A mask defeats channel 1, not 2; a voice modulator does not defeat channel 2
+outright (it changes the voice and adds 3 to the speaker's side of the placing
+roll, so a listener who named the natural voice may still place it); blindness
 drops you to 2; deafness removes 2. This chain is the payoff of the whole
 sight+hearing design.
 
@@ -237,102 +269,100 @@ Driven by two inputs: `sight` (can the listener see the speaker) and the
 ### 4.7 The talking ↔ hearing ↔ identity triangle
 Voice recognition needs both ends, tying three capacities + three augments:
 - **Speaker's `talking`** (jaw/tongue) → can they produce a recognizable voice
-  at all (wrecked jaw → no usable signature). Restored by **CYBER_JAW** (built).
+  at all (wrecked jaw → no usable signature; garbled). Restored by
+  **CYBER_JAW**.
 - **Listener's `hearing`** → can they receive it (cyber ears restore).
 - **Voice modulator** → disguises the signature (anonymize v1; *mimic a specific
   voice* later, integrated with the existing `impersonate` disguise command:
   📋 UNBUILT (no issue)).
 - Three sides, three chrome answers. This wires `talking` (otherwise blocked on
-  social) into something concrete now.
+  social) into something concrete.
 
-### 4.8 Deferred
-- **One-ear directionality** (mono = can't localize) is a steeper-than-linear
-  hook reserved for when the **proximity** system lands; no directional consumer
-  in v1.
+### 4.8 One ear
+**One-ear directionality** (mono = can't localize) is a steeper-than-linear
+hook reserved for when the **proximity** system lands; there is no directional
+consumer (see Not decided).
 
 ## 5 · Perception & the five-senses framework (anchor, don't reinvent)
 
-`LOOK_COMMAND_SPEC.md` → **"Sensory Category Framework"** already defines the
+`LOOK_COMMAND_SPEC.md` → **"Sensory Category Framework"** defines the
 categories (**Visual / Auditory / Olfactory / Tactile / Atmospheric**), graceful
 degradation ("categories with no content simply don't display"), and explicitly:
 *"Medical Condition Support: By design — players with sensory limitations see
-reduced content."* Weather + crowd contributions already ship as
-sense-categorized message pools. **The framework was built to consume sensory
-limitation; this spec supplies the input.**
+reduced content."* Weather + crowd contributions are sense-categorized message
+pools. **The framework was built to consume sensory limitation; this spec
+supplies the input.**
 
-- **Capacities are the input.** The renderer reads the looker's `sight`/`hearing`
-  capacities to decide which categories they receive and at what richness.
+- **Capacities are the input.** The renderer reads the looker's capacities to
+  decide which categories they receive and at what richness.
 - **Compensatory enrichment (decided):** lose a sense and the others get
   *dynamically richer* (the renderer re-weights / a blind person's sound-desc
   carries more detail) — an *enhancement* on top of the existing graceful
   degradation, chosen for storytelling and to support the deliberately
   squishy/vulnerable player.
-- **Graceful start:** current single-blob room descs stay valid as the *visual*
-  layer; other-sense components are additive. Full **base-desc sense
-  decomposition** is the future authoring lift, not a prerequisite.
 
-**✅ SHIPPED (ambient gating + enrichment, #592):** `world/perception.py`
-(`blocked_senses` / `can_perceive_sense` / `has_reduced_perception`) gates the
-weather + crowd ambient pools on `sight`→visual / `hearing`→auditory (chrome
-override seams honoured), with a +1 compensatory ambient message when a sense
-is missing.
+### 5.1 The sense gates (`world/perception.py`)
+- `can_see` reads `sight` → **visual**; `can_hear` reads `hearing` →
+  **auditory**; `can_smell` reads `smell` (organ `nose`,
+  `total_loss_penalty: "anosmia"`) → **olfactory**, against a 0.15
+  threshold. Each has an override-condition seam (`sight_override` /
+  `hearing_override` / `SMELL_OVERRIDE_CONDITION` = `smell_override`) for
+  chrome.
+- `blocked_senses` / `can_perceive_sense` / `has_reduced_perception` combine
+  them, so `blocked_senses` can return `visual`, `auditory` and `olfactory`.
+  Tactile / gustatory / atmospheric are never gated.
+- `world.voice` imports `can_see` / `can_hear` from `world/perception.py`.
+- The module's *other* export, `can_perceive`, is a different gate — the
+  stealth presence check, which reads no capacity — with its own wider
+  consumer set; don't conflate the two when changing either.
 
-> **Scope true-up 2026-09-11.** Two things grew past this paragraph. (a) A
-> **third** sense is gated: `smell` → olfactory (`world/perception.py`
-> `can_smell` / `SMELL_OVERRIDE_CONDITION`), so `blocked_senses` can return
-> `olfactory` as well as `visual` / `auditory`. (b) The primitives are no longer
-> a perception-render-only input — `can_see` / `can_hear` / `can_perceive_sense`
-> are now consumed by `world/stealth.py`, `world/radio.py`, `world/speech.py`,
-> `world/emote.py`, `world/identity.py`, `commands/CmdCommunication.py`,
-> `commands/CmdTheft.py`, `typeclasses/exits.py`, `typeclasses/rooms.py`
-> (base desc + adjacent-room sightings), the director (`security` / `crime`) and
-> the LLM NPC brains (`world/llm/observation.py`, `world/llm/reflex.py`).
-> "One capacity, many consumers" (§1) landed harder than this section records.
-> (Note the module's *other* export, `can_perceive`, is a different gate — the
-> stealth presence check, which reads no capacity — with its own wider consumer
-> set; don't conflate the two when changing either.)
+**Consumers of the sense gates.** `can_see` / `can_hear` /
+`can_perceive_sense` are read by `world/stealth.py`, `world/radio.py`,
+`world/speech.py`, `world/emote.py`, `world/identity.py`,
+`commands/CmdCommunication.py`, `commands/CmdTheft.py`, `typeclasses/exits.py`,
+`typeclasses/rooms.py` (base desc + adjacent-room sightings), the director
+(`security` / `crime`) and the LLM NPC brains (`world/llm/observation.py`,
+`world/llm/reflex.py`).
 
-**✅ SHIPPED (base room-desc five-senses decomposition):** `Room.get_display_desc`
-(`typeclasses/rooms.py`) composes the room description from only the sense layers
-the looker can perceive — the visual blob (`db.desc`) when sighted, plus authored
-non-visual layers (`db.sense_descs`: auditory/olfactory/tactile/atmospheric) for
-senses they still have. **A blind looker loses the visual prose but reads the
-room by sound/smell/feel; deaf drops the auditory layer.** Opt-in per room via
-the `@roomsense` builder command — rooms with no sense layers + a sighted looker
-render exactly as before (zero regression). Weather/crowd still append (also
-perception-gated). Tests: `test_room_five_senses.py`.
+### 5.2 Ambient pools
+The weather + crowd ambient pools (`get_sensory_messages`,
+`get_crowd_contributions`) drop content the looker can't perceive (blind → no
+visual weather/crowd; deaf → no auditory), and a sense-reduced looker gets a
+**+1 compensatory** ambient message (#592).
 
-> **⚠️ Correction 2026-09-11 — `@roomsense` does not exist.** It shipped with
-> this work (#623 / #624) and was then **deliberately removed** in #625 / #626
-> (`ed082a38`): "Remove @roomsense (unused builder scaffolding; room sense data
-> authored directly to the DB, render reads the attribute, nothing depends on
-> it)." The *render* half of this paragraph is correct and live; only the
-> authoring path named here is wrong. Today sense layers are authored straight
-> onto `room.db.sense_descs` by the build scripts (`scripts/builds/*.py`) and
-> **read back** by `@room` (`commands/CmdBuildTools.py` `CmdRoomProfile`, which
-> lists the authored layers).
+### 5.3 Base room description by sense layer
+`Room.get_display_desc` (`typeclasses/rooms.py`) composes the room description
+from only the sense layers the looker can perceive (#623 / #624): the visual
+blob (`db.desc`) when sighted, plus authored non-visual layers
+(`db.sense_descs`: auditory/olfactory/tactile/atmospheric) for senses they
+still have. **A blind looker loses the visual prose but reads the room by
+sound/smell/feel; deaf drops the auditory layer.** Layers are opt-in per room:
+a single-blob room desc stays valid as the *visual* layer, and a room with no
+sense layers renders to a sighted looker exactly as the blob alone. Weather /
+crowd still append (also perception-gated).
 
-## 6 · Manipulation & Moving — the per-effector resolver (decided)
+Sense layers are authored straight onto `room.db.sense_descs` by the build
+scripts (`scripts/builds/*.py`); there is no builder command for authoring
+them. `@room` (`commands/CmdBuildTools.py` `CmdRoomProfile`) reads them back,
+listing the authored layers.
 
-Unlike `sight`/`hearing` (whole-body), these route through a shared
-**effector resolver** — `resolve_effectors(character, action)` → returns
-**(a) the effective capacity for the action** and **(b) meta-bonuses from
-surplus effectors**, both measured against the **species baseline** derived
-*dynamically* from anatomy (§6.3). An action declares the effectors it needs
-(weapon `hands_required`; locomotion; future jump/athletics → legs).
+## 6 · Manipulation & Moving — per-effector scoping (decided)
 
-> **⚠️ Naming correction 2026-09-11 — there is no `resolve_effectors`.** A
-> repo-wide grep for that name matches only the sentence above. The *shape*
-> described here shipped, but split in two under different names: the
-> per-effector capacity scoping is
-> `MedicalState.calculate_capacity_scoped(capacity, containers)`
-> (`world/medical/core.py`, with the contribution math extracted into
-> `_resolve_capacity_contribution` and shared with the body-wide method), read
-> by its two consumers `manipulation_hit_factor` and `moving_dodge_factor`
-> (`world/combat/capacity.py`); the meta-bonus half (b) is separate again —
-> `surplus_limb_initiative_bonus` (`world/combat/utils.py`) and the one door
-> `choose_weapon` (`world/combat/weapon_choice.py`), see §6.1. One resolver returning both halves was
-> the design; two collaborating layers is what exists.
+Unlike `sight`/`hearing` (whole-body), these are measured against the
+**species baseline** derived *dynamically* from anatomy (§6.4), and an action
+declares the effectors it needs (weapon `hands_required`; locomotion; future
+jump/athletics → legs). The design is one resolver returning **(a) the
+effective capacity for the action** and **(b) meta-bonuses from surplus
+effectors**; there is no single `resolve_effectors` function. The two halves
+are separate collaborating layers:
+- **(a)** `MedicalState.calculate_capacity_scoped(capacity, containers)`
+  (`world/medical/core.py`) computes a capacity from only the given
+  containers' organs; its contribution math, `_resolve_capacity_contribution`,
+  is shared with the body-wide method. Its consumers are
+  `manipulation_hit_factor` and `moving_dodge_factor`
+  (`world/combat/capacity.py`).
+- **(b)** `surplus_limb_initiative_bonus` (`world/combat/utils.py`) and the
+  one door `choose_weapon` (`world/combat/weapon_choice.py`), §6.1.
 
 ### 6.1 Manipulation — two distinct outputs
 
@@ -344,41 +374,45 @@ them into one body-wide number is wrong.
   one-armed character with a pistol in their good hand fights at **full**
   accuracy — the missing arm is irrelevant to that weapon. (Body-wide
   manipulation ≈ `0.5` for one arm would wrongly halve it.)
+  `manipulation_hit_factor(attacker, weapon, slots=...)` takes the slots the
+  attack occupies (from `choose_weapon`) or else finds the gripping slot(s)
+  from `attacker.hands`, inverts `limb_downstream_chain` to the hand's limb
+  organs, and scopes manipulation there. Manipulation is the minimum over the
+  slots: a natural weapon on a grasping host scopes to that hand, an akimbo
+  pair to both. Unarmed and a natural weapon on a non-grasping host (Jawz)
+  fall back to body-wide manipulation. `manipulation_override` is the
+  chrome-arm seam.
 - **(Q2) Breadth / readiness — from the *count of functional manipulators vs
   baseline*.** Buys breadth, not accuracy: **initiative + hard-to-fully-disarm
   + loadout-readiness**. NOT extra attacks or raw damage (combat-balance
   guardrail). Three sub-payoffs, all **decided 2026-06-20**:
-  - **Loadout-readiness ✅ SHIPPED — the auto-prioritizer.** Rather than a
-    weapon-swap action economy, combat *automatically* brings an in-hand
-    weapon to bear for the engagement: **range-appropriate first** (only ranged
-    reach at range; anything works point-blank), then, until 2026-10-06, the
-    highest damage. The engagement — not the weapon — decides melee vs
-    ranged. Since 2026-10-05 the one door
-    `world/combat/weapon_choice.py` `choose_weapon` (used by `process_attack`
-    and every other reader of the wielded weapon; MULTI_WEAPON_COMBAT_SPEC §4):
-    range filter first, THEN natural-weapon precedence, then akimbo grouping,
-    then the wheel (slice 2, owner ruling 2026-10-06): one option swings per
-    attack and the next attack takes the next option that can reach, in the
-    body's slot order; "then highest damage" is gone. Single-weapon fighters
-    unchanged. Manipulation is the minimum over the
-    choice's slots (`manipulation_hit_factor(attacker, weapon, slots=...)`): a
-    natural weapon on a grasping host scopes to that hand, an akimbo pair to
-    both, Jawz stays body-wide. Tests: `test_weapon_autoprioritizer.py`,
-    `test_combat_manipulation_resolver.py`. Holding several weapons
-    (multi-armed / cyber tail) is what feeds the picker more options.
-  - **Disarm — *once per gripping hand* ✅ ALREADY SATISFIED.** `resolve_disarm`
-    (`world/combat/actions.py`) already knocks out **one** weapon per successful
-    attempt, so a multi-weapon fighter needs one disarm *per* gripping hand to be
-    fully stripped — exactly the decided behaviour, emergent from the existing
-    mechanic. (Edge: a 2H weapon held in two hands disarms as one item — fine.)
-  - **Initiative — ramp then cap ✅ SHIPPED.** `surplus_limb_initiative_bonus`
+  - **Loadout-readiness — the auto-prioritizer.** Rather than a weapon-swap
+    action economy, combat *automatically* brings an in-hand weapon to bear
+    for the engagement: **range-appropriate first** (only ranged reach at
+    range; anything works point-blank). The engagement — not the weapon —
+    decides melee vs ranged. The one door `world/combat/weapon_choice.py`
+    `choose_weapon` (used by `process_attack` and every other reader of the
+    wielded weapon; MULTI_WEAPON_COMBAT_SPEC §4) applies the range filter
+    first, THEN natural-weapon precedence, then akimbo grouping, then the
+    wheel: one option swings per attack and the next attack takes the next
+    option that can reach, in the body's slot order. Single-weapon fighters
+    are unaffected. Holding several weapons (multi-armed / cyber tail) is
+    what feeds the picker more options. *The wheel (slice 2, owner ruling
+    2026-10-06) replaced the earlier "then highest damage" step.*
+  - **Disarm — *once per gripping hand* (already satisfied).** `resolve_disarm`
+    (`world/combat/actions.py`) knocks out **one** weapon per successful
+    attempt, so a multi-weapon fighter needs one disarm *per* gripping hand to
+    be fully stripped — exactly the decided behaviour, emergent from the
+    existing mechanic. (Edge: a 2H weapon held in two hands disarms as one
+    item — fine.)
+  - **Initiative — ramp then cap.** `surplus_limb_initiative_bonus`
     (`world/combat/utils.py`) adds to the `d20 + motorics` initiative roll.
     Triangular (accelerating) increments per surplus grasping limb beyond the
-    species baseline — the 3rd hand is a small jump, the run to ~6 limbs is the
-    reason to chrome up, then it **caps completely** (extra limbs past 6 give
-    nothing). Human: `+0/+1/+3/+6/+10` for 2/3/4/5/6 hands, flat beyond.
-    Decided 2026-06-20 (magnitudes halved per balance pass). Tests:
-    `test_initiative_limbs.py`.
+    species baseline — the 3rd hand is a small jump, the run to ~6 limbs is
+    the reason to chrome up, then it **caps completely** at 4 surplus limbs
+    (extra limbs past 6 give nothing). Human: `+0/+1/+3/+6/+10` for 2/3/4/5/6
+    hands, flat beyond. Decided 2026-06-20 (magnitudes halved per balance
+    pass).
 
 So: one-armed → full per-weapon accuracy, reduced breadth; four-armed → same
 per-weapon accuracy, large breadth (the right weapon auto-selected, near-
@@ -387,39 +421,41 @@ undisarmable, faster initiative).
 **Minimum requirements + scaled penalty.** A weapon's `hands_required` is a
 *minimum*; the gripping effectors must meet it. **Under-gripping** (2H weapon
 held one-handed, no free second hand) is a **scaled** handling penalty, not a
-flat tier. *Shipped 2026-10-06 as `grip_hit_factor` (GRIP_ENFORCEMENT_SPEC §4):
-the grip is implicit, a free second slot counts as the second hand, and the
-placeholder is 0.60 for one hand of two.* Combining multiple gripping hands on one weapon scales handling
-(the weaker hand drags it — exact min-vs-blend TBD, §10).
+flat tier: `grip_hit_factor` (GRIP_ENFORCEMENT_SPEC §4). The grip is
+implicit, a free second slot counts as the second hand, and the placeholder
+is 0.60 for one hand of two. Combining multiple gripping hands on one weapon
+scales handling: the weaker hand drags it (`min` for now; exact min-vs-blend
+TBD, see Not decided).
 
-**Effector targeting already exists.** `wield <item> in <hand>` is implemented
-and matches the slot by name (`wield baton in left`); since the `hands` view
-*is* the grasping-slot set (prehensile tail included), `wield pistol in tail`
-works the moment the slot exists. Switching/choosing weapon effectors is
-already supported — no new command needed.
+**Effector targeting already exists.** `wield <item> in <hand>` matches the
+slot by name (`wield baton in left`); since the `hands` view *is* the
+grasping-slot set (prehensile tail included), `wield pistol in tail` works the
+moment the slot exists. Switching/choosing weapon effectors needs no new
+command.
 
 ### 6.2 Moving — aggregate, species-normalized
 
 You don't *pick a leg* to move with, so `moving` is the **whole locomotion
 apparatus**, normalized to species baseline (human losing 1 of 2 legs ≫ rat
-losing 1 of 4 — already species-aware via `get_species_body_capacities`).
-Drives: **dodge** (combat defense), **flee**, **movement speed**, and **future
-jump/athletics**. Hard floor at the table's `0.15` incapacitation_threshold =
-can't locomote (drag yourself).
+losing 1 of 4 — species-aware via `get_species_body_capacities`).
 
-> **Build-state note 2026-09-11.** Only **dodge** is wired: `moving` has exactly
-> one runtime consumer, `moving_dodge_factor` (`world/combat/capacity.py`),
-> where the 0.15 threshold collapses *evasion*, not locomotion. Nothing gates
-> movement itself — no `at_pre_move`, compass, `flee` or jump check reads the
-> capacity — so "can't locomote (drag yourself)" is design intent. That gate is
-> the movement-policing substrate, **Phase 7 of
-> `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md`, still "Not started"** (which
-> also records `incapacitation_threshold: 0.15` on `moving` as an unread flag
-> waiting on that substrate); §2's "flee/jump future" is the accurate row.
+- **Dodge.** `world/combat/capacity.py` `moving_dodge_factor` multiplies the
+  *target's* motorics in `attack.py` (dodge = motorics × moving). Below the
+  table's `0.15` incapacitation_threshold evasion collapses to a flail.
+  `moving_override` is the chrome-legs seam. This is `moving`'s only runtime
+  consumer.
+- **Not built:** flee, movement speed and jump/athletics reading `moving`, and
+  the hard floor at `0.15` = can't locomote (drag yourself). No `at_pre_move`,
+  compass, `flee` or jump check reads the capacity. That gate is the
+  movement-policing substrate, Phase 7 of
+  `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md`, which also records
+  `incapacitation_threshold: 0.15` on `moving` as an unread flag waiting on
+  that substrate.
 
 ### 6.3 The combat capacity stack (multiplicative)
 
-Capacities *modify* the GRIM-derived result. Offense rides arms+eyes; defense
+Capacities *modify* the GRIM-derived result, each multiplied into the
+motorics term in `world/combat/attack.py`. Offense rides arms+eyes; defense
 rides legs:
 
 | Action | Stack |
@@ -433,8 +469,8 @@ rides legs:
 Baseline effector counts come straight from anatomy — count **grasping
 organs** (manipulation) / **locomotion organs** (moving) per species. New
 species, extra appendages, and cyberware are auto-counted; nothing hardcoded.
-Builds on existing pieces: weapon `hands_required`, the `hands` grasping-slot
-system, species anatomy tables.
+Builds on weapon `hands_required`, the `hands` grasping-slot system, and the
+species anatomy tables.
 
 ## 7 · Blood filtration & condition-driven appearance (chronic/metabolic)
 
@@ -442,223 +478,84 @@ system, species anatomy tables.
 neither combat nor perception — it modifies a **chronic condition over time**,
 proving the model spans the medical sim too.
 
-### 7.1 Infection resistance (v1 — wireable now) — ✅ SHIPPED
+### 7.1 Infection resistance
 `blood_filtration` is a **physiological multiplier parallel to
 `InfectionCondition.environmental_modifier`** — failing kidneys make an
-infection you *already have* worsen faster and clear slower:
-*(Built: `world/medical/conditions.py` `read_blood_filtration` + the
-worsen/heal multipliers in `InfectionCondition.tick_effect` — worsen
-×(1+slope·(1−filtration)), heal ×max(floor, filtration). Fail-open. Tests:
-`test_blood_filtration_infection.py`.)*
-- worsen-hazard `×` filtration factor (low filtration → faster progression),
-- treated-heal rate `×` filtration (low filtration → it lingers despite treatment).
+infection you *already have* worsen faster and clear slower
+(`world/medical/conditions.py` `read_blood_filtration` + the multipliers in
+`InfectionCondition.tick_effect`; fail-open):
+- worsen-hazard `×(1+slope·(1−filtration))` (low filtration → faster
+  progression),
+- treated-heal rate `×max(floor, filtration)` (low filtration → it lingers
+  despite treatment).
 
 **Not acquisition** — kidneys don't stop you *catching* an infection (wound care
 + the environmental modifier do that); they govern how your body *fights one
 off*. `disease_resistance` = "how you process an infection," not "whether you
-catch one." Slots straight into the existing multiplier.
+catch one."
 
-### 7.2 Renal failure (buildable on the chronic-conditions substrate) — ✅ SHIPPED
-*(Built: `RenalFailureCondition` (`world/medical/conditions.py`) spawned/cleared
-by `MedicalState._update_renal_failure` in `update_vital_signs` (onset at
-filtration ≤0.05, clears ≥0.4 — hysteresis). Obtunds via `get_consciousness_penalty`
-(reuses the existing suppression sum, capped at 0.6); shows `uremic` via the
-§7.3 hook. Restoring filtration (cyber/donor kidney) clears it. Tests:
-`test_renal_failure.py`.)*
+### 7.2 Renal failure
+Kidney failure → a **RenalFailure** chronic condition (`RenalFailureCondition`,
+`world/medical/conditions.py`), realizing the `blood_filtration →
+consciousness` modifier that `update_vital_signs` doesn't apply directly.
+`MedicalState._update_renal_failure` (called from `update_vital_signs`)
+spawns it at filtration ≤0.05 and clears it at ≥0.4 (hysteresis). Restoring
+filtration (cyber/donor kidney, §7.4) clears it. Effects:
+- **consciousness suppression** via `get_consciousness_penalty` (reuses the
+  existing suppression sum, capped at 0.6);
+- **its signature — a visible skin-pigment shift** (sallow / uremic / ashen);
+  it shows `uremic` via the §7.3 hook.
 
-> **Not lethal — owner ruling 2026-09-24 (#3402): "Considering how much weaker it makes someone — I think that's tough enough."**
-> At maximum severity an otherwise healthy patient sits at consciousness 0.4,
-> ten points above the knockout line: fully able to act, but a little blood
-> loss, one drink or a knock to the head puts them down, for as long as they
-> have no kidney. That fragility is the cost. The original build (#607)
-> slow-killed by draining blood through `get_blood_loss_rate` at terminal
-> severity; #2936 removed the subtraction that billed it (bleeding's double
-> billing) and the drain was orphaned by accident. The ruling makes survival
-> the design: the drain, its two constants and the schema's unread
-> `total_loss_fatal` flag are gone. If lethality is ever wanted, the shape is
-> the medical roadmap's `fatal_at_severity` on chronic conditions, which does
-> not consume the untuned bleeding numbers.
+It rides the chronic-conditions substrate (parallel to the parked ischemia
+clock).
 
-Total kidney loss (filtration `0`) → a **RenalFailure** chronic condition,
-realizing the `blood_filtration → consciousness` modifier that
-`update_vital_signs` doesn't apply directly. Effects: consciousness
-suppression, **and its signature — a visible skin-pigment shift** (sallow /
-uremic / ashen). Rides the chronic-conditions substrate (parallel to the
-parked ischemia clock). *(Originally specified as "suppression + slow death";
-superseded by the ruling above.)*
+**Not lethal — owner ruling 2026-09-24 (#3402): "Considering how much weaker it makes someone — I think that's tough enough."**
+At maximum severity an otherwise healthy patient sits at consciousness 0.4,
+ten points above the knockout line: fully able to act, but a little blood
+loss, one drink or a knock to the head puts them down, for as long as they
+have no kidney. That fragility is the cost. Renal failure drains no blood and
+does not kill; the schema carries no `total_loss_fatal` flag for it. If
+lethality is ever wanted, the shape is the medical roadmap's
+`fatal_at_severity` on chronic conditions, which does not consume the untuned
+bleeding numbers. *(Renal failure was originally specified as "suppression +
+slow death"; the 2026-09-24 ruling (#3402) made survival the design.)*
 
-### 7.3 Condition-driven appearance symptoms (cross-cutting hook) — ✅ SHIPPED
-*(Built: `world/medical/appearance.py` `get_appearance_tint` / `get_active_symptom`
-— tints the longdesc render via `appearance_mixin`, overriding base skintone.
-Capacity/vitals built-ins: `cyanosis` (failing breathing), `pallor` (blood loss).
-Condition hook: any condition exposing `appearance_symptom()` (e.g. RenalFailure
-→ `uremic`). Priority-ordered, fail-open. Tests: `test_condition_appearance.py`.)*
+### 7.3 Condition-driven appearance symptoms (cross-cutting hook)
+**Conditions can carry visible symptoms** that tint the rendered skintone /
+appearance, layered on the existing skintone system:
+`world/medical/appearance.py` `get_appearance_tint` / `get_active_symptom`
+tint the longdesc render via `appearance_mixin`, overriding base skintone.
+Priority-ordered, fail-open.
+- Capacity/vitals built-ins: `cyanosis` (failing breathing), `pallor` (blood
+  loss).
+- Condition hook: any condition exposing `appearance_symptom()` (e.g.
+  RenalFailure → `uremic`).
 
-Renal failure's pigment shift generalizes: **conditions can carry visible
-symptoms** that tint the rendered skintone / appearance (layered on the existing
-skintone system), legible to `look`, diagnosis, observers, *and* other systems.
+The symptoms are legible to `look`, diagnosis, observers, *and* other systems.
 The body's state becomes **legible at a glance** — a RipperDoc reads you across
 the room; players see the sick one without a `diagnose`. The same hook yields
 **cyanosis** (low `breathing` → blue lips), **jaundice** (liver), **pallor**
 (blood loss). And conditions are **first-class signals other systems extrapolate
 from**: a toxin substance can trigger/worsen renal failure, diagnosis surfaces
-it, another condition compounds it. *(Diagnose reads renal failure as
-"uraemia — the kidneys have failed" at DC 4, #3653; it had no phrase before.)*
+it, another condition compounds it. Diagnose reads renal failure as
+"uraemia — the kidneys have failed" at DC 4 (#3653).
 
-### 7.4 Remediation = chrome OR transplant (RipperDoc) — ✅ SHIPPED
-*(Built: `CYBER_LEFT_KIDNEY` / `CYBER_RIGHT_KIDNEY` prototypes — single-organ
-replacements at the canonical kidney slots, capacity `blood_filtration`. A
-harvested **donor** kidney installs the same way (canonical name → capacity
-auto-restores) with no new code. Restoring filtration clears RenalFailure via
-the §7.2 despawn. Tests: `test_capacity_chrome.py`. Dialysis stopgap still
-future.)*
+### 7.4 Remediation = chrome OR transplant (RipperDoc)
+`CYBER_LEFT_KIDNEY` / `CYBER_RIGHT_KIDNEY` are single-organ replacements at
+the canonical kidney slots, capacity `blood_filtration`. A harvested **donor**
+kidney installs the same way (canonical name → capacity auto-restores) with
+no new code. Restoring filtration clears RenalFailure (§7.2).
 
-Per §1: a **cyber kidney** *and* a **transplanted donor kidney** (harvested
-organ, canonical name → capacity auto-restores) both fix filtration — the
-general remediation principle for *any* capacity-restoring augment, not kidney-
-specific. A dialysis implant/consumable is the future non-chrome, non-transplant
-stopgap.
+Per §1, a cyber kidney *and* a transplanted donor kidney both fix filtration —
+the general remediation principle for *any* capacity-restoring augment, not
+kidney-specific. A dialysis implant/consumable is the future non-chrome,
+non-transplant stopgap (see Unbuilt).
 
-## 8 · Capacity → consumer matrix (summary)
-
-See §2. Build cost ascends: combat hooks (cheap, multiplicative) → identity/voice
-(reuse pipeline) → perception render (framework exists; base-desc decomposition
-is the content lift) → per-effector resolver (manipulation/moving).
-
-## 9 · Build sequencing (layered)
-
-1. **Combat consumers** (`sight`→ranged/melee) — proves multiplicative +
-   suppressible-effect pattern on a whole-body capacity. **✅ SHIPPED** —
-   `world/combat/capacity.py` `sight_hit_factor()` multiplies the attacker's
-   motorics term in `world/combat/attack.py` `process_attack`; piecewise curves
-   (ranged steep, melee light), `sight_override` condition suppresses the
-   penalty (the chrome seam — augment not built yet). Tests:
-   `world/tests/test_combat_capacity_sight.py`.
-2. **Identity / voice** — `@voice` + voice signature + the resolution chain +
-   rendering heuristic; gates visual recognition on `sight`, voice on `hearing`.
-   **✅ CORE SHIPPED (2a/2b/2c/2d).** Deferred: voice-descriptor-as-identity +
-   §4.6 multi-voice disambiguation.
-   - **2d ✅ SHIPPED — deaf audio gating.** Hearing gates speech *content*, not
-     just attribution. `say`: a deaf+sighted listener sees "{name} says
-     something you can't make out"; deaf+blind is suppressed entirely.
-     Poses/emotes: `world/emote.py` `process_speech` redacts quoted speech to
-     `"..."` for a deaf observer (both `render_dot_pose` and the traditional
-     `render_emote` now route through it); the visible action still shows
-     (visual gating is layer 3). Whisper to a deaf target is redacted too. The
-     speaker always reads their own words. Tests in `test_emote.py`.
-   - **2a ✅ SHIPPED — voice signature foundation.** `world/voice.py`: curated
-     description+ending vocabulary (config-overridable), composer
-     (`voice_phrase`), and the **`talking`-capacity garble gate** (§4.7 — first
-     consumer of the otherwise-blocked `talking` capacity: wrecked jaw →
-     `garbled_voice_phrase`). `@voice` command (`commands/CmdCharacter.py`,
-     set/view/list/clear). `say` renders flavour: garble always, otherwise the
-     §4.6 "can-see → sporadic sprinkle" branch (the only branch reachable until
-     2c). Tests: `world/tests/test_voice_identity.py`.
-   - **2b ✅ SHIPPED — voice memory + recognition.** The apparent-UID /
-     `recognition_memory` parallel in `world/voice.py`: `get_voice_signature`
-     (salted on `sleeve_uid`, so everyone has a stable recognisable voice + a
-     modulator slot that, like a mask, changes the UID — derived from the
-     deployed jaw module, not a character flag, #2484),
-     `get_apparent_voice_uid`, and a `voice_memory` AttributeProperty on the
-     Character with `remember_voice`/`erase_voices_named`/`get_assigned_voice_name`
-     (a voice is forgotten with the look it was named with, and the entry goes: #3825; see
-     IDENTITY_RECOGNITION_SPEC, the `forget` command).
-     `remember <target>`/`forget <target>` now teach/clear the voice alongside
-     the face (skipping garbled speakers). Tests in `test_voice_identity.py`.
-     *Not yet consumed by display* — that's 2c.
-   - **2c ✅ SHIPPED — the resolution chain.** `resolve_speaker_attribution`
-     (`world/voice.py`) gates speech attribution on the *listener's* capacities:
-     **can-see → display name; can't-see-but-hear → voice discernment; neither →
-     "someone."** `can_see`/`can_hear` read `sight`/`hearing` (override-condition
-     seams for chrome eyes/ears). **Discerning a voice is always a determination**
-     mirroring disguise piercing: `attempt_voice_discern` runs opposed
-     Intellect-vs-Resonance, familiarity buff, modulator penalty, **weighted by
-     the listener's `hearing` capacity** (the consumer — `hearing` finally lands),
-     cached per presentation; forget drops a won placement and keeps a lost one (#3817). As built: no roll happens unless the listener has named some voice of that
-     body with `remember`; the verdict is stored per body and voice UID and never
-     rolled again, so a lost one stands even if the voice is named afterwards.
-     Familiarity counts how many times the listener has named the voice it places
-     by. A deaf character learns no voice (#2809). Forgetting a name erases the
-     voices named together with that face and the won placements that rested on
-     them (`world/identity.py` `erase_look`); an AI NPC also drops what it filed
-     under those voices, including a changed voice it could place only by that
-     name (#3861). **Decided simplification:**
-     an unrecognised/undiscerned voice is *not* attributed (no descriptor) — it
-     renders as "someone"; the voice-descriptor-as-identity ("a gravelly drawl
-     says…") and the §4.6 multi-voice disambiguation are **deferred**. Wired into
-     `say`, `to`, `whisper` and the room lines of a radio transmission (the `xmit`
-     mutter, `to <radio>,`, a comms organ), per-observer; 2a flavour now confined
-     to the can-see branch. Radio reception places the voice by the same roll
-     (`world/radio.py` `_render_radio_line`). A speaker hidden from the observer
-     by stealth is placed by voice even when the observer can see
-     (`_speaker_concealed`). Tests in
-     `test_voice_identity.py`. **Headline payoff live: a blind listener recognises
-     a known voice; a stranger's stays "someone."**
-3. **Perception render** — capacities gate LOOK sensory categories + compensatory
-   enrichment. **✅ CORE SHIPPED.** `world/perception.py` (`blocked_senses` /
-   `can_perceive_sense` / `has_reduced_perception`) reads `sight`→visual,
-   `hearing`→auditory from the voice-layer primitives (chrome override seams
-   honoured); olfactory/tactile/atmospheric never gated.
-   **⚠️ Two corrections (2026-09-11):** (i) the primitives moved the *other*
-   way — #637 / #638 (`059ac493`) lifted `can_see` / `can_hear` out of
-   `world/voice.py` into `world/perception.py`, and `world.voice` now imports
-   them from there; (ii) **olfactory IS gated** — `can_smell` reads the `smell`
-   capacity (nose organ) against a 0.15 threshold with a `smell_override` seam,
-   so `blocked_senses` returns `olfactory` for an anosmic looker. Tactile /
-   gustatory / atmospheric remain ungated, as written. The weather + crowd
-   ambient pools (`get_sensory_messages`, `get_crowd_contributions`) now drop
-   content the looker can't perceive (blind → no visual weather/crowd; deaf →
-   no auditory), and a sense-reduced looker gets a **+1 compensatory** ambient
-   message. Tests: `world/tests/test_perception.py`. ~~**Deferred (spec §5,
-   accepted):** base single-blob room-desc sense decomposition — the visual
-   layer stays whole for now; gating the additive pools is the buildable slice.~~
-   **✅ Superseded 2026-09-11 — that decomposition shipped** (#623 / #624,
-   `d7efe6b2`): `Room.get_display_desc` (`typeclasses/rooms.py`) composes the
-   description from only the perceivable sense layers, so a blind looker reads
-   the room by its authored non-visual layers. §5's ✅ marker is the current
-   record; the deferral above is history and contradicts it.
-4. **Per-effector resolver** — `manipulation`/`moving` (and the multi-appendage
-   future). **✅ CORE SHIPPED (4a/4b).** ~~Deferred: Q2 breadth meta-bonuses
-   (surplus-appendage initiative / disarm-resist / loadout) — a future combat
-   revision.~~
-   **✅ Superseded 2026-09-11 — the Q2 breadth bonuses are in:**
-   **loadout-readiness** via the one door `choose_weapon`
-   (`world/combat/weapon_choice.py`, called from `process_attack` in
-   `world/combat/attack.py`); **initiative** via `surplus_limb_initiative_bonus`
-   (`world/combat/utils.py`), added to the `d20 + motorics` initiative roll —
-   triangular increments capped at 4 surplus limbs, so `+0/+1/+3/+6/+10` for a
-   human's 2–6 hands and flat beyond; **disarm-resist** ruled already satisfied
-   — `resolve_disarm` (`world/combat/actions.py`) strips one item per success.
-   §6.1 carries the shipped markers; this line is the stale half.
-   - **4a ✅ SHIPPED — `moving` → dodge (defensive half).** `world/combat/
-     capacity.py` `moving_dodge_factor` multiplies the *target's* motorics in
-     `attack.py` (dodge = motorics × moving). Whole-body, species-normalized
-     (§6.2 — you don't pick a leg); hard floor at the table's 0.15
-     incapacitation_threshold collapses evasion to a flail; `moving_override`
-     chrome-legs seam. Tests in `test_combat_capacity_sight.py`.
-   - **4b ✅ SHIPPED — `manipulation` → hit (per-effector, offensive half).**
-     `MedicalState.calculate_capacity_scoped(capacity, containers)` computes a
-     capacity from only one limb's organs (the contribution math is extracted
-     into `_resolve_capacity_contribution`, shared with the body-wide method).
-     `world/combat/capacity.py` `manipulation_hit_factor(attacker, weapon)` finds
-     the gripping slot(s) from `attacker.hands`, inverts `limb_downstream_chain`
-     to the hand's limb organs, and scopes manipulation there — so a one-armed
-     shooter with a good hand fights at **full** accuracy (Q1 isolation, tested).
-     Two-handed grips take the weaker hand (`min`; exact blend TBD §10);
-     unarmed/natural-weapon falls back to body-wide; `manipulation_override`
-     chrome-arm seam. Multiplied into the attacker's motorics in `attack.py`,
-     completing the stack (ranged: motorics × sight × manipulation; melee:
-     motorics × manipulation × light-sight; dodge: motorics × moving). Breadth
-     meta-bonuses (Q2): see §6.1. Tests: `test_combat_manipulation_resolver.py`.
-
-Each layer ships standalone value. The five-senses *description model* (§5) is
-the one piece worth pinning early so earlier layers don't contradict it.
-
-### 9.5 · Chrome — the augments that remediate (✅ SHIPPED)
+## 12 · Chrome — the augments that remediate
 
 Crippling injury is remediated by chrome (§1). The augments restore a capacity
 the idiomatic way — **capacity-bearing replacement organs at the canonical organ
-names** (like the pre-existing `CYBER_ARM`→manipulation, `CYBER_JAW`→talking), so
+names** (like `CYBER_ARM`→manipulation, `CYBER_JAW`→talking), so
 `calculate_body_capacity` counts them and every consumer sees the sense /
 locomotion restored, no special-case needed:
 
@@ -667,44 +564,75 @@ locomotion restored, no special-case needed:
 - `CYBER_LEG` → `moving` (side-agnostic `augment_organs` chassis).
 - `VOICE_MODULATOR` → a jaw-hardpoint module hosting a `voice_modulator`
   ability (the voice-disguise; shifts the voice UID, so a listener who named
-  the natural voice must win the placing roll against a penalty of 3, §9 2c).
-  `/modulate`. Obtainable only by staff spawn today: no clinic, shop or loot
-  table carries it. 📋 UNBUILT (no issue). `world/voice.py` `is_voice_modulated` reads the deployed state
-  off the organ, so destroying or losing the module ends the disguise (#2484).
+  the natural voice must win the placing roll against a penalty of 3, §4.5).
+  `/modulate`. Obtainable only by staff spawn: no clinic, shop or loot table
+  carries it. 📋 UNBUILT (no issue). `world/voice.py` `is_voice_modulated`
+  reads the deployed state off the organ, so destroying or losing the module
+  ends the disguise (#2484).
 
 The `*_override` conditions (`sight_override`/`hearing_override`/`moving_override`/
 `manipulation_override`) remain a distinct **enhancer** seam — for an augment that
 grants a sense *without* the organ, where replacement doesn't apply.
 
-- **Combat blindsight ✅ SHIPPED** (decided 2026-06-20: combat-only, "enhance to
-  full perception later"). `TARGETING_PROCESSOR` forearm-hardpoint module → a
-  toggleable `blindsight` ability (`/blindsight`), which
-  `world/combat/capacity.py` `sight_hit_factor` honours to restore combat aim
-  with the eyes gone — read off the organ via `has_deployed_ability`, so a
-  destroyed module ends it (#2484). **Combat-only by construction:** it's a
-  separate seam from `sight_override`, so `can_see` (perception/recognition)
-  stays false —
-  rooms and faces remain dark. A future fuller-sense suite would set the real
-  `sight_override` to also light up perception. Tests: `test_blindsight.py`.
+**Combat blindsight** (decided 2026-06-20: combat-only, "enhance to full
+perception later"). The `TARGETING_PROCESSOR` forearm-hardpoint module carries
+a toggleable `blindsight` ability (`/blindsight`), which
+`world/combat/capacity.py` `sight_hit_factor` honours to restore combat aim
+with the eyes gone — read off the organ via `has_deployed_ability`, so a
+destroyed module ends it (#2484). **Combat-only by construction:** it's a
+separate seam from `sight_override`, so `can_see` (perception/recognition)
+stays false — rooms and faces remain dark. A future fuller-sense suite would
+set the real `sight_override` to also light up perception.
 
-## 10 · Cross-references
+## 13 · Unbuilt
 
-- `LOOK_COMMAND_SPEC.md` — Sensory Category Framework (the render consumer).
-- `IDENTITY_RECOGNITION_SPEC.md` — the recognition pipeline voice mirrors;
-  disguise / `impersonate` (voice modulator integration).
-- `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` + `world/anatomy/species.py` —
-  capacity definitions and `affects` declarations.
-- The condition system (`world/medical/conditions.py`) — home for suppressible
-  effect-modifiers (blindsight, flashbang-deafness) and contribution methods.
+Items marked `📋 UNBUILT` stand beside their rules above: the voice page in
+the `describe` menu (§4.2, §4.3), the voice descriptor as a stand-in name
+(§4.5), the rendering heuristic except its can-see branch (§4.6), the
+modulator mimicking a specific voice (§4.7), and a source for the voice
+modulator (§12). Also not built:
 
-## 11 · Open / undecided
+- **Flashbang deafness** — a time-limited hearing-suppression condition from
+  grenades; buildable now. The broader **acoustic-event layer** is future
+  (§4.1).
+- **`moving` beyond dodge** — flee, movement speed, jump/athletics and the
+  can't-locomote floor; waits on Phase 7 of the medical substrate roadmap
+  (§6.2).
+- **`eating` → consumption benefit** — buildable once the food/drink buff
+  exists (§2.1).
+- **`talking` → social** — blocked on the social-action system (§2.1).
+- **`*` → work_speed** — blocked on a general work system; surgery is the
+  natural first hook (§2.1).
+- **`hearing` → trade** removal — dropped by design; deleting the species
+  `affects` declaration is Phase 13 of the medical substrate roadmap (§2.1).
+- **Smell remediation and sources** — no chrome nose prototype exists, and
+  nothing produces an anosmia condition (§5.1).
+- **A `sight_override` augment** — no augment sets it (§3); a fuller-sense
+  suite would set it to light up perception as well as combat (§12).
+- **Dialysis** — an implant/consumable stopgap for failed kidneys (§7.4).
+
+## 14 · Not decided
 
 - Two-handed combination rule (weaker hand caps vs blend) and the
   under-gripping penalty curve (§6.1).
 - Effect magnitudes / balance numbers (illustrative here).
 - Languages (the `<language>` slot is future-proofed; only Common exists).
-- Proximity-dependent hearing (directionality) — waits on the proximity system.
-- Blocked-capacity shapes are pinned in §2.1. Remaining true blocks:
-  `talking`→social (social-action system), `*`→work_speed (general work system;
-  surgery is the natural first hook). `eating` is *not* blocked — it rides the
-  consumption pipeline (buff model, no hunger). `hearing`→trade is to be dropped.
+- Proximity-dependent hearing (directionality) — waits on the proximity system
+  (§4.8).
+- Blocked-capacity shapes are pinned in §2.1; the remaining blocks
+  (`talking`→social, `*`→work_speed) are listed under Unbuilt (§13).
+
+## 15 · Cross-references
+
+- `LOOK_COMMAND_SPEC.md` — Sensory Category Framework (the render consumer).
+- `IDENTITY_RECOGNITION_SPEC.md` — the recognition pipeline voice mirrors;
+  disguise / `impersonate` (voice modulator integration); the `forget` command.
+- `RADIO_COMMS_SPEC.md` §2.4 — voice over radio.
+- `MULTI_WEAPON_COMBAT_SPEC.md` §4 — the one door `choose_weapon`.
+- `GRIP_ENFORCEMENT_SPEC.md` §4 — under-gripping.
+- `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` + `world/anatomy/species.py` —
+  capacity definitions and `affects` declarations.
+- `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` — Phase 7 (movement policing),
+  Phase 13 (`modifiers`/`affects` re-audit), `fatal_at_severity`.
+- The condition system (`world/medical/conditions.py`) — home for suppressible
+  effect-modifiers (blindsight, flashbang-deafness) and contribution methods.

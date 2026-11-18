@@ -63,7 +63,7 @@ def calculate_treatment_skill(actor) -> float:
 
     Same formula as the procedure verbs: intellect-weighted, with
     motorics contributing for steady hands.  Matches the formula at
-    HEALTH_AND_SUBSTANCE_SYSTEM_SPEC line 1434.
+    HEALTH_AND_SUBSTANCE_SYSTEM_SPEC § Treatment > The two treatment rolls.
 
     NOTE: the *other* live treatment path (``world.medical.utils.
     calculate_treatment_success``, used by apply/inject for medical items)

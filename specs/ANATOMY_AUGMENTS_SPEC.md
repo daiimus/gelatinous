@@ -1,168 +1,128 @@
 # Anatomy Augments Spec — Per-Character Anatomy
 
-> **Status:** ✅ **SHIPPED** — Phases 1-2 and post-Phase-2 standards shipped; Phase 3 parked. ~~Verified 2026-08-02~~ **re-checked 2026-09-11: 6 claim(s) false, annotated inline**.
->
-> **⚠ Spec-vs-code corrections — the following claims were FALSE when audited:**
-> - The previous banner read "approved design, implementation phased", which §5 of this same document already contradicted.
-
-> **Owner rulings 2026-09-13/14 (chrome-removal slice), and what shipped on them:**
-> 1. **Anything installed can be uninstalled.** One predicate now answers "what can come off this body" for every door -- `world/medical/removable.py` (`can_harvest_organ` / `harvestable_organs` / `container_is_severable` / `severable_containers`), read by the typed `harvest`, the `operate` chart, `_resolve_harvest` itself (so a chart step cannot bypass it), and all three corpse severance gates in `commands/forensics.py`. Harvest = the species harvest axis OR a grafted augment; severable = the species set OR any organ at the container flagging `severable_container` -- from the SNAPSHOT, so corpses and severed parts answer like the living (#3380, #3381).
-> 2. **Robots are robots.** Native anatomy is whatever the body's OWN species table declares -- a robot's arm bone is robot anatomy, not chrome, even though it is inorganic. `is_grafted` treats an organ as chrome only when the table does not know it (tail, hardpoint, module) or when it carries augment markers the table's own entry lacks (a cyber humerus on a human). Robot parts are gated behind the robot species; the **junkyard salvager** (future) handles them, not the Ripper.
-> 3. **Chrome doesn't rot.** A skeletal body still yields its grafted inorganic parts; only flesh is gone. **Harvested chrome comes back as itself (#3489):** every install door (`_resolve_install`, `_resolve_install_module`, `_resolve_install_augment`) stamps the ITEM's identity into the organ spec as `chrome_provenance` -- key, desc, `from_prototype` tag, `compatible_species`, `value`/`brand`, and the flesh-mount fields (`module_mount`, `flesh_containers`, `flesh_organ`). `_configure_harvested_item` (the one stamping site behind both harvest doors and `strip`) reads it back for any organ `is_grafted` says is chrome: no decay prefix, condition from the part's OWN HP (66% of max or more pristine, else damaged), the original name/prose (falling back to "cybernetic <part>" with the severance-bank prose for pre-provenance installs), the original compatibility list restored, value and prototype tag restored for appraisal, and every resolved side word re-templated to `{side}` so a module pulled from a left arm seats correctly on a right one. Flesh organs are untouched: species-named, decay-prefixed, single-species. **The prose comes down with the chrome (#3491):** the augment install records the longdesc keys it surfaced (`augment_longdesc_keys`) on each organ it adds, and `_mark_organ_removed` drops a key once the location it names has no live organ left -- on the living body's `longdesc` and on a corpse's `longdesc_data`. A pre-#3491 install has no recorded keys: its container key is dropped only when that container is an added location the species table never lists (the tail); native prose (a cyber arm over a stump) is never touched by guesswork. With the prose gone the surgery mark still shows: the living renderer (`AppearanceMixin._get_visible_body_descriptions`) walks every container the medical state knows after the species order, so a location with no longdesc key renders its wounds through the standalone-wound path (#3493, the living half of #3379). **Organic harvested organs carry a harvest timestamp (#3498):** `_configure_harvested_item` stamps `db.harvested_at = world.gametime.stamp()` (real POSIX seconds, subtract with `since`) on every non-grafted harvest -- both doors and `strip` -- and `Organ.at_object_creation` declares the field as `None`. Chrome is never stamped. **No consumer yet:** the viability / refrigeration gate is a recorded gap in GIG_RIPPER_SPEC §6 whose prerequisite is this stamp plus the untuned decay pass.
-> 4. **Chrome stays on your corpse; you re-sleeve as a flesh bag.** Death costs you your augments -- that is what the secondhand market is priced on. **Its hardware stays with it (#3486, #3487, #3496):** the corpse factory calls `park_all_hardware` BEFORE the medical snapshot and the contents sweep, so a weapon deployed at the moment of death folds back inside the arm (`location=None`, dbref kept on the organ's `ability_state`) instead of landing locked and undroppable in the corpse; and every corpse-sever door -- the typed `sever`, the amputate chart, and the corpse-side head spawn in `typeclasses/death_progression.py` (used only when no head was spawned at the killing blow) -- lands on `Appendage.configure_from_sever` / `SeveredHead.configure_from_sever`, where `carry_snapshot_hardware_to_appendage` moves the parked weapon onto the severed part and records it retracted. One seam, not one per caller. A combat decapitation normally spawns the head at the killing blow, while the body is still alive (`spawn_severed_head_for_living` → `SeveredHead.configure_from_living_decap`), and that path does not carry hardware onto the head.
-> 5. **Install into a non-living body makes sense only for robots and maybe bioroids -- they can be rebuilt.** Organics: living targets only (the #2455 decision stands). 📋 UNBUILT (no issue): install into a non-living robot or bioroid body; every install door refuses a target with no medical state.
-
-**Status:** approved design, implementation phased.  The discussion
-that settled every decision below happened 2026-06-11.  First
-consumer: the cybernetic tail.
-
-> **Note 2026-09-11 (re-verification):** this body-level status line
-> is the ORIGINAL 2026-06-11 header, kept for its date and
-> provenance — it is no longer the document's status.  Phases 1-2 and
-> the post-Phase-2 standards shipped (§5); the banner at the top of
-> this file is authoritative.  Worth recording because the banner's
-> own correction note attributes the wording "approved design,
-> implementation phased" to the *previous banner* alone — it also sat
-> here, in the body, and was missed when the banner was corrected.
+A character's anatomy is read from the character's own body, not from
+the species table. The species table is the starting template; installs
+and severance extend or reduce it per character. Augments (chrome, and
+later vat-grown biotech) are items that carry their own anatomy and are
+installed through the existing surgery verbs. The design was settled in
+discussion on 2026-06-11. First consumer: the cybernetic tail.
 
 ## 0 · The principle: the body is the truth
 
-Today, anatomy questions are answered by **static species tables**:
-what organs exist, what can be severed, what can grasp, what renders.
-A character's `medical_state.organs` already holds live per-character
-organ instances — but half the systems around it still consult the
-species table instead of the body in front of them.
-
-After this spec, **a character's actual organs are the runtime
-truth; the species table is the starting template** — consulted once
-at character creation (and as the fallback for legacy data), then
-extended or reduced per character by installs and severance.
+**A character's actual organs are the runtime truth; the species table
+is the starting template** — consulted once at character creation (and
+as the fallback for legacy data), then extended or reduced per character
+by installs and severance. `medical_state.organs` holds the live
+per-character organ instances, and anatomy questions (what organs
+exist, what can be severed, what can grasp, what renders) are answered
+from them wherever a character is in hand.
 
 What this buys beyond the tail: chrome vs vat-grown biotech is
 *theming on the item* — the augment substrate doesn't know the
-difference.  Species expansion (synths) is an item-data edit, not a
-code change.  And the substrate is the foundation the cyberware era
+difference. Species expansion (synths) is an item-data edit, not a
+code change. And the substrate is the foundation the cyberware era
 keeps building on.
 
 ## 1 · Settled design decisions
 
-These were decided in discussion and are not open for silent
-revision:
+These were decided in discussion (2026-06-11) and are not open for
+silent revision:
 
-1. **First augment: cybernetic tail.**  Humans-only for now, gated
+1. **First augment: cybernetic tail.** Humans-only for now, gated
    by a species-compatibility list **on the item** — expanding to
    synths later means editing that list, zero code.
-2. **Prehensile from day one.**  The tail joins the character's
-   grasping set: it can hold and wield.  This deliberately breaks
-   the static `grasping_containers` assumption now rather than
-   later.
+2. **Prehensile from day one.** The tail joins the character's
+   grasping set: it can hold and wield. This deliberately breaks
+   the static `grasping_containers` assumption.
 3. **Full body integration, no capacity contributions in v1.**
    Capacities are normalized floors — an organ can only drag a
-   capacity down, never boost past 1.0 — and `moving`/`manipulation`
-   have no consumers yet.  Capacity extension waits for consumers
-   (same parking decision as the fracture condition).
-
-   > **Note 2026-09-11 (re-verification):** partly superseded by the
-   > replacement-chassis standard that shipped on this substrate.
-   > `moving` / `manipulation` now HAVE consumers
-   > (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC`, shipped; see
-   > `MedicalState.calculate_capacity_scoped`), and replacement
-   > augments already contribute to them — CYBER_ARM and CYBER_LEG
-   > declare their organs under the canonical species names
-   > (`{side}_humerus`, `{side}_femur`, …), which are exactly the
-   > names the species capacity tables list, so chrome limb HP feeds
-   > `calculate_body_capacity` directly.  What remains unbuilt is what
-   > this decision was really protecting: capacity **extension** for
-   > anatomy the species table never declared.  The capacity organ
-   > list is still species-static, so the cyber tail contributes
-   > nothing — see `specs/roadmaps/MEDICAL_SUBSTRATE_READINESS.md`
-   > ("Capacity-extension note"), which owns that gap.
-4. **Augment data lives on the item.**  The item carries its own
+   capacity down, never boost past 1.0. Capacity extension waits for
+   consumers (same parking decision as the fracture condition).
+   Overturned in part: the decision rested on `moving` /
+   `manipulation` having no consumers; they now have consumers
+   (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC`; see
+   `MedicalState.calculate_capacity_scoped`), and replacement augments
+   contribute — CYBER_ARM and CYBER_LEG declare their organs under the
+   canonical species names (`{side}_humerus`, `{side}_femur`, …), which
+   are exactly the names the species capacity tables list, so chrome
+   limb HP feeds `calculate_body_capacity` directly. What stays parked
+   is capacity **extension** for anatomy the species table never
+   declared: the capacity organ list is species-static, so the cyber
+   tail contributes nothing (§5).
+4. **Augment data lives on the item.** The item carries its own
    organ spec(s), anchor container, longdesc surface, and species
-   list.  No new DB entities, no registry until a second augment
+   list. No new DB entities, no registry until a second augment
    family demands one.
-5. **Existing surgery is the whole interface.**  Install via
-   `incise` → `install` → `suture`; removal via `harvest`.  No new
-   verbs.  A severed or harvested augment is the existing organ
-   item — reinstallable, conditions traveling with it.
+5. **Existing surgery is the whole interface.** Install via
+   `incise` → `install` → `suture`; removal via `harvest`. No new
+   verbs. A harvested augment is the existing organ item —
+   reinstallable, conditions traveling with it. A severed augment is an
+   Appendage carrying the organ snapshot; it reattaches whole when its
+   frame carries `prosthetic_frame` (§3.5, §3.10).
+6. **Trust/consent stays an open door.** Installing hardware in
+   another character rides the same third-party-surgery door as any
+   surgery, and trust/consent gates it there: the typed surgical verbs
+   call `check_consent(caller, target, "heal")` before cutting
+   (`commands/CmdSurgical.py`), so installing hardware in a conscious
+   character who can contest requires their trust. The `operate`
+   charting door finds its patient through the same `_resolve_target`,
+   so every surgical door asks for `heal` trust (see
+   `TRUST_AND_CONSENT_SPEC`). Nothing in this spec may assume
+   surgeon == patient.
 
-   > **Correction:** a harvested augment is the existing organ item.
-   > A severed augment is an Appendage carrying the organ snapshot; it
-   > reattaches whole when its frame carries `prosthetic_frame`
-   > (§3.5, §3.10).
-6. **Trust/consent stays an open door.**  Installing hardware in
-   another character rides the same third-party-surgery door that
-   already exists; the future trust/consent system gates it there.
-   Nothing in this spec may assume surgeon == patient.
+## 2 · Where anatomy is read
 
-   > **Note 2026-09-11 (re-verification):** no longer "future" —
-   > trust/consent shipped in full 2026-07-03
-   > (`TRUST_AND_CONSENT_SPEC`, ✅ SHIPPED & LIVE) and the door this
-   > decision names is now gated: the typed surgical verbs call
-   > `check_consent(caller, target, "heal")` before cutting
-   > (`commands/CmdSurgical.py`), so installing hardware in a
-   > conscious character who can contest requires their trust, exactly
-   > as intended.  The `operate` charting door is gated the same way:
-   > it finds its patient through the same `_resolve_target`, so every
-   > surgical door asks for `heal` trust.
+Each of these reads goes through the character's body (the static
+table remains only as the no-character / legacy fallback, §3.2):
 
-## 2 · Current state: the static reads
-
-The census of species-static reads, and what each means for an
-installed tail:
-
-| Read | Where | Per-character today? |
+| Read | Where | Per-character |
 |---|---|---|
-| Hit-location selection | `select_hit_location` — `character.longdesc` keys | **Yes** — already the body's surface |
-| Location → organ resolution | `get_organ_by_body_location` / `select_target_organ` / `calculate_hit_weights_for_location` / `distribute_damage_to_organs` — static `ORGANS` global | **No** — and this is a live species bug: a rat hit at its tail resolves zero organs from the human table and the damage silently no-ops |
-| Organ spec round-trip | `Organ.from_dict` re-derives container/hit_weight/vital from the species table | **No** — a non-species organ restores with container `"unknown"` |
-| Install slot check | `CmdInstall` → species organ snapshot ("has no slot for a X") | **No** — augments need the inverse: create the slot |
-| Severable containers | `get_species_severable_containers` frozenset | **No** |
-| Grasping containers | `hands` property → `get_species_grasping_containers` | **No** |
-| Longdesc display order / regions | species `anatomical_display_order` / `anatomical_regions` | **No** — an added key must still render somewhere sane |
+| Hit-location selection | `select_hit_location` — `character.longdesc` keys | Yes — the body's surface |
+| Location → organ resolution | `get_organ_by_body_location` / `select_target_organ` / `calculate_hit_weights_for_location` / `distribute_damage_to_organs` (`world/medical/utils.py`) | Yes — §3.2 |
+| Organ spec round-trip | `Organ.to_dict` / `from_dict` | Yes — §3.1 |
+| Install slot check | `CmdInstall` augment branch (`commands/CmdSurgical.py`) creates the slot | Yes — §3.3 |
+| Severable containers | `MedicalState.location_severable_by_organ`; on corpses and severed parts `world/medical/removable.py` | Yes — §3.5 |
+| Grasping containers | `Character.grasping_containers` / `hands` | Yes — §3.4 |
+| Longdesc display order / regions | `typeclasses/appearance_mixin.py`; corpse renderer `typeclasses/corpse.py` | Yes — §3.6 |
 
-`MedicalState.from_dict` already *overlays* persisted organs onto
-the species set, and severance already subtracts locations
-per-character — the substrate is half-built; this spec finishes it.
+No static species-only read of severability exists. Reading location →
+organ from the static `ORGANS` global was a live species bug: a rat hit
+at its tail resolved zero organs from the human table and the damage
+silently no-opped (§3.2 fixes it).
 
-> **Corrected 2026-09-19 (#3400):** the overlay was the last zombie-organ door. `from_dict` seeded the species template and copied the snapshot's organs over it, so any organ the template has and the snapshot lacks came back at full HP on every load (proved on a live reload: a body saved with 27 organs read back with 28). It was also the only path by which a species-table addition reached a saved body (53 live snapshots predate `cervical_spine` and `nose`), so a strict snapshot would have stranded them without a neck. The body now records meaningful absence: `MedicalState.removed_organs`, written by `remove_organ` (the single deletion door, used by augment install and reattach), persisted by `to_dict` as the names still absent, and honoured by `from_dict`, which builds the body from the snapshot and adds a template organ back only when it is neither present nor recorded removed. Harvest and severance tombstones (0 HP) were never affected. A new sleeve (`reset_body_preserving_augments`) starts with an empty list, as it should.
-
-> **Note 2026-09-11 (re-verification):** the table above is the
-> **pre-implementation census** (2026-06-11), kept for its reasoning.
-> Six of its seven "Per-character today?" answers are now **yes**:
-> §3.2 moved location→organ resolution onto the body
-> (`world/medical/utils.py`, rat-tail fix pinned in
-> `test_anatomy_substrate.py`), §3.1 fixed the organ-spec round trip
-> (`Organ.to_dict`/`from_dict`), §3.3 gave `CmdInstall` a
-> slot-*creating* augment branch (`commands/CmdSurgical.py`), §3.5 the
-> severable overlay (`MedicalState.location_severable_by_organ`), §3.4
-> the grasping overlay (`Character.grasping_containers`), and §3.6
-> renders longdesc keys beyond the species order
-> (`typeclasses/appearance_mixin.py`).  The two corpse-side static reads
-> are closed too: the corpse longdesc renderer visits augment locations since #3379 (2026-09-14), and corpse severance reads the overlay through `world/medical/removable.py` since #3380 (2026-09-14). No static species-only read of severability survives in the tree.
+**Loading a body.** `MedicalState.from_dict` builds the body from the
+saved snapshot and adds a species-template organ back only when it is
+neither present nor recorded removed. Absence is recorded in
+`MedicalState.removed_organs`, written by `remove_organ` (the single
+deletion door, used by augment install and reattach) and persisted by
+`to_dict` as the names still absent. So an organ added to the species
+table after a body was saved (`cervical_spine`, `nose`) still reaches
+that body, and an organ removed on purpose never comes back at full HP
+on load (#3400). Harvest and severance tombstones (0 HP) are unaffected.
+A new sleeve (`reset_body_preserving_augments`) starts with an empty
+list.
 
 ## 3 · Mechanics
 
 ### 3.1 · Organ spec persistence
 
-`Organ.to_dict` gains `"data": self.data` (the spec dict).
+`Organ.to_dict` includes `"data": self.data` (the spec dict).
 `from_dict` passes it through as the `organ_data` override when
-present; legacy snapshots without it fall back to the species lookup
-exactly as today.  This is event-driven persistence (save on
-meaningful change), not a hot path — the DB-write doctrine is
-untouched.
+present; legacy snapshots without it fall back to the species lookup.
+A non-species organ therefore restores its container, hit_weight and
+flags. This is event-driven persistence (save on meaningful change),
+not a hot path — the DB-write doctrine is untouched.
 
 ### 3.2 · Per-character organ resolution
 
 Location → organ questions are answered by the character's
-`medical_state.organs` (each organ already knows its `container` and
-`hit_weight`) wherever a character or medical state is in hand.  The
-static `ORGANS` scan remains only as the no-character fallback.
-**This fixes the rat-tail combat bug as a side effect** — pin it in
-the tests.
+`medical_state.organs` (each organ knows its `container` and
+`hit_weight`) wherever a character or medical state is in hand. The
+static `ORGANS` scan remains only as the no-character fallback. This is
+what makes a hit at a rat's tail resolve rat tail organs and apply
+damage.
 
-This touches the per-attack combat path: per the hot-path rule,
-benchmark hit resolution before/after in Phase 1.
+This sits on the per-attack combat path, so the hot-path rule applies.
 
 ### 3.3 · Augment install
 
@@ -177,147 +137,137 @@ Augment items declare (as attrs):
   from there
 * `augment_longdesc` — one `{key, default_desc, display_after}` entry,
   or a list of them, for the rendering surface; a key the body already
-  has gets its prose replaced.  Side-agnostic items write `{side}` in
+  has gets its prose replaced. Side-agnostic items write `{side}` in
   their declaration, resolved from the side the surgeon names at
   install (`resolve_augment_declaration`)
 * `compatible_species` — `["human"]` (the established cyberware /
   harvest-provenance species gate; one field everywhere)
 
-`CmdInstall` grows an augment branch: species check → incision at
+`CmdInstall`'s augment branch runs: species check → incision at
 the **anchor** (the slot doesn't exist yet; you cut where it goes) →
 create the organ(s) with `organ_data` from the item → add the
-longdesc key → persist.  Install is refused while any living organ
+longdesc key → persist. Install is refused while any living organ
 (HP above 0) sits at a container the augment declares ("… still has a
 living tail — the cybernetic tail mounts over a stump or wreckage, not
-living anatomy.").  A stump or destroyed remains admit the mount, and
-the install clears them through `remove_organ`.
+living anatomy."). A stump or destroyed remains admit the mount, and
+the install clears them through `remove_organ`. A repeat install is
+refused.
 
 The operate menu reaches the same resolver: augment items list
 alongside donor organs in the install picker, picking one records
 the chart step at the item's anchor with no location prompt (the
 item knows where it mounts), and the chart runner routes execution
-to the augment resolver — with the species and incision gates
+to the augment resolver (`_resolve_install_augment`,
+`world/medical/procedures.py`) — with the species and incision gates
 re-checked there, since chart commencement bypasses the command's
 pre-dispatch gates.
 
+Install into a non-living body: see the chrome-removal rulings, ruling 5.
+
 ### 3.4 · Prehensile grasping
 
-An organ spec may flag `"grasping": true`.  The `hands` property
+An organ spec may flag `"grasping": true`. The `hands` property
 merges {containers of grasping-flagged organs present on the body}
-with the species grasping set, minus severed — the existing
-severance subtraction then handles "severed tail drops what it
-held" with no new code.
+with the species grasping set, minus severed. Severing the tail
+therefore removes it from `hands`, and it drops what it held.
 
-**Grasping requires functional anatomy** (shipped, post-Phase 2):
-a hand slot only grips when it has a living organ at its container.
-Chain severance suppresses a downstream wound (one wound at the cut
-point), so the wound-derived severed set alone missed a hand
-attached to a severed arm — it kept holding things.  The `hands`
-property now also drops any container whose organs are all
-tombstoned (severed / harvested / pulped).  A crushed-but-attached
+**Grasping requires functional anatomy:** a hand slot only grips when
+it has a living organ at its container. Chain severance suppresses a
+downstream wound (one wound at the cut point), so the wound-derived
+severed set alone would miss a hand attached to a severed arm. The
+`hands` property also drops any container whose organs are all
+tombstoned (severed / harvested / pulped). A crushed-but-attached
 hand can't grip either.
 
 ### 3.5 · Severance
 
 A container is severable when it's in the species severable set
 **or** any organ at it flags `"severable_container": true` (the
-tail's spec does).  The severed-part pipeline already builds from
-the character's organs, so the severed tail hits the floor as an
-organ item carrying the cybernetic tail — reinstallable, damage and
-conditions intact.
-
-> **Corrected 2026-09-14 (#3380):** the rule now holds on corpses and severed parts too (`removable.container_is_severable` / `severable_containers`, read from the snapshot). And the severed tail is an **Appendage** carrying the organ snapshot (AUGMENT_ABILITIES §8), not a bare organ item -- it reattaches via `install_limb`.
+tail's spec does). The rule holds on living bodies, corpses and
+severed parts alike: `removable.container_is_severable` /
+`severable_containers` read it from the snapshot. The severed-part
+pipeline builds from the character's organs, so the severed tail hits
+the floor as an **Appendage** carrying the organ snapshot of the
+cybernetic tail (`AUGMENT_ABILITIES_SPEC` §8), damage and conditions
+intact. It reattaches via `install_limb` (§3.10).
 
 ### 3.6 · Rendering
 
-The longdesc renderer appends per-character locations missing from
-the species display order after their `display_after` hint (or at
-the end of their region).  Wound rendering follows
-`display_location` as it already does.
+The living longdesc renderer (`typeclasses/appearance_mixin.py`)
+renders the species display order first, then every longdesc key not
+in it, then every container the medical state knows that is still
+missing. An augment location therefore renders after the **whole**
+species order: the tail, whose hint is `display_after: "back"`, renders
+after the feet, not after the back line. `display_after` is honoured
+only at install time, where `_resolve_install_augment` inserts the key
+into `character.longdesc` at that position; that ordering then holds
+only among other extra keys. The design recorded 2026-06-11 placed an
+added location after its `display_after` hint (or at the end of its
+region) at render; honouring the hint at render is a code change, not a
+spec change.
 
-> **Note 2026-09-11 (re-verification):** shipped behaviour is
-> narrower than this sentence.  `typeclasses/appearance_mixin.py`
-> builds `render_order = ANATOMICAL_DISPLAY_ORDER + [keys not in
-> it]`, so an augment location renders after the **whole** species
-> order — the tail, whose hint is `display_after: "back"`, renders
-> after the feet, not after the back line.  `display_after` is
-> honoured only at install time, where `_resolve_install_augment`
-> inserts the key into `character.longdesc` at that position
-> (`world/medical/procedures.py`); that ordering then survives only
-> among other extra keys.  The Phase 2 commit records the choice
-> explicitly ("longdesc keys beyond the species display order render
-> after it").  Honouring the hint at render is a code change, not a
-> spec change.  The living renderer, the Appendage renderer and the
-> corpse renderer all append extras: `typeclasses/corpse.py` adds every
-> container in the death snapshot and every location a preserved wound
-> names after the species order (#3379), so a corpse renders an
-> augment location.  (#3578, 2026-09-16: the Appendage extras pass now walks
-> its garment coverage-map keys as well as its longdesc keys, so a
-> garment worn on an added-anatomy location renders too.)
+The Appendage renderer and the corpse renderer also append extras: the
+corpse renderer (`typeclasses/corpse.py`) adds every container in the
+death snapshot and every location a preserved wound names after the
+species order (#3379), so a corpse renders an augment location. The
+Appendage extras pass walks its garment coverage-map keys as well as
+its longdesc keys, so a garment worn on an added-anatomy location
+renders too (#3578). Wound rendering follows `display_location`.
 
-**Chrome rendering** (shipped): a body location whose organs are
-`inorganic` renders in a light steel grey (`CHROME_DEFAULT_COLOR`)
-instead of the wearer's skintone — chrome is not flesh.  Limb
+**Chrome rendering:** a body location whose organs are `inorganic`
+renders in the dark steel grey that matches the clothing palette's
+black (`CHROME_DEFAULT_COLOR = "|=l"`, `world/combat/constants.py`;
+#545) instead of the wearer's skintone — chrome is not flesh. Limb
 longdesc is side-aware via the `{side}` token (resolved at install).
 A deployed integrated weapon expands the limb's longdesc and
 replaces the consumed hand's — see `AUGMENT_ABILITIES_SPEC` §9.
 
-> **Correction 2026-09-11 (re-verification):** "light steel grey"
-> above is stale, and was already stale on this spec's 2026-08-02
-> verification date.  #545 ("Chrome renders in the black-leather
-> tone, not light grey", 2026-06-13) replaced
-> `CHROME_DEFAULT_COLOR = "|444"` with `"|=l"` — the DARK steel grey
-> that matches the clothing palette's black — in
-> `world/combat/constants.py`.  `AUGMENT_ABILITIES_SPEC` §9 and
-> `LONGDESC_SYSTEM_SPEC` already carry the corrected wording; this
-> section did not.
-
 ### 3.7 · The body is the single truth (the anatomy-truth standard)
 
 The character's `organs` dict is the **only** source of present
-anatomy; nothing auto-creates.  `get_organ` returns existing-or-
-`None` — never lazily creates from the species table (the old
-behavior was a zombie-organ factory: capacity math iterating
-species lists by name resurrected install-deleted flesh organs at
-full HP).  Absence is meaningful, and since #3400 it is **recorded**:
-`MedicalState.removed_organs` (written by `remove_organ`) holds the names
-taken out of this body on purpose, so the loader can tell a deliberate
-absence from a species-table organ the body predates (the latter is
-added back on load; the former never is).  Harvest keeps a separate
+anatomy; nothing auto-creates. `get_organ` returns existing-or-`None`
+— it never lazily creates from the species table (lazy creation is a
+zombie-organ factory: capacity math iterating species lists by name
+would resurrect install-deleted flesh organs at full HP). Absence is
+meaningful, and it is **recorded**: `MedicalState.removed_organs`
+(written by `remove_organ`) holds the names taken out of this body on
+purpose, so the loader can tell a deliberate absence from a
+species-table organ the body predates (the latter is added back on
+load; the former never is; §2, #3400). Harvest keeps a separate
 record, `db.removed_organs` on the body: a harvested organ stays in the
 organs dict at 0 HP with `injury_type` set to `"harvested"`, and
 `MedicalState.organ_is_gone` reads either marker, so no healing path
-regrows it.  An install clears the body record
+regrows it. An install clears the body record
 (`procedures._clear_removed_record`).
 
 Severed organs persist as **0-HP `"severed"` tombstones** — they
 ARE the stump, and they are load-bearing: wound rendering, the
 `hands` functional gate (§3.4), capacity loss, and the re-augment
-"stump or wreckage" gate all read them.  Augment / reattach installs
+"stump or wreckage" gate all read them. Augment / reattach installs
 clear tombstones at their containers when new anatomy takes the
-slot.  Capacity math skips absent organs — a mounted replacement
+slot. Capacity math skips absent organs — a mounted replacement
 implicitly restores capacity; a bare stump keeps dragging it down
 via its tombstone.
 
 ### 3.8 · Inorganic organs
 
-An organ spec flag `"inorganic": true` marks chrome.  Damage to an
+An organ spec flag `"inorganic": true` marks chrome. Damage to an
 inorganic organ yields **pain only** — no bleeding, no infection
 (chrome doesn't hemorrhage or go septic; pain is neural feedback
-from the graft).  Severed inorganic parts get cybernetic part prose
+from the graft). Severed inorganic parts get cybernetic part prose
 and a `"cybernetic <part>"` name instead of flesh ("muscle firm…
-cartilage").  A robot or synth limb keeps its species name (#3362): the
-`"cybernetic <part>"` name is for chrome on a flesh body.  A harvested
+cartilage"). A robot or synth limb keeps its species name (#3362): the
+`"cybernetic <part>"` name is for chrome on a flesh body. A harvested
 chrome organ takes the item name it was installed under
-(`chrome_provenance`, #3489).
+(`chrome_provenance`, #3489; see the chrome-removal rulings, ruling 3).
 
 The **severance moment** is forked too (#551): a prosthetic limb's
 detachment narrates as sheared hardware, not bleeding meat.
 `get_severance_message(..., material="chrome")` routes to a
 per-location `CHROME_MESSAGES` bank (then a generic `cybernetic`
-fallback module).  The fork keys on `is_cybernetic_limb` — the same
+fallback module). The fork keys on `is_cybernetic_limb` — the same
 `prosthetic_frame` marker as reattachment (§3.10) — so a flesh limb
-with cyberware implanted in it still bleeds.  See
+with cyberware implanted in it still bleeds. See
 `AUGMENT_ABILITIES_SPEC` §8.
 
 ### 3.9 · Heal & reset
@@ -325,7 +275,7 @@ with cyberware implanted in it still bleeds.  See
 `MedicalState.full_heal()` (the `@heal` backend) restores
 **present anatomy only** — tombstones are absence records, not
 injuries, so healing never regrows a severed limb or resurrects a
-harvested-out module (which would duplicate its ability).  It
+harvested-out module (which would duplicate its ability). It
 preserves cyberware toggle state (a deployed gun is not an injury).
 `@resetmedical` rebuilds flesh from the current species table but
 **preserves installed augments** via `is_augment_organ()` (no
@@ -337,10 +287,12 @@ installed limb, tail, heart, and module.
 
 Reattaching a whole severed limb is gated on an explicit
 `"prosthetic_frame": true` marker stamped on a chassis's frame
-organs at install — never inferred from organ content.  Flesh never
+organs at install — never inferred from organ content. Flesh never
 reattaches (necrosis), even with cyberware implanted in it; only a
-prosthetic frame bolts back on.  Full mechanics in
-`AUGMENT_ABILITIES_SPEC` §8.
+prosthetic frame bolts back on. `install` reattaches a severed
+prosthetic-frame part whole through the limb path
+(`_resolve_install_limb`), damage and conditions intact. Full mechanics
+in `AUGMENT_ABILITIES_SPEC` §8.
 
 ## 4 · The cybernetic tail (first consumer)
 
@@ -349,56 +301,144 @@ the tail location carries a skeletal organ the way a rat's tail
 carries `tail_vertebrae`, so every existing treatment surface works
 uniformly — a bone-typed cyber organ is splintable ("brace the bent
 actuator column"), tourniquetable, severable, with no special
-cases.  The same principle governs future *replacement*
-cybernetics: a cybernetic hand keeps the canonical slot/organ
-structure of the flesh hand (the metacarpals are still there,
-structurally) and theming lives in display names and item prose,
-never in the slot keys.
+cases. The same principle governs *replacement* cybernetics: a
+cybernetic hand keeps the canonical slot/organ structure of the flesh
+hand (the metacarpals are still there, structurally) and theming lives
+in display names and item prose, never in the slot keys.
 
 Prototype `CYBERNETIC_TAIL`: organ `cybernetic_tailbone` at
-container `"tail"` (`"tail"` is already in `LIMB_CONTAINERS` —
-tourniquets gate correctly with zero changes), bone-typed, modest
-HP, common hit weight, `severable_container`, `grasping`, `inorganic`
-(chrome: pain only, steel-grey render, §3.8) and `prosthetic_frame`
-(a severed tail shears as hardware and reattaches whole, §3.10); anchor
-`"back"` (the mount bolts to the base of the spine — you incise
-where it attaches); `compatible_species ["human"]`.  Future biotech
-variants are new prototype text over the same attrs.
+container `"tail"` (`"tail"` is in `LIMB_CONTAINERS`, so tourniquets
+gate correctly), bone-typed, modest HP, common hit weight,
+`severable_container`, `grasping`, `inorganic` (chrome: pain only,
+steel-grey render, §3.8) and `prosthetic_frame` (a severed tail shears
+as hardware and reattaches whole, §3.10); anchor `"back"` (the mount
+bolts to the base of the spine — you incise where it attaches);
+`compatible_species ["human"]`. Future biotech variants are new
+prototype text over the same attrs.
 
-## 5 · Phases
+The chassis+module cyberware standard built on this substrate lives in
+`AUGMENT_ABILITIES_SPEC` §7.
 
-* **Phase 1 — substrate refactor** — **shipped**: organ-spec
-  round-trip + per-character location→organ resolution + the
-  rat-tail fix + hit-resolution benchmark.
-* **Phase 2 — augment install** — **shipped**: `CmdInstall` augment
-  branch, longdesc insertion, severable/grasping overlays,
-  prehensile `hands` merge, the tail prototype.
-* **Post-Phase-2 standards** — **shipped** (§3.4, §3.6–3.10):
-  functional-anatomy grasping, chrome rendering, the anatomy-truth
-  tombstone standard, inorganic-organ behavior, chrome-aware heal /
-  reset, and the prosthetic-frame reattachment gate.  The
-  chassis+module cyberware standard built on this substrate lives in
-  `AUGMENT_ABILITIES_SPEC` §7.
-* **Phase 3 — future, parked**: capacity contributions (waits on
-  capacity consumers), synth compatibility (item-data edit),
-  biotech theming, implant-specific organ-bound conditions
-  ("cyberware-era gold"), new-anatomy movement/emote flavor.
+## Chrome removal (owner rulings 2026-09-13/14)
 
-  > **Note 2026-09-11 (re-verification):** the named blocker is gone
-  > but the work is not done, so the parking still holds — for a
-  > different reason.  Capacity consumers shipped
-  > (`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC`), and replacement
-  > augments already contribute through canonical organ names (see
-  > the note on §1 decision 3).  Still unbuilt: capacity
-  > **extension** — added anatomy such as the tail contributing to,
-  > or introducing, a capacity the species table never declared.
-  > `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` records this as an
-  > un-catalogued substrate concern to fold into movement-policing /
-  > senses / equipment-handling when those are scoped, and
-  > `MEDICAL_SUBSTRATE_READINESS.md` owns the row.  Whether Phase 3
-  > should now be re-scoped to that narrower item is an owner call.
+1. **Anything installed can be uninstalled.** One predicate answers
+   "what can come off this body" for every door --
+   `world/medical/removable.py` (`can_harvest_organ` /
+   `harvestable_organs` / `container_is_severable` /
+   `severable_containers`), read by the typed `harvest`, the `operate`
+   chart, `_resolve_harvest` itself (so a chart step cannot bypass it),
+   and all three corpse severance gates in `commands/forensics.py`.
+   Harvest = the species harvest axis OR a grafted augment; severable =
+   the species set OR any organ at the container flagging
+   `severable_container` -- from the SNAPSHOT, so corpses and severed
+   parts answer like the living (#3380, #3381).
+2. **Robots are robots.** Native anatomy is whatever the body's OWN
+   species table declares -- a robot's arm bone is robot anatomy, not
+   chrome, even though it is inorganic. `is_grafted` treats an organ as
+   chrome only when the table does not know it (tail, hardpoint,
+   module) or when it carries augment markers the table's own entry
+   lacks (a cyber humerus on a human). Robot parts are gated behind the
+   robot species; the **junkyard salvager** (future) handles them, not
+   the Ripper.
+3. **Chrome doesn't rot.** A skeletal body still yields its grafted
+   inorganic parts; only flesh is gone.
+   - **Harvested chrome comes back as itself (#3489):** every install
+     door (`_resolve_install`, `_resolve_install_module`,
+     `_resolve_install_augment`) stamps the ITEM's identity into the
+     organ spec as `chrome_provenance` -- key, desc, `from_prototype`
+     tag, `compatible_species`, `value`/`brand`, and the flesh-mount
+     fields (`module_mount`, `flesh_containers`, `flesh_organ`).
+     `_configure_harvested_item` (the one stamping site behind both
+     harvest doors and `strip`) reads it back for any organ
+     `is_grafted` says is chrome: no decay prefix, condition from the
+     part's OWN HP (66% of max or more pristine, else damaged), the
+     original name/prose (falling back to "cybernetic <part>" with the
+     severance-bank prose for pre-provenance installs), the original
+     compatibility list restored, value and prototype tag restored for
+     appraisal, and every resolved side word re-templated to `{side}`
+     so a module pulled from a left arm seats correctly on a right one.
+     Flesh organs are untouched: species-named, decay-prefixed,
+     single-species.
+   - **The prose comes down with the chrome (#3491):** the augment
+     install records the longdesc keys it surfaced
+     (`augment_longdesc_keys`) on each organ it adds, and
+     `_mark_organ_removed` drops a key once the location it names has
+     no live organ left -- on the living body's `longdesc` and on a
+     corpse's `longdesc_data`. An install with no recorded keys (made
+     before #3491) has its container key dropped only when that
+     container is an added location the species table never lists (the
+     tail); native prose (a cyber arm over a stump) is never touched by
+     guesswork. With the prose gone the surgery mark still shows: the
+     living renderer (`AppearanceMixin._get_visible_body_descriptions`)
+     walks every container the medical state knows after the species
+     order, so a location with no longdesc key renders its wounds
+     through the standalone-wound path (#3493, the living half of
+     #3379).
+   - **Organic harvested organs carry a harvest timestamp (#3498):**
+     `_configure_harvested_item` stamps
+     `db.harvested_at = world.gametime.stamp()` (real POSIX seconds,
+     subtract with `since`) on every non-grafted harvest -- both doors
+     and `strip` -- and `Organ.at_object_creation` declares the field as
+     `None`. Chrome is never stamped. **No consumer yet:** the
+     viability / refrigeration gate is a recorded gap in
+     GIG_RIPPER_SPEC §6 whose prerequisite is this stamp plus the
+     untuned decay pass.
+4. **Chrome stays on your corpse; you re-sleeve as a flesh bag.** Death
+   costs you your augments -- that is what the secondhand market is
+   priced on. **Its hardware stays with it (#3486, #3487, #3496):** the
+   corpse factory calls `park_all_hardware` BEFORE the medical snapshot
+   and the contents sweep, so a weapon deployed at the moment of death
+   folds back inside the arm (`location=None`, dbref kept on the
+   organ's `ability_state`) instead of landing locked and undroppable
+   in the corpse; and every corpse-sever door -- the typed `sever`, the
+   amputate chart, and the corpse-side head spawn in
+   `typeclasses/death_progression.py` (used only when no head was
+   spawned at the killing blow) -- lands on
+   `Appendage.configure_from_sever` /
+   `SeveredHead.configure_from_sever`, where
+   `carry_snapshot_hardware_to_appendage` moves the parked weapon onto
+   the severed part and records it retracted. One seam, not one per
+   caller. A combat decapitation normally spawns the head at the
+   killing blow, while the body is still alive
+   (`spawn_severed_head_for_living` →
+   `SeveredHead.configure_from_living_decap`), and that path does not
+   carry hardware onto the head.
+5. **Install into a non-living body makes sense only for robots and
+   maybe bioroids -- they can be rebuilt.** Organics: living targets
+   only (the #2455 decision stands). Every install door refuses a
+   target with no medical state. 📋 UNBUILT (no issue): install into a
+   non-living robot or bioroid body.
+
+## 5 · Unbuilt
+
+Phase 3 — future, parked:
+
+* Capacity contributions (parked; the original blocker, no capacity
+  consumers, no longer applies — the parking holds because the work is
+  not done). What is still unbuilt is capacity **extension** — added
+  anatomy such as the tail contributing to, or introducing, a capacity
+  the species table never declared (§1 decision 3).
+  `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` records it as an
+  un-catalogued substrate concern to fold into movement-policing /
+  senses / equipment-handling when those are scoped, and
+  `specs/roadmaps/MEDICAL_SUBSTRATE_READINESS.md` owns the row.
+* Synth compatibility (item-data edit).
+* Biotech theming.
+* Implant-specific organ-bound conditions ("cyberware-era gold").
+* New-anatomy movement/emote flavor.
+
+Elsewhere in this document:
+
+* 📋 UNBUILT (no issue): install into a non-living robot or bioroid body
+  (chrome-removal ruling 5).
+* The junkyard salvager for robot parts (future; chrome-removal
+  ruling 2).
+* The viability / refrigeration gate that would consume `harvested_at`
+  is a recorded gap in GIG_RIPPER_SPEC §6 (chrome-removal ruling 3).
 
 ## 6 · Test contract
+
+These must hold:
 
 * **Equivalence**: human hit/damage resolution identical before and
   after the resolution refactor.
@@ -425,3 +465,20 @@ variants are new prototype text over the same attrs.
   species read.
 * Augment items MUST carry complete organ specs — an augment whose
   organ can't survive a save/load round trip is a bug.
+
+## Not decided
+
+* Whether Phase 3 (§5) should now be re-scoped to the narrower capacity
+  **extension** item is an owner call.
+
+## Related documents
+
+* `AUGMENT_ABILITIES_SPEC.md` — chassis+module standard (§7),
+  severance, reattachment and the prosthetic frame (§8), deployed-weapon
+  rendering (§9).
+* `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md` — capacity consumers.
+* `TRUST_AND_CONSENT_SPEC.md` — the consent gate on surgery.
+* `LONGDESC_SYSTEM_SPEC.md` — longdesc rendering and chrome colour.
+* `proposals/GIG_RIPPER_SPEC.md` §6 — the harvested-organ viability gap.
+* `roadmaps/MEDICAL_SUBSTRATE_READINESS.md`,
+  `roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` — capacity extension.

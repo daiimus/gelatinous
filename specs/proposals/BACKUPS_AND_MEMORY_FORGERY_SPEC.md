@@ -1,114 +1,106 @@
 # Backups, Stale Restores & Memory Forgery
 
-> **Status:** 📋 **DESIGN DRAFT — spec-first, build-later (2026-08-22).**
-> **§4 and §8.1/§8.2 carry owner rulings (2026-08-22).**
-> **§8.2's "players resleeve free" is SUPERSEDED (owner ruling 2026-09-25,
-> #3667):** players are in the insurance loop; a policy bought in advance at
-> the Thawn-Harrison terminal is required for a flash clone, and an
-> uninsured death does not bring that person back (a fresh character is
-> still allowed). See `specs/SLEEVE_INSURANCE_SPEC.md`.
-> §1 describes current behaviour (`world/imprint.py`,
-> `world/souls/posts.py`, `typeclasses/death_progression.py`,
-> `commands/charcreate.py::create_flash_clone`, `world/insurance.py`);
-> §2 onward is proposal.
->
-> **§1 AND §8.2 ARE STALE (noted 2026-09-11).** They were written on
-> 2026-08-21 between 20:26 and 20:38 (PRs #2186, #2187). Eighteen
-> minutes later PR #2189 — closing issue #2188, *"PCs lose everyone
-> they knew on resleeve"* — pulled the record into one shared module
-> and made **every** death stamp one onto the body; at 21:08 PR #2191
-> (issue #2190) renamed *estate* → **imprint** (`world/imprint.py`).
-> So §1's function names, and the "PCs get none" premise that §8.2's
-> ruling rests on, have been wrong since that night. Annotated in
-> place below. **Nothing in §2–§7 is affected:** the design still
-> turns on `taken_at` and on where that number comes from. The interactive half depends on the net layer
-> ([`DECKING_MATRIX`](DECKING_MATRIX.md)), which is itself spec-first
-> and gated on the phase/verticality work — so this is
-> **spec-now, build-when-the-world-is-ready**.
->
-> **Design lineage:** the "consciousness is a file you can copy, lose,
-> or edit" premise is common to the genre; the specific handling here
-> is ours, and source material is paraphrased rather than cited.
->
-> **Related:** [`IDENTITY_RECOGNITION_SPEC`](../IDENTITY_RECOGNITION_SPEC.md)
-> (apparent UID, the forensic chain),
-> [`NPC_MEMORY_AND_IDENTITY_SPEC`](../NPC_MEMORY_AND_IDENTITY_SPEC.md),
-> [`DEATH_AND_SLEEVE_LIFECYCLE_SPEC`](DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md),
-> [`NPC_POSTS_AND_REINCARNATION_SPEC`](../NPC_POSTS_AND_REINCARNATION_SPEC.md).
+A **backup** is a copy of who a person is: what they remember, whom they
+know by face and voice, what they concluded about people. The game already
+takes one at every death, as a fixed record called the **imprint**, and
+brings a person back from it. This spec proposes making backups something a
+character takes on purpose, keeps a history of, and can lose, have stolen,
+or have edited.
+
+§1 describes current behaviour (`world/imprint.py`,
+`world/souls/posts.py`, `typeclasses/death_progression.py`,
+`commands/charcreate.py::create_flash_clone`, `world/insurance.py`).
+§2 onward is proposal. The interactive half depends on the net layer
+([`DECKING_MATRIX`](DECKING_MATRIX.md)), which is itself spec-first and
+gated on the phase/verticality work, so this is **spec-now,
+build-when-the-world-is-ready**.
+
+**Design lineage:** the "consciousness is a file you can copy, lose, or
+edit" premise is common to the genre; the specific handling here is ours,
+and source material is paraphrased rather than cited.
 
 ---
 
-## 1 · What exists today (shipped)
+## 1 · The imprint today
 
-A **backup** already exists in the game. It is called the *estate*, it
-is taken at death, and it is a plain record — which is the whole
-reason this spec is short.
+The imprint is a plain record, which is the whole reason this spec is
+short.
 
-`world/souls/posts.py::_estate_of()` writes:
+### The record
 
-> **Renamed 2026-08-21, 30 minutes after this line was written (PR
-> #2191 / issue #2190).** The live record is built by
-> `world/imprint.py::capture()`; `world/souls/posts.py::_imprint_of()`
-> is a thin alias kept so this module's callers read as they did. The
-> record also carries five fields added since and missing from the
-> block below: `opinions` (#2388); `designation` + `skills` (#2800),
-> restored with **no** cutoff, because a service record is not an
-> episode; and `blueprint_key` + `dbref` (#3667), so that a post's
-> rebuild restores only a snapshot of its own keeper (`_try_resleave`).
+`world/imprint.py::capture()` builds it. (`world/souls/posts.py::_imprint_of()`
+is a thin alias of it, kept so that module's callers read as they did.)
 
-```python
-{
-  "version": 1,
-  "name":        str,     # who this is
-  "sleeve_uid":  str,     # the BODY to come back in
-  "died_at":     float,
-  "taken_at":    float,   # what the backup HELD — restore keys on this
-  "memories":    [...],   # episodic (llm_memories)
-  "dossiers":    {...},   # what they concluded about people
-  "thoughts":    [...],   # interiority
-  "recognition": {...},   # who they knew by FACE, keyed by apparent UID
-  "voice":       {...},   # who they knew by VOICE
-}
-```
+| field | holds |
+|---|---|
+| `version` | `1` (schema marker) |
+| `name` | who this is |
+| `sleeve_uid` | the BODY to come back in |
+| `died_at` | |
+| `taken_at` | what the backup HELD — restore keys on this |
+| `memories` | episodic (`llm_memories`) |
+| `dossiers` | what they concluded about people |
+| `thoughts` | interiority |
+| `recognition` | who they knew by FACE, keyed by apparent UID |
+| `voice` | who they knew by VOICE |
+| `opinions` | (#2388) |
+| `designation`, `skills` | (#2800) restored with **no** cutoff, because a service record is not an episode |
+| `blueprint_key`, `dbref` | (#3667) so that a post's rebuild restores only a snapshot of its own keeper (`_try_resleave`) |
 
-* **Trigger:** every death calls `snapshot_estate()`, but it only
-  *stores* for a post-holder. Backups are therefore **institutional** —
-  a policy covering staff, not a consumer product. PCs get none.
-  **No longer true (noted 2026-09-11):** the call is
-  `snapshot_imprint()` (called from
-  `typeclasses/death_progression.py::DeathProgressionScript._handle_corpse_creation_and_transition`),
-  and it is only half the death path — right after it the same method
-  writes `character.db.imprint = imprint.capture(character)` for
-  **everyone** (PR #2189, closing #2188), and `create_flash_clone`
-  restores from it through the same `world/imprint.py::restore()` an
-  NPC resleeve uses. Post-holders additionally get the per-shift record
-  described below. Nothing about a return is institutional: every return, a player's
-  or a keeper's, is paid by the dead body's own sleeve policy, bought
-  at the Thawn-Harrison terminal (`world/insurance.py`, #3667).
-* **Storage:** on the post fixture, `db.post_memory_snapshots[shift]`.
-  One record per shift, **overwritten**.
-* **Restore:** `_try_resleave()` brings the dead keeper back when their
-  own sleeve policy pays (#3667; the till premium is gone): the archived
-  body is revived and restored from its own `db.imprint`, or a
-  never-archived keeper is rebuilt from a snapshot that names their
-  blueprint and body. Either way `world/imprint.py::restore()` brings
-  back the memories, thoughts and opinions from before `taken_at`, and
-  the faces and voices first met before it; dossiers, designation and
-  skills come back whole. The body
-  inherits the recorded `sleeve_uid`, so the face is the same face.
-* **The gap:** `taken_at = died_at - world/imprint.py::GAP` (5400s).
-  The last ~90 minutes never made the backup. `GAP` is the only place
-  that number lives; every reader goes through `imprint.cutoff_of()`,
-  which prefers a record's stored `taken_at` and falls back to the
-  derived value. (The duplicate `RESLEAVE_GAP` in
-  `world/souls/posts.py` was deleted with #3389; its one importer,
-  `scripts/builds/085_restore_the_cast.py`, now calls `cutoff_of()`.)
+### When it is taken
+
+At every death,
+`typeclasses/death_progression.py::DeathProgressionScript._handle_corpse_creation_and_transition`
+does two things:
+
+* It calls `world/souls/posts.py::snapshot_imprint()`, which stores a copy
+  only for a post-holder: on the post fixture, in
+  `db.post_memory_snapshots[shift]`. One record per shift, **overwritten**.
+* It writes `character.db.imprint = imprint.capture(character)` for
+  **everyone** (#2188).
+
+So every body carries its own imprint; post-holders additionally get the
+per-shift copy on the post.
+
+### Who comes back, and who pays
+
+Nothing about a return is institutional. Every return, a player's or a
+keeper's, is paid by the dead body's own sleeve policy, bought at the
+Thawn-Harrison terminal (`world/insurance.py`, #3667). Players and the cast
+buy the same policy at the same terminal.
+
+* **A player:** `create_flash_clone` restores the dead body's
+  `db.imprint` through the same `world/imprint.py::restore()` an NPC
+  resleeve uses. A player with no sleeve policy does not come back: the
+  flash clone is refused (`commands/charcreate.py::create_flash_clone`,
+  `world/insurance.py::flash_clone_refusal`), and the account can only
+  start a fresh character.
+* **A post keeper:** `_try_resleave()` brings the dead keeper back when
+  their own sleeve policy pays (#3667; there is no till premium). The
+  archived body is revived and restored from its own `db.imprint`, or a
+  never-archived keeper is rebuilt from a post snapshot that names their
+  blueprint and body.
+
+### What comes back
+
+`world/imprint.py::restore()` brings back the memories, thoughts and
+opinions from before `taken_at`, and the faces and voices first met before
+it. Dossiers, designation and skills come back whole. The body inherits the
+recorded `sleeve_uid`, so the face is the same face.
+
+### The gap
+
+`taken_at = died_at - world/imprint.py::GAP` (5400s). The last ~90 minutes
+never made the backup. `GAP` is the only place that number lives; every
+reader goes through `imprint.cutoff_of()`, which prefers a record's stored
+`taken_at` and falls back to the derived value.
+(`scripts/builds/085_restore_the_cast.py` calls `cutoff_of()` too.)
 
 ### 1.1 · The one design decision already made
 
-`taken_at` is the only field restore consults. Today it is derived
-from a constant. **Everything in §2 works by changing where that
-number comes from, and changes no restore logic.**
+`taken_at` is the only field restore consults. Today it is derived from a
+constant. **Everything in §2 works by changing where that number comes
+from, and changes no restore logic.**
 
 ---
 
@@ -116,38 +108,38 @@ number comes from, and changes no restore logic.**
 
 Replace the constant with an event.
 
-* A character visits a terminal (Thawn-Harrison, clinics, a black
-  clinic at a markup) and takes a backup. `taken_at` is *now*.
+* A character visits a terminal (Thawn-Harrison, clinics, a black clinic
+  at a markup) and takes a backup. `taken_at` is *now*.
 * The Thawn-Harrison lobby terminal
   (`typeclasses/terminals.py::InsuranceTerminal`) takes a DNA sample and
   files a sleeve **policy**, an off-body record keyed by sleeve uid
   (`world/insurance.py::buy_policy`, #3667). It captures no imprint: the
-  imprint is still stamped on the body at death. An on-demand backup
-  could extend that terminal and that store.
-* The gap stops being a number in the source and becomes **how long
-  you left it** — a fact about the character, visible in play, and
-  their own fault.
-* Skipping it is a real economy: the premium competes with rent, food,
-  and chrome. Poverty means going un-backed, which means the colony's
-  poorest die hardest. That is the setting working correctly.
+  imprint is still stamped on the body at death. An on-demand backup could
+  extend that terminal and that store.
+* The gap stops being a number in the source and becomes **how long you
+  left it** — a fact about the character, visible in play, and their own
+  fault.
+* Skipping it is a real economy: the premium competes with rent, food, and
+  chrome. Poverty means going un-backed, which means the colony's poorest
+  die hardest. That is the setting working correctly.
 
-**Prerequisite — history.** "Restore from the latest" is only
-meaningful if more than one exists. Keep a list ordered by `taken_at`,
-capped. Everything interesting below needs this: a shelf of past
-selves to browse, choose between, steal, or quietly edit.
+**Prerequisite — history.** "Restore from the latest" is only meaningful if
+more than one exists. Keep a list ordered by `taken_at`, capped. Everything
+interesting below needs this: a shelf of past selves to browse, choose
+between, steal, or quietly edit.
 
-**Storage fork.** Once a backup belongs to a *person* rather than a
-post, its home is the **insurer**, keyed by identity — not the post
-fixture. The record already carries `name`, `sleeve_uid` and
-`taken_at`, so this is a relocation, not a redesign. It also gives the
-thing a physical address, which §5 needs.
+**Storage fork.** Once a backup belongs to a *person* rather than a post,
+its home is the **insurer**, keyed by identity — not the post fixture. The
+record already carries `name`, `sleeve_uid` and `taken_at`, so this is a
+relocation, not a redesign. It also gives the thing a physical address,
+which §5 needs.
 
 ---
 
 ## 3 · Three tiers of harm
 
-Ranked by how interesting they are, which is the inverse of how
-obvious they are.
+Ranked by how interesting they are, which is the inverse of how obvious
+they are.
 
 | | effect | why it's weak or strong |
 |---|---|---|
@@ -155,187 +147,178 @@ obvious they are.
 | **Steal** | you hold a person in a file | strong — leverage, ransom, a copy walking around |
 | **Edit** | they come back subtly wrong | **strongest** — nobody knows, including them |
 
-**Editing is the good one**, and it needs no new data model.
-Recognition is a dict keyed by apparent UID, each entry carrying an
-`assigned_name`, encounter history and free-text `notes`. So:
+**Editing is the good one**, and it needs no new data model. Recognition is
+a dict keyed by apparent UID, each entry carrying an `assigned_name`,
+encounter history and free-text `notes`. So:
 
-* **Delete an entry** → the restored person walks past their closest
-  ally without a flicker.
+* **Delete an entry** → the restored person walks past their closest ally
+  without a flicker.
 * **Add one** → they greet a stranger like family, warmly, by name.
 * **Rename one** → they call the wrong person by the right name.
 * **Edit the notes** → the LLM layer reasons from a forged premise and
   argues *for* it, in their own voice.
 
-You do not kill somebody. You edit who they loved. That is the thesis
-of the whole feature, and it is a dict write.
+You do not kill somebody. You edit who they loved. That is the thesis of
+the whole feature, and it is a dict write.
 
 ---
 
 ## 4 · The sleeve is a container, not a field
 
-**RULED (owner, 2026-08-22): `sleeve_uid` is read-only. The sleeve
-itself is never editable.**
+**RULED (owner, 2026-08-22): `sleeve_uid` is read-only. The sleeve itself
+is never editable.**
 
 The record carries the body identity because continuity requires it
-(`IDENTITY_RECOGNITION_SPEC` §Principles 1: *same body = same
-recognition across clones*; and `create_flash_clone` already inherits
-it — *"same body means same sleeve_uid"*).
-`apparent_uid = blake2b(sleeve_uid + overrides + essential worn items)`,
-so all recognition resolves through it. Forging that field would be
-identity theft nothing could argue with, and it is therefore closed.
+(`IDENTITY_RECOGNITION_SPEC` §Principles 1: *same body = same recognition
+across clones*; and `create_flash_clone` inherits it — *"same body means
+same sleeve_uid"*).
+`apparent_uid = blake2b(sleeve_uid + overrides + essential worn items)`, so
+all recognition resolves through it. Forging that field would be identity
+theft nothing could argue with, and it is therefore closed.
 
-**But the interesting crime was never forging the field.** A backup
-holds a *body* — a sleeve you can grow. So:
+**But the interesting crime was never forging the field.** A backup holds a
+*body* — a sleeve you can grow. So:
 
-> Steal somebody's backup. Write **your own** persona into it. Grow
-> it. There are now two of you, and the second one wears their face.
+> Steal somebody's backup. Write **your own** persona into it. Grow it.
+> There are now two of you, and the second one wears their face.
 
-The sleeve is immutable; **the contents are not**. You do not edit
-whose body it is — you take a body that is unambiguously theirs and
-put yourself inside it. Recognition works perfectly, because it is
-genuinely their sleeve. The colony sees them. It is you.
+The sleeve is immutable; **the contents are not**. You do not edit whose
+body it is — you take a body that is unambiguously theirs and put yourself
+inside it. Recognition works perfectly, because it is genuinely their
+sleeve. The colony sees them. It is you.
 
 ### 4.1 · Double-sleeving is a goal, not just a crime
 
-Running two bodies at once is a **desirable player objective**, not
-only an attack. The backup system is one route to it: bodies are
-expensive and rare, and somebody else's backup is a body nobody is
-currently using.
+Running two bodies at once is a **desirable player objective**, not only an
+attack. The backup system is one route to it: bodies are expensive and
+rare, and somebody else's backup is a body nobody is currently using.
 
 Consequences that make it worth the trouble — and worth catching:
 
-* their face is seen doing things they did not do, and every witness
-  is honestly certain it was them
+* their face is seen doing things they did not do, and every witness is
+  honestly certain it was them
 * they have an alibi that nothing in the recognition layer supports
-* §5's forensic chain is the **only** system that disagrees — the
-  corpse's stamped signature against a living presentation
+* §5's forensic chain is the **only** system that disagrees — the corpse's
+  stamped signature against a living presentation
 
-**Open (owner):** how one mind runs two bodies. Simultaneous control,
-switching with the idle body dormant, or a copy that diverges into its
-own person the moment it wakes. That last one is a different and much
-larger story engine — see §8.4 — and this spec does not assume an
+How one mind runs two bodies is open (§8.4); this spec does not assume an
 answer.
 
 ---
 
 ## 5 · Detection already exists
 
-This is what makes forgery *fair* rather than unfalsifiable, and it
-needs no new system.
+This is what makes forgery *fair* rather than unfalsifiable, and it needs
+no new system.
 
-Per `IDENTITY_RECOGNITION_SPEC` §Forensic chain, every body-derived
-surface is stamped at the moment of transformation with
-`apparent_uid_at_death` and `source_signature` — corpses, severed
-limbs, organs, blood pools. The old body keeps a true record of who it
-was.
+Per `IDENTITY_RECOGNITION_SPEC` §Forensic chain, every body-derived surface
+is stamped at the moment of transformation with `apparent_uid_at_death` and
+`source_signature` — corpses, severed limbs, organs, blood pools. The old
+body keeps a true record of who it was.
 
-So a tampered restore is **discoverable by autopsy**: the corpse's
-stamped signature versus what the restored person now presents. That
-is a real investigative loop, built from parts that already ship, and
-it is the bridge this spec sits on — *forensics on one side, cybercrime
-on the other, the backup in between.*
+So a tampered restore is **discoverable by autopsy**: the corpse's stamped
+signature versus what the restored person now presents. That is a real
+investigative loop, built from parts that already exist, and it is the
+bridge this spec sits on — *forensics on one side, cybercrime on the other,
+the backup in between.*
 
-Corollary: **the corpse becomes evidence worth destroying.** Anyone
-forging a restore wants the old body gone — which is a gig, and one
-the Ripper spec is already shaped to take
-([`GIG_RIPPER_SPEC`](GIG_RIPPER_SPEC.md)).
+Corollary: **the corpse becomes evidence worth destroying.** Anyone forging
+a restore wants the old body gone — which is a gig, and one the Ripper spec
+is already shaped to take ([`GIG_RIPPER_SPEC`](GIG_RIPPER_SPEC.md)).
 
 ---
 
 ## 6 · Distortion on a living sleeve
 
-The owner-parked **memory distortion** thread lands here rather than
-in a separate system. Same operations, different target: instead of
-editing a backup and waiting for a death, edit the person in front of
-you.
+The owner-parked **memory distortion** thread lands here rather than in a
+separate system. Same operations, different target: instead of editing a
+backup and waiting for a death, edit the person in front of you.
 
 * **Vector:** not the net — the *body*. A clinic chair, an Autodoc, a
   black-market rig. Distortion is surgery, not a run.
 * **Same fields:** `recognition`, `voice`, `dossiers`, `memories`.
-* **Different risk:** a living target may *notice* — inconsistencies
-  they can be confronted with, which is drama rather than a die roll.
+* **Different risk:** a living target may *notice* — inconsistencies they
+  can be confronted with, which is drama rather than a die roll.
 * **The pairing:** distort a sleeve *and* its backup, and there is no
-  version of that person who disagrees with you. That is the endgame
-  crime, and it should be very hard.
+  version of that person who disagrees with you. That is the endgame crime,
+  and it should be very hard.
 
 ---
 
 ## 7 · Net-layer integration
 
 Under the everything-is-a-file doctrine
-([`DECKING_MATRIX`](DECKING_MATRIX.md) §2), backups are simply files
-on the insurer's system. No special-casing:
+([`DECKING_MATRIX`](DECKING_MATRIX.md) §2), backups are simply files on the
+insurer's system. No special-casing:
 
 * they are **found** by the same enumeration as any other record
-* they are **read** with the same verbs (the read *is* the theft — a
-  copy is a person)
-* they are **written** with the same verbs, under the same trace
-  pressure
-* the insurer is a **fixed, findable, defensible address** — which
-  gives the net layer one of its first genuinely high-stakes targets
+* they are **read** with the same verbs (the read *is* the theft — a copy
+  is a person)
+* they are **written** with the same verbs, under the same trace pressure
+* the insurer is a **fixed, findable, defensible address** — which gives
+  the net layer one of its first genuinely high-stakes targets
 
-Backups also make traces *personal*: getting caught mid-write on
-somebody's estate is not a fine, it is being found holding a person.
+Backups also make traces *personal*: getting caught mid-write on somebody's
+backup is not a fine, it is being found holding a person.
 
 ---
 
 ## 8 · Questions
 
-**8.1 — `sleeve_uid` writability. ✅ RULED (2026-08-22):** read-only /
-signed. The sleeve is a container, never an editable field. The crime
-is inhabiting a stolen body, not forging one — §4.
+**8.1 — `sleeve_uid` writability. RULED (2026-08-22):** read-only /
+signed. The sleeve is a container, never an editable field. The crime is
+inhabiting a stolen body, not forging one — §4.
 
-**8.2 — Do PCs get backups? ✅ RULED (2026-08-22):** no; the estate
-stays **institutional**. Players already resleeve free via
-`create_flash_clone`, which inherits the sleeve (`same body means same
-sleeve_uid`) and deliberately leaves the brain empty — *"flash clones
-have empty brains and recognise nobody"*.
+**8.2 — Do PCs get backups?**
 
-> **SUPERSEDED in part (owner ruling 2026-09-25, #3667):** players do
-> not resleeve free. A flash clone needs a sleeve policy bought in
-> advance at the Thawn-Harrison terminal, and an uninsured death does
-> not bring that person back. See `specs/SLEEVE_INSURANCE_SPEC.md` §1.
+*Superseded in part.* The owner ruled on 2026-08-22: no; the estate stays
+**institutional**. Players already resleeve free via `create_flash_clone`,
+which inherits the sleeve (`same body means same sleeve_uid`) and
+deliberately leaves the brain empty — *"flash clones have empty brains and
+recognise nobody"*. What still stands is that the backup product
+(insurer-held storage, on-demand capture, a premium, history) is ruled out
+— §9. A flash clone is not empty: it is restored from the imprint stamped
+at death (#2188). And the free resleeve was **superseded (owner ruling 2026-09-25, #3667):**
+players are in the insurance loop. A flash clone needs a sleeve policy
+bought in advance at the Thawn-Harrison terminal, and an uninsured death
+does not bring that person back. See `specs/SLEEVE_INSURANCE_SPEC.md` §1,
+ruling 6.
 
-> **The rationale was overtaken the same night (noted 2026-09-11).**
-> Since PR #2189 (closing #2188) a flash clone is *not* empty: every
-> death stamps `character.db.imprint`, and `create_flash_clone` calls
-> `world/imprint.py::restore()` on it, so a PC whose policy pays wakes knowing the faces,
-> the voices, and — since #2800 — the designation and skills the record
-> held, minus the gap. `IDENTITY_RECOGNITION_SPEC` §Flash Clone Interaction now says
-> recognition is restored from the imprint, but its §Organic Memory
-> still says flash clones "start with empty recognition memory", which
-> is stale the same way. **The owner answered on 2026-09-25 (#3667):** players are
-> in the insurance loop, which supersedes the free resleeve above; see
-> `specs/SLEEVE_INSURANCE_SPEC.md` §1, ruling 6. An uninsured death is
-> permanent for that character; the account can still start a fresh one.
-> The policy is bought at the Thawn-Harrison terminal, and its price
-> (`world/insurance.py::POLICY_PRICE`) is 0 until the economy is
-> balanced (owner ruling 2026-09-25).
+The rule now:
 
-> Worth noting for later: this is **coherent, not inconsistent**. A PC
-> without a backup wakes recognising nobody; an NPC with one wakes
-> knowing what the backup held. **The backup IS the memory.** If PC
-> coverage is ever revisited, that is the value it sells — not
-> survival.
->
-> **Superseded (noted 2026-09-11, and again by #3667):** a PC with no
-> sleeve policy does not come back: the flash clone is refused
-> (`commands/charcreate.py::create_flash_clone`,
-> `world/insurance.py::flash_clone_refusal`), and the account can only
-> start a fresh character. An insured PC wakes holding the imprint
-> stamped at their death, minus the gap. Players and the cast buy the
-> same policy at the same terminal. What only the cast has is the post's
-> per-shift copy of a keeper's imprint (`db.post_memory_snapshots`). No
-> insurer-held backup and no backup history exists for anyone:
-> 📋 UNBUILT (not decided, see §9).
+* An uninsured death is permanent for that character; the account can
+  still start a fresh one.
+* An insured PC wakes holding the imprint stamped at their death, minus the
+  gap: the faces, the voices, the designation and skills the record held
+  (#2800).
+* The policy is bought at the Thawn-Harrison terminal, and its price
+  (`world/insurance.py::POLICY_PRICE`) is 0 until the economy is balanced
+  (owner ruling 2026-09-25).
+* Players and the cast buy the same policy at the same terminal. What only
+  the cast has is the post's per-shift copy of a keeper's imprint
+  (`db.post_memory_snapshots`).
+* No insurer-held backup and no backup history exists for anyone:
+  📋 UNBUILT (not decided, see §9).
 
-**8.3 — History depth.** How many past selves does an insurer keep,
-and does a stale restore cost less than a fresh one? *(Open.)*
+This is coherent, not inconsistent: **the backup IS the memory.** A body
+restored from a backup wakes knowing what the backup held; one without a backup would wake recognising nobody.
+If PC coverage is ever revisited, that is the value it sells — not
+survival.
 
-**8.4 — Is a copy a person?** §4.1 makes two bodies reachable. If the
-second wakes and *diverges*, the colony contains two people with one
-past and a growing disagreement. That is a story engine of its own and
-probably its own spec. *(Open.)*
+`IDENTITY_RECOGNITION_SPEC` §Flash Clone Interaction says recognition is
+restored from the imprint, but its §Organic Memory still says flash clones
+"start with empty recognition memory", which disagrees with
+`create_flash_clone`.
+
+**8.3 — History depth.** How many past selves does an insurer keep, and
+does a stale restore cost less than a fresh one? *(Open.)*
+
+**8.4 — Is a copy a person?** §4.1 makes two bodies reachable. How one mind
+runs two bodies is open (owner): simultaneous control, switching with the
+idle body dormant, or a copy that diverges into its own person the moment
+it wakes. If the second wakes and *diverges*, the colony contains two
+people with one past and a growing disagreement. That is a different and
+much larger story engine of its own and probably its own spec. *(Open.)*
 
 **8.5 — Does the world know backups exist?** Common knowledge or a
 Thawn-Harrison secret. Changes every conversation about it. *(Open.)*
@@ -345,17 +328,29 @@ Thawn-Harrison secret. Changes every conversation about it. *(Open.)*
 ## 9 · What must not be built yet
 
 * Anything needing the net layer (§7) — gated on phase + verticality.
-* Double-sleeving (§4.1) — needs the net layer AND an answer to how
-  one mind runs two bodies (§8.4). The largest thing in this spec.
-* Personal backups — **ruled out** for now (§8.2), not merely gated.
-  **Partly overtaken (noted 2026-09-11):** the personal *record*
-  exists — `character.db.imprint`, stamped at every death and
-  restored at decant only when the dead body's own sleeve policy pays
-  (PR #2189 / issue #2188; the policy gate is #3667). What remains ruled
-  out is the **product**: insurer-held storage, on-demand capture, a
-  premium, history. Read §8.2's note before building on this line.
+* Double-sleeving (§4.1) — needs the net layer AND an answer to how one
+  mind runs two bodies (§8.4). The largest thing in this spec.
+* Personal backups — **ruled out** for now (§8.2), not merely gated. The
+  personal *record* exists — `character.db.imprint`, stamped at every death
+  and restored at decant only when the dead body's own sleeve policy pays
+  (#2188; the policy gate is #3667). What remains ruled out is the
+  **product**: insurer-held storage, on-demand capture, a premium, history.
+  Read §8.2 before building on this line.
 
 **Buildable independently, whenever wanted:** backup *history* (§2
-prerequisite) and the on-demand capture command. Both are small, both
-are useful on their own, and both are the foundation everything else
-assumes. Neither commits to a single answer in §8.
+prerequisite) and the on-demand capture command. Both are small, both are
+useful on their own, and both are the foundation everything else assumes.
+Neither commits to a single answer in §8.
+
+---
+
+## Related
+
+* [`IDENTITY_RECOGNITION_SPEC`](../IDENTITY_RECOGNITION_SPEC.md) — apparent
+  UID, the forensic chain
+* [`NPC_MEMORY_AND_IDENTITY_SPEC`](../NPC_MEMORY_AND_IDENTITY_SPEC.md)
+* [`DEATH_AND_SLEEVE_LIFECYCLE_SPEC`](DEATH_AND_SLEEVE_LIFECYCLE_SPEC.md)
+* [`NPC_POSTS_AND_REINCARNATION_SPEC`](../NPC_POSTS_AND_REINCARNATION_SPEC.md)
+* [`SLEEVE_INSURANCE_SPEC`](../SLEEVE_INSURANCE_SPEC.md)
+* [`DECKING_MATRIX`](DECKING_MATRIX.md)
+* [`GIG_RIPPER_SPEC`](GIG_RIPPER_SPEC.md)

@@ -1,12 +1,11 @@
 # The Parkour Template Library — companion to the Building Playbook
 
-> **Status:** 🧭 LIVING DOCUMENT (2026-08-05), companion to
-> `BUILDING_PLAYBOOK.md` §1.5 (traversal). §0 records the owner-ruled
-> movement kernel — that part is law. §1–§3 are the derived layout
-> doctrine and the reusable architectural templates for making the
-> street-to-precipice guarantee *amazing* rather than merely solvable.
-> The rappel/grapple system is **not yet built**; the kernel rulings
-> exist so every build from today pre-wires its seams.
+This is the companion to `BUILDING_PLAYBOOK.md` §1.5 (traversal). §0 records
+the owner-ruled movement kernel; that part is law. §1–§3 are the layout
+doctrine derived from it and the reusable architectural templates that make
+the street-to-precipice guarantee *amazing* rather than merely solvable. The
+rappel/grapple hook is not built (📋 UNBUILT, no issue); the kernel rulings
+exist so every build pre-wires its seams.
 
 ---
 
@@ -30,123 +29,90 @@ a number reopens the templates.
   the shins, then the thighs, then the other limbs, then the rest, so a
   long fall smashes the legs before it reaches anything vital. How lethal
   a fall is has not been tuned (`specs/roadmaps/BALANCE_LEDGER.md`).
-  *(Correction 2026-09-12, **resolved 2026-09-16 by the gravity layer,
-  #3579** — the drop was brought to the kernel, as that correction said
-  it should be. Each finding and its disposition:*
-
-  *__(a) "5/story is the law on one verb only" — RESOLVED.__ The
-  correction found `jump across` charging a hard-coded 5 × stories while
-  `jump off` charged `exit.db.fall_damage` × stories (default 8, authored
-  per exit: 5 on the Brackett roof edge, 6 on the crane, 10 on the Fallen
-  Antenna↔Halcyon crossing, 20 on the ancestral Laundromat↔Market pair) —
-  so the same one-storey miss over Braddock cost 5 if you failed the leap
-  and 20 if you jumped off the same edge. There is now **one constant and
-  both verbs use it**: `FALL_DAMAGE_PER_STORY` (5) × cells actually
-  passed, charged by `world/gravity.py` at the bottom of whatever column
-  the body fell down. No exit carries a damage number any more. Two
-  cases have no column, and the jump verb charges them itself, a flat
-  one storey (5) with no landing roll: `jump off` an edge whose
-  destination is not an air cell (`handle_edge_descent` in
-  `commands/combat/jump.py`), and a missed `jump across` with no air cell
-  between the two roofs, where the jumper slips and stays put
-  (`handle_fall_failure`).*
-
-  *__(b) "The gravity walk only walks where a `down` chain exists" —
-  HALF-RESOLVED.__ The CODE half is fixed: a cell with no `down`, a
-  `down` whose destination no longer resolves, or a column longer than
-  `FALL_MAX_CELLS` (30) now **stops the fall cleanly in that cell**, with
-  a message and no damage — never the silent 0-damage strand inside an
-  exitless air cell the correction measured at Kaspar Gap #7307
-  (-5,-15,12) and the crane's air #7390 (-1,-16,13) (the crane no longer
-  leads there: its north door opens onto the shaft, #3643). That clean stop is
-  the **parked impasse, #3581**: it is the right behaviour for a column
-  that does not exist, not a fix for the column not existing. The WORLD
-  half is unchanged and still open — **#2945**, the colony's highest
-  crossings hang over air cells with no `down` beneath them, so the one
-  place the fiction promises a death sentence still delivers a pause in
-  mid-air. Build the columns; the code will fall down them. (The related
-  `fall_room` asymmetry the correction describes is gone with the rest:
-  no fall path reads `fall_room` at all, and **`fall_room` is retired
-  (#3580, 2026-09-16)** — no reader anywhere, the map exporter included.
-  A fall always follows gravity straight down the column: in a sky room,
-  proceed down; the fall ends at the first room that is not a sky room.
-  There is no authored landing. An apron, awning or terrace that should
-  catch a fall is a ROOM in the column (`is_sky_room` False), never an
-  attribute.)*
-
-  *__(c) "Everything downstream inherits (a)" — RESOLVED.__ The verb
-  table's "5×height" row below and §1 invariant 3's apron cap now
-  describe BOTH verbs over any wired column, because there is only one
-  number. And the `fall_damage` authored on all 90 gap exits is no longer
-  dead weight on one path — it is **retired data on every path**. Owner
-  ruling (2026-09-16): "we'll have cyberlegs... parachutes, flight... but
+  How a fall plays out:
+  - **One number, every verb.** `FALL_DAMAGE_PER_STORY` (5) × cells
+    actually passed, charged by `world/gravity.py` at the bottom of
+    whatever column the body fell down. `jump off` and `jump across` both
+    use it. No exit carries a damage number.
+  - **Two cases have no column**, and the jump verb charges them itself, a
+    flat one storey (5) with no landing roll: `jump off` an edge whose
+    destination is not an air cell (`handle_edge_descent` in
+    `commands/combat/jump.py`), and a missed `jump across` with no air cell
+    between the two roofs, where the jumper slips and stays put
+    (`handle_fall_failure`).
+  - **The fall follows gravity straight down the column**: in a sky room,
+    proceed down; the fall ends at the first room that is not a sky room.
+    There is no authored landing. An apron, awning or terrace that should
+    catch a fall is a ROOM in the column (`is_sky_room` False), never an
+    attribute. No fall path reads `fall_room`; it is retired (#3580,
+    2026-09-16) with no reader anywhere, the map exporter included.
+  - **A missing column stops the fall cleanly.** A cell with no `down`, a
+    `down` whose destination no longer resolves, or a column longer than
+    `FALL_MAX_CELLS` (30) stops the fall in that cell, with a message and
+    no damage. That clean stop is the parked impasse, #3581: it is the
+    right behaviour for a column that does not exist, not a fix for the
+    column not existing. The colony's highest crossings still hang over air
+    cells with no `down` beneath them (📋 UNBUILT, #2945; see §4). Build the
+    columns; the code will fall down them.
+  - **A fall is a real traversal a watcher can see.** Owner (2026-09-16,
+    #3579): "They should traverse the air rooms falling... if I'm flying in
+    a room or in a flying vehicle in one of the sky rooms, I'd see someone
+    fall past me." One cell per second (`FALL_SECONDS_PER_CELL`), announced
+    to the cell left, the cell entered, and every walkable surface beside
+    it.
+  - **Gravity is a property of the room.** `Room.at_object_receive` calls
+    `world.gravity.on_enter_air` for every arrival, so a shove, a drop, a
+    throw, a build script or a reconnect into an air cell all fall, not
+    just the `jump` flow. Walking into a sky room triggers falling. A
+    player typing a direction is refused at the sky block in
+    `Exit.at_traverse`, which has no exception at all.
+  - **A reload does not strand a faller.** The fall is a persistent
+    `db.falling` record and `sweep_airborne` resumes it at boot, so a
+    reload mid-fall costs a beat. The one exception is a `jump across`
+    inside its single airborne tick; see `specs/JUMP_COMMAND_SPEC.md`'s
+    2026-09-16 known-limits addendum.
+  - **The seam for the gear tiers**: `db.stays_aloft is True` is the single
+    strict predicate gravity asks before it drops anything, so a hook line,
+    a paraglider, a jump jet or a flying vehicle each land on that one
+    attribute rather than on a new branch in the fall code.
+- **The authored surface of an edge or gap** is exactly `is_edge` /
+  `edge_difficulty`, plus `is_gap` / `gap_difficulty` / `gap_destination` on
+  a gap. The edge's own `destination` is the air cell; `sky_room` is not
+  required and no longer exists, and there is no degraded plain-walk
+  fallback to guard against. `fall_damage`, `fall_distance` and `sky_room`
+  have no runtime reader left; the `fall_damage` still authored on gap exits
+  is retired data on every path. `gap_width` is still written by a few
+  build scripts and by `CraneContainer._set_door` in `typeclasses/rooms.py`,
+  but nothing reads it.
+  *Overturned intention (2026-09-16, #3579):* `jump off` used to charge a
+  per-exit `exit.db.fall_damage` (default 8, from 5 to 20 on different
+  exits) while `jump across` charged 5 per storey; one geometry constant
+  replaced both. Owner ruling
+  (2026-09-16): "we'll have cyberlegs... parachutes, flight... but
   calculating potential damage based on geometry will always be
   relevant." Geometry is the base; per-exit damage numbers were the thing
-  standing in its way. `fall_damage`, `fall_distance` and `sky_room` have
-  no runtime reader left; `is_edge`, `edge_difficulty`, `is_gap`,
-  `gap_difficulty` and `gap_destination` are the authored surface.
-  `gap_width` is still written by a few build scripts and by
-  `CraneContainer._set_door` in `typeclasses/rooms.py`, but nothing
-  reads it.*
-
-  *__The kernel itself is unchanged.__ Falls still cost 5/story and risk
-  still scales with height automatically — what changed is that the code
-  now does that on every verb, and the fall is a real traversal a watcher
-  can see. Owner: "They should traverse the air rooms falling... if I'm
-  flying in a room or in a flying vehicle in one of the sky rooms, I'd
-  see someone fall past me." One cell per second
-  (`FALL_SECONDS_PER_CELL`), announced to the cell left, the cell
-  entered, and every walkable surface beside it. Related: #2945 (open —
-  the missing columns), #3581 (parked — the clean stop), #3580 (done
-  2026-09-16 — `fall_room` retired), #2441, #2944.)*
-- **Field facts (learned building the Brackett escape, 2026-08-06):**
-  ~~an edge exit into air REQUIRES `sky_room` (int dbref) or the jump
-  silently degrades to a plain walk — the full edge-to-air attr set is
-  is_edge / edge_difficulty / sky_room / fall_room / fall_distance /
-  fall_damage.~~ ~~WALKING into a sky room never triggers falling (no
-  gravity-on-entry hook exists; the fall lives in the `jump` flow
-  only).~~ ~~A server reload during the fall delay orphans the jumper in
-  the sky room.~~ Fire-escape rooms are `type: "fire escape"` — their
-  own exit-message list (exits.py) and ambience category
-  (ROOM_TYPE_POOLS) exist; new room types join both registries.
-  *(2026-09-16, #3579 — the first three sentences are struck above as
-  superseded; the fire-escape sentence still stands. **`sky_room` is not required and no
-  longer exists**: the edge's own `destination` is the air cell and the
-  authored set is now exactly is_edge / edge_difficulty (+ is_gap /
-  gap_difficulty / gap_destination on a gap) — `fall_room`
-  is off the list too, **retired (#3580, 2026-09-16)** with no reader
-  left, the map exporter included. There is no degraded plain-walk
-  fallback to guard against. **Walking into a sky room DOES trigger
-  falling** — gravity is a property of the ROOM now:
-  `Room.at_object_receive` calls `world.gravity.on_enter_air` for every
-  arrival, so a shove, a drop, a throw, a build script or a reconnect
-  into an air cell all fall, not just the `jump` flow. (A player typing a
-  direction is still refused at the sky block in `Exit.at_traverse`,
-  which now has no exception at all.) **The reload orphan is swept**: the
-  fall is a persistent `db.falling` record and `sweep_airborne` resumes
-  it at boot, so a reload mid-fall costs a beat, not a stranding — the one
-  survivor is a `jump across` inside its single airborne tick, see
-  `specs/JUMP_COMMAND_SPEC.md`'s 2026-09-16 known-limits addendum.)*
-  *(2026-09-16 — the seam for the gear tiers: `db.stays_aloft is True` is
-  the single strict predicate gravity asks before it drops anything, so a
-  hook line, a paraglider, a jump jet or a flying vehicle each land on
-  that one attribute rather than on a new branch in the fall code.)*
+  standing in its way.
+- **Fire-escape rooms** are `type: "fire escape"` — their own exit-message
+  list (exits.py) and ambience category (ROOM_TYPE_POOLS) exist; new room
+  types join both registries.
 - **Edges**: any edge is a valid hook anchor. **No authored anchor
   points** — exploration is encouraged, not fenced; the *building
   design* does the fencing, never the mechanic.
-- **The hook (rappel/grapple), when built**: works **both directions**
-  — secure a line to an edge or roof (above or below), then ascend or
-  descend it. A deployed line **integrates into the room descs** of
-  its anchor room, every sky room it threads, and the landing room; it
-  is visible infrastructure. A line can be **unhooked — potentially
-  while someone is on it.** Gear is **recoverable** (lines are
+- **The hook (rappel/grapple), when built** (📋 UNBUILT, no issue): works
+  **both directions** — secure a line to an edge or roof (above or below),
+  then ascend or descend it. A deployed line **integrates into the room
+  descs** of its anchor room, every sky room it threads, and the landing
+  room; it is visible infrastructure. A line can be **unhooked —
+  potentially while someone is on it.** Gear is **recoverable** (lines are
   valuable, lendable, stealable). Use rolls **Motorics**; failure to
-  ascend/descend **burns stamina** (future stat), never causes a fall.
+  ascend/descend **burns stamina** (future stat) (📋 UNBUILT, no issue),
+  never causes a fall.
 - **Range is the gear**: each make/model of hook has its own max line
   length at its own price point (branded, per the world rule). Length
   IS the progression: a cheap line opens the low roofs, the rim-rated
-  line is endgame kit. Tier ladder is an owner-priced decision later;
-  templates below only assume that *short is common and long is rare*.
+  line is endgame kit. The tier ladder is an owner-priced decision for
+  later (see §5); templates below only assume that *short is common and
+  long is rare*.
 
 **The verb split this produces** — the load-bearing design fact:
 
@@ -154,6 +120,9 @@ a number reopens the templates.
 |---|---|---|---|---|
 | Jump | fast | fall damage (5×height) | Motorics | a moment |
 | Hook | slow | stamina only | gear length + Motorics | a visible line others can use or cut |
+
+The "5×height" row holds for both `jump off` and `jump across` over any
+wired column, because there is one number.
 
 A jumper who holds someone in a grapple drags them off an edge too.
 The held body cushions the landing and takes most of the damage (the
@@ -178,8 +147,7 @@ and hooks buy *shortcuts, safety, and rescue* — never the only path.
    with altitude — exposure already does it. Tune difficulty for
    *rhythm* (easy flow, one hard beat, rest), and tune *what is
    underneath* for stakes.
-   *(2026-09-16, #3579 — this is now enforced arithmetic, not just
-   doctrine. The LANDING roll already adds
+   This is enforced arithmetic (#3579). The LANDING roll adds
    `FALL_LANDING_DIFFICULTY_PER_CELL` (2) per storey fallen on top of the
    edge's `edge_difficulty`, so altitude is charged once, automatically,
    in the only roll that altitude should touch. An author who also loads
@@ -189,20 +157,20 @@ and hooks buy *shortcuts, safety, and rescue* — never the only path.
    `edge_difficulty` rolls against 8 (`FALL_EDGE_DIFFICULTY_DEFAULT`),
    and every `@airfill` edge is bare. Only a `jump off` into an air
    column rolls to land; a shove, a throw, a missed leap or a direct drop
-   does not.)*
+   does not.
 3. **Soft-fail low, hard-fail high.** Learning sections route over
    fall interceptors (terraces/awnings 1–2 stories below the gap,
    capping a botch at ≤10 damage). The climax near the rim earns its
    full street-drop exposure.
-   *(2026-09-16, #3579 — the arithmetic, now that one constant covers
-   both verbs: a 2-storey apron botch is `FALL_DAMAGE_PER_STORY` (5) × 2
-   = **10**, which is exactly the cap this invariant asks for. And on an
+   The arithmetic (#3579): a 2-storey apron botch is
+   `FALL_DAMAGE_PER_STORY` (5) × 2 = **10**, which is exactly the cap
+   this invariant asks for, on both verbs, over any wired column. On an
    EDGE descent a made landing roll absorbs
    `FALL_LANDING_ABSORBED_CELLS` (2) storeys — so over an apron at 1–2
    storeys a competent descent is **entirely free**, and the apron
-   punishes only the miss. A failed `jump across` never rolls to land, so
-   the full 10 stands on a botched leap. That is the intended
-   asymmetry: the leap is the risk, the descent is the skill.)*
+   punishes only the miss. A failed `jump across` never rolls to land,
+   so the full 10 stands on a botched leap. That is the intended
+   asymmetry: the leap is the risk, the descent is the skill.
 4. **Valves are deliberate.** A drop of ≥2 stories is one-way without
    a line. Count them per corridor; each is either an escape route, a
    commitment point, or a mistake.
@@ -238,16 +206,16 @@ heights, stitched by furniture. The law of the mesh:
   air cell with the fall waiting below, the archipelago pattern
   exactly. Unequal faces across a street are not a crossing; where
   connectivity needs one, equalize the buildings.
-  **Wiring requirement (2026-09-16, #3579): "the fall waiting below" has
-  to actually be wired.** A span-1 air cell needs a one-way `down` (key
-  `down`, alias `d`) to the next cell, and that chain has to reach
-  something that is **not** an air cell — ground, a terrace, an awning,
-  anything solid. Without it the crossing still works and the miss still
-  falls, but the fall stops dead in the first cell with no floor: no
-  damage, no landing, a body hanging in open air. That is the parked
-  impasse (#3581) doing the right thing with world data that is missing
-  (#2945). A crossing whose column is unbuilt is a crossing with no
-  stakes — build the column in the same pass as the gap.
+  **Wiring requirement (#3579): "the fall waiting below" has to actually
+  be wired.** A span-1 air cell needs a one-way `down` (key `down`, alias
+  `d`) to the next cell, and that chain has to reach something that is
+  **not** an air cell — ground, a terrace, an awning, anything solid.
+  Without it the crossing still works and the miss still falls, but the
+  fall stops dead in the first cell with no floor: no damage, no landing,
+  a body hanging in open air. That is the parked impasse (#3581) doing
+  the right thing with world data that is missing (#2945). A crossing
+  whose column is unbuilt is a crossing with no stakes — build the column
+  in the same pass as the gap.
 - Steps of **2–3 stories** are bridged by **furniture** (§2.5), never
   by accident: a water-tower ladder, a fire escape, a shed roof.
 - Steps **greater than 3** are district boundaries — valves and
@@ -299,7 +267,7 @@ a thing a character knows, teaches, sells, or dies keeping. The
 milestone ladder every quarter should support:
 
 1. **The First Step** — street to any roof, by any furniture.
-2. **The Street Cross** — the first air-cell crossing (built: the
+2. **The Street Cross** — the first air-cell crossing (the
    Laundromat → Market Rooftop line over Braddock).
 3. **The Block Run** — around one block, no ground.
 4. **The Quarter Run** — a named end-to-end (Braddock to the channel
@@ -338,11 +306,11 @@ outer, with the south gentler than the north at every radius.
 **The gear ladder maps onto the rings**: bare hands (easy) → short
 line (medium) → long line (hard) → **the paraglider** (ultra) — a new
 gear class entering the kernel: glide descent with lateral reach, the
-escape from pockets that one-way drops create. Its numbers (glide
-ratio, launch requirements) are an owner call for when the kit builds;
-until then, high builds reserve **launch points** (a parapet with a
-wind note) the way roofs reserve anchor edges — seams now, straps
-later.
+escape from pockets that one-way drops create (📋 UNBUILT, no issue).
+Its numbers (glide ratio, launch requirements) are an owner call for
+when the kit builds (see §5); until then, high builds reserve **launch
+points** (a parapet with a wind note) the way roofs reserve anchor
+edges — seams now, straps later.
 
 ## 2 · The templates
 
@@ -434,21 +402,20 @@ one of four jobs — **on-ramp** (ground/interior → roof), **step**
 one). A build's parkour budget is measured in furniture, and one or
 two pieces per building is plenty.
 
-- **F1 · The fire escape** — the workhorse on-ramp, and now a BUILT
-  exemplar: **the Brackett fire escape** (landings (-8,-18) z3-z6).
-  Its as-built laws: windows are **communal** — they open from each
-  floor's landing/hall, never from private units (a unit's security
-  perimeter includes everything of its own); exit key `window`, no
-  aliases; the iron works both ways; the bottom is a **one-way drop**
-  (ascent from below waits for the crank/grapple era); it can end on
-  a ROOF or HULL rather than the ground, feeding the second city
-  directly. Egress always; ingress is the future hidden-exit
-  mechanic. Copy the exemplar, not this paragraph. Copy its rooms and
-  exits, not its East Roof edge block: that block still writes the
-  retired `sky_room` / `fall_room` / `fall_distance` / `fall_damage`
-  (#3579, #3580), with a comment calling `sky_room` required. An edge
-  needs only `is_edge` and `edge_difficulty`, and its destination is the
-  air cell.
+- **F1 · The fire escape** — the workhorse on-ramp. The exemplar is
+  **the Brackett fire escape** (landings (-8,-18) z3-z6). Its laws:
+  windows are **communal** — they open from each floor's landing/hall,
+  never from private units (a unit's security perimeter includes
+  everything of its own); exit key `window`, no aliases; the iron works
+  both ways; the bottom is a **one-way drop** (ascent from below waits
+  for the crank/grapple era, 📋 UNBUILT, no issue); it can end on a ROOF
+  or HULL rather than the ground, feeding the second city directly.
+  Egress always; ingress is the future hidden-exit mechanic. Copy the
+  exemplar, not this paragraph. Copy its rooms and exits, not its East
+  Roof edge block: that block still writes the retired `sky_room` /
+  `fall_room` / `fall_distance` / `fall_damage` (#3579, #3580), with a
+  comment calling `sky_room` required. An edge needs only `is_edge` and
+  `edge_difficulty`, and its destination is the air cell.
 - **F2 · The water tower** — the step-stone crown. Ladder up a leg,
   tank-top platform +1..+2 above its roof with its own edge set: it
   takes a roof HIGHER without a new building, bridges to the taller
@@ -505,7 +472,48 @@ honing — answered at design time, like the playbook's six):
 5. If the free route fails, the layout is wrong — fix geometry, not
    difficulty numbers.
 
-The future analyzer (`export_map` + kernel numbers → reachability
-overlay on the atlas) automates step 4's proof and the parked global
-edge audit; until then, corridors are proven by hand against this
+The analyzer (`export_map` + kernel numbers → reachability overlay on the
+atlas; 📋 UNBUILT, no issue) would automate step 4's proof and the parked
+global edge audit; until then, corridors are proven by hand against this
 checklist.
+
+## 4 · Unbuilt
+
+Each is described where it belongs; this is the index.
+
+- 📋 UNBUILT (no issue) — **the hook (rappel/grapple)**, §0: both
+  directions, any edge, lines in room descs, cuttable, recoverable gear,
+  Motorics use, failure burns stamina.
+- 📋 UNBUILT (no issue) — **stamina**, the future stat a failed hook
+  ascent/descent burns, §0.
+- 📋 UNBUILT (#2945) — **the missing fall columns**, §0 and §1.5: the
+  colony's highest crossings hang over air cells with no `down` beneath
+  them, so the one place the fiction promises a death sentence still
+  delivers a pause in mid-air.
+- 📋 UNBUILT (no issue) — **the paraglider**, §1.6; high builds reserve
+  launch points now.
+- 📋 UNBUILT (no issue) — **ascent from below a fire escape** (the
+  crank/grapple era), §2.5 F1.
+- 📋 UNBUILT (no issue) — **the reachability analyzer**, §3.
+
+## 5 · Not decided
+
+- **The hook tier ladder** (§0): the make/model line lengths and their
+  prices are an owner-priced decision for later.
+- **The paraglider's numbers** (§1.6): glide ratio and launch
+  requirements are an owner call for when the kit builds.
+
+## 6 · Related documents
+
+- `specs/BUILDING_PLAYBOOK.md` — §1.5 (traversal), which this document
+  serves.
+- `specs/JUMP_COMMAND_SPEC.md` — the `jump` verb, including its
+  2026-09-16 known-limits addendum.
+- `specs/roadmaps/BALANCE_LEDGER.md` — the fall and landing constants and
+  their tuning state.
+- Code: `world/gravity.py` (the fall, `apply_fall_damage`,
+  `_land_with_bodyshield`, `can_leave_by`, `on_enter_air`,
+  `sweep_airborne`), `commands/combat/jump.py` (`handle_gap_jump`,
+  `handle_edge_descent`, `handle_fall_failure`,
+  `pay_the_price_of_leaving`), `world/combat/constants.py` (the `FALL_*`
+  constants).

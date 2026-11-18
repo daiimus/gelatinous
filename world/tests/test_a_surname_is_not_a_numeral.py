@@ -8,9 +8,10 @@ never stored. The uniqueness scan in `validate_name` used the same loose
 pattern, so it looked for a "Mary Dix" that never existed while the row
 the new sleeve actually collides with is keyed "Mary I".
 
-The spec (WEB_RESPAWN_CHARACTER_CREATION_SPEC, "Roman Numeral Parsing
-Bug") records this defect as FIXED by requiring whitespace before the
-numeral -- that closed the no-space case ("Drivel" -> "Drive II") only.
+The spec (WEB_RESPAWN_CHARACTER_CREATION_SPEC, "Generation numerals")
+records the strict parser below (#3359). The earlier fix only required
+whitespace before the numeral -- that closed the no-space case
+("Drivel" -> "Drive II") only.
 
 Now: one strict parser, `roman_value` / `split_roman_suffix`, shared by
 the strip, the uniqueness scan and the web sleeve sort. A token is a

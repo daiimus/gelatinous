@@ -4,7 +4,7 @@ This is the flag→consumer ledger paired with `MEDICAL_SUBSTRATE_ROADMAP.md`. I
 
 > The medical system has a top-down anatomical schema whose bottom-up consumer systems were never built. Each declarative flag advertises a consumer system that hasn't been written yet. Deleting them would be deleting design documentation. The right work is *building the substrates*.
 
-The schema is described in `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` (Phases 1 through 2.10). The audit in `MEDICAL_SUBSTRATE_ROADMAP.md` is the plan; this file is the at-a-glance map.
+The schema is described in `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`. The audit in `MEDICAL_SUBSTRATE_ROADMAP.md` is the plan; this file is the at-a-glance map.
 
 ---
 
@@ -100,7 +100,7 @@ Phase 4 (Vestigial-Flag Deletion) does not depend on a substrate and can be done
 2. If existing runtime: wire it on the same PR. Don't add unconsumed declarative state.
 3. If future substrate: add a row to the waiting table above with the substrate name and audit phase that will wire it. **An unconsumed flag without a row here is the symptom the audit catalogues** — that's how flag-debt accumulates.
 
-As the audit's Phases 4–13 are done, prune rows here and remove the flag-debt in `MEDICAL_SUBSTRATE_ROADMAP.md`'s "Drift Quick Reference" headline list.
+As the audit's Phases 4–13 are done, prune rows here and remove the flag-debt in `MEDICAL_SUBSTRATE_ROADMAP.md`'s "Flag readiness ledger" section.
 
 ---
 

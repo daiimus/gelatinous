@@ -1,26 +1,26 @@
 # Decking & the Matrix — Runs, Traces, and the Net's Game Loop
 
-> **Status:** 📋 **DESIGN DRAFT — spec-first, build-later.** The net's
-> *substrate* is `PHASE_LAYER_SPEC` (net = a phase over the same geography;
-> the two-body model; the single perception gate), which is itself unbuilt.
-> The coordinate volume it rides on (`world/spatial/`) and the towers exist. So this whole system is
-> **deliberately spec-now, build-when-the-world-is-ready** — the solution and
-> the vibes sharpen as the colony fills in.
->
-> **Design lineage:** the classic net-runner loop (bounce → intrude →
-> work-under-a-trace → clean-logs → jack-out) reduces cleanly to a small set
-> of discrete commands — proof that the hacking genre is *already* a text
-> game. We take that loop and CLI shape as the skeleton, then make it ours
-> with a **roll-your-own programming layer** (§6) and one unifying doctrine:
-> **everything is a file** (§2). Specific source material is intentionally
-> paraphrased, not cited.
+Decking is the net's game loop: a decker jacks in, bounces through nodes,
+breaks into a host, works under a trace, cleans the logs and jacks out. This
+spec is a design draft, spec-first and built when the world is ready; the
+design sharpens as the colony fills in. Its substrate is `PHASE_LAYER_SPEC`
+(net = a phase over the same geography; the two-body model; the single
+perception gate), which is 📋 UNBUILT (no issue). Everything here waits on
+that phase layer, except the program layer (§14 phase 1).
+
+The design takes the classic net-runner loop (bounce → intrude →
+work-under-a-trace → clean-logs → jack-out), which reduces cleanly to a small
+set of discrete commands — the hacking genre is *already* a text game. That
+loop and CLI shape are the skeleton. Two things make it ours: a
+**roll-your-own programming layer** (§6) and one doctrine: **everything is a
+file** (§2). Source material is paraphrased, not cited.
 
 ---
 
 ## 1 · Why the discrete-command model
 
-The reduction of the genre to a handful of operations demonstrates four things
-that map straight onto a MUD:
+The reduction of the genre to a handful of operations shows four things that
+map straight onto a MUD:
 
 1. **A discrete command surface is enough.** A few dozen operations carry the
    whole game — connect/bounce/navigate, file & log ops, LAN scan, cracking,
@@ -37,48 +37,49 @@ that map straight onto a MUD:
 4. **Jobs close the loop** (accept → run → deliver → get paid) — which is
    Gelatinous's gig/favor direction verbatim.
 
-We take a **CLI vocabulary** as the starting command set (`connect`, `bounce`,
+The starting command set is a **CLI vocabulary**: `connect`, `bounce`,
 `scan`, `navigate`, `files`, `copy`, `delete`, `logs`, `crack`, `trace`,
-`mail`, `jobs`, `board`, `balance`, `buy`) and a **hardware axis** (CPU /
-memory / modem as capability tiers). What we add on top — the programming
-layer and the file doctrine — is what makes it Gelatinous rather than a port.
+`mail`, `jobs`, `board`, `balance`, `buy`. Beside it sits a **hardware axis**
+(CPU / memory / modem as capability tiers). What goes on top — the
+programming layer and the file doctrine — is what makes it Gelatinous rather
+than a port.
 
 ## 2 · Everything is a file (the doctrine)
 
-The net is not a minigame bolted beside the world — it is the **data layer of
+The net is not a minigame bolted beside the world. It is the **data layer of
 the world**, and in that layer *everything is a file*:
 
 * A **gig / contract** is a file on a board or a fixer's host.
 * A **contact / dossier** is a file (who knows whom; a face-to-name link).
 * A **schematic** — clothing, a weapon, a cyberware mod — is a file you feed a
   **3-D printer** to fabricate the real object (ties crafting to the net).
-* The **wanted record** is a file. `world/director/intel.py` already stores it;
-  a decker who cracks the right host can **clear their own wanted flag** or
+* The **wanted record** is a file. `world/director/intel.py` stores it; a
+  decker who cracks the right host can **clear their own wanted flag** or
   **frame an enemy** by writing one in. Crime and reputation gain a digital
-  attack surface. The record today is one entry per apparent UID (a count of
-  offences and the last crime), and a bot carries its own unsynced sightings
-  (`db.local_sightings`) until it returns to its post, so an edit to the
-  force-wide record leaves those in place.
+  attack surface. The record is one `ServerConfig` row holding one entry per
+  apparent UID (a count of offences and the last crime). A bot carries its
+  own unsynced sightings (`db.local_sightings`) and merges them into the
+  force-wide record only when it stands in its post room
+  (`world/director/intel.py` `sync_bot_intel`), so an edit to the force-wide
+  record leaves those sightings in place.
 * **Currency, logs, mail, door/camera ACLs, a bot's directive table** — files.
 
-Two consequences that make this a first-class play space:
+Two consequences make this a first-class play space:
 
 * **You can steal data _or_ hardware.** Copy the schematic file (data theft,
   quiet, duplicable) *or* rip the physical component out of a machine in
-  meat-space (hardware theft — the stealth/theft layer §6.2 already does
-  this). Two routes to the same prize, different risk shapes.
-  *(Note 2026-09-12: "already does this" overstates the seam.
-  `STEALTH_AND_DETECTION_SPEC` §6.2 is the right section — "Theft (steal &
-  pickpocket)" — but what it ships (`commands/CmdTheft.py`) is PERSON-to-person
-  theft only: it refuses any target without `get_sdesc` and lifts loose items
-  from what someone is carrying. Nothing there pulls a component out of a fixed
-  machine, and no other verb does either — `sabotage` (`commands/CmdBreach.py`)
-  wrecks infrastructure rather than yielding a part, and `harvest` is surgical,
-  against a body or robot chassis. Hardware theft is work this spec is
-  PROPOSING, not a layer it can lean on.)*
-* **Editing a file edits the world.** Because these files are the same objects
-  the deterministic systems read (the wanted record, a gig board, a printer's
-  queue), changing the file *changes reality* — no separate "apply" step.
+  meat-space (hardware theft). Two routes to the same prize, different risk
+  shapes. Hardware theft is work this spec proposes, not a layer it can lean
+  on (📋 UNBUILT, §10). `STEALTH_AND_DETECTION_SPEC` §6.2, "Theft (steal &
+  pickpocket)" (`commands/CmdTheft.py`), is person-to-person theft only: it
+  refuses any target without `get_sdesc` and lifts loose items from what
+  someone is carrying. Nothing pulls a component out of a fixed machine:
+  `sabotage` (`commands/CmdBreach.py`) wrecks infrastructure rather than
+  yielding a part, and `harvest` is surgical, against a body or robot
+  chassis.
+* **Editing a file edits the world.** These files are the same objects the
+  deterministic systems read (the wanted record, a gig board, a printer's
+  queue), so changing the file *changes reality* — no separate "apply" step.
 
 Design rule: a net-file is a real game object with a phase-`net` presence and a
 meat-space twin (the machine that hosts it). Perceiving/reading it is
@@ -86,20 +87,20 @@ phase-gated; changing it goes through the same validation the meat systems use.
 
 ## 3 · The stack (what's substrate, what's this spec)
 
-| Layer | Owner | Status |
-|---|---|---|
-| Net as a phase; two-body model | `PHASE_LAYER_SPEC` | 📋 UNBUILT (no issue) |
-| Perception gate (`can_perceive` / `filter_present`, which stealth uses today) | `world/perception.py` ← `PHASE_LAYER_SPEC` | its phase clause is 📋 UNBUILT (no issue) |
-| Everything-is-a-file doctrine (§2) | this spec | draft |
-| Net topology over real geography (§4) | this spec | draft |
-| The run loop: bounce, intrusion, logs (§5) | this spec | draft |
-| **Programs — roll-your-own (§6)** | this spec | draft |
-| Trace = the hunt, pointed at the net (§7) | this spec ← `world/director/hunt.py` | draft |
-| ICE = deterministic NPCs (§8) | this spec ← robot/mob pattern | draft |
-| Deck & components = gear (§9) | this spec ← parked-stats stance | draft |
-| Data as target (§10) | this spec ← `intel.py`, crafting | draft |
-| Jobs = gigs over a board (§11) | this spec ← growth direction | draft |
-| Cross-phase effects (cameras, doors, radio taps) | `PHASE_LAYER_SPEC` §7/§9 | reserved |
+| Layer | Owner |
+|---|---|
+| Net as a phase; two-body model | `PHASE_LAYER_SPEC` — 📋 UNBUILT (no issue) |
+| Perception gate (`can_perceive` / `filter_present`, which stealth uses today) | `world/perception.py` ← `PHASE_LAYER_SPEC`; its phase clause is 📋 UNBUILT (no issue) |
+| Everything-is-a-file doctrine (§2) | this spec — draft |
+| Net topology over real geography (§4) | this spec — draft |
+| The run loop: bounce, intrusion, logs (§5) | this spec — draft |
+| **Programs — roll-your-own (§6)** | this spec — draft |
+| Trace = the hunt, pointed at the net (§7) | this spec ← `world/director/hunt.py` — draft |
+| ICE = deterministic NPCs (§8) | this spec ← robot/mob pattern — draft |
+| Deck & components = gear (§9) | this spec ← parked-stats stance — draft |
+| Data as target (§10) | this spec ← `intel.py`, crafting — draft |
+| Jobs = gigs over a board (§11) | this spec ← growth direction — draft |
+| Cross-phase effects (cameras, doors, radio taps) | `PHASE_LAYER_SPEC` §7/§9 — reserved |
 
 ## 4 · Topology — hosts live somewhere
 
@@ -149,8 +150,8 @@ free.
 
 The genre convention is "buy `Cracker_v3.exe`, click it." **We let you write
 it.** A decker's tools are **programs they author** from a palette of
-instructions, and a program's sophistication is bounded by what instructions
-they can use and what their deck can run. This replaces "buy a better tool"
+instructions. A program's sophistication is bounded by what instructions the
+decker can use and what their deck can run. This replaces "buy a better tool"
 with "*write* a better tool," which fits the gear/favor progression stance and
 makes hacking a craft.
 
@@ -172,24 +173,22 @@ Two gates decide what you can write and run (user-decided 2026-07-03):
 
 * **What instructions you may use** — gated on **Intellect** for now (the
   existing stat), so the palette widens as a smart character grows into it. A
-  proper **decking skill** replaces/augments this later when the skill system
-  lands (parked); the seam is designed so that swap is additive, not a
-  rewrite. Some instructions are additionally gated on **acquired knowledge**
-  — an instruction library you buy, find, or extract — so an unlock can also
-  be *a place you went and a thing you did*, keeping it true to gear/favor.
+  proper **decking skill** replaces/augments this later; the seam is designed
+  so that swap is additive, not a rewrite. Some instructions are additionally
+  gated on **acquired knowledge** — an instruction library you buy, find, or
+  extract — so an unlock can also be *a place you went and a thing you did*,
+  keeping it true to gear/favor.
 
-  *(Note 2026-09-12: "(parked)" above is stale. The skill board was RULED FINAL
-  2026-08-19 at fourteen ratings (`SKILLS_AND_DESIGNATION_SPEC` §5) and those
-  ratings ship today in `world/manifest.py` — seeded at creation by
-  `ensure_manifest`/`seed_skills` (called from `commands/charcreate.py`,
-  `web/website/views/characters.py`, `world/souls/population.py`), with
-  `check_value(char, skill)` as the check helper. Decking's rating is already
-  named: **`systems`**, Intellect-governed — "everything done through a
-  machine's interface: decking, consoles, radio & broadcast procedure,
-  electronic locks". What remains unbuilt is the XP/dice layer above the
-  snapshot, so the Intellect-now/skill-later seam still holds. Whether
-  `systems` is the later decking gate, or a separate decking rating is still
-  wanted, is OPEN (#3335).)*
+  The skill board is ruled final at fourteen ratings
+  (`SKILLS_AND_DESIGNATION_SPEC` §5, ruled 2026-08-19). The ratings live in
+  `world/manifest.py`, seeded at creation by `ensure_manifest`/`seed_skills`
+  (called from `commands/charcreate.py`, `web/website/views/characters.py`,
+  `world/souls/population.py`), with `check_value(char, skill)` as the check helper. Decking's rating is
+  already named: **`systems`**, Intellect-governed — "everything done through
+  a machine's interface: decking, consoles, radio & broadcast procedure,
+  electronic locks". The XP/dice layer above the snapshot is not built, so the
+  Intellect-now/skill-later seam still holds. Whether `systems` is the later
+  decking gate is not decided (§13).
 * **What your deck can run** — the **hardware axis** (§9): CPU sets execution
   speed, memory sets program size, and the rig's grade sets how much **heat**
   (trace pressure) it can absorb before it cooks. **Better rigs handle more
@@ -287,15 +286,34 @@ a deck.
 |---|---|
 | **Phase** (`PHASE_LAYER_SPEC`) | The substrate: net = phase, two-body model, perception gate. Build FIRST. |
 | **Hunt** (`world/director/hunt.py`) | Trace is a parallel, same-idiom re-implementation (§7). |
-| **Trust** (`TRUST_AND_CONSENT_SPEC`) | The slumped meat body should be a free-action target. 📋 UNBUILT (no issue): jacking in must set a helpless state that `can_contest` reads (`PHASE_LAYER_SPEC` §5.3). |
+| **Trust** (`TRUST_AND_CONSENT_SPEC`) | The slumped meat body should be a free-action target. 📋 UNBUILT (no issue): jacking in must set a helpless state that `can_contest` reads (§5 step 1; `PHASE_LAYER_SPEC` §5.3). |
 | **Intel / wanted** (`world/director/intel.py`) | The wanted record IS a hackable file (§10) — clear/forge flags. |
 | **Stealth / theft** (`STEALTH_AND_DETECTION_SPEC`) | Hardware theft is the meat route to a net prize (§2); net "noise" mirrors stealth's contest. |
 | **Identity** | Net actions key on apparent-UID; a decker can be traced-as-presence without being named (voice/face parallel). |
 | **Crafting / 3-D printer** | Schematics are stealable/printable files (§2, §10). |
-| **Radio** (`RADIO_COMMS_SPEC`) | Reserved cross-phase tap: a decker reads/spoofs radio traffic from the net. **The security intel-sync is NET-driven, not radio** (decided 2026-07-03): the wanted/intel database is a hosted file — radio carries voices, the net carries databases. Today the sync is physical: a bot's sightings (`db.local_sightings`) merge into the force-wide record (one `ServerConfig` row holding an entry per apparent UID, with a count and the last crime) only when the bot stands in its post room (`world/director/intel.py` `sync_bot_intel`). Moving that record onto a net host is 📋 UNBUILT (no issue). |
-| **Coordinates / verticality** | Hosts live at real coords in towers. The coordinate volume and the towers exist, so this no longer gates the build. |
+| **Radio** (`RADIO_COMMS_SPEC`) | Reserved cross-phase tap: a decker reads/spoofs radio traffic from the net. **The security intel-sync is NET-driven, not radio** (decided 2026-07-03): the wanted/intel database is a hosted file — radio carries voices, the net carries databases. Today the sync is physical: a bot's sightings merge into the force-wide record only in its post room (§2, `sync_bot_intel`). Moving that record onto a net host is 📋 UNBUILT (no issue). |
+| **Coordinates / verticality** | Hosts live at real coords in towers. The coordinate volume (`world/spatial/`) and the towers exist, so they no longer gate the build; the remaining gate is `PHASE_LAYER_SPEC`. |
 
-## 13 · Risks & open questions
+## Physical interface layer — TERMINALS
+
+`typeclasses/terminals.py` holds fixed machines operated through the ordinary
+`press`/`push` grammar (`press rent on kiosk`), sharing the
+`at_press(presser, arg)` contract with elevator panels and call buttons:
+
+* the Queen of Cups rental terminal — housing records are the grant files on
+  cube doors (the shape of `VERTICALITY_AND_BUILDINGS_SPEC` §2.2, "Biometric
+  access — everything is a file"; that spec's §2.5 is the housing guarantee
+  `typeclasses/terminals.py` cites);
+* the decant jumpsuit dispenser (`SleeveDispenser`);
+* the sleeve-policy terminal (`InsuranceTerminal`), whose policy records live
+  in `world/insurance.py`, one `ServerConfig` row per sleeve UID — a second
+  record that becomes a net file when this spec builds.
+
+When this spec builds, these are the boxes whose records become net-visible
+files. The buttons remain the street-level interface; the truth moves to the
+host.
+
+## 13 · Risks & open questions (not decided)
 
 * **Skill-vs-Intellect timing.** Intellect gates the palette now; confirm the
   additive path to a real decking skill so the later swap doesn't rewrite
@@ -316,7 +334,7 @@ a deck.
   fixed machine grow out of the stealth theft contest
   (`STEALTH_AND_DETECTION_SPEC` §6.2), or get its own verb? Nothing does it
   today: `steal` and `pickpocket` (`commands/CmdTheft.py`) refuse any target
-  without `get_sdesc`. 📋 UNBUILT (no issue)
+  without `get_sdesc`. The verb itself is 📋 UNBUILT (no issue) (§10).
 * **Phase 1 timing (OPEN, #3335).** Is the program layer still to be
   prototyped ahead of the net (§14), or is the document dormant until the
   phase layer?
@@ -334,36 +352,12 @@ a deck.
 
 Phase 1 is the one piece that can be **prototyped now** — the programming
 model doesn't need the net to exist to be authored and tested. Everything else
-waits for the phase layer.
+waits for the phase layer. The coordinate volume and the vertical world are
+not the gate; `PHASE_LAYER_SPEC` is.
 
-*(Note 2026-09-12: the vertical world is no longer the gate.
-`SPATIAL_COORDINATE_SYSTEM_SPEC` Phases 1–2 are SHIPPED & LIVE (2026-06-27,
-#847/#851 — the (X,Y,Z) volume, A* pathing, jump/fall gravity, 309 rooms
-seeded), and `VERTICALITY_AND_BUILDINGS_SPEC` now reads "PARTIALLY SHIPPED":
-§2 doors and §2.5 housing are live, and the vertical/Greenhaus doctrine builds
-through 2026-08-25 put real towers, roofs, hull-tops and air lattices in the
-world. The remaining gate on this spec is `PHASE_LAYER_SPEC` itself, which is
-still "Proposal — not implemented"; the coordinate/vertical prerequisite is
-no longer the thing being waited on.)*
+## Related documents
 
-
-## Physical interface layer — TERMINALS (groundwork shipped 2026-07-11)
-
-`typeclasses/terminals.py`: fixed machines operated through the
-ordinary `press`/`push` grammar (`press rent on kiosk`), sharing the
-`at_press(presser, arg)` contract with elevator panels and call
-buttons. First citizen: the Queen of Cups rental terminal (housing
-records = the grant files on cube doors, §2.2 shape). The same module
-holds the decant jumpsuit dispenser (`SleeveDispenser`) and the
-sleeve-policy terminal (`InsuranceTerminal`), whose policy records live
-in `world/insurance.py`, one `ServerConfig` row per sleeve UID: a second
-record that becomes a net file when this spec builds. When this spec
-builds, these are the boxes whose records become net-visible files —
-the buttons remain the street-level interface; the truth moves to the
-host.
-
-*(Note 2026-09-12: that bare "§2.2" points at
-`VERTICALITY_AND_BUILDINGS_SPEC` §2.2, "Biometric access — everything is a
-file", not at a subsection of this document — §2 here has none (this spec's
-only subsections are §6.1–§6.3). The same spec's §2.5 is the housing guarantee
-`typeclasses/terminals.py` cites.)*
+`PHASE_LAYER_SPEC` (substrate), `TRUST_AND_CONSENT_SPEC`,
+`STEALTH_AND_DETECTION_SPEC`, `RADIO_COMMS_SPEC`,
+`SKILLS_AND_DESIGNATION_SPEC`, `VERTICALITY_AND_BUILDINGS_SPEC`,
+`SPATIAL_COORDINATE_SYSTEM_SPEC`.

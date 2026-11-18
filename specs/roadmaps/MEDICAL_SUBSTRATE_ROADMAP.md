@@ -1,471 +1,250 @@
 # Medical Substrate Roadmap
 
-> **Status:** 🛣 Roadmap — Phase 1 shipped; Phase 2 met by #3248; Phase 5 done another way (#3248); Phase 6 partly shipped; Phases 8–9 partly met another way (capacity reads, June 2026); Phase 12 declined (#3402); Phases 3, 4, 7, 10, 11 and 13 ahead. The plan for building the medical/combat substrate consumers the schema advertises.
+This roadmap orders the work of building the consumer systems that the
+medical schema advertises: movement policing, senses, equipment handling,
+chronic conditions, and the wiring of schema flags into them. It grew out
+of an audit of the medical and combat systems, the death pipeline, and the
+systems they depend on (wounds, conditions, armor, corpse, hit selection);
+the audit findings below are the reasons for the order. The at-a-glance
+flag map lives in `MEDICAL_SUBSTRATE_READINESS.md`.
 
-> Renamed from `MEDICAL_COMBAT_AUDIT_AND_REMEDIATION_SPEC` (2026-06-14).
-> This is a **forward roadmap**, not a historical audit — the findings
-> below seeded a phased plan for building the medical/combat substrate
-> consumers, and most phases are still ahead. The at-a-glance flag map
-> lives in `MEDICAL_SUBSTRATE_READINESS.md`.
+## Core insight: schema without consumers
 
-## Overview
-
-Started as an end-to-end audit of the medical and combat systems, the
-death-progression pipeline, and the tertiary systems they depend on
-(wounds, conditions, armor, corpse, hit selection). It catalogued every
-drift, dead metadata flag, and documented-but-unimplemented feature found,
-and laid out a prioritised remediation plan with discrete phases. That
-remediation plan — building the substrate consumers the schema advertises —
-is the live content; the audit catalogue is its rationale.
-
-Status: **active roadmap** (Phase 1 complete; Phases 2 and 5 met by #3248; 6, 8 and 9 partly met;
-12 declined; the rest ahead — see the
-Implementation Progress true-up below). Origin: audit pass after the
-pelvis-in-groin fix (issue #325) surfaced broader questions about the
-death model and dead metadata.
-
-## Roadmap at a glance
-
-**Status key:** ✅ complete · ⏳ pending · ⛔ blocked (needs a substrate
-first) · 💬 needs analysis / discussion before it can be scoped.
-
-The core insight sequences the whole plan: **build the substrate before
-wiring schema to it.** Standalone phases ship anytime; substrate phases
-(Sprint 2) gate the wiring phases (Sprint 3).
-
-```mermaid
-graph LR
-    P1["✅ P1 · Documentation"]:::done
-
-    subgraph S1["Sprint 1 · standalone — ship anytime ⏳"]
-        P2["✅ P2 · Brain death blocks revival — met by #3248"]:::done
-        P3["P3 · Failure-mode surfacing"]
-        P4["P4 · Vestigial-flag deletion"]
-        P5["✅ P5 · LETHAL_CAPACITY split — done another way (#3248)"]:::done
-    end
-
-    subgraph S2["Sprint 2 · substrates — build first ⏳"]
-        P6["P6 · Chronic conditions — partly shipped"]
-        P7["P7 · Movement policing"]
-        P8["P8 · Senses — partly met (capacity reads)"]
-        P9["P9 · Equipment-handling — partly met (combat only)"]
-    end
-
-    subgraph S3["Sprint 3 · wiring — blocked on substrates ⛔"]
-        P10["P10 · Functional incapacitation"]
-        P11["P11 · Paralysis"]
-        P12["P12 · Kidney death — DECLINED (#3402)"]
-        P13["P13 · Final flag audit"]
-    end
-
-    P6 --> P12
-    P7 --> P10
-    P7 --> P11
-    P8 --> P10
-    P9 --> P10
-    P10 --> P13
-    P11 --> P13
-    P12 --> P13
-
-    classDef done fill:#1b5e20,color:#fff,stroke:#0d3311;
-```
-
-### Status dashboard
-
-| Bucket | Phases | Notes |
-|---|---|---|
-| ✅ **Complete** | Phase 1; Phases 2 and 5 | Phase 1: documentation & architectural clarification (the substrate-vs-runtime split, this roadmap, the readiness ledger). Phases 2 and 5 were met another way by #3248 (2026-09-26). |
-| ⏳ **Pending — standalone** | Phases 3–4 | No substrate dependency; each a half-to-full-day session. Phase 4 also unblocks the flag cleanup. |
-| ⏳ **Pending — substrate** | Phases 6–9 | The main build effort; each a real spec + PR. They gate Sprint 3. Phase 6 is partly shipped (renal failure, not the generic base); Phases 8 and 9 are partly met through capacity reads (see the progress table). |
-| ⛔ **Blocked — wiring** | Phases 10–13 | Wait on their substrate (10←7/8/9, 11←7, 12←6, 13←all). Phase 12 is declined (#3402). |
-
-### 💬 Needs analysis / discussion (not yet a phase)
-
-- **Skill / stat model** — *upstream of this entire roadmap's tuning.*
-  Every medical roll (`roll_procedure`, `calculate_treatment_success`)
-  and forensic check is a placeholder formula on G.R.I.M. stats that all
-  default to `1`. Difficulty/effectiveness balance can't be tuned, and
-  capacity→roll penalties (the point of Sprints 2–3) have no real roll to
-  modify, until the skill/stat design is decided. The skill board is ruled
-  (2026-08-19, amended the same day; `specs/proposals/SKILLS_AND_DESIGNATION_SPEC.md`),
-  but it is not built, and how the medical rolls use it is not settled here.
-- **Per-character capacity extension** — augment organs can *add* anatomy
-  and capacities a species table never declared (the cyber tail). Sprints
-  2–3 assume the static species table is the full capacity set; extension
-  is an un-catalogued substrate concern. See `MEDICAL_SUBSTRATE_READINESS.md`.
-- **Social-interaction substrate** — `talking` total-loss effects
-  (`cannot_negotiate`, …) have no audit phase: open design, depends on a
-  trade/negotiation system that doesn't exist yet.
-
-## Implementation Progress (June 2026 true-up)
-
-This spec is a planning artifact; as phases land, their content gets
-absorbed into canonical specs and the corresponding section here is
-trimmed. The current state of the remediation plan against shipped
-work:
-
-| Phase | Status | Notes |
-|---|---|---|
-| Phase 1 — Documentation & Architectural Clarification | **✅ Complete** | All four tasks shipped. Task 1: `LETHAL_CAPACITY_NAMES` comment in `world/medical/constants.py` documented the union role (since 2026-09-26, #3248, there is no union: the comment says the tuple is exactly the set `is_dead()` enforces). Task 2: `MedicalState.is_dead` / `is_unconscious` / `calculate_body_capacity` docstrings spell out the substrate-vs-runtime split and cross-reference the audit's phase numbers. Task 3: HEALTH spec's brain-death `# NEXT:` pseudo-code now explicitly points at audit Phase 2 instead of reading as an open design note. Task 4: `specs/roadmaps/MEDICAL_SUBSTRATE_READINESS.md` index lists every unconsumed flag with its intended consumer system and audit phase. |
-| Phase 2 — Brain Death Blocks Revival | **Met by #3248 (2026-09-26)** without new revival code | `_check_medical_revival_conditions` still gates only on `is_dead()`, and `brain_integrity` is checked on its own line, so a body dead of ANYTHING with a destroyed brain stays `is_dead()` until the brain is restored — the goal stated below ("cannot revive even if other lethal capacities are repaired") holds. What restores it: a brain install (since #3253, 2026-09-28, sealant and dressings refuse a destroyed soft organ). |
-| Phase 3 — Failure-Mode Surfacing | Not started | Empty-distribution / unbacked-container warnings not wired. |
-| Phase 4 — Vestigial-Flag Deletion | Not started | `vital`, `modifiers` and `affects` are still present. `unconscious_threshold` is already absent from the `consciousness` dict (task 2 needs no work). `can_be_destroyed` now has a reader, the fall code (see Category B). |
-| Phase 5 — `LETHAL_CAPACITY_NAMES` Split | **Done another way (2026-09-26, #3248)** | `consciousness` left the tuple and `brain_integrity` joined it, so one tuple is both the death set and the vital-target set. No split is needed (see Phase 5 below). |
-| Phase 6 — Chronic Medical Conditions Framework (Track 2) | **Partially shipped** | The KIDNEY INSTANCE shipped: `RenalFailureCondition` is built and wired. The GENERIC framework did not — it extends `MedicalCondition` directly, not the planned `ChronicCondition` base, so `LiverFailure`/`RespiratoryFailure` would each be hand-rolled today. `RenalFailureCondition` does not kill, by ruling (#3402), and Phase 12 (kidney death), which was to extend `ChronicCondition`, is declined. The generic `ChronicCondition` base is not built. |
-| Phase 7 — Movement Policing Substrate (Track 2) | Not started | Substrate gate for `moving` incapacitation + paralysis. Movement itself is still not gated. `moving` has one consumer, the dodge factor (`moving_dodge_factor` in `world/combat/capacity.py`), whose curve copies the 0.15 threshold instead of reading the `incapacitation_threshold` flag. |
-| Phase 8 — Senses System (Track 2) | **Partly met another way (June 2026)** | Sight, hearing and smell gate what a character perceives (`can_see` / `can_hear` / `can_smell` in `world/perception.py`, read by speech, emote, radio, stealth, identity and the room description), and sight scales hit chance (`sight_hit_factor` in `world/combat/capacity.py`); see `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`. These are capacity reads, not the `BlindCondition` / `DeafCondition` planned below, which do not exist. The `total_loss_penalty` strings are still unread. |
-| Phase 9 — Equipment-Handling Substrate (Track 2) | **Partly met another way** | Manipulation scales hit chance per gripping hand, with an under-grip penalty (`manipulation_hit_factor` and `grip_hit_factor` in `world/combat/capacity.py`; #3717). Not built: refusing wield or wear, and dropping items at zero manipulation (tasks 2–3). |
-| Phase 10–13 — Wiring & Cleanup (Track 3) | Blocked | Each phase has substrate dependencies that aren't met yet. **Phase 12 (kidney death) is DECLINED** by owner ruling (#3402): total kidney loss is survivable by design. |
-
-**Recent surgery work (June 2026) is orthogonal to this audit.** The
-procedural surgery system (Phase 2.8 in `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`),
-the operate charting command (Phase 2.9), and the severance / suture-stump /
-install-picker / combat-incision-symmetry work (Phase 2.10) all sit *above*
-the substrate gaps this audit identified — the procedural verbs read /
-mutate organ HP and `wound_stage`, but none of them introduces or resolves
-a substrate consumer for things like `incapacitation_threshold`,
-`paralysis_if_destroyed`, or `total_loss_penalty`. Those substrate phases
-remain the right next focus for an audit-aligned arc.
-
-**The anatomy-augments + cyberware arc (#511–#551) is likewise orthogonal
-to the substrate gaps.** Chassis+module cyberware, spec-carrying
-replacement organs, inorganic damage (pain-only), reattachment, and
-chrome severance prose all read / mutate organ HP, `wound_stage`,
-`inorganic`, and `abilities` — but none introduces or resolves a consumer
-for `incapacitation_threshold`, `paralysis_if_destroyed`, or
-`total_loss_penalty`. The substrate phases are unchanged by it. One
-*genuine new wrinkle* the arc exposed, though: augment organs can **add**
-anatomy and capacities a species table never declared (the cyber tail).
-The substrate plan (Phases 7–9) assumes the static species table is the
-full capacity set; **per-character capacity extension** is an
-un-catalogued substrate concern to fold into movement-policing /
-senses / equipment-handling whenever those are scoped. Tracked in
-`MEDICAL_SUBSTRATE_READINESS.md`.
-
-The audit's Core Insight ("schema without consumers") still stands and
-sequences correctly: build substrate before wiring schema to it.
-
-**On the "unconsumed flag" findings** — the validation pass against
-current code (June 2026) confirmed all 13 of the Category B flag
-read-counts still hold: those flags really are sitting un-consumed by
-runtime code. But the framing was wrong to call them drift. They aren't
-half-finished code waiting for cleanup; they are **declarative metadata
-deliberately authored ahead of the consumer systems that will read them**,
-exactly as the Core Insight describes. The audit is acting as a
-substrate-readiness map: each flag advertises a design hook for a system
-that hasn't been scoped yet (movement policing, senses, chronic
-conditions, social policing, equipment-handling). Treat the audit doc as
-a *forward-looking design index*, not a bug list. The phased remediation
-plan still applies whenever any of those substrates does get scoped.
-
----
-
-## Core Insight — Schema Without Consumers
-
-The repeated pattern surfaced by this audit isn't "dead code from sloppy
-work" — it's **a top-down anatomical schema whose bottom-up consumers were
-never built**. The medical system has three intended layers:
+The medical system has three layers:
 
 1. **Schema** (`ORGANS`, `BODY_CAPACITIES`, threshold constants). Authored
-   anatomically — heart, lungs, kidneys, spine, brain, with realistic
+   anatomically: heart, lungs, kidneys, spine, brain, with realistic
    contributions and thresholds.
 2. **Capacity calculation** (`MedicalState.calculate_body_capacity`,
-   `update_vital_signs`). Implemented and load-bearing.
-3. **Consumer systems** that *react to* capacity loss — perception/senses,
-   movement policing, equipment-handling rules, chronic medical
-   conditions. **Largely unbuilt.**
+   `update_vital_signs`). Load-bearing.
+3. **Consumer systems** that react to capacity loss: perception/senses,
+   movement policing, equipment-handling rules, chronic medical conditions.
+   Largely unbuilt.
 
-Capacity loss therefore had nowhere to go. Since June 2026 some of it
-does: a character with no `sight` cannot see and one with no `hearing`
-cannot hear (`world/perception.py`), and sight, manipulation and `moving`
-scale combat rolls (`world/combat/capacity.py`; see
-`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`). But with 12% `moving` a
-character still walks normally, and with the spine destroyed they still
-stand: nothing polices movement.
+Some capacity loss has somewhere to go: a character with no `sight` cannot
+see and one with no `hearing` cannot hear (`world/perception.py`), and
+sight, manipulation and `moving` scale combat rolls
+(`world/combat/capacity.py`; see `CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`).
+But with 12% `moving` a character still walks normally, and with the spine
+destroyed they still stand: nothing polices movement.
 
-This means the dead flags are *not* a cleanup target. They are a
-**substrate-readiness signal**: each flag advertises a consumer system
-that hasn't been written yet. Deleting them would be deleting design
-documentation. The right work is **building the substrates**, then wiring
-the flags into them.
+The unread flags are therefore not a cleanup target. They are declarative
+metadata deliberately authored ahead of the consumer systems that will read
+them: each flag advertises a design hook for a system that has not been
+written yet. Deleting them would delete design documentation. Treat this
+document as a forward-looking design index, not a bug list.
 
-The plan in this spec is sequenced around that insight: foundational
-consumer systems first (where their absence is the gate), then wiring,
-then a final flag-audit pass that deletes only what no consumer ever
-plans to use.
+**Sequencing rule: build the substrate before wiring schema to it.**
+Foundational consumer systems come first (where their absence is the
+gate), then wiring, then a final flag audit that deletes only what no
+consumer ever plans to use.
 
----
-
-## Background
-
-The medical system is structured as three layers:
+## How the medical layers fit together
 
 1. **Static schema** in `world/anatomy/species.py` (`SPECIES_DEFINITIONS`:
    per species, the organs and body capacities with their flags).
-   `world/medical/constants.py` derives the human `ORGANS` / `BODY_CAPACITIES`
-   from it and holds `LETHAL_CAPACITY_NAMES` and the thresholds.
-2. **Runtime state** in `world/medical/core.py` — `Organ`, `MedicalState`,
-   `is_dead`, `is_unconscious`, `calculate_body_capacity`, `update_vital_signs`.
+   `world/medical/constants.py` derives the human `ORGANS` /
+   `BODY_CAPACITIES` from it and holds `LETHAL_CAPACITY_NAMES` and the
+   thresholds.
+2. **Runtime state** in `world/medical/core.py`: `Organ`, `MedicalState`,
+   `is_dead`, `is_unconscious`, `calculate_body_capacity`,
+   `update_vital_signs`.
 3. **Tickers and effects** in `world/medical/conditions.py` and
-   `world/medical/script.py` — bleeding / pain / infection / consciousness
-   suppression, with a 60-second (`MEDICAL_TICK_INTERVAL`) per-character `MedicalScript` driving them.
+   `world/medical/script.py`: bleeding, pain, infection and consciousness
+   suppression, driven by a per-character `MedicalScript` every 60 seconds
+   (`MEDICAL_TICK_INTERVAL`). After each tick it calls `is_dead()` and
+   triggers `at_death()` if conditions pushed the body past a threshold.
 
-Combat reaches into the medical layer through `ArmorMixin.take_damage`
-(`typeclasses/armor_mixin.py`), which applies armor reduction, calls
-`apply_anatomical_damage`, then checks `is_dead()` / `is_unconscious()`
-and dispatches to `at_death()` / `_handle_unconsciousness()`. The combat
-handler itself (`world/combat/handler.py`) orchestrates turns; the per-attack
-logic lives in `world/combat/attack.py`.
+Combat reaches the medical layer through `ArmorMixin.take_damage`
+(`typeclasses/armor_mixin.py`). It applies armor reduction first
+(`_calculate_armor_damage_reduction(amount, location, injury_type)`, via
+the effectiveness matrix in `world/combat/constants.py`, tied to clothing
+coverage), then calls `apply_anatomical_damage`, then checks `is_dead()` /
+`is_unconscious()` and dispatches to `at_death()` /
+`_handle_unconsciousness()`. The combat handler (`world/combat/handler.py`)
+runs turns; per-attack logic is in `world/combat/attack.py`.
 
-Death after the synchronous attack is *not* immediate — `at_death()` shows
-the death curtain and launches a `DeathProgressionScript`
-(`typeclasses/death_progression.py`) that lasts `DEATH_PROGRESSION_DURATION`
-(90 s), with an 11-message narrative and a medical-revival window. A
-beheading is the exception: since #3840 (2026-11-14) the death completes
-at once, with no revival check and no dying messages.
+- Combat severance checks `SEVERING_INJURY_TYPES` (`cut` / `stab` /
+  `laceration`).
+- `_handle_unconsciousness` sets `ndb.unconsciousness_pending` during
+  combat, which defers the unconsciousness message until after the hit
+  narrative (5 s fallback).
+- Wounds (`world/medical/wounds/`): `take_organ_damage` calls
+  `_create_conditions_from_damage`, which spawns `BleedingCondition` /
+  `PainCondition` / `InfectionCondition`. Wound prose renders through
+  `append_wounds_to_longdesc` and the per-injury-type message dicts.
+- Hit selection (`select_hit_location`) is data-driven from the organ
+  schema, with a vital-location bias from `_get_vital_locations`, which
+  derives from `LETHAL_CAPACITY_NAMES`. It falls back to `chest` when the
+  character has no longdesc.
+- Corpse (`typeclasses/corpse.py`): a death-time snapshot of
+  `physical_description`, `longdesc_data`, `wounds_at_death`,
+  `apparent_uid_at_death`, `signature_at_death` and a medical snapshot.
+- Forensics (`world/forensics.py`) reads the corpse signature for autopsy.
+  `commands/forensics.py` carries `CmdInspect` (alias `autopsy`) and
+  `CmdSever`; `CmdHarvest` is in `commands/CmdSurgical.py`; the procedural
+  surgery verbs read the same snapshots. `CmdInspect` also handles
+  `BloodPool` by dispatching `extract_subject_from_blood_pool_incident`
+  per unique apparent UID, with distinguishable / indistinguishable
+  bucketing so old crime scenes render readably.
 
-The system has evolved through ~14 medical-related PRs (#243 decapitation,
-#251/#252 vital-locations refactor, #254 spinal rename, #325 pelvis-in-groin)
-plus many incremental fixes. The aggregate result is **correct in the paths
-that get exercised, but carries substantial unimplemented design intent in
-the form of declarative metadata**.
+### Category A — Death model
 
----
+- `is_dead()` fires when any capacity in `LETHAL_CAPACITY_NAMES`
+  (`blood_pumping`, `breathing`, `digestion`, `neck_integrity`,
+  `brain_integrity`) reaches zero, or on blood loss. The comment above
+  `LETHAL_CAPACITY_NAMES` in `world/medical/constants.py` says the tuple is
+  exactly the set `is_dead()` enforces and that `consciousness` must never
+  be in it. The same tuple is the vital-target set for hit selection, and
+  a test pins the schema's `directly_fatal` flag to it for every species
+  (#3677).
+- **Consciousness 0 is not death** (#3248). `consciousness` is the awake
+  axis. Brain destruction is a death, with the window, through the
+  separate structural capacity `brain_integrity`. The head bleed still
+  runs for a body brought back.
+- Death after the synchronous attack is not immediate. `at_death()` shows
+  the death curtain and starts a `DeathProgressionScript`
+  (`typeclasses/death_progression.py`) lasting `DEATH_PROGRESSION_DURATION`
+  (90 s), with an 11-message narrative and a medical-revival window. A
+  beheading is the exception: the death completes at once, with no
+  revival check and no dying messages (#3840, 2026-11-14).
+- `_check_medical_revival_conditions` gates revival only on `is_dead()`.
+  A destroyed brain keeps `brain_integrity` at zero, so a body dead of
+  anything with a destroyed brain stays `is_dead()` until the brain is
+  restored. What restores it is a brain install; sealant and dressings
+  refuse a destroyed soft organ (#3253).
+- **Kidney loss is not fatal** (#3402). `MedicalState._update_renal_failure()`
+  spawns and clears `RenalFailureCondition` from the `blood_filtration`
+  capacity inside `update_vital_signs`, and clears it when a kidney is
+  restored, cyber or donor. `is_dead` never reads `blood_filtration`.
+  Renal failure's lasting obtundation (consciousness 0.4 at maximum
+  severity, ten points above the knockout line) is the cost.
+- **Pain-driven unconsciousness** (`PAIN_UNCONSCIOUS_THRESHOLD: 80`) works
+  indirectly: pain lowers the `self.consciousness` float, which then trips
+  the consciousness threshold. Not a direct check, but functionally
+  equivalent.
 
-## Findings
+### Two consciousness values
 
-### Category A — Death Model: Aligned, Documented, But Comment-Drifted
+- `self.consciousness` (float on `MedicalState`) is the runtime value,
+  including pain, blood and suppression penalties. `is_unconscious()`
+  checks `self.consciousness < threshold`.
+- `calculate_body_capacity("consciousness")` is the organ-only floor
+  (brain HP fraction).
+- `is_dead()` checks neither.
 
-| Item | Current Code | Spec Intent | Verdict |
+The runtime `self.consciousness` must never gate death, because every
+knockout would become a kill.
+
+## Flag readiness ledger
+
+Every flag in `ORGANS` and `BODY_CAPACITIES`, with its read count outside
+the constants file and tests, the system meant to consume it, and its
+disposition. Most are not dead code; they wait on a consumer system.
+
+| Flag | Reads | Intended consumer | Disposition |
 |---|---|---|---|
-| `is_dead()` checks `blood_pumping`, `breathing`, `digestion`, `neck_integrity`, `brain_integrity`, blood loss | Yes (brain since #3248, 2026-09-26) | Yes (`HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`, § `neck_integrity` capacity & death wiring) | **Correct** |
-| Brain destruction → unconsciousness, not death | Yes | Yes (L732 "consciousness is unconsciousness, not death") | **Re-ruled 2026-09-26 (#3248): _"Conscious capacity 0 should not be death"_ — consciousness stays the awake axis (this row's claim holds for it). Brain destruction IS a death since the same day, through the separate structural capacity `brain_integrity` ("Death with a window"). The 2026-09-11 consciousness-capacity ruling is withdrawn.** |
-| Brain destruction eventually kills via secondary bleeding | Yes (head wound → `BleedingCondition` → blood loss → `is_dead`) | Implicit | **Superseded 2026-09-26** — brain destruction is now dead on the blow via `brain_integrity` (#3248); the bleed still runs for a body brought back |
-| Kidney loss is fatal | **No — by owner ruling (#3402, 2026-09-24).** It had silently stopped killing on 2026-09-05 (#2936 removed the subtraction that billed the drain), so the true-up below was already wrong when written | Schema flag `total_loss_fatal` deleted | **SUPERSEDED — the entry that follows is the stale 2026-09-11 true-up:** ✅ RESOLVED (true-up 2026-09-11) — `MedicalState._update_renal_failure()` spawns/clears it from the `blood_filtration` capacity inside `update_vital_signs`; the condition kills by draining toward the existing blood-loss floor ("No new death-verdict path"), and clears when a kidney is restored — cyber or donor. `is_dead` still never reads `blood_filtration`, and correctly so. |
-| Comment above `LETHAL_CAPACITY_NAMES` "Keep in sync with is_dead()" | Misleading — it's actually a superset (adds `consciousness` for vital-location bias) | Spec clarifies | **✅ RESOLVED** (Phase 1 Task 1 — the comment in `world/medical/constants.py` then documented the union role). *Then superseded 2026-09-26 (#3248): there is no union any more; the comment now says the tuple is exactly the set `is_dead()` enforces and that `consciousness` must never be in it.* |
+| `vital` (on `Organ`) | 0 | None: superseded by data-driven `_get_vital_locations`. `Organ.vital` is set on init from schema and never read. | **Vestigial**: delete (Phase 4). |
+| `fatal_threshold` (on capacity) | 0 | Could replace the `<= 0.0` literal in `is_dead` if `is_dead` were refactored to be data-driven | Keep until the final flag audit (delete or wire). |
+| `directly_fatal` (on capacity) | 0 at runtime; pinned by test (#3677) to equal `LETHAL_CAPACITY_NAMES` for every species, which `is_dead` loops over | A declaration the test keeps honest; `is_dead` reads the tuple, not the flag | Keep (declarative, tested). |
+| `incapacitation_threshold: 0.15` on `moving` | 0 | **Movement policing**: below this, the character cannot move. The dodge factor (`moving_dodge_factor` in `world/combat/capacity.py`) copies the 0.15 instead of reading the flag. | **Substrate gap**: movement policing. |
+| `unconscious_threshold` | — | None: the top-level `CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD` is the one read | Absent from the `consciousness` dict in `world/anatomy/species.py`; only a comment in `world/medical/constants.py` still names it. |
+| `modifiers: ["pain", "blood_pumping", ...]` on `consciousness` | 0 | The cascade is implemented imperatively in `update_vital_signs`; this list is documentation only | **Vestigial**: delete or convert to spec comment (Phase 13). |
+| `affects: ["consciousness", "moving"]` on capacities | 0 | Could drive a generic capacity-effect graph; a manual `update_vital_signs` formula does the work | **Vestigial unless** a generic effect graph is built (Phase 13). |
+| `total_loss_penalty: "blindness"` / `"deafness"` | 0 | **Senses**: total loss should spawn `BlindCondition` / `DeafCondition` and gate perception. Perception is gated through capacity reads instead (`world/perception.py`); no condition is produced. | **Substrate gap**: senses. |
+| `total_loss_effects: ["cannot_negotiate", ...]` on `talking` | 0 | **Social interaction rules**: cannot speak, so cannot negotiate, persuade, etc. | **Substrate gap**: social system policing. |
+| `cannot_be_destroyed: True` on `thoracolumbar_spine` | 0 | Should clamp `Organ.take_damage` to a 1 HP floor for this organ | **Direct wire**: small fix, no substrate dependency (Phase 7). |
+| `paralysis_if_destroyed: True` on `thoracolumbar_spine` | 0 | **Movement policing**: produces a permanent `ParalysisCondition` that zeroes `moving` | **Substrate gap**: movement policing. |
+| `can_be_destroyed` (most organs) | 1 (`_is_leg_bone` in `world/gravity.py`, #3584) | Picks the leg bones a fall damages | **Read**: deleting it would leave falls with no leg bone to damage. |
+| `fracture_vulnerable` | 4 | Bone-fracture condition spawn path | Live, keep. |
+| `bone_type` | 5 | Bone-fracture and severance routing | Live, keep. |
 
-**Action**: ~~Rewrite the `LETHAL_CAPACITY_NAMES` comment to explicitly say~~
-~~"this is the union of `is_dead()` lethal capacities PLUS `consciousness`,~~
-~~which makes the head a vital target but is unconsciousness rather than~~
-~~death".~~ ✅ **Done.** The comment now explicitly states the
-union-of-lethal-and-targeting role and notes consciousness drives unconsciousness, not death. ~~This stops future devs from incorrectly "syncing" `consciousness`~~
-into `is_dead`. **Resolve kidney case** as a separate design call (below).
+`total_loss_fatal` on `blood_filtration` is deleted (#3402): kidney loss is
+not fatal by ruling, and the unread flag stated the opposite.
 
-> **Withdrawn 2026-09-26 (#3248).** The owner decision this note describes
-> was withdrawn: _"Conscious capacity 0 should not be death"_. `consciousness`
-> does not gate death; brain death goes through `brain_integrity`. The note
-> is kept as the 2026-09-11 record.
->
-> **⚠️ True-up 2026-09-11.** The warning above ("stops future devs from
-> incorrectly syncing `consciousness` into `is_dead`") now sits against an
-> owner decision to do exactly that — see the Category A brain row. The
-> warning was aimed at the AMBIGUITY between the two consciousness values,
-> not at the outcome: `self.consciousness` (runtime, driven by pain, blood
-> loss and suppression) must never gate death, because every knockout would
-> become a kill. `calculate_body_capacity("consciousness")` (organ floor,
-> brain HP only) is the safe half, and is what the ruling names. Keep the
-> warning; it is still right about the runtime value.
+Ten of the thirteen audited flags still in the schema are unread by
+runtime code.
+By the rubric above:
 
-### Category B — Declarative Metadata Awaiting Substrate
-
-I audited every flag in `ORGANS` and `BODY_CAPACITIES` for read-counts
-outside of the constants file and tests. The "Disposition" column
-reflects the Core Insight above: most of these are *not* dead code, they
-are waiting on a consumer system that hasn't been built.
-
-| Flag | Reads | Intended Consumer | Disposition |
-|---|---|---|---|
-| `vital` (on `Organ`) | 0 | None — superseded by data-driven `_get_vital_locations` | **Vestigial**: delete. |
-| `fatal_threshold` (on capacity) | 0 | Could replace the `<= 0.0` literal in `is_dead` if `is_dead` were refactored to be data-driven | Keep until Phase 7 audit (delete or wire). |
-| `directly_fatal` (on capacity) | 0 at runtime; **pinned by test (#3677, 2026-09-26)** to equal `LETHAL_CAPACITY_NAMES` for every species, which `is_dead` now loops over | A declaration the test keeps honest; `is_dead` reads the tuple, not the flag | Keep (declarative, tested). |
-| ~~`total_loss_fatal: True` on `blood_filtration`~~ | **Deleted (#3402)** — kidney loss is not fatal by owner ruling; the unread flag stated the opposite | — | Superseded. Former entry: **✅ BEHAVIOUR SHIPPED (true-up 2026-09-11)** — `RenalFailureCondition` exists and is wired via `_update_renal_failure()`. The FLAG itself is still unconsumed; the capacity threshold is hardcoded in constants. Flag disposition unchanged (Phase 4/5). |
-| `incapacitation_threshold: 0.15` on `moving` | 0 | **Movement Policing system** — when capacity is below this, character cannot move | **Substrate gap**: movement policing. |
-| `unconscious_threshold` (in `consciousness` capacity dict) | — | None — duplicated as top-level `CONSCIOUSNESS_UNCONSCIOUS_THRESHOLD` (the one that's actually read) | ~~**Vestigial**: delete.~~ Already absent from the `consciousness` dict in `world/anatomy/species.py`; only a comment in `world/medical/constants.py` still names it. |
-| `modifiers: ["pain", "blood_pumping", ...]` on `consciousness` | 0 | The cascade is already implemented imperatively in `update_vital_signs`; this list is documentation only | **Vestigial**: delete or convert to spec comment. |
-| `affects: ["consciousness", "moving"]` on capacities | 0 | Could drive a generic capacity-effect graph; currently a manual `update_vital_signs` formula does the work | **Vestigial unless** a generic effect-graph is built. |
-| `total_loss_penalty: "blindness"` / `"deafness"` | 0 | **Senses System** — total loss should spawn `BlindCondition` / `DeafCondition` and gate perception | **Substrate gap**: senses. |
-| `total_loss_effects: ["cannot_negotiate", ...]` on `talking` | 0 | **Social interaction rules** — can't speak → can't negotiate, persuade, etc. | **Substrate gap**: social system policing. |
-| `cannot_be_destroyed: True` on `thoracolumbar_spine` | 0 | Should clamp `Organ.take_damage` to floor at 1 HP for this organ | **Direct wire** — small fix, no substrate dependency. |
-| `paralysis_if_destroyed: True` on `thoracolumbar_spine` | 0 | **Movement Policing system** — produces a permanent `ParalysisCondition` that zeroes `moving` capacity | **Substrate gap**: movement policing. |
-| `can_be_destroyed` (most organs) | 1 (`_is_leg_bone` in `world/gravity.py`, #3584) | Picks the leg bones a fall damages | ~~**Vestigial**: delete after `cannot_be_destroyed` is wired.~~ **Read** since #3584 (2026-09-16): falls use it to find the leg bones, so deleting it would leave falls with no leg bone to damage. |
-| `fracture_vulnerable` | 4 | Used by bone-fracture condition spawn path | Live, keep. |
-| `bone_type` | 5 | Used by bone-fracture and severance routing | Live, keep. |
-
-**10 of the 13 audited flags still in the schema are unread by runtime code today** (`total_loss_fatal` is deleted, `unconscious_threshold` is gone, and `fracture_vulnerable`, `bone_type` and `can_be_destroyed` are read). Reclassified by
-the rubric above:
-
-* **Vestigial (delete)**: `vital` (organ), `unconscious_threshold` (dict
-  copy; already gone), `modifiers`, `affects`, `can_be_destroyed` (now read
-  by falls, #3584; see its row).
-* **Direct wire (no substrate)**: `cannot_be_destroyed` on spine.
-* **Substrate-gap (build substrate first, then wire)**: ~~`total_loss_fatal`
-  (chronic conditions)~~ *(deleted, #3402: kidney loss is not fatal by ruling)*, `incapacitation_threshold` (movement),
-  `total_loss_penalty` blindness/deafness (senses), `total_loss_effects`
-  (social), `paralysis_if_destroyed` (movement).
-* **Audit-later**: `fatal_threshold`, `directly_fatal` — keep until
+- **Vestigial (delete)**: `vital`, `modifiers`, `affects`, `can_be_destroyed`
+  (now read by falls, #3584; see its row).
+- **Direct wire (no substrate)**: `cannot_be_destroyed` on the spine.
+- **Substrate gap (build substrate first, then wire)**:
+  `incapacitation_threshold` (movement), `total_loss_penalty`
+  blindness/deafness (senses), `total_loss_effects` (social),
+  `paralysis_if_destroyed` (movement).
+- **Audit later**: `fatal_threshold`, `directly_fatal` — keep until the
   `is_dead` refactor lands.
 
-**This reclassification is the central reason the original Phase 4 and
-Phase 5 cannot ship as I originally scoped them**: their work is gated on
-substrate that doesn't exist yet.
+## Order of work
 
-### Category C — Documented "Next" Features
+Phases are grouped into three tracks. Track 1 phases have no substrate
+dependency and ship in any order. Track 2 builds the consumer systems and
+gates Track 3. Each phase ships as a single PR (sub-issues if
+review-sized).
 
-These features are explicitly described in `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC`
-as future work or "could be added".
+Gates: Phase 10 waits on Phases 7, 8 and 9; Phase 11 waits on Phase 7;
+Phase 13 waits on the rest. Phase 4 also unblocks the flag cleanup.
 
-| Feature | Spec ref | Current state |
-|---|---|---|
-| **Brain death blocks revival** in death progression | HEALTH spec, § Death Progression System — has `# NEXT:` pseudo-code | **Superseded 2026-09-26 (#3248):** a destroyed brain zeroes `brain_integrity`, which is lethal, so the body stays dead until a brain is installed; see Phase 2. Former entry: Not implemented. `_check_medical_revival_conditions` only checks `is_dead()`. A brain-destroyed character whose bleeding stops could currently revive into a vegetative shell. |
-| **Movement incapacitation at <15% moving capacity** | `world/anatomy/species.py` (`moving`: `incapacitation_threshold: 0.15`) | Not enforced. Walk commands don't check capacity. |
-| **Blindness on `sight = 0`** | `total_loss_penalty: "blindness"` | Enforced through capacity reads, not a condition: below the sight threshold a character cannot see (`can_see` in `world/perception.py`, read by the room description, speech, emote and identity), and hit chance falls (`sight_hit_factor` in `world/combat/capacity.py`). No blindness condition is produced. |
-| **Deafness on `hearing = 0`** | `total_loss_penalty: "deafness"` | Enforced through a capacity read, not a condition: below the hearing threshold a character does not hear (`can_hear` in `world/perception.py`, read by speech, voice and radio). No deafness condition is produced. |
-| **Paralysis on thoracolumbar spine destruction** | `paralysis_if_destroyed: True` | Not enforced. Spine can be destroyed but produces no paralysis condition. |
-| **Manipulation loss → drop weapons / can't wield** | `affects: ["work_speed", "melee_accuracy"]` | Partly. Manipulation scales hit chance per gripping hand, with an under-grip penalty (`manipulation_hit_factor`, `grip_hit_factor` in `world/combat/capacity.py`). Nothing drops a weapon or refuses wield or wear. |
-| **Pain-driven unconsciousness path** | `PAIN_UNCONSCIOUS_THRESHOLD: 80` | **Partially**: pain reduces `self.consciousness` float, which then trips the consciousness threshold. Not a direct check, but functionally equivalent. |
+Recommended order:
 
-### Category D — Combat-Side Drift
+1. Phase 3 (failure-mode logging) — Track 1
+2. Phase 4 (vestigial-flag deletion, partial) — Track 1
+3. Phase 6 (chronic conditions framework) — Track 2
+4. Phase 7 (movement policing), with the spine clamp it includes — Track 2
+5. Phase 9 (equipment handling) — smaller than senses, lower risk
+6. Phase 8 (senses) — the biggest single piece of new architecture
+7. Phase 11 (paralysis) — Track 3
+8. Phase 10 (functional incapacitation wiring, one capacity per PR)
+9. Phase 13 (final dead-flag audit)
 
-| Item | State |
-|---|---|
-| `select_hit_location` falls back to `chest` when character has no longdesc | Defensive but masks bad data — a logged warning would surface broken anatomy. |
-| `damage_distribution = {}` falls through to `total_damage: damage_amount` with no organs damaged | This was the **groin pre-#325 bug**. Now fixed for groin, but the *failure mode* still exists: any future location with no organs silently absorbs damage with no medical effect. Should raise / log. |
-| `select_target_organ` returns `None` for organ-less locations, but `take_damage` accepts `target_organ=None` and routes via location-wide distribution | Coherent but only works *if* the location has any organs. |
-| `take_damage` claim/reality split | `take_damage` returns `(died, final_damage)` to the combat system, but if the medical layer applied no actual damage (organ-less location, all destroyed), the `final_damage` value is misleading — combat sees "hit for X" but body has no record. |
-| Combat-driven severance trigger checks `SEVERING_INJURY_TYPES` (`cut`/`stab`/`laceration`) | Documented in spec, works. |
-| `ndb.unconsciousness_pending`, set in `_handle_unconsciousness` during combat, defers the message until after the hit narrative (5 s fallback) | Works. |
-| `_calculate_armor_damage_reduction` runs before `apply_anatomical_damage` | Correct ordering. |
+Track 1 phases are a half-day to a full day each. Track 2 is the main
+effort; each phase is a real spec and PR cycle. By the end, every audited
+flag is either consumed by working code or deleted, and the medical schema
+reads as truthful runtime documentation.
 
-### Category E — Tertiary System Touchpoints
-
-| System | Touch point | State |
-|---|---|---|
-| **Wounds** (`world/medical/wounds/`) | `take_organ_damage` calls `_create_conditions_from_damage` which spawns `BleedingCondition`/`PainCondition`/`InfectionCondition`. Wound *prose* renders via `append_wounds_to_longdesc` and the per-injury-type message dicts. | Solid. |
-| **Armor** (`typeclasses/armor_mixin.py`) | `_calculate_armor_damage_reduction(amount, location, injury_type)` via the effectiveness matrix in `world/combat/constants.py` | Works. Tied to clothing coverage. |
-| **Conditions / `MedicalScript`** | 60-second (`MEDICAL_TICK_INTERVAL`) per-character ticker, drives bleeding-out, pain decay, infection progression | Works. Calls `is_dead()` after each tick → triggers `at_death()` if conditions push body past threshold. This is the path that makes brain destruction *eventually* lethal. *(Superseded 2026-09-26, #3248: a destroyed brain is dead on the blow through `brain_integrity`.)* |
-| **Death Progression** (`typeclasses/death_progression.py`) | `DEATH_PROGRESSION_DURATION` (90 s) revival window with 11 narrative messages, and none for a beheading (#3840); `_check_medical_revival_conditions` calls `is_dead()` to detect treatment success | Works. *(Superseded 2026-09-26, #3248: a destroyed brain keeps `is_dead()` true, so it blocks revival with no brain check here.)* |
-| **Corpse** (`typeclasses/corpse.py`) | Death-time snapshot of `physical_description`, `longdesc_data`, `wounds_at_death`, `apparent_uid_at_death`, `signature_at_death`, medical snapshot | Works. Recently de-bugged (#319, #320, #323, #324). |
-| **Forensics** (`world/forensics.py`) | Reads corpse signature for autopsy; blood-pool extractor exists but has no command | **✅ Fully resolved (PR #441 / #442)**: corpse-side surfaces all shipped — `commands/forensics.py` carries `CmdInspect` (alias `autopsy`) and `CmdSever`, and `CmdHarvest` is in `commands/CmdSurgical.py`; and the procedural surgery verbs read the same snapshots. `CmdInspect` also handles `BloodPool` by dispatching `extract_subject_from_blood_pool_incident` per unique apparent UID, with distinguishable / indistinguishable bucketing so old crime scenes render readably. The full audit Finding 39 plan now has player surface coverage. |
-| **Hit Selection** (`select_hit_location`) | Data-driven from organ schema; vital-location bias from `_get_vital_locations` (which derives from `LETHAL_CAPACITY_NAMES`) | Works. |
-
-### Category F — Architectural Tensions
-
-1. **Two consciousness names mean different things.**
-   - `self.consciousness` (float on `MedicalState`) is the *runtime value*
-     including pain/blood penalties.
-   - `calculate_body_capacity("consciousness")` is the *organ-only floor*
-     (brain HP fraction).
-   - `is_unconscious()` checks `self.consciousness < threshold`.
-   - `is_dead()` doesn't check either.
-   - **No bug, but confusing**. A docstring on each helper clarifying which
-     value it reads would prevent future drift.
-
-2. **The "no organs in container" failure mode is silent.**
-   - Pre-#325 groin demonstrated this: a damage call to a location with
-     zero registered organs returns success-shaped data but applies no
-     medical effect.
-   - Now that the bug is fixed for groin, the failure mode itself remains —
-     any future anatomy slot missing organ coverage will repeat it without
-     a single log line.
-
-3. **`LETHAL_CAPACITY_NAMES` overloads two concepts.**
-   - It's both the "what kills you" set AND the "what makes a location a
-     vital target" set, with `consciousness` artificially added for the
-     latter purpose.
-   - Splitting into `LETHAL_CAPACITY_NAMES` (true lethal) and
-     `VITAL_TARGETING_CAPACITY_NAMES` (lethal ∪ incapacitating) would
-     remove the comment confusion that triggered this audit.
-   - **Resolved 2026-09-26 (#3248):** `consciousness` left the tuple and
-     `brain_integrity` joined it, so the one tuple is both sets. No split
-     is needed.
-
-4. **`_get_vital_locations` is called per-attack.**
-   - Iterates `LETHAL_CAPACITY_NAMES` → `BODY_CAPACITIES` → `ORGANS` →
-     containers on every hit selection. Acceptable but cacheable; not
-     urgent.
+The surgery work (`HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md` § Surgery, § Surgery > The `operate`
+chart and § Severance and stumps:
+procedural surgery, the operate charting command, severance /
+suture-stump / install-picker / combat-incision symmetry) and the
+anatomy-augments and cyberware arc (#511–#551: chassis+module cyberware,
+spec-carrying replacement organs, inorganic damage (pain-only),
+reattachment, chrome severance prose) sit above these gaps. They read and
+mutate organ HP, `wound_stage`, `inorganic` and `abilities`, but none
+introduces or resolves a consumer for `incapacitation_threshold`,
+`paralysis_if_destroyed` or `total_loss_penalty`. The substrate phases
+are unchanged by them.
 
 ---
 
-## Drift Quick Reference (Headline Items)
+## Track 1 — Standalone
 
-* ~~`LETHAL_CAPACITY_NAMES` comment overstates synchrony with `is_dead`.~~ ✅ Resolved twice: Phase 1 documented the union role; #3248 (2026-09-26) then removed the union — `consciousness` left the set and `brain_integrity` joined it, so the set IS what `is_dead()` enforces.
-* ~~`blood_filtration.total_loss_fatal` is data-true but code-false (kidney loss is "fatal" in spec, ignored in runtime).~~ Resolved the other way (#3402): kidney loss is not fatal by ruling, and the flag is deleted.
-* `incapacitation_threshold` on `moving` is documented but never enforced.
-* `total_loss_penalty` on `sight`/`hearing` describes blindness/deafness; neither is produced as a condition. The strings are unread; the senses are gated through capacity reads instead (`world/perception.py`).
-* `cannot_be_destroyed` and `paralysis_if_destroyed` on `thoracolumbar_spine` are noted in the spec; neither is honored.
-* ~~Brain-blocks-revival is `# NEXT:` in spec and not in code.~~ Resolved by #3248 (2026-09-26): `brain_integrity` is lethal, so a destroyed brain keeps the body dead until a brain is installed.
-* `Organ.vital` is set on init from schema; never read.
+### Phase 3 — Failure-mode surfacing
 
----
+📋 UNBUILT (no issue)
 
-## Remediation Plan
+**Goal**: a location with no organs fails silently. The pre-#325 groin
+showed it: a damage call to a location with zero registered organs returns
+success-shaped data but applies no medical effect. The groin is fixed, but
+any future anatomy slot missing organ coverage will repeat it without a
+single log line. Make the next one loud.
 
-The plan is sequenced around the Core Insight: **build substrate before
-wiring schema to it**. Phases are grouped into three tracks:
+The gaps it addresses:
 
-* **Track 1 — Standalone Now** (no substrate dependency).
-* **Track 2 — Foundational Substrates** (build the missing consumer systems).
-* **Track 3 — Wiring & Cleanup** (only meaningful after Track 2 lands).
-
-Each phase ships as a single PR (sub-issues if review-sized).
-
----
-
-### Track 1 — Standalone Now
-
-These phases have no substrate dependency. They ship in any order and
-deliver visible value immediately.
-
-#### Phase 1 — Documentation & Architectural Clarification (no behavior change)
-
-**Goal**: Lock in the intentional design boundaries so future audits stop
-re-discovering the same drift.
-
-Tasks:
-
-1. Rewrite the `LETHAL_CAPACITY_NAMES` comment in `world/medical/constants.py`
-   to explicitly state the dual role (lethal ∪ targeting-vital), and that
-   consciousness is in it for *targeting* not for *death*.
-2. Add per-method docstrings to `MedicalState.is_dead`, `is_unconscious`,
-   `calculate_body_capacity` clarifying:
-   - `is_dead` enforces four lethal capacities + blood-loss floor.
-   - `is_unconscious` reads the runtime `self.consciousness` (which
-     includes pain / blood / suppression penalties).
-   - `calculate_body_capacity` returns the organ-only floor for that
-     capacity.
-3. Reframe `HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`'s `# NEXT:` brain-death
-   pseudo-code: point it at Phase 2 of this spec.
-4. Add a `specs/roadmaps/MEDICAL_SUBSTRATE_READINESS.md` index that documents
-   each declarative flag, its intended consumer system, and the phase
-   that will wire it.
-
-**Effort**: half-day.
-**Risk**: zero.
-**Dependencies**: none.
-
-#### Phase 2 — Brain Death Blocks Revival
-
-**Goal**: Ship the spec's `# NEXT:` feature. A brain-destroyed character
-cannot revive from the death-progression window, even if other lethal
-capacities are repaired.
-
-Tasks:
-
-1. Add `_brain_is_destroyed()` helper on `MedicalState`.
-2. Update `DeathProgressionScript._check_medical_revival_conditions` to
-   return `False` when brain is destroyed regardless of other state.
-3. Add a revival-failure message for the dying character (RP cue).
-4. Tests: revival succeeds when bleeding stops; revival fails when brain
-   destroyed.
-
-**Effort**: small.
-**Risk**: low.
-**Dependencies**: none.
-
-#### Phase 3 — Failure-Mode Surfacing
-
-**Goal**: The "location has no organs" failure mode (pre-#325 groin)
-shipped silently for a long time. Make the next one loud.
+- When `damage_distribution = {}`, `apply_anatomical_damage` falls through
+  to `total_damage: damage_amount` with no organs damaged. Should raise or
+  log.
+- `select_target_organ` returns `None` for organ-less locations;
+  `take_damage` accepts `target_organ=None` and routes through
+  location-wide distribution. Coherent, but only works if the location has
+  any organs.
+- `take_damage` returns `(died, final_damage)` to combat, but if the
+  medical layer applied no damage (organ-less location, all destroyed),
+  `final_damage` is misleading: combat sees "hit for X" but the body has no
+  record.
+- `select_hit_location` falls back to `chest` when the character has no
+  longdesc: defensive, but it masks bad data; a logged warning would
+  surface broken anatomy.
 
 Tasks:
 
@@ -474,137 +253,123 @@ Tasks:
    warning (`ANATOMY_GAP: damage to {location} on {character} had no
    organ to receive it`).
 2. `select_hit_location`: log when all available locations have a total
-   weight of 0 (would-be-floor masks broken anatomy). *(As built this
-   case cannot happen: each location's weight is floored at 1
+   weight of 0 (would-be-floor masks broken anatomy). This case cannot
+   happen as built: each location's weight is floored at 1
    (`max(total_weight, 1)`), so a location with no organs stays hittable.
    The silent fallback that can happen is the return of `chest` for a
-   character with no longdesc.)*
-3. Optional: startup self-check that walks the anatomy table and reports
+   character with no longdesc.
+3. Optional: a startup self-check that walks the anatomy table and reports
    unbacked containers.
 
-**Effort**: small.
-**Risk**: zero — log-only.
-**Dependencies**: none.
+Effort: small. Risk: zero, log-only. Dependencies: none.
 
-#### Phase 4 — Vestigial-Flag Deletion (no-substrate cases)
+### Phase 4 — Vestigial-flag deletion (no-substrate cases)
 
-**Goal**: Delete the flags that the audit clearly classified as
-vestigial, separate from the substrate-gated ones.
+📋 UNBUILT (no issue)
+
+**Goal**: delete the flags classified as vestigial, separate from the
+substrate-gated ones.
 
 Tasks:
 
-1. Remove `Organ.vital` field and the per-organ `vital` flags.
-2. Remove `unconscious_threshold` from the `consciousness` capacity dict
-   (the top-level constant is the only source actually read).
-   *(Already absent from the schema; nothing to do.)*
-3. Remove `can_be_destroyed` flags (redundant with negative form once
-   spine clamp lands in Phase 7). *(Since #3584 the fall code reads
+1. Remove the `Organ.vital` field and the per-organ `vital` flags.
+2. Remove `can_be_destroyed` flags (redundant with the negative form once
+   the spine clamp lands in Phase 7). Since #3584 the fall code reads
    `can_be_destroyed` to pick the leg bones, so removing it would break
-   falls.)*
-4. Update any tests that assert these values.
+   falls.
+3. Update any tests that assert these values.
 
-Excluded from this phase: `modifiers`, `affects` lists, and the
-`total_loss_*` strings — those wait on substrate-resolution decisions.
+Excluded: `modifiers`, `affects`, and the `total_loss_*` strings; those
+wait on substrate-resolution decisions.
 
-**Effort**: small.
-**Risk**: low.
-**Dependencies**: none for items 1–2. Item 3 should wait on Phase 7
-to avoid touching the same file twice.
-
-#### Phase 5 — `LETHAL_CAPACITY_NAMES` Split
-
-**Goal**: Remove the dual-role ambiguity that triggered this audit.
-
-```python
-LETHAL_CAPACITY_NAMES = (
-    "blood_pumping", "breathing", "digestion", "neck_integrity",
-)                                              # what kills you
-VITAL_TARGETING_CAPACITIES = LETHAL_CAPACITY_NAMES + ("consciousness",)
-```
-
-> **Done another way, 2026-09-26 (#3248):** the ambiguity is gone because
-> `consciousness` left the set entirely and the head stays a vital target
-> through `brain_integrity`, which IS lethal. No second tuple is needed.
-
-Update `_get_vital_locations` to read `VITAL_TARGETING_CAPACITIES`; leave
-`is_dead` reading `LETHAL_CAPACITY_NAMES` (or its inline literals). The
-comment becomes self-evident.
-
-**Effort**: small.
-**Risk**: low — pure rename / split.
-**Dependencies**: none (but ships nicer alongside Phase 1 docs).
+Effort: small. Risk: low. Dependencies: none for task 1. Task 2 should
+wait on Phase 7 to avoid touching the same file twice.
 
 ---
 
-### Track 2 — Foundational Substrates
+## Track 2 — Foundational substrates
 
 These phases build the consumer systems whose absence makes most of the
 medical flags appear dead. Each is a real piece of architecture and
-deserves its own design pass (and probably its own spec doc, linked
-back here).
+deserves its own design pass (and probably its own spec, linked back
+here).
 
-#### Phase 6 — Chronic Medical Conditions Framework
+### Phase 6 — Chronic medical conditions framework
 
-**Goal**: A pattern for slow-kill conditions that accumulate organ failure
-over time. Today's `Bleeding` / `Pain` / `Infection` / `ConsciousnessSuppression`
-are all *acute* conditions with severity-based blood loss or pain or
-suppression. A `RenalFailure` / `LiverFailure` / `RespiratoryFailure`
-condition needs a different shape — a long-running degradation that
-escalates to a death trigger.
+📋 UNBUILT (no issue): the generic `ChronicCondition` base.
+
+`RenalFailureCondition` exists and is wired, but it extends
+`MedicalCondition` directly, so `LiverFailure` / `RespiratoryFailure`
+would each be hand-rolled. It does not kill, by ruling (#3402).
+
+**Goal**: a pattern for slow-kill conditions that accumulate organ failure
+over time. `Bleeding` / `Pain` / `Infection` / `ConsciousnessSuppression`
+are acute conditions with severity-based blood loss, pain or suppression.
+A `LiverFailure` / `RespiratoryFailure` condition needs a different shape:
+a long-running degradation that escalates to a death trigger.
 
 Tasks:
 
-1. Design pass: what does a chronic condition look like? A new base class
-   `ChronicCondition` extending `MedicalCondition` with:
-   - A `progression_rate` (how fast it worsens).
-   - A `fatal_at_severity` threshold.
-   - An `apply_tick_effect` that escalates severity over time even when
-     untreated.
-   - Integration with `is_dead`: when any chronic condition reaches its
+1. Design pass: a new base class `ChronicCondition` extending
+   `MedicalCondition`, with:
+   - a `progression_rate` (how fast it worsens);
+   - a `fatal_at_severity` threshold;
+   - an `apply_tick_effect` that escalates severity over time even when
+     untreated;
+   - integration with `is_dead`: when any chronic condition reaches its
      fatal threshold, `is_dead` returns True.
 2. Refactor `is_dead` to consult chronic conditions in addition to its
    capacity checks.
 3. Document patterns and edge cases in a new
    `specs/CHRONIC_MEDICAL_CONDITIONS_SPEC.md`.
 
-**Effort**: medium.
-**Risk**: medium — touches the death determination path.
-**Dependencies**: Phase 1 (docs/clarification).
-**Unlocks**: other organ-failure cascades. (Kidney death, Phase 12, is declined: #3402.)
+Effort: medium. Risk: medium, touches the death determination path.
+Unlocks: other organ-failure cascades (kidney death is declined, #3402).
 
-#### Phase 7 — Movement Policing Substrate
+### Phase 7 — Movement policing substrate
 
-**Goal**: A rule layer that commands consult before allowing a character
-to move. Today nothing checks `moving` capacity before letting a
-character walk. Needs to.
+📋 UNBUILT (no issue)
+
+**Goal**: a rule layer that commands consult before allowing a character
+to move. Nothing checks `moving` capacity before letting a character walk;
+walk commands do not check capacity. `moving` has one consumer, the dodge
+factor (`moving_dodge_factor` in `world/combat/capacity.py`).
 
 Tasks:
 
 1. Design pass: where does movement get gated? Candidate hooks:
-   - In `Character.move_to` / `at_pre_move` — generic check.
-   - In `CmdFlee`, `CmdAdvance`, `CmdRetreat`, `CmdCharge` — combat
-     movement.
-   - In compass movement commands (north, south, etc.).
+   - `Character.move_to` / `at_pre_move`: a generic check.
+   - `CmdFlee`, `CmdAdvance`, `CmdRetreat`, `CmdCharge`: combat movement.
+   - Compass movement commands (north, south, etc.).
 2. Add a `can_move()` method on `Character` (or `MedicalState`) that
    returns `(allowed, reason)` based on:
-   - `moving` capacity above `incapacitation_threshold` (0.15).
-   - No `ParalysisCondition` present (added in Phase 11).
-   - No "downed/prone" state (future state machine).
-3. Wire `at_pre_move` and combat-movement commands to call it.
-4. Implement the `cannot_be_destroyed` clamp on `thoracolumbar_spine`
-   in `Organ.take_damage` (spine HP can't drop below 1 from normal
-   damage — combat-severance still routes through the edged-weapon
-   path).
+   - `moving` capacity above `incapacitation_threshold` (0.15);
+   - no `ParalysisCondition` present (added in Phase 11);
+   - no "downed/prone" state (future state machine).
+3. Wire `at_pre_move` and the combat-movement commands to call it.
+4. Implement the `cannot_be_destroyed` clamp on `thoracolumbar_spine` in
+   `Organ.take_damage` (spine HP cannot drop below 1 from normal damage;
+   combat severance still routes through the edged-weapon path).
 5. Document in a new `specs/MOVEMENT_POLICING_SPEC.md`.
 
-**Effort**: medium.
-**Risk**: medium — touches a lot of command surface.
-**Dependencies**: Phase 1.
-**Unlocks**: Paralysis (Phase 11), movement incapacitation (Phase 10).
+Effort: medium. Risk: medium, touches a lot of command surface.
+Unlocks: paralysis (Phase 11), movement incapacitation (Phase 10).
 
-#### Phase 8 — Senses System
+### Phase 8 — Senses system
 
-**Goal**: Perception (sight, hearing) becomes a gated capability rather
+📋 UNBUILT (no issue): `BlindCondition` / `DeafCondition` and the rest of
+the plan below.
+
+Sight, hearing and smell gate what a character perceives through capacity
+reads: `can_see` / `can_hear` / `can_smell` in `world/perception.py`. Below
+the sight threshold a character cannot see (read by the room description,
+speech, emote, radio, stealth and identity); below the hearing threshold
+they do not hear (read by speech, voice and radio). Sight scales hit chance
+(`sight_hit_factor` in `world/combat/capacity.py`). See
+`CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`. No blindness or deafness
+condition is produced, and the `total_loss_penalty` strings are unread.
+
+**Goal**: perception (sight, hearing) becomes a gated capability rather
 than a free always-available power. When a character has zero sight,
 `look` shows blank/dark output; combat targeting is much harder; movement
 through unknown rooms fails.
@@ -612,215 +377,210 @@ through unknown rooms fails.
 Tasks:
 
 1. Design pass: the senses system is its own architecture. At minimum:
-   - `BlindCondition` and `DeafCondition` produced when respective
-     capacities reach 0.
+   - `BlindCondition` and `DeafCondition` produced when the respective
+     capacities reach 0;
    - `look` hooks check the looker's `sight` capacity and modify output:
-     full at 1.0, blurred at 0.5, no detail at 0.1, nothing at 0.
-   - Combat: blind attacker takes a per-hit penalty.
-   - Communication: deaf character receives no `say` / `whisper` content
-     in their session output.
-2. Implement `BlindCondition` and `DeafCondition` (subclass `MedicalCondition`).
-3. Wire them to spawn when `sight = 0` / `hearing = 0` via a hook in
+     full at 1.0, blurred at 0.5, no detail at 0.1, nothing at 0;
+   - combat: a blind attacker takes a per-hit penalty;
+   - communication: a deaf character receives no `say` / `whisper`
+     content in their session output.
+2. Implement `BlindCondition` and `DeafCondition` (subclass
+   `MedicalCondition`).
+3. Spawn them when `sight = 0` / `hearing = 0`, through a hook in
    `update_vital_signs` or a periodic check in `MedicalScript`.
-4. Hook the appropriate command and render points.
+4. Hook the command and render points.
 5. Document in `specs/SENSES_SYSTEM_SPEC.md`.
 
-**Effort**: large — this is real architecture.
-**Risk**: medium-high — touches perception across the codebase.
-**Dependencies**: Phase 1.
-**Unlocks**: Sight/hearing penalty wiring.
+Effort: large, real architecture. Risk: medium-high, touches perception
+across the codebase. Unlocks: sight/hearing penalty wiring.
 
-**Note from user**: this phase is acknowledged as significant. The
-likely path is ship the *infrastructure* (conditions + hook points) in
-Phase 8, but defer the *consequences* (combat penalties, blanked look,
-muted comm) to incremental follow-ups so the substrate can land without
-gating on every consumer being perfect.
+**Note from user**: this phase is acknowledged as significant. The likely
+path is ship the *infrastructure* (conditions + hook points) in Phase 8,
+but defer the *consequences* (combat penalties, blanked look, muted comm)
+to incremental follow-ups so the substrate can land without gating on
+every consumer being perfect.
 
-#### Phase 9 — Equipment-Handling Substrate (manipulation)
+### Phase 9 — Equipment-handling substrate (manipulation)
 
-**Goal**: Manipulation capacity actually gates wielding, wearing, and
-fine-motor combat actions.
+📋 UNBUILT (no issue): refusing wield or wear, and dropping items at zero
+manipulation.
+
+Manipulation scales hit chance per gripping hand, with an under-grip
+penalty (`manipulation_hit_factor` and `grip_hit_factor` in
+`world/combat/capacity.py`; #3717). Nothing drops a weapon or refuses wield
+or wear. The schema's manipulation `affects` lists `work_speed` and
+`melee_accuracy`.
+
+**Goal**: manipulation capacity gates wielding, wearing, and fine-motor
+combat actions.
 
 Tasks:
 
 1. Design pass: threshold tiers for manipulation:
-   - Above ~0.7: full function.
-   - 0.3–0.7: clumsy (combat accuracy penalty, slower equip).
-   - Below 0.3: can hold what's already wielded but cannot equip/disequip;
-     reduced attack accuracy.
-   - At 0.0: drops everything currently held.
-2. Add `can_wield()` / `can_equip()` checks at the relevant command
-   sites (`wield`, `wear`, `wrest`, `disarm`, `give`, `get`).
+   - above ~0.7: full function;
+   - 0.3–0.7: clumsy (combat accuracy penalty, slower equip);
+   - below 0.3: can hold what is already wielded but cannot
+     equip/disequip; reduced attack accuracy;
+   - at 0.0: drops everything currently held.
+2. Add `can_wield()` / `can_equip()` checks at the command sites (`wield`,
+   `wear`, `wrest`, `disarm`, `give`, `get`).
 3. Wire a drop-on-zero hook in `update_vital_signs`.
 4. Document in `specs/EQUIPMENT_HANDLING_SPEC.md`.
 
-**Effort**: medium.
-**Risk**: medium — equipment commands span several files.
-**Dependencies**: Phase 1.
-**Unlocks**: Manipulation incapacitation (Phase 10).
+Effort: medium. Risk: medium, equipment commands span several files.
+Unlocks: manipulation incapacitation (Phase 10).
 
 ---
 
-### Track 3 — Wiring & Cleanup
+## Track 3 — Wiring and cleanup
 
-Each phase here depends on a substrate from Track 2 being live. They
-are the "wire the schema into the consumer" pass.
+Each phase here depends on a Track 2 substrate being live. They wire the
+schema into the consumer.
 
-#### Phase 10 — Functional Capacity Incapacitation Wiring
+### Phase 10 — Functional capacity incapacitation wiring
 
-**Goal**: Now that substrates exist, wire each capacity's
-`incapacitation_threshold` and `total_loss_penalty` into the consumer.
+📋 UNBUILT (no issue)
+
+**Goal**: wire each capacity's `incapacitation_threshold` and
+`total_loss_penalty` into its consumer.
 
 Tasks:
 
-1. **Movement**: `moving < incapacitation_threshold (0.15)` → character
-   is "downed", cannot move. Uses Phase 7 substrate.
-2. **Manipulation**: tiered penalties from Phase 9 substrate.
+1. **Movement**: `moving < incapacitation_threshold (0.15)` → the
+   character is "downed" and cannot move. Uses the Phase 7 substrate.
+2. **Manipulation**: tiered penalties from the Phase 9 substrate.
 3. **Sight**: `sight = 0` → spawn `BlindCondition` (Phase 8 substrate).
 4. **Hearing**: `hearing = 0` → spawn `DeafCondition` (Phase 8 substrate).
-5. **Talking**: `talking = 0` → spawn `MuteCondition` (small extension
-   of senses substrate).
+5. **Talking**: `talking = 0` → spawn `MuteCondition` (a small extension
+   of the senses substrate).
 
-**Effort**: medium — one PR per capacity.
-**Risk**: medium — first time mechanical penalties land on players.
-**Dependencies**: Phases 7 (movement), 8 (senses), 9 (manipulation).
+Effort: medium, one PR per capacity. Risk: medium, the first time
+mechanical penalties land on players. Dependencies: Phases 7 (movement),
+8 (senses), 9 (manipulation).
 
-#### Phase 11 — Paralysis
+### Phase 11 — Paralysis
 
-**Goal**: Ship the `paralysis_if_destroyed` intent on `thoracolumbar_spine`.
+📋 UNBUILT (no issue)
+
+**Goal**: honour `paralysis_if_destroyed` on `thoracolumbar_spine`. The
+spine can be destroyed but produces no paralysis condition.
 
 Tasks:
 
-1. Add `ParalysisCondition` (extends `MedicalCondition`, location =
-   `back`, severity 1, permanent).
-2. Spawn it when spine HP drops below a threshold (default ~50% — final
-   value during balancing). Spine itself doesn't go to 0 thanks to
+1. Add `ParalysisCondition` (extends `MedicalCondition`, location `back`,
+   severity 1, permanent).
+2. Spawn it when spine HP drops below a threshold (default ~50%, final
+   value during balancing). The spine itself does not go to 0, thanks to
    the Phase 7 clamp.
-3. `ParalysisCondition` zeroes `moving` capacity via Phase 7's
-   `can_move()` check returning False with reason "paralyzed".
-4. Combat-driven severance from edged hits (per #243) still applies —
-   that's *decapitation* via the neck container, which already kills.
+3. `ParalysisCondition` zeroes `moving` through Phase 7's `can_move()`
+   returning False with reason "paralyzed".
+4. Combat-driven severance from edged hits (per #243) still applies; that
+   is decapitation through the neck container, which already kills.
 
-**Effort**: medium.
-**Risk**: medium — interactions with sever-from-living path need test
-coverage.
-**Dependencies**: Phase 7 (movement policing, spine clamp).
+Effort: medium. Risk: medium; interactions with the sever-from-living path
+need test coverage. Dependencies: Phase 7 (movement policing, spine
+clamp).
 
-#### Phase 12 — Kidney Death via Chronic Condition
+### Phase 13 — Final dead-flag audit and cleanup
 
-> **DECLINED — owner ruling 2026-09-24 (#3402): "Considering how much weaker it makes someone — I think that's tough enough."** Total kidney loss
-> is survivable: renal failure's lasting obtundation (consciousness 0.4 at
-> maximum severity, ten points above the knockout line) is the cost. Kept below
-> as the design of record should lethality ever be revisited; the `ChronicCondition`
-> framework of Phase 6 remains useful for other organ failures regardless.
+📋 UNBUILT (no issue)
 
-**Goal**: Total kidney loss becomes fatal — but as a chronic condition
-(realistic acute-on-chronic renal failure), not as an instant `is_dead`
-check.
+**Goal**: after the substrates are live, each remaining substrate-gated
+flag has either been wired (keep) or remains unused (delete).
 
 Tasks:
 
-1. Add `RenalFailureCondition` extending `ChronicCondition` from Phase 6.
-2. Spawn it when `blood_filtration <= 0` (both kidneys destroyed).
-3. Progression: severity escalates over time; fatal at severity threshold
-   (timeline TBD during balancing — likely real-time hours, in-game
-   days once the time system lands).
-4. Treatment paths: dialysis substitute? Cybernetic kidney replacement?
-   Deferred to future medical-tools work.
-5. Tests: kidney destruction spawns the condition; condition escalates
-   over time; reaching fatal severity triggers death.
-
-**Effort**: small (the substrate from Phase 6 does the heavy lifting).
-**Risk**: low.
-**Dependencies**: Phase 6 (chronic conditions framework).
-
-#### Phase 13 — Final Dead-Flag Audit & Cleanup
-
-**Goal**: After substrates are live, the remaining substrate-gated flags
-have either been wired (keep) or remain unused (delete).
-
-Tasks:
-
-1. Re-audit `modifiers` / `affects` lists: if Phase 10's wiring uses
+1. Re-audit the `modifiers` / `affects` lists: if Phase 10's wiring uses
    them as data, keep; otherwise delete and document the cascade
    imperatively.
-2. `fatal_threshold` / `directly_fatal`: ~~either refactor `is_dead` to
-   be data-driven over these (single source of truth) or delete.~~ Settled
-   halfway on 2026-09-26 (#3677): `is_dead` loops over
+2. `fatal_threshold` / `directly_fatal`: `is_dead` loops over
    `LETHAL_CAPACITY_NAMES`, and a test pins `directly_fatal` to that tuple
-   for every species; `fatal_threshold` stays declarative (the floor is
-   `<= 0.0`).
+   for every species (#3677); `fatal_threshold` stays declarative (the
+   floor is `<= 0.0`).
 3. `total_loss_effects` on `talking`: if Phase 10 wires a `MuteCondition`
-   that consumes them, keep; else delete the strings (they're
+   that consumes them, keep; else delete the strings (they are
    declarative-only documentation).
-4. Confirm `total_loss_penalty` strings are referenced by Phase 10's
+4. Confirm the `total_loss_penalty` strings are referenced by Phase 10's
    wiring; otherwise delete.
 
-**Effort**: small once Track 2 lands.
-**Risk**: low — non-load-bearing.
-**Dependencies**: Phases 6, 7, 8, 9, 10.
+Effort: small once Track 2 lands. Risk: low, non-load-bearing.
+Dependencies: Phases 6, 7, 8, 9, 10.
 
 ---
 
-## Implementation Sequence
+## Rulings
 
-Recommended ordering, with reasoning:
+- **2026-09-26 (#3248)**: _"Conscious capacity 0 should not be death"_.
+  A 2026-09-11 ruling had made the consciousness capacity
+  (`calculate_body_capacity("consciousness")`, brain HP only) a death
+  gate; it is withdrawn. Brain death goes through `brain_integrity`
+  instead. The same change ended the planned split of
+  `LETHAL_CAPACITY_NAMES` into a lethal set and a vital-targeting set
+  (`lethal ∪ consciousness`): `consciousness` left the tuple and
+  `brain_integrity` joined it, so the head stays a vital target through a
+  capacity that IS lethal, and one tuple is both sets.
+- **2026-09-24 (#3402)**: "Considering how much weaker it makes someone — I
+  think that's tough enough." Total kidney loss is survivable. The roadmap
+  had planned kidney death as a chronic condition (`RenalFailureCondition`
+  extending `ChronicCondition`, fatal at a severity threshold); that phase
+  is declined. The `ChronicCondition` framework of Phase 6 remains useful
+  for other organ failures.
 
-**Sprint 1 — fast wins, no substrate dependency**:
+## Not decided
 
-1. Phase 1 (docs)
-2. Phase 5 (`LETHAL_CAPACITY_NAMES` split)
-3. Phase 2 (brain blocks revival)
-4. Phase 3 (failure-mode logging)
-5. Phase 4 (vestigial-flag deletion, partial)
+- **Skill / stat model**, upstream of all the tuning here. Every medical
+  roll (`roll_procedure`, `calculate_treatment_success`) and forensic check
+  is a placeholder formula on G.R.I.M. stats that all default to `1`.
+  Difficulty/effectiveness balance cannot be tuned, and capacity→roll
+  penalties (the point of Tracks 2–3) have no real roll to modify, until
+  the skill/stat design is decided. The skill board is ruled (2026-08-19,
+  amended the same day; `specs/proposals/SKILLS_AND_DESIGNATION_SPEC.md`),
+  but it is not built, and how the medical rolls use it is not settled
+  here.
+- **Per-character capacity extension.** Augment organs can add anatomy and
+  capacities a species table never declared (the cyber tail). Phases 7–9
+  assume the static species table is the full capacity set; extension is
+  an un-catalogued substrate concern to fold into movement policing,
+  senses and equipment handling whenever those are scoped. See
+  `MEDICAL_SUBSTRATE_READINESS.md`.
+- **Social-interaction substrate.** `talking` total-loss effects
+  (`cannot_negotiate`, …) have no phase: open design, depending on a
+  trade/negotiation system that does not exist.
 
-All five can ship in a short session — half-day to full day each.
+## Out of scope
 
-**Sprint 2 — substrate buildout**:
-
-6. Phase 6 (chronic conditions framework)
-7. Phase 7 (movement policing) — and the spine clamp it includes
-8. Phase 9 (equipment handling) — smaller than senses, lower risk
-9. Phase 8 (senses system) — biggest single piece of new architecture
-
-This sprint is the main effort. Each phase is a real spec + PR cycle.
-
-**Sprint 3 — wiring**:
-
-10. Phase 11 (paralysis)
-11. Phase 12 (kidney chronic condition)
-12. Phase 10 (functional incapacitation wiring, one capacity per PR)
-13. Phase 13 (final dead-flag audit)
-
-By the end, every audited flag is either consumed by working code or
-deleted. The medical schema reads as truthful runtime documentation.
-
----
-
-## Out of Scope
-
-Explicitly **not** addressed here, for clarity:
-
-* **Blood pool forensics:** shipped as part of `inspect` (`commands/forensics.py`, PR #441 / #442); see Category E.
-* **Phase 5 identity mechanics** (memory decay, auto-recognition via Resonance).
-* **Treatment / healing balance pass** (existing `apply_treatment` paths
-  are functional but un-balanced; that's a separate playtest exercise).
-* **Time system integration**: the time system shipped (#301,
-  `specs/TIME_SYSTEM_SPEC.md`), and wounds are stamped with
-  `world.gametime.stamp`. Decay tuning against it is out of scope here.
-* **Per-region decay rendering** on corpses (was decided as a future
-  feature when removing the per-location decay spam in #323).
-* **GMCP / shop / world-state** (open issues #302, #303, #305, not
+- **Blood pool forensics**: handled by `inspect` (`commands/forensics.py`,
+  PR #441 / #442).
+- **Phase 5 identity mechanics** (memory decay, auto-recognition via
+  Resonance).
+- **Treatment / healing balance pass**: the `apply_treatment` paths are
+  functional but unbalanced; that is a separate playtest exercise.
+- **Time system integration**: wounds are stamped with
+  `world.gametime.stamp` (#301, `specs/TIME_SYSTEM_SPEC.md`). Decay tuning
+  against it is out of scope here.
+- **Per-region decay rendering** on corpses (decided as a future feature
+  when the per-location decay spam was removed in #323).
+- **GMCP / shop / world-state** (open issues #302, #303, #305; not
   medical/combat work). #308 (death-state TODOs) is open and touches this
   area.
-* **`_get_vital_locations` caching** — low-priority perf nit.
+- **`_get_vital_locations` caching**: it walks `LETHAL_CAPACITY_NAMES` →
+  `BODY_CAPACITIES` → `ORGANS` → containers on every hit selection.
+  Acceptable but cacheable; a low-priority perf nit.
 
----
+## Acceptance for this roadmap
 
-## Acceptance for This Spec
+- The owner reviews and either approves the plan or marks specific phases
+  as no-go.
+- Approved phases are converted to GitHub issues, each with the test plan
+  and acceptance criteria drafted here.
+- A `specs/README.md` index entry is added for this document.
 
-* User reviews and either approves the plan or marks specific phases as
-  no-go.
-* Approved phases are converted to GitHub issues, each with the relevant
-  test plan and acceptance criteria already drafted in this spec.
-* `specs/README.md` index entry added for this spec.
+## Related documents
+
+- `specs/roadmaps/MEDICAL_SUBSTRATE_READINESS.md`: the at-a-glance flag map.
+- `specs/HEALTH_AND_SUBSTANCE_SYSTEM_SPEC.md`: the medical system, including
+  `neck_integrity` capacity and death wiring.
+- `specs/CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC.md`: the capacity reads
+  that gate perception and scale combat rolls.
+- `specs/proposals/SKILLS_AND_DESIGNATION_SPEC.md`: the ruled skill board.
+- `specs/TIME_SYSTEM_SPEC.md`.

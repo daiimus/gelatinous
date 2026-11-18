@@ -1,6 +1,6 @@
 """
 Tests for the voice-identity foundation
-(CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4, build slice 2a).
+(CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §4).
 
 Covers the curated vocabulary + validation, the composed speech-flavour
 phrase across signature states, and the ``talking``-capacity garble gate

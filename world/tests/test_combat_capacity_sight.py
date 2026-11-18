@@ -1,6 +1,6 @@
 """
 Tests for the sight combat-capacity consumer
-(CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §9 layer 1).
+(CAPACITY_CONSUMERS_AND_PERCEPTION_SPEC §3; §6.2 for moving/dodge).
 
 ``world/combat/capacity.py`` turns the previously-inert ``sight`` body
 capacity into a multiplier on combat aim.  These tests pin the curve's

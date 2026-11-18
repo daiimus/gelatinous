@@ -1,73 +1,42 @@
 # LLM Gamemaster Spec
 
-> **Status:** 🟡 Proposal — **Phases 1–2 SHIPPED; Phase 3 partial.** Phase 1
-> **POSING DIAL-IN for the 12B (2026-07-14, Rocinante).** Work WITH how the model communicates: (1) **ChatML delivery** — the sidecar renders ChatML (Rocinante's RP-recommended format; `GM_CHAT_FORMAT=chatml`), so the charter lands as a real SYSTEM role instead of buried in a Mistral `[INST]` user turn. This alone drove first-person pose leaks 1-in-5 → 0-in-16. (2) **Few-shot teaches, not rules** — a 12B copies the last assistant turns; the bartender few-shot was rewritten to TIGHT, invention-free, channel-clean examples (the OLD single example literally posed 'tracks a scuffle in the corner' — the model was copying that invention; fixing it killed the scene-invention). (3) **Field order A/B** — speech-first KEPT: thought-first (reasoning-first) HURT tool accuracy (pulled toward character-flavour over the transactional decision). thought stays after speech/action so a long-turn truncation lands in the PRIVATE thought, not the visible channels. (4) **Deterministic pose backstop** — `_selfify_action` converts first-person self-refs (my/me/myself) to the NPC's pronoun in code; the model provides voice, code guarantees the render. (5) `LLM_GM_MAX_TOKENS` 180→220 (Rocinante runs long; headroom stops mid-word truncation of visible channels). See [[reference-gelatinous-llm-model-candidates]] for the format/model specifics.**
-> **TOOL-RELIABILITY ARCHITECTURE (2026-07-16→20).** Two levers turned the 12B's finicky tool-calling into reliable behaviour. (1) **Demonstrate, don't describe** — every archetype's action tools must appear in its FEW-SHOT, not just the tool list; a 12B copies the few-shot far more than it obeys tool prose. Proven 3×: bartender `remember`/`feel` fired ZERO until demoed (#1236); doctor `treat` fired 1/5 even after diagnosis (narrated mending instead) until a `diagnose→treat` FOLLOW-THROUGH example lifted it to 6/7 (#1237); companion `remember` fired only after a demo. (2) **Deterministic parsers for EXPLICIT player requests** — a real transaction rides code, not the model roll: `_is_conversational_order` (drink orders, #1235) and `_parse_medical_request` (install/treat, #1237) route an explicit request straight to the real command with the LLM skipped **[both have since moved off the NPC class onto the POST and been renamed (#2350/#2352): `world/bar.py` `resolve_order` behind `serve_from_board`, `world/clinic.py` `parse_medical_request` behind `serve_at_clinic`, dispatched by `post_role` through `world/service.py`]**; both conservative (a question / bare symptom / casual mention is NOT a request) and directed-gated. The model keeps VOICE + discretionary reads; the transaction is guaranteed. **Mr. Hands awareness** (#1233: what's in-hand vs stashed + a `wield`/`unwield` tool) and **inventory grounding** (#1230) stop the model narrating gear it isn't holding or inventing gear it doesn't have. Opt-in **decision log** (`LLM_GM_DECISION_LOG` → `server/logs/llm_decisions.log`) records raw model output beside the final render per turn, for tuning. `LLM_GM_MAX_TOKENS` 220, `LLM_GM_TIMEOUT` 120. See [[reference-gelatinous-llm-model-candidates]] tuning lessons 1–3.**
-> (#707): the Bartender NPC Sable answers player speech with model-generated
-> dialogue from a decoupled, **OpenAI-compatible** inference backend (MLX /
-> Ollama / cloud — swappable by URL, no code change), seeded from her real
-> identity, gated behind two switches, fail-safe to scripted behaviour, drink
-> mechanics untouched. **Phase 2** added per-NPC RAG memory (embeddings,
-> identity-gated retrieval, write-back) and a reusable LLM-NPC brain
-> (`LLMNpcMixin`) with archetypes (bartender, companion, doctor, colonist, security, merchant; butcher, dispatcher and dj were added later — nine in `world/llm/prompt.py` today). **Phase 3 (partial):** a
-> small allow-listed action surface is live — base `remember`/`look` (`feel` was a third base tool until #2388 retired it; see §1 Principle 8) + per-archetype
-> action tools (`prepare_drink`/`check_stock`, `diagnose`/`treat`/`install`, `style`,
-> `wield`, `radio`, `release`) — and **actuation runs through the REAL roleplay commands
-> players use, one channel per turn-field** (`execute_cmd`), so NPC output gets the
-> game's per-observer identity rendering and targeting for free. The turn is
-> `{speech, action, thought, tool}`, dispatched: **`action` → `emote`** (3rd-person,
-> the register an RP-tuned model is fluent in — the command does NO conjugation, so
-> the model's natural prose renders as-is), **`speech` → `say`**, **`thought` →
-> `think`** (private interiority, perceived only by the actor + a mind-reader, so it
-> never leaks onto the visible stage). **This replaced an earlier 1st-person
-> dot-pose render (#789):** the dot-pose DSL (base-form verbs + leading dots) is a
-> *human* input ergonomic that fought the prose model and drifted to conjugated
-> narration under load ("glanceses"); for an NPC, verbs are always 3rd-person to
-> every observer, so the conjugation machinery was unnecessary — `emote` dissolved
-> the format problem at the root (the emote command does no conjugation; a code
-> backstop, `_conjugate_action`, corrects a base-form leading verb). `think` (#787) is a new real RP verb players share.
-> The Phase-3 **arbiter (capability + consent gates)** and mechanical-verb routing
-> to the tactical resolver are **not** built yet (consent ties to the deferred
-> Trust/Consent gate). **[STALE 2026-09-12 — the gate is NOT deferred:
-> `specs/TRUST_AND_CONSENT_SPEC.md` reads "✅ SHIPPED IN FULL (2026-07-03,
-> Phases 1–3)", and `world/consent.py` (`check_consent` / `can_contest` /
-> `is_restrained`) plus `commands/CmdTrust.py` are live. The arbiter itself
-> is still genuinely unbuilt — nothing in the LLM path gates an action
-> before `execute_cmd` — but it is not waiting on the gate.]** Build ladder + per-phase status in §10. Validation harnesses:
-> `world/llm/live_probe.py` (volume format scorer) + `world/llm/npc_console.py`
-> (reactive turn-by-turn play against the sidecar NPC).
-> A methodology for
-> running a **local LLM as a storyteller / gamemaster** that puppets NPCs:
-> dialogue, a bounded set of actions, real command use, and **per-NPC memory
-> sustained through RAG**. This document is deliberately **implementation-light**.
-> It hands an implementer the *contracts and hooks* — the agent loop, the
-> adapter interfaces, the model-selection rubric, the governance interlocks —
-> not a port of one codebase's topology. The single Gelatinous-specific binding
-> lives in **Appendix A**; everything above it should transfer to any MUD with a
-> command layer and a perception bus. Runtime target: **MLX on Apple Silicon**
-> (a Mac mini), as a decoupled sidecar. Interlocks with the deferred
-> **Trust/Consent** gate (`proposals/TRUST_AND_CONSENT_SPEC.md` — **[PATH +
-> STATUS STALE 2026-09-12: the file is `specs/TRUST_AND_CONSENT_SPEC.md`
-> (top level = shipped); there is no copy under `proposals/`, and it has
-> read ✅ SHIPPED IN FULL since 2026-07-03]**) and the
-> recognition-memory sketch in `IDENTITY_RECOGNITION_SPEC.md` §embedding.
+A method for running a **local LLM as a storyteller / gamemaster** that
+puppets NPCs: dialogue, a bounded set of actions, real command use, and
+**per-NPC memory sustained through RAG**. In this game the Bartender NPC Sable
+was the first: she answers player speech with model-generated dialogue from a
+decoupled, **OpenAI-compatible** inference backend (MLX / Ollama / cloud —
+swappable by URL, no code change), seeded from her real identity, gated behind
+two switches, fail-safe to scripted behaviour, drink mechanics untouched (#707).
+The reusable brain is `typeclasses/llm_npc.py` `LLMNpcMixin`, with nine
+archetypes in `world/llm/prompt.py` (bartender, companion, doctor, colonist,
+security, merchant, butcher, dispatcher, dj).
+
+This document is deliberately **implementation-light**. It hands an
+implementer the *contracts and hooks* — the agent loop, the adapter
+interfaces, the model-selection rubric, the governance interlocks — not a port
+of one codebase's topology. The Gelatinous binding is §10 and **Appendix A**;
+everything else should transfer to any MUD with a command layer and a
+perception bus. Runtime target: **MLX on Apple Silicon** (a Mac mini), as a
+decoupled sidecar. It interlocks with the **Trust/Consent** gate
+(`specs/TRUST_AND_CONSENT_SPEC.md`; `world/consent.py` `check_consent` /
+`can_contest` / `is_restrained`, `commands/CmdTrust.py`) and the
+recognition-memory sketch in `IDENTITY_RECOGNITION_SPEC.md` §embedding.
+
+Validation harnesses: `world/llm/live_probe.py` (volume format scorer) and
+`world/llm/npc_console.py` (reactive turn-by-turn play against the sidecar
+NPC).
 
 ---
 
 ## 0 · Purpose & framing
 
-NPCs today are **scripted reactors**: a bartender hears speech addressed to it,
-keyword-matches a menu, and fulfils (Appendix A). That ceiling is low — every
-behaviour is hand-authored, every NPC is a vending machine with flavour text.
-
-> **[FRAMING PREDATES THE BUILD — stale 2026-09-12.** Phases 1–2 shipped, so
-> this paragraph no longer describes current state: LLM-driven NPCs are live
-> (`typeclasses/llm_npc.py` `LLMNpcMixin`/`LLMNpc`, nine archetypes in
-> `world/llm/prompt.py`, RAG memory in `world/llm/memory.py`). The
-> keyword-matched menu survives only as the deterministic floor beneath the
-> model — `world/bar.py` `resolve_order` behind `serve_from_board`, dispatched
-> by `post_role` through `world/service.py`. Read §0 as the original problem
-> statement.**]**
+The problem this proposal answers: a **scripted reactor** NPC — a bartender
+hears speech addressed to it, keyword-matches a menu, and fulfils. That
+ceiling is low — every behaviour is hand-authored, every NPC is a vending
+machine with flavour text. The keyword-matched menu survives as the
+deterministic floor beneath the model — `world/bar.py` `resolve_order` behind
+`serve_from_board`, dispatched by `post_role` through `world/service.py`
+(§10, Phase 3).
 
 This proposal raises the ceiling by putting a **language model in the loop as a
 gamemaster** — one storyteller intelligence that *wears NPCs as masks*. It
@@ -107,7 +76,7 @@ goal; the persona card foregrounds *wants*, and crafted NPCs get rate-limited
 initiative for *crafted/active* NPCs; bulk/background NPCs stay event-driven —
 §8.)
 
-Explicitly **out of scope for v1** (noted in §11): GM-authored world events /
+Explicitly **out of scope for v1** (noted in §15): GM-authored world events /
 plot, scene direction across multiple players, procedural quest generation,
 voice/TTS, and any authority over **player** characters (which is a hard line —
 §7).
@@ -144,53 +113,44 @@ voice/TTS, and any authority over **player** characters (which is a hard line �
 7. **Fail safe, fail quiet.** Every failure mode — model down, timeout, malformed
    output, validation reject — degrades to the *current* scripted behaviour or to
    silence, never to a crash or a broken-character leak.
-8. **Two intelligences, one NPC.** The LLM owns *creative and narrative*
-   decisions (dialogue, ~~wants, who to trust, the decision *to* act~~); a classical
-   NPC AI owns *tactical resolution* (combat targeting, when to actually flee,
-   pathing, self-preservation). The LLM emits a *narrative intent*; a
-   deterministic resolver and the existing game systems carry it out. **Don't make
-   the language model grind combat turns** — it's slower, costlier, and worse at
-   it than a utility function (§2.2).
+8. **Two intelligences, one NPC.** The LLM owns *dialogue and pose*; the
+   deterministic side owns everything the NPC decides. A classical NPC AI owns
+   *tactical resolution* (combat targeting, when to actually flee, pathing,
+   self-preservation). The LLM emits a *narrative intent*; a deterministic
+   resolver and the existing game systems carry it out. **Don't make the
+   language model grind combat turns** — it's slower, costlier, and worse at it
+   than a utility function (§2.2).
 
-   > **NARROWED when souls shipped (2026-08-17, annotated 2026-08-28).**
-   > `NPC_NEEDS_AND_GOALS_SPEC` states the governing law: **"No LLM
-   > anywhere in the decision path — the two-brain split (deterministic
-   > will, LLM voice) is law."** *Wants* moved to the deterministic side
-   > and are now the needs/goal band tree; *who to trust* is
-   > `souls/thoughts.py` valence and the trust system; *the decision to
-   > act* is `plan_for` → `step_job`. The LLM's half of Principle 8 is
-   > now **dialogue and pose only** — it narrates a state the engine
-   > produced and chooses nothing.
-   >
-   > The rest of the principle stands, and stands harder: the seam
-   > between narrative intent and deterministic resolution is exactly
-   > right, it simply moved. Everything downstream of it in this
-   > document (§2.2, §5, §8, §9) still applies to the *voice* half.
-   >
-   > Note the counter-example this invalidated (retired by #2388; see DONE
-   > below): the `feel` tool (`prompt.py`) wrote a model-authored free-text
-   > valence into `db.llm_dossiers`, and `_set_valence` said it was
-   > "consulted by trust/consent later" — a model-written value scheduled to
-   > feed a real mechanic. That was Principle 8 in its pre-souls form and
-   > needed to read `souls/thoughts.py` instead of holding its own opinion.
-   >
-   > **DONE (#2388).** That counter-example is history, not an open item.
-   > The `feel` tool is gone from `world/llm/prompt.py` (`BASE_TOOLS` is
-   > `("look", "remember")`, and the tool router shrugs a stray `feel` off
-   > rather than obeying it), `_set_valence` is gone from
-   > `typeclasses/llm_npc.py`, and the read on a person is derived exactly
-   > as this note asked — `world/souls/thoughts.py`
-   > `opinion_of`/`opinion_band` over the event log, handed to the voice
-   > through `_relationship_line`. Pre-existing
-   > `llm_dossiers[uid]["valence"]` strings are left in place but ignored,
-   > as a readable record of what each NPC used to think. Every new dossier
-   > is still written with `"valence": "neutral"` (`_note_alias`), and that is
-   > ignored too.
-   > `NPC_PLATFORM_SPEC` criterion 10 records the same retirement.
+   The governing law is in `NPC_NEEDS_AND_GOALS_SPEC`: **"No LLM anywhere in
+   the decision path — the two-brain split (deterministic will, LLM voice) is
+   law."** *Wants* are the needs/goal band tree; *who to trust* is
+   `souls/thoughts.py` valence and the trust system; *the decision to act* is
+   `plan_for` → `step_job`. The LLM narrates a state the engine produced and
+   chooses nothing. The seam between narrative intent and deterministic
+   resolution stands; everything downstream of it in this document (§2.2, §5,
+   §8, §9) applies to the *voice* half.
+
+   > **Overturned intention (souls, 2026-08-17).** This principle first gave
+   > the LLM the NPC's wants, who to trust, and the decision *to* act. The
+   > souls law above moved all three to the deterministic side. The `feel`
+   > tool, which wrote a model-authored valence into `db.llm_dossiers` meant to
+   > be "consulted by trust/consent later", was retired for this reason (#2388).
+
+   The read on a person is derived by the engine: `world/souls/thoughts.py`
+   `opinion_of` / `opinion_band` over the event log, handed to the voice
+   through `_relationship_line`. `BASE_TOOLS` in `world/llm/prompt.py` is
+   `("look", "remember")`; the tool router shrugs a stray `feel` off rather
+   than obeying it. Pre-existing `llm_dossiers[uid]["valence"]` strings are
+   left in place but ignored, as a readable record of what each NPC used to
+   think. Every new dossier is still written with `"valence": "neutral"`
+   (`_note_alias`), and that is ignored too. `NPC_PLATFORM_SPEC` criterion 10
+   records the same retirement.
 
 ---
 
 ## 2 · Architecture overview
+
+The proposed shape:
 
 ```
             ┌───────────────────────── GAME PROCESS (reactor) ─────────────────────────┐
@@ -225,12 +185,12 @@ Two processes:
   **intents**. It mutates *nothing* in the world; it only reads (via the snapshot
   it's handed) and writes to its own RAG store.
 
-> **As built**, the game owns the prompt, the memory store and retrieval. The
-> prompt is assembled in the game (`world/llm/prompt.py`, `build_messages`,
-> called from `LLMNpcMixin._try_llm_reply`), and memories are an attribute on
-> the NPC (`db.llm_memories`, scored by `world/llm/memory.py`). The backend is
-> a plain inference endpoint for chat completions and embeddings
-> (`world/llm/client.py`). The diagram above is the original proposal.
+In this game the split differs from the diagram: the game owns the prompt,
+the memory store and retrieval. The prompt is assembled in the game
+(`world/llm/prompt.py`, `build_messages`, called from
+`LLMNpcMixin._try_llm_reply`), and memories are an attribute on the NPC
+(`db.llm_memories`, scored by `world/llm/memory.py`). The backend is a plain
+inference endpoint for chat completions and embeddings (`world/llm/client.py`).
 
 The boundary is a **local IPC** (Unix socket or loopback HTTP). This is not an
 incidental detail — it is the mechanism that keeps a multi-second generation
@@ -257,13 +217,11 @@ The rest of this spec is these six stages plus the cross-cutting concerns
 The LLM is **not** the only intelligence driving an NPC, and deliberately so. Two
 kinds of decision live in a character, and they want different machinery:
 
-- **Creative / social / narrative — the LLM.** What the NPC *says*, how it feels,
-  who it trusts, what it *wants*, and the **decision to** pursue a beat ("this
-  one's had enough — throw them out," "I don't like the look of that, I'm
-  leaving"). Open-ended, characterful, slow, expensive.
-  *(Narrowed when souls shipped, per the Principle 8 note: how the NPC feels,
-  whom it trusts, what it wants and the decision to act are the souls engine's
-  now; the LLM keeps what the NPC says and how it poses.)*
+- **Creative / social / narrative — the LLM.** What the NPC *says* and how it
+  poses. (How the NPC feels, whom it trusts, what it wants, and the **decision
+  to** pursue a beat — "this one's had enough — throw them out," "I don't like
+  the look of that, I'm leaving" — are the souls engine's, per Principle 8.)
+  Open-ended, characterful, slow, expensive.
 - **Tactical / mechanical — a classical NPC AI.** The moment-to-moment
   *resolution*: in a fight, who to target this round, *when* to actually `flee`,
   pathing, retaliation, self-preservation reflexes. Closed-form, fast,
@@ -274,15 +232,16 @@ The seam between them is the **intent**. The LLM emits a *narrative intent* — 
 want to fight that man," "I'm getting out of here," "serve her, on the house" —
 and hands it off. For **social** intents the resolver is trivial (speak / emote /
 move). For **mechanical** intents (a `kill`, a `flee`, an economic exchange) the
-resolver is the **classical AI plus the existing game systems**: the LLM decides
-*that* a fight starts and *why*; the combat AI and the combat engine decide *how
-it goes*, turn by turn. The model never sits in the combat loop.
+resolver is the **classical AI plus the existing game systems**: the LLM
+decides *that* a fight starts and *why*; the combat AI and the combat engine
+decide *how it goes*, turn by turn. The model never sits in the combat loop.
 
 v1 is **social-only** (§0.1), so the tactical-AI half is mostly latent — but the
 architecture **reserves the seam now**: the Action adapter (§9) is specified to
 route *mechanical* intents to a tactical resolver, not straight to `execute_cmd`.
 Adding combat/economy later is then *wiring a resolver behind an existing seam*,
-not a redesign. This is the concrete shape of Principle 8.
+not a redesign. This is the concrete shape of Principle 8. The routing of mechanical intents
+to a tactical resolver is 📋 UNBUILT (no issue; §14).
 
 ---
 
@@ -332,12 +291,12 @@ they achieve them:
   generation well at a time; concurrency is a **queue**, not parallel CUDA
   streams (§8).
 
-The game ↔ sidecar contract is JSON over local IPC: the game sends `{npc_id,
-event, world_snapshot}`; the sidecar returns `{intents[]}`. Neither side shares
-process memory; the sidecar can be restarted, swapped, or moved to another box
-without touching the game.
+The proposed game ↔ sidecar contract is JSON over local IPC: the game sends
+`{npc_id, event, world_snapshot}`; the sidecar returns `{intents[]}`. Neither
+side shares process memory; the sidecar can be restarted, swapped, or moved to
+another box without touching the game.
 
-**As built**, the game sends a standard Chat Completions request over HTTP (the
+In this game, the game sends a standard Chat Completions request over HTTP (the
 assembled `messages`, a `json_schema` for the turn, `max_tokens`, `temperature`;
 `world/llm/client.py`, `request_turn`) and reads back one message whose content
 is the turn object (§5.3).
@@ -367,7 +326,7 @@ Score candidates on:
 
 The rubric outlives any model. **Re-run it whenever a candidate is swapped.**
 
-### 4.2 · Shortlist & recommendation (as of early 2026 — swappable)
+### 4.2 · Shortlist & recommendation (swappable)
 
 Sweet spot for a Mac mini is **12B–24B at 4-bit** (quality without blowing the
 latency budget or memory). **Map the tier to the box** (§3 co-tenancy):
@@ -377,7 +336,10 @@ latency budget or memory). **Map the tier to the box** (§3 co-tenancy):
   enough to coexist with the Docker stack + Plex + the rest on the shared box
   without starving them. This is the realistic *production* pick precisely
   *because* the 24 GB is not the GM's to spend. Slightly less coherent over long
-  context than the bigger tier — acceptable for short, in-character turns.
+  context than the bigger tier — acceptable for short, in-character turns. The
+  resident GM model is **Rocinante 12B** (4-bit, `mlx-community`/community
+  quant): ~15 tok/s, ~3 s TTFT on the shared 24 GB box, measured by a
+  standalone MLX harness that proved a local model can voice the NPC.
 - **Quality / test-bench tier (64 GB mini, or a future dedicated box) — a
   Mistral-Small-24B creative/RP fine-tune** (e.g. TheDrummer's *Cydonia* line or
   the *Magnum v4* 22B–27B series). Explicitly tuned for uncensored roleplay/
@@ -426,6 +388,25 @@ charter** (you run characters in a world with rules; emit only the intent schema
 stay in persona; never speak for the player) reused across all NPCs, with the
 **persona card** (§5.2) layered on top per-NPC.
 
+The 12B is driven with what it copies, not with rules it is told:
+
+- **ChatML delivery.** The sidecar renders ChatML (Rocinante's RP-recommended
+  format; `GM_CHAT_FORMAT=chatml`), so the charter lands as a real SYSTEM role
+  instead of buried in a Mistral `[INST]` user turn. This alone took
+  first-person pose leaks from 1 in 5 to 0 in 16.
+- **Few-shot teaches, not rules.** A 12B copies the last assistant turns, so
+  few-shot examples are tight, invention-free and channel-clean; an invented
+  detail in an example is copied as scene-invention.
+- **Field order: speech first.** Thought-first (reasoning-first) hurt tool
+  accuracy (it pulled toward character flavour over the transactional
+  decision). `thought` stays after `speech`/`action` so a long-turn truncation
+  lands in the private thought, not the visible channels.
+- **`LLM_GM_MAX_TOKENS` is 220** (Rocinante runs long; the headroom stops
+  mid-word truncation of visible channels) and **`LLM_GM_TIMEOUT` is 120 s**.
+
+See [[reference-gelatinous-llm-model-candidates]] for the format/model
+specifics and tuning lessons 1–3.
+
 ---
 
 ## 5 · The agent loop in detail
@@ -437,7 +418,7 @@ Drive this off the **existing perception surface**, not a new omniscient feed:
 
 - **Speech addressed to / overheard by** the NPC.
 - **Arrivals/departures, poses, and emotes** in the NPC's location.
-- **Combat and medical events** the NPC is party to or witness of.
+- **Combat and medical events** the NPC is party to or witness of (§12).
 - **Scheduled ticks** (idle behaviour, initiative to *act* unprompted). Because v1
   targets **active characters** (§0.1), crafted/active NPCs get this **on but
   rate-limited** — a periodic chance to pursue a want (start a conversation,
@@ -451,12 +432,12 @@ Drive this off the **existing perception surface**, not a new omniscient feed:
 Each event is normalised to `{npc_id, kind, actor (as perceived), content,
 location, timestamp}` and pushed to the queue. **Debounce**: collapse a burst
 (an actor typing three lines) into one turn so the GM responds to the *situation*,
-not each token. 📋 UNBUILT (no issue): as built there is no event queue or
-debounce. Each line is answered on its own, rate-limited per NPC (4 s directed;
-45 s and a 35% chance ambient), and a line inside the cooldown gets no reply
-(`_try_llm_reply`). Perception is **identity-gated** at this stage (Principle 3) — the
-`actor` is described as *this NPC* would perceive them (sdesc / known-name /
-voice), never the raw object.
+not each token. 📋 UNBUILT (no issue): there is no event queue or debounce.
+Each line is answered on its own, rate-limited per NPC (4 s directed; 45 s and
+a 35% chance ambient), and a line inside the cooldown gets no reply
+(`_try_llm_reply`). Perception is **identity-gated** at this stage
+(Principle 3) — the `actor` is described as *this NPC* would perceive them
+(sdesc / known-name / voice), never the raw object.
 
 ### 5.2 · Assemble — context
 
@@ -474,12 +455,12 @@ The prompt is composed, in priority order, to fit the context budget:
      the RAG layer** (§6) — the NPC mutates over time *because* memory updates this
      half, while the core holds the character together.
 
-   📋 UNBUILT (no issue): as built the persona is `db.llm_persona` (the builder's
-   core) plus fields read live from the NPC (`typeclasses/llm_persona.py`,
-   `build_persona`). There is no mutable half, no versioning, no auto-generator
-   and no write-back.
+   📋 UNBUILT (no issue): the persona is `db.llm_persona` (the builder's core)
+   plus fields read live from the NPC (`typeclasses/llm_persona.py`,
+   `build_persona`: sdesc, longdescs, voice, skintone, location). There is no
+   mutable half, no versioning, no auto-generator and no write-back.
 
-   **One template, two authoring paths** (resolved §11.5): the same card schema is
+   **One template, two authoring paths** (decided, §13): the same card schema is
    **hand-authored by builders** for crafted NPCs *and* **auto-generated** for
    bulk/background NPCs (a generator fills the schema; the immutable core can be
    seeded from existing identity/voice fields, then refined). Author once; the
@@ -497,7 +478,7 @@ The prompt is composed, in priority order, to fit the context budget:
 Budget discipline: charter + persona + affordances are fixed cost; memory and
 transcript are the elastic middle, trimmed to fit.
 
-**As built** (`world/llm/prompt.py`, `build_messages`), the turn also carries,
+In this game (`world/llm/prompt.py`, `build_messages`), the turn also carries,
 when there is something in them: STATE (the souls mood and where the body is,
 `_soul_state_line`); WHO (the names the NPC knows the person by, the papers that
 vouch for them, and its read on them with the reason, `_relationship_line`);
@@ -526,8 +507,8 @@ grounded in identity, not surface description:
 
 ### 5.3 · Infer — structured intents out
 
-The model returns a **structured list of intents**, not free text. A minimal
-schema:
+The proposal has the model return a **structured list of intents**, not free
+text. A minimal schema:
 
 ```json
 {
@@ -544,27 +525,28 @@ schema:
 - **`memory`** is the model's own nomination of what to remember (the write-back
   seed, §6), with a salience it assigns.
 
-**As shipped** (the concrete contract, backend-constrained via `outlines`; the
-request carries a `json_schema` field that only some backends enforce, so on the
-others the shape is not guaranteed): a flat
-per-turn object **`{speech, action, thought, tool, tool_argument}`** — three
-expression channels plus one tool. `action` is a 3rd-person predicate (→ `emote`),
-`speech` is the spoken line (→ `say`), `thought` is private interiority (→ `think`),
-and `tool` is a single allow-listed action/context tool scoped to the archetype.
-The model fills any channel that applies (`""` to skip) and the renderer dispatches
-each to its real command — so writing in the model's native register (3rd-person
-narrative prose) *is* writing a valid pose. `thought` keeps the model's storytelling
-interiority OFF the visible stage rather than fighting it.
+**The game's contract** (backend-constrained via `outlines`; the request
+carries a `json_schema` field that only some backends enforce, so on the others
+the shape is not guaranteed): a flat per-turn object
+**`{speech, action, thought, tool, tool_argument}`** — three expression
+channels plus one tool. `action` is a 3rd-person predicate (→ `emote`),
+`speech` is the spoken line (→ `say`), `thought` is private interiority
+(→ `think`), and `tool` is a single allow-listed action/context tool scoped to
+the archetype. The model fills any channel that applies (`""` to skip) and the
+renderer dispatches each to its real command — so writing in the model's
+native register (3rd-person narrative prose) *is* writing a valid pose.
+`thought` keeps the model's storytelling interiority OFF the visible stage
+rather than fighting it.
 
 Parse defensively: malformed output → **discard the turn** (fail quiet, §1.7),
 optionally one retry with a "return valid schema only" reminder. Never actuate
 from a partial parse. (Light, non-brittle cleanup only: strip a leading
 self-reference, drop an unbalanced quote, OOC-filter — `parse_turn`.)
 
-**As built** (`parse_turn`, #2729): a truncated JSON reply is salvaged field by
+In this game (`parse_turn`, #2729): a truncated JSON reply is salvaged field by
 field (`_salvage_json`) and a prose reply is parsed for quotes and asterisks
-(`_parse_prose`); what they yield is acted on. Nothing is retried. An empty reply
-from the backend goes to the turn's failure path (`on_fail`).
+(`_parse_prose`); what they yield is acted on. Nothing is retried. An empty
+reply from the backend goes to the turn's failure path (`on_fail`).
 
 ### 5.4 · Arbitrate — validate, gate, de-conflict
 
@@ -598,6 +580,13 @@ In order:
 
 What survives is a small set of **approved, executable** intents.
 
+The arbiter's capability and consent gates are 📋 UNBUILT (no issue; §14).
+Nothing in the LLM path gates an action before `execute_cmd`:
+`typeclasses/llm_npc.py` `_handle_action_tool` and `world/service.py`
+`run_tool` hand a tool straight to `execute_cmd`, so capability and consent
+are enforced only implicitly, by the real command the NPC runs. The arbiter
+does not wait on the Trust/Consent gate, which exists.
+
 ### 5.5 · Actuate
 
 Approved intents become real game effects through the **same paths a player's
@@ -619,13 +608,21 @@ input takes**:
 Because actuation is "the NPC types a command," there is **no parallel
 world-mutation path** to keep in sync — the keystone payoff of Principle 2.
 
+`emote` is the NPC's pose channel, not the 1st-person dot-pose (#789): the
+dot-pose DSL (base-form verbs + leading dots) is a *human* input ergonomic that
+fought the prose model and drifted to conjugated narration under load
+("glanceses"). For an NPC, verbs are always 3rd-person to every observer, so
+the conjugation machinery is unnecessary; `emote` does no conjugation, and the
+model's natural prose renders as-is. `think` (#787) is a real RP verb players
+share.
+
 ### 5.6 · Remember — write-back to RAG
 
 After actuation, the turn is committed to the NPC's **own memory namespace**:
 
 - Take the model's `memory` nominations (§5.3) plus a deterministic episodic
   record (who was present — as perceived —, what was said/done, outcome,
-  timestamp, location). **As built** (`LLMNpcMixin._store_memory`): one record
+  timestamp, location). In this game (`LLMNpcMixin._store_memory`): one record
   per exchange, the text `<handle> said: "<line>" — I answered: "<speech>"`,
   filed under the look (or the voice, on the radio) with `named_by` and
   timestamps. Model nominations, who was present, what was done, outcome and
@@ -660,17 +657,21 @@ store is a rebuildable semantic index over episodic memory documents.
     embedded and retrieved by similarity to the current situation.
 - **Embedding model** runs in the sidecar alongside the LLM (a small
   sentence-transformer — the existing spec recommends `all-MiniLM-L6-v2` for the
-  footprint/quality trade). Account for its memory in the §3 budget.
+  footprint/quality trade). Account for its memory in the §3 budget. In this
+  game, embeddings come from the backend's `/v1/embeddings`, and
+  `world/llm/memory.py` scores them by exact cosine top-k.
 - **Identity-gated keys.** Memory is filed against the **apparent** identity the
   NPC perceived (the same apparent-UID machinery as recognition — Appendix A), so
   a disguised or unintroduced actor is remembered as they were *seen*, and
   recognition later can promote "the tall woman" to a name. This is what makes
-  disguise, introduction, and reputation *mean* something to an NPC.
+  disguise, introduction, and reputation *mean* something to an NPC. In this
+  game, retrieval and write-back are scoped to the interlocutor's
+  `apparent_uid` (riding `recognition_memory`).
 - **Forgetting & salience.** Cap per-NPC memory; decay or summarise low-salience
   episodes over time (salience from §5.3 + recency + emotional weight). Unbounded
   memory is both a retrieval-quality problem and a storage one. *Methodology, not
-  a fixed policy — tune in play.* **As built** (`world/llm/memory.py`): at most 30
-  records per subject; salience is recency with a 7-day half-life plus 0.1 per
+  a fixed policy — tune in play.* In this game (`world/llm/memory.py`): at most
+  30 records per subject; salience is recency with a 7-day half-life plus 0.1 per
   recall; records without a vector rank last; a repeat strengthens the record it
   repeats instead of adding one. Summarising is 📋 UNBUILT (no issue). A
   deliberate erase also exists (`NPC_MEMORY_AND_IDENTITY_SPEC` §5b).
@@ -686,12 +687,12 @@ store is a rebuildable semantic index over episodic memory documents.
   in-fiction NPC shouldn't have. The eventual fix is a **shared, read-only lore
   namespace** (a colony wiki / setting corpus) the context assembler retrieves
   from alongside per-NPC memory — same RAG mechanism, different scope. **For now**
-  (decided §11.10) lore is bounded *softly* in the GM charter ("you know the
+  (decided, §13) lore is bounded *softly* in the GM charter ("you know the
   colony, your own life, and what you've perceived; don't invent specific external
-  facts"); the corpus replaces the soft boundary when it exists. As built, the
-  shared charter (`CHARTER_BASE`) has no such clause; the bound is a few
-  archetypes' own lines (colonist, dispatcher, dj) and the charter's rules
-  against inventing detail.
+  facts"); the corpus replaces the soft boundary when it exists. The shared
+  charter (`CHARTER_BASE`) has no such clause; the bound is a few archetypes'
+  own lines (colonist, dispatcher, dj) and the charter's rules against
+  inventing detail.
 
 ---
 
@@ -738,17 +739,17 @@ This separation is the whole safety story, and it has hard edges:
 - **Operator visibility.** Log every turn — prompt context summary, raw model
   output, parsed intents, arbiter decisions, actuated commands — to an audit sink
   (the combat-audit pattern is a fit). Add a global **kill switch** that drops all
-  NPCs back to scripted/idle behaviour instantly. As built: an opt-in decision
-  log (`LLM_GM_DECISION_LOG` → `server/logs/llm_decisions.log`,
+  NPCs back to scripted/idle behaviour instantly. In this game: an opt-in
+  decision log (`LLM_GM_DECISION_LOG` → `server/logs/llm_decisions.log`,
   `world/llm/decision_log.py`) records the raw model output beside the rendered
-  text. The only switch is the `LLM_GM_ENABLED` setting, which needs a settings
-  change. A full per-turn audit and an instant kill switch are 📋 UNBUILT (no
-  issue).
+  text per turn, for tuning. The only switch is the `LLM_GM_ENABLED` setting,
+  which needs a settings change. A full per-turn audit and an instant kill
+  switch are 📋 UNBUILT (no issue).
 - **Failure is safe and quiet** (Principle 7): sidecar down/slow/garbled → the
   NPC falls back to its current scripted behaviour or stays silent. The world
-  never crashes or breaks character because the model did. As built, a backend
-  that keeps failing to connect trips a breaker that takes the lane off for a
-  minute (`world/llm/client.py`; §10, Phase 1).
+  never crashes or breaks character because the model did. A backend that keeps
+  failing to connect trips a breaker that takes the lane off for a minute
+  (`world/llm/client.py`; §10, Phase 1).
 
 ---
 
@@ -757,7 +758,7 @@ This separation is the whole safety story, and it has hard edges:
 - **One generation at a time per accelerator.** A unified-memory Mac does a
   single generation well; treat the sidecar as a **serial queue**, not a parallel
   pool. Order the queue by priority (a player addressing an NPC outranks idle
-  ambient behaviour). 📋 UNBUILT (no issue): as built the game allows up to ten
+  ambient behaviour). 📋 UNBUILT (no issue): the game allows up to ten
   calls in flight at once (`world/llm/detached.py`, `MAX_IN_FLIGHT`), in arrival
   order with no priority; any serialising is the backend's.
 - **Debounce and coalesce** (§5.1): one turn per *situation*, not per line.
@@ -812,233 +813,225 @@ MLX, the memory store, or Evennia.
 
 ---
 
-## 10 · Build phases
+## 10 · The game's binding: engagement, memory, tools
 
-- ✅ **Phase 0 — sidecar & model.** Standalone MLX harness on the Mac mini
-  (`~/llm-gm-spike/phase0_sable.py`) proved a local model can voice the NPC and
-  measured latency/prose; starting model **Rocinante 12B** (4-bit, `mlx-community`/
-  community quant), ~15 tok/s, ~3 s TTFT on the shared 24 GB box.
-- ✅ **Phase 1 — one NPC, dialogue only (#707).** The live Bartender NPC Sable
-  answers player speech via a local LLM. **Backend-agnostic by design**: the game
-  speaks the standard **OpenAI Chat Completions** protocol to a configurable
-  endpoint (`settings.LLM_GM_URL`), so the inference backend is swappable with no
-  code change — our MLX sidecar, `mlx_lm.server`, Ollama, llama.cpp, vLLM, or a
-  cloud API. Shipped pieces:
-  - **Portable prompt layer** (`world/llm/prompt.py`, in-repo): the GM charter
-    (directed + ambient variants), the persona-card render, the OpenAI `messages`
-    builder, and the reply parser (mixed quotes/asterisks → clean `speech` /
-    `action`; OOC/meta stripped; empty/decline → nulls). This travels with the
-    game so the backend stays a dumb inference endpoint.
-  - **Game client** (`world/llm/client.py`): off-reactor POST to
-    `…/v1/chat/completions` (thread does pure network; no Evennia/DB access;
-    render in the reactor callback). The thread is one of the game's own
-    (`world/llm/detached.py`), not one of Evennia's worker pool: a reload
-    waits for every thread in that pool, and a model can take two minutes
-    to answer (#3815). A reload does not wait for a call on the game's own
-    pool: the call is abandoned, its reply is lost, and the backend may
-    be slow for a while as it finishes it. Optional Bearer
-    `LLM_GM_API_KEY` for cloud backends. Container reaches a host backend via
-    `host.docker.internal`.
-  - **MLX sidecar** (`~/llm-gm-spike/sidecar.py`, out-of-repo, native): one valid
-    backend — a stdlib OpenAI-compatible `/v1/chat/completions` server; warm model
-    + serial-gen lock; applies the chat template (with a fallback for tunes that
-    ship without one); never raises (empty completion on failure). Owns **no** game
-    logic.
-  - **Persona seeding** (`typeclasses/llm_persona.py` `build_persona`): composes
-    the persona dict from the NPC's *real* live fields (sdesc, longdescs, voice,
-    skintone, location) + the builder-authored core in `db.llm_persona`.
-  - **Engagement model** (then `typeclasses/bar.py` `Bartender`; **that class was
-    deleted by #2378 — the engagement loop is `typeclasses/llm_npc.py`
-    `LLMNpcMixin` now: `at_msg_receive` offers the speech to the POST first via
-    `_handle_directed_speech` (the generic service intercept, #2350), and only
-    then does `_classify_speech` decide whether the LLM answers. One NPC
-    typeclass, `LLMNpc`, whose competence comes from the post it stands**): a reactor-side
-    classifier — **directed** (her engaged partner, the job's words, a handle the
-    speaker could target her by, the real key for Builders only, or being alone
-    with her; never another NPC) replies, at most once per 4 s; **ambient**
-    (overheard) is cost-gated (cooldown + roll) *and* the model may decline;
-    orders are byte-identical; thanks is noted (a small rise in the NPC's read
-    on the person, #2815) and falls through to the order or the conversation.
-    Two gates: `settings.LLM_GM_ENABLED` + per-NPC `db.llm_driven`; fail-safe to
-    scripted behaviour. A third is the breaker (`world/llm/client.py`): after
-    three transport failures in a row the lane reads as off for 60 s, then lets
-    one probe through; `llm_enabled()` is False meanwhile, so NPCs take the
-    scripted path. An empty or truncated turn does not count as a failure.
-  - **No memory, no actions beyond speech/pose** (Phases 2–3). Tests:
-    `world/tests/test_bar.py::TestBartenderLLMRouting`. *Deliverable met: in-persona
-    conversation that fails safe when the sidecar is off or a gate is down.*
-- ✅ **Phase 2 — memory.** The Memory adapter: per-NPC RAG namespace
-  (`world/llm/memory.py` — embeddings via the sidecar `/v1/embeddings`, exact
-  cosine top-k, salience/prune), identity-gated retrieval and write-back scoped to
-  the interlocutor's `apparent_uid` (rides `recognition_memory`). Plus the reusable
-  brain `typeclasses/llm_npc.py` `LLMNpcMixin` (engagement loop + agentic tool
-  loop) and archetypes in `world/llm/prompt.py` (bartender, companion, doctor, colonist, security, merchant — merchant grounds shopkeepers as the counter's owner, radio-tool-enabled for a shop set; butcher, dispatcher and dj joined later, nine in all) with
-  per-archetype tool scoping. **Identity & posing** (`NPC_MEMORY_AND_IDENTITY_SPEC`
-  §8): names-as-claims, spontaneous nicknames via the real `remember` command,
-  behaviour-driven valence (`feel` — **retired #2388**: the read on a person is
-  derived by the engine now, `world/souls/thoughts.py` `opinion_of` over the event
-  log, never authored by the model). *Deliverable met: the NPC remembers a prior
-  encounter across sessions and names people it knows.*
-- 🟡 **Phase 3 — bounded actions (PARTIAL).** Shipped: a per-archetype allow-listed
-  action surface (base `remember`/`look`; bartender `prepare_drink`/`check_stock`;
-  doctor `diagnose`/`treat`/`install`; `style`, `wield`, `radio`, `release` —
-  `feel` was a third base tool here until #2388 retired it, the read on a person
-  being derived by the engine now),
-  and **actuation through real commands, one channel per turn-field** — `action`→
-  `emote` (3rd-person, no conjugation), `speech`→`say`, `thought`→`think` (private
-  interiority, perceiver-gated) — all `execute_cmd`, giving per-observer identity
-  rendering + targeting for free. **Reliability layer (2026-07-16→20):** (a) every
-  archetype's action tools are DEMONSTRATED in its few-shot, not just described — the
-  fix that took `remember`/`feel` and the doctor's `treat` follow-through from
-  near-zero to reliable; (b) **deterministic parsers** intercept EXPLICIT player
-  requests before the model — `_is_conversational_order` (bartender, #1235) and
-  `_parse_medical_request` (doctor, #1237) run the real serve/treat/install for a
-  clear order or procedure request, LLM skipped, so a real transaction never rides
-  the model's tool roll. **Both parsers have since moved off the NPC class onto the
-  POST and been renamed (#2350/#2352): `world/bar.py` `resolve_order` behind
-  `serve_from_board`, and `world/clinic.py` `parse_medical_request` behind
-  `serve_at_clinic`, dispatched by `post_role` through `world/service.py`.** (c)
-  **Mr. Hands awareness** (#1233) + **inventory grounding**
-  (#1230) keep the model honest about what it's holding/carrying; (d) opt-in
-  **decision log** (`LLM_GM_DECISION_LOG`) pairs raw model output with the final
-  render per turn. **Deterministic pose backstops** (`world/grammar` +
-  `_conjugate_action`/`_selfify_action`/`_selfify_reflexive_gesture`): verb agreement,
-  first-person→NPC-pronoun, and reflexive self-gestures ("cock your head") are
-  code-guaranteed; the model provides voice. **Room presence**: an LLM NPC tracks who
-  is in the room (a live `PRESENT` roster) and clocks arrivals/departures via the
-  vanilla `at_object_receive`/`at_object_leave` room hooks (a non-NPC arrival may
-  trigger a gated greeting). **Render history (#789):** an earlier 1st-person
-  dot-pose render was retired for NPCs — the DSL fought the prose model (conjugation
-  drift under load); `emote` is 3rd-person-native and dissolved it. Validated via
-  the offline harnesses in `~/llm-gm-spike/` (`dialin.py`/`docdial.py`/`docloop.py` —
-  archetype tool-discipline scorers) + the live decision log. Tuning knobs that matter
-  under a permanently-loaded sidecar: `LLM_GM_MAX_TOKENS` (220 — fits line+action+thought
-  with headroom against mid-word truncation) and `LLM_GM_TIMEOUT` (120s — rescues slow
-  turns from the curt fallback); `on_fail` logs the reason (empty/truncation vs timeout
-  vs conn). **NOT yet built:** the full arbiter
-  (§5.4) — the **capability and consent gates** — and **mechanical verbs routing
-  to the tactical resolver** (§2.2); consent ties to the deferred Trust/Consent
-  gate. **[STALE 2026-09-12: Trust/Consent shipped in full 2026-07-03
-  (`specs/TRUST_AND_CONSENT_SPEC.md`; `world/consent.py` `check_consent`), so
-  the arbiter is not blocked on it. The arbiter itself remains unbuilt as
-  written — `typeclasses/llm_npc.py` `_handle_action_tool` and
-  `world/service.py` `run_tool` hand a tool straight to `execute_cmd`, so
-  capability and consent are enforced only implicitly, by the real command
-  the NPC runs.]** *Deliverable partially met: governed social/expressive actions through real
-  commands; the mechanical/consented action surface remains.*
-- **Phase 4 — many NPCs & de-confliction.** One GM, multiple personas, serialised
-  turns, priority queue, isolation verified across namespaces.
-- **Phase 5 — hardening.** Audit logging, kill switch, rate limits, forgetting/
-  salience tuning, ambient-tick economy.
+The build is phased so that each phase is independently useful and
+independently revertible; nothing after Phase 1 changes the player-facing
+default if disabled.
 
-Each phase is independently useful and independently revertible; nothing after
-Phase 1 changes the player-facing default if disabled.
+### Phase 1 — one NPC, dialogue (#707)
+
+- **Backend-agnostic by design.** The game speaks the standard **OpenAI Chat
+  Completions** protocol to a configurable endpoint (`settings.LLM_GM_URL`), so
+  the inference backend is swappable with no code change — the MLX sidecar,
+  `mlx_lm.server`, Ollama, llama.cpp, vLLM, or a cloud API.
+- **Portable prompt layer** (`world/llm/prompt.py`, in-repo): the GM charter
+  (directed + ambient variants), the persona-card render, the OpenAI `messages`
+  builder, and the reply parser (mixed quotes/asterisks → clean `speech` /
+  `action`; OOC/meta stripped; empty/decline → nulls). This travels with the
+  game so the backend stays a dumb inference endpoint.
+- **Game client** (`world/llm/client.py`): off-reactor POST to
+  `…/v1/chat/completions` (the thread does pure network; no Evennia/DB access;
+  render in the reactor callback). The thread is one of the game's own
+  (`world/llm/detached.py`), not one of Evennia's worker pool: a reload waits
+  for every thread in that pool, and a model can take two minutes to answer
+  (#3815). A reload does not wait for a call on the game's own pool: the call
+  is abandoned, its reply is lost, and the backend may be slow for a while as
+  it finishes it. Optional Bearer `LLM_GM_API_KEY` for cloud backends. The
+  container reaches a host backend via `host.docker.internal`.
+- **MLX sidecar** (`sidecar.py`, out-of-repo in the `llm-gm-spike` folder,
+  native): one valid backend — a stdlib OpenAI-compatible
+  `/v1/chat/completions` server; warm model + serial-gen lock; applies the chat
+  template (with a fallback for tunes that ship without one); never raises
+  (empty completion on failure). Owns **no** game logic.
+- **Persona seeding** (`typeclasses/llm_persona.py` `build_persona`): composes
+  the persona dict from the NPC's *real* live fields (sdesc, longdescs, voice,
+  skintone, location) + the builder-authored core in `db.llm_persona`.
+- **Engagement model** (`typeclasses/llm_npc.py` `LLMNpcMixin`): one NPC
+  typeclass, `LLMNpc`, whose competence comes from the post it stands at.
+  `at_msg_receive` offers the speech to the POST first via
+  `_handle_directed_speech` (the generic service intercept, #2350), and only
+  then does `_classify_speech` decide whether the LLM answers. The
+  reactor-side classifier:
+  - **directed** — her engaged partner, the job's words, a handle the speaker
+    could target her by, the real key for Builders only, or being alone with
+    her; never another NPC — replies, at most once per 4 s;
+  - **ambient** (overheard) is cost-gated (cooldown + roll) *and* the model
+    may decline;
+  - orders are byte-identical;
+  - thanks is noted (a small rise in the NPC's read on the person, #2815) and
+    falls through to the order or the conversation.
+- **Gates.** Two switches: `settings.LLM_GM_ENABLED` + per-NPC
+  `db.llm_driven`; fail-safe to scripted behaviour. A third is the breaker
+  (`world/llm/client.py`): after three transport failures in a row the lane
+  reads as off for 60 s, then lets one probe through; `llm_enabled()` is False
+  meanwhile, so NPCs take the scripted path. An empty or truncated turn does
+  not count as a failure. The NPC converses in persona and fails safe when the
+  sidecar is off or a gate is down.
+
+### Phase 2 — memory
+
+- **The Memory adapter** is `world/llm/memory.py` (§6): a per-NPC RAG
+  namespace, embeddings via the backend's `/v1/embeddings`, exact cosine top-k,
+  salience/prune, identity-gated retrieval and write-back scoped to the
+  interlocutor's `apparent_uid` (rides `recognition_memory`). The NPC
+  remembers a prior encounter across sessions and names people it knows.
+- **The reusable brain** is `typeclasses/llm_npc.py` `LLMNpcMixin`
+  (engagement loop + agentic tool loop), with archetypes in
+  `world/llm/prompt.py` — bartender, companion, doctor, colonist, security,
+  merchant, butcher, dispatcher, dj — and per-archetype tool scoping. The
+  merchant grounds shopkeepers as the counter's owner, and is
+  radio-tool-enabled for a shop set.
+- **Identity & posing** (`NPC_MEMORY_AND_IDENTITY_SPEC` §8): names-as-claims,
+  spontaneous nicknames via the real `remember` command. The read on a person
+  is derived by the engine (`world/souls/thoughts.py` `opinion_of` over the
+  event log), never authored by the model (Principle 8, #2388).
+
+### Phase 3 — bounded actions
+
+- **The action surface** is a per-archetype allow-list: base `remember` /
+  `look`; bartender `prepare_drink` / `check_stock`; doctor `diagnose` /
+  `treat` / `install`; `style`, `wield`, `radio`, `release`. Actuation runs
+  through real commands, one channel per turn-field (§5.5), all `execute_cmd`,
+  giving per-observer identity rendering + targeting for free.
+
+**Tool-reliability note.** Two levers make the 12B's tool-calling reliable:
+
+- **Demonstrate, don't describe.** Every archetype's action tools must appear
+  in its FEW-SHOT, not just the tool list; a 12B copies the few-shot far more
+  than it obeys tool prose. Shown three times: the bartender's `remember` fired
+  zero times until demonstrated (#1236); the doctor's `treat` fired 1 in 5
+  even after diagnosis (it narrated mending instead) until a
+  `diagnose`→`treat` follow-through example lifted it to 6 in 7 (#1237); the
+  companion's `remember` fired only after a demo.
+- **Deterministic parsers for EXPLICIT player requests.** A real transaction
+  rides code, not the model's tool roll. `world/bar.py` `resolve_order` behind
+  `serve_from_board` (drink orders, #1235) and `world/clinic.py`
+  `parse_medical_request` behind `serve_at_clinic` (install/treat, #1237),
+  dispatched by `post_role` through `world/service.py` (#2350/#2352), run the
+  real serve/treat/install for a clear order or procedure request, with the
+  LLM skipped. Both are conservative (a question / bare symptom / casual
+  mention is NOT a request) and directed-gated. The model keeps VOICE +
+  discretionary reads; the transaction is guaranteed.
+- **Mr. Hands awareness** (#1233: what's in-hand vs stashed + a `wield` /
+  `unwield` tool) and **inventory grounding** (#1230) stop the model narrating
+  gear it isn't holding or inventing gear it doesn't have.
+- **Decision log** (opt-in, `LLM_GM_DECISION_LOG` →
+  `server/logs/llm_decisions.log`) pairs raw model output with the final render
+  per turn (§7).
+- **Deterministic pose backstops** (`world/grammar` + `_conjugate_action` /
+  `_selfify_action` / `_selfify_reflexive_gesture`): verb agreement (a
+  base-form leading verb is corrected), first-person self-references
+  (my/me/myself) converted to the NPC's pronoun, and reflexive self-gestures
+  ("cock your head") are code-guaranteed; the model provides voice.
+- **Room presence.** An LLM NPC tracks who is in the room (a live `PRESENT`
+  roster) and clocks arrivals/departures via the vanilla `at_object_receive` /
+  `at_object_leave` room hooks (a non-NPC arrival may trigger a gated
+  greeting).
+- **Validation.** The offline harnesses in the out-of-repo `llm-gm-spike`
+  folder (`dialin.py` / `docdial.py` / `docloop.py` — archetype
+  tool-discipline scorers) + the live decision log.
+- **Tuning knobs** that matter under a permanently-loaded sidecar:
+  `LLM_GM_MAX_TOKENS` (220 — fits line + action + thought with headroom
+  against mid-word truncation) and `LLM_GM_TIMEOUT` (120 s — rescues slow
+  turns from the curt fallback). `on_fail` logs the reason (empty/truncation
+  vs timeout vs conn).
+
+The full arbiter (§5.4) — the **capability and consent gates** — and
+**mechanical verbs routing to the tactical resolver** (§2.2) are 📋 UNBUILT
+(no issue; §14).
 
 ---
 
-## 11 · Open questions
+## 12 · Third-party perception and the reflex lane
 
-1. ✅ **Hardware — resolved.** Production = a **shared 24 GB Mac mini** (co-tenant
-   with the Docker stack, Plex, torrent — so the GM's *effective* slice is well
-   under 24 GB → **12B-class production model**, §4.2); a **64 GB mini** is the
-   **test bench** for performance/quality deltas and larger-model trials. Models
-   are **plug-and-play / swappable at will** behind the Model adapter (§9).
-2. **Latency budget number** — what p95 reads as "alive" vs "laggy" for a
-   directly-addressed NPC? Drives quant/model-size trade. *Measure on both minis
-   in Phase 0.*
-3. ✅ **Autonomy ceiling for v1 — resolved: social-only** (speech + emote + move;
-   §0.1). Beyond v1, mechanical verbs (`kill`, `flee`, trade) are emitted by the
-   LLM as *intents* but **resolved by the classical tactical AI**, not the model
+**Combat perception (#954 combat slice, #1135):**
+`world/llm/observation.py` `observe_event` — witness-testimony beats
+(join w/ opening target, exits walked/out-cold/dead, fight end, plus
+per-swing personal attacks on LLM targets from their own POV) land in
+LLM bystanders' action buffers via per-observer identity rendering,
+perception-gated (blind hear the sound of it), exception-contained,
+observe-only. Buffer-only by design: model tempo (17–85s) can never
+honestly play a 6s combat round — brains speak at the next social
+beat.
+
+**The reflex lane (#1136)** completes the TWO-LANE DOCTRINE: the GM lane
+(the resident 12B, Rocinante; 24B is the §4.2 bench tier, not production)
+plays conversation tempo; the CIVIC lane's on-device small model (~0.65s)
+plays the FLINCH. On fight beats, ONE elected bystander (lowest dbref,
+combatants excluded, 90s NPC cooldown, one reflex per fight) barks a single
+line through `say`.
+
+- **Input shaping is the wall.** The small model only ever sees fixed
+  bloodless `REFLEX_BEATS` renditions. Probed live: its guardrails match gore
+  PHRASING, not events ("bleeding heavily… not moving" refused; a murder
+  passed; profanity passes). Full-detail witness lines stay in the GM-lane
+  buffer.
+- Failure mode is silence at every layer.
+- Persona steering works at archetype level (bartender/dispatcher/robot
+  probes produced three distinct registers from one identity clause); small
+  models get plain orders — example-noun lists get parroted (#1137).
+
+---
+
+## 13 · Decided
+
+These questions were put and answered; each answer is applied where it
+stands above.
+
+1. **Hardware.** Production = a **shared 24 GB Mac mini** (co-tenant with the
+   Docker stack, Plex, torrent — so the GM's *effective* slice is well under
+   24 GB → **12B-class production model**, §4.2); a **64 GB mini** is the
+   **test bench** for performance/quality deltas and larger-model trials.
+   Models are **plug-and-play / swappable at will** behind the Model adapter
+   (§9).
+2. **Autonomy ceiling for v1: social-only** (speech + emote + move; §0.1).
+   Beyond v1, mechanical verbs (`kill`, `flee`, trade) are emitted by the LLM
+   as *intents* but **resolved by the classical tactical AI**, not the model
    (Principle 8 / §2.2) — the allow-list grows by wiring resolvers behind the
    Action-adapter seam, not by handing the LLM combat turns.
-4. ✅ **Idle/unprompted behaviour — resolved: tiered.** v1 targets **active
-   characters** (§0.1), so *crafted/active* NPCs get **rate-limited social
-   initiative** (pursue a want unprompted); *bulk/background* NPCs stay
-   **event-driven, initiative off**, to bound cost on the serial generator
-   (§5.1, §8). *Open sub-question:* the initiative cadence/budget number.
-   📋 UNBUILT (no issue): no initiative is built (§5.1).
-5. ✅ **Persona authoring — resolved: one structured, versioned card, two paths.**
-   Hand-authored by builders *and* auto-generated from the same schema (§5.2.2);
-   split **immutable core** (author intent) vs **mutable state** (evolves via RAG
-   — the NPC changes over time, §6). *Open sub-question:* the card schema/format
-   and the auto-generator, and the consolidation rules that write experience back
-   into mutable state.
-6. **Memory forgetting policy** — concrete salience/decay/summarisation rules
-   (left as methodology in §6; needs a first cut to tune in play). A first cut
-   is built; see §6.
-7. **Multi-player scenes** — when several PCs engage one NPC, whose perception/
-   turn ordering wins? (v1 may simply serialise by arrival/initiative.)
-8. **GM-authored events** — explicitly deferred (§0.1). When/if the storyteller
-   graduates from puppeting NPCs to *directing scenes*, that is a separate spec
-   with its own authority questions.
-9. ✅ **Sidecar lifecycle — resolved: always-on resident** (warm model, zero
-   spin-up latency); accept the idle power/thermal cost on the shared box, kept
-   in check by the §3 bounded-generation discipline.
-10. ✅ **Lore boundary — resolved: soft now, corpus later.** v1 bounds NPC
-    world-knowledge *softly* via the GM charter (know the colony / your life / what
-    you've perceived; don't invent external specifics, §6). A future **shared
-    read-only lore namespace** (colony wiki / setting corpus) replaces the soft
-    boundary through the same RAG mechanism when it exists.
+3. **Idle/unprompted behaviour: tiered.** v1 targets **active characters**
+   (§0.1), so *crafted/active* NPCs get **rate-limited social initiative**
+   (pursue a want unprompted); *bulk/background* NPCs stay **event-driven,
+   initiative off**, to bound cost on the serial generator (§5.1, §8).
+   📋 UNBUILT (no issue): no initiative is built (§5.1). The cadence/budget
+   number is open (§15).
+4. **Persona authoring: one structured, versioned card, two paths.**
+   Hand-authored by builders *and* auto-generated from the same schema
+   (§5.2.2); split **immutable core** (author intent) vs **mutable state**
+   (evolves via RAG — the NPC changes over time, §6). The schema, the
+   generator and the consolidation rules are open (§15).
+5. **Sidecar lifecycle: always-on resident** (warm model, zero spin-up
+   latency); accept the idle power/thermal cost on the shared box, kept in
+   check by the §3 bounded-generation discipline.
+6. **Lore boundary: soft now, corpus later.** v1 bounds NPC world-knowledge
+   *softly* via the GM charter (know the colony / your life / what you've
+   perceived; don't invent external specifics, §6). A future **shared
+   read-only lore namespace** (colony wiki / setting corpus) replaces the soft
+   boundary through the same RAG mechanism when it exists.
 
 ---
 
-## Appendix A · Gelatinous bindings (concrete hooks)
+## 14 · Unbuilt
 
-*Everything above is engine-agnostic. This appendix is the only Gelatinous-
-specific section — the real seams the adapters bind to.*
+Unbuilt parts of the loop are marked where they stand: initiative tick (§5.1),
+event queue and debounce (§5.1, §8), the persona card's mutable half,
+versioning, auto-generator and write-back (§5.2), model memory nominations and
+the fuller episodic record (§5.6), summarising (§6), persona mutation and
+consolidation (§6), per-turn audit and instant kill switch (§7), the
+priority-ordered serial queue (§8), the thinking affordance (§8). Larger
+pieces:
 
-- **Perception inlet.** NPCs already perceive speech through
-  `Character.at_msg_receive(text, from_obj, **kwargs)` — see
-  `typeclasses/llm_npc.py` (`LLMNpcMixin.at_msg_receive` → reacts to
-  addressed/overheard speech, offering it to the post through
-  `_handle_directed_speech` before `_classify_speech` decides whether the LLM
-  answers). *(This read `typeclasses/bar.py` `Bartender.at_msg_receive` until
-  #2378 collapsed the role typeclasses into one NPC body.)* The Perception adapter generalises this to feed the GM queue, applying
-  the identity/voice gating below.
-- **Action outlet.** NPCs already act via `obj.execute_cmd("say …")` /
-  `execute_cmd("attack …")` (`typeclasses/llm_npc.py`, `world/bar.py`,
-  `commands/CmdThrow.py`). The
-  Action adapter routes approved intents here — driving the NPC through the same
-  cmdset a player uses, so combat/medical/movement/economy apply unchanged.
-- **Speech backbone.** `world/speech.py`
-  (`broadcast_speech`, `render_speech_line`, `speech_payload`,
-  `visible_voice_flavor`) renders speech per-observer with voice/hearing/identity
-  gating — the path `say`/`to`/pose already share. `speech` intents render through
-  it for free.
-- **Identity-gated perception.** `world/identity.py` (`get_apparent_uid`,
-  `get_apparent_gender`, recognition lookups) and `world/voice.py`
-  (`get_apparent_voice_uid`, `remember_voice`) describe actors *as perceived*.
-  The Perception adapter uses these so the GM sees "a tall woman" / a known name /
-  a recognised voice — never the raw object.
-- **Structured memory.** `Character.recognition_memory`
-  (`typeclasses/characters.py`, AttributeProperty, `category="identity"`) and the
-  parallel voice memory are the authoritative relationship store the Memory
-  adapter's *exact* tier builds on; the vector store adds the episodic tier. This
-  is the same `recognition_memory → vector index` read-through model sketched in
-  `IDENTITY_RECOGNITION_SPEC.md` §indexing (where LLM synthesis was explicitly
-  deferred — this spec is that deferred layer).
-- **Governance interlocks.** The consent gate is
-  `proposals/TRUST_AND_CONSENT_SPEC.md` **[PATH STALE 2026-09-12: the file lives
-  at `specs/TRUST_AND_CONSENT_SPEC.md` — top level = shipped — and has read
-  ✅ SHIPPED IN FULL since 2026-07-03]** (third-party actions on awake/able-to-
-  resist targets need consent; unconscious/restrained/dead are free actions —
-  exactly the rule §5.4.3 enforces for NPCs). Audit logging can reuse the
-  combat-audit sink pattern (`world/combat/debug.py`).
-- **World snapshot.** For richer ambient awareness later, the **World State
-  Intelligence System** (`proposals/WORLD_STATE_INTELLIGENCE_SYSTEM_SPEC.md`,
-  #303) is the natural source for colony-level context in §5.2.4 — out of scope
-  for v1, noted so the snapshot assembler isn't designed into a corner.
+- **The arbiter** (§5.4) — the **capability and consent gates** — and
+  **mechanical verbs routing to the tactical resolver** (§2.2). 📋 UNBUILT (no
+  issue). The governed social/expressive actions run through real commands
+  (§10, Phase 3); the mechanical/consented action surface remains.
+- **Phase 4 — many NPCs & de-confliction.** One GM, multiple personas,
+  serialised turns, priority queue, isolation verified across namespaces.
+- **Phase 5 — hardening.** Audit logging, kill switch, rate limits,
+  forgetting/salience tuning, ambient-tick economy.
 
-## Appendix B · Model candidate notes
-
-See §4.2. Candidates are tracked as a *living shortlist*, not a decision — all
-sourced as `mlx-community` 4-bit quants, scored with the §4.1 rubric on the
-target Mac mini, and bound behind the §9 Model adapter so swapping is a config
-change, not a code change. Re-evaluate every release cycle; uncensored
-creative-writing tunes move fast.
-
-
-## Holographic Parole Agents — DESIGN BANKED (user, 2026-07-10; NOT BUILT)
+### Holographic Parole Agents — design banked (user, 2026-07-10). 📋 UNBUILT (no issue)
 
 The Constabulary lobby's public face (lobby #4936): the automaton era
 ends with PROJECTED agents.
@@ -1060,35 +1053,87 @@ ends with PROJECTED agents.
 * The broken automaton **#4951 stays** as set-dressing fossil (its
   OUT OF ORDER grille clicks on).
 
+---
 
-## Third-Party Perception + The Reflex Lane — ✅ SHIPPED 2026-07-11
+## 15 · Not decided
 
-**Combat perception (#954 combat slice, #1135):**
-`world/llm/observation.py observe_event` — witness-testimony beats
-(join w/ opening target, exits walked/out-cold/dead, fight end, plus
-per-swing personal attacks on LLM targets from their own POV) land in
-LLM bystanders' action buffers via per-observer identity rendering,
-perception-gated (blind hear the sound of it), exception-contained,
-observe-only. Buffer-only by design: model tempo (17–85s) can never
-honestly play a 6s combat round — brains speak at the next social
-beat. Remaining #954 scope: clothing/transfer perception + directed
-reactions.
+1. **Latency budget number** — what p95 reads as "alive" vs "laggy" for a
+   directly-addressed NPC? Drives quant/model-size trade. *Measure on both
+   minis.*
+2. **Initiative cadence/budget number** for crafted/active NPCs (§13, item 3).
+3. **Persona card** — the card schema/format and the auto-generator, and the
+   consolidation rules that write experience back into mutable state (§13,
+   item 4).
+4. **Memory forgetting policy** — concrete salience/decay/summarisation rules
+   (left as methodology in §6; needs a first cut to tune in play). The first
+   cut is in §6.
+5. **Multi-player scenes** — when several PCs engage one NPC, whose perception/
+   turn ordering wins? (v1 may simply serialise by arrival/initiative.)
+6. **GM-authored events** — explicitly deferred (§0.1). When/if the storyteller
+   graduates from puppeting NPCs to *directing scenes*, that is a separate spec
+   with its own authority questions.
 
-**The reflex lane (#1136):** the TWO-LANE DOCTRINE completed — the
-GM lane (24B — **[stale 2026-09-12: the resident GM model is the 12B
-Rocinante. The banner's 2026-07-14 posing dial-in is written for the 12B,
-§4.2 names a 12B Nemo-class tune as the production pick, and the sidecar
-LaunchAgent loads `…/llm-gm-spike/models/rocinante-12b`. 24B is the §4.2
-bench tier, not production]**) plays conversation tempo; the CIVIC lane's on-device
-small model (~0.65s) plays the FLINCH. On fight beats, ONE elected
-bystander (lowest dbref, combatants excluded, 90s NPC cooldown, one
-reflex per fight) barks a single line through `say`. **Input shaping
-is the wall:** the small model only ever sees fixed bloodless
-`REFLEX_BEATS` renditions — probed live: its guardrails match gore
-PHRASING, not events ("bleeding heavily… not moving" refused; a
-murder passed; profanity passes). Full-detail witness lines stay in
-the GM-lane buffer. Failure mode is silence at every layer. Persona
-steering confirmed at archetype level (bartender/dispatcher/robot
-probes produced three distinct registers from one identity clause);
-small models get plain orders — example-noun lists get parroted
-(#1137).
+---
+
+## Appendix A · Gelatinous bindings (concrete hooks)
+
+*The engine-agnostic method is §0–§9, apart from their "In this game"
+paragraphs; this appendix holds the real seams the adapters bind to.*
+
+- **Perception inlet.** NPCs perceive speech through
+  `Character.at_msg_receive(text, from_obj, **kwargs)` — see
+  `typeclasses/llm_npc.py` (`LLMNpcMixin.at_msg_receive` → reacts to
+  addressed/overheard speech, offering it to the post through
+  `_handle_directed_speech` before `_classify_speech` decides whether the LLM
+  answers). The Perception adapter generalises this to feed the GM queue,
+  applying the identity/voice gating below.
+- **Action outlet.** NPCs act via `obj.execute_cmd("say …")` /
+  `execute_cmd("attack …")` (`typeclasses/llm_npc.py`, `world/bar.py`,
+  `commands/CmdThrow.py`). The Action adapter routes approved intents here —
+  driving the NPC through the same cmdset a player uses, so
+  combat/medical/movement/economy apply unchanged.
+- **Speech backbone.** `world/speech.py`
+  (`broadcast_speech`, `render_speech_line`, `speech_payload`,
+  `visible_voice_flavor`) renders speech per-observer with voice/hearing/identity
+  gating — the path `say`/`to`/pose already share. `speech` intents render through
+  it for free.
+- **Identity-gated perception.** `world/identity.py` (`get_apparent_uid`,
+  `get_apparent_gender`, recognition lookups) and `world/voice.py`
+  (`get_apparent_voice_uid`, `remember_voice`) describe actors *as perceived*.
+  The Perception adapter uses these so the GM sees "a tall woman" / a known name /
+  a recognised voice — never the raw object.
+- **Structured memory.** `Character.recognition_memory`
+  (`typeclasses/characters.py`, AttributeProperty, `category="identity"`) and the
+  parallel voice memory are the authoritative relationship store the Memory
+  adapter's *exact* tier builds on; the vector store adds the episodic tier. This
+  is the same `recognition_memory → vector index` read-through model sketched in
+  `IDENTITY_RECOGNITION_SPEC.md` §indexing (where LLM synthesis was explicitly
+  deferred — this spec is that deferred layer).
+- **Governance interlocks.** The consent gate is
+  `specs/TRUST_AND_CONSENT_SPEC.md` (third-party actions on
+  awake/able-to-resist targets need consent; unconscious/restrained/dead are
+  free actions — exactly the rule §5.4.3 enforces for NPCs). Audit logging can
+  reuse the combat-audit sink pattern (`world/combat/debug.py`).
+- **World snapshot.** For richer ambient awareness later, the **World State
+  Intelligence System** (`proposals/WORLD_STATE_INTELLIGENCE_SYSTEM_SPEC.md`,
+  #303) is the natural source for colony-level context in §5.2.4 — out of scope
+  for v1, noted so the snapshot assembler isn't designed into a corner.
+
+## Appendix B · Model candidate notes
+
+See §4.2. Candidates are tracked as a *living shortlist*, not a decision — all
+sourced as `mlx-community` 4-bit quants, scored with the §4.1 rubric on the
+target Mac mini, and bound behind the §9 Model adapter so swapping is a config
+change, not a code change. Re-evaluate every release cycle; uncensored
+creative-writing tunes move fast.
+
+## Related documents
+
+- `specs/TRUST_AND_CONSENT_SPEC.md` — the consent gate.
+- `IDENTITY_RECOGNITION_SPEC.md` — §embedding, §indexing.
+- `NPC_NEEDS_AND_GOALS_SPEC` — the two-brain law (Principle 8).
+- `NPC_MEMORY_AND_IDENTITY_SPEC` — §5b (memory erase), §8 (identity & posing).
+- `NPC_PLATFORM_SPEC` — criterion 10 (`feel` retirement).
+- `EMOTE_POSE_SPEC.md` — second-person carve-out.
+- `proposals/WORLD_STATE_INTELLIGENCE_SYSTEM_SPEC.md` (#303).
+- [[reference-gelatinous-llm-model-candidates]] — model/format specifics and tuning lessons.

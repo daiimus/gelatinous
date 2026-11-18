@@ -1,48 +1,26 @@
 # specs/
 
-Design specifications for **shipped** game systems — the index below
-describes how the game works today. Each entry is a running system
-(deferred sub-features are noted inline within each spec).
+Design specifications. Each one says what a system does and should do
+now, records the owner's rulings in his own words, and marks what is
+unbuilt (`📋 UNBUILT`) and what is not decided. No spec says what is
+built: that is checked in the code (see `WORKFLOW.md`, "The three
+documents, and what each is allowed to say").
 
-> **Drift note (2026-09-12, index audit).** Two qualifications on the
-> paragraph above, both checked against the tree:
->
-> * **"Each entry is a running system" has six exceptions** that are
->   doctrine or authoring guides rather than systems:
->   `BUILDING_PLAYBOOK.md` (its own banner: "Not a system spec"),
->   `PARKOUR_TEMPLATE_LIBRARY.md` (companion doctrine — its §0 kernel
->   rules mechanics that are **not built**: "The hook (rappel/grapple),
->   *when built*", stamina is a "(future stat)"),
->   `EVMENU_PATTERNS_SPEC.md` ("Canonical Reference Guide"),
->   `SPECIES_AUTHORING.md`, and the two forum guides. The 🧭 markers in
->   the tables flag the first two; the rest are unmarked.
-> * **"describes how the game works today" is a claim about this index,
->   not a warranty on the specs it links.** The 2026-09-11 drift-audit
->   pass re-checked fifteen of the top-level specs and annotated **285
->   false claims** inside them (worst: `LOOK_COMMAND_SPEC` 28,
->   `EMOTE_POSE_SPEC` 26, `MODULAR_ARMOR_SYSTEM_SPEC` and `STYLING_SPEC`
->   25 each, `BARS_AND_RECIPES_SPEC` and ~~`JUMP_COMMAND_SPEC`~~ 24 each).
->   _(2026-09-16: `JUMP_COMMAND_SPEC` is now **42** — the gravity layer
->   (#3579) retired `sky_room` / `fall_distance` / `fall_damage` and moved
->   falling out of the verb into the room, falsifying fourteen more of its
->   claims; #3583 ("fights at the edge") falsified two more, and #3589
->   ("aiming over an edge") two more again. #3580, #3591 and #3593 changed
->   the disposition of claims already counted without adding any. Its own
->   banner is authoritative; this headline is a snapshot.)_
->   Six top-level specs are 🚧 **PARTIAL**, not shipped-whole:
->   `BARS_AND_RECIPES_SPEC`, `JUMP_COMMAND_SPEC`, `LOOK_COMMAND_SPEC`,
->   `MODULAR_ARMOR_SYSTEM_SPEC`, `SHOP_SYSTEM_SPEC`,
->   `SUBSTANCES_AND_DELIVERY_SPEC`. Read the target spec's own banner
->   before trusting a row here.
+Six entries in the index are doctrine or authoring guides rather than
+systems: `BUILDING_PLAYBOOK.md`, `PARKOUR_TEMPLATE_LIBRARY.md`,
+`EVMENU_PATTERNS_SPEC.md` (the project's reference for writing EvMenu
+nodes), `SPECIES_AUTHORING.md` and the two forum guides. The 🧭 markers
+in the tables flag the first two.
 
 Proposals, roadmaps and archived specs live in subfolders and are kept out
 of this index:
 
-- **`proposals/`** — 📋 designed; some are partly or wholly built, and each spec's own banner says how much.
-- **`roadmaps/`** — 🛣 forward build-plans layered on live systems (partial).
-- **`archive/`** — 🗄 task complete or superseded; kept for context only.
-
-Every spec in those folders opens with a banner that gives its status, most as a `> **Status:**` line.
+- **`proposals/`** — designs. Parts of some are in the code; each spec
+  marks what is unbuilt. Whether a design that is in the code should move
+  out of this folder is not decided (#3865).
+- **`roadmaps/`** — what comes next, and in what order; two of the files
+  there are reference ledgers.
+- **`archive/`** — task complete or superseded; kept for context only.
 
 ---
 
@@ -50,7 +28,7 @@ Every spec in those folders opens with a banner that gives its status, most as a
 
 | Spec | Description |
 |------|-------------|
-| `COMBAT_SYSTEM.md` | High-level overview of the combat system (some listed features are aspirational — see banner) |
+| `COMBAT_SYSTEM.md` | High-level overview of the combat system (some listed features are aspirational — see §Unbuilt) |
 | `COMBAT_AUDIT_LOGGING_SPEC.md` | Single-sink combat/medical diagnostics: always-on audit file + gated Splattercast channel (`world/combat/debug.py`) |
 | `COMBAT_MESSAGE_FORMAT_SPEC.md` | Three-perspective combat messaging format |
 | `GRAPPLE_SYSTEM_SPEC.md` | Grappling, restraint, human-shield mechanics |
@@ -87,12 +65,12 @@ Every spec in those folders opens with a banner that gives its status, most as a
 | `PARKOUR_TEMPLATE_LIBRARY.md` | 🧭 Companion to the playbook: the owner-ruled movement kernel (span-1 jumps, any-edge hooks both ways, gear-length tiers, stamina-not-falls) and the eight architectural templates that make street-to-precipice traversal amazing |
 | `CLOTHING_SYSTEM_SPEC.md` | Clothing, coverage-based visibility, layering, dynamic styling |
 | `MODULAR_ARMOR_SYSTEM_SPEC.md` | Armor stacking, plate carriers, tactical targeting |
-| `SHOP_SYSTEM_SPEC.md` | 🚧 Container-based shops, pricing, inventory (Phase 1 shipped; Phases 2–3 unbuilt, Phase 2 is #302) |
+| `SHOP_SYSTEM_SPEC.md` | Container-based shops, pricing, inventory (Phases 2–3 unbuilt; Phase 2 is #302) |
 | `GRAFFITI_SYSTEM_SPEC.md` | Spray-paint / solvent environmental writing |
 | `NPC_POSTS_AND_REINCARNATION_SPEC.md` | Named NPCs as reconstructible blueprints: posts, watcher, successor, resleeving |
 | `SLEEVE_INSURANCE_SPEC.md` | A personal sleeve policy bought alive at the Thawn-Harrison lobby terminal; a flash clone or NPC return is paid by the dead body's own record or does not happen; `@insure` standing policies for staff/play testing (#3667) |
 | `GIG_PROTOTYPE_BUTCHER_SPEC.md` | The first gig: corpse → condition-gated cuts → cooked dishes, with a closed till loop |
-| `BARS_AND_RECIPES_SPEC.md` | 🚧 Bars, drink recipes and the `use <bar>` mixing menu (§9 owner tooling unbuilt) |
+| `BARS_AND_RECIPES_SPEC.md` | Bars, drink recipes and the `use <bar>` mixing menu (§9 owner tooling unbuilt) |
 
 ## Commands
 

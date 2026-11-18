@@ -146,8 +146,9 @@ class TestWatchesLiveLow(EvenniaTest):
     work gloves" — because two watches on one wrist genuinely collide.
 
     The transparency half of the ruling ("eventually be transparent") is
-    NOT built: `CLOTHING_SYSTEM_SPEC` §151-186 is a PROPOSAL with open
-    owner questions, and no layer value produces "watch and gloves both
+    NOT built: `CLOTHING_SYSTEM_SPEC` §"Coverage is binary, and two real
+    garments need it not to be" is a PROPOSAL with open owner questions
+    (§Not decided), and no layer value produces "watch and gloves both
     worn AND both rendered". This settles the layer only.
     """
 

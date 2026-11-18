@@ -1,1035 +1,232 @@
 # Combat System Refactor Specification
 
-> **Status:** 🛣 Roadmap (partial) — attack.py/movement_resolution.py/actions.py (#49), debug.py/dice.py/explosives.py (#52) and weapon_choice.py (#3695) were split out; several proposed modules and the size-reduction targets are NOT done. The diagnostics-routing section is superseded by COMBAT_AUDIT_LOGGING_SPEC.
-
-## Overview
-
-This specification outlines a systematic refactor of the combat module to address technical debt accumulated through incremental LLM development. The refactor will transform both the monolithic `handler.py` (originally 1,470 lines; about 1,150 now) and the oversized `utils.py` (originally 1,007 lines; about 1,330 now) into a maintainable, modular system. **Status:** partially delivered — `attack.py`, `movement_resolution.py`, `actions.py` (#49), `debug.py`, `dice.py`, `explosives.py` (#52) and `weapon_choice.py` (#3695) were split out, but several proposed modules below were never created and the size-reduction targets have not yet been met.
-
-> `handler.py` is about 1,150 lines and `utils.py` about 1,330 (check with
-> `wc -l world/combat/handler.py world/combat/utils.py`). #49 split `attack.py`,
-> `movement_resolution.py` and `actions.py` out of `handler.py`. #52 split
-> `debug.py`, `dice.py` and `explosives.py` out of `utils.py`, which still
-> re-exports them, and the `proximity.py` functions, in its
-> BACKWARD-COMPATIBLE RE-EXPORTS block.
-
-## Problem Statement
-
-### Current State: Post-Initial Refactor
-The combat module has already undergone one refactoring attempt that extracted functions from `handler.py` to `utils.py`. However, this created new problems:
-
-```
-Current Architecture (world/combat/, about 9,700 lines in 15 modules):
-├── __init__.py
-├── handler.py             # Combat orchestration (about 1,150 lines)
-├── utils.py               # Mixed utilities (about 1,330 lines)
-├── attack.py              # Attack resolution (#49)
-├── movement_resolution.py # Retreat, advance, charge (#49)
-├── actions.py             # Disarm, auto-escape (#49)
-├── grappling.py           # Grapple resolution and grapple state
-├── proximity.py           # Proximity system
-├── debug.py               # Combat audit log sink (#52)
-├── dice.py                # Dice rolls (#52)
-├── explosives.py          # Sticky grenades, blast human shields (#52)
-├── throwing.py            # Throw flight and landing
-├── capacity.py            # Body capacities (sight) in hit math
-├── weapon_choice.py       # Weapon selection (#3695)
-└── constants.py           # Shared constants
-```
-
-### Current Issues
-- **Dual Monoliths**: Both `handler.py` (about 1,150 lines, was 1,470) and `utils.py` (about 1,330 lines, was 1,007) exceed maintainable size
-- **Cross-File Duplication**: Same patterns repeated across both files
-  - Contest patterns: opposed `randint` rolls in `attack.py`, `actions.py`, `grappling.py` and `movement_resolution.py`, plus two dice styles in `dice.py`
-  - Debug messages: `handler.py` (78) + `utils.py` (41) = 119 splattercast calls (273 across the package)
-    *(routing superseded — diagnostics now go through the single
-    `world/combat/debug.py` sink, not raw
-    `ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)` lookups; see
-    `COMBAT_AUDIT_LOGGING_SPEC.md`. The raw idiom referenced
-    throughout this doc was retired in #464.)*
-  - Attribute access: Defensive `getattr` patterns in both files
-- **Utility Dumping Ground**: `utils.py` became catch-all with mixed responsibilities:
-  - Dice rolling + debug logging + weapon handling + combat entry management
-- **Method Bloat**: Still have oversized methods despite extraction attempts
-- **Inconsistent Patterns**: Different approaches to same operations across files
-
-### Root Cause
-**LLM Development Challenges**:
-- Incremental feature additions without architectural consideration
-- Context window limitations preventing holistic view
-- Tendency to duplicate patterns rather than extract functions
-- Limited refactoring capabilities across large files
-
-## Design Goals
-
-### Primary Objectives
-1. **Separation of Concerns**: Each module has single responsibility
-2. **DRY Compliance**: Eliminate all repeated patterns
-3. **LLM-Friendly Structure**: Small, focused files that fit in context windows
-4. **Testability**: Isolated functions that can be tested independently
-5. **Maintainability**: Clear interfaces and minimal coupling
-
-### Success Metrics
-- `handler.py` reduced to <500 lines (orchestration only) — **NOT yet met** (about 1,150)
-- `utils.py` broken down into focused modules (<300 lines each) — **NOT yet met** (about 1,330)
-- No code duplication (0 repeated patterns across ALL files)
-- <10 debug messages per file
-- Each file <300 lines (fits in LLM context) — **target; not met for handler.py/utils.py**
-- Clear separation: orchestration vs implementation vs utilities
-
-## Refactor Strategy
-
-### Phase-Based Approach
-Given LLM limitations, we'll use **incremental extraction** with **validation at each step**:
-
-1. **Extract Repeated Patterns** (safest, highest value)
-2. **Extract Action Processors** (medium risk, high value)  
-3. **Simplify Handler Structure** (highest risk, essential for maintainability)
-
-### LLM-Aware Constraints
-- **File Size Limit**: <300 lines per file (fits in context window)
-- **Single Change Rule**: One type of change per commit
-- **Validation Required**: Test each extraction before proceeding
-- **Incremental Safety**: Always maintain working system
-- **Documentation First**: Specify before implementing
-
-## Target Architecture
-
-### Current vs Target Comparison
-
-**Current (Post-Initial Refactor)**:
-```
-world/combat/
-├── handler.py       # about 1,150 lines (was 1,470) - Mixed orchestration + processing
-├── utils.py         # about 1,330 lines (was 1,007) - Mixed utilities dumping ground
-└── (13 more modules: see the Current Architecture list under Problem Statement)
-```
-
-**Target (Responsibility-Based)**:
-
-Status legend: ✅ delivered (file exists) · ❌ NOT implemented (never split out).
-```
-world/combat/
-├── handler.py              # target <500 lines - Pure orchestration (❌ about 1,150)
-├── actions.py              # ✅ delivered - disarm and auto-escape (`resolve_disarm`, `resolve_auto_escape`)
-├── attack.py               # attack resolution (`process_attack`, `process_delayed_attack`) (#49)
-├── movement_resolution.py  # retreat, advance, charge (#49)
-├── contest_system.py       # ❌ NOT implemented - opposed rolls are inline in attack.py, actions.py, grappling.py and movement_resolution.py
-├── state_manager.py        # ❌ NOT implemented - state manipulation still in handler.py/utils.py
-├── debug.py                # ✅ delivered - Centralized logging
-├── dice.py                 # ✅ delivered - Standardized dice rolling
-├── weapon_utilities.py     # ❌ NOT implemented - weapon selection is in weapon_choice.py; utils.py keeps find_best_weapon and get_weapon_damage
-├── weapon_choice.py        # weapon selection and hand access (#3695)
-├── character_attributes.py # ❌ NOT implemented - safe attribute access still inline
-├── grappling.py            # ✅ delivered - Grappling logic
-├── explosives.py           # sticky grenades, blast human shields (#52)
-├── throwing.py             # throw flight and landing
-├── capacity.py             # body capacities (sight) in hit math
-├── proximity.py            # ✅ delivered - Proximity system
-└── constants.py            # ✅ delivered - Constants
-```
-
-### Responsibility Matrix
-
-| Module | Primary Responsibility | Key Functions | Source Files | Status |
-|--------|----------------------|---------------|--------------|--------|
-| `handler.py` | Combat orchestration | Round management, script lifecycle | Current handler.py | ✅ exists (not yet slimmed) |
-| `actions.py` | Disarm and auto-escape | `resolve_disarm`, `resolve_auto_escape` | Current handler.py (#49) | ✅ delivered |
-| `attack.py` | Attack resolution | `process_attack`, `process_delayed_attack`, human shield | handler.py (#49) | — |
-| `movement_resolution.py` | Movement resolution | `resolve_retreat`, `resolve_advance`, `resolve_charge` | handler.py (#49) | — |
-| `grappling.py` | Grapple resolution | `resolve_grapple_initiate`, `resolve_grapple_join`, `resolve_grapple_takeover`, `resolve_release_grapple` | — | — |
-| `contest_system.py` | Contest mechanics | Motorics rolls, opposed checks | Both handler.py + utils.py *(`handler.py` has no `randint` and no `motorics`, and `utils.py` has one initiative roll, in `add_combatant`; the opposed rolls not yet consolidated are in `movement_resolution.py`, `actions.py`, `grappling.py` and `attack.py`)* | ❌ NOT implemented |
-| `state_manager.py` | State manipulation | Combatant entry management | Both handler.py + utils.py | ❌ NOT implemented |
-| `debug.py` | Logging coordination | Centralized debug system | Both handler.py + utils.py | ✅ delivered |
-| `dice.py` | Dice operations | Standardized rolling patterns | Current utils.py | ✅ delivered |
-| `weapon_utilities.py` | Weapon handling | Weapon access, validation | Current utils.py | ❌ NOT implemented; weapon selection is in `weapon_choice.py` (#3695) |
-| `weapon_choice.py` | Weapon selection | `choose_weapon`, `weapon_options`, `has_ranged_option` | — (#3695) | — |
-| `character_attributes.py` | Safe attribute access | Defensive patterns | Both handler.py + utils.py | ❌ NOT implemented |
-
-## Phase 1: Extract Cross-File Repeated Patterns
-
-### Priority 1A: Contest System Extract (Cross-File Consolidation)
-
-**Target**: Eliminate contest duplication across BOTH `handler.py` AND `utils.py`
-
-**Cross-File Duplication Found**:
-
-**In `actions.py`, `grappling.py` and `movement_resolution.py` (moved out of `handler.py` by #49)**:
-```python
-# Pattern 1: Contest with randint
-# Find them with: grep -n "randint" world/combat/*.py
-escaper_roll = randint(1, max(1, get_numeric_stat(char, "motorics", 1)))
-grappler_roll = randint(1, max(1, get_numeric_stat(grappler, "motorics", 1)))
-splattercast.msg(f"CONTEST_TYPE: {char.key} (roll {escaper_roll}) vs {grappler.key} (roll {grappler_roll}).")
-```
-
-**In `dice.py` (6 inconsistent instances; moved from `utils.py` by #52)**:
-```python
-# Pattern 2: Inconsistent dice rolling (6 different approaches)
-# Search command: grep -n "randint.*max.*stat" world/combat/dice.py
-randint(MIN_DICE_VALUE, max(MIN_DICE_VALUE, stat_value))  # Used once
-randint(1, max(1, stat_value))                           # Used 5 times
-
-# Pattern 3: Opposed roll logic (in dice.py)
-# Search command: grep -n "roll.*roll.*>" world/combat/dice.py
-roll1 = roll_stat(char1, stat1)
-roll2 = roll_stat(char2, stat2)
-return roll1, roll2, roll1 > roll2
-```
-
-**Reference Commands for LLM Context**:
-```bash
-# Find all contest patterns:
-grep -n "randint.*max.*motorics" world/combat/handler.py
-grep -n "randint.*max" world/combat/utils.py  
-grep -n "splattercast.msg.*CONTEST" world/combat/handler.py
-grep -n "_roll.*_roll" world/combat/utils.py
-
-# Count total instances:
-grep -c "randint(" world/combat/handler.py world/combat/utils.py
-```
-
-**Total Impact**: 12+ instances across both files using different patterns for same operations
-
-**New Interface** (`contest_system.py`):
-```python
-from dataclasses import dataclass
-from random import randint
-from .utils import get_numeric_stat
-
-@dataclass
-class ContestResult:
-    """Result of a contest between two characters"""
-    winner: object
-    loser: object
-    winner_roll: int
-    loser_roll: int
-    char1_won: bool
-    contest_type: str
-
-def motorics_contest(char1, char2, contest_type="CONTEST", handler=None):
-    """
-    Standardized motorics vs motorics contest using d[stat] dice.
-    
-    Args:
-        char1: First character (typically initiator)
-        char2: Second character (typically defender)  
-        contest_type: Type for logging (GRAPPLE_ATTEMPT, AUTO_ESCAPE, etc.)
-        handler: Combat handler for logging
-        
-    Returns:
-        ContestResult: Complete contest outcome
-    """
-
-def attack_contest(attacker, target, handler=None):
-    """Attack-specific contest using d20+stat"""
-    
-def movement_contest(mover, opponents, contest_type, handler=None):
-    """Movement contest vs highest opponent stat"""
-```
-
-**Extraction Plan**:
-1. **Survey Phase**: 
-   ```bash
-   # Get exact locations and variations:
-   grep -n "randint.*max" world/combat/handler.py world/combat/utils.py
-   grep -n "motorics" world/combat/handler.py world/combat/utils.py | grep -v import
-   ```
-2. Create unified `contest_system.py` consolidating ALL dice patterns
-3. Replace `utils.py` dice functions first (safer, isolated)
-   - **Manual Test**: After each function replacement
-4. Replace `handler.py` contest instances using new system
-   - **Manual Test**: Combat round with grapple attempts
-5. Validate cross-file consistency
-   - **Manual Test**: Full combat scenario testing all contest types
-6. Remove ALL duplicate contest/dice code from both files
-   - **Final Test**: Complete combat sequence to ensure no regressions
-
-### Priority 1B: Debug Logging Extract (Cross-File Consolidation)
-
-**Target**: Replace 147 total `splattercast.msg()` calls across both files
-
-**Cross-File Debug Spam**:
-- **handler.py**: 128 `splattercast.msg()` calls (verify: `grep -c "splattercast.msg" world/combat/handler.py`)
-- **utils.py**: 19 `splattercast.msg()` calls (verify: `grep -c "splattercast.msg" world/combat/utils.py`)
-- **Total**: 147 direct debug calls using same pattern
-
-**Repeated Channel Access Pattern** (found in both files):
-```bash
-# Reference command to find all instances:
-grep -n "ChannelDB.objects.get_channel" world/combat/*.py
-grep -n "SPLATTERCAST_CHANNEL" world/combat/*.py
-```
-
-```python
-# This exact pattern appears 8+ times in utils.py alone:
-splattercast = ChannelDB.objects.get_channel(SPLATTERCAST_CHANNEL)
-splattercast.msg(f"SOME_PREFIX: detailed message with {variables}")
-
-# Plus 128+ times in handler.py with slight variations
-```
-
-**Cross-File Impact**: Both files have identical channel access ceremonies, different message formats
-
-*(Drift note 2026-09-12: the raw channel-access counts just above — "8+ times in
-`utils.py` alone" and "128+ times in `handler.py`" — are now **zero in both**.
-`grep -rn "ChannelDB.objects.get_channel" world/combat/` returns a single hit,
-`debug.py:112`, inside the gated live-channel cache; the only other occurrence
-repo-wide is `world/radio.py`. The ceremony this section set out to remove is
-gone (#461/#464). What survives is the *call volume* — 276 `splattercast.msg`
-calls package-wide — which is a separate target.)*
-
-**New Interface** (`debug.py`):
-
-*(Drift note 2026-09-12: `debug.py` was created by **#52** (commit d7aca7f3) and
-rewritten into an audit router by **#461/#464**; it is 236 lines today. But
-`combat_log()` was **never built** and exists nowhere in the repo. The delivered
-API is `get_splattercast()` (`debug.py:160`) — returning an always-truthy
-`_AuditRouter` (`debug.py:126`) whose `.msg()` duck-types the channel object so
-the existing `splattercast.msg(...)` call sites work unchanged — plus
-`debug_broadcast()` (`:175`), `log_debug()` (`:191`) and `log_combat_action()`
-(`:212`). There are no levels and no category filtering. Destinations are an
-always-on rotating audit file `server/logs/combat_audit.log` and a
-`settings.SPLATTERCAST_LIVE`-gated channel mirror (`debug.py:112`). The signature
-below is a superseded proposal, not documentation of the shipped module — see
-`COMBAT_AUDIT_LOGGING_SPEC.md`.)*
-```python
-def combat_log(level, category, message, char=None, target=None, handler=None):
-    """
-    Centralized combat logging with levels and filtering.
-    
-    Args:
-        level: DEBUG, INFO, WARNING, ERROR
-        category: GRAPPLE, ATTACK, MOVEMENT, STATE, etc.
-        message: Log message template
-        char: Primary character (optional)
-        target: Target character (optional)  
-        handler: Combat handler for context (optional)
-    """
-
-# Usage examples:
-combat_log("DEBUG", "GRAPPLE", "Attempt: {char} vs {target}", char=char1, target=char2)
-combat_log("INFO", "ATTACK", "Hit for {damage} damage", char=attacker, target=victim)
-```
-
-**Extraction Plan**:
-1. **Survey Phase**:
-   ```bash
-   # Get exact counts and message patterns:
-   grep -n "splattercast.msg" world/combat/handler.py | wc -l  # Should show 128
-   grep -n "splattercast.msg" world/combat/utils.py | wc -l    # Should show 19
-   grep -n "SPLATTERCAST_CHANNEL" world/combat/*.py
-   ```
-2. Create unified `debug.py` for ALL combat debug messages
-3. Replace `utils.py` debug calls first (19 instances, easier to validate)
-   - **Manual Test**: Verify debug output appears correctly in splattercast channel
-4. Replace `handler.py` debug calls in batches of 15-20
-   - **Manual Test**: After each batch, run combat to verify debug messages
-5. Standardize message formats across both files
-   - **Manual Test**: Full combat round to verify all debug categories work
-6. Remove ALL direct `splattercast.msg()` calls from both files
-   - **Final Test**: Combat with debug channel monitoring to ensure complete coverage
-
-### Priority 1C: State Management Extract (Cross-File Consolidation)
-
-**Target**: Eliminate state access duplication across both files
-
-**Cross-File State Patterns**:
-
-**SaverList Conversions** (found in both files):
-```bash
-# Reference commands to find patterns:
-grep -n "SaverList\|combatants_list\|regular_entry" world/combat/handler.py
-grep -n "getattr.*db.*DB_COMBATANTS" world/combat/*.py
-```
-
-```python
-# handler.py: 3 separate conversion ceremonies (find exact lines with grep)
-combatants_list = []
-if getattr(self.db, DB_COMBATANTS, None):
-    for entry in getattr(self.db, DB_COMBATANTS):
-        regular_entry = dict(entry)
-        combatants_list.append(regular_entry)
-
-# utils.py: Direct access patterns
-combatants = getattr(handler.db, DB_COMBATANTS, [])
-```
-
-**Defensive Attribute Access** (found extensively in both files):
-```bash
-# Reference commands to count defensive patterns:
-grep -c "getattr(" world/combat/handler.py world/combat/utils.py
-grep -c "hasattr(" world/combat/handler.py world/combat/utils.py  
-grep -c "\.get(" world/combat/handler.py world/combat/utils.py
-```
-
-```python
-# Both files use these patterns repeatedly:
-hands = getattr(character, "hands", {})
-getattr(char.ndb, NDB_PROXIMITY)  
-entry.get(DB_CHAR)
-hasattr(character.ndb, NDB_PROXIMITY)
-```
-
-**Character Entry Lookups** (found in both files):
-```bash
-# Reference command to find all entry lookup patterns:
-grep -n "next.*e for e in.*combatants" world/combat/*.py
-```
-
-```python
-# Pattern repeated across both files:
-entry = next((e for e in combatants_list if e.get(DB_CHAR) == char), None)
-```
-
-**Extraction Plan**:
-1. **Survey Phase**:
-   ```bash
-   # Map all state access patterns:
-   grep -n "getattr.*db\|hasattr.*db\|\.get(" world/combat/handler.py world/combat/utils.py
-   grep -n "next.*combatants" world/combat/handler.py world/combat/utils.py
-   ```
-2. Create unified `state_manager.py` for ALL state manipulation patterns
-3. Extract SafeList conversion utilities first (most isolated)
-   - **Manual Test**: Verify combatant data integrity during combat
-4. Extract defensive attribute access patterns (cross-file)
-   - **Manual Test**: Test with characters missing expected attributes
-5. Extract character entry lookup patterns
-   - **Manual Test**: Combat with multiple participants to verify lookups
-6. Remove ALL duplicate state access code from both files
-   - **Final Test**: Full combat with edge cases (missing attributes, empty lists)
-
-### Priority 2B: State Management Extract
-
-**Target**: Remove data conversion and location validation duplication
-
-**Current Problem**: Repeated validation and conversion patterns
-- **SaverList Conversions**: 3 separate conversion ceremonies (lines 417-424)
-- **Location Validations**: 5 repeated patterns (lines 706, 1036, 1091, 1144, 1270)
-  ```python
-  if target.location == char.location:  # Repeated 5 times
-  if opponent.location == char.location:  # Similar pattern
-  ```
-
-**Extraction Targets**:
-
-#### 2B.1: Data Conversion Utilities
-**Lines to Extract**: SaverList conversion ceremonies
-```python
-# Convert SaverList to regular list to avoid corruption during modifications (line 417)
-# Convert each entry to a regular dict to avoid SaverList issues (line 421)
-```
-
-#### 2B.2: Location Validation Utilities  
-**Lines to Extract**: Repeated location checks (5 instances)
-```python
-# Same-room validation pattern used in:
-# - Grapple targeting (line 706)
-# - Retreat validation (line 1036)  
-# - Advance validation (line 1091)
-# - Charge collision (line 1144)
-# - Charge targeting (line 1270)
-```
-
-**New Interface** (`state_management.py`):
-```python
-def convert_combatants_list(saver_list):
-    """Convert SaverList to regular list avoiding corruption during modifications"""
-    
-def validate_same_room(character1, character2):
-    """Validate that two characters are in the same location"""
-    
-def get_same_room_opponents(character, combatants_list):
-    """Get all opponents in the same room as character"""
-    
-def validate_action_target_proximity(actor, target):
-    """Validate target is accessible for combat actions"""
-```
-
-_`validate_in_same_room` was written once in `world/combat/utils.py`, never adopted, and deleted unused in #3387. As built, same-room checks are inline `a.location == b.location` comparisons. Whether they get a shared helper is not decided._
-
-## Phase 2: Extract Utility-Specific Patterns
-
-### Priority 2A: Dice System Standardization (from utils.py)
-
-**Target**: Consolidate inconsistent dice rolling patterns in `dice.py` (moved from `utils.py` by #52)
-
-**Current Problem**: `dice.py` has 6 different approaches to dice rolling:
-```python
-# Pattern 1: Using constants (1 instance)
-randint(MIN_DICE_VALUE, max(MIN_DICE_VALUE, stat_value))
-
-# Pattern 2: Hardcoded values (5 instances)  
-randint(1, max(1, stat_value))
-
-# Pattern 3: Three separate functions doing similar things
-roll_with_advantage(stat_value)    # rolls twice, takes max
-roll_with_disadvantage(stat_value) # rolls twice, takes min  
-standard_roll(stat_value)          # single roll
-```
-
-**New Interface** (`dice.py`) — 📋 UNBUILT (no issue): `DiceResult`, `safe_roll` and `opposed_contest` do not exist; `dice.py` has `roll_stat`, `opposed_roll`, `standard_roll`, `roll_with_advantage` and `roll_with_disadvantage`:
-```python
-@dataclass
-class DiceResult:
-    final_roll: int
-    all_rolls: list
-    roll_type: str  # "standard", "advantage", "disadvantage"
-
-def safe_roll(stat_value, roll_type="standard"):
-    """Unified dice rolling with consistent bounds checking"""
-    
-def opposed_contest(char1, char2, stat1="motorics", stat2="motorics", contest_type="CONTEST"):
-    """Standardized opposed roll replacing both handler and utils patterns"""
-```
-
-### Priority 2B: Weapon Utilities Consolidation (from utils.py)
-
-**Target**: Extract weapon-related functions with repeated hand access patterns
-
-**Current state**: weapon selection lives in `weapon_choice.py` (#3695): `choose_weapon`, `weapon_options` and `has_ranged_option`, with hand access in one place (`_candidates`). `utils.py` keeps `find_best_weapon` (the best weapon carried, for drawing) and `get_weapon_damage`; its one `hands` read is in `surplus_limb_initiative_bonus`.
-
-**Functions to Extract**:
-- `get_wielded_weapon()` — *status 2026-10-06: weapon selection shipped as `world/combat/weapon_choice.py` (`choose_weapon`, #3695); `get_wielded_weapon`, `is_wielding_ranged_weapon` and `get_wielded_weapons` are deleted, `get_weapon_damage` remains in utils.* - 15 lines
-- `is_wielding_ranged_weapon()` - 12 lines  
-- `get_wielded_weapons()` - 18 lines
-- `get_weapon_damage()` - 10 lines
-
-**New Interface** (`weapon_utilities.py`):
-```python
-def get_character_hands(character):
-    """Single source of truth for hand access"""
-    
-def get_all_wielded_items(character):
-    """Get all items in hands, weapons or not"""
-    
-def get_wielded_weapons(character, weapon_type=None):
-    """Get weapons, optionally filtered by type (ranged/melee)"""
-```
-
-### Priority 2C: Combat Entry Management (from utils.py)
-
-**Target**: Extract large combat entry functions from `utils.py`
-
-**Current Problem**: `utils.py` contains two large functions:
-- `add_combatant()` - about 115 lines with extensive debug logging
-- `remove_combatant()` - about 350 lines with cleanup logic
-
-Both functions should be in a dedicated state management module, not utilities.
-
-**New Interface** (`combat_entry_manager.py`):
-```python
-def create_combatant_entry(character, target=None, **kwargs):
-    """Create standardized combatant entry"""
-    
-def add_combatant_to_handler(handler, character, entry):
-    """Add combatant with proper validation and logging"""
-    
-def remove_combatant_from_handler(handler, character):
-    """Remove combatant with cleanup and validation"""
-```
-
-## Phase 3: Extract Action Processors (from handler.py)
-
-### Priority 3A: Action Processing Extract
-
-**Target**: Remove specific oversized methods from handler
-
-**Problem this phase addressed**: large embedded methods within the handler class. #49 moved them out of `handler.py`: `_process_attack` to `attack.py` (`process_attack`), `_resolve_retreat`/`_resolve_advance`/`_resolve_charge` to `movement_resolution.py` (`resolve_retreat`, `resolve_advance`, `resolve_charge`) and `_resolve_disarm` to `actions.py` (`resolve_disarm`). `at_repeat()` is about 200 lines. The `process_*` names under New Interface below were not used, and the dict-shaped grapple intent was deleted (#3391).
-- `at_repeat()`: 432 lines (lines 402-833)
-- `_process_attack()`: 112 lines (lines 876-987)  
-- `_resolve_retreat()`: 55+ lines (lines 1013-1068)
-- `_resolve_advance()`: 170+ lines (lines 1068-1238)
-- `_resolve_charge()`: 144+ lines (lines 1238-1382)
-- `_resolve_disarm()`: 88+ lines (lines 1382-1470)
-
-**Extraction Targets**:
-
-#### 3A.1: Grapple Processing (from `at_repeat()`)
-**Lines to Extract**: ~100 lines of grapple logic from `at_repeat()`
-```python
-# Auto-resistance processing (lines 597-648) 
-# Grapple intent processing (lines 700-780)
-# Manual escape processing (lines 756-778)
-```
-
-#### 3A.2: Attack Processing  
-**Lines to Extract**: `_process_attack()` method (112 lines)
-- Proximity validation
-- Weapon handling
-- Roll calculation with modifiers
-- Damage application
-- Death handling
-
-#### 3A.3: Movement Processing
-**Lines to Extract**: All `_resolve_*` movement methods (400+ lines total)
-- `_resolve_retreat()`: 55 lines
-- `_resolve_advance()`: 170 lines  
-- `_resolve_charge()`: 144 lines
-- `_resolve_disarm()`: 88 lines
-
-**New Interface** (`actions.py`):
-```python
-def process_auto_resistance(handler, combatants_list):
-    """Process automatic escape attempts for non-yielding victims"""
-
-def process_grapple_intent(handler, character, intent_dict, combatants_list):
-    """Process grapple attempt from action intent"""
-
-def process_escape_intent(handler, character, combatants_list):
-    """Process manual escape attempt"""
-
-def process_standard_attack(handler, attacker, target, attacker_entry):
-    """Process standard combat attack (extracted from _process_attack)"""
-
-def process_retreat_action(handler, character, character_entry):
-    """Process retreat movement action"""
-
-def process_advance_action(handler, character, character_entry):
-    """Process advance movement action"""
-
-def process_charge_action(handler, character, character_entry):
-    """Process charge movement action"""
-
-def process_disarm_action(handler, character, character_entry):
-    """Process disarm combat action"""
-```
-
-## Phase 4: Simplify Handler Structure
-
-### Priority 4A: Round Orchestration
-
-**Target**: Break down `at_repeat()` (about 200 lines). It already calls helpers: `_validate_combatants`, `_check_peaceful_resolution`, `_handle_yielding_turn`, `_dispatch_combat_action`, `_schedule_attack` and `_remove_incapacitated`.
-
-**New Structure** (📋 UNBUILT (no issue)):
-```python
-def at_repeat(self):
-    """Main combat loop - pure orchestration"""
-    if not self._validate_combat_state():
-        return
-        
-    combatants = self._prepare_combatants()
-    if not combatants:
-        self.stop_combat_logic()
-        return
-        
-    if self._should_end_peacefully(combatants):
-        self._end_combat_peacefully(combatants)
-        return
-        
-    self._process_combat_round(combatants)
-
-def _process_combat_round(self, combatants):
-    """Process single combat round"""
-    for combatant_entry in self._get_initiative_order(combatants):
-        self._process_combatant_turn(combatant_entry, combatants)
-```
-
-### Priority 4B: Handler Responsibilities
-
-**Final Handler Responsibilities**:
-- Combat round orchestration  
-- Script lifecycle management
-- Handler merging coordination
-- Combat state validation triggers
-
-**Extracted Responsibilities**:
-- ❌ Contest resolution → `contest_system.py` (NOT implemented; opposed rolls are inline in `attack.py`, `actions.py`, `grappling.py` and `movement_resolution.py`)
-- ✅ Debug logging → `debug.py`  
-- ❌ State manipulation → `state_manager.py` (NOT implemented; still inline in handler.py/utils.py)
-- ✅ Action processing → `attack.py`, `movement_resolution.py`, `actions.py`, `grappling.py`
-
-## LLM Reference Commands & Context Management
-
-### Essential Commands for Each Phase
-
-#### File Analysis Commands
-```bash
-# Get current file sizes
-wc -l world/combat/handler.py world/combat/utils.py
-
-# Get total line count for project scope
-find world/combat -name "*.py" -exec wc -l {} + | tail -1
-
-# Count patterns across files
-grep -c "pattern" world/combat/handler.py world/combat/utils.py
-
-# Get file structure overview
-find world/combat -name "*.py" | head -20
-```
-
-#### Pattern Discovery Commands  
-```bash
-# Find all contest/dice patterns:
-grep -n "randint.*max" world/combat/handler.py world/combat/utils.py
-grep -n "motorics.*contest\|contest.*motorics" world/combat/*.py
-
-# Find all debug patterns:
-grep -n "splattercast.msg" world/combat/handler.py world/combat/utils.py
-grep -n "SPLATTERCAST_CHANNEL" world/combat/*.py
-
-# Find all state access patterns:
-grep -n "getattr.*db\|hasattr.*db" world/combat/handler.py world/combat/utils.py
-grep -n "next.*combatants" world/combat/handler.py world/combat/utils.py
-
-# Find defensive programming patterns:
-grep -n "getattr(\|hasattr(\|\.get(" world/combat/handler.py world/combat/utils.py
-```
-
-#### Context Building Commands
-```bash
-# Read file sections for context:
-sed -n '400,500p' world/combat/handler.py    # Read lines 400-500
-sed -n '1,100p' world/combat/utils.py        # Read first 100 lines
-
-# Find function definitions:
-grep -n "^def " world/combat/handler.py world/combat/utils.py
-
-# Find class definitions and structure:
-grep -n "^class \|^    def " world/combat/handler.py
-```
-
-#### Validation Commands (for Manual Testing Reference)
-```bash
-# Check import statements after changes:
-grep -n "^from\|^import" world/combat/handler.py world/combat/utils.py
-
-# Verify no syntax errors:
-python -m py_compile world/combat/handler.py
-python -m py_compile world/combat/utils.py
-
-# Find remaining old patterns after extraction:
-grep -n "OLD_PATTERN" world/combat/handler.py world/combat/utils.py
-```
-
-### Pre-Phase Survey Commands
-
-#### Before Phase 1 (Cross-File Consolidation):
-```bash
-# Get baseline metrics:
-echo "=== BASELINE METRICS ==="
-wc -l world/combat/handler.py world/combat/utils.py
-echo "Contest patterns:" && grep -c "randint.*max" world/combat/handler.py world/combat/utils.py
-echo "Debug messages:" && grep -c "splattercast.msg" world/combat/handler.py world/combat/utils.py
-echo "State access:" && grep -c "getattr.*db\|\.get(" world/combat/handler.py world/combat/utils.py
-```
-
-#### Before Phase 2 (Utils Decomposition):
-```bash
-# Analyze utils.py structure:
-echo "=== UTILS.PY ANALYSIS ==="
-grep -n "^def " world/combat/utils.py | wc -l  # Function count
-grep -n "randint(" world/combat/utils.py | wc -l  # Dice patterns
-grep -n "hands.*getattr\|getattr.*hands" world/combat/utils.py  # Hand access patterns
-```
-
-#### Before Phase 3 (Handler Decomposition):
-```bash
-# Analyze handler.py methods:
-echo "=== HANDLER.PY METHODS ==="
-grep -n "def at_repeat\|def _process_\|def _resolve_" world/combat/handler.py
-awk '/^    def at_repeat/,/^    def _validate_combatants/' world/combat/handler.py | wc -l  # at_repeat() size
-```
-
-### Context Management for Large File Reads
-
-#### Reading handler.py (about 1,150 lines, was 1,470) in chunks:
-```bash
-# Method 1: By sections
-sed -n '1,200p' world/combat/handler.py      # Header and imports
-sed -n '400,600p' world/combat/handler.py    # at_repeat() start  
-sed -n '600,833p' world/combat/handler.py    # at_repeat() end
-sed -n '834,1100p' world/combat/handler.py   # Process methods
-sed -n '1100,1470p' world/combat/handler.py  # Resolve methods
-
-# Method 2: By method boundaries
-grep -n "def " world/combat/handler.py | head -10  # First 10 methods
-```
-
-#### Reading utils.py (about 1,330 lines, was 1,007) in chunks:
-
-*(The groupings below no longer hold: the dice functions moved to `dice.py`
-under #52. `utils.py` now runs, in order: imports; the BACKWARD-COMPATIBLE
-RE-EXPORTS block (`debug`, `dice`, `explosives`, then `proximity`); weapon and
-item helpers (`find_best_weapon`, `get_weapon_damage`); the initiative bonus
-(`surplus_limb_initiative_bonus`); display-name, stat and aim-state helpers;
-`add_combatant` and `remove_combatant`; cleanup, handler-reference, dbref and
-orphan-sweep helpers; `resolve_bonus_attack`. Use
-`grep -n "^def " world/combat/utils.py`.)*
-```bash
-# By function groups
-sed -n '1,100p' world/combat/utils.py       # Imports and constants
-sed -n '100,300p' world/combat/utils.py     # Dice functions
-sed -n '300,600p' world/combat/utils.py     # Weapon functions  
-sed -n '600,1007p' world/combat/utils.py    # Combat entry functions
-```
-
-### Progress Tracking Commands
-
-#### After each extraction:
-```bash
-# Check file sizes:
-wc -l world/combat/handler.py world/combat/utils.py world/combat/new_module.py
-
-# Verify pattern removal:
-grep -c "OLD_PATTERN" world/combat/handler.py world/combat/utils.py
-
-# Check new module structure:
-grep -n "^def \|^class " world/combat/new_module.py
-```
-
-This reference section provides comprehensive command patterns for LLM context management throughout the refactoring process. Each command can be copied directly and executed to gather the exact context needed for systematic refactoring decisions.
-
-## Implementation Guidelines
-
-### LLM-Specific Best Practices
-
-#### 1. **File Size Management**
-- **Rule**: No file >300 lines (LLM context limit)
-- **Check**: Count lines before each change
-- **Split**: If file grows >300 lines, split by responsibility
-- **Reference Commands**: 
-  ```bash
-  wc -l world/combat/handler.py  # about 1,150 lines (was 1,470)
-  wc -l world/combat/utils.py    # about 1,330 lines (was 1,007)
-  ```
-
-#### 2. **Single Change Principle**
-- **Rule**: One type of extraction per session
-- **Example**: Extract all motorics contests OR debug logging, not both
-- **Reason**: Prevents overwhelming changes that lead to errors
-- **Manual Testing**: After each extraction, test in-game with actual combat scenarios
-
-#### 3. **Validation at Each Step (Manual Testing Required)**
-- **Rule**: Test system after each extraction
-- **Method**: 
-  1. Extract function
-  2. Replace ONE usage
-  3. **Manual Test**: Start combat, trigger specific action type
-  4. Replace remaining usages
-  5. **Manual Test**: Full combat round with all action types
-  6. Remove old code
-- **Test Scenarios**: Grapple attempts, attacks, movement, escapes, disarms
-
-#### 4. **Context Management for Large Files**
-- **Rule**: Work with one target file at a time
-- **Technique**: 
-  1. Read target file completely (use large line ranges)
-  2. Search for patterns with `grep_search` for overview
-  3. Identify ALL instances of pattern with exact line numbers
-  4. Extract to new function with precise imports
-  5. Replace ALL instances starting with safest/most isolated
-  6. Validate complete replacement with manual testing
-
-#### 5. **Error Prevention**
-- **Automated Tests**: run the combat tests in `world/tests/` (for example `test_combat_audit_sink.py`, `test_peace_ends_multi_room_combat.py`) after each extraction
-- **Import Management**: Add imports incrementally, test each addition
-- **Function Signatures**: Keep parameters simple and explicit
-- **Error Handling**: Include error cases from original code
-- **Backward Compatibility**: Maintain existing interfaces during transition
-- **Manual Validation**: Every change requires in-game combat testing
-
-### Extraction Methodology
-
-#### Step-by-Step Process
-1. **Identify Pattern**: Find repeated code block
-   - Use `grep_search` to find all instances across files
-   - Document exact line numbers and variations
-2. **Count Instances**: Locate ALL occurrences
-   - Example: `grep -n "splattercast.msg" world/combat/*.py`
-   - Record: handler.py (lines X,Y,Z), utils.py (lines A,B,C)
-3. **Design Interface**: Create function signature
-   - Include all parameter variations from existing usage
-   - Plan for error cases found in original implementations
-4. **Extract Function**: Move to appropriate module
-   - Create new file if needed: `touch world/combat/new_module.py`
-   - Add proper imports and docstrings
-5. **Replace First**: Replace one instance, test
-   - Choose safest/most isolated usage first
-   - **Manual Test**: In-game combat with specific action
-6. **Replace All**: Replace remaining instances
-   - Work through list systematically
-   - **Manual Test**: After every 3-5 replacements
-7. **Clean Up**: Remove old code, update imports
-8. **Validate**: Test complete functionality
-   - **Manual Test**: Full combat scenario with all action types
-   - Verify no regression in combat behavior
-
-#### Safety Checklist (Manual Testing Workflow)
-- [ ] Pattern identified and counted with exact line references
-- [ ] Function interface designed matching all existing usage patterns
-- [ ] New module created (if needed) with proper imports
-- [ ] First replacement tested with in-game combat scenario
-- [ ] All instances replaced systematically with testing every 3-5 changes
-- [ ] Old code removed completely
-- [ ] Imports updated and verified
-- [ ] System tested with full combat round (grapple + attack + movement)
-- [ ] File size checked (<300 lines): `wc -l filename`
-- [ ] Debug logging confirms new functions work as expected
-
-## Risk Mitigation
-
-### High-Risk Areas
-1. **SaverList Manipulation**: Database corruption risk
-2. **Grapple State Changes**: Complex bidirectional relationships
-3. **Handler Merging**: Multi-handler coordination
-4. **Combat Round Processing**: Core game loop
-
-### Mitigation Strategies
-1. **Conservative Extraction**: Start with safest patterns (contest system)
-2. **Incremental Validation**: Test after each small change
-3. **Backup Strategy**: Commit working states frequently
-4. **Rollback Plan**: Keep original functions until fully replaced
-
-## Additional Refactoring Opportunities
-
-### Priority 5: Error Handling & Robustness Extract
-
-**Target**: Consolidate error handling patterns and defensive programming
-
-**Current Problem**: Scattered error handling with inconsistent patterns
-- **Exception Handling**: 8 try/except blocks with generic `Exception` catches
-- **Attribute Access**: 98+ instances of `getattr()`, `hasattr()`, `.get()` calls
-- **Null Checks**: 20+ repeated `if not` validation patterns
-- **Iterator Patterns**: 6 identical `next()` lookups for combatant entries
-
-**Specific Patterns for Extraction**:
-
-#### 5A: Safe Attribute Access
-**Lines to Extract**: 98 instances of defensive attribute access
-```python
-# Pattern: Safe database access (repeated 98 times)
-getattr(self.db, DB_COMBATANTS, [])
-getattr(script.db, DB_MANAGED_ROOMS, [])
-entry.get(DB_CHAR)
-hasattr(handler_script, "db") and hasattr(handler_script.db, DB_MANAGED_ROOMS)
-```
-
-#### 5B: Combatant Entry Lookups  
-**Lines to Extract**: 6 identical `next()` pattern lookups
-```python
-# Pattern: Find combatant entry (repeated 6 times)
-entry = next((e for e in combatants_list if e.get(DB_CHAR) == char), None)
-grappler_entry = next((e for e in combatants_list if e[DB_CHAR] == grappler), None)
-target_entry = next((e for e in combatants_list if e[DB_CHAR] == action_target_char), None)
-```
-
-#### 5C: Exception Handling Consolidation
-**Lines to Extract**: 8 try/except blocks with similar error recovery
-```python
-# Pattern: Generic exception handling (8 instances)
-try:
-    # Some operation
-except Exception as e:
-    splattercast.msg(f"ERROR: {e}")
-    # Cleanup or continue
-```
-
-**New Interface** (`error_handling.py`):
-```python
-def safe_get_combatants(handler):
-    """Safely retrieve combatants list with error handling"""
-    
-def safe_get_attribute(obj, attr_path, default=None):
-    """Safely access nested attributes with fallback"""
-    
-def find_combatant_entry(combatants_list, character):
-    """Safely find combatant entry by character"""
-    
-def safe_execute_with_logging(operation, error_context, handler=None):
-    """Execute operation with consistent error handling and logging"""
-```
-
-### Priority 6: Method Signature Standardization
-
-**Target**: Standardize inconsistent parameter patterns across methods
-
-**Current Problem**: 30 methods with inconsistent parameter conventions
-
-*(Measured: the count is stale and the problem got worse, not better.
-`handler.py` now carries **35** methods plus **2** module-level functions
-(`find_combat_handlers`, `get_or_create_combat`); `utils.py` **27** module-level
-functions. The #49/#52 decomposition added a **fourth** convention rather than
-standardising: `attack.py`/`movement_resolution.py`/`actions.py` put the handler
-**first** — `resolve_retreat(handler, char, entry)`,
-`process_attack(handler, attacker, target, attacker_entry, combatants_list)` —
-while `grappling.py` puts it **last**:
-`resolve_grapple_initiate(char_entry, combatants_list, handler)`
-(and `resolve_grapple_join`, `resolve_grapple_takeover`,
-`resolve_release_grapple`). Four one-line delegators in `CombatHandler`
-(`_resolve_grapple_initiate` and its three siblings) exist only to bridge the
-two orders. This priority is fully unbuilt.)*
-- **Handler Reference**: Some methods take `handler`, others access via `self`
-- **Combatants Access**: Some take `combatants_list`, others fetch internally
-- **Character Access**: Mixed `char`/`character`/`combatant` naming
-- **Entry Access**: Inconsistent `entry`/`combat_entry`/`char_entry` patterns
-
-**Standardization Targets**:
-
-#### 6A: Parameter Naming Convention
-```python
-# Current inconsistencies:
-def some_method(self, char, target, combatants_list)      # Mixed styles
-def other_method(self, character, action_target_char)      # Different naming
-def third_method(self, combat_entry, char_entry)          # Entry confusion
-
-# Proposed standard:
-def method_name(self, character, target=None, combatants=None, entry=None)
-```
-
-#### 6B: Handler Context Standardization
-```python
-# Current: Mixed self/handler usage
-def extracted_function(handler, character, combatants):   # External functions
-def handler_method(self, character):                      # Internal methods
-
-# Proposed: Consistent context passing
-def extracted_function(handler_context, character, **kwargs):
-```
-
-### Priority 7: Constants and Magic Numbers Extract
-
-**Target**: Eliminate hardcoded values and improve configurability
-
-**Current Problem**: Magic numbers and strings scattered throughout code
-- **Numeric Constants**: Hardcoded dice ranges: the d20 attack and precision rolls and the d6 base damage in `attack.process_attack`, and the d20 initiative roll in `utils.add_combatant`; stat defaults (1). `constants.py` already has `DEFAULT_MOTORICS` and `MIN_DICE_VALUE`, which `dice.roll_stat` uses
-- **String Constants**: Action names, message prefixes scattered in logic
-- **Database Keys**: Direct string usage instead of constant references
-- **Timeout Values**: attack staggering uses `STAGGER_DELAY_INTERVAL` and `MAX_STAGGER_DELAY` from `constants.py` (`attack.calculate_attack_delay`)
-
-**Extraction Targets**:
-
-#### 7A: Combat Balance Constants
-```python
-# Current: Magic numbers in code
-randint(1, 20)                    # Attack roll range
-get_numeric_stat(char, "motorics", 1)  # Default stat value
-
-# Proposed: Configuration constants
-ATTACK_DIE_SIZE = 20
-DEFAULT_STAT_VALUE = 1
-COMBAT_ACTION_DELAY = 0.5
-```
-
-#### 7B: Message Template Constants
-```python
-# Current: Inline message formatting
-splattercast.msg(f"GRAPPLE_ATTEMPT: {char.key} vs {target.key}")
-splattercast.msg(f"AUTO_ESCAPE: {char.key} (roll {roll})")
-
-# Proposed: Template constants
-GRAPPLE_ATTEMPT_MSG = "GRAPPLE_ATTEMPT: {attacker} vs {target}"
-AUTO_ESCAPE_MSG = "AUTO_ESCAPE: {character} (roll {roll})"
-```
-
-**New Interface** (`combat_config.py`):
+This roadmap orders the remaining refactor of the combat package, `world/combat/`. The aim is to turn the two oversized modules, `handler.py` and `utils.py`, into small modules with one responsibility each. Nothing here changes how combat plays. Every item below is work not yet done; none has an open issue.
+
+Diagnostics routing is not part of this roadmap: all combat diagnostics go through the single sink in `world/combat/debug.py`, described in `COMBAT_AUDIT_LOGGING_SPEC.md`.
+
+## Why
+
+- **Two monoliths.** `handler.py` and `utils.py` are each far over the size a model can hold and reason about at once. Measure with `wc -l world/combat/*.py`.
+- **Cross-file duplication.** The same patterns are written out again in many files:
+  - Contests: opposed `randint` rolls are inline in `attack.py`, `actions.py`, `grappling.py` and `movement_resolution.py`, and `dice.py` has two dice styles. `handler.py` has no `randint` and no `motorics`; `utils.py` has one initiative roll, in `add_combatant`.
+  - Debug messages: 273 `splattercast.msg` calls across the package, 119 of them in `handler.py` (78) and `utils.py` (41).
+  - Attribute access: defensive `getattr` patterns in both files.
+- **Utility dumping ground.** `utils.py` is a catch-all with mixed responsibilities. In order it holds: imports; the BACKWARD-COMPATIBLE RE-EXPORTS block (`debug`, `dice`, `explosives`, then `proximity`); weapon and item helpers (`find_best_weapon`, `get_weapon_damage`); the initiative bonus (`surplus_limb_initiative_bonus`); display-name, stat and aim-state helpers; `add_combatant` and `remove_combatant`; cleanup, handler-reference, dbref and orphan-sweep helpers; `resolve_bonus_attack`.
+- **Method bloat** and **inconsistent patterns**: oversized methods remain, and the same operation is done different ways in different files.
+
+**Root cause.** The code was built by a language model, feature by feature: additions made without architectural consideration, a context window too small to see the whole, a tendency to duplicate a pattern rather than extract a function, and limited ability to refactor across large files.
+
+## Design goals
+
+1. **Separation of concerns**: each module has a single responsibility.
+2. **DRY**: no repeated patterns.
+3. **LLM-friendly structure**: small, focused files that fit in a context window.
+4. **Testability**: isolated functions that can be tested on their own.
+5. **Maintainability**: clear interfaces and minimal coupling.
+
+### Targets
+
+- `handler.py` under 500 lines, orchestration only.
+- `utils.py` eliminated: broken into focused modules.
+- Every file under 300 lines. 10 of the 15 combat modules exceed it today; `__init__.py`, `dice.py`, `debug.py`, `capacity.py` and `weapon_choice.py` are under it.
+- No code duplication: zero repeated patterns across all files.
+- Fewer than 10 debug messages per file. Today: `handler.py` 78, `utils.py` 41, `movement_resolution.py` 38, `grappling.py` 35, `attack.py` 35, `throwing.py` 31, `actions.py` 12. None of the 273 calls has been removed.
+- Defensive attribute access eliminated: 142 lines in `handler.py` and `utils.py` match `getattr(`, `hasattr(` or `.get(`.
+- Combatant-entry lookups standardized: 9 remain, and there is no `find_combatant_entry()`.
+- Error handling consolidated: 18 `except Exception` blocks remain in `handler.py` and `utils.py`.
+- Function signatures standardized: `handler.py` has 35 methods and 2 module-level functions (`find_combat_handlers`, `get_or_create_combat`); `utils.py` has 27 module-level functions.
+- The six-plus dice rolling patterns unified.
+- 90%+ test coverage for extracted functions (unmeasured).
+- Clear separation: orchestration vs implementation vs utilities.
+
+Qualitative goals: clear separation of concerns; LLM-maintainable file sizes; consistent interfaces and naming; robust error handling and defensive programming; configurable combat parameters; better readability and debugging.
+
+## Target layout
+
+| Module | Responsibility | Key functions |
+|---|---|---|
+| `handler.py` | Combat round orchestration, script lifecycle, handler merging, combat state validation triggers | `at_repeat` |
+| `attack.py` | Attack resolution, human shield | `process_attack`, `process_delayed_attack` |
+| `movement_resolution.py` | Retreat, advance, charge | `resolve_retreat`, `resolve_advance`, `resolve_charge` |
+| `actions.py` | Disarm and auto-escape | `resolve_disarm`, `resolve_auto_escape` |
+| `grappling.py` | Grapple resolution and grapple state | `resolve_grapple_initiate`, `resolve_grapple_join`, `resolve_grapple_takeover`, `resolve_release_grapple` |
+| `weapon_choice.py` | Weapon selection and hand access | `choose_weapon`, `weapon_options`, `has_ranged_option` |
+| `debug.py` | Combat audit log sink | `get_splattercast` |
+| `dice.py` | Dice rolls | `roll_stat`, `opposed_roll`, `standard_roll`, `roll_with_advantage`, `roll_with_disadvantage` |
+| `explosives.py` | Sticky grenades, blast human shields | |
+| `throwing.py` | Throw flight and landing | |
+| `capacity.py` | Body capacities (sight) in hit math | |
+| `proximity.py` | Proximity system | |
+| `constants.py` | Shared constants | |
+| `contest_system.py` | Contest mechanics: motorics rolls, opposed checks | to create (Phase 1A) |
+| `state_manager.py` | State manipulation, combatant entry management | to create (Phase 1C) |
+| `weapon_utilities.py` | Weapon access, validation | to create (Phase 2B) |
+| `character_attributes.py` | Safe attribute access (defensive patterns) | to create (no phase) |
+
+## How the work is done
+
+These rules set the order and the size of each step.
+
+- **Incremental extraction, validated at each step.** Order: extract repeated patterns first (safest, highest value), then simplify the handler structure (highest risk, essential for maintainability).
+- **File size limit**: under 300 lines per file. Count lines before each change; if a file grows past 300, split it by responsibility.
+- **Single change rule**: one type of extraction per session and per commit (for example, all motorics contests or debug logging, not both). Reason: it prevents overwhelming changes that lead to errors.
+- **Documentation first**: specify before implementing.
+- **Always keep a working system.**
+- **One target file at a time.** Read it completely, find every instance of the pattern, extract to a new function with precise imports, then replace every instance, safest and most isolated first.
+- **Steps for one extraction:**
+  1. Identify the repeated block and count every instance across files, with its variations.
+  2. Design the function signature to cover every existing variation and every error case in the originals.
+  3. Extract it to the right module (a new file if needed) with imports and docstrings.
+  4. Replace one instance, the safest; test in game with that action.
+  5. Replace the rest; test in game after every 3 to 5 replacements.
+  6. Remove the old code and update imports.
+  7. Test a full combat round with all action types (grapple, attack, movement, escapes, disarms), check the file size, confirm in the debug log that the new functions work, and verify combat behaves as before.
+- **Testing**: run the combat tests in `world/tests/` (for example `test_combat_audit_sink.py`, `test_peace_ends_multi_room_combat.py`) after each extraction. Every change also needs in-game combat testing.
+- **Imports**: add them one at a time and test each.
+- **Signatures**: keep parameters simple and explicit; carry over the error cases of the original code.
+- **Backward compatibility**: maintain existing interfaces during the transition; keep original functions until they are fully replaced.
+
+### High-risk areas
+
+1. SaverList manipulation: database corruption risk.
+2. Grapple state changes: complex two-way relationships.
+3. Handler merging: coordination between several handlers.
+4. Combat round processing: the core game loop.
+
+Mitigation: start with the safest patterns (the contest system); test after each small change; commit working states often.
+
+## Order of work
+
+### Phase 1: cross-file consolidation
+
+#### 1A. Contest system — `contest_system.py` (no issue)
+
+Replace every opposed roll with one contest module. Today the opposed rolls are inline: motorics against motorics, `randint(1, max(1, get_numeric_stat(char, "motorics", 1)))` for each side, in `actions.py`, `grappling.py` and `movement_resolution.py`, and d20 plus skill against d20 plus dodge in `attack.py`. `dice.py` adds its own `opposed_roll`.
+
+Wanted interface:
+
+- `ContestResult`: `winner`, `loser`, `winner_roll`, `loser_roll`, `char1_won`, `contest_type`.
+- `motorics_contest(char1, char2, contest_type="CONTEST", handler=None)`: motorics against motorics on d[stat] dice; `contest_type` names it in the log (GRAPPLE_ATTEMPT, AUTO_ESCAPE and so on); returns a `ContestResult`.
+- `attack_contest(attacker, target, handler=None)`: d20 plus stat.
+- `movement_contest(mover, opponents, contest_type, handler=None)`: against the highest opponent stat.
+
+Plan: create `contest_system.py` consolidating all dice patterns; replace the dice functions first (safer, isolated), testing after each; then the contest instances in the resolution modules, testing a combat round with grapple attempts; check consistency across files with a full combat testing every contest type; remove all duplicate contest and dice code.
+
+#### 1B. Debug message volume (no issue)
+
+Bring the number of `splattercast.msg` calls down to the target of fewer than 10 per file and standardize message formats across files. The routing is not part of this work: every call already goes through the `debug.py` sink. Its API is `get_splattercast()`, which returns an always-truthy `_AuditRouter` whose `.msg()` stands in for the channel object, plus `debug_broadcast()`, `log_debug()` and `log_combat_action()`. It has no levels and no category filtering. Destinations are an always-on rotating audit file, `server/logs/combat_audit.log`, and a channel mirror gated by `settings.SPLATTERCAST_LIVE`.
+
+A `combat_log(level, category, message, char=None, target=None, handler=None)` with levels (DEBUG, INFO, WARNING, ERROR) and categories (GRAPPLE, ATTACK, MOVEMENT, STATE) was proposed here. It was superseded by the audit sink (#461, #464); see `COMBAT_AUDIT_LOGGING_SPEC.md`.
+
+#### 1C. State management — `state_manager.py` (also written `state_management.py`) (no issue)
+
+Remove state-access, data-conversion and location-validation duplication from `handler.py` and `utils.py`. Patterns to replace:
+
+- **SaverList conversions**: copying `db` combatants into a regular list of regular dicts, to avoid corruption during modification, next to direct `getattr(handler.db, DB_COMBATANTS, [])` reads.
+- **Defensive attribute access**: `getattr(character, "hands", {})`, `getattr(char.ndb, NDB_PROXIMITY)`, `entry.get(DB_CHAR)`, `hasattr(character.ndb, NDB_PROXIMITY)`.
+- **Combatant-entry lookups**: `next((e for e in combatants_list if e.get(DB_CHAR) == char), None)`.
+- **Same-room checks**: inline `a.location == b.location` comparisons, in grapple targeting, retreat validation, advance validation, charge collision and charge targeting.
+
+Wanted interface:
+
+- `convert_combatants_list(saver_list)`: convert a SaverList to a regular list, avoiding corruption during modification.
+- `validate_same_room(character1, character2)`: whether two characters are in the same location.
+- `get_same_room_opponents(character, combatants_list)`: all opponents in the character's room.
+- `validate_action_target_proximity(actor, target)`: whether a target is reachable for a combat action.
+
+Plan: SaverList conversion utilities first (most isolated; test combatant data during combat); then defensive attribute access (test with characters missing expected attributes); then entry lookups (test combat with several participants); then remove the duplicates and test a full combat with edge cases (missing attributes, empty lists). Whether same-room checks get a shared helper is not decided (see below).
+
+### Phase 2: decompose `utils.py`
+
+#### 2A. Dice standardization in `dice.py` — 📋 UNBUILT (no issue)
+
+`dice.py` rolls dice six ways: `randint(MIN_DICE_VALUE, max(MIN_DICE_VALUE, stat_value))` once and `randint(1, max(1, stat_value))` five times, plus three similar functions: `roll_with_advantage` (rolls twice, takes the higher), `roll_with_disadvantage` (rolls twice, takes the lower) and `standard_roll` (one roll). Wanted:
+
+- `DiceResult`: `final_roll`, `all_rolls`, `roll_type` ("standard", "advantage", "disadvantage").
+- `safe_roll(stat_value, roll_type="standard")`: one roll function with consistent bounds checking.
+- `opposed_contest(char1, char2, stat1="motorics", stat2="motorics", contest_type="CONTEST")`: one opposed roll replacing the others.
+
+#### 2B. Weapon utilities — `weapon_utilities.py` (no issue)
+
+Weapon selection is in `weapon_choice.py` (#3695): `choose_weapon`, `weapon_options` and `has_ranged_option`, with hand access in one place, `_candidates`. `utils.py` keeps `find_best_weapon` (the best weapon carried, for drawing) and `get_weapon_damage`; its one `hands` read is in `surplus_limb_initiative_bonus`. Wanted:
+
+- `get_character_hands(character)`: the single source of truth for hand access.
+- `get_all_wielded_items(character)`: every item in the hands, weapon or not.
+- `get_wielded_weapons(character, weapon_type=None)`: weapons, optionally filtered to ranged or melee.
+
+`get_weapon_damage` moves out of `utils.py` into this module.
+
+#### 2C. Combat entry management — `combat_entry_manager.py` (no issue)
+
+`utils.py` holds two large functions that belong in a state module, not in utilities: `add_combatant` (about 115 lines, with extensive debug logging) and `remove_combatant` (about 350 lines, with cleanup logic). Wanted:
+
+- `create_combatant_entry(character, target=None, **kwargs)`: a standard combatant entry.
+- `add_combatant_to_handler(handler, character, entry)`: add with validation and logging.
+- `remove_combatant_from_handler(handler, character)`: remove with cleanup and validation.
+
+### Phase 4: simplify the handler
+
+#### 4A. Round orchestration — 📋 UNBUILT (no issue)
+
+Break down `CombatHandler.at_repeat()` (about 200 lines). It already calls `_validate_combatants`, `_check_peaceful_resolution`, `_handle_yielding_turn`, `_dispatch_combat_action`, `_schedule_attack` and `_remove_incapacitated`. Wanted shape, pure orchestration: `at_repeat` returns if `_validate_combat_state()` fails; gets the combatants from `_prepare_combatants()` and calls `stop_combat_logic()` if there are none; calls `_end_combat_peacefully(combatants)` if `_should_end_peacefully(combatants)`; otherwise calls `_process_combat_round(combatants)`, which runs `_process_combatant_turn(entry, combatants)` for each entry in `_get_initiative_order(combatants)`.
+
+#### 4B. Handler responsibilities (no issue)
+
+What stays in the handler: round orchestration, script lifecycle, handler-merging coordination, combat state validation triggers. Contest resolution moves to `contest_system.py` (1A) and state manipulation to `state_manager.py` (1C).
+
+#### 4C. Final validation and optimization (no issue)
+
+## Not yet placed in the order
+
+These are wanted, with no position in the order above.
+
+### Error handling and robustness — `error_handling.py` (no issue)
+
+Consolidate scattered error handling and defensive programming:
+
+- **Safe attribute access**: `getattr(self.db, DB_COMBATANTS, [])`, `getattr(script.db, DB_MANAGED_ROOMS, [])`, `entry.get(DB_CHAR)`, `hasattr(handler_script, "db") and hasattr(handler_script.db, DB_MANAGED_ROOMS)`.
+- **Combatant-entry lookups**: the `next(...)` lookups, in both the `e.get(DB_CHAR) == char` and the `e[DB_CHAR] == grappler` forms.
+- **Exception handling**: `try` / `except Exception as e` blocks that log the error and clean up or continue.
+- **Null checks**: 20+ repeated `if not` validation patterns.
+
+Wanted:
+
+- `safe_get_combatants(handler)`: the combatants list, with error handling.
+- `safe_get_attribute(obj, attr_path, default=None)`: nested attribute access with a fallback.
+- `find_combatant_entry(combatants_list, character)`: find a combatant's entry.
+- `safe_execute_with_logging(operation, error_context, handler=None)`: run an operation with consistent error handling and logging.
+
+### Method signature standardization (no issue)
+
+Parameter conventions differ across methods:
+
+- **Handler reference**: some take `handler`, some use `self`. `attack.py`, `movement_resolution.py` and `actions.py` put the handler first, as in `resolve_retreat(handler, char, entry)` and `process_attack(handler, attacker, target, attacker_entry, combatants_list)`. `grappling.py` puts it last, as in `resolve_grapple_initiate(char_entry, combatants_list, handler)` and its siblings `resolve_grapple_join`, `resolve_grapple_takeover` and `resolve_release_grapple`. Four one-line delegators in `CombatHandler` (`_resolve_grapple_initiate` and its three siblings) exist only to bridge the two orders.
+- **Combatants access**: some take `combatants_list`, others fetch it themselves.
+- **Character naming**: `char`, `character` and `combatant` are mixed.
+- **Entry naming**: `entry`, `combat_entry` and `char_entry` are mixed.
+
+Proposed standard: `method_name(self, character, target=None, combatants=None, entry=None)` for methods, and `extracted_function(handler_context, character, **kwargs)` for functions outside the handler.
+
+### Constants and magic numbers — `combat_config.py` (no issue)
+
+Move hardcoded values into configuration:
+
+- **Numeric constants**: the d20 attack and precision rolls and the d6 base damage in `attack.process_attack`, the d20 initiative roll in `utils.add_combatant`, and stat defaults of 1. `constants.py` already has `DEFAULT_MOTORICS` and `MIN_DICE_VALUE`, which `dice.roll_stat` uses.
+- **String constants**: action names and message prefixes scattered in logic.
+- **Database keys**: direct strings instead of constant references.
+- **Timing**: attack staggering already uses `STAGGER_DELAY_INTERVAL` and `MAX_STAGGER_DELAY` from `constants.py` (`attack.calculate_attack_delay`).
+
+Proposed for balance values: `ATTACK_DIE_SIZE = 20`, `DEFAULT_STAT_VALUE = 1`, `COMBAT_ACTION_DELAY = 0.5`. Proposed for message templates: `GRAPPLE_ATTEMPT_MSG = "GRAPPLE_ATTEMPT: {attacker} vs {target}"`, `AUTO_ESCAPE_MSG = "AUTO_ESCAPE: {character} (roll {roll})"`.
+
+Proposed `combat_config.py`:
+
 ```python
 # Dice and probability constants
 ATTACK_DIE_SIZE = 20
 CONTEST_DIE_SIZE_STAT_BASED = True
 DEFAULT_STAT_VALUE = 1
 
-# Timing constants  
+# Timing constants
 COMBAT_ROUND_DELAY = 0.5
 DEATH_CLEANUP_DELAY = 1.0
 HANDLER_MERGE_DELAY = 0.1
@@ -1046,74 +243,14 @@ def validate_db_key(key):
     """Validate database key against known constants"""
 ```
 
-## Success Criteria
+### Safe attribute access — `character_attributes.py` (no issue)
 
-### Quantitative Goals
-- [ ] `handler.py` <500 lines — **NOT met** (about 1,150, was 1,470)
-- [ ] `utils.py` eliminated - broken into focused modules — **NOT met** (about 1,330; #52 split `debug.py`/`dice.py`/`explosives.py` out, and `utils.py` re-exports them in its BACKWARD-COMPATIBLE RE-EXPORTS block)
+A module for the defensive attribute-access patterns now written inline in many files.
 
-*(Measured against the rest of this list — all still open, and most of
-the baseline numbers were wrong:
-**All files <300 lines** — not met; **10 of 15** combat modules exceed 300, and
-three of the five modules this refactor produced were born over it
-(`movement_resolution.py` 1,215, `attack.py` 761, `explosives.py` 576). Only
-`__init__.py` 28, `dice.py` 140, `debug.py` 236, `capacity.py` 297 and
-`weapon_choice.py` 299 comply.
-**<10 debug messages per file** — not met; `handler.py` 78, `utils.py` 41,
-`movement_resolution.py` 38, `grappling.py` 35, `attack.py` 35, `throwing.py` 31,
-`actions.py` 12.
-**147+ debug messages consolidated** — the baseline was never 147; it is 119
-across `handler.py`+`utils.py` and 273 package-wide. The *routing* half is done
-(all go through the single `debug.py` sink); none were removed.
-**98+ attribute access patterns eliminated** — not met; the two files now carry
-**142** (lines matching `getattr(`, `hasattr(` or `.get(`).
-**6 combatant lookup patterns standardized** — not met; **9** remain and
-`find_combatant_entry()` was never written.
-**8 error handling blocks consolidated** — not met; **18** `except Exception`
-blocks remain.
-**39 function signatures standardized (30 handler + 39 utils)** — not met, and
-the line is self-contradictory as written (30 + 39 = 69, not 39). Measured today:
-`handler.py` **35** methods + **2** module-level functions; `utils.py` **27**
-module-level functions. The `handler.py` count went up, and the decomposition added a *new*
-inconsistency — see the note under Priority 6.
-**90%+ test coverage for extracted functions** — unmeasured.)*
-- [ ] No code duplication (0 repeated patterns across ALL files)  
-- [ ] All files <300 lines
-- [ ] <10 debug messages per file
-- [ ] 147+ debug messages consolidated (128 from handler + 19 from utils)
-- [ ] 98+ attribute access patterns eliminated across both files
-- [ ] 6 combatant lookup patterns standardized across both files
-- [ ] 8 error handling blocks consolidated
-- [ ] 39 function signatures standardized (30 handler + 39 utils)
-- [ ] 6+ dice rolling patterns unified
-- [ ] 90%+ test coverage for extracted functions
+## Not decided
 
-### Qualitative Goals
-- [ ] Clear separation of concerns
-- [ ] LLM-maintainable file sizes
-- [ ] Consistent interfaces and naming conventions
-- [ ] Robust error handling and defensive programming
-- [ ] Configurable combat parameters
-- [ ] Improved readability and debugging experience
+- Whether same-room checks (inline `a.location == b.location` comparisons) get a shared helper.
 
-## Implementation Order
+## Related documents
 
-### Immediate Priority (Phase 1 - Cross-File Consolidation)
-1. **Week 1**: Extract contest system (`contest_system.py`) - consolidate from both files
-2. **Week 1**: Extract debug logging (`debug.py`) - consolidate 147 total messages  
-3. **Week 2**: Extract state management (`state_manager.py`) - cross-file patterns
-
-### Medium Priority (Phase 2 - Utils Decomposition)
-4. **Week 2**: Extract dice system (`dice.py`) - standardize 6 patterns
-5. **Week 2**: Extract weapon utilities (`weapon_utilities.py`) - clean interface
-6. **Week 3**: Extract combat entry management (`combat_entry_manager.py`)
-
-### High Priority (Phase 3 - Handler Decomposition)  
-7. **Week 3**: Extract grapple processors (`actions.py`)
-8. **Week 3**: Extract combat processors (`actions.py`)
-
-### Final Priority (Phase 4 - Handler Simplification)
-9. **Week 4**: Simplify handler structure
-10. **Week 4**: Final validation and optimization
-
-This specification provides a systematic, LLM-aware approach to refactoring the combat system. Each phase builds on the previous while maintaining system stability and improving maintainability.
+- `COMBAT_AUDIT_LOGGING_SPEC.md`: the combat diagnostics sink in `world/combat/debug.py`.

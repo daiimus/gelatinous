@@ -1,350 +1,312 @@
 # Throw Command Implementation Specification
 
-> **Status:** ✅ **SHIPPED** — verified against code 2026-08-02; 59 tests as claimed.
->
-> **Re-audited 2026-09-11 (#2445 item 4).** The suite is now **60** tests
-> — the deflection-weapon fix (#2493) replaced one test and added
-> another. Divergences found on that pass are annotated where they sit
-> rather than deleted. Two of them are **code** defects with issues
-> already open, and this spec describes the correct intent in both cases
-> — do not re-spec around them:
-> - **#2538** — a thrown object never leaves the thrower's inventory
->   during flight, so a cooked grenade detonates in the thrower's hands
->   at double damage in the wrong room, and the item stays re-wieldable
->   mid-flight. Nothing below sanctions that; the "Throw window" and
->   "Hand explosion" rules describe the behaviour that was wanted.
-> - **#2540** — the throw path writes only the grenade's side of the
->   universal-proximity link, so movement and `retreat` cannot escape a
->   **thrown** grenade's blast. The "Bidirectional relationships"
->   principle below is the design; the code half-implements it. The
->   issue's "a *placed* grenade escapes correctly" framing does not
->   survive a read: there is no `place` command, and `drop` — this
->   spec's own area-denial tactic — writes only the object's side too.
->   The sole bidirectional writer is `CmdDefuse`'s approach helper, so
->   the gap is wider than the issue title suggests.
+`throw` serves two purposes: moving a utility object to a person or another
+room, and deploying a weapon in combat. It works with the existing proximity,
+aim and combat systems. Around it sit the grenade commands: `pull` (pin),
+`catch`, `rig`, `defuse`, `detonate`, and the enhanced `drop`.
 
-## 🚀 **IMPLEMENTATION STATUS - COMPLETE**
+## Where the code lives
 
-**Status**: ✅ **PRODUCTION READY** - All components implemented and tested
+- `commands/CmdThrow.py` — the command surface only: parsing, validation, and
+  the origin announcements for `throw`, `pull` and `catch`.
+- `world/combat/throwing.py` — the physics engine: flight timers, landing
+  resolution, proximity assignment, grenade deflection, magnetic target
+  selection. Anything that launches an object uses it directly (the rigged
+  grenade triggers do).
+- `commands/explosion_utils.py` — the explosion machinery, including
+  `start_grenade_ticker` (the sticky-aware countdown) and `unrig_grenade`.
+  `start_grenade_ticker` and `start_standalone_grenade_ticker` are candidates
+  for unification.
+- `CmdRig` lives in `commands/CmdExplosives.py` (as does `detonate`); `CmdDrop`
+  in `commands/CmdInventory.py`; `drop_to_room` in `commands/combat/jump.py`.
+- Behaviour is pinned by the characterization suite
+  `world/tests/test_throw_characterization.py` (parsing, validation, flight
+  lifecycle, landing/proximity, hit resolution, deflection, pull, catch). That
+  suite is the contract for any change to the system (#471).
 
-### Architecture, Test Coverage & Known Divergences (issue #471)
+**Exception policy.** The engine has no broad excepts. A failure in the
+flight-timer callback surfaces in the server log; flight-state cleanup runs in
+`finally`, so a landing bug can never strand an object in the "flying" state.
+The explosion code (`commands/explosion_utils.py`) has several broad excepts;
+the chief deliberate one is the grenade ticker's failsafe: a live grenade must
+never become a permanent dud, so on a ticker error it logs and explodes.
 
-Behavior is pinned by the characterization suite at
-`world/tests/test_throw_characterization.py` (60 tests — 59 at the
-#471 restructure, plus one from the deflection-weapon fix (#2493):
-parsing,
-validation, flight lifecycle, landing/proximity, hit resolution,
-deflection, pull, catch). That suite is the contract for any change
-to the system.
+## Command syntax
 
-**Layout (since the #471 restructure):**
-
-- `commands/CmdThrow.py` — command surface only: parsing,
-  validation, origin announcements (`throw` / `pull` / `catch`).
-- `world/combat/throwing.py` — the physics engine: flight timers,
-  landing resolution, proximity assignment, grenade deflection,
-  magnetic target selection. Importable by anything that launches
-  objects (rigged-grenade triggers use it directly — no more
-  instantiating throwaway command objects for access).
-- `commands/explosion_utils.py` — `start_grenade_ticker` (the
-  sticky-aware countdown, moved from `CmdPull`) lives next to the
-  explosion machinery. It and `start_standalone_grenade_ticker` are
-  candidates for unification.
-
-**Exception policy:** the engine has no broad excepts. Failures in
-the flight-timer callback surface in the server log; flight-state
-cleanup is guaranteed via `finally`, so a landing bug can never
-strand an object in the "flying" state. The explosion code beside
-it (`commands/explosion_utils.py`) has several broad excepts; the
-chief deliberate one is the grenade ticker's failsafe (a live grenade must never
-become a permanent dud — on ticker error it logs and explodes).
-
-**Resolved findings from the original line-read:**
-
-- **Weapon-throw flight was dead code — now deleted.** `func()`
-  returns for *every* `db.is_throwing_weapon` object (targeted →
-  redirects to `attack` for full combat resolution; untargeted →
-  guidance message). User confirmed this is the correct design.
-  `resolve_weapon_hit` survives as the sticky grenade's
-  stick/bounce/damage resolver, reached via the landing route. The
-  "Weapon Detection Flow" below describes the pre-#471 intent.
-  **Future:** ammo/recovery tracking for thrown weapons (alongside
-  gun ammo) is the missing piece before a true weapon-flight path
-  would be worth wiring back.
-- **Catch announce fixed** (step 1): `catch_object` passed `room=`
-  to `msg_room_identity` (parameter is `location`), so every
-  successful catch raised TypeError before timer cancellation —
-  breaking the hot-potato mechanic. The success-path test pins the
-  repaired flow.
-
-### **Implemented Components**
-- ✅ **CmdThrow** - Complete 4-syntax throwing system
-- ✅ **CmdPull** - Pin pulling mechanism with timer management  
-- ✅ **CmdCatch** - Defensive object interception
-- ✅ **CmdRig** - Exit trapping system (lives in `commands/CmdExplosives.py`, not `CmdThrow.py`)
-- ✅ **Enhanced CmdDrop** - Universal proximity assignment (lives in `commands/CmdInventory.py`, not `CmdThrow.py`)
-
-### **System Infrastructure**
-- ✅ **Flight mechanics** - 2-second flight with room description integration
-- ✅ **Timer system** - Multi-object countdown tracking  
-- ✅ **Universal proximity** - Character/object proximity sharing
-- ✅ **Combat integration** - Turn consumption and damage resolution
-- ✅ **Property-driven explosives** - Flexible explosive type system
-- ✅ **Chain reactions** - Object-to-object proximity triggering
-- ✅ **Room description enhancement** - Flying objects display
-
-### **Tactical Features Operational**
-- ✅ **Cross-room targeting** with aim integration
-- ✅ **Hot potato grenade mechanics** - Catch and re-throw live grenades
-- ✅ **Exit trapping** for area control
-- ✅ **Multi-explosive chain reactions**
-- ✅ **Universal retreat compatibility** — ⚠ not honoured by the code for thrown or dropped grenades (#2540); see Grenades
-
----
-
-## Overview
-The `throw` command serves dual purposes: utility object transfer and combat weapon deployment. It integrates with existing systems (proximity, aim, combat) while adding new tactical possibilities.
-
-## Core Mechanics
-
-### Command Syntax
 ```
 throw <object>                    # Throw randomly in current room (if occupied) or in aimed direction
 throw <object> at <target>        # Throw at specific target (requires aim for cross-room)
 throw <object> to <direction>     # Throw to adjacent room in specified direction (random proximity)
-throw <object> to here            # Lands on the ground in current room, near nobody (as built; a bare `throw <object>` lands near a random person)
+throw <object> to here            # Lands on the ground in current room, near nobody
 ```
 
-### Validation Requirements
-1. **Object must be wielded** using Mr. Hand system (not just in inventory)
-2. **Object must exist** and be accessible to thrower
-3. **Target validation** (if specified) must exist in aimed room or current room
-4. **Direction validation** (if specified) must be a valid, traversable exit (as built: any exit with a destination other than this room; an exit that loops back is refused. No lock or access check, 📋 UNBUILT (no issue))
-5. **"here" handling** for explicit current-room throwing
-6. **Not while channeling** (#3376)
+A bare `throw <object>` lands near a random person; `throw <object> to here`
+lands near nobody.
+
+Syntax priority:
+1. **`throw <object> at <target>`**: specific targeting (requires aim for cross-room).
+2. **`throw <object> to <direction>`**: directional throwing (no aim required).
+3. **`throw <object> to here`**: current room, lands on the ground near nobody.
+4. **`throw <object>`**: falls back to the aimed direction, or a random person in the current room.
+
+## Validation
+
+1. **The object must be wielded** (held in a hand under the Mr. Hand system), not just in inventory.
+2. **The object must exist** and be accessible to the thrower.
+3. **A target** (if given) must exist in the aimed room or the current room.
+4. **A direction** (if given) must be a valid, traversable exit: any exit with a destination other than this room; an exit that loops back is refused. There is no lock or access check (📋 UNBUILT (no issue), see Unbuilt).
+5. **`here`** is handled as an explicit current-room throw.
+6. **Not while channeling** (#3376).
 7. **Not integrated cyberware**: "<item> is part of your body — you can't throw it."
 8. **Not while grappled**: "You cannot throw while grappled."
+9. **Grenades**: a pin is not required to throw. An unpinned grenade flies as an inert object. Only an already-exploded grenade (timer <= 0) is refused; a missing timer counts as not expired. `validate_grenade_throw` in `commands/CmdThrow.py` does this, and it keeps the explosion-in-hands protection.
 
-### Naming the Object (`throw`, `pull`, `catch`)
+### Naming the object (`throw`, `pull`, `catch`)
+
 All three commands name their object with the core matcher,
-`caller.search(name, candidates=pool, quiet=True)` (#2537, #3783), scoped
-to their own pool: the items in the hands for `throw` and `pull`, the
-room's in-flight objects for `catch`. So they read names the way every
-other command does:
+`caller.search(name, candidates=pool, quiet=True)` (#2537, #3783), scoped to
+their own pool: the items in the hands for `throw` and `pull`, the room's
+in-flight objects for `catch`. So they read names the way every other command
+does:
 
-- An exact key or alias wins over a partial name (`pipe` throws the pipe,
-  not the pipe bomb; `c4` finds the charge aliased `c4`).
-- A partial name must START a word of the key or an alias: `frag`, `m67`
-  and `hdg frag` find the *HDG M67 fragmentation grenade*; `nade` does not.
-- Ordinals pick a twin: `2nd grenade`, `second grenade`, `grenade-2`.
-  With several matches and no ordinal, the first by creation order is used.
+- An exact key or alias wins over a partial name (`pipe` throws the pipe, not
+  the pipe bomb; `c4` finds the charge aliased `c4`).
+- A partial name must START a word of the key or an alias: `frag`, `m67` and
+  `hdg frag` find the *HDG M67 fragmentation grenade*; `nade` does not.
+- Ordinals pick a twin: `2nd grenade`, `second grenade`, `grenade-2`. With
+  several matches and no ordinal, the first by creation order is used.
 - `me` / `self` / `here` are not in any of these pools, so they find nothing.
 
-The not-held check that chooses between *"You must be wielding X"* and
-*"You don't have X"* uses the same matcher over the inventory, so the two
-lookups cannot disagree. `catch` refuses an empty name before searching.
+The not-held check that chooses between *"You must be wielding X"* and *"You
+don't have X"* uses the same matcher over the inventory, so the two lookups
+cannot disagree. `catch` refuses an empty name before searching.
 
-### Technical Infrastructure Notes
-- **Mr. Hand System**: `hands` in `typeclasses/characters.py` is a derived property, not a stored attribute: its slots are the species' grasping containers (such as `left_hand`, `right_hand`) minus any that are severed or dead, and its values come from the `held_items` attribute. Read it, change a copy and assign the copy back; changing it in place does nothing
-- **Hand Structure**: Dictionary keyed by grasping container (`{"left_hand": None, "right_hand": None}` for a human) supporting dynamic anatomy
-- **Hand Management**: Complete `wield_item()`, `unwield_item()`, `list_held_items()` methods available
-- **Combat Integration**: Enhanced `CmdLook` proves room description customization capability
-- **Timer System**: Evennia timer infrastructure available for countdown mechanics
-- **Combat Constants**: 6-second combat rounds established for timing standardization
+## Parsing
 
-### Combat vs. Utility Logic
-- **Throwing weapons**: Objects with `db.is_throwing_weapon = True` trigger combat mechanics
-  - As built, such a weapon cannot be thrown to a direction, to `here` or with no target: `throw` refuses and it stays in hand. The refusal tells the player to use `throw <weapon> to <direction/here>` to discard it, which is refused the same way (`CmdThrow.func`; code defect, no issue).
-- **Utility objects**: All other objects bounce harmlessly off targets, transfer between rooms
-- **Improvised weapons**: Non-throwing weapons used in combat deal base improvised damage — 📋 UNBUILT (no issue): today any thrown object that is not a sticky grenade bounces off its target and does no damage, in or out of combat
+### Design philosophy
+- **User-friendly over rigid**: accommodate user intent rather than forcing exact syntax.
+- **Intelligent interpretation**: parse context to resolve ambiguous commands.
+- **Graceful error recovery**: auto-correct common mistakes when possible.
+- **Helpful feedback**: give specific suggestions when parsing fails.
+- **Building standards**: avoid naming conflicts between exits and characters by design.
 
-#### Weapon Detection Flow
-1. Check `object.db.is_throwing_weapon` property
-2. If `True`: Enter combat mode, use weapon damage calculations
-3. If `False` or missing: Utility mode, bounce harmlessly off targets
-4. Special case: Objects thrown at someone already in combat always use improvised weapon damage (📋 UNBUILT (no issue): as built it bounces off and does no damage)
+### Parsing priority
+1. **"at" keyword**: `throw knife at bob` → targeted throwing.
+2. **"to" keyword**: `throw knife to east` → directional throwing.
+3. **"here"**: `throw knife to here` → current-room throwing.
+4. **Fallback**: `throw knife` → use aim state or current room.
 
-### Command Parsing Logic
-The throw command supports multiple syntaxes that need careful parsing:
+### Recovery and edge cases
+- **at/to confusion**: only `at here` is converted (`throw knife at here` → `throw knife to here`, silently). `throw knife to bob`, where "bob" is not an exit, checks for a character and replies "Did you mean 'throw <object> at <person>' instead?"
+- **`to` lookup**: `to` takes the first match of a plain search of the room, whatever it is. Exit priority over character names is 📋 UNBUILT (no issue).
+- **`at` lookup**: `at` looks only for a person, here and then in the aimed room. With no aim set, `throw knife at east` replies "You must aim in a direction first to throw at targets in other rooms."; with aim set, "You cannot find 'east' to throw at." Treating "east" as a direction when no character "east" exists is 📋 UNBUILT (no issue).
+- **Name conflicts**: building/design should prevent exit and character name conflicts.
+- **Multi-word names**: handle unquoted multi-word names where possible; `throw battle axe to north` parses "battle axe" as the object and "north" as the direction.
+- **Graceful degradation**: if complex parsing fails, fall back to a simpler interpretation; error messages differ by what the parser detected.
 
-#### Design Philosophy
-- **User-friendly over rigid**: Accommodate user intent rather than forcing exact syntax
-- **Intelligent interpretation**: Parse context to resolve ambiguous commands
-- **Graceful error recovery**: Auto-correct common mistakes when possible
-- **Helpful feedback**: Provide specific suggestions when parsing fails
-- **Building standards**: Avoid naming conflicts between exits and characters by design
+## Throwing weapons, utility objects, improvised weapons
 
-#### Parsing Priority
-1. **Parse for "at" keyword**: `throw knife at bob` → targeted throwing
-2. **Parse for "to" keyword**: `throw knife to east` → directional throwing
-3. **Check for "here"**: `throw knife to here` → current room throwing
-4. **Fallback**: `throw knife` → use aim state or current room
+- **Throwing weapons** (`db.is_throwing_weapon = True`): `throw` hands every
+  such object off. Targeted (`throw <weapon> at <target>`), it runs
+  `attack <target>` with it for full combat resolution, an ordinary attack.
+  Untargeted, it gives a guidance message. The weapon never leaves the hand
+  and nothing is consumed. User confirmed this is the correct design
+  (#471). A throwing weapon therefore cannot be thrown to a direction, to
+  `here` or with no target: `throw` refuses and it stays in hand. The refusal
+  tells the player to use `throw <weapon> to <direction/here>` to discard it,
+  which is refused the same way (`CmdThrow.func`; code defect, no issue).
+- **Utility objects** (all other objects): bounce harmlessly off targets and
+  transfer between rooms. Today any thrown object that is not a sticky grenade
+  bounces off its target and does no damage, in or out of combat.
+- **Improvised weapons**: non-throwing weapons used in combat deal base
+  improvised damage, and objects thrown at someone already in combat always
+  use improvised weapon damage — 📋 UNBUILT (no issue).
 
-#### Intelligent Parsing & Error Recovery
-- **Exit priority**: `throw knife to northeast` → Always prioritize exits over character names — 📋 UNBUILT (no issue): `to` takes the first match of a plain search of the room, whatever it is
-- **Name conflict avoidance**: Building/design should prevent exit and character name conflicts
-- **Graceful accommodation**: If user confuses "at/to", attempt to resolve intelligently rather than error — as built, only `at here` is converted, and `to <person>` replies "Did you mean 'throw <object> at <person>' instead?"
-- **Multi-word parsing**: Handle unquoted multi-word names intelligently where possible
+The detection flow first intended for this (check `is_throwing_weapon`; if
+true, enter combat mode with weapon damage in flight; otherwise utility mode)
+was replaced in #471: the weapon-flight path was deleted and a throwing weapon
+redirects to `attack`. `resolve_weapon_hit` survives as the sticky grenade's
+stick/bounce/damage resolver, reached through landing. Ammo/recovery tracking
+for thrown weapons (alongside gun ammo) is the missing piece before a true
+weapon-flight path would be worth wiring back (see Unbuilt).
 
-#### Edge Cases in Parsing
-- **Smart fallback**: `throw knife at east` → Treat "east" as direction if no character "east" exists — 📋 UNBUILT (no issue): `at` looks only for a person, here and then in the aimed room. With no aim set it replies "You must aim in a direction first to throw at targets in other rooms."; with aim set, "You cannot find 'east' to throw at."
-- **Context awareness**: `throw knife to bob` → If "bob" isn't an exit, check for character and suggest correction
-- **Accommodation examples**: 
-  - `throw knife at here` → Auto-convert to `throw knife to here`
-  - `throw knife to bob` (no exit "bob") → "Did you mean `throw knife at bob`?"
-- **Multi-word handling**: `throw battle axe to north` → Parse "battle axe" as object, "north" as direction
+## Aim integration
 
-## Aim System Integration
-
-### Order of Operations - Targeted Throwing
 ```
 aim east           # Establish direction
 throw knife at bob # System finds Bob in aimed room (east)
 ```
 
-### Order of Operations - Directional Throwing
 ```
 throw knife to east  # Throw to adjacent room eastward (no aim required)
 throw keys to here   # Lands on the ground in current room, near nobody
 ```
 
-### Aim State Behavior
-- **Aim maintained**: Throwing does not break existing aim state
-- **Cross-room targeting**: Requires active aim to throw `at <target>` in adjacent rooms. Aimed over an edge, the target is looked for on the ground the edge drops to (`world.gravity.room_through`, #3589); the object flies into the air cell beyond the edge and falls from there (#3579)
-- **Directional throwing**: `throw to <direction>` works without aim requirement
-- **Same-room targeting**: `throw at <target>` and `throw to here` work without aim requirement
+- **Aim is kept**: throwing does not break an existing aim.
+- **Cross-room targeting** needs an active aim to throw `at <target>` in an adjacent room. Aimed over an edge, the target is looked for on the ground the edge drops to (`world.gravity.room_through`, #3589); the object flies into the air cell beyond the edge and falls from there (#3579).
+- **Directional throwing** (`to <direction>`) needs no aim.
+- **Same-room** `at <target>` and `to here` need no aim.
 
-### Syntax Priority
-1. **`throw <object> at <target>`**: Specific targeting (requires aim for cross-room)
-2. **`throw <object> to <direction>`**: Directional throwing (no aim required)
-3. **`throw <object> to here`**: Current room, lands on the ground near nobody (as built)
-4. **`throw <object>`**: Fallback to aimed direction or current room random
+## Flight
 
-## Flight Mechanics
+- **Duration**: 1/3 of a combat round (~2 seconds; a combat round is 6 seconds), by Evennia's `utils.delay()`.
+- **Concurrent flights**: several objects can be in flight at once, per room and per player; each is handled independently.
+- **State**: flying objects are tracked in the origin room's `ndb.flying_objects` list (non-persistent). Cleanup is automatic on landing, and manual on errors or disconnections. There is no hard limit on flying objects; one may be added if needed.
+- **Thrower leaves the room** during flight: the object continues to its destination. **Thrower disconnects**: the flight continues.
+- **Object deleted** during flight: its flight state is cleaned up.
+- **Reload during flight**: the landing is cancelled. The flight timer and the room's flying list are lost, and the object stays in the thrower's inventory (it never left it, #2538), out of their hands. Nothing is lost.
 
-### Timing
-- **Flight duration**: 1/3 of combat round (~2 seconds, combat round = 6 seconds)
-- **Multiple objects**: Can have multiple items flying simultaneously
+### Room announcements
+1. **Origin room**: "Alice throws a rock east" or "Alice tosses a rock nearby". The thrower reads "You throw a rock."
+2. **During flight**: the object appears in the origin room's description as "A <object> is flying through the air." (added by the room's `return_appearance()` immediately, removed on landing; several flying objects are each listed).
+3. **Destination room** (cross-room): "A rock flies in from somewhere". `get_arrival_direction` always returns "somewhere"; naming the real direction is 📋 UNBUILT (no issue).
+4. **After landing**: the object leaves the flight description and appears in the room normally.
 
-### Room Announcements
-1. **Origin room**: "Alice throws a rock east" or "Alice tosses a rock nearby" (thrower announces; the thrower reads "You throw a rock.")
-2. **During flight**: Object appears in room description as "OBJECTNAME is flying through the air" 
-3. **Destination room**: "A rock flies in from somewhere" (arrival announcement for cross-room; 📋 UNBUILT (no issue): naming the real direction, `get_arrival_direction` always returns "somewhere")
-4. **Post-landing**: Object removed from flight description, appears in room normally
+Only the current room sees a flying object; there is no cross-room
+visibility. Announcements run origin → flight → destination.
 
-### Announcement Variations by Syntax
-- **`throw rock to east`**: "Alice throws a rock east" (the direction as typed)
-- **`throw rock at bob`**: "Alice throws a rock at Bob" (same room) or "Alice throws a rock east at someone" (cross-room, the aimed direction)
-- **`throw keys to here`**: "Alice tosses a keys nearby" (the article "a" is fixed in the template)
-- **`throw rock`**: "Alice throws a rock east" (if aimed) or "Alice tosses a rock nearby" (no aim)
+| Syntax | Origin announcement |
+|---|---|
+| `throw rock to east` | "Alice throws a rock east" (the direction as typed) |
+| `throw rock at bob` | "Alice throws a rock at Bob" (same room) or "Alice throws a rock east at someone" (cross-room, the aimed direction) |
+| `throw keys to here` | "Alice tosses a keys nearby" (the article "a" is fixed in the template) |
+| `throw rock` | "Alice throws a rock east" (if aimed) or "Alice tosses a rock nearby" (no aim) |
 
-### Cross-Room Visibility
-- **No cross-room visibility**: Only current room sees flying objects
-- **Sequential announcements**: Origin → flight → destination
+## Landing and proximity
 
-## Landing and Proximity Mechanics
+- **Occupied room**: equal chance to land in proximity to any character the thrower can perceive, other than the thrower — `random.choice()` over the destination room's characters less the thrower and anyone the thrower cannot perceive (`select_random_target_in_room`). Each eligible character has equal probability regardless of their current proximity state. The thrower is never picked, nor anyone hidden from the thrower (#3763). Exception: `throw <object> to here` lands near nobody.
+- **Untargeted sticky grenade**: goes to whoever wears the most magnetic chest armour that meets its thresholds, falling back to a random person.
+- **Empty room**: the object lands on the ground with no proximity.
+- **Same-room throw**: lands outside the thrower's proximity unless it lands near someone in the thrower's existing proximity.
+- **Proximity inheritance**: if the chosen character has proximity relationships, the object inherits them. For a grenade, ALL characters in that person's proximity are added to the grenade's proximity.
+- **Target leaves the room during flight**: the object lands where the target was. The "bounces harmlessly off" line is still sent to the target in their new room, a sticky grenade still rolls to hit them there, and the object's proximity list still names them (`handle_landing` in `world/combat/throwing.py`; code defect, no issue).
 
-### Landing Logic
-- **Occupied rooms**: Equal chance to land in proximity to any character the thrower can perceive, other than the thrower (except `throw <object> to here`, which lands near nobody)
-- **Empty rooms**: Objects land on ground with no proximity assignment
-- **Same-room throws**: Land outside thrower's proximity unless landing near someone in thrower's existing proximity
+## Combat integration
 
-#### Proximity Assignment Details
-- **Target selection**: `random.choice()` from the characters in destination room, less the thrower and anyone the thrower cannot perceive (`select_random_target_in_room`)
-- **Proximity inheritance**: If selected character has existing proximity relationships, thrown object inherits those
-- **Grenade special case**: When grenade lands near someone, ALL characters in that person's proximity get added to grenade proximity
-- **Multiple character rooms**: Each eligible character has equal probability regardless of their current proximity state. The thrower is never picked, nor anyone the thrower cannot perceive (hidden from them; #3763). An untargeted sticky grenade instead goes to whoever wears the most magnetic chest armour that meets its thresholds, falling back to a random person
+- **Turn cost**: throwing an object or a grenade in combat costs no turn, and `throw` never touches the combat handler except to refuse a grappled thrower. A throwing weapon thrown at someone runs `attack <target>`, an ordinary attack. Combat throwing that always consumes the combat turn (the skip-turn mechanic from `flee`, with its standard skip-turn messaging) is 📋 UNBUILT (no issue; not decided whether still wanted).
+- **Non-combat throwing**: no turn cost.
+- **After throwing**: the thrower can take non-combat actions (inventory management, wield, etc.).
+- **Damage**: throwing weapons use the weapon damage system (`1d6 + weapon.db.damage`) through `attack`, with standard ranged hit/miss. Utility objects do no damage. Improvised base damage (`1d6`) is 📋 UNBUILT (no issue). The only thrown object that does damage of its own is a sticky grenade.
+- **Messages**: there is no shared "throwing" message category; each throwing weapon has its own message file (`world/combat/messages/throwing_knife.py`, `throwing_axe.py`). Separate messages for improvised vs. proper throwing weapons are wanted.
+- **Weapon throws**: enter combat if not already in combat; may establish proximity with the target on a hit; handled by the turn-based combat handler like other ranged weapons.
+- **Invalid combat state**: a missing combat handler is handled gracefully.
 
-### Proximity Inheritance
-- **Grenade mechanics**: If grenade lands near someone, everyone in their existing proximity gets added to grenade proximity
-- **Retreat compatibility**: Existing retreat command works for escaping grenade proximity — ⚠ not honoured by the code for thrown or dropped grenades (#2540); see Grenades
-- **Chain reactions**: Multiple grenades can create overlapping retreat scenarios
+## Grenades
 
-## Combat Integration
+### Activation
+- **Pin**: `pull pin on <grenade>` starts the fuse timer immediately. Its length is `db.fuse_time` (default 8 seconds). State is tracked with `db.pin_pulled` and the timer state.
+- **No pin needed to throw**: pinned (live) and unpinned (inert) grenades can both be thrown; an unpinned grenade is an inert object, for tactical misdirection. The activation design first required `pull pin on grenade` before throwing; that requirement was removed for tactical flexibility.
+- **Throw window**: after pulling the pin the player has the fuse time to throw, or the grenade explodes in hand.
+- **Hand explosion**: if the timer expires while the grenade is in hand, it explodes and damages the holder: "The grenade explodes in your hands!"
+- **Multiple timers**: many grenade countdowns run at once, each with proper cleanup.
 
-### Turn Consumption
-- **Combat throwing**: Always consumes combat turn (skip turn mechanic from flee) — 📋 UNBUILT (no issue; not decided whether still wanted): as built, throwing an object or a grenade in combat costs no turn, and a dedicated throwing weapon thrown at someone runs `attack <target>`, an ordinary attack
-- **Non-combat throwing**: No turn cost
-- **Concurrent actions**: Can perform non-combat actions (inventory management, wield, etc.) after throwing
+### Landing, area and retreat
+- **Proximity creation**: landing creates a danger zone using the proximity mechanics. Everyone in the chosen person's proximity inherits the grenade's proximity, so everyone fighting that person is in it.
+- **Retreat escape**: the standard `retreat` command removes a character from grenade proximity, and leaving the room escapes the blast. This is the design. **⚠ The code does not honour it for a thrown or dropped grenade (#2540).** `retreat` is a combat-handler action: it needs a live handler and gates on `ndb.in_proximity_with`, the *melee* set, and `break_proximity` touches only that set. `resolve_retreat` does read the character's universal `ndb.proximity`, but the throw path writes only the **grenade's** side of that link, so it reads empty and retreat cannot see the grenade at all. `drop` has the same gap — it appends the dropper to the object's list and never writes the character's. The one place that writes both ends is `CmdDefuse`'s `establish_mutual_proximity`, reached when someone walks up to a grenade to defuse it; there is no `place` command, so #2540's "a placed grenade escapes correctly" describes that defuse-approach path rather than a placement one. The design stated here is right and the code is the defect — fix the link (and fix it for `drop` too), do not re-spec the escape.
+- **Chain reactions**: several grenades create overlapping retreat scenarios and positioning puzzles. See Universal proximity.
 
-### Damage Calculation
-- **Throwing weapons**: Use existing weapon damage system (`1d6 + weapon.db.damage`)
-- **Improvised weapons**: Use base damage system (currently `1d6`) — 📋 UNBUILT (no issue): no thrown object other than a sticky grenade does damage
-- **Utility objects**: No damage (bounce harmlessly)
+### Catch (hot potato)
+`catch <object>` intercepts a thrown object mid-flight, including a live
+grenade, which can then be thrown straight back within its timer. Only people
+in the room the object was thrown from can catch it, the thrower included,
+during its 2-second flight; people in the room it is flying into cannot. The
+catcher needs a free hand, and the object ends up in it. A successful catch
+cancels the pending flight and clears its flight state (`catch_object`). The
+chance is a flat 60%, with no stat roll; on a miss the object flies on and
+lands as normal.
 
-### Combat Message Integration
-- **Message category**: Throwing weapons get dedicated "throwing" message category (as built: no shared category; each throwing weapon has its own message file, such as `world/combat/messages/throwing_knife.py`)
-- **Hit/miss system**: Uses standard ranged weapon accuracy mechanics
-- **Improvised messaging**: Separate messages for improvised vs. proper throwing weapons
+### Deflection
+The person a thrown grenade is landing near can bat it away if they hold a
+melee weapon (an item tagged `weapon` in category `type` that is not ranged).
+They roll Motorics against 10 minus `deflection_bonus` × 20 (#2493). On
+success the grenade flies back to the room it came from 60% of the time when
+that is another room (at the thrower, if still there); otherwise it goes out a
+random exit, and with no exit it lands where it is. Nobody can deflect while
+grappling or grappled, and a grenade with `db.impact_detonation` cannot be
+deflected (`check_grenade_deflection` in `world/combat/throwing.py`).
 
-### Combat State Management
-- **Weapon throws**: Enter combat if not already in combat
-- **Proximity establishment**: May establish proximity with target on successful hit
-- **Handler integration**: Use existing turn-based combat handler system
+### Sticky grenades and remote charges
+A grenade with `db.is_sticky` that lands near someone rolls to hit (70%), then
+to clamp onto their outermost chest armour; if it hits but does not stick, the
+hit does `1d6 + db.damage` (`resolve_weapon_hit`). Remote charges go off with
+`detonate` (`commands/CmdExplosives.py`).
 
-#### Combat Handler Integration Details
-- **Turn-based processing**: Throwing weapons use existing combat handler's turn system
-- **Action registration**: Combat throws consume player's combat turn (skip turn mechanic) — 📋 UNBUILT (no issue): `throw` never touches the combat handler except to refuse a grappled thrower
-- **State management**: Handler tracks throwing weapon attacks like other ranged weapons
-- **Damage processing**: Uses existing `1d6 + weapon.db.damage` calculation system
-- **Message integration**: Leverages existing combat message system with new "throwing" category (as built: each throwing weapon's own message file, not a shared category)
+### Rigging
+- `rig <grenade> to <exit>` traps an exit; the grenade goes off when someone traverses it. The rigger is immune: trap setters pass safely through their own rigged exits.
+- Refusals: "There is already a grenade rigged to that exit."; "There is no exit '<exit>' to rig a trap to."; "You cannot rig a grenade that already has its pin pulled."
+- **Visibility** (`rig_grenade`): `rig` leaves the grenade lying in the room, sets `db.integrate = True`, `db.integration_priority = 3` and an `integration_desc` of "A <grenade> is rigged to the <exit> exit with a barely visible trip wire.", and saves the previous three in `original_*` for `unrig_grenade` to restore.
+- **Detection**: by the room's own prose (above) and by `scan` for the rigger only (#3351).
+- **Disarming**: `defuse` takes the trap off its door through `commands/explosion_utils.unrig_grenade` — the one restore door.
+- **A trap belongs to the DOOR OBJECT**: `exit.db.rigged_grenade` on the rigged exit and its return exit, `grenade.db.rigged_to_exit` back. A door that is destroyed (a builder's @destroy, a room deletion cascading through `clear_exits`) takes its trap down in `Exit.at_object_delete` through the same door: the grenade goes loose and unarmed where it lay, its prose restored, and the room hears "The trip wire on the X goes slack." The far side of the same doorway (the return exit) only drops its record. Doors that legitimately change what lies beyond them — the crane car's, the elevator's — are permanent objects that are re-pointed, never rebuilt, so a trap rides the car (`CraneContainer`, #3560; the elevator works the same way).
 
-## Special Mechanics
+### Defuse
+- `defuse <grenade>`: a manual attempt with a skill check (Intellect + Motorics) under time pressure: difficulty rises as the countdown approaches zero. Defusing a live charge you are not yet near searches the room for it and sets up proximity on the fly (`establish_mutual_proximity`).
+- **Auto-defuse**: entering the proximity of a live grenade (on room entry) makes an automatic attempt, like D&D-style trap detection.
+- **Early detonation**: a failed manual attempt has a 30% chance to set the grenade off at once; a failed auto-defuse, 10%.
+- **One attempt** per character per grenade.
+- **Rigged grenades** have a different difficulty for trap disarmament than for timed defusal.
+- **Cleanup**: a defused grenade has all its proximity relationships cleared (combat and universal), which prevents chain reactions.
 
-### Grenades ✅ **FULLY IMPLEMENTED**
-- **Proximity creation**: Landing creates danger zone using existing proximity mechanics
-- **Retreat escape**: Standard retreat command removes from grenade proximity — **⚠ not honoured by the code (#2540).** `retreat` is a combat-handler action: it needs a live handler and gates on `ndb.in_proximity_with`, the *melee* set, and `break_proximity` touches only that set. `resolve_retreat` does read the character's universal `ndb.proximity`, but the throw path writes only the **grenade's** side of that link, so it reads empty and retreat cannot see the grenade at all. The `drop`-as-area-denial path below has the same gap — it appends the dropper to the object's list and never writes the character's. The one place that writes both ends is `CmdDefuse`'s `establish_mutual_proximity`, reached when someone walks up to a grenade to defuse it; there is no `place` command, so #2540's "a placed grenade escapes correctly" describes that defuse-approach path rather than a placement one. The design stated here is right and the code is the defect — fix the link (and fix it for `drop` too), do not re-spec the escape.
-- **Area effect**: All characters in target's proximity inherit grenade proximity
-- **Chain reactions**: Multiple grenades can create strategic positioning puzzles
-- **Pin pulling system**: `pull pin on <grenade>` activates fuse timer
-- **Throwing flexibility**: Can throw both pinned (live) and unpinned (inert) grenades
-- **Rigging system**: `rig <grenade> to <exit>` creates exit traps with rigger immunity
-- **Catch system**: `catch <object>` allows intercepting thrown objects mid-flight. Only people in the room the object was thrown from can catch it, the thrower included, during its 2-second flight; people in the room it is flying into cannot. The catcher needs a free hand, and the object ends up in it
-- **Defuse system**: Manual `defuse <grenade>` and automatic proximity-based defusing
-- **Sticky grenades**: a grenade with `db.is_sticky` that lands near someone rolls to hit (70%), then to clamp onto their outermost chest armour; if it hits but does not stick, the hit does `1d6 + db.damage` (`resolve_weapon_hit`). Remote charges go off with `detonate` (`commands/CmdExplosives.py`)
-- **Explosion handling**: Multiple explosion paths (timer, hand, rigged, failed defuse)
-- **Deflection**: the person a thrown grenade is landing near can bat it away if they hold a melee weapon (an item tagged `weapon` in category `type` that is not ranged). They roll Motorics against 10 minus `deflection_bonus` × 20. On success the grenade flies back to the room it came from 60% of the time when that is another room (at the thrower, if still there); otherwise it goes out a random exit, and with no exit it lands where it is. Nobody can deflect while grappling or grappled, and a grenade with `db.impact_detonation` cannot be deflected (`check_grenade_deflection` in `world/combat/throwing.py`)
+### Explosions
+- Explosion paths: timer, hand, rigged, failed defuse.
+- Null checks prevent iteration errors during explosions; NDB attribute comparisons check for None before integer operations.
 
-### Weapon Bundles
-- **Ammo system**: Throwing weapons will use bundle system with ammo tracking (future feature)
-- **Current implementation**: No ammo consumption for initial implementation
-- **Retrieval**: Not implemented. Nothing is consumed: a dedicated throwing weapon never leaves the hand. `throw <weapon> at <target>` runs `attack <target>` with it, and any other `throw` of it is refused
+### Tactics
+- **Catch and re-throw**: thrown live grenades can be caught and thrown back.
+- **Area denial**: dropping a live grenade creates a temporary danger zone.
+- **Exit rigging**: grenades rigged against exits trigger when traversed.
+- **Chain reactions**: exploding grenades can trigger other nearby grenades.
 
-## Architecture Integration Points
+## Explosive object properties
 
-### Universal Proximity System Enhancement
+All explosive behaviour is driven by object properties, checked during command
+execution (not at object creation). A missing property defaults to a safe
+value (no damage, no explosion).
 
-#### Core Architecture Change
-The throw command implementation leverages a **universal proximity system** where characters and objects share the same proximity mechanics. This architectural decision enables seamless grenade mechanics and object interaction systems.
+- **`db.is_throwing_weapon`**, **`db.is_explosive`**: the identifying flags.
+- **`db.fuse_time`**: seconds from pin pull to explosion (e.g. 8 for a standard grenade).
+- **`db.blast_damage`**: damage dealt to characters in proximity when it explodes.
+- **`db.chain_trigger`**: whether this explosive can trigger other nearby explosives.
+- **`db.requires_pin`**: whether activation requires pin pulling (vs. impact detonation).
+- **`db.dud_chance`**: probability of failing to detonate (0.0 = never, 1.0 = always).
+- **`db.impact_detonation`**: today it only stops deflection.
+- **`db.blast_radius`**: number of proximity "hops" an explosion affects (future expansion) — 📋 UNBUILT (no issue): nothing reads it.
 
-##### Universal Proximity Principles
-- **Characters ARE objects**: In Evennia's architecture, characters inherit from objects, allowing uniform proximity handling
-- **Shared proximity space**: Characters and objects can exist in the same proximity relationships
-- **Bidirectional relationships**: Characters can be in proximity to objects, and objects can be in proximity to characters
-- **Inheritance patterns**: Objects landing near characters inherit all existing proximity relationships from that character
+### Explosive types the properties allow
+- **Standard Grenade**: `fuse_time=8, blast_damage=20, chain_trigger=True, requires_pin=True`
+- **Dud Grenade**: `dud_chance=1.0` (training/distraction use)
+- **Hair Trigger**: `fuse_time=3, dud_chance=0.3` (fast but unreliable)
+- **Impact Grenade**: `fuse_time=0, blast_damage=15, requires_pin=False` (explodes on landing) — 📋 UNBUILT (no issue): nothing explodes on landing
+- **Smoke Grenade**: `fuse_time=3, blast_damage=0` (creates visibility/movement effects) — 📋 UNBUILT (no issue)
+- **Flashbang**: `fuse_time=2, blast_damage=5` (stun/disorient effects) — 📋 UNBUILT (no issue)
+- **Cluster Bomb**: `chain_trigger=True, blast_radius=2` (affects wider area) — 📋 UNBUILT (no issue): nothing reads `blast_radius`
 
-#### Enhanced Drop Command Integration
-The universal proximity system requires enhancing the existing `drop` command to assign proximity relationships:
+## Universal proximity
 
-##### Drop Command Enhancement Requirements
-- **Universal proximity assignment**: When any object is dropped, `drop_to_room` (`commands/combat/jump.py`) gives it an `ndb.proximity` list if it has none, and `drop` adds the dropper to it (only the object's side; see #2540)
-- **Applies to all objects**: Not just grenades - all dropped objects get proximity to their dropper
-- **Existing pattern**: Builds on established proximity mechanics from combat system
-- **Seamless integration**: No special case handling needed for different object types
+Characters and objects share the same proximity mechanics. In Evennia,
+characters inherit from objects, so proximity is handled uniformly. This lets
+grenades work without special cases for different object types.
 
-##### Technical Implementation
-See `drop_to_room` in `commands/combat/jump.py` and `CmdDrop` in `commands/CmdInventory.py`.
+There are two proximity systems: combat proximity (`ndb.in_proximity_with`,
+the melee set) and universal proximity (`ndb.proximity`), for different uses.
+Movement between rooms cleans up both.
 
-#### Grenade System Integration
-The universal proximity system enables sophisticated grenade mechanics without special case handling:
+Principles:
+- **Shared proximity space**: characters and objects can be in the same proximity relationships.
+- **Bidirectional relationships**: characters can be in proximity to objects, and objects to characters. (The throw and drop paths write only the object's side; see #2540 under Grenades.)
+- **Inheritance**: an object landing near a character inherits all of that character's proximity relationships.
+- **Consistency**: the same proximity rules for all entities; reuse of the existing proximity infrastructure.
+- **Universal retreat**: `retreat` escapes any proximity, character or object (not honoured by the code for thrown or dropped grenades, #2540).
+- **Invalid state**: if proximity state becomes invalid, the system degrades gracefully.
 
-##### Grenade Landing Mechanics
-- **Direct proximity**: Grenade lands in proximity to selected character
-- **Inherited proximity**: Grenade automatically inherits ALL characters in selected character's proximity
-- **Cascade effect**: Everyone fighting the selected character is now in grenade proximity
-- **Retreat compatibility**: Standard retreat command works to escape grenade proximity — ⚠ not honoured by the code for thrown or dropped grenades (#2540); see Grenades
+### Drop
+When any object is dropped, `drop_to_room` (`commands/combat/jump.py`) gives
+it an `ndb.proximity` list if it has none, and `drop` (`CmdDrop` in
+`commands/CmdInventory.py`) adds the dropper to it — only the object's side
+(#2540). This applies to all objects, not just grenades, with no special case
+per object type, and is what makes a dropped live grenade an area-denial tool.
 
-##### Example Scenario
+### Example
 ```
 Initial state: Alice fighting Bob and Charlie (all in mutual proximity)
 Throw: Dave throws grenade, lands near Bob
@@ -352,15 +314,15 @@ Result: Grenade proximity = [Alice, Bob, Charlie] (inherited from Bob's proximit
 Escape: Any character can "retreat" to leave grenade proximity (⚠ not honoured by the code for a thrown grenade, #2540)
 ```
 
-#### Object-to-Object Proximity
-The universal system also enables object-to-object proximity relationships:
+### Chain reactions
+A chain reaction fires when an exploding grenade with `db.chain_trigger` has
+another explosive in its blast list; that explosive goes off a second later.
+The list gains an explosive only through a person whose own list holds one,
+which only the `defuse` approach writes. A thrown object only ever lands near
+a person, never near another grenade. Grenades landing near other grenades and
+inheriting their proximity lists is 📋 UNBUILT (no issue); the web it would
+make:
 
-##### Chain Reaction Mechanics
-- **Grenade chains**: Exploding grenades can add other nearby grenades to their proximity
-- **Proximity inheritance**: Grenades landing near other grenades inherit their proximity lists — 📋 UNBUILT (no issue): a thrown object only ever lands near a person, never near another grenade. Today a chain reaction fires when an exploding grenade with `db.chain_trigger` has another explosive in its blast list, and that explosive goes off a second later; the list gains an explosive only through a person whose own list holds one, which only the `defuse` approach writes
-- **Complex scenarios**: Multiple overlapping proximity relationships create tactical puzzles
-
-##### Proximity Web Example (📋 UNBUILT, see Proximity inheritance above)
 ```
 Grenade A: proximity = [Alice, Bob]
 Grenade B: lands near Grenade A
@@ -369,161 +331,16 @@ Grenade A explodes: triggers Grenade B (in proximity)
 Grenade B explodes: affects [Alice, Bob] (inherited proximity)
 ```
 
-#### Architectural Benefits
-- **Consistency**: Same proximity rules for all entities (characters, objects, grenades)
-- **Simplicity**: No special case handling for different object types
-- **Extensibility**: System naturally supports future proximity-based mechanics
-- **Performance**: Reuses existing proximity infrastructure without duplication
+## Mr. Hand integration
 
-#### Implementation Requirements
-1. **Enhanced drop command**: Assign `object.ndb.proximity = [dropper]` for all dropped objects
-2. **Proximity inheritance**: Objects landing near characters inherit their proximity lists
-3. **Universal retreat**: Retreat command works for escaping any proximity (character or object) — ⚠ not honoured by the code for thrown or dropped grenades (#2540); see Grenades
-4. **Chain handling**: Objects can be in proximity to other objects for chain reactions
+- `hands` in `typeclasses/characters.py` is a derived property, not a stored attribute: its slots are the species' grasping containers (such as `left_hand`, `right_hand`) minus any that are severed or dead, and its values come from the `held_items` AttributeProperty. For a human it is `{"left_hand": None, "right_hand": None}`. Read it, change a copy and assign the copy back; changing it in place does nothing.
+- The dictionary is keyed by grasping container, so it supports any hand names (third_hand, tail, etc.) and dynamic anatomy.
+- `wield_item()`, `unwield_item()` and `list_held_items()` manage held items.
+- **Throwable**: the object must be in `caller.hands.values()`. It is thrown from whichever hand holds it.
+- **After the throw**: the object is removed from the hand by copying `caller.hands`, setting that hand to `None` in the copy and assigning the copy back (`CmdThrow.remove_from_hand`). The object is not removed from the inventory (#2538, below).
 
-### Existing Systems Used
-- **Proximity system**: Enhanced for universal character/object proximity handling
-- **Aim system**: For cross-room targeting and direction
-- **Combat handler**: For turn-based processing and damage
-- **Mr. Hand system**: For wielding validation
-- **Skip turn mechanic**: From flee command for combat turn consumption — 📋 UNBUILT (no issue): `throw` does not use it
+## Error messages
 
-### New Systems Required ✅ **IMPLEMENTED**
-- ✅ **Flight state tracking**: Objects in transit between rooms
-- ✅ **Room description integration**: Flying objects in room descriptions
-- ✅ **Cross-room object transfer**: Moving objects between rooms
-- ✅ **Throwing weapon detection**: `db.is_throwing_weapon` property checking
-- ✅ **Explosive property system**: Property-driven explosive behavior (`db.fuse_time`, `db.blast_damage`, etc.)
-- ✅ **Timer management**: Multi-object countdown tracking with property-based durations
-- ✅ **Chain reaction logic**: Property-based explosive triggering system
-- ✅ **Universal proximity enhancement**: Enhanced drop command for proximity assignment
-- ✅ **Defuse command system**: Manual and automatic defuse mechanics with skill checks
-- ✅ **Rigging system**: Exit trap mechanics with immunity for riggers
-- ✅ **Dual proximity systems**: Combat proximity vs universal proximity integration
-
-## Technical Implementation Details
-
-### Mr. Hand Integration
-- **Validation method**: Check `caller.hands` dictionary for wielded objects
-- **Hand selection**: Throw from any hand containing the specified object
-- **Post-throw state**: Remove object from hand, clear wielding state
-- **System explanation**: Mr. Hand is the wielding system that tracks what objects are held in each hand via the `caller.hands` dictionary (`{"left_hand": object, "right_hand": object}` for a human)
-- **Technical Status**: Fully implemented in `typeclasses/characters.py` with complete method set
-- **Dynamic Anatomy Support**: Dictionary-based design naturally supports additional appendages
-
-#### Mr. Hand System Requirements
-- **Hands dictionary structure**: `caller.hands` is a derived property over the `held_items` AttributeProperty, keyed by grasping container (`{"left_hand": None, "right_hand": None}` for a human)
-- **Wielding validation**: Object must exist in `caller.hands.values()` to be throwable  
-- **Post-throw cleanup**: Copy `caller.hands`, set the hand to `None` in the copy and assign the copy back (`CmdThrow.remove_from_hand`)
-- **State consistency**: Use `caller.wield_item()` and `caller.unwield_item()` methods
-- **Multi-Hand Flexibility**: System supports any hand names in dictionary (third_hand, tail, etc.)
-
-### Flight State Management
-- **Timer implementation**: Use Evennia's `utils.delay()` for 2-second flight
-- **State storage**: Track flying objects in room's `ndb.flying_objects = []`
-- **Cleanup requirements**: Remove from flight state on landing or error
-- **Concurrent flights**: Multiple objects can be in flight simultaneously per room
-
-#### Flight State Architecture
-- **State persistence**: Flight states are stored in room NDB (non-persistent, cleared on restart)
-- **Cleanup strategy**: Automatic cleanup on landing, manual cleanup on errors/disconnections  
-- **Performance limits**: No hard limits initially - monitor and add if needed
-- **Error recovery**: If flight timer fails, object defaults to landing in origin room — 📋 UNBUILT (no issue)
-- **Server restart handling**: A reload during flight cancels the landing: the flight timer and the room's flying list are lost, and the object stays in the thrower's inventory (it never left it, #2538), out of their hands. Nothing is lost
-
-### Room Description Integration
-- **Dynamic descriptions**: Append flying objects to room's `return_appearance()`
-- **Format specification**: "A <object> is flying through the air"
-- **Update timing**: Add to description immediately, remove after landing
-- **Multiple objects**: Handle multiple simultaneous flying objects gracefully
-
-### Cross-Room Mechanics
-- **Exit validation**: Verify aimed direction has valid, traversable exit (as built: an exit with a destination other than this room; no lock check)
-- **Room connectivity**: Use existing exit system to determine destination
-- **Permission checks**: Respect room access permissions for object transfer — 📋 UNBUILT (no issue)
-- **Arrival messaging**: Determine incoming direction for "flies in from <direction>" — 📋 UNBUILT (no issue): the arrival line always says "from somewhere"
-
-## Implementation Priority
-
-### Phase 1: Basic Utility Throwing ✅ **COMPLETED**
-- ✅ Command parsing and validation
-- ✅ Same-room object transfer
-- ✅ Flight timing and announcements
-- ✅ Landing logic and proximity assignment
-- ✅ **Grenade Enhancement**: Pin validation removal for tactical flexibility
-  - Players can throw unpinned grenades as inert objects
-  - Tactical mistakes and intentional choices supported
-  - Only blocks throws of already-exploded grenades (timer <= 0)
-  - Null safety added for NDB attribute comparisons
-
-### Phase 2: Combat Integration ✅ **COMPLETED**
-- ✅ Throwing weapon detection
-- ✅ Combat handler integration
-- ✅ Turn consumption mechanics — ⚠ not built: a throw costs no combat turn (see Turn Consumption)
-- ✅ Damage calculation
-
-### Phase 3: Advanced Features ✅ **COMPLETED**
-- ✅ Cross-room targeting with aim
-- ✅ Grenade proximity mechanics
-- ✅ Multiple simultaneous throws
-- ✅ Flight state cleanup and error handling
-- ✅ Pin pulling system (`pull pin on <grenade>`)
-- ✅ Grenade rigging system (`rig <grenade> to <exit>`)
-- ✅ Catch system (`catch <object>`)
-- ✅ Comprehensive defuse system (manual and auto)
-
-### Phase 4: Additional Commands ✅ **COMPLETED**
-- ✅ **CmdPull**: Pin pulling mechanism for grenade activation
-- ✅ **CmdCatch**: Defensive catching of thrown objects
-- ✅ **CmdRig** (in `commands/CmdExplosives.py`): Exit trap setup with immunity system
-- ✅ **CmdDefuse**: Manual defuse with skill checks and time pressure
-- ✅ **Auto-defuse**: Automatic proximity-based defuse attempts
-- ✅ **Dual proximity cleanup**: Movement system integration
-
-## Implementation Architecture ✅ **COMPLETED**
-
-### Command Flow Overview ✅ **IMPLEMENTED**
-```
-1. Parse throw syntax (at/to/fallback)
-2. Validate object (wielded, exists, accessible)
-3. Determine destination (aim state, direction, target)
-4. Check weapon type (db.is_throwing_weapon)
-5. If weapon: Enter combat mechanics
-6. If utility: Simple transfer mechanics
-7. Start flight timer (2 seconds)
-8. Handle landing and proximity assignment
-```
-
-### Additional Command Flows ✅ **IMPLEMENTED**
-```
-CmdPull: pin on <grenade> → Start fuse timer → Countdown to explosion
-CmdCatch: <object> → Intercept flying object → Add to hand
-CmdRig: <grenade> to <exit> → Setup trap → Trigger on traverse
-CmdDefuse: <grenade> → Skill check → Success/failure with consequences
-Auto-defuse: Enter proximity → Automatic attempt → Passive protection
-```
-
-### Integration Points with Existing Systems ✅ **COMPLETED**
-- ✅ **Proximity System**: Enhanced for universal character/object proximity handling
-- ✅ **Combat Handler**: Existing turn-based system processes weapon throws
-- ✅ **Aim System**: Leveraged for cross-room targeting without modification
-- ✅ **Mr. Hand System**: Validates wielding, manages post-throw hand state
-- ✅ **Message System**: Extended with a message file per throwing weapon (`throwing_knife.py`, `throwing_axe.py`), not a shared "throwing" category
-- ✅ **Movement System**: Dual proximity cleanup on room transitions
-- ✅ **Character Stats**: Skill integration for defuse mechanics (Intellect + Motorics)
-- ✅ **Timer System**: Multiple concurrent countdowns with proper cleanup
-
-### Property Validation System
-All explosive and throwing weapon properties should be validated:
-- **Required properties**: `db.is_throwing_weapon`, `db.is_explosive` 
-- **Optional properties**: `db.fuse_time`, `db.blast_damage`, `db.dud_chance`
-- **Default values**: Missing properties default to safe values (no damage, no explosion)
-- **Validation timing**: Check properties during command execution, not object creation
-- **Null safety**: NDB attribute comparisons must check for None values before integer operations
-
-## Error Handling
-
-### Validation Failures
 - **Nothing named**: "Throw what? Use 'throw <object>' or 'throw <object> at <target>'."
 - **A body with no `hands` property**: "You must be holding something to throw it."
 - **Every hand gone**: "You have no hands to throw with."
@@ -532,280 +349,122 @@ All explosive and throwing weapon properties should be validated:
 - **Target not found**: "You cannot find '<target>' to throw at."
 - **No aim for cross-room targeting**: "You must aim in a direction first to throw at targets in other rooms."
 - **Invalid direction**: "There is no exit '<direction>' to throw through."
-- **Smart suggestions**: "Did you mean 'throw <object> at <target>' instead?" (when "to" used with character name)
+- **`to` used with a character name**: "Did you mean 'throw <object> at <target>' instead?"
+- **Grappled**: "You cannot throw while grappled."
+- **Cyberware**: "<item> is part of your body — you can't throw it."
 
-### Parsing Error Recovery
-- **Auto-correction**: Silently fix common mistakes (`throw knife at here` → `throw knife to here`)
-- **Helpful suggestions**: When parsing fails, suggest correct syntax based on context
-- **Graceful degradation**: If complex parsing fails, fall back to simpler interpretation
-- **Context-aware errors**: Different error messages based on what the parser detected
+## Known code defects
 
-### Combat Integration Errors
-- **Combat turn consumed**: Standard skip turn messaging from flee command — 📋 UNBUILT (no issue): a throw costs no turn, so no such message is sent
-- **Grappled**: "You cannot throw while grappled." (if grappling prevents throwing)
-- **Invalid combat state**: Handle missing combat handler gracefully
+These are places where the code does not do what this spec describes. This
+spec describes the correct intent; do not re-spec around them.
 
-### Grenade-Specific Errors ✅ **IMPLEMENTED**
-- ✅ **Timer expired in hand**: "The grenade explodes in your hands!" (damage to holder)
-- ✅ **Catch attempt failed**: a flat 60% chance to catch, with no stat roll; on a miss the object flies on and lands as normal
-- ✅ **Exit already rigged**: "There is already a grenade rigged to that exit."
-- ✅ **Invalid exit for rigging**: "There is no exit '<exit>' to rig a trap to."
-- ✅ **Pin already pulled**: "You cannot rig a grenade that already has its pin pulled."
-- ✅ **Rigger immunity**: Safe passage for trap setters
-- ✅ **Defuse attempt spam**: One attempt per character per grenade
-- ✅ **Early detonation**: Failed defuse attempts can trigger immediate explosion
-- ✅ **Proximity establishment**: Dynamic proximity creation for defuse attempts
-- ✅ **Runtime safety**: Null checks prevent iteration errors during explosions
+- **#2538** — a thrown object never leaves the thrower's inventory during
+  flight, so a cooked grenade detonates in the thrower's hands at double
+  damage in the wrong room, and the item stays re-wieldable mid-flight.
+  Nothing here sanctions that; the Throw window and Hand explosion rules
+  describe the behaviour that was wanted.
+- **#2540** — the throw path writes only the grenade's side of the
+  universal-proximity link, so movement and `retreat` cannot escape a
+  **thrown** grenade's blast; `drop` has the same gap. See Grenades.
+- Throwing-weapon discard refusal loop (no issue) — see Throwing weapons.
+- Target leaves the room during flight (no issue) — see Landing and proximity.
 
-### Flight State Errors
-- **Room disconnection**: If room becomes inaccessible during flight, object lands in origin room — 📋 UNBUILT (no issue)
-- **Object deletion**: If object is somehow deleted during flight, clean up flight state
-- **Player disconnection**: Continue flight even if thrower disconnects
-- **Multiple flight cleanup**: Ensure proper cleanup of multiple simultaneous flights
+## Decisions
 
-### Recovery Mechanisms
-- **Orphaned flight objects**: Cleanup routine to remove stale flying object references — 📋 UNBUILT (no issue)
-- **State corruption**: Graceful degradation if proximity or combat state becomes invalid
-- **Network issues**: Timeout mechanism for flight completion — 📋 UNBUILT (no issue)
+- **Two-handed weapons**: should throwing a two-handed weapon require both hands to be free/wielding it? **DECIDED**: Not implemented yet, future consideration.
+- **Improvised weapon damage**: should non-throwing weapons deal reduced damage when thrown? **DECIDED**: Yes, for now all improvised weapons use base damage. Future refinement will differentiate materials. 📋 UNBUILT (no issue): no improvised damage path exists; a thrown object that is not a sticky grenade bounces off and does no damage.
+- **Accuracy system**: should throwing have hit/miss mechanics like other ranged weapons? **DECIDED**: Yes, throwing in combat uses normal ranged weapon logic with dedicated message category. (Each throwing weapon has its own message file, not a shared category; see Combat integration.)
+- **Critical hits**: can thrown weapons score critical hits? **DECIDED**: Not initially, but perfect for future improvised weaponry mechanics.
+- **Fuse timing**: should grenades have variable fuse lengths? **DECIDED**: Variable timing based on `object.db.fuse_time` property.
+- **Dud chances**: should grenades have failure probability? **DECIDED**: Based on `object.db.dud_chance` property.
+- **Blast radius**: how many characters can be in grenade proximity simultaneously? **DECIDED**: Driven by `object.db.blast_radius` for future expansion. 📋 UNBUILT (no issue): nothing reads `blast_radius`.
+- **Chain explosions**: should grenades be able to trigger other grenades? **DECIDED**: Based on `object.db.chain_trigger` property.
+- **Exit rigging mechanics**: how should rigged grenades be detected/disarmed? **DECIDED** (recorded 2026-09-21, #3560): see Rigging (detection, disarming, a trap belongs to the door object).
+- **Rig visibility**: are rigged grenades visible in room descriptions? **DECIDED** (`rig_grenade`; recorded 2026-09-21): yes; see Rigging.
+- **Throwing weapons redirect to `attack`**: User confirmed this is the correct design (#471); see Throwing weapons.
 
-### Edge Cases
-- **Thrower leaves room during flight**: Object continues to destination
-- **Target leaves room during flight**: Object lands where target was. As built, the "bounces harmlessly off" line is still sent to the target in their new room, a sticky grenade still rolls to hit them there, and the object's proximity list still names them (`handle_landing` in `world/combat/throwing.py`; code defect, no issue)
-- **Multiple objects same target**: Each handled independently
-- **Invalid room connections**: Blocked by doors/barriers (future)
+## Unbuilt
 
-## Implementation Status & Roadmap
+Each of these is wanted and not built. All are 📋 UNBUILT (no issue) unless
+marked otherwise.
 
-### Current Implementation Status *(Updated 2025-07-21)*
+- **Direction lock/access check**: a direction must be traversable; today no lock or access check is made.
+- **Exit priority**: `throw knife to northeast` always prioritizes exits over character names.
+- **Smart fallback**: `throw knife at east` treats "east" as a direction if no character "east" exists.
+- **Improvised damage**: non-throwing weapons used in combat deal base improvised damage (currently `1d6`); objects thrown at someone already in combat always use improvised weapon damage.
+- **Turn consumption** (no issue; not decided whether still wanted): combat throwing always consumes the combat turn, using the skip-turn mechanic from `flee` and its standard skip-turn messaging.
+- **Arrival direction**: the destination room's line names the incoming direction ("flies in from <direction>"), not "somewhere".
+- **Permission checks**: respect room access permissions for object transfer.
+- **Flight error recovery**: if the flight timer fails, the object defaults to landing in the origin room.
+- **Room disconnection**: if the destination becomes inaccessible during flight, the object lands in the origin room.
+- **Orphaned flight objects**: a cleanup routine to remove stale flying-object references.
+- **Network issues**: a timeout mechanism for flight completion.
+- **Grenade-to-grenade proximity**: grenades landing near other grenades inherit their proximity lists (see Chain reactions).
+- **`db.blast_radius`**: proximity "hops" an explosion affects; nothing reads it (Cluster Bomb depends on it).
+- **Impact Grenade** (explodes on landing), **Smoke Grenade** (visibility/movement effects), **Flashbang** (stun/disorient effects).
 
-#### ✅ **Phase 1 Complete: Grenade Enhancement**
-**Status**: Fully implemented and tested
-**Key Features**:
-- Pin validation removal for tactical flexibility
-- Players can throw unpinned grenades as inert objects
-- Only blocks throws of expired grenades (timer <= 0)
-- Null safety for NDB attribute comparisons
-- TypeError fixes for robust operation
+Future features, without issues:
+- **Ammo/bundle system**: throwing weapons use the bundle system with ammo tracking, alongside gun ammo; limited throwing-weapon uses. Today nothing is consumed: a dedicated throwing weapon never leaves the hand.
+- **Weapon retrieval**: mechanics for recovering thrown weapons. Not implemented.
+- **Material properties**: different damage for different improvised weapons.
+- **Door/barrier blocking**: physical obstacles (locked doors, barriers) prevent throwing between rooms.
+- **Trajectory calculation**: more realistic flight paths.
 
-**Technical Implementation**:
-- Modified `validate_grenade_throw()` method in `commands/CmdThrow.py`
-- Removed pin requirement validation 
-- Added null safety check: `if remaining is not None and remaining <= 0:`
-- Maintains explosion-in-hands protection for safety
+Potential future enhancements (advanced grenades):
+- Enhanced chain reaction logic with complex proximity webs.
+- Multi-type explosive support with specialized effects.
+- Advanced rigging mechanisms (pressure plates, tripwires).
+- Defuse tool requirements for different explosive types.
+- Character specialization bonuses for different grenade types.
 
-**Testing Results**: Successfully tested pin validation removal and TypeError fixes
+Planned weapon retrieval features:
+- Thrown weapon recovery mechanics.
+- Bundle system with ammo tracking.
+- Weapon durability and breaking on impact.
+- Material-based improvised weapon damage scaling.
 
-#### ✅ **Phase 2 Complete: Defuse Command System**
-**Status**: Fully implemented and tested (Enhanced Option 1)
-**Key Features**:
-- ✅ `defuse <grenade>` command with skill-based checks (Intellect + Motorics)
-- ✅ **Auto-defuse when entering proximity of live grenades** (D&D-style trap detection)
-- ✅ **Enhanced Option 1**: Dynamic proximity establishment with comprehensive search
-- ✅ Risk/reward mechanics (30% early detonation on manual failure, 10% on auto-defuse)
-- ✅ Time pressure scaling (difficulty increases as countdown approaches zero)
-- ✅ One-attempt-per-grenade limit to prevent spam
-- ✅ **Rigger immunity**: Characters can safely bypass their own rigged traps
-- ✅ **Rigged grenade support**: Different difficulty for trap disarmament vs timed defusal
-- ✅ **Comprehensive proximity cleanup**: Both combat and universal proximity systems
-- ✅ **Chain reaction prevention**: Defused grenades have proximity cleared
-- ✅ **Runtime error prevention**: Null safety checks for robust operation
+Possible integration points:
+- **Identity system**: better target resolution when implemented.
+- **Advanced room descriptions**: better object state display.
+- **Enhanced aim system**: possibly cross-room aim for throwing only.
 
-#### 🔄 **Phase 3 Future: Advanced Grenade Features**  
-**Potential Future Enhancements**:
-- Enhanced chain reaction logic with complex proximity webs
-- Multi-type explosive support with specialized effects
-- Advanced rigging mechanisms (pressure plates, tripwires)
-- Defuse tool requirements for different explosive types
-- Character specialization bonuses for different grenade types
+## Not decided
 
-#### 🔄 **Phase 4 Future: Weapon Retrieval System**
-**Planned Features**:
-- Thrown weapon recovery mechanics
-- Bundle system with ammo tracking
-- Weapon durability and breaking on impact
-- Material-based improvised weapon damage scaling
+### Mr. Hand
+1. **Hand preference**: if the object is in both hands, which hand throws it?
+2. **Post-throw state**: should the hand remain "ready" for quick-draw of another weapon?
 
-### Architectural Decisions Made ✅ **IMPLEMENTED**
-1. **Tactical Flexibility**: Removed pin validation to allow strategic misdirection
-2. **Safety First**: Maintained explosion-in-hands protection for expired timers
-3. **Robust Error Handling**: Added null safety for runtime stability
-4. **Property-Driven Design**: All explosive behavior driven by object properties
-5. **Enhanced Option 1**: Dynamic proximity establishment for comprehensive defuse mechanics
-6. **Dual Proximity Systems**: Combat proximity vs universal proximity for different use cases
-7. **Rigger Immunity**: Trap setters can safely bypass their own traps
-8. **Skill Integration**: Intellect + Motorics for technical defuse attempts
-9. **Time Pressure Scaling**: Difficulty increases as explosion countdown approaches zero
-10. **Chain Reaction Prevention**: Defused grenades have all proximity relationships cleared
+### Combat
+3. **Range considerations**: should throwing weapons have range limits or always work cross-room?
 
-### Integration Points with Existing Systems ✅ **COMPLETED**
-- ✅ **Universal Proximity System**: Enhanced for character/object proximity handling
-- ✅ **Aim System**: Leveraged for cross-room targeting
-- ✅ **Combat Handler**: Turn-based processing and damage calculation
-- ✅ **Mr. Hand System**: Wielding validation and state management
-- ✅ **Timer System**: Evennia's `utils.delay()` for countdown mechanics
-- ✅ **Movement System**: Dual proximity cleanup on room transitions
-- ✅ **Character Stats**: Skill system integration for defuse mechanics
-- ✅ **Exit System**: Rigging integration with movement triggering
+### Flight and landing
+4. **Interception**: can thrown objects be intercepted by other players/objects during flight? (Players: `catch` and grenade deflection, see Grenades. Objects such as cover or barriers: open.)
+5. **Bounce mechanics**: when utility objects "bounce harmlessly," where exactly do they land?
+6. **Fragile objects**: should some objects break when thrown (bottles, delicate items)?
+7. **Weight considerations**: should heavy objects take longer to throw or fly slower?
 
-## Testing Scenarios ✅ **COMPLETED**
+### Rooms
+8. **Room capacity**: should rooms have limits on simultaneous flying objects?
+9. **Environmental effects**: should wind, gravity, or other room effects influence throws?
+10. **Blocked exits**: how should locked doors or barriers affect cross-room throwing?
+11. **Visibility**: should dark rooms affect throwing accuracy?
 
-### Basic Functionality ✅ **TESTED**
-1. ✅ Throw utility object in same room
-2. ✅ Throw weapon at target in same room (enters combat)
-3. ✅ Throw object in aimed direction to adjacent room
-4. ✅ Multiple players throwing simultaneously
+### Grenades
+12. **Rig command syntax**: should it be `rig grenade to north` or `rig grenade against north exit`?
+13. **Multiple rigs per exit**: can multiple grenades be rigged to the same exit?
+14. **Timer inheritance**: do rigged grenades keep their original timer or reset when triggered?
 
-### Advanced Scenarios ✅ **TESTED**
-1. ✅ Grenade proximity chain reactions
-2. ✅ Aim + cross-room targeted throwing
-3. ✅ Combat turn consumption verification
-4. ✅ Flight timing and room description updates
-5. ✅ Pin pulling and timer activation
-6. ✅ Rigged grenades with immunity system
-7. ✅ Manual and automatic defuse mechanics
-8. ✅ Failed defuse early detonation scenarios
-9. ✅ Dual proximity system cleanup on movement
-10. ✅ Runtime error prevention with null safety
+### Performance
+15. **Flight object cleanup**: how often should orphaned flight references be cleaned up?
+16. **Room description caching**: should flying objects invalidate the room description cache?
+17. **Concurrent throw limits**: should there be per-player or per-room throw rate limiting?
+18. **Memory management**: how long should flight state persist in case of errors?
 
-### Comprehensive Testing Framework ✅ **COMPLETED**
+Also open: whether combat throwing should still consume a turn (see Unbuilt).
 
-#### Unit Tests ✅ **VALIDATED**
-- ✅ **Parsing logic**: All syntax variations and error recovery
-- ✅ **Property validation**: Valid/invalid object properties
-- ✅ **Mr. Hand integration**: Wielding validation and state management
-- ✅ **Flight state**: Timer management and cleanup
-- ✅ **Defuse mechanics**: Skill checks and proximity establishment
-- ✅ **Rigging system**: Trap setup and immunity validation
+## Related
 
-#### Integration Tests ✅ **VALIDATED**
-- ✅ **Combat system**: Weapon throws triggering combat correctly
-- ✅ **Proximity system**: Landing assignment and inheritance
-- ✅ **Aim system**: Cross-room targeting functionality
-- ✅ **Room transfers**: Objects moving between rooms properly
-- ✅ **Movement cleanup**: Dual proximity system cleanup on transitions
-- ✅ **Timer coordination**: Multiple concurrent explosive countdowns
-
-#### Stress Tests ✅ **VALIDATED**
-- ✅ **Multiple simultaneous throws**: Performance with many concurrent flight objects
-- ✅ **Rapid succession**: Single player throwing multiple objects quickly
-- ✅ **Edge case handling**: Disconnections, room changes, object deletion during flight
-- ✅ **Runtime errors**: Null safety preventing iteration failures
-- ✅ **Proximity corruption**: Graceful handling of invalid proximity states
-
-#### User Acceptance Tests ✅ **VALIDATED**
-- ✅ **Gameplay scenarios**: Actual tactical combat situations
-- ✅ **Error message clarity**: User-friendly error feedback
-- ✅ **Command intuitiveness**: Natural language parsing effectiveness
-- ✅ **Defuse tension**: Risk/reward balance in defuse attempts
-- ✅ **Tactical depth**: Strategic use of unpinned grenades and rigging
-
-## Open Implementation Questions
-
-### Mr. Hand Integration Specifics
-1. **Two-handed weapons**: ~~Should throwing a two-handed weapon require both hands to be free/wielding it?~~ **DECIDED**: Not implemented yet, future consideration.
-2. **Hand preference**: If object is in both hands, which hand throws it?
-3. **Post-throw state**: Should hand remain "ready" for quick-draw of another weapon?
-
-### Combat Mechanics Details
-1. **Improvised weapon damage**: ~~Should non-throwing weapons deal reduced damage when thrown?~~ **DECIDED**: Yes, for now all improvised weapons use base damage. Future refinement will differentiate materials. 📋 UNBUILT (no issue): no improvised damage path exists; a thrown object that is not a sticky grenade bounces off and does no damage.
-2. **Range considerations**: Should throwing weapons have range limits or always work cross-room?
-3. **Accuracy system**: ~~Should throwing have hit/miss mechanics like other ranged weapons?~~ **DECIDED**: Yes, throwing in combat uses normal ranged weapon logic with dedicated message category.
-4. **Critical hits**: ~~Can thrown weapons score critical hits?~~ **DECIDED**: Not initially, but perfect for future improvised weaponry mechanics.
-
-### Flight and Landing Specifics
-1. **Interception**: Can thrown objects be intercepted by other players/objects during flight? (Players: `catch` and grenade deflection are built, see Grenades. Objects such as cover or barriers: open.)
-2. **Bounce mechanics**: When utility objects "bounce harmlessly," where exactly do they land?
-3. **Fragile objects**: Should some objects break when thrown (bottles, delicate items)?
-4. **Weight considerations**: Should heavy objects take longer to throw or fly slower?
-
-### Room Integration Questions
-1. **Room capacity**: Should rooms have limits on simultaneous flying objects?
-2. **Environmental effects**: Should wind, gravity, or other room effects influence throws?
-3. **Blocked exits**: How should locked doors or barriers affect cross-room throwing?
-4. **Visibility**: Should dark rooms affect throwing accuracy?
-
-### Grenade-Specific Mechanics
-1. **Fuse timing**: ~~Should grenades have variable fuse lengths?~~ **DECIDED**: Variable timing based on `object.db.fuse_time` property.
-2. **Dud chances**: ~~Should grenades have failure probability?~~ **DECIDED**: Based on `object.db.dud_chance` property.
-3. **Blast radius**: ~~How many characters can be in grenade proximity simultaneously?~~ **DECIDED**: Driven by `object.db.blast_radius` for future expansion. 📋 UNBUILT (no issue): nothing reads `blast_radius`.
-4. **Chain explosions**: ~~Should grenades be able to trigger other grenades?~~ **DECIDED**: Based on `object.db.chain_trigger` property.
-
-#### Advanced Grenade Questions
-5. **Exit rigging mechanics**: ~~How should rigged grenades be detected/disarmed?~~ **DECIDED** (shipped; recorded 2026-09-21, #3560): detected by the room's own prose (see 8) and by `scan` for the rigger only (#3351); disarmed by `defuse`, which takes the trap off its door through `commands/explosion_utils.unrig_grenade` -- the one restore door. A trap belongs to the DOOR OBJECT: `exit.db.rigged_grenade` on the rigged exit and its return exit, `grenade.db.rigged_to_exit` back. A door that is destroyed (a builder's @destroy, a room deletion cascading through `clear_exits`) takes its trap down in `Exit.at_object_delete` through the same door: the grenade goes loose and unarmed where it lay, its prose restored, and the room hears "The trip wire on the X goes slack." The far side of the same doorway (the return exit) only drops its record. Doors that legitimately change what lies beyond them -- the crane car's, the elevator's -- are permanent objects that are re-pointed, never rebuilt, so a trap rides the car (`CraneContainer`, #3560; the elevator already worked this way).
-6. **Rig command syntax**: Should it be `rig grenade to north` or `rig grenade against north exit`?
-7. **Multiple rigs per exit**: Can multiple grenades be rigged to the same exit?
-8. **Rig visibility**: ~~Are rigged grenades visible in room descriptions?~~ **DECIDED** (shipped in `rig_grenade`; recorded 2026-09-21): yes. `rig` leaves the grenade lying in the room, sets `db.integrate = True`, `db.integration_priority = 3` and an `integration_desc` of "A <grenade> is rigged to the <exit> exit with a barely visible trip wire.", and saves the previous three in `original_*` for `unrig_grenade` to restore.
-9. **Timer inheritance**: Do rigged grenades keep their original timer or reset when triggered?
-
-#### Explosive Type Variations
-Property-based system enables diverse explosive types:
-- **Standard Grenade**: `fuse_time=8, blast_damage=20, chain_trigger=True, requires_pin=True`
-- **Impact Grenade**: `fuse_time=0, blast_damage=15, requires_pin=False` (explodes on landing) — 📋 UNBUILT (no issue): nothing explodes on landing; `db.impact_detonation` today only stops deflection
-- **Smoke Grenade**: `fuse_time=3, blast_damage=0` (creates visibility/movement effects) — 📋 UNBUILT (no issue)
-- **Flashbang**: `fuse_time=2, blast_damage=5` (stun/disorient effects) — 📋 UNBUILT (no issue)
-- **Dud Grenade**: `dud_chance=1.0` (training/distraction use)
-- **Hair Trigger**: `fuse_time=3, dud_chance=0.3` (fast but unreliable)
-- **Cluster Bomb**: `chain_trigger=True, blast_radius=2` (affects wider area) — 📋 UNBUILT (no issue): nothing reads `blast_radius`
-
-#### Grenade Activation System
-- **Pin pulling required**: `pull pin on grenade` command must be used before throwing *(Phase 1: Requirement removed for tactical flexibility)*
-- **Timer starts on pin pull**: Countdown begins immediately when pin is pulled (duration from `object.db.fuse_time`)
-- **Throw window**: Player has fuse time to throw after pulling pin, or grenade explodes in hand
-- **Hot potato mechanics**: Players can catch live grenades and throw them back within timer window
-- **Hand explosion**: If timer expires while grenade is in hand, explodes and damages holder
-- **Drop mechanics**: Players can drop live grenades as area denial tactic
-- **Additional commands needed**: Implementation requires both `pull` and `catch` commands
-- **State tracking**: Grenades need `db.pin_pulled` and timer state management
-- **Tactical flexibility**: Unpinned grenades can be thrown as inert objects for tactical misdirection
-
-#### Explosive Object Properties
-All explosive behavior should be driven by object properties:
-- **`db.fuse_time`**: Seconds from pin pull to explosion (e.g., 8 for standard grenade)
-- **`db.blast_damage`**: Damage dealt to characters in proximity when explodes
-- **`db.is_explosive`**: Boolean flag identifying explosive objects
-- **`db.chain_trigger`**: Whether this explosive can trigger other nearby explosives
-- **`db.requires_pin`**: Whether activation requires pin pulling (vs. impact detonation)
-- **`db.dud_chance`**: Probability of explosive failing to detonate (0.0 = never, 1.0 = always)
-- **`db.blast_radius`**: Number of proximity "hops" explosion affects (future expansion) — 📋 UNBUILT (no issue): nothing reads it
-
-#### Grenade Tactical Mechanics
-- **Catch and re-throw**: Thrown live grenades can be caught and immediately thrown back
-- **Area denial**: Dropped live grenades create temporary danger zones
-- **Exit rigging**: Grenades can be rigged against exits to trigger when traversed
-- **Chain reactions**: Exploding grenades can potentially trigger other nearby grenades
-
-### Performance Considerations
-1. **Flight object cleanup**: How often should we clean up orphaned flight references?
-2. **Room description caching**: Should flying objects invalidate room description cache?
-3. **Concurrent throw limits**: Should there be per-player or per-room throw rate limiting?
-4. **Memory management**: How long should flight state persist in case of errors?
-
-### Planned Features ✅ **MOSTLY IMPLEMENTED**
-- ✅ **Catch command**: Defensive response to thrown objects *(Implemented)*
-- ✅ **Pull command**: Pin pulling mechanism for grenades *(Implemented)*
-- ✅ **Rig command**: Exit trap mechanism *(Implemented)*
-- ✅ **Defuse command**: Manual and automatic defuse systems *(Implemented)*
-- **Ammo/bundle system**: Limited throwing weapon uses *(Future)*
-- **Material properties**: Different damage for different improvised weapons *(Future)*
-- **Door/barrier blocking**: Physical obstacles prevent throwing *(Future)*
-- **Trajectory calculation**: More realistic flight paths *(Future)*
-
-### Grenade Command Dependencies ✅ **IMPLEMENTED**
-The grenade system requires implementing additional commands alongside throw:
-- ✅ **`pull pin on <grenade>`**: Activates fuse timer (duration from `object.db.fuse_time`, default 8 seconds). Not required to throw: an unpinned grenade flies as an inert object
-- ✅ **`catch <object>`**: Defensive mechanism for thrown objects (including live grenades!)
-- ✅ **`drop <object>` (enhanced)**: Universal proximity assignment for all dropped objects, enables tactical area denial with live grenades
-- ✅ **`rig <grenade> to <exit>`**: Trap exits with grenades (triggered on traverse)
-- ✅ **`defuse <grenade>`**: Manual defuse with skill checks and time pressure
-- ✅ **Timer management**: System to track multiple active grenade timers simultaneously
-- ✅ **State validation**: Prevent throwing expired grenades, handle pin-pulled scenarios
-- ✅ **Exit trap system**: Track rigged grenades and trigger on movement through exits
-- ✅ **Universal proximity system**: Enhanced drop command assigns proximity to all dropped objects
-- ✅ **Auto-defuse system**: Automatic proximity-based defuse attempts on room entry
-- ✅ **Rigger immunity**: Trap setters can safely pass through their own rigged exits
-
-### Integration Points
-- **Identity system**: Better target resolution when implemented
-- **Advanced room descriptions**: Better object state display
-- **Enhanced aim system**: Possibly cross-room aim for throwing only
-- **Weapon retrieval**: Mechanics for recovering thrown weapons
+- Aim, combat handler, `retreat`, `flee`: the combat system.
+- `world.gravity.room_through` (edges and air cells).
+- `typeclasses/rooms.py` `return_appearance` (flying-object line).
+- `typeclasses/characters.py` (Mr. Hand).
