@@ -192,6 +192,13 @@ soul and `_in_combat`.
 
 - Whether recovery should pick up destroyed units: 📋 UNBUILT (not
   decided).
+- Is a unit dragged home unconscious meant to be repaired at the bench?
+  The mechanic racks only units with a high maintenance need.
+- When a recovered unit dies while carried and its armament is not
+  recovered, the unit radios "Requesting a second unit", but nothing sends
+  one. Should that stay radio narration for whoever holds dispatch
+  (perhaps reworded so it promises no unit), or should it start an errand
+  that sends a unit to the wreck?
 
 ## Related
 

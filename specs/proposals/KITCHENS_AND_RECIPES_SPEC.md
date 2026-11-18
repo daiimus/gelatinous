@@ -185,6 +185,12 @@ The proposed order of work:
 4. Does the vat-protein counter belong to Greenhaus (empire-completing)
    or Longhaul (logistics-flavored)? Context: the colony's ration is
    already Longhaul-branded (the Longhaul MRE, #3806). Still open.
+5. Is the third-shift congee window still wanted, and as what? Lin's cart
+   and the Snailery already have keepers on the night shift, so it would
+   not be open "when everything else is dark".
+6. Should street carts keep hours, or do the all-shift keepers on Lin's
+   cart stand? A 2026-08-20 ruling recorded only in a build-script header
+   says street food keeps hours ("Lin's morning noodles").
 
 ## Related
 

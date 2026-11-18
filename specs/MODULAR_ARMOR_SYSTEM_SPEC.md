@@ -489,6 +489,7 @@ Quality of life:
 ## Not decided
 
 - **Ceramic against blunt.** The live matrix gives ceramic `blunt` 0.8, commented "Very good vs blunt force"; the original design gave 0.30, "Poor vs blunt (shatters)"; the player-facing blurb (`Item._get_armor_type_info`) says ceramic is "brittle vs blunt force". The live number and the live prose disagree: one of the two is a bug, and which one is an owner call.
+- **Steel against the specialization principle.** Steel's live values are good against every damage type but burn, while Power scaling prevention says no single armour type excels against all damage. Should steel be brought in line with the principle in the balance pass, or should the principle be softened?
 
 ---
 

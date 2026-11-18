@@ -470,6 +470,10 @@ These must hold:
 
 * Whether Phase 3 (§5) should now be re-scoped to the narrower capacity
   **extension** item is an owner call.
+* Does decision 4 (chrome stays on your corpse) also cover essential NPCs
+  revived at their post, whose new body
+  (`reset_body_preserving_augments`) keeps its chrome, or is that a
+  deliberate exception?
 
 ## Related documents
 

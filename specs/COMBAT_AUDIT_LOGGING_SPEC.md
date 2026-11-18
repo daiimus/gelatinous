@@ -118,3 +118,9 @@ audit file captures everything (outside a test runner, §2).
   #464; this spec supersedes them for the diagnostics-routing question.
 * Splattercast is intended to eventually go away as a player-facing
   channel; the audit file is the durable mechanism that outlives it.
+
+## 7 · Not decided
+
+* Should the `world/combat/utils.py` re-export of the combat debug names
+  stay as a sanctioned import path, or should callers move to
+  `world/combat/debug.py` and the re-export be deleted?

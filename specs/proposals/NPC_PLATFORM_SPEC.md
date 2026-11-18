@@ -198,3 +198,7 @@ tests.
 - **`db.role` vs `soul_role`.** Reading them as *background* and
   *occupation* looks correct, but it has never been decided on purpose;
   decide it before merging them.
+- **Holographic merchants.** Are the holographic merchant prototypes in
+  `world/prototypes.py` (a plain `Character` with no soul) an intended
+  exception to "exactly one NPC typeclass" and "every NPC is a soul", or
+  should they be retired or converted?

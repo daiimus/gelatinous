@@ -208,6 +208,8 @@ recommendations. Only if the user opts in, and all data anonymised.
 - The client floors at 40 columns, but all four server readers clamp to at
   least 60, so a phone reporting 40–59 columns gets output 60 wide. Whether
   that is wanted is not decided.
+- Are the manual override, the visibility change optimisation and the
+  telemetry (see Unbuilt) wanted at all, or should they be deleted?
 
 ---
 

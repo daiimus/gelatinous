@@ -401,6 +401,12 @@ on a flesh hand (Nailz) does not show.
 * 📋 UNBUILT (no issue) — **Coating items** (§9) that override the
   chrome colour per augment.
 
+## Not decided
+
+* Should a natural weapon's `deployed_longdesc` (Nailz, blades under the
+  fingernails) show on a flesh hand, as its prototype declares, or only on a
+  chrome hand (§9)?
+
 ## Related documents
 
 * `ANATOMY_AUGMENTS_SPEC.md` — the augment substrate.

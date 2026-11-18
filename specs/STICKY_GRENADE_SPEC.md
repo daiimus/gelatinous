@@ -521,6 +521,18 @@ Ideas only; none is marked unbuilt or decided.
 - Option A: prevent wearing: "You can't wear that - there's a |RTICKING GRENADE|n magnetically clamped to it!"
 - Option B: allow wearing (dramatic!): "You desperately pull on the jacket - the stuck grenade presses against your chest!" The jacket is worn, the grenade stays stuck, and it explodes on the character's body (double damage + specific location).
 
+**Should a rigged sticky grenade stick to the person who trips it, as the old rigged flow said, or to the most magnetic other person present, as the code does now?**
+
+**Is it intended that a stronger magnet sticks to fewer materials, so a strength-2 grenade sticks even to cloth while the strength-8 SPDR M9 needs `magnetic_level` 5 or more?**
+
+**Are the stuck-grenade markers (inventory, armor display, room listing) and the arrival line for someone walking in with a stuck grenade still wanted, or should those passages be deleted?**
+
+**Should a sticky grenade that fails on the outermost layer go on to try the layers underneath, and skip a garment that already holds a grenade, as "Hit and stick" sketches?**
+
+**Are preferring targets and garments with no grenade already stuck, and scoring by metal level ("Magnetic target selection"), still wanted, or should they be deleted?**
+
+**Should a stuck grenade on a garment that has moved onto a corpse damage the corpse?**
+
 ---
 
 ## Code pointers

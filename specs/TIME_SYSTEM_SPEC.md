@@ -244,3 +244,7 @@ necessities:
 
 *"Time is the universal constant that keeps human civilization from falling apart across the void. We may have lost Earth, but we kept her clock."*
 - Admiral Chen Wei, Terran Fleet Command, 2387 TST
+
+## Not decided
+
+- Should the closing epigraph, dated 2387 TST, be re-dated to fit the 3226 TST calendar, or deleted?

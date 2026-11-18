@@ -428,6 +428,14 @@ specs):
   the grudge is a delicious later.)
 - **PC-adjacent NPCs** (Companions with client books): does Helix re-sleeve
   restore client dossiers wholesale, or is a partial gap a story hook?
+- **Who returns:** should a hired soul who bought a sleeve policy come back
+  to their post, or is a return only for the named cast whose blueprint name
+  the shift carries?
+- **One delay or two:** does the recorded successor 24h / re-sleeve 8h still
+  stand, which would need a separate return delay, or is one per-post
+  `post_delay` for return and succession alike the rule?
+- **§P3:** is any part of it still unbuilt; in particular, is the per-shift
+  memory snapshot meant to be kept after a return rather than consumed by it?
 
 ## 7 · Related documents
 

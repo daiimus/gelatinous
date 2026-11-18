@@ -383,6 +383,7 @@ Described as part of the system, not built:
 ## Not decided
 
 - **Should the pin be ammo burn? (owner, 2026-09-16), open: revisit when ammunition is designed.** Today the ruling is "the pin is the constant attacking": a shooter holds a target by being enrolled against them round after round, and ammunition, once it exists, only sets how long that can last. The alternative is that suppression is what the bullets buy: the shooter spends rounds to pin without needing to hit, a dry gun pins nothing, and a loaded one pins whether or not a shot is fired that round. The two disagree on exactly one thing: whether an attacker who is enrolled but not firing (empty, jammed, reloading, a melee weapon in hand) still counts in `opponents_targeting` for the disengage roll. Under the current ruling they do. Do not build the ammunition system on either answer without asking; the owner flagged this as something they may change their mind on.
+- **Unbuilt features with no issue.** Skill Progression, Reputation System, Psychological Impact, Relationship Dynamics, Combat Styles, Special Abilities, Environmental Hazards and Formation Fighting are described and were never built. Are they still wanted, each to be marked UNBUILT with an issue filed, or should they be deleted from the spec?
 
 ## Related documents
 

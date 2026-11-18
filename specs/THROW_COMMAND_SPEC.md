@@ -462,6 +462,8 @@ Possible integration points:
 
 Also open: whether combat throwing should still consume a turn (see Unbuilt).
 
+Also open: should `throw <object> to here` land near a random person, as the spec once said ("same as first syntax"), or on the ground near nobody, as it does today?
+
 ## Related
 
 - Aim, combat handler, `retreat`, `flee`: the combat system.

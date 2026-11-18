@@ -1659,6 +1659,27 @@ severe consciousness effect below 60%.
   - NPC use: should NPC surgeons (faction medics, hospital staff) chart on
     patients to telegraph intent? A strong narrative tool, but it needs AI
     behaviour design beyond this spec.
+- **Rectal delivery** (`boof` / `administer`): is it still wanted, or should
+  its design block under Unbuilt be deleted?
+- **Multi-round administration and the third-party penalty**: are
+  consumption verbs that take several rounds, and the +2 difficulty and
+  longer time for treating someone else, still intended?
+- **Organ-specific wound descriptions**: is organ-specific wound prose
+  (organ types and organ variants in the per-stage lists) still wanted and
+  in need of an issue, or should that section be deleted?
+- **The d20 diagnosis and treatment sketch**: should it stay as intent, or
+  be deleted in favour of the two 3d6 rolls as built?
+- **`bandage` and wound care**: should `bandage` go through wound care
+  (stabilize and dress) the way `apply <item> on <target>'s <location>`
+  does?
+- **A failed roll in a chart step**: when a step's roll fails (for example
+  an install that does not take), should the chart record the step as
+  failed, as the proposal intended, or is today's `done` acceptable?
+- **Called shots** (`attack <target> head` / `center` / `limbs`): still
+  wanted and worth filing, or should that block be deleted?
+- **Chart permissions**: is an author-only chart with delegated edit
+  permission still the intent, or is today's open model (anyone past the
+  `heal` trust gate can edit and commence) the design?
 
 ## Related documents
 
