@@ -130,6 +130,13 @@ checked. Do not hold a pull request waiting for the owner to review its code.
 - Propose before starting: say what will change and what a player will see.
   Wait for the go on anything that changes how the game behaves.
 - One decision at a time, in plain words.
+- Ask with concrete cases, not as a general rule. Name each case the way the
+  owner would (his own example, the command a player types), and for each
+  one say what happens today and what you recommend.
+- A go covers how the work is done. Once a piece of work has its go, do not
+  ask again about its size, its order or the tools it takes: say what you
+  are doing and do it. Asking again holds the work. The next bullet is the
+  exception.
 - Ask before anything that cannot be undone or that takes the game away from
   the people in it: deleting live data, a reload, a restart, stopping the
   server. An earlier or general go-ahead does not cover the next one.
@@ -143,6 +150,9 @@ checked. Do not hold a pull request waiting for the owner to review its code.
 
 - A ruling goes on its issue in the owner's own words, quoted, with the date.
   Then the labels change (see `status:` above).
+- Record what was asked and what he answered, and no more. Do not add what
+  the ruling leaves alone, or what it means for a case he was not asked
+  about.
 - A remark is not a decision. What has not been decided is open, and is
   listed as open.
 - "Observed, and fine as it is" is a valid outcome. Not every finding is a
@@ -158,16 +168,21 @@ Fields, and what each is for:
 
 | field | values | why it exists |
 |---|---|---|
-| **Status** | Needs decision · Parked · Blocked · Ready · In progress · Done | the execution pipeline. `Ready` is the one that matters — decided *and* scoped, so it can be picked up without asking anything. |
-| **Area** | the nine subsystems | grouping. |
-| **Work type** | defect · enhancement · design · question · debt | filtering. "show me defects in souls" is the query that turns a backlog into a sitting. |
+| **Status** | Untriaged · Needs decision · Parked · Blocked · Ready · In progress · Done | the execution pipeline. `Ready` is the one that matters — decided *and* scoped, so it can be picked up without asking anything. |
 | **Effort** | S · M · L · XL | unset by default; fill in when scoping, not when filing. |
 | **Roadmap phase** | free text | the link back to a spec phase. This is the anti-drift hook below. |
 
-The labels and the board fields are kept deliberately parallel, because
-labels are what you see from the CLI and the issue list, and fields are what
-you see on the board. Labels are the source of truth; if they disagree, the
-labels win.
+Area and work type are not board fields. They are the `area:` and `type:`
+labels, which the board shows in its Labels column; "show me defects in
+souls" is a filter on those labels, and it is the query that turns a backlog
+into a sitting. (Owner, 2026-11-18, asked whether to add the two fields to
+the board or drop them from this table: "Your recommendation is fine." The
+recommendation was to drop them.)
+
+The Status field runs parallel to the `status:` labels, because labels are
+what you see from the CLI and the issue list, and the field is what you see
+on the board. Labels are the source of truth; if they disagree, the labels
+win.
 
 ## Anti-drift: the one rule that would have caught the last three
 
