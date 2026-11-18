@@ -38,15 +38,23 @@ out below: "I concur."
 - **`AGENTS.md`, `DEVELOPMENT_GUIDE.md` and this file stay tight.** They are
   read at the start of every piece of work.
 
-Specs written before this still carry status markers, phase tables and
-history. They are being brought to this shape (#3865). Until a spec has been,
-trust the code over its status lines.
+**Pointers into a spec** (a working rule, not an owner ruling). Code
+comments and other documents cite a spec by section number or title
+(`NAME §4`), never by line number. So a section that is cited keeps its
+number and its title when the spec is edited. When a section is removed,
+leave the gap, do not reuse its number, and change the lines that cited it in
+the same pull request (`git grep` the spec's name finds them). A rewrite that
+renumbers sections breaks these pointers without any error.
+
+Three tests read spec text directly: `BUG_COMMAND_SPEC.md`,
+`MODULAR_ARMOR_SYSTEM_SPEC.md` and `roadmaps/BALANCE_LEDGER.md`. The checks
+on a pull request do not run the game's tests, so run those tests when one of
+the three changes (`git grep -n '"specs"' world/tests` lists them).
 
 `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` is the model for a roadmap in
 what it sequences: a phase list in order, a readiness ledger mapping
 unconsumed flags to the substrate that will consume them, and an explicit
-sequencing rule ("build the substrate before wiring schema to it"). Its
-status key predates the rule above.
+sequencing rule ("build the substrate before wiring schema to it").
 
 ## Issue labels — three axes
 
