@@ -1,46 +1,17 @@
 # Colony Mapping — the export, the builder's volume, the player's chart
 
-> **Status:** ✅ SHIPPED through §M2.5 — and past it (2026-08-04).
-> §M1 export, the sprite atlas, and the website view went live 2026-07-28;
-> the *served* atlas has since evolved into a **live 3D render** and is
-> player-facing — see **§7 · The atlas as shipped**, which supersedes the
-> §M2.5 details below where they differ. The sprite plate survives as the
-> builder's generated instrument. §M3 (player chart: vague-not-false,
-> visited sets, GMCP) and §M4 (paper maps, decking exposure, planner)
-> remain 📋 deferred with their design unchanged — with one premise
-> UPDATE (2026-08-25): the served atlas is now **PUBLIC** (owner call —
-> the colony's shop window; no login, edge-cached for cookie-less
-> visitors, the plate cached server-side 120s). §M3's threat model was
-> written for a staff-only atlas; full room-name/coordinate exposure is
-> now an accepted cost, so the player chart's job shifts from secrecy to
-> *in-fiction texture* (vague-not-false remains the design). When §M3
-> lands it should also speak the MUD mapping standards — GMCP
-> Room/Map packages toward Mudlet et al. (owner: "a while off", noted
-> so the deferral is a decision, not an omission).
->
-> *Original proposal framing follows.*
-> **SCOPE REFOCUS (owner, same day): the v1 consumer is the OWNER alone.**
-> The player/builder audience split and everything serving it (vagueness
-> dial, visited-sets, GMCP) is deferred to §M3/M4 unchanged; v1 = §M1
-> export + §M2 renderer built as a beautiful standalone isometric atlas
-> (SimCity/Monument Valley register, not CAD), then a THIN superuser-gated
-> website view reusing the same renderer (§M2.5 — Evennia's web extension
-> surface is first-class, so the vanilla mandate holds; the renderer must
-> stay self-contained so the served page is a shim, not a commitment). (Superseded: the served atlas is public, with
-no login; see the banner and §7.) The
-> colony has a true voxel substrate (`db.xyz`, the spatial layer shipped in
-> SPATIAL_COORDINATE_SYSTEM_SPEC) and a day of vertical building proved the
-> gap: every build this session began with a hand-written recon script
-> rendering ASCII z-slices, because "what is actually at this cell" has no
-> tool. This spec turns that improvisation into infrastructure — **one
-> canonical export, many renderers** — and defines the two consumers that
-> matter now (builder map, player map) plus the ones that matter later
-> (the build-planning tool, the decking layer's wayfinding files). Owner
-> direction settled in discussion: the player tier is **vague, not false**;
-> delivery is **GMCP → Mudlet-class client mappers** (Evennia-native, see
-> GMCP_PACKAGES_SPEC); the builder tier is **isometric 3D**, because
-> verticality is the game's thesis and the interesting questions are
-> columnar.
+The colony has a true voxel substrate (`db.xyz`, the spatial layer in
+SPATIAL_COORDINATE_SYSTEM_SPEC). Colony mapping is **one canonical export,
+many renderers**: one read-only export of that world, and the renderers that
+draw it. It exists because "what is actually at this cell" had no tool:
+vertical building began with hand-written recon scripts rendering ASCII
+z-slices.
+
+Owner direction, settled in discussion: the player tier is **vague, not
+false**; its delivery is **GMCP → Mudlet-class client mappers**
+(Evennia-native, see GMCP_PACKAGES_SPEC); the builder tier is **isometric
+3D**, because verticality is the game's thesis and the interesting questions
+are columnar.
 
 ---
 
@@ -49,8 +20,8 @@ no login; see the banner and §7.) The
 Three consumers, one truth:
 
 1. **Builders** need the god-view: exact grid occupancy, collisions, open
-   columns, air lattice, edge wiring, coverage overlays — the questions
-   answered today by throwaway shell scripts, answered tomorrow at a glance.
+   columns, air lattice, edge wiring, coverage overlays — questions that
+   throwaway shell scripts answer today, to be answered at a glance.
 2. **Players** need a chart, not a database: where have I been, roughly
    what is this district, which way is the Boot — softened to the fidelity
    of a colony that photocopies its maps until the labels smear.
@@ -58,11 +29,15 @@ Three consumers, one truth:
    ("everything is a file" — the colony map IS a file worth stealing), and
    any renderer not yet imagined. Format first keeps all of them cheap.
 
-## 1 · The export (`world/mapping.py`) — build this first
+## 1 · The export (`export_map()` in `world/mapping.py`) — §M1
 
-A read-only walker over the coordinate-seeded world producing one
-deterministic structure. No game-state mutation, no new attributes, no
-Evennia layering — it reads what the substrate already stores.
+A read-only walker over the coordinate-seeded world that produces one
+deterministic structure: two exports of the same world are identical. It
+mutates no game state, adds no attributes and adds no Evennia layering; it
+reads what the substrate already stores. Off-grid rooms are simply absent,
+which is itself information the builder view surfaces.
+
+The shape every renderer reads:
 
 ```
 export_map() -> {
@@ -77,106 +52,99 @@ export_map() -> {
   "links": [
     {"from": "#123", "to": "#456", "key": "north",
      "kind": "walk|edge|gap|fall|door",
-     # DRIFT (2026-09-11 audit) — the two entries below describe a shape
-     # `export_map()` no longer has. Kept verbatim for the record:
-     #   * edge: the real keys are the exit attribute names, copied
-     #     straight through — sky_room, fall_room, fall_distance,
-     #     fall_damage, edge_difficulty, gap_destination (ints). Each
-     #     appears only when that attribute is set, and the whole "edge"
-     #     key is ABSENT (not null) for any kind but edge/gap.
-     #     DRIFT-ON-DRIFT (2026-09-16, #3579 then #3580): four of those
-     #     six names are now gone from the exporter as well.
-     #     `export_map()` copies exactly THREE attributes onto an
-     #     edge/gap link — edge_difficulty, gap_difficulty,
-     #     gap_destination. sky_room, fall_distance and fall_damage went
-     #     with #3579: the exit's destination IS the air cell, the column
-     #     below it IS the distance, and the damage is a constant
-     #     (FALL_DAMAGE_PER_STORY), so none of the three has a writer or
-     #     a reader left. fall_room went with #3580, on the owner ruling of 2026-09-16
-     #     that a fall "would always follow gravity straight down": in a
-     #     sky room, proceed down; the fall ends at the first room that
-     #     is not a sky room. There is no authored landing, so there is
-     #     nothing for the map to carry. An apron, awning or terrace that
-     #     should catch a fall is a ROOM in the column (is_sky_room
-     #     False), never an attribute. gap_difficulty was always exported
-     #     and was missing from the list above. The "appears only when
-     #     set" and "ABSENT for any kind but edge/gap" rules still hold.
-     #   * door: lock state REMOVED 2026-09-07 (#2682). `export_map()`
-     #     feeds the PUBLIC /atlas/ page, so shipping live lock state let
-     #     anyone with the URL read which of 470 doors stood locked (348
-     #     of them touching private residences), joined to room names and
-     #     coordinates. Nothing ever read the field. A door is still
-     #     typed `kind: "door"`; a staff map that wants lock state must
-     #     read the exits directly rather than route it through this
-     #     payload.
      "edge": {"edge_difficulty": n, "gap_difficulty": n,
               "gap_destination": n}},
-     #   ^ "edge" is present only on edge/gap links, and each of its
-     #     keys only when that exit attribute is set. A door link
-     #     carries no lock state (#2682).
     ...
   ],
 }
 ```
 
-Classification rules, most specific first (`_link_kind` in
-`world/mapping.py`): `door` from is_door; then `gap` from is_gap, tested
-before is_edge because every gap also carries is_edge (#2789); then
-`edge` from is_edge; then `fall` for a `down`/`d` exit out of a sky cell;
-anything else is `walk`. Only a literal True counts. Edge and gap links
-carry their flight-plan attributes (`edge_difficulty`, `gap_difficulty`,
-`gap_destination`); a door link carries no lock state (removed in #2682,
-because the payload feeds the public atlas). Off-grid rooms are simply absent, which is
-itself information the builder view surfaces.
+### Link kinds
 
-Tests pin: determinism (two exports, same world → identical output);
-classification of each link kind and its precedence
-(`test_link_kind_precedence.py`); the flight-plan passthrough; and that
-no door lock state and none of the retired edge attributes are sent
-(`test_mapping.py`, `test_atlas_withholds_lock_state.py`).
+`_link_kind` gives each link one label, most specific first:
 
-## 2 · The builder map — isometric volume, generated on demand
+1. `door` — the exit has `is_door`.
+2. `gap` — the exit has `is_gap`. Tested before `is_edge` because every gap
+   also carries `is_edge` (#2789).
+3. `edge` — the exit has `is_edge`.
+4. `fall` — a `down` or `d` exit out of a sky cell.
+5. `walk` — anything else.
 
-A generator script (repo `scripts/`, run like any content script) that
-reads the export and writes a **self-contained HTML file**: inline canvas
-isometric renderer, no external assets, openable anywhere.
+Only a literal True counts.
 
+### What a link carries
+
+- **Edge and gap links** carry an `"edge"` key holding their flight-plan
+  attributes, copied straight from the exit: exactly `edge_difficulty`,
+  `gap_difficulty` and `gap_destination` (ints). Each key appears only when
+  that exit attribute is set. The whole `"edge"` key is absent (not null) on
+  any other kind of link.
+- **No other edge attribute is exported.** `sky_room`, `fall_distance` and
+  `fall_damage` were retired (#3579): the exit's destination IS the air
+  cell, the column below it IS the distance, and the damage is a constant
+  (`FALL_DAMAGE_PER_STORY`), so none of the three has a writer or a reader.
+  `fall_room` was retired (#3580) on the owner ruling of 2026-09-16 that a
+  fall "would always follow gravity straight down": in a sky room, proceed
+  down; the fall ends at the first room that is not a sky room. There is no
+  authored landing, so there is nothing for the map to carry. An apron,
+  awning or terrace that should catch a fall is a ROOM in the column
+  (`is_sky_room` False), never an attribute.
+- **Door links carry no lock state** (#2682). A door is typed
+  `kind: "door"` and nothing more. The reason: `export_map()` feeds the
+  PUBLIC `/atlas/` page, so live lock state let anyone with the URL read
+  which doors stood locked (at the time, 470 doors, 348 of them touching
+  private residences), joined to room names and coordinates; nothing ever
+  read the field. A staff map that wants lock state reads the exits
+  directly rather than routing it through this payload.
+
+### Cosmetic skins
+
+`db.atlas_skin = "<class>"` on a room overrides its atlas class in both
+renderers WITHOUT touching the gameplay `type` (which drives crowd routing,
+exit phrasing and ambience). The export ships it as `skin`; the renderers'
+`cls()` honors it first, guarded on the class existing in the model/fill
+library. First use: the Brackett seam band — the whole sixth storey wears
+the `loggia` glass band as a ring at the old-pour/rebuild seam line
+(Build 008), map charm marking a structural truth after the floor
+standardized as housing.
+
+## 2 · The builder map — isometric volume, generated on demand (§M2)
+
+`scripts/atlas/generate.py` (staff=True), run like any content script,
+reads the export and writes a **self-contained HTML file** from
+`scripts/atlas/template.html`: an inline canvas isometric renderer (the
+sprite plate), no external assets, openable anywhere.
+
+- **Builder-only artifact**: a generated file, never served by the game.
+  Regenerate after builds; stale is fine, truth is one command away.
 - **Isometric voxels**: rooms as blocks colored by type; air cells
   translucent; sky-transit distinct from solid; z-slice scrubber and a
   full-volume view. Isometric, not free-cam — the questions are columnar
   (what is above this street, does this fall lane clear, where does the
   canyon pinch) and iso answers them without navigation overhead.
-- **Overlays, each toggleable** (this is where it earns its keep):
-  - *Edges*: bright arcs for edge/gap/fall links, colored by kind —
-    the edge audit, drawn.
+- **Staff toggles** (shown only when the file is generated for staff):
+  - *Air lattice*.
+  - *Jump routes* (the Edges overlay): arcs for `edge` and `gap` links
+    only, all stroked in one cyan. `fall` links are not drawn, and the arcs
+    are not colored by kind. An edge arc ends in its air cell; a gap arc
+    ends on its far perch (`gap_destination`), not in the air the leap
+    passes through (#3643). This is the edge audit, drawn.
+  - *Radio coverage*: two rings per mast from the live constants, crisp
+    (solid) and full reach (dashed) — the Birdhouse's actual footprint drawn
+    on the district.
+- **Street life**: a layer for every viewer, not staff-only.
+- **Overlays wanted, not built.** Until they exist these audits remain the
+  throwaway shell scripts §0 sets out to retire:
   - *Open columns*: ground-occupied cells with empty sky above (sky-lane
     and mast-site candidates). 📋 UNBUILT (no issue)
   - *Ground coverage*: `is_ground` cells. 📋 UNBUILT (no issue; not
     decided whether still wanted: a fall ends at the first room in the
     column that is not a sky room, whatever its `is_ground`).
-  - *Radio coverage*: crisp/fuzzy/static rings per mast from the live
-    constants — the Birdhouse's actual footprint drawn on the district.
   - *Collision candidates*: cells adjacent to occupied space (tunnel
     planning). 📋 UNBUILT (no issue)
-  - **Status of this list (2026-09-11 audit)** — the shipped plate
-    (`scripts/atlas/template.html`) carries three staff toggles: *jump
-    routes* (the Edges overlay), *radio coverage*, and an *air lattice*
-    that was never spec'd here, plus a non-staff *street life* layer.
-    **Open columns, ground coverage and collision candidates were never
-    built** — neither template contains a column, `is_ground` or
-    adjacency pass. The two that did ship are also narrower than
-    described above: the Edges overlay filters `edge` and `gap` links
-    only — `fall` links are never drawn — and strokes them all in one
-    cyan rather than "colored by kind", and a gap arc ends on its far
-    perch (`gap_destination`), not in the air the leap passes through
-    (#3643), while an edge arc ends in its air cell; radio coverage draws two rings
-    per mast, crisp (solid) and full reach (dashed), not the
-    crisp/fuzzy/static three. The banner's "SHIPPED through §M2.5" is
-    earned by the plate itself, not by this overlay set; the three
-    missing audits are still the throwaway shell scripts §0 set out to
-    retire.
-- **Builder-only artifact**: a generated file, never served by the game.
-  Regenerate after builds; stale is fine, truth is one command away.
+  - The two shipped toggles are narrower than first described: the Edges
+    overlay was described as bright arcs for edge/gap/fall links, colored
+    by kind, and radio coverage as crisp/fuzzy/static rings per mast.
 
 ## 3 · The player map — vague, not false (📋 UNBUILT, §M3, no issue)
 
@@ -184,10 +152,13 @@ The chart a colonist could actually hold. Owner doctrine: the colony's
 maps do not lie — they are **imprecise**. Districts, not cells; names for
 streets and landmarks, smears for everything else.
 
+Because the served atlas is public, the player chart's job is not secrecy
+but *in-fiction texture*; vague-not-false remains the design.
+
 - **Exploration memory** gates everything: a per-character visited set
   (one attribute, appended on room entry, capped/compacted). You chart
   what your boots have touched. Whether the set survives re-sleeving
-  follows the memory doctrine — it is memory, not gear (§5 owner call).
+  follows the memory doctrine — it is memory, not gear (see §5).
 - **Vagueness dial** (what the player tier elides, regardless of client):
   - No coordinates, no dbrefs, no grid exposed.
   - Air cells, sky lattice, and edge wiring: absent. You learn a jump by
@@ -201,48 +172,65 @@ streets and landmarks, smears for everything else.
   direction, terrain type. Mudlet-class clients auto-draw the map from
   exactly this, gated to visited rooms by construction (you only ever
   receive rooms you enter). The webclient can consume the same package
-  later; nothing else is built for it now.
-- **Paper maps as flavor tier (later, cheap)** 📋 UNBUILT (§M4, no issue): branded printed charts
-  sold as items — a cartography imprint whose district sheets are
-  authored prose-maps (a look-at item rendering a stylized district
-  summary), vague by profession. Slots into the shop system as pure
-  content; also the natural *hackable/stealable* map artifact when
-  decking arrives.
+  later; nothing else is built for it now. It should speak the MUD mapping
+  standards — GMCP Room/Map packages toward Mudlet et al. (owner: "a while
+  off", noted so the deferral is a decision, not an omission).
 
 ## 3.5 · Art direction (owner-set 2026-07-28): the stamp atlas
 
-The §M2 renderer's final form is an **Inkarnate-style stamp atlas in a
-Fallout 1/2 register**: the practical layer (grid truth, hover, z-slice,
-route/coverage overlays) is unchanged, but cells render as CUSTOM SPRITES
+The builder renderer's (§M2 sprite plate's) final form is an
+**Inkarnate-style stamp atlas in a Fallout 1/2 register**: the practical
+layer (grid truth, hover, z-slice, route/coverage overlays) is unchanged, but cells render as CUSTOM SPRITES
 — a per-type library plus signature multi-cell landmark sprites — with
 the procedural boxes as fallback so the library grows incrementally.
-Register refined (owner 2026-07-28): **off-world colony —
-Alien / Blade Runner** — cassette-futurism industrial vocabulary (hazard
-chevrons, stencils, conduit runs, dock stripes, utilitarian signage) under
-a sodium-key/teal-rim lighting rig, wet-asphalt speculars, and a darkroom
+
+Register refined (owner 2026-07-28): **off-world colony — Alien / Blade
+Runner** — cassette-futurism industrial vocabulary (hazard chevrons,
+stencils, conduit runs, dock stripes, utilitarian signage) under a
+sodium-key/teal-rim lighting rig, wet-asphalt speculars, and a darkroom
 grade of teal shadows, amber highlights, and neon bloom. Base register
-underneath remains pre-rendered-3D grit — hard low key light, brown/rust/olive
-palette, sodium-lamp amber, posterize + ordered dither + grain post
-(Fallout's look WAS pre-rendered 3D; the vibe is materials and post, not
-projection — 2:1 iso stays). Cyan is reserved for DATA overlays only.
-Sprite sources, ranked: (1) pre-rendered pipeline — MagicaVoxel/Blender
-models at sub-cell detail, one fixed camera + light rig, automated post
-chain; regenerable, geometry-true, models shared with the §M4 portrait
-plates; (2) local img2img grime pass, ControlNet-locked so geometry
-cannot move (finishing, never source); (3) commissioned pixel art for
-hero sprites, eventually. **Pilot**: three sprites (street cell,
-tenement floor, Boot hull segment) through the full rig, stamped into
-the live style study beside procedural cells for an A/B.
+underneath remains pre-rendered-3D grit — hard low key light,
+brown/rust/olive palette, sodium-lamp amber, posterize + ordered dither +
+grain post (Fallout's look WAS pre-rendered 3D; the vibe is materials and
+post, not projection — 2:1 iso stays). **Cyan is reserved for DATA overlays
+only.**
 
-## 4 · Downstream consumers (design constraints only, no build)
+Sprite sources, ranked:
 
-- **Decking**: the export is the canonical "colony map file" the net
-  layer will expose in pieces — wayfinding kiosks, route data, sewer
-  charts. Requirement on §1: stable identities and clean layering so a
-  *subset* of the export is a meaningful document.
-- **Build-planning tool**: the builder renderer's data layer should keep
-  render and data separate so a future interactive planner (click a cell,
-  propose a tunnel) reuses the export unchanged.
+1. Pre-rendered pipeline — MagicaVoxel/Blender models at sub-cell detail,
+   one fixed camera + light rig, automated post chain; regenerable,
+   geometry-true, models shared with the §M4 portrait plates.
+2. Local img2img grime pass, ControlNet-locked so geometry cannot move
+   (finishing, never source).
+3. Commissioned pixel art for hero sprites, eventually.
+
+**Pilot**: three sprites (street cell, tenement floor, Boot hull segment)
+through the full rig, stamped into the live style study beside procedural
+cells for an A/B.
+
+## 4 · Downstream consumers (§M4)
+
+Each is a new consumer of the export; none reopens it.
+
+- **Paper maps as flavor tier (later, cheap)** 📋 UNBUILT (§M4, no issue):
+  branded printed charts sold as items — a cartography imprint whose
+  district sheets are authored prose-maps (a look-at item rendering a
+  stylized district summary), vague by profession. Slots into the shop
+  system as pure content; also the natural *hackable/stealable* map
+  artifact when decking arrives.
+- **Decking** (design constraint only, no build): the export is the
+  canonical "colony map file" the net layer will expose in pieces —
+  wayfinding kiosks, route data, sewer charts. Requirement on the export:
+  stable identities and clean layering so a *subset* of the export is a
+  meaningful document.
+- **Build-planning tool** (design constraint only, no build): the builder
+  renderer's data layer should keep render and data separate so a future
+  interactive planner (click a cell, propose a tunnel) reuses the export
+  unchanged.
+
+Order: §M3, the player chart (visited-set attribute + GMCP `Room.Info`
+emission per the vagueness dial; Mudlet draws the rest), then §M4 (paper
+map items; decking exposure; interactive planner).
 
 ## 5 · Open questions (owner)
 
@@ -256,62 +244,57 @@ the live style study beside procedural cells for an A/B.
 - **Builder-map access**: generated-file-only (lean), or eventually an
   admin web page?
 
-## 6 · Phasing
+## 7 · The atlas as shipped — the live render (§M2.5)
 
-1. **§M1 — the export.** `world/mapping.py` + tests. Pure, deterministic,
-   read-only. Unblocks everything else and nothing depends on choices
-   still open.
-2. **§M2 — the builder volume.** Generator script → self-contained iso
-   HTML with the overlay set. Pays for itself the first build it plans.
-3. **§M3 — the player chart.** Visited-set attribute + GMCP Room.Info
-   emission per the vagueness dial. Mudlet draws the rest.
-4. **§M4 — later.** Paper map items; decking exposure; interactive
-   planner. Each is a new consumer of §M1, none reopens it.
+Two consumers read `export_map()`: the builder plate (§2), and the served
+atlas.
 
-## 7 · The atlas as shipped (2026-08-04) — the live render
-
-"One export, many renderers" held; the renderers just outgrew the plan.
-Two consumers exist today, both fed by `export_map()`:
-
-- **The served atlas** (`/atlas/`, public, no login needed; linked as "Colony Atlas" in
-  the account dropdown) is a **live 3D render**, embedded in the site page in the
-  same plate chrome the sprite atlas wore (`web/templates/website/
-  atlas.html` fragment mode; STYLING_SPEC addendum). The stage is a
-  three.js orthographic free camera over models captured from the *same
-  Blender rig* that shot the sprites: `scripts/atlas/sprites/
-  export_models.py` monkeypatches `rig.render`, joins and subdivides
-  each scene, and **bakes the full Cycles verdict into vertex colors** —
-  twice, once under the rig's night lights and once under a day sky —
-  shipped as parallel color attributes that the viewer crossfades. No
-  live lights; a post shader carries the darkroom grade at 60fps.
-- **Cockpit HUD**: a compass dial (needle tracks the true screen
-  direction of north; tap = home reset, which re-centers and fits the
-  city flush to the stage from per-cell projection), a translucent
-  altitude tape driving the z-slice clipping plane, and a sky-instrument
-  toggle (crescent/sun glyph). Rotation is gestural (twist, shift-drag,
-  bracket keys). Hover/tap raycasts to the room readout.
+- **Public.** Evennia's web extension surface is first-class, so serving
+  the atlas keeps to the vanilla mandate. The served atlas (`/atlas/`)
+  needs no login and is linked as "Colony Atlas" in the account dropdown. It is edge-cached for cookie-less
+  visitors, and the plate is cached server-side for 120s. Owner call
+  (2026-08-25): the atlas is public, the colony's shop window. Full
+  room-name and coordinate exposure is an accepted cost.
+- **The render.** A **live 3D render**, embedded in the site page in the
+  same plate chrome the sprite atlas wore (`web/templates/website/atlas.html`
+  fragment mode; STYLING_SPEC addendum). The stage is a three.js
+  orthographic free camera over models captured from the *same Blender rig*
+  that shot the sprites: `scripts/atlas/sprites/export_models.py`
+  monkeypatches `rig.render`, joins and subdivides each scene, and **bakes
+  the full Cycles verdict into vertex colors** — twice, once under the rig's
+  night lights and once under a day sky — shipped as parallel color
+  attributes that the viewer crossfades. No live lights; a post shader
+  carries the darkroom grade at 60fps.
+- **Cockpit HUD**: a compass dial (the needle tracks the true screen
+  direction of north; tap = home reset, which re-centers and fits the city
+  flush to the stage from per-cell projection), a translucent altitude tape
+  driving the z-slice clipping plane, and a sky-instrument toggle
+  (crescent/sun glyph). Rotation is gestural (twist, shift-drag, bracket
+  keys). Hover/tap raycasts to the room readout.
 - **'You are here'**: the served page carries no positions. `atlas_view`
-  (`web/website/views/atlas.py`) builds it once with `account=None`,
-  caches it, and serves the same page to every viewer. In the browser, a
-  5-second poll of `?feed=here` (same allowlisted path; query strings
-  pass the edge) returns `player_positions(request.user)`, the grid
-  positions of the viewer's own characters, and keeps the pulsing
-  beacons honest while you play. Anonymous viewers get none. The poll
-  skips while the tab is hidden and stops after three failures in a row.
-  Characters without a place in the world simply don't report.
-- **The builder instrument** is still the §M2/§3.5 sprite plate:
-  `scripts/atlas/generate.py` (staff=True) writes the standalone file,
-  and the staff overlays — air lattice, jump routes, radio coverage —
-  live only there. It is never served.
-- **Cosmetic skins (2026-08-07)**: `db.atlas_skin = "<class>"` on a
-  room overrides its atlas class in both renderers WITHOUT touching the
-  gameplay `type` (which drives crowd routing, exit phrasing, ambience).
-  The export ships it as `skin`; `cls()` honors it first, guarded on the
-  class existing in the model/fill library. First use: the Brackett
-  seam band — the whole sixth storey wears the `loggia` glass band as a
-  ring at the old-pour/rebuild seam line (Build 008), map charm marking
-  a structural truth after the floor standardized as housing.
-- **Pipeline discipline**: `models.json` is baked art. Any change to a
-  rig model or hero script requires re-running `export_models.py`
-  alongside the sprite grind, or the live render serves stale geometry.
-  three.js is vendored (r147 UMD, pinned — the last non-ESM build).
+  (`web/website/views/atlas.py`) builds it once with `account=None`, caches
+  it, and serves the same page to every viewer. In the browser, a 5-second
+  poll of `?feed=here` (same allowlisted path; query strings pass the edge)
+  returns `player_positions(request.user)`, the grid positions of the
+  viewer's own characters, and keeps the pulsing beacons honest while they
+  play. Anonymous viewers get none. The poll skips while the tab is hidden
+  and stops after three failures in a row. Characters without a place in
+  the world simply don't report.
+- **Staff overlays are not served.** Air lattice, jump routes and radio
+  coverage live only in the builder plate.
+- **Pipeline discipline**: `models.json` is baked art. Any change to a rig
+  model or hero script requires re-running `export_models.py` alongside the
+  sprite grind, or the live render serves stale geometry. three.js is
+  vendored (r147 UMD, pinned — the last non-ESM build).
+
+**Overturned intention.** The served atlas was first scoped with the owner
+as its only consumer: a thin superuser-gated website view reusing the
+builder renderer, kept self-contained so the served page was a shim, not a
+commitment. The owner ruled instead (2026-08-25) that the served atlas is
+public, with no login.
+
+## Related documents
+
+- SPATIAL_COORDINATE_SYSTEM_SPEC — the `db.xyz` substrate the export reads.
+- GMCP_PACKAGES_SPEC — the player chart's delivery.
+- STYLING_SPEC — the atlas page chrome (addendum).

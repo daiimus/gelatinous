@@ -1,6 +1,6 @@
 """Trust & consent — the third-party action gate.
 
-Implements TRUST_AND_CONSENT_SPEC Phase 1: one shared answer to "may this
+Implements TRUST_AND_CONSENT_SPEC §1 and §3: one shared answer to "may this
 actor do this class of thing to that target?" so third-party commands stop
 inventing one-off gates.
 

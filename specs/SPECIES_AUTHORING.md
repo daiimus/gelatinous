@@ -1,40 +1,37 @@
 # Species Authoring Guide
 
-> **Status:** ✅ **SHIPPED** — guide verified against code 2026-08-02.
-
 How to add a new species to Gelatinous so combat, severance, medical, longdesc rendering, decay naming, and corpse / severed-part prose all behave correctly without renderer code changes.
 
-This guide is the species-onboarding playbook produced as Phase 5 of issue #356. Phases 1–4 lifted previously-global humanoid constants into the species registry. The rat (`SPECIES_DEFINITIONS["rat"]`) is the reference non-human implementation.
+Per-species anatomy lives in a species registry rather than in global humanoid constants (issue #356). The rat (`SPECIES_DEFINITIONS["rat"]`) is the reference non-human implementation.
 
 ## Where species data lives
 
-Two files hold the per-species data; everything else in the codebase consumes them via helpers:
-
-> **CORRECTION (2026-09-12):** no longer two, and a species that skips the undocumented sites silently wears human prose. Beyond the two below and the two "optional secondary" places, four more locations carry species-keyed data. None of them are new — every one predates this guide's 2026-08-02 "verified" banner:
->
-> - **`world/anatomy/organ_descriptions.py`** — `ORGAN_DESCRIPTIONS_BY_SPECIES`, per-organ *condition prose* for non-organic bodies (robot, synth). Consulted before `ORGAN_DISPLAY` by `get_organ_default_description(organ, condition, species)` (`world/anatomy/organs.py`). Landed 2026-06-26, PR #845. (#2262 / PR #2275, 2026-08-24, is often miscited for this — that change routed the surgical *chart* through `get_organ_display_name` and filled one missing component description; it neither created the module nor the species lookup.)
-> - **`world/medical/medical_messages.py`** — `BLEEDING_ROOM_BY_SPECIES`, `DEATH_CAUSE_TEMPLATES_BY_SPECIES`, `_GENERIC_DEATH_BY_SPECIES`; #375, 2026-06-04. All four registered species are populated; an unpopulated species gets human death and bleeding prose.
-> - **`world/mob_flavor/__init__.py`** — `_SHORT_DESCS_BY_SPECIES`, `_LOOK_PLACES_BY_SPECIES`, `_LONGDESCS_BY_SPECIES`; #372, 2026-06-04. All four populated.
-> - **`world/combat/messages/unarmed_<species>.py`** — `get_combat_message` prefers a species-suffixed module over the human-anchored `unarmed.py` (`world/combat/messages/__init__.py`); #365, 2026-06-04. `unarmed_rat.py` is the shipped example.
+Two files hold the core per-species data; everything else in the codebase consumes them via helpers:
 
 - **`world/anatomy/species.py`** — `SPECIES_DEFINITIONS[species]` declares every per-species table (organs, severability, display order, decay templates, pair keys).
 - **`world/anatomy/severed_parts.py`** — `SEVERED_PART_DESCRIPTIONS[species]` holds the prose for severed body parts at the three decay-condition tiers.
 
+The registered species are `human`, `rat`, `robot` and `synthetic_humanoid`.
+
+Four more locations carry species-keyed data. A species that skips one of them silently wears human prose there:
+
+- **`world/anatomy/organ_descriptions.py`** — `ORGAN_DESCRIPTIONS_BY_SPECIES`, per-organ *condition prose* for non-organic bodies (robot, synth). Consulted before `ORGAN_DISPLAY` by `get_organ_default_description(organ, condition, species)` (`world/anatomy/organs.py`).
+- **`world/medical/medical_messages.py`** — `BLEEDING_ROOM_BY_SPECIES`, `DEATH_CAUSE_TEMPLATES_BY_SPECIES`, `_GENERIC_DEATH_BY_SPECIES` (#375). An unpopulated species gets human death and bleeding prose.
+- **`world/mob_flavor/__init__.py`** — `_SHORT_DESCS_BY_SPECIES`, `_LOOK_PLACES_BY_SPECIES`, `_LONGDESCS_BY_SPECIES` (#372).
+- **`world/combat/messages/unarmed_<species>.py`** — `get_combat_message` (`world/combat/messages/__init__.py`) prefers a species-suffixed module over the human-anchored `unarmed.py` (#365). `unarmed_rat.py` is the example.
+
 Two optional secondary places:
 
-- **`world/medical/wounds/messages/*.py`** — per-injury-type wound prose. The existing tables are species-agnostic (humans share them). **Species packs (shipped 2026-07-05):** a species whose wounds must not read as human flesh registers a COMPLETE pack module in `messages.SPECIES_PACKS` (`robot.py` — torn plating, amber hydraulic weep, weld-seam scars; `synth.py` — cobalt blood, pearlescent seam scars). A pack species renders ALL surface-wound prose (every stage, plus `DESTROYED_BY_LOCATION` and `COMPOUND_DESCRIPTIONS`) from its pack — it never falls through to the shared flesh tables, which is the no-leak guarantee (pin new packs with a completeness test like `test_species_wounds.py`). Pack prose should hardcode the species `blood_color` (`world/anatomy/species.py`) and match the register of its `organ_descriptions.py` entries so surface and organ damage read as one body. **NOTE (2026-07-13, #1206):** WEAPON + severance message prose no longer hardcodes colour — it uses `{blood}`/`{Blood}` format fields resolved from the TARGET's species (human crimson / synth cobalt / robot amber) in `get_combat_message` + `get_severance_message`; a validator (`test_blood_tokens.py`) forbids bare colour words there. Pack wound tables (the species-keyed medical prose) still hardcode their own colour — that's the species speaking about ITSELF, not a weapon describing an arbitrary target. Humans and pack-less species (rat, ...) keep the shared modules unchanged. **Per-injury vocabulary (2026-09-14, #3512):** a pack may also carry `BY_INJURY = {injury_type: {stage: [...]}}` and `COMPOUND_BY_INJURY`; the lookup prefers them, so a blow, a bullet and a blade read differently on a synth or a robot (a synth pools cobalt under the dermis; a robot dents). A pack that has `BY_INJURY` must author every injury type the species can take. `get_wound_description` (`world/medical/wounds/wound_descriptions.py`) answers a type the pack lacks with a plain line ("a severe plasma wound on the left arm"), not with the pack's stage-only table and never with flesh prose. Only `generic`, an unset type and the destroyed stage fall back to the stage-only tables. A compound line for a type missing from `COMPOUND_BY_INJURY` falls back to the pack's `COMPOUND_DESCRIPTIONS`. Compound lines keep `{severity}` on ONE wound and spend `{others_phrase}` on the rest; single-wound lines never use `{others_phrase}`; robot lines never use `{skintone}`. `test_species_wounds.PacksAnswerByInjuryType` pins all of it: blunt, bullet, stab, laceration, burn and cut at fresh, treated, healing and scarred, a compound fresh line for each, and `harvested` and `severed` at every stage the test lists.
-- **`world/anatomy/organs.py`** — `ORGAN_DISPLAY`, the shared organic organ names and prose. A species renames organs with `organ_display` in its `SPECIES_DEFINITIONS` entry and rewrites their prose in `ORGAN_DESCRIPTIONS_BY_SPECIES` (`world/anatomy/organ_descriptions.py`). A species that keeps mammalian organs can reuse the shared names.
+- **`world/medical/wounds/messages/*.py`** — per-injury-type wound prose. See "Wound prose and species packs" below.
+- **`world/anatomy/organs.py`** — `ORGAN_DISPLAY`, the shared organic organ names and prose. See "Organ names and prose" below.
 
 Code also branches on species by name, and a new species gets the default branch in each: the butcher's refusal line (`_refusal_line` in `world/butchery.py`), the medical supply gate (`serves_species` in `world/medical/utils.py`, with its robot special case for supplies that declare neither `serves` nor `not_for`, and the robot's "tool roll"), and the soul needs profiles (the `profile_name(...) == "robot"` checks in `world/souls/`). Decide for each whether the default is right.
 
 ## Required tables in `SPECIES_DEFINITIONS[species]`
 
-Every species declaration MUST include the following keys. A registered species that leaves one out gets an empty table from its getter, not the human one: missing anatomy and no prose. Only an unknown or unset species name falls back to the human entry.
+Every species declaration MUST include the keys below.
 
-> **CORRECTION (2026-09-12):** two errors in the paragraph above.
->
-> 1. **The fallback is per-SPECIES, not per-KEY.** `_resolve_species` (`world/anatomy/species.py`) substitutes the whole human entry only for an unknown or `None` species *name*. A REGISTERED species that omits a key gets an EMPTY collection from the getter — `frozenset(spec.get("severable_containers") or frozenset())`, and the same `or {}` / `or ()` shape in `get_species_pair_keys`, `get_species_organs`, `get_species_grasping_containers`. So the real failure mode of a missing table is *absent anatomy and silent prose*, not human prose. (Species built by `_derive_*` deepcopy do inherit human values for anything they don't override — that path is the exception.)
-> 2. **The list below is incomplete.** Every registered species also declares `grasping_containers` — the Mr. Hands slot set (#307 / PR-H1), declared on the human and rat entries (the rat's set is empty), read by `get_species_grasping_containers` and consumed in `typeclasses/characters.py` and `world/combat/utils.py`; the rat's empty set is why a rat can't wield. Non-flesh bodies additionally declare `infection_immune` (synth and robot; getter `get_species_infection_immune`) and `organ_display` (synth and robot). `blood_color` is declared by **human too** (alongside synth and robot; getter `get_species_blood_color`) — the rat is the species that omits it and silently inherits crimson from `_DEFAULT_BLOOD_COLOR`, which is the trap for any new species whose fluid is not red. `body_capacities` and `longdesc_flex_nouns` are required too — they are documented under "Migrated follow-ups" below rather than in this table.
+**The fallback is per-species, not per-key.** `_resolve_species` (`world/anatomy/species.py`) substitutes the whole human entry only for an unknown or `None` species *name*. A REGISTERED species that omits a key gets an EMPTY collection from the getter (`frozenset(spec.get("severable_containers") or frozenset())`, and the same `or {}` / `or ()` shape in `get_species_pair_keys`, `get_species_organs`, `get_species_grasping_containers`). So a missing table means absent anatomy and silent prose, not human prose. The exception: species built by `_derive_*` deepcopy inherit human values for anything they don't override.
 
 ### Display
 
@@ -78,9 +75,28 @@ Every species declaration MUST include the following keys. A registered species 
 | `limb_downstream_chain` | dict | `proximal → (chain tuple including proximal)`. Severing a thigh takes the shin and foot, etc. |
 | `limb_parent` | dict | `distal → proximal`. Reverse view used by the cut-point wound filter. |
 
+### Grasping
+
+Every registered species also declares `grasping_containers` — the Mr. Hands slot set (#307), read by `get_species_grasping_containers` and consumed in `typeclasses/characters.py` and `world/combat/utils.py`. The rat's set is empty, which is why a rat can't wield.
+
+### Body capacities and flex nouns
+
+- **`body_capacities`** — use `get_species_body_capacities(species)`. Consumers: `MedicalState.calculate_body_capacity`, `world.medical.utils._get_vital_locations`. The rat's `moving` references hindleg/hindpaw bones; `manipulation` references foreleg/forepaw bones; `talking` is intentionally absent (rats squeak, they don't talk). `body_capacities` must wire every capacity in `LETHAL_CAPACITY_NAMES` (`world/medical/constants.py`), each with `directly_fatal: True`. `calculate_body_capacity` reads a capacity with no organs as full, so a species that leaves one out cannot die that way. `consciousness` is not a death gate.
+- **`longdesc_flex_nouns`** — use `get_species_longdesc_flex_nouns(species)`. Rats add `tail` / `snout` / `fur` / `whisker` / `paw` / `claw`; robots add chassis nouns (`manipulator`, `strut`, `housing`, ...); pair-keyed singulars flow through `pair_keys` automatically. A noun that a species' longdesc lines write as a `{token}` flexes between singular and plural only if it is in this set or is a pair singular. The global `LONGDESC_FLEX_NOUNS` (`world/combat/constants.py`) is the human default.
+
+### Keys some species declare
+
+- **`infection_immune`** — declared by synth and robot; getter `get_species_infection_immune`.
+- **`organ_display`** — declared by synth and robot; see "Organ names and prose".
+- **`blood_color`** — declared by human, synth and robot; getter `get_species_blood_color`. The rat omits it and silently inherits crimson from `_DEFAULT_BLOOD_COLOR`. That is the trap for any new species whose fluid is not red.
+
 ## Required entries in `SEVERED_PART_DESCRIPTIONS[species]`
 
-Each severable container needs prose at three condition tiers (`pristine`, `damaged`, `putrid`). The container set must match `species["severable_containers"]` — every container the species can lose. ~~Falls through to human entries when missing~~ **Corrected 2026-09-13 (#3362):** a REGISTERED species with no bank gets *silence* (empty string, so the part renders with no description), not human prose — that fallback exists only for an *unknown* species name (#2725). As of #3362 all four registered species carry a full bank (human, rat, robot, synthetic_humanoid); a new species MUST ship one, and `world/tests/test_severed_part_descriptions.py` fails if any registered species is missing a location or a condition tier. A part whose organs are augment chrome reads from `CYBERNETIC_PART_DESCRIPTIONS` instead, unless the species is `infection_immune` and has its own bank (`get_severed_part_description`). A non-flesh species' bank must not say "blood" or "human"; `test_inorganic_species_prose_is_not_flesh` checks robot and synth.
+Each severable container needs prose at three condition tiers (`pristine`, `damaged`, `putrid`). The container set must match `species["severable_containers"]` — every container the species can lose.
+
+A REGISTERED species with no bank gets *silence* (empty string, so the part renders with no description), not human prose (#3362). The fallback to human entries exists only for an *unknown* species name (#2725). A new species MUST ship a full bank; `world/tests/test_severed_part_descriptions.py` fails if any registered species is missing a location or a condition tier.
+
+A part whose organs are augment chrome reads from `CYBERNETIC_PART_DESCRIPTIONS` instead, unless the species is `infection_immune` and has its own bank (`get_severed_part_description`). A non-flesh species' bank must not say "blood" or "human"; `test_inorganic_species_prose_is_not_flesh` checks robot and synth.
 
 Example: the rat's `tail` entry. The real bank is built with `SEVERED_PART_DESCRIPTIONS.setdefault("rat", {...})`.
 
@@ -91,6 +107,40 @@ SEVERED_PART_DESCRIPTIONS["rat"]["tail"] = {
     "putrid":   "A swollen rat tail, the rings discoloured and the flesh sloughing softly off the vertebrae.",
 }
 ```
+
+## Wound prose and species packs
+
+`world/medical/wounds/messages/*.py` holds per-injury-type wound prose. The existing tables are species-agnostic (humans share them). Humans and pack-less species (rat, ...) use the shared modules.
+
+A species whose wounds must not read as human flesh registers a COMPLETE pack module in `messages.SPECIES_PACKS` (`robot.py` — torn plating, amber hydraulic weep, weld-seam scars; `synth.py` — cobalt blood, pearlescent seam scars). A pack species renders ALL surface-wound prose (every stage, plus `DESTROYED_BY_LOCATION` and `COMPOUND_DESCRIPTIONS`) from its pack — it never falls through to the shared flesh tables, which is the no-leak guarantee. Pin a new pack with a completeness test like `test_species_wounds.py`.
+
+**Colour.** Pack prose hardcodes the species `blood_color` (`world/anatomy/species.py`) and matches the register of its `organ_descriptions.py` entries, so surface and organ damage read as one body. Weapon and severance message prose does not hardcode colour: it uses `{blood}` / `{Blood}` format fields resolved from the TARGET's species (human crimson / synth cobalt / robot amber) in `get_combat_message` and `get_severance_message` (#1206). A validator (`test_blood_tokens.py`) forbids bare colour words there. Pack wound tables keep their own colour because that is the species speaking about ITSELF, not a weapon describing an arbitrary target.
+
+**Per-injury vocabulary (#3512).** A pack may also carry `BY_INJURY = {injury_type: {stage: [...]}}` and `COMPOUND_BY_INJURY`; the lookup prefers them, so a blow, a bullet and a blade read differently on a synth or a robot (a synth pools cobalt under the dermis; a robot dents).
+
+- A pack that has `BY_INJURY` must author every injury type the species can take.
+- `get_wound_description` (`world/medical/wounds/wound_descriptions.py`) answers a type the pack lacks with a plain line ("a severe plasma wound on the left arm"), not with the pack's stage-only table and never with flesh prose.
+- Only `generic`, an unset type and the destroyed stage fall back to the stage-only tables.
+- A compound line for a type missing from `COMPOUND_BY_INJURY` falls back to the pack's `COMPOUND_DESCRIPTIONS`.
+- Compound lines keep `{severity}` on ONE wound and spend `{others_phrase}` on the rest; single-wound lines never use `{others_phrase}`; robot lines never use `{skintone}`.
+
+`test_species_wounds.PacksAnswerByInjuryType` pins all of it: blunt, bullet, stab, laceration, burn and cut at fresh, treated, healing and scarred, a compound fresh line for each, and `harvested` and `severed` at every stage the test lists.
+
+## Organ names and prose
+
+`ORGAN_DISPLAY` (`world/anatomy/organs.py`) is the shared ORGANIC table — per-organ display name and condition prose for autopsy / harvest rendering — and the fallback for organs a species does not override. A new non-flesh species overrides at BOTH sites, not one:
+
+- **Display names:** `organ_display` in the species' `SPECIES_DEFINITIONS` entry, resolved by `get_organ_display_name(organ, species)` (`world/anatomy/organs.py`).
+- **Condition prose:** `ORGAN_DESCRIPTIONS_BY_SPECIES` in `world/anatomy/organ_descriptions.py`, consulted first by `get_organ_default_description(organ, condition, species)`.
+
+A species that keeps mammalian organs can reuse the shared names.
+
+The two non-flesh registers:
+
+- **Robot** (#842) — a full MECHANICAL register (brain→processor core, heart→power core, eyes→optical sensors, limb bones→struts/servos) in `_derive_robot` (`world/anatomy/species.py`).
+- **Synthetic Humanoid** (#1204) — the WETWARE register (`_SYNTH_WETWARE` in `species.py`): soft core renamed to engineered-tissue nouns (brain→wetcore, heart→vat-heart, lungs→culture-lungs, liver→filter gland, kidneys→flush glands, stomach→culture gut) while bones/senses/form-visible organs stay "synthetic <organ>"; decay tiers compose free ("inert wetcore"). A test forbids industrial vocabulary (the rejected "cardiac pump" register — a Synthetic Humanoid is a replicant, not a machine).
+
+Humans use `ORGAN_DISPLAY` unchanged. Rats fall through gracefully: shared organ names (brain / heart / left_lung / liver / etc.) get human prose, which reads OK on a smaller body, and rat-specific bones (`left_foreleg_bone` / `tail_vertebrae`) get an underscore-stripped display name and empty prose (the renderer drops empty prose cleanly). An alien with non-mammalian systems would follow the same pattern as robot and synth.
 
 ## Adding a species — step by step
 
@@ -104,29 +154,15 @@ SEVERED_PART_DESCRIPTIONS["rat"]["tail"] = {
 
 ## Consumer pattern
 
-When writing code that branches on anatomy, never read the global constants in `world/combat/constants.py` if the call site has a character / corpse / appendage context. Use the species-keyed helpers:
+When writing code that branches on anatomy, never read the global constants in `world/combat/constants.py` if the call site has a character / corpse / appendage context. Use the species-keyed helpers exported from `world.anatomy`:`get_organ_spec`, `get_species_anatomical_display_order`, `get_species_anatomical_regions`, `get_species_default_longdesc_locations`, `get_species_limb_downstream_chain`, `get_species_limb_parent`, `get_species_organs`, `get_species_pair_keys`, `get_species_severable_containers`, `get_species_sever_hand_by_container`, `get_species_severed_head_locations`.
 
-```python
-from world.anatomy import (
-    get_organ_spec,
-    get_species_anatomical_display_order,
-    get_species_anatomical_regions,
-    get_species_default_longdesc_locations,
-    get_species_limb_downstream_chain,
-    get_species_limb_parent,
-    get_species_organs,
-    get_species_pair_keys,
-    get_species_severable_containers,
-    get_species_sever_hand_by_container,
-    get_species_severed_head_locations,
-)
-```
+Each helper takes a species identifier and falls back to human on `None` / unknown so test stubs and species-less call sites keep working. Get the species from an object with `species_of(obj)` (from `world.anatomy`), not `obj.db.species`: severed parts and harvested organs carry their species only in `db.source_species`, and `species_of` reads both.
 
-Each helper takes a species identifier and falls back to human on `None` / unknown so test stubs and species-less call sites keep working. Get the species from an object with `species_of(obj)` (from `world.anatomy`), not `obj.db.species`: severed parts and harvested organs carry their species only in `db.source_species`, and `species_of` reads both. The global constants in `world/combat/constants.py` (`PAIR_MERGE_KEYS`, `SEVERABLE_CONTAINERS`, etc.) and `world/medical/constants.py` (`ORGANS`, `BODY_CAPACITIES`) remain importable as **derived aliases of the human entry** — keep using them at call sites that don't have a species context (admin commands, mob-flavor generators, tests that always operate on humans).
+The global constants in `world/combat/constants.py` (`PAIR_MERGE_KEYS`, `SEVERABLE_CONTAINERS`, etc.) and `world/medical/constants.py` (`ORGANS`, `BODY_CAPACITIES`) remain importable as **derived aliases of the human entry** — keep using them at call sites that don't have a species context (admin commands, mob-flavor generators, tests that always operate on humans).
 
-## What `Phases 1–4` migrated
+### Species-aware consumers
 
-For reference, the consumers updated to be species-aware during the rollout:
+These consumers read anatomy through the species helpers:
 
 - `MedicalState._initialize_default_organs`, `MedicalState.get_organ`, `Organ.__init__`
 - `ArmorMixin._maybe_sever_from_damage` (severable set)
@@ -138,21 +174,11 @@ For reference, the consumers updated to be species-aware during the rollout:
 - `Corpse._get_preserved_longdesc_descriptions`, `_process_corpse_description_variables`, `_build_decay_desc_paragraph` (display order, pair keys, decay templates)
 - `Appendage.return_appearance` (display order, pair keys)
 - `Character.at_object_creation` (default longdesc surfaces)
+- the `body_capacities` consumers named above
 
 If you add a new consumer that reads a global anatomy constant, ask whether it should be species-aware — and if so, migrate it via the matching helper.
 
-## Open follow-ups (not yet species-keyed)
-
-`ORGAN_DISPLAY` is the shared organic table, and species override it:
-
-- `ORGAN_DISPLAY` (`world/anatomy/organs.py`). Per-organ display name and condition prose for autopsy / harvest rendering. Currently human-anchored. **SUPERSEDED (2026-09-12):** no longer the only remaining global, and no longer human-anchored on either axis — and both overrides shipped 2026-06-26, i.e. this follow-up register was already out of date when this guide was last verified on 2026-08-02. *Display names:* `organ_display` ships for BOTH `synthetic_humanoid` (the wetware register described below) and `robot` — a full MECHANICAL register (brain→processor core, heart→power core, eyes→optical sensors, limb bones→struts/servos) in `_derive_robot` (`world/anatomy/species.py`), resolved by `get_organ_display_name(organ, species)` (`world/anatomy/organs.py`); issue #842 / PR #843. *Condition prose:* `world/anatomy/organ_descriptions.py` carries `ORGAN_DESCRIPTIONS_BY_SPECIES` banks for robot and synth, consulted first by `get_organ_default_description(organ, condition, species)` (`world/anatomy/organs.py`); PR #845. `ORGAN_DISPLAY` is now the shared ORGANIC table and the fallback for unoverridden organs — a new non-flesh species overrides at BOTH sites, not one. Rats fall through gracefully — shared organ names (brain / heart / left_lung / liver / etc.) get human prose which reads OK on a smaller body, and rat-specific bones (`left_foreleg_bone` / `tail_vertebrae`) get an underscore-stripped display name and empty prose (the renderer drops empty prose cleanly). **SHIPPED for synth (2026-07-13, #1204):** `SPECIES_DEFINITIONS[synthetic_humanoid]["organ_display"]` + `get_organ_display_name(organ, species)` — the WETWARE register (`_SYNTH_WETWARE` in `species.py`): soft core renamed to engineered-tissue nouns (brain→wetcore, heart→vat-heart, lungs→culture-lungs, liver→filter gland, kidneys→flush glands, stomach→culture gut) while bones/senses/form-visible organs stay "synthetic <organ>"; decay tiers compose free ("inert wetcore"); a test forbids industrial vocabulary (the rejected "cardiac pump" register — a Synthetic Humanoid is a replicant, not a machine). Humans untouched. An alien with non-mammalian systems would follow the same pattern.
-
-### Migrated follow-ups (now species-keyed)
-
-- `LONGDESC_FLEX_NOUNS` (`SPECIES_DEFINITIONS[species]["longdesc_flex_nouns"]`). Rats add `tail` / `snout` / `fur` / `whisker` / `paw` / `claw`; robots add chassis nouns (`manipulator`, `strut`, `housing`, ...); pair-keyed singulars flow through `pair_keys` automatically. A noun that a species' longdesc lines write as a `{token}` flexes between singular and plural only if it is in this set or is a pair singular. Use `get_species_longdesc_flex_nouns(species)`.
-- `BODY_CAPACITIES` (`SPECIES_DEFINITIONS[species]["body_capacities"]`). Rat's `moving` references hindleg/hindpaw bones; `manipulation` references foreleg/forepaw bones; `talking` is intentionally absent (rats squeak, they don't talk). Use `get_species_body_capacities(species)`. Consumers updated: `MedicalState.calculate_body_capacity`, `world.medical.utils._get_vital_locations`. `body_capacities` must wire every capacity in `LETHAL_CAPACITY_NAMES` (`world/medical/constants.py`), each with `directly_fatal: True`. `calculate_body_capacity` reads a capacity with no organs as full, so a species that leaves one out cannot die that way. `consciousness` is not a death gate.
-
-## Item-level compatibility layer (Phase 2.10 follow-up)
+## Item-level compatibility layer
 
 The species spec answers *"what slots does a species have?"* Organ items (harvested or cyberware) layer a complementary question on top: *"can this particular organ instance be installed in this target?"* This is item-side, not species-side — both layers coexist.
 
@@ -167,10 +193,14 @@ The install picker reads three item-side fields. Harvested organs and the cyberw
 Picker flow (`_list_install_locations` in `commands/CmdOperate.py`):
 
 1. **Cross-species gate.** If `donor.db.compatible_species` is set and doesn't include the target's species, return empty (picker refuses).
-   The install itself (`_resolve_install` in `world/medical/procedures.py`) checks again, and is stricter as built: an organ with neither `compatible_species` nor `source_species` is refused there ("The <organ> isn't <species> anatomy — it won't take."), although the picker lets it through. That refusal is not a failed roll.
+   The install itself (`_resolve_install` in `world/medical/procedures.py`) checks again, and is stricter: an organ with neither `compatible_species` nor `source_species` is refused there ("The <organ> isn't <species> anatomy — it won't take."), although the picker lets it through. That refusal is not a failed roll.
 2. **Candidate slots.** If the item has a `module_type` (on the item or in its `organ_spec`), the slots are the target's free containers whose organ `hardpoint` matches it, and nothing below applies. Else if the item declares `target_display_locations` (cyberware paired-slot path), use those. Else if it declares `target_container` (cyberware bulk-slot path), use that. Else look up the donor's `organ_name` in `get_species_organs(target_species)` (biological path) and use `display_location` if distinct from `container`, otherwise `container`.
 3. **Status tag.** Each candidate is tagged `(empty)` or `(occupied)` based on the current HP of the organ at that slot.
 
-The picker tests exercise `target_display_locations` with a made-up cybernetic eye declaring `compatible_species = ["human", "rat", "lizard"]` ("lizard" exists only in that test) and `target_display_locations = ["left_eye", "right_eye"]`: the picker offers both eye sockets on a species the item supports and refuses on any other. Cyberware items don't need entries in any species spec: the game's replacement organs (cybernetic heart, eyes, ears, jaw) use `organ_name` and carry their own `organ_spec`. Augments (items with `augment_organs`, such as the cybernetic tail and arm) do not use this picker; they mount at their `augment_anchor`, or at their `augment_container` when no anchor is set.
+The picker tests exercise `target_display_locations` with a made-up cybernetic eye declaring `compatible_species = ["human", "rat", "lizard"]` ("lizard" exists only in that test) and `target_display_locations = ["left_eye", "right_eye"]`: the picker offers both eye sockets on a species the item supports and refuses on any other.
 
-Multi-slot capacity (Doctor Octopus arms — installing multiple instances of the same organ type into augmented anatomy) is future work and will need a `state.organs` → `state.slots` schema change. It plugs into the same `target_display_locations` declaration without rework.
+Cyberware items don't need entries in any species spec: the game's replacement organs (cybernetic heart, eyes, ears, jaw) use `organ_name` and carry their own `organ_spec`. Augments (items with `augment_organs`, such as the cybernetic tail and arm) do not use this picker; they mount at their `augment_anchor`, or at their `augment_container` when no anchor is set.
+
+## Unbuilt
+
+- **Multi-slot capacity** `📋 UNBUILT (no issue)` — Doctor Octopus arms: installing multiple instances of the same organ type into augmented anatomy. It will need a `state.organs` → `state.slots` schema change, and plugs into the same `target_display_locations` declaration without rework.

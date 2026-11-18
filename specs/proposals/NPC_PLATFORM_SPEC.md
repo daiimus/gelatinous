@@ -1,13 +1,20 @@
 # NPC Platform Spec
 
-> 🟡 **PROPOSAL — the target hierarchy, and how far it has been built.**
-> Owner requirement (2026-08-28): *"one NPC platform with various
-> sub-components"*, everything built so far connected under **one
-> hierarchy**. This document exists because that requirement was
-> discussed at length and never written down, which made "have we met
-> it?" unanswerable. §5 is the checklist that answers it.
+Every NPC in the colony is one body on one platform. The body is the only
+class; the mind (soul), the job and the voice are data layered onto it. The
+souls engine drives every souled body, the director hands out work, and no mechanic
+lives behind a model turn. This document holds the requirement in the owner's
+words, the layers, the laws, the definition the platform is held to, and the
+two designs whose reasons cannot be read from the code: why the hunt sits at
+band 4, and how dispatch reaches a unit as a job.
 
 ## 1 · The requirement, in the owner's words
+
+Owner requirement (2026-08-28): *"one NPC platform with various
+sub-components"*, everything built so far connected under **one
+hierarchy**. This document exists because that requirement was discussed at
+length and never written down, which made "have we met it?" unanswerable. §5
+is the definition that answers it.
 
 > *"I feel like our end goal is for everything to be a 'soul-job
 > holder'. Why have our NPCs divided, right? **Everything should ride
@@ -25,14 +32,13 @@ only the body is a class.
 | layer | what it is | mechanism | composable |
 |---|---|---|---|
 | **body** | `Character` | typeclass | substrate — medical, identity, hands |
-| **mind** | soul | indexed tag + `soul_*` | ✅ `ensoul()` / `desoul()` |
-| **job** | what you do at a post | `world/service.py` registry, keyed by `post_role` | ✅ |
-| **voice** | persona + brain | `db.llm_driven` + persona seed, code in `LLMNpcMixin` | ✅ **optional** |
+| **mind** | soul | indexed tag + `soul_*` | yes — `ensoul()` / `desoul()` |
+| **job** | what you do at a post | `world/service.py` registry, keyed by `post_role` | yes |
+| **voice** | persona + brain | `db.llm_driven` + persona seed, code in `LLMNpcMixin` | yes — **optional** |
 
-**The inversion that mattered.** The code used to have this backwards:
-every NPC class was `(LLMNpcMixin, Character)`, so the *voice* was the
-base and the *soul* was the optional add-on — the exact reverse of the
-requirement. The mind is the base. The voice is the hook.
+**The mind is the base. The voice is the hook.** The soul is not an optional
+add-on to a voiced NPC; the voice is the optional hook on a souled body, as
+the requirement in §1 asks.
 
 ## 3 · Laws
 
@@ -51,17 +57,15 @@ requirement. The mind is the base. The voice is the hook.
 5. **No capability rides a typeclass.** The class says what a body IS,
    never what it can do.
 
-## 4 · Target hierarchy
+## 4 · The hierarchy
 
-```
-Character                     the body
-└── LLMNpc(LLMNpcMixin, Character)      ← the ONLY NPC typeclass
-```
+`LLMNpc(LLMNpcMixin, Character)` is the ONLY NPC typeclass; `Character` is
+the body under it.
 
-`Bartender`, `Shopkeeper`, `Doctor` and `Butcher` do not exist. What
-they held moves by kind:
+There is no `Bartender`, `Shopkeeper`, `Doctor` or `Butcher` class. What a
+role class would hold lives here instead, by kind:
 
-| what it was | where it goes |
+| what | where it lives |
 |---|---|
 | serving / selling / treating | job handler (`world/bar.py`, `world/shop/service.py`, `world/clinic.py`) |
 | `_name_aliases`, `_llm_fallback` | the job record |
@@ -69,158 +73,128 @@ they held moves by kind:
 | `_find_bar` / `_find_counter` / `_find_block` | `service.post_for()` |
 | receiving a corpse | the job's `on_receive` hook |
 
-## 5 · Definition of done — the checklist
+## 5 · Definition of done
 
-| # | criterion | state |
+The platform is held to these ten criteria. The issue beside each is where
+it comes from.
+
+| # | criterion | issue |
 |---|---|---|
-| 1 | competence keyed by `post_role`, not class | ✅ #2350/#2352 |
-| 2 | job carries aliases, fallback, archetype, tools | ✅ #2352 |
-| 3 | every NPC is a soul | ✅ #2362 — *note 2026-09-12: #2362 is still OPEN and labelled `status: parked`, and its body still describes "37 souls, 40 ambient `LLMNpc` civilians... zero souls scaffolding". The migration is staged on purpose (`scripts/builds/138_ensoul_the_crowd.py`, `LIMIT = 5` per run). Confirm the crowd is fully ensouled and close #2362, or this citation reads as evidence against the checkmark.* |
-| 4 | one driver walks a body | ✅ #2373 (patrol) |
-| 5 | exactly one NPC typeclass | ✅ #2378 |
-| 6 | no blueprint names a role typeclass | ✅ #2378 |
-| 7 | no class shadows a job hook | ✅ #2377 |
-| 8 | dispatch is a job, not a body seizure | ✅ #2384 |
-| 9 | one scheduler | ✅ #2386 — the 45s tick drives NOTHING with a soul |
-| 10 | game fully playable with the LLM off | ✅ #2390 — `feel` retired (#2388, opinion is derived); introductions scraped deterministically; `style`/`wield`/`radio` already had souls-side callers. The LLM adds flavour on top, never a mechanic |
+| 1 | competence keyed by `post_role`, not class | #2350/#2352 |
+| 2 | job carries aliases, fallback, archetype, tools | #2352 |
+| 3 | every NPC is a soul | #2362 |
+| 4 | one driver walks a body | #2373 (patrol) |
+| 5 | exactly one NPC typeclass | #2378 |
+| 6 | no blueprint names a role typeclass | #2378 |
+| 7 | no class shadows a job hook | #2377 |
+| 8 | dispatch is a job, not a body seizure | #2384 (§7) |
+| 9 | one scheduler — the 45s tick drives NOTHING with a soul | #2386 (§5b) |
+| 10 | game fully playable with the LLM off | #2390 |
 
-**ALL TEN ARE DONE (2026-08-29).** The platform exists, the collapse it was
-for has happened, the director hands out work instead of seizing bodies, one
-scheduler drives every body, and no mechanic lives behind a model turn.
+Criterion 3: the ambient crowd is ensouled in stages on purpose
+(`scripts/builds/138_ensoul_the_crowd.py`, `LIMIT = 5` per run); #2362 is
+the issue that carries it.
 
-What that means concretely, and the claim worth holding the work to: **pull
-the LLM breaker and the colony still runs.** Souls still work shifts, eat,
-drink, dress, patrol, hunt, respond to dispatch, serve at counters, treat
-patients, transmit on the radio, form opinions of the people who are decent or
-violent toward them, and learn the names those people give. What is lost is
-*voice* — the improvised line, the coined nickname, the turn of phrase. That
-is the two-brain law holding: souls decide, the LLM voices.
+Criterion 10: `feel` is retired (#2388, opinion is derived); introductions
+are scraped deterministically; `style`, `wield` and `radio` have souls-side
+callers. The LLM adds flavour on top, never a mechanic.
 
-The remaining entries in §6 are things deliberately NOT unified, not debts
-against this checklist.
+The claim the platform is held to: **pull the LLM breaker and the colony
+still runs.** Souls still work shifts, eat, drink, dress, patrol, hunt,
+respond to dispatch, serve at counters, treat patients, transmit on the
+radio, form opinions of the people who are decent or violent toward them,
+and learn the names those people give. What is lost is *voice* — the
+improvised line, the coined nickname, the turn of phrase. That is the
+two-brain law holding: souls decide, the LLM voices.
+
+The entries in §6 are things deliberately NOT unified, not debts against
+this definition.
 
 ## 5b · Criterion 9 — why the hunt sits at band 4
 
 Recorded because the reasoning is not obvious and the next person will
 reasonably think it is wrong.
 
-`tick_hunt` came off the 45s director tick and became a souls goal, offered at
-**band 4, above patrol**. Band 4 is offered in this order: `comms` (take out and
-switch on a pocketed or switched-off radio), `off_duty` (leave the post after the
-shift), `hunt`, `provision` (an errand for a ration, kept under the hunt so a unit
-never leaves an intruder for a snack), then `patrol`. Band 4 looks far too low for a security response —
-below hunger, below duty. It is not a judgement that hunting matters less than
-eating. **It is where the hunt already sat.**
+The hunt is a souls goal, not a director tick, offered at **band 4, above
+patrol**. Band 4 is offered in this order in `_desired_goal`: `comms` (take
+out and switch on a pocketed or switched-off radio), `off_duty` (leave the
+post after the shift), `hunt`, `provision` (an errand for a ration, kept
+under the hunt so a unit never leaves an intruder for a snack), then
+`patrol`.
 
-`is_patrol_idle` returned False whenever `soul_job` was set, so a unit that was
-on duty, in combat, travelling or mid-conversation never hunted. Only a
-genuinely idle unit did. Band 4 reproduces that exactly, and the merge changes
-*who drives the body*, nothing else. Re-banding a security behaviour while
-claiming to unify schedulers would have been a design change smuggled in under
-a refactor — the kind that is invisible in a diff and shows up in play weeks
-later.
+Band 4 looks far too low for a security response — below hunger, below
+duty. It is not a judgement that hunting matters less than eating. **It is
+where the hunt already sat** when `tick_hunt` ran on the 45s director tick:
+`is_patrol_idle` returned False whenever `soul_job` was set, so a unit that
+was on duty, in combat, travelling or mid-conversation never hunted. Only a
+genuinely idle unit did. Band 4 reproduces that exactly; moving the hunt
+changed *who drives the body*, nothing else. Re-banding a security behaviour
+while claiming to unify schedulers would have been a design change smuggled
+in under a refactor — the kind that is invisible in a diff and shows up in
+play weeks later.
 
-If the colony later wants a guard to abandon its post for an intruder, that is a
-real decision about how security behaves, and it is one line in `_desired_goal`.
+If the colony later wants a guard to abandon its post for an intruder, that
+is a real decision about how security behaves, and it is one line in
+`_desired_goal`.
 
-`wants_hunt` is deliberately PURE. The band tree must ask whether a unit wants
-to hunt before deciding whether that outranks what it is doing, and `tick_hunt`
-cannot answer without emoting and seeding state — merely *considering* a hunt
-would have started one.
+`wants_hunt` is deliberately PURE. The band tree must ask whether a unit
+wants to hunt before deciding whether that outranks what it is doing, and
+`tick_hunt` cannot answer without emoting and seeding state — merely
+*considering* a hunt would start one.
+
+`routines.tick_npc` never moves a souled body: it returns `souls`, or
+`none`/`skip` before that check is reached. What the 45s tick still does is
+maintenance sweeps.
 
 ## 6 · Deliberately not unified
 
-- **`db.role` vs `soul_role`** now mean *background* and *occupation* —
-  a ganger who tends a bar is both. That reads correct, but it has
-  never been decided on purpose; decide it before merging them.
+- **`db.role` vs `soul_role`** mean *background* and *occupation* — a
+  ganger who tends a bar is both. Whether they stay apart is not decided
+  (see Not decided).
 - **`soul_post` is overloaded**: "the slot I hold" for keepers, "where
   I am based" for the courier and the units. Build 141 needed a narrow
   guard purely to navigate this. It wants two names.
 
 ## 7 · Criterion 8 — dispatch as work, not seizure
 
-> **Note (2026-09-12): this section SHIPPED and is retained as the design
-> record, not as pending work.** All four steps below landed — #2383
-> (step 1) and #2384 (steps 2–4) — and §5 row 8 already marks the
-> criterion done. The "Today." block describes the code as it stood
-> BEFORE #2384; read it as history. `world/director/security.py` and
-> `world/souls/jobs.py` both cite "NPC_PLATFORM_SPEC §7" in their
-> comments, so a reader arriving from the code lands here first.
+`world/director/security.py` and `world/souls/jobs.py` cite this section in
+their comments.
 
-The last real split, designed here rather than half-started.
+**The rule.** `dispatch.dispatch()` calls `assignment.assign()`. For a souled
+responder, `assign()` does not seize the body; it writes a band-0 `respond`
+job to the soul (#2384), whose steps are, in order: `travel` to the event's
+room, `respond`, `travel` back to the post, `stand_down`.
 
-**Before #2384.** `dispatch.dispatch()` calls `assignment.assign()`, which
-records the responder in a module-level `_ACTIVE` dict and starts its
-own travel with `on_arrive=_on_scene`. `security_arrival` then drives
-the body — `aim`, `attack`, `emote`, `xmit` — and holds it there with a
-`delay`-chained `_watch_tick`. Meanwhile `souls.think()` opens with:
+The `respond` step (in `jobs.step_job()`) runs the arrival handler on first
+entry (`assignment.run_arrival`; for security that is
+`security.security_arrival`: scan, match, act), then the role's watch handler on each later
+beat (`assignment.run_watch`; for security that is `security.watch_once`, a
+tick-once watch, #2383). `think()` has no assignment early return: a
+dispatched unit's mind stays on for the whole call.
 
-```python
-if is_assigned(soul):
-    return          # precedence law: combat > assignment > souls
-```
+Band 0 outranks everything, so the unit does not wander off a call, but it is
+*arbitrated* rather than silenced, so a band-0 safety need can still reach it
+and a dead unit's job clears like any other. A silence switch is a boolean
+where a band belongs, and it has already cost once: nothing cleared it on
+death, so a wrecked unit's soul stayed asleep permanently, even after repair
+(#2255).
 
-So a dispatched unit's mind is **switched off for the whole call**. That
-is a boolean where a band belongs, and it has already cost once: nothing
-cleared the assignment on death, so a wrecked unit's soul stayed asleep
-permanently, even after repair (#2255).
+The module-level `_ACTIVE` dict in `assignment` stays. It is the finite-pool
+bookkeeping that makes "overwhelm the force" a real tactic, but it is not a
+silence switch.
 
-> **Note (2026-09-12) — no longer true.** The `is_assigned` early return is
-> gone from `world/souls/engine.py:think()`; a comment stands where it was,
-> and `world/tests/test_dispatch_is_a_job.py` asserts the line's absence.
-> `assign()` writes the band-0 `respond` job for any souled responder; the
-> `travel_to(..., on_arrive=_on_scene)` path above survives only as the
-> unsouled fallback, which `world/director/assignment.py` itself annotates
-> as a state "nothing in the colony currently is". `_ACTIVE` stayed, as
-> step 3 intended.
-
-**Target.** `assign()` hands the soul a JOB instead of seizing it:
-
-```python
-{"goal": "respond", "band": 0, "at": 0, "steps": [
-    {"do": "travel",  "room": event.location.id},
-    {"do": "respond", "event": ...},      # arrival handler, then the
-    {"do": "travel",  "room": post.id},   # watch ticked per beat
-]}
-```
-
-Band 0 outranks everything, so the unit does not wander off a call — the
-behaviour `is_assigned` was protecting — but it is *arbitrated* rather
-than silenced, so a band-0 safety need can still reach it and a dead
-unit's job clears like any other.
-
-**Order, smallest verifiable step first.** *(Note 2026-09-12: all four
-shipped. 1 = `security.watch_once()`, #2383. 2 = the `respond` step in
-`world/souls/jobs.py` `step_job()`, plus a `stand_down` step this plan did not
-anticipate. 3 = the band-0 job written in `assignment.assign()`. 4 = the
-early return deleted from `think()`.)*
-
-1. `security._watch_tick` becomes tick-once rather than `delay`-chained.
-   Behaviour identical; only the caller changes.
-2. New `respond` step in `jobs.py`: runs the arrival handler on first
-   entry (`assignment.run_arrival`), then the role's watch handler on each
-   later beat (`assignment.run_watch`; for security that is
-   `security.watch_once`, the tick-once half of `_watch_tick` from step 1).
-3. `assign()` writes the job instead of starting travel. `_ACTIVE` stays
-   — it is the finite-pool bookkeeping that makes "overwhelm the force"
-   a real tactic — but stops being a silence switch.
-4. Delete the `is_assigned` early return from `think()`.
+An unsouled responder still gets the old path: `assign()` starts its travel
+with `travel_to(..., on_arrive=_on_scene)`, and its watch is the
+`delay`-chained `security._watch_tick`. `world/director/assignment.py` annotates this fallback as a state
+"nothing in the colony currently is".
 
 **Risks.** This is the crime-response chain and it is combat-adjacent
-(`_engage` issues real `attack` commands). `test_director_security`
-carried three pre-existing baseline failures, so that file could not be a
-clean signal — pin new behaviour with new tests. *(Note 2026-09-12: those
-three were fixed in #2381 — two faked combat with a bare
-`NDB_COMBAT_HANDLER` attribute after `_in_combat` gained a liveness check,
-and one predated the `via="machine"` provenance gate, #2247. That issue
-reports the director suite green.)* The failure mode is
-SILENT: crimes simply go unanswered, and nothing shouts.
+(`_engage` issues real `attack` commands). The failure mode is SILENT:
+crimes simply go unanswered, and nothing shouts. Pin new behaviour with new
+tests.
 
-**Criterion 9 follows from it.** *(Note 2026-09-12: it did — #2386. The
-hunt is a souls goal at band 4 in `_desired_goal`, and `routines.tick_npc`
-never moves a souled body: it returns `souls`, or `none`/`skip` before that
-check is reached. §5b above is the current account;
-this paragraph is the prediction that produced it.)* Once dispatch is a job, the only thing
-the 45s tick still DRIVES is the hunt; the rest is maintenance sweeps.
-Move the hunt to a souls goal the way patrol went, and the two
-schedulers can merge.
+## Not decided
+
+- **`db.role` vs `soul_role`.** Reading them as *background* and
+  *occupation* looks correct, but it has never been decided on purpose;
+  decide it before merging them.

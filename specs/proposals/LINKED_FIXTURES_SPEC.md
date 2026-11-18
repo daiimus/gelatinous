@@ -1,11 +1,14 @@
 # Linked Fixtures Specification
 
-> **Status:** 📋 **Proposal — not implemented.** Designs *linked fixtures*: one
-> real thing represented by several objects in several rooms, sharing state so
-> they cannot contradict each other. The clock tower is the first instance and
-> the reason the design exists, but the machinery is deliberately not about
-> clocks. Builds on the time tokens shipped 2026-07-31 (#1502), which this
-> needs **no changes to** — that constraint drives the whole design.
+A *linked fixture* is one real thing represented by several objects in several
+rooms, sharing state so they cannot contradict each other. The clock tower is
+the first instance and the reason the design exists, but the machinery is
+deliberately not about clocks. It builds on the time tokens (#1502) and needs
+**no changes to** them; that constraint drives the whole design.
+
+📋 UNBUILT (no issue): this is a proposal, and none of it is implemented: the
+link layer (§4, §5), the builder commands (§6), the face refusal (§2) and the
+clock tower (§8).
 
 ## 1 · Intent
 
@@ -13,8 +16,8 @@ Some things are too big to live in one room. A clock tower is visible from
 several streets; so is the Boot, the agridome, the Sentinel mast, a fire, a
 column of smoke.
 
-The obvious approach — a cross-room visibility layer that renders an object
-into rooms it is not in — is a large piece of machinery with hard questions
+The obvious approach, a cross-room visibility layer that renders an object
+into rooms it is not in, is a large piece of machinery with hard questions
 attached (line of sight, intervening buildings, z-levels, how far is too far).
 
 **This spec takes the cheaper road** (the owner's design, recorded only in paraphrase in #1504; his own words are not on record): place a real object
@@ -38,8 +41,8 @@ Members have a **role**:
 | `face` | every other room that can see it | **no** — reads state, refuses interaction |
 
 A group has exactly one `body` and any number of `face`s. A group with no
-`body` is legal (a thing you can see but never reach — a distant flare, an
-orbital) and simply has no interaction surface.
+`body` is legal (a thing you can see but never reach, such as a distant flare
+or an orbital); it can be read and has no interaction surface.
 
 **Faces refuse rather than pretend.** Attempting to sabotage a face answers
 with distance, not with a failure message:
@@ -55,22 +58,22 @@ what makes sabotage a plan instead of a click.
 
 ## 3 · Why write-through replication, not read-through
 
-Two ways to share state. This matters more than it looks.
+There are two ways to share state, and the choice matters more than it looks.
 
-**Read-through** — one canonical object holds the state; faces store a dbref
+**Read-through**: one canonical object holds the state; faces store a dbref
 and resolve it on every render. No drift is possible. But every render costs a
-lookup, deleting the body breaks every face, and — decisively — the time-token
+lookup, deleting the body breaks every face, and, decisively, the time-token
 renderer would have to learn that an object's `clock_skew` might live somewhere
 else.
 
-**Write-through replication** — every member carries the state; a state change
+**Write-through replication**: every member carries the state; a state change
 writes to all members of the group.
 
 **Replication wins on one argument:** `{time}`, `clock_skew` and
-`clock_stopped` (`world/gametime.py`, shipped) need **zero changes**. Each face
+`clock_stopped` (`world/gametime.py`) need **zero changes**. Each face
 already renders its own description correctly with its own attributes. The link
-is only a *write path* — one function that finds the group and applies a change
-— and everything downstream stays exactly as it is today.
+is only a *write path* (one function that finds the group and applies a change),
+and everything downstream stays exactly as it is.
 
 The cost is drift: a builder editing one member directly desyncs it until
 someone re-syncs. That is worth a `sync` verb, not a different architecture.
@@ -96,32 +99,58 @@ matching how civilians and director objects are already tagged.
 db.link_state   list[str]   attribute names this group keeps in sync
 ```
 
-Declaring the synced set per group — rather than hardcoding clock fields —
+Declaring the synced set per group, rather than hardcoding clock fields,
 is what stops this being a clock feature.
 
 ## 5 · Behaviour
 
 **Write.** `set_linked_state(obj, **attrs)` resolves the group, validates the
 names against `link_state`, and writes to every member including the caller.
-Members that have been deleted are skipped, not fatal.
+An attribute the group's `link_state` omits is **not** propagated. Members
+that have been deleted are skipped, not fatal: a write still reaches the rest.
 
-**Read.** Nothing. Members are read normally, by the existing renderers. This
-is the property that keeps the change small.
+**Read.** Nothing. Members are read normally, by the existing renderers; the
+time tokens render per member with no changes. This is the property that keeps
+the change small.
 
 **Sync.** `sync_group(name, source=None)` copies the declared state from the
-source (default: the `body`, else the oldest member) onto every other member.
-Run after adding a member, or after a builder edits one directly.
+source (default: the `body`, else the oldest member) onto every other member,
+repairing a member that has drifted. Run it after adding a member, or after a
+builder edits one directly.
 
 **Creation.** A new member added to an existing group is synced immediately on
 creation, so it never appears showing a different time from its neighbours.
 
 **Deletion.** Deleting a `face` is harmless. Deleting the `body` leaves a group
-that can be seen but not touched — legal, and worth a builder warning rather
+that can be seen but not touched: legal, and worth a builder warning rather
 than a prohibition.
 
-## 6 · The clock tower — the first instance
+## 6 · Builder surface
 
-Beyond the link layer itself (§5, §8), the tower needs no new rendering. It is:
+```
+@link <obj> = <group>[:body|face]   join a group in a role (default face)
+@link/state <group> = attr[,attr]   declare the synced attribute set
+@link/sync <group>                  re-sync from the body
+@link/list [<group>]                members, roles, and any drift
+```
+
+`@link/list` reporting **drift** is the important one: it is how a builder
+discovers that a face was edited directly, which is the failure mode this
+architecture accepts in exchange for its simplicity.
+
+## 7 · Failure modes
+
+- **Drift**: accepted, detectable via `@link/list`, fixable via `@link/sync`.
+- **A group with two bodies**: reject on join; the crime needs one location.
+- **A member in no room** (carried, in a container): legal but strange; warn.
+- **A huge group**: writes are O(members). Fine at tens, not at thousands;
+  no fixture should need thousands, and if one does, this is the wrong tool.
+- **State written directly, bypassing the helper**: cannot be prevented, only
+  detected. Documented, not defended against.
+
+## 8 · The clock tower — the first instance
+
+Beyond the link layer itself (§5, §6), the tower needs no new rendering. It is:
 
 - a `body` in the tower's own room, with a description carrying `{time}`
 - N `face`s in the streets that see it, each with its own description —
@@ -143,16 +172,16 @@ Repair clears the attribute. Both propagate to every face through the link.
 📋 UNBUILT (no issue): `sabotage` and `repair` (`commands/CmdBreach.py`) act
 only on objects with `db.breachable` and flip `db.intact`; nothing a player
 does sets `clock_stopped` or `clock_skew`. Which verb stops or skews a clock
-is not decided.
+is not decided (see Not decided).
 
-## 7 · Design consequences worth keeping
+## 9 · Design consequences worth keeping
 
 **Skew sabotage is invisible, and that is the good crime.** A stopped clock is
 vandalism; a clock running eleven minutes fast is an *operation*. The whole
 district reads the same wrong time, and the only contradiction anywhere in the
 world is somebody's wristwatch.
 
-That makes personal timepieces worth carrying — which reaches back into the
+That makes personal timepieces worth carrying, which reaches back into the
 decision that time is legible only through objects. A public clock makes the
 hour free inside its sightline and scarce outside it; sabotage makes the hour
 *wrong* inside its sightline and correct only for people who didn't need it.
@@ -163,55 +192,21 @@ tower's skew is ever set by anything other than sabotage — a tower that has
 simply been four minutes fast for a decade because nobody can climb it is a
 different and equally good story.
 
-## 8 · Builder surface
-
-```
-@link <obj> = <group>[:body|face]   join a group in a role (default face)
-@link/state <group> = attr[,attr]   declare the synced attribute set
-@link/sync <group>                  re-sync from the body
-@link/list [<group>]                members, roles, and any drift
-```
-
-`@link/list` reporting **drift** is the important one — it is how a builder
-discovers that a face was edited directly, which is the failure mode this
-architecture accepts in exchange for its simplicity.
-
-## 9 · Failure modes
-
-- **Drift** — accepted, detectable via `@link/list`, fixable via `@link/sync`.
-- **A group with two bodies** — reject on join; the crime needs one location.
-- **A member in no room** (carried, in a container) — legal but strange; warn.
-- **A huge group** — writes are O(members). Fine at tens, not at thousands;
-  no fixture should need thousands, and if one does, this is the wrong tool.
-- **State written directly, bypassing the helper** — cannot be prevented, only
-  detected. Documented, not defended against.
-
 ## 10 · What else this serves
 
 Deliberately not clock machinery:
 
-- **The Boot and the agridome** — landmarks with a presence in several streets.
-- **The Sentinel mast** — two objects (mast + cabinet) that are not copies of
+- **The Boot and the agridome**: landmarks with a presence in several streets.
+- **The Sentinel mast**: two objects (mast + cabinet) that are not copies of
   one thing: the mast carries `db.intact`, the cabinet its own `radio_on`. The
   cabinet reads the mast's `db.intact` through `cabinet.db.antenna`
   (`world/radio.py` `mast_down`, `_antenna_site`), which is read-through (§3),
-  so no copy exists that could disagree. Whether a link group should replace
-  that pointer, sit beside it, or not apply here is not decided (#3335).
-- **Fires, smoke columns, floodlights** — states that several rooms observe.
+  so no copy exists that could disagree. Whether a link group applies here is
+  question 6 under Not decided.
+- **Fires, smoke columns, floodlights**: states that several rooms observe.
 - **A barricade seen from both sides**, a sign readable from either face.
 
-## 11 · Testing
-
-- state written to one member appears on every member
-- a face refuses interaction; the body accepts it
-- a group with no body can be read and not touched
-- deleting a member does not break a write to the rest
-- a new member is synced on creation
-- `sync_group` repairs a deliberately drifted member
-- a group whose `link_state` omits an attribute does **not** propagate it
-- time tokens still render per-member with no changes (regression guard)
-
-## 12 · Open questions for the owner
+## 11 · Not decided (open questions for the owner)
 
 1. **Does a face show the time at all, or only at close range?** The radio
    masts already carry a two-ring model (crisp / reach) that the Atlas draws.
@@ -233,3 +228,4 @@ Deliberately not clock machinery:
    (#3335).
 6. **The Sentinel mast:** should a link group replace `cabinet.db.antenna`,
    sit beside it, or not apply (#3335)?
+7. **Which verb stops or skews a clock?** (§8)

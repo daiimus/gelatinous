@@ -1,6 +1,6 @@
 """Movement coupling — follow (trail) and escort (usher ahead).
 
-TRUST_AND_CONSENT_SPEC §9 Phase 3, minus dragging: forcible movement already
+TRUST_AND_CONSENT_SPEC §3 (Movement), minus dragging: forcible movement already
 exists as an emergent property of grapple + movement (no command, by design).
 This module owns the two VOLUNTARY couplings:
 

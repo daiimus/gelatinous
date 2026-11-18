@@ -1,17 +1,20 @@
 # Balance Ledger
 
-> **Status:** 🛣 Roadmap reference — the register of every constant tagged `#: BALANCE:` in `world/combat/constants.py` (the twelve gravity and jump knobs below); many other untuned numbers carry no tag and no row, and some are listed under "Gaps" below; the balance pass's worklist.
+This is the register of every constant tagged `#: BALANCE:` in
+`world/combat/constants.py` (the twelve gravity and jump knobs below),
+and the balance pass's worklist. Many other
+untuned numbers carry no tag and no row; some are listed under "Gaps" below.
 
-No system in this game has been balance-tuned yet. Numbers were chosen so
-the mechanic could ship and be *played*, not because anything was sized
-against anything else. This document exists so that when the balance pass
-finally happens it starts from a list rather than a grep — and so that a
-contributor who is about to build a consumer on top of one of these
-numbers can see, in one line, that the number is provisional.
+No system in this game has been balance-tuned. Numbers were chosen so the
+mechanic could ship and be *played*, not because anything was sized against
+anything else. This document exists so that the balance pass starts from a
+list rather than a grep, and so that a contributor about to build a consumer
+on top of one of these numbers can see, in one line, that the number is
+provisional.
 
 The register is the counterpart of the `#: BALANCE:` doc-comments in the
-constants files. The comment says *why this number*, next to the number.
-The row here says *what to watch when it is wrong*, in one place.
+constants files. The comment says *why this number*, next to the number. The
+row here says *what to watch when it is wrong*, in one place.
 
 ---
 
@@ -26,8 +29,8 @@ The row here says *what to watch when it is wrong*, in one place.
   the backticked constant names out of this table's rows, and fails if
   either list has an entry the other does not. Every name in a row must
   exist in `world/combat/constants.py`, so a knob tagged in any other file
-  is not checked, and a row naming one makes the test fail. A knob added without a row breaks the suite, which is the
-  point.
+  is not checked, and a row naming one makes the test fail. A knob added
+  without a row breaks the suite, which is the point.
 - **Removing a constant?** Its row leaves the ledger in the **same PR**
   that removes it from the code. A row for a constant that no longer
   exists is the same failure as a constant with no row.
@@ -56,20 +59,17 @@ roll, the direct drop, the slip in place).
 | `FALL_LANDING_DIFFICULTY_PER_CELL` (`world/combat/constants.py`) | `2` | Landing difficulty added per storey fallen (Motorics vs `edge_difficulty` + this × cells). | #3579 owner ruling 2026-09-16 | No | The altitude at which the landing roll becomes unmakeable. This is the only place altitude is allowed to enter the difficulty — see the note in `PARKOUR_TEMPLATE_LIBRARY.md` §1 invariant 2 about not double-counting it in `gap_difficulty`. |
 | `GAP_DIFFICULTY_DEFAULT` (`world/combat/constants.py`) | `10` | Base takeoff difficulty for `jump across` on a gap exit that authors no `gap_difficulty`. | #3579 owner ruling 2026-09-16 | No | The failure rate of the span-1 crossing the roof city is built on. A gap missed is a full fall, so this number sets how punishing the second city is to learn. |
 | `FALL_MAX_CELLS` (`world/combat/constants.py`) | `30` | Cells one fall may traverse before it stops cleanly where it is. A runaway-column guard, not a design number. | #3579 (as built; the value was not ruled) | No | Only that it stays above the tallest real column (the crane is 17 storeys). If a legitimate fall ever hits this, the guard is too low, not the world too tall. |
-| `FALL_BODYSHIELD_MADE_VICTIM` (`world/combat/constants.py`) | `0.75` | Share of the fall's damage the dragged victim takes when the grappler lands **well** on them. | #3579 owner ruling 2026-09-16 | No | Whether dragging someone off a roof is a reliable execution. Shipped behaviour preserved as a constant; never sized against anything. |
+| `FALL_BODYSHIELD_MADE_VICTIM` (`world/combat/constants.py`) | `0.75` | Share of the fall's damage the dragged victim takes when the grappler lands **well** on them. | #3579 owner ruling 2026-09-16 | No | Whether dragging someone off a roof is a reliable execution. Existing behaviour preserved as a constant; never sized against anything. |
 | `FALL_BODYSHIELD_MADE_GRAPPLER` (`world/combat/constants.py`) | `0.25` | Share the grappler takes when they land **well** on a dragged victim. | #3579 owner ruling 2026-09-16 | No | The cost of the tactic to the person choosing it. Paired with the row above — tune the pair, not one side. |
 | `FALL_BODYSHIELD_FAILED_VICTIM` (`world/combat/constants.py`) | `1.5` | Share the dragged victim takes when the grappler lands **badly** — more than the whole fall, crushed on impact. | #3579 owner ruling 2026-09-16 | No | Whether a botched drag-off is lethal to the victim at heights where the grappler walks away. |
 | `FALL_BODYSHIELD_FAILED_GRAPPLER` (`world/combat/constants.py`) | `0.5` | Share the grappler takes when they land **badly** on a dragged victim. | #3579 owner ruling 2026-09-16 | No | Paired with the row above. Together the failed split charges 2× the fall across two bodies; that was the shipped behaviour, not a decision. |
 
-**Changed on the way (#3579, 2026-09-16):** the direct-drop bodyshield
-split used to charge the victim 9 and the grappler 2 — 1.2 and 0.3 of a
-per-exit `fall_damage` whose default was 8 — and now charges 3 and 1
-(0.75 and 0.25 of one storey at `FALL_DAMAGE_PER_STORY` = 5), by ruling.
-The direct drop rolls no landing, so it always charges the **made**
-split; the two **failed** shares are used only on a transit fall whose
-landing roll fails.
-The ratios in the four rows above are the shipped transit-fall splits
-preserved verbatim; it is the *base* they multiply that moved.
+**Where the four bodyshield shares apply (#3579, 2026-09-16).** The direct
+drop rolls no landing, so it always charges the **made** split: 3 to the
+victim and 1 to the grappler (0.75 and 0.25 of one storey at
+`FALL_DAMAGE_PER_STORY` = 5), by ruling. The two **failed** shares are used
+only on a transit fall whose landing roll fails. The ratios in the four rows
+above are the transit-fall splits as shipped.
 
 ### Fights at the edge (#3583)
 
@@ -79,7 +79,7 @@ contest in `commands/combat/movement.py`.
 
 | Constant (declaration site) | Value | What it tunes | Set by | Tuned? | What to watch in play |
 |---|---|---|---|---|---|
-| `JUMP_AWAY_BONUS` (`world/combat/constants.py`) | `20` | Added to the jumper's Motorics roll in both of flee's contests when they jump off or across mid-fight: the aim contest against whoever has them in their aim, and the disengage roll against the highest-Motorics opponent targeting them. A lost roll hands the winner an immediate attack; the jump still goes unless that attack leaves the jumper dead or unconscious. Flee's contest is roll-vs-roll on Motorics; this is the bold move's edge. | #3583 owner ruling 2026-09-16 ("the difficulty should be half or there should be a bonus. It's a bold move.") | No | Whether jumping away is a meaningful choice next to `flee` or a strictly better one. Rolls are `randint(1, Motorics)` with player Motorics defaulting to 75 and NPC blueprints at 1–3, so 20 is decisive against an NPC aimer and modest against a player. Whether it should scale with the aimer's Motorics is the balance-pass question. |
+| `JUMP_AWAY_BONUS` (`world/combat/constants.py`) | `20` | Added to the jumper's Motorics roll in both of flee's contests when they jump off or across mid-fight: the aim contest against whoever has them in their aim, and the disengage roll against the highest-Motorics opponent targeting them. A lost roll hands the winner an immediate attack; the jump still goes unless that attack leaves the jumper dead or unconscious. Flee's contest is roll-vs-roll on Motorics; this is the bold move's edge. | #3583 owner ruling 2026-09-16 ("the difficulty should be half or there should be a bonus. It's a bold move.") | No | Whether jumping away is a meaningful choice next to `flee` or a strictly better one. Rolls are `randint(1, Motorics)` with player Motorics defaulting to 75 and NPC blueprints at 1–3, so 20 is decisive against an NPC aimer and modest against a player. Whether it should scale with the aimer's Motorics is the balance-pass question (see "Not decided"). |
 
 ---
 
@@ -90,7 +90,10 @@ balanced *against*, because the things they would have to be balanced
 against are themselves untuned or unbuilt. Recorded here so nobody reads
 a "Value" column as a considered answer:
 
-- **Under-grip factor (GRIP_ENFORCEMENT_SPEC §4, 2026-10-06):** a two-handed weapon with no free second hand multiplies accuracy by 0.60 (one of two), 0.80 (two of three); placeholder anchors `(0, .20), (.5, .60), (2/3, .80), (1, 1)`. Nothing tuned; owner: *"Sure."*
+- **Under-grip factor (GRIP_ENFORCEMENT_SPEC §4, 2026-10-06):** a two-handed
+  weapon with no free second hand multiplies accuracy by 0.60 (one of two),
+  0.80 (two of three); placeholder anchors `(0, .20), (.5, .60), (2/3, .80),
+  (1, 1)`. Nothing tuned; owner: *"Sure."*
 - **Bleeding is untuned.** Every chunk of fall damage that lands on an
   organ adds pain and, when that one chunk is 10 or more, a bleeding
   condition at its container (chrome organs do not bleed). Bleeding
@@ -106,32 +109,38 @@ a "Value" column as a considered answer:
   changing the damage numbers to compensate would be tuning the wrong
   dial.
 - **Pulped legs do not stop anyone walking.** The `moving` capacity's
-  only consumer today is dodge, so the crippling the placement model
-  produces is presently cosmetic outside combat. Until a movement-policing
-  substrate exists (`MEDICAL_SUBSTRATE_READINESS.md`, Phase 7), "leaving
-  them crippled" is a description of the medical readout, not of what the
-  character can do.
+  only consumer is dodge, so the crippling the placement model produces
+  is cosmetic outside combat. Until a movement-policing substrate exists
+  (`MEDICAL_SUBSTRATE_READINESS.md`, Phase 7), "leaving them crippled" is
+  a description of the medical readout, not of what the character can do.
 - **Multi-weapon placeholders are untuned (2026-10-01).** The proposal
   `MULTI_WEAPON_COMBAT_SPEC.md` gives the Nailz claws prototype values of
   6 damage / +0 to-hit for one hand and 9 damage / +1 to-hit for both
   hands (an akimbo profile), and adds a `hit_bonus` term to every attack
-  roll that defaults to zero. Since slice 4 (2026-10-06) the pair values
-  live in `AKIMBO_PROFILES_BY_TYPE` in `world/combat/constants.py` (rows
-  `nailz` 9 / +1, `tiger_claws` 9 / +1, `light_pistol` 16 / −1 against
-  12 / +0 for one pistol); no row above tracks them. The Nailz numbers
-  were picked to keep an intact owner at today's 9 damage, the others to
-  match them or to make two pistols worth more than one and less than
-  two shots, and all are sized against nothing else. Alternation between
-  held weapons (slice 2: `choose_weapon` in `world/combat/weapon_choice.py`)
-  lowers the average damage of mixed loadouts compared with the old
-  always-best rule; nobody has measured by how much.
+  roll that defaults to zero. The pair values live in
+  `AKIMBO_PROFILES_BY_TYPE` in `world/combat/constants.py` (rows `nailz`
+  9 / +1, `tiger_claws` 9 / +1, `light_pistol` 16 / −1 against 12 / +0 for
+  one pistol); no row above tracks them. The Nailz numbers were picked to
+  keep an intact owner at today's 9 damage, the others to match them or to make
+  two pistols worth more than one and less than two shots, and all are
+  sized against nothing else. Alternation between held weapons
+  (`choose_weapon` in `world/combat/weapon_choice.py`) lowers the average
+  damage of mixed loadouts compared with the old always-best rule; nobody has
+  measured by how much.
 - **Shop prices at Gaia's Treasures are untuned (2026-10-06).** The live
-  shelving there (object #2011, not an issue) lists the bat, fan, katana, dagger, sword, staff,
-  throwing knife, axe and shuriken at 0₮, and the Voxhaul Tiger claw at
-  180₮ (its weapons-shelf price, MULTI_WEAPON_COMBAT_SPEC §13 slice 4).
-  Owner, asked whether to leave the claw at 180: *"Sure. Future balance
-  issue."* Nothing to size it against until the balance pass prices the
-  rest.
+  shelving there (object #2011, not an issue) lists the bat, fan, katana,
+  dagger, sword, staff, throwing knife, axe and shuriken at 0₮, and the
+  Voxhaul Tiger claw at 180₮ (its weapons-shelf price,
+  MULTI_WEAPON_COMBAT_SPEC §13 slice 4). Owner, asked whether to leave the
+  claw at 180: *"Sure. Future balance issue."* Nothing to size it against
+  until the balance pass prices the rest.
+
+---
+
+## Not decided
+
+- `JUMP_AWAY_BONUS`: whether it should scale with the aimer's Motorics is
+  the balance-pass question.
 
 ---
 

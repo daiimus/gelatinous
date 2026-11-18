@@ -1,81 +1,52 @@
 # Descriptive Stat System Specification
 
-> **Status:** 📋 Proposal — not implemented. The four G.R.I.M. stats exist on the Character, but the A–Z descriptor display layer and any skill system described below are unbuilt.
->
-> **Correction (2026-09-11):** the banner above is stale in the "unbuilt"
-> direction, and was wrong the day it was written. The A–Z descriptor layer
-> described here **shipped 2025-09-15** in commit `0883f94c` — the same commit
-> that created this file — nine months before the 2026-06-13 specs reorg (#554)
-> filed it under `proposals/` and stamped it "not implemented". (The #1507 spec
-> audit that fixed banners elsewhere covered top-level specs only, so this one
-> was never re-checked.) Shipped today: `STAT_DESCRIPTORS` and
-> `STAT_TIER_RANGES` in `world/combat/constants.py`; `get_stat_descriptor`,
-> `get_stat_range` and `get_stat_tier_info` in `commands/CmdCharacter.py`; the
-> player-facing sheet `CmdStats` (`@stats` / `score`), descriptors only for
-> players with the exact number behind the staff-gated `/numeric` switch; and
-> `web/website/views/characters.py`, which renders the same descriptors on the
-> web character page. The tier boundaries and all four 26-word vocabularies
-> below match the shipped tables verbatim.
->
-> The "skill system described below" clause points at nothing — no skill system
-> is described in this document. One is built: `world/manifest.py` (fourteen
-> ratings, `letter_for()` giving the same A–Z tiers on the same 0–150 scale),
-> rendered in the "Ratings:" block of that same `@stats` box; see
-> `SKILLS_AND_DESIGNATION_SPEC.md` and #2082. Only its per-skill *word* lists
-> are still outstanding. The sheet lists at most six ratings, highest first
-> (`rated_skills`), each as its A–Z letter from `letter_for`; staff using
-> `/numeric` also see the number in brackets. A character with no ratings
-> gets "(no ratings on file)".
->
-> What is still genuinely unbuilt is the **Future Extensions** list below —
-> per-tier colouring, help-file tier tables, comparison tools, chargen
-> integration, localisation — plus the exact **Display Formats** sketched
-> further down (see the note there).
+Each G.R.I.M. stat (Grit, Resonance, Intellect, Motorics) is shown on the `@stats` / `score` sheet and the web character page as a word, not a number. The 0–150 scale is cut into 26 alphabetical tiers, A to Z, and each stat has its own 26-word vocabulary. Tiers A to Y each cover six points; Z is exactly 0. Stats are still stored and used as numbers; the words are a display layer only.
 
-## Overview
+## Tiers
 
-Each G.R.I.M. stat (Grit, Resonance, Intellect, Motorics) is shown on the `@stats` sheet and the web character page as a word from 26 alphabetical tiers (A–Z) on the 0–150 scale. Tiers A to Y each cover six points; Z is exactly 0.
+| Tier | Range | Note |
+|---|---|---|
+| A | 145–150 | Apex tier |
+| B | 139–144 | |
+| C | 133–138 | |
+| D | 127–132 | |
+| E | 121–126 | |
+| F | 115–120 | |
+| G | 109–114 | |
+| H | 103–108 | |
+| I | 97–102 | |
+| J | 91–96 | |
+| K | 85–90 | |
+| L | 79–84 | |
+| M | 73–78 | |
+| N | 67–72 | |
+| O | 61–66 | |
+| P | 55–60 | |
+| Q | 49–54 | |
+| R | 43–48 | |
+| S | 37–42 | |
+| T | 31–36 | |
+| U | 25–30 | |
+| V | 19–24 | |
+| W | 13–18 | |
+| X | 7–12 | |
+| Y | 1–6 | Near-zero tier |
+| Z | 0 | Zero tier |
 
-## System Design
+## Who sees what
 
-### Numerical Mapping
+- **Players.** The `@stats` / `score` sheet and the web character page show only the descriptive word.
+- **Character creation**, in game and on the web, shows and takes the exact numbers: the player shares out 300 points, 1–150 per stat. 📋 UNBUILT (no issue, not decided): descriptors in character creation.
+- **Staff.** Staff running `@stats/numeric` see the word plus the exact number, e.g. `Granite (112)`. No help file or command shows the tier range. 📋 UNBUILT (no issue, not decided): tier ranges in help files.
+- **Other characters' sheets.** Staff (Builder or above, not quelled) can read another character's sheet with `@stats <target>`, adding `/numeric` for exact values. Anyone else who names a target is told "You can only check your own evaluation."
+- **Universal application.** All Character typeclass entities (PCs, NPCs, mobs) use this system.
+- **Thematic consistency.** Each stat has its own vocabulary that reflects its nature.
 
-The 0-150 stat range is divided into 26 alphabetical tiers:
+## The `@stats` sheet
 
-- **A**: 145-150 (Apex tier)
-- **B**: 139-144 
-- **C**: 133-138
-- **D**: 127-132
-- **E**: 121-126
-- **F**: 115-120
-- **G**: 109-114
-- **H**: 103-108
-- **I**: 97-102
-- **J**: 91-96
-- **K**: 85-90
-- **L**: 79-84
-- **M**: 73-78
-- **N**: 67-72
-- **O**: 61-66
-- **P**: 55-60
-- **Q**: 49-54
-- **R**: 43-48
-- **S**: 37-42
-- **T**: 31-36
-- **U**: 25-30
-- **V**: 19-24
-- **W**: 13-18
-- **X**: 7-12
-- **Y**: 1-6 (Near-zero tier)
-- **Z**: 0 (Zero tier)
+The `@stats` sheet is a 48-column boxed "PSYCHOPHYSICAL EVALUATION REPORT" listing one stat per row. The staff `/numeric` view shows the word plus the exact value — `Grit: Granite (112)` — never the tier range. The `@stats` help text is the `CmdStats` docstring, which names the A–Z tier system but does not carry a per-stat range table.
 
-### Display Philosophy
-
-- **Player Facing**: as built, the `@stats` / `score` sheet and the web character page show only the descriptive word. Character creation, in game and on the web, shows and takes the exact numbers: the player shares out 300 points, 1–150 per stat. 📋 UNBUILT (no issue, not decided): descriptors in character creation.
-- **Administrative**: staff running `@stats/numeric` see the word plus the exact number, e.g. `Granite (112)`. No help file or command shows the tier range. 📋 UNBUILT (no issue, not decided): tier ranges in help files.
-- **Other characters' sheets**: staff (Builder or above, not quelled) can read another character's sheet with `@stats <target>`, adding `/numeric` for exact values. Anyone else who names a target is told "You can only check your own evaluation."
-- **Universal Application**: All Character typeclass entities (PCs, NPCs, mobs) use this system
-- **Thematic Consistency**: Each stat has its own vocabulary that reflects its nature
+The same box carries a "Ratings:" block for skills. The skill system is `world/manifest.py`: fourteen ratings, with `letter_for()` giving the same A–Z tiers on the same 0–150 scale. The sheet lists at most six ratings, highest first (`rated_skills`), each as its A–Z letter from `letter_for`; staff using `/numeric` also see the number in brackets. A character with no ratings gets "(no ratings on file)". Per-skill word lists are not built. See [`SKILLS_AND_DESIGNATION_SPEC.md`](SKILLS_AND_DESIGNATION_SPEC.md) and #2082.
 
 ## Stat Progressions
 
@@ -84,7 +55,7 @@ The 0-150 stat range is divided into 26 alphabetical tiers:
 Grit represents physical resilience, pain tolerance, and the ability to endure hardship.
 
 - **A (145-150)**: Apex - Legendary physical resilience
-- **B (139-144)**: Bulletproof - Extreme damage resistance  
+- **B (139-144)**: Bulletproof - Extreme damage resistance
 - **C (133-138)**: Concrete - Nearly unbreakable toughness
 - **D (127-132)**: Durable - Exceptional physical resilience
 - **E (121-126)**: Enduring - Superior stamina and toughness
@@ -207,75 +178,36 @@ Motorics represents fine motor control, hand-eye coordination, and physical grac
 
 ### Code Integration
 
-The descriptive system integrates with existing G.R.I.M. stat handling:
+- `STAT_DESCRIPTORS` in `world/combat/constants.py` holds all four vocabularies. Each tier is keyed on its **maximum** value (`150: "Apex", 144: "Bulletproof", 138: "Concrete", ...`). The ranges themselves are held separately in `STAT_TIER_RANGES` in the same file.
+- `get_stat_descriptor(stat_name, numeric_value)` in `commands/CmdCharacter.py` turns a number into its word.
+- `get_stat_range(descriptor_word, stat_name)` in the same file returns the `(min_value, max_value)` range for a word.
+- `get_stat_tier_info` in the same file also returns the tier letter.
+- `CmdStats` (`@stats` / `score`) renders the sheet; `web/website/views/characters.py` renders the same descriptors on the web character page.
 
-> **Note (2026-09-11):** this section is shipped, not pending. The complete
-> `STAT_DESCRIPTORS` table lives in `world/combat/constants.py`, and
-> `get_stat_descriptor` / `get_stat_range` exist in `commands/CmdCharacter.py`
-> with exactly these signatures (plus a `get_stat_tier_info` helper that also
-> returns the tier letter). One difference from the sketch below: the shipped
-> table keys each tier on its **maximum** value (`150: "Apex", 144:
-> "Bulletproof", 138: "Concrete", ...`) rather than its minimum as written here,
-> with the ranges themselves held separately in `STAT_TIER_RANGES`.
+### Backward Compatibility
 
-```python
-# Constants for stat conversion
-STAT_DESCRIPTORS = {
-    "grit": {
-        145: "Apex", 139: "Bulletproof", 133: "Concrete",
-        # ... complete mapping
-        1: "Yielding", 0: "Zero"
-    },
-    "resonance": {
-        145: "Attuned", 139: "Bonded", 133: "Charismatic",
-        # ... complete mapping
-        1: "Yearning", 0: "Zero"
-    },
-    "intellect": {
-        145: "Absolute", 139: "Brilliant", 133: "Calculating",
-        # ... complete mapping
-        1: "Yearning", 0: "Zero"
-    },
-    "motorics": {
-        145: "Artful", 139: "Balletic", 133: "Coordinated",
-        # ... complete mapping
-        1: "Yielding", 0: "Zero"
-    }
-}
+- Stats are stored as numbers, unchanged.
+- All combat calculations use the numeric values.
+- Only the display layer shows descriptive words.
+- Staff switch between descriptive and numeric views with `/numeric`.
 
-def get_stat_descriptor(stat_name, numeric_value):
-    """Convert numeric stat to descriptive word."""
-    # Find appropriate tier based on 6-point ranges
-    # Return descriptive word
-    
-def get_stat_range(descriptor_word, stat_name):
-    """Get numeric range for a descriptive word."""
-    # Return (min_value, max_value) tuple
-```
+### Proposed Display Formats
 
-### Display Formats
+📋 UNBUILT: the formats below are proposed. The game does not render them; the live sheet is the one described under "The `@stats` sheet" above.
 
-> **Note (2026-09-11):** the blocks below are the proposed formats, not the
-> shipped ones. The live `@stats` sheet is a 48-column boxed "PSYCHOPHYSICAL
-> EVALUATION REPORT" listing one stat per row (not two), and the staff
-> `/numeric` view shows the word plus the **exact value** — `Grit: Granite
-> (112)` — never the tier range, so nothing renders the `(109-114, actual:
-> 112)` form. The `@stats` help text is the `CmdStats` docstring, which names
-> the A–Z tier system but does not carry the per-stat range table shown here.
-
-**Character Sheet Display:**
+**Character Sheet Display** (two stats per row):
 ```
 GRIT: Granite        RESONANCE: Harmonious
 INTELLECT: Logical   MOTORICS: Fluid
 ```
 
-**Admin/Debug Display:**
+**Admin/Debug Display** (word, tier range and exact value):
 ```
 GRIT: Granite (109-114, actual: 112)
 RESONANCE: Harmonious (103-108, actual: 105)
 ```
 
-**Help File Content:**
+**Help File Content** (per-stat range table):
 ```
 @stats - Character Statistics
 
@@ -289,14 +221,9 @@ MOTORICS (Coordination): From Artful (145-150) to Zero (0)
 Descriptors A to Y each cover six points; Z is exactly 0.
 ```
 
-### Backward Compatibility
-
-- Existing numeric stat storage remains unchanged
-- All current combat calculations continue using numeric values
-- Only display layer is modified to show descriptive words
-- Admin commands can toggle between numeric and descriptive views
-
 ## Design Rationale
+
+The aim is a more immersive, narrative-focused character progression system that keeps full compatibility with existing combat and character mechanics.
 
 ### Alphabetical Organization
 - **Intuitive**: A-Z progression is universally understood
@@ -318,7 +245,9 @@ Descriptors A to Y each cover six points; Z is exactly 0.
 - **Simplicity**: Single system to learn and understand
 - **Scalability**: Easy to add new content using existing framework
 
-## Future Extensions
+## Unbuilt
+
+Besides the two items under "Who sees what" (descriptors in character creation; tier ranges in help files), the proposed display formats above, and per-skill word lists (see `SKILLS_AND_DESIGNATION_SPEC.md`):
 
 ### Potential Enhancements
 - Colored tier displays (green for high, red for low) 📋 UNBUILT (no issue, not decided)
@@ -333,6 +262,6 @@ Descriptors A to Y each cover six points; Z is exactly 0.
 - Theme-specific vocabulary variations 📋 UNBUILT (no issue, not decided)
 - Player preference for numeric vs. descriptive display 📋 UNBUILT (no issue, not decided)
 
----
+## Related documents
 
-*This specification provides the foundation for a more immersive and narrative-focused character progression system while maintaining full compatibility with existing combat and character mechanics.*
+- [`SKILLS_AND_DESIGNATION_SPEC.md`](SKILLS_AND_DESIGNATION_SPEC.md) — the skill ratings that share the A–Z scale (#2082).

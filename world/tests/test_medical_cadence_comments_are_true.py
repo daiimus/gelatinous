@@ -6,7 +6,7 @@ anchored their arithmetic to an abandoned per-condition interval design,
 citing a 12-second tick, a 180-second tick, and a two-tier bleeding
 cadence. **None of the three exists at runtime.**
 
-This is not a cosmetic complaint. `CONDITION_CADENCE_SPEC` §2 records
+This is not a cosmetic complaint. `CONDITION_CADENCE_SPEC` §0 records
 the identical trap firing once already: when #465 corrected the medical
 tick from a testing-leftover 12s to the intended 60s, infection silently
 became **5x slower than designed**, because its probability comments

@@ -1,148 +1,103 @@
 # Proximity System Architecture Specification
 
-> **Status:** 📋 Proposal — the Option-A unification it proposes is NOT implemented.
-
 ## Overview
-The G.R.I.M. Combat System currently operates with dual proximity systems that evolved to handle different use cases. This document outlines the current architecture, identifies the challenges, and proposes a unification strategy.
 
-## Current Dual Proximity Architecture
+The G.R.I.M. Combat System keeps two proximity systems, which grew up to handle different uses: combat proximity (character to character, for melee) and universal proximity (any entity to any entity, for grenades and objects). This document describes how the two work, the problems of keeping two, and proposes unifying them into one system (Option A). The unification is 📋 UNBUILT (no issue).
 
-### System 1: Combat Proximity (`NDB_PROXIMITY`)
-**Purpose**: Character-to-character melee proximity for combat mechanics
-**Constant**: `NDB_PROXIMITY = "in_proximity_with"`
-**Data Structure**: `character.ndb.in_proximity_with = {set_of_characters}` (a set; the universal store `ndb.proximity` is a list)
-**Usage Pattern**: Bidirectional character relationships
+## The two systems
 
-#### Combat Proximity Characteristics
-- **Scope**: Character-to-character only
-- **Use Cases**: Melee combat, grappling, disarm actions
-- **Establishment**: a successful grapple, advance or charge; a melee attack that starts a fight, or that joins one and wins the contested roll; joining combat already grappling; jumping on an explosive (melee links to everyone on the explosive's universal list); and the same-room re-link of fighters after a server reload
-- **Cleanup**: a won retreat (melee links to opponents only), leaving combat (`clear_all_proximity` in `world/combat/utils.py`), exit traversal (`typeclasses/exits.py` at_traverse), and combat movement and falls (`clear_proximity_on_room_change`, called from `world/combat/movement_resolution.py` and `world/gravity.py`)
-- **Integration**: Deep integration with combat handler and special actions
+### System 1: Combat proximity (`NDB_PROXIMITY`)
 
-#### Combat Proximity Code Locations
-```python
-# Primary usage in combat system
-commands/combat/special_actions.py:
-- CmdGrapple: needs no prior proximity ("rush in"); `world/combat/grappling.py` (establish_grapple, resolve_grapple_initiate, resolve_grapple_takeover) establishes it on success
-- CmdDisarm: Requires proximity for disarm attempts
-- CmdReleaseGrapple: queues a release; `resolve_release_grapple` in `world/combat/grappling.py` ends the hold but leaves the pair in melee proximity
+- **Purpose**: character-to-character melee proximity for combat mechanics.
+- **Constant**: `NDB_PROXIMITY = "in_proximity_with"`.
+- **Data structure**: `character.ndb.in_proximity_with = {set_of_characters}`. It is a set; the universal store `ndb.proximity` is a list.
+- **Usage pattern**: bidirectional character relationships.
+- **Scope**: character to character only.
+- **Use cases**: melee combat, grappling, disarm actions. Turn-based combat validates proximity through the combat handler, and melee actions require proximity.
+- **Established by**: a successful grapple, advance or charge; a melee attack that starts a fight, or that joins one and wins the contested roll; joining combat already grappling; jumping on an explosive (melee links to everyone on the explosive's universal list); and the same-room re-link of fighters after a server reload.
+- **Cleared by**: a won retreat (melee links to opponents only); leaving combat (`clear_all_proximity` in `world/combat/utils.py`); exit traversal (`at_traverse` in `typeclasses/exits.py`); and combat movement and falls (`clear_proximity_on_room_change`, called from `world/combat/movement_resolution.py` and `world/gravity.py`).
+- **Integration**: deep integration with the combat handler and special actions.
 
-# Movement cleanup
-typeclasses/exits.py:
-- at_traverse(): Clears combat proximity on room transitions
+Where it is used:
 
-world/combat/proximity.py:
-- clear_proximity_on_room_change(): clears both stores when a character changes room without an exit: advance, cross-room charge and grapple drag (world/combat/movement_resolution.py) and each cell of a fall (world/gravity.py)
-```
+- `commands/combat/special_actions.py`:
+  - `CmdGrapple` needs no prior proximity ("rush in"). `establish_grapple`, `resolve_grapple_initiate` and `resolve_grapple_takeover` in `world/combat/grappling.py` establish it on success.
+  - `CmdDisarm` requires proximity for a disarm attempt.
+  - `CmdReleaseGrapple` queues a release; `resolve_release_grapple` in `world/combat/grappling.py` ends the hold but leaves the pair in melee proximity.
+- `typeclasses/exits.py`, `at_traverse`: clears combat proximity on room transitions.
+- `world/combat/proximity.py`, `clear_proximity_on_room_change`: clears both stores when a character changes room without an exit: advance, cross-room charge and grapple drag (`world/combat/movement_resolution.py`) and each cell of a fall (`world/gravity.py`).
 
-### System 2: Universal Proximity (`NDB_PROXIMITY_UNIVERSAL`)
-**Purpose**: Character-to-object and object-to-character relationships
-**Constant**: `NDB_PROXIMITY_UNIVERSAL = "proximity"`
-**Data Structure**: `entity.ndb.proximity = [list_of_entities]`
-**Usage Pattern**: Mixed entity relationships (characters, grenades, objects)
+### System 2: Universal proximity (`NDB_PROXIMITY_UNIVERSAL`)
 
-#### Universal Proximity Characteristics
-- **Scope**: Any entity to any entity (characters, objects, grenades)
-- **Use Cases**: Grenade blast zones, object landing proximity, defuse mechanics
-- **Establishment**: Object throws, drops, grenade landings, defuse attempts, and a thrown weapon that hits (the thrower goes on the target's list)
-- **Cleanup**: Manual removal, retreat command, movement between rooms, defuse success
+- **Purpose**: character-to-object and object-to-character relationships.
+- **Constant**: `NDB_PROXIMITY_UNIVERSAL = "proximity"`.
+- **Data structure**: `entity.ndb.proximity = [list_of_entities]`.
+- **Usage pattern**: mixed entity relationships (characters, grenades, objects).
+- **Scope**: any entity to any entity (characters, objects, grenades).
+- **Use cases**: grenade blast zones, object landing proximity, defuse mechanics, proximity-based automatic defuse.
+- **Established by**: object throws, drops, grenade landings, defuse attempts, and a thrown weapon that hits (the thrower goes on the target's list). A landed grenade or object inherits its target's proximity.
+- **Cleared by**: manual removal, movement between rooms, defuse success. Retreat does not clear it (see "Retreat" below).
+- **Integration**: throw command, grenade system, defuse mechanics.
 
-> **Dated note (2026-09-12):** "retreat command" does not hold for universal proximity. `commands/combat/movement.py` (CmdRetreat) contains no reference to `NDB_PROXIMITY_UNIVERSAL` at all, and its resolver `world/combat/movement_resolution.py:resolve_retreat` *reads* the grenade list only to decide whether there is anyone to retreat from (it unions both stores into `all_proximity`); on success it calls `break_proximity` against melee opponents and never touches `NDB_PROXIMITY_UNIVERSAL`. Retreating therefore does not remove you from a grenade's blast list — the same asymmetry family as open defect #2540. This also qualifies "Retreat command must handle both systems" under §Architectural Challenges: it reads both, cleans one.
+Where it is used:
 
-At detonation, `commands/explosion_utils.py:get_unified_explosion_proximity` adds everyone melee-linked to anyone on the grenade's list (human shields), then drops anyone not in the blast room (#2490). A stale entry left by retreat or by walking out still counts while that person is in the blast room, but does not reach through a wall.
-- **Integration**: Throw command, grenade system, defuse mechanics
+- `world/combat/throwing.py`: `assign_landing_proximity` and `handle_grenade_landing` give a landed object its target's proximity; `resolve_weapon_hit` puts the thrower of a thrown weapon that hits on the target's list.
+- `commands/CmdExplosives.py`: `CmdDefuse.establish_mutual_proximity` (defuse attempts) and `clear_grenade_proximity` (defuse success).
+- `commands/explosion_utils.py`: `check_auto_defuse` (proximity-based automatic defuse) and `get_unified_explosion_proximity` (the blast list at detonation).
+- `commands/CmdInventory.py`: drop adds the dropper to the item's list.
+- `typeclasses/exits.py`, `at_traverse`: clears universal proximity on room transitions.
+- `world/combat/proximity.py`, `clear_proximity_on_room_change`: clears both stores when a character changes room without an exit (combat movement and falls).
+- `world/gravity.py`, `_reset_proximity`: empties a falling item's universal list in each cell.
 
-#### Universal Proximity Code Locations
-```python
-# Primary usage in grenade/object system
-world/combat/throwing.py:
-- assign_landing_proximity(), handle_grenade_landing(): a landed object inherits its target's proximity
-- resolve_weapon_hit(): a thrown weapon that hits puts the thrower on the target's list
+### Who is in the blast at detonation
 
-commands/CmdExplosives.py:
-- CmdDefuse.establish_mutual_proximity(), clear_grenade_proximity(): defuse attempts and defuse success
+At detonation, `get_unified_explosion_proximity` in `commands/explosion_utils.py` adds everyone melee-linked to anyone on the grenade's list (human shields), then drops anyone not in the blast room (#2490). A stale entry left by retreat or by walking out still counts while that person is in the blast room, but does not reach through a wall.
 
-commands/explosion_utils.py:
-- check_auto_defuse(): proximity-based automatic defuse
-- get_unified_explosion_proximity(): the blast list at detonation
+## Cleanup on movement
 
-commands/CmdInventory.py:
-- drop: adds the dropper to the item's list
+### Exit traversal
 
-# Movement cleanup
-typeclasses/exits.py:
-- at_traverse(): Clears universal proximity on room transitions
-
-world/combat/proximity.py:
-- clear_proximity_on_room_change(): clears both stores when a character changes room without an exit (combat movement and falls)
-
-world/gravity.py:
-- _reset_proximity(): empties a falling item's universal list in each cell
-```
-
-## Current Implementation Status
-
-### Combat Proximity Integration
-- ✅ **Special Actions**: Grapple, disarm, release mechanics
-- ✅ **Combat Handler**: Turn-based combat proximity validation
-- ✅ **Movement Cleanup**: Room transition cleanup
-- ✅ **Command Validation**: Proximity requirements for melee actions
-
-### Universal Proximity Integration
-- ✅ **Throw System**: Object landing and grenade proximity
-- ✅ **Defuse System**: Dynamic proximity establishment
-- ✅ **Grenade Mechanics**: Blast zone management and inheritance
-- ✅ **Movement Cleanup**: Room transition cleanup, one-sided: a thrown grenade's list keeps a person who walks out (#2540)
-- ✅ **Auto-defuse**: Proximity-based automatic defuse attempts
-
-### Cleanup Implementation
-Both systems have identical cleanup patterns in `typeclasses/exits.py`:
+`at_traverse` in `typeclasses/exits.py` cleans both stores with the same pattern. For combat proximity it clears the mover's bidirectional relationships: it removes the mover from each linked character's set, then empties the mover's own set. For universal proximity it walks the mover's OWN universal list, removes the mover from each entry's list, then empties the mover's list. Throw and landing write only the object's list, so a person a thrown grenade lists stays on that list after leaving through an exit (#2540).
 
 Both cleanups are skipped for a victim being dragged in a grapple, so the victim stays linked to the grappler. The advance drag in `world/combat/movement_resolution.py` likewise clears only the grappler and re-links the pair after the move.
 
-> **Dated note (2026-09-12):** still true of `exits.py`, but no longer the whole picture — exit traversal is not the only movement-cleanup site. `world/combat/proximity.py:clear_proximity_on_room_change` was added under #2490 because combat movement (`advance`, a cross-room `charge`, a grapple drag) calls `char.move_to()` directly and never traverses an exit, so `at_traverse` never fired on those paths; it is invoked from `world/combat/movement_resolution.py` and clears both stores. Any later consolidation has to account for the non-traversal path as well.
-```python
-def at_traverse(self, traversing_object, target_location, **kwargs):
-    # Combat proximity cleanup
-    if hasattr(traversing_object.ndb, NDB_PROXIMITY):
-        # Clear bidirectional combat proximity relationships
-        
-    # Universal proximity cleanup  
-    if hasattr(traversing_object.ndb, NDB_PROXIMITY_UNIVERSAL):
-        # Walk the mover's OWN universal list and remove the mover from each entry.
-        # Throw and landing write only the object's list, so a person a thrown
-        # grenade lists stays on that list after leaving (#2540).
-```
+### Movement without an exit
 
-## Architectural Challenges
+Exit traversal is not the only movement-cleanup site. Combat movement (`advance`, a cross-room `charge`, a grapple drag) calls `char.move_to()` directly and never traverses an exit, so `at_traverse` never fires on those paths. `clear_proximity_on_room_change` in `world/combat/proximity.py` (#2490) covers them: it is invoked from `world/combat/movement_resolution.py` and from each cell of a fall in `world/gravity.py`, and clears both stores.
 
-### Code Duplication
-- **Identical cleanup logic**: Both systems require the same bidirectional cleanup patterns
-- **Parallel command handling**: Retreat command must handle both systems
-- **Redundant validation**: Similar proximity checks in different systems
+### Retreat
 
-### Conceptual Overlap
-- **Character-to-character relationships**: Could be handled by either system
-- **Mixed proximity scenarios**: Characters near grenades AND in combat proximity
-- **System selection confusion**: Developers must choose which system to use
+`CmdRetreat` in `commands/combat/movement.py` contains no reference to `NDB_PROXIMITY_UNIVERSAL`. Its resolver, `resolve_retreat` in `world/combat/movement_resolution.py`, reads the grenade list only to decide whether there is anyone to retreat from (it unions both stores into `all_proximity`). On success it calls `break_proximity` against melee opponents and never touches `NDB_PROXIMITY_UNIVERSAL`. Retreating therefore does not remove you from a grenade's blast list. This is the same asymmetry family as #2540.
 
-### Maintenance Burden
-- **Dual updates required**: Changes to proximity logic must be applied to both systems
-- **Inconsistent behavior**: Different systems may handle edge cases differently
-- **Testing complexity**: All proximity features must be tested in both contexts
+## Architectural challenges
 
-### Performance Implications
-- **Memory overhead**: Characters may have duplicate proximity data
-- **Cleanup overhead**: Movement transitions must clean up two separate systems
-- **Lookup complexity**: Commands must check both systems for complete proximity picture
+### Code duplication
+- **Identical cleanup logic**: both systems require the same bidirectional cleanup patterns.
+- **Parallel command handling**: the retreat command has to handle both systems; today it reads both and cleans only the melee one (see "Retreat").
+- **Redundant validation**: similar proximity checks in different systems.
 
-## Unification Strategy: Option A (Recommended)
+### Conceptual overlap
+- **Character-to-character relationships**: could be handled by either system.
+- **Mixed proximity scenarios**: characters near grenades AND in combat proximity.
+- **System selection confusion**: developers must choose which system to use.
 
-### Core Principle
-**Single Universal Proximity System**: Replace both systems with one unified proximity system that handles all entity-to-entity relationships.
+### Maintenance burden
+- **Dual updates required**: changes to proximity logic must be applied to both systems.
+- **Inconsistent behavior**: different systems may handle edge cases differently.
+- **Testing complexity**: all proximity features must be tested in both contexts.
 
-### Unified System Design
+### Performance implications
+- **Memory overhead**: characters may have duplicate proximity data.
+- **Cleanup overhead**: movement transitions must clean up two separate systems.
+- **Lookup complexity**: commands must check both systems for a complete proximity picture.
+
+## 📋 UNBUILT (no issue): Unification strategy, Option A (recommended)
+
+### Core principle
+**Single universal proximity system**: replace both systems with one unified proximity system that handles all entity-to-entity relationships.
+
+### Unified system design
+
 ```python
 # Single proximity constant
 NDB_PROXIMITY_UNIFIED = "proximity_relationships"
@@ -155,182 +110,108 @@ character.ndb.proximity_relationships = [other_char, grenade, dropped_weapon]
 grenade.ndb.proximity_relationships = [char1, char2, char3]
 ```
 
-### Migration Strategy
+Any consolidation has to account for the non-traversal movement path (`clear_proximity_on_room_change`) as well as exit traversal.
+
+### Unified proximity utilities
+
+The proposed utilities in `world/combat/proximity.py`: `establish_proximity(entity1, entity2)` establishes bidirectional proximity between any two entities; `remove_proximity(entity1, entity2)` removes it; `get_proximity_list(entity)` returns all entities in proximity to an entity; `clear_all_proximity(entity)` removes an entity from all proximity relationships; `in_proximity(entity1, entity2)` checks whether two entities are in proximity.
+
+`world/combat/proximity.py` already holds melee-only helpers: `establish_proximity`, `break_proximity`, `clear_all_proximity`, `get_proximity_list` and `is_in_proximity` (plus `clear_proximity_on_room_change`, which clears both stores). The proposal calls two of them by other names: `remove_proximity` is `break_proximity`, and `in_proximity` is `is_in_proximity`.
+
+### Migration strategy
 
 #### Phase 1: Implementation
-1. **Create unified constant**: Define `NDB_PROXIMITY_UNIFIED` in constants.py
-2. **Implement unified utilities**: Create common proximity management functions
-3. **Add compatibility layer**: Functions that write to both old and new systems during transition
+1. **Create unified constant**: define `NDB_PROXIMITY_UNIFIED` in constants.py.
+2. **Implement unified utilities**: create common proximity management functions.
+3. **Add compatibility layer**: functions that write to both old and new systems during transition.
 
-> This compatibility layer (and its removal in Phase 4, the "Migration Compatibility Layer" block and the data-loss mitigation) conflicts with `DEVELOPMENT_GUIDE.md`, Pull Request Process: "repoint every caller and delete the old name in the same PR: no aliases, wrappers or re-exports left for callers".
+This compatibility layer (and its removal in Phase 4, the "Migration compatibility layer" below and the data-loss mitigation) conflicts with `DEVELOPMENT_GUIDE.md`, Pull Request Process: "repoint every caller and delete the old name in the same PR: no aliases, wrappers or re-exports left for callers".
 
-#### Phase 2: Combat System Migration
-1. **Update special_actions.py**: Migrate grapple, disarm, release to unified system
-2. **Update combat handler**: Use unified proximity for combat validation
-3. **Test combat functionality**: Ensure no regressions in combat mechanics
+#### Phase 2: Combat system migration
+1. **Update special_actions.py**: migrate grapple, disarm, release to the unified system.
+2. **Update combat handler**: use unified proximity for combat validation.
+3. **Test combat functionality**: ensure no regressions in combat mechanics.
 
-#### Phase 3: Universal System Migration
-1. **Update `world/combat/throwing.py`**: Migrate grenade and object proximity to unified system
-2. **Update defuse system**: Use unified proximity for defuse mechanics
-3. **Test grenade functionality**: Ensure blast zones and defuse work correctly
+#### Phase 3: Universal system migration
+1. **Update `world/combat/throwing.py`**: migrate grenade and object proximity to the unified system.
+2. **Update defuse system**: use unified proximity for defuse mechanics.
+3. **Test grenade functionality**: ensure blast zones and defuse work correctly.
 
-#### Phase 4: Cleanup and Optimization
-1. **Remove old constants**: Delete `NDB_PROXIMITY` and `NDB_PROXIMITY_UNIVERSAL`
-2. **Simplify movement cleanup**: Single proximity cleanup in exits.py
-3. **Update retreat command**: Single proximity system handling
-4. **Remove compatibility layer**: Clean up transitional code
+#### Phase 4: Cleanup and optimization
+1. **Remove old constants**: delete `NDB_PROXIMITY` and `NDB_PROXIMITY_UNIVERSAL`.
+2. **Simplify movement cleanup**: single proximity cleanup in exits.py.
+3. **Update retreat command**: single proximity system handling.
+4. **Remove compatibility layer**: clean up transitional code.
 
-### Unified System Benefits
+### Migration compatibility layer
 
-#### Architectural Simplification
-- **Single source of truth**: One proximity system for all relationships
-- **Unified cleanup**: One cleanup pattern for all proximity relationships
-- **Consistent behavior**: Same proximity logic for all use cases
-- **Simplified commands**: Single proximity check for all mechanics
+Temporary functions during migration: `get_legacy_combat_proximity(character)` returns combat proximity using the old or new system; `get_legacy_universal_proximity(entity)` returns universal proximity using the old or new system; `establish_legacy_proximity(entity1, entity2, system_type)` establishes proximity in the old and new systems during transition.
 
-#### Development Benefits
-- **Reduced maintenance**: Changes apply to one system
-- **Clearer mental model**: Developers work with one proximity concept
-- **Easier testing**: Single system to validate
-- **Performance improvement**: Eliminate redundant data and operations
+### Benefits
 
-#### Functional Benefits
-- **Rich relationships**: Characters can be in proximity to any entity
-- **Complex scenarios**: Natural handling of mixed proximity situations
-- **Extensibility**: Easy addition of new proximity-based mechanics
-- **Consistency**: Same proximity behavior across all game systems
+#### Architectural simplification
+- **Single source of truth**: one proximity system for all relationships.
+- **Unified cleanup**: one cleanup pattern for all proximity relationships.
+- **Consistent behavior**: same proximity logic for all use cases.
+- **Simplified commands**: single proximity check for all mechanics.
 
-### Implementation Details
+#### Development benefits
+- **Reduced maintenance**: changes apply to one system.
+- **Clearer mental model**: developers work with one proximity concept.
+- **Easier testing**: single system to validate.
+- **Performance improvement**: eliminate redundant data and operations.
 
-#### Unified Proximity Utilities
-`world/combat/proximity.py` already holds melee-only helpers: `establish_proximity`, `break_proximity`, `clear_all_proximity`, `get_proximity_list` and `is_in_proximity` (plus `clear_proximity_on_room_change`, which clears both stores). The block below calls two of them by other names: `remove_proximity` is `break_proximity`, and `in_proximity` is `is_in_proximity`.
-```python
-# world/combat/proximity.py
-def establish_proximity(entity1, entity2):
-    """Establish bidirectional proximity between any two entities."""
+#### Functional benefits
+- **Rich relationships**: characters can be in proximity to any entity.
+- **Complex scenarios**: natural handling of mixed proximity situations.
+- **Extensibility**: easy addition of new proximity-based mechanics.
+- **Consistency**: same proximity behavior across all game systems.
 
-def remove_proximity(entity1, entity2):
-    """Remove bidirectional proximity between two entities."""
+In sum, the unification would simplify the codebase by eliminating redundant systems, improve maintainability with a single proximity paradigm, enhance performance by reducing duplicate operations, and enable richer gameplay through unified entity relationships. The phased Option A migration is proposed as a safe approach that minimizes risk, and the unified system as the foundation for future proximity-based features and game mechanics.
 
-def get_proximity_list(entity):
-    """Get all entities in proximity to the given entity."""
+### Implementation risks and mitigation
 
-def clear_all_proximity(entity):
-    """Remove entity from all proximity relationships."""
+| Risk | Mitigation | Fallback |
+|---|---|---|
+| Combat system regression | Comprehensive testing of all combat actions during migration | Rollback plan: keep old combat proximity as backup during Phase 2 |
+| Grenade system disruption | Extensive testing of grenade mechanics during migration | Rollback plan: keep old universal proximity as backup during Phase 3 |
+| Performance degradation | Profile proximity operations before and after migration | Optimization: implement proximity caching if needed |
+| Data loss during migration | Compatibility layer maintains both systems during transition | Safety: migration can be paused at any phase if issues arise |
 
-def in_proximity(entity1, entity2):
-    """Check if two entities are in proximity."""
-```
+### Testing strategy
 
-#### Migration Compatibility Layer
-```python
-# Temporary functions during migration
-def get_legacy_combat_proximity(character):
-    """Return combat proximity using old or new system."""
-    
-def get_legacy_universal_proximity(entity):
-    """Return universal proximity using old or new system."""
-    
-def establish_legacy_proximity(entity1, entity2, system_type):
-    """Establish proximity in old and new systems during transition."""
-```
+- **Unit tests**: test all unified proximity functions; bidirectional consistency (proximity relationships are always mutual); edge cases (null entities, invalid relationships, circular references).
+- **Integration tests**: all special actions work with unified proximity; blast zones and defuse work correctly; room transitions clear all proximity properly.
+- **Regression tests**: all existing combat functionality preserved; all existing grenade mechanics preserved; mixed scenarios (characters in combat near live grenades).
+- **Performance tests**: measure the performance impact of the unified system; ensure it reduces memory overhead; verify movement cleanup is faster with a single system.
 
-## Alternative Approaches Considered
+### Success metrics
 
-### Option B: System Specialization
-Keep both systems but formalize their distinct roles:
-- Combat proximity for character-to-character melee relationships
-- Universal proximity for character-to-object relationships
+- **Code quality**: expect a 20-30% reduction in proximity-related code; cyclomatic complexity improvement in proximity functions; zero duplicate proximity logic patterns.
+- **Performance**: reduced NDB storage for proximity data; faster proximity lookups and modifications; faster room transition processing.
+- **Maintainability**: faster implementation of new proximity features; fewer proximity-related edge-case bugs; a single proximity system is easier to document.
 
-**Rejected because**: Still maintains code duplication and conceptual overlap
+### Next steps
+1. **Review and approval**: stakeholder review of this specification.
+2. **Create implementation timeline**: estimate effort for each migration phase.
+3. **Set up testing framework**: prepare a comprehensive test suite for migration.
+4. **Begin Phase 1**: implement unified proximity utilities and the compatibility layer.
 
-### Option C: Hierarchical Systems
-Create a base proximity system with specialized subclasses:
-- BaseProximity → CombatProximity, UniversalProximity
+This specification is the architectural blueprint for proximity system unification; implementation decisions should reference it for consistency with the overall strategy.
 
-**Rejected because**: Adds complexity without eliminating duplication
+## Alternative approaches considered
 
-### Option D: Context-Based Single System
-Use one system with context flags to distinguish relationship types:
-- `proximity_relationships = [(entity, context), ...]`
+### Option B: System specialization
+Keep both systems but formalize their distinct roles: combat proximity for character-to-character melee relationships, universal proximity for character-to-object relationships.
 
-**Rejected because**: Over-engineered for current needs
+**Rejected because**: still maintains code duplication and conceptual overlap.
 
-## Implementation Risks and Mitigation
+### Option C: Hierarchical systems
+Create a base proximity system with specialized subclasses: BaseProximity → CombatProximity, UniversalProximity.
 
-### Risk: Combat System Regression
-**Mitigation**: Comprehensive testing of all combat actions during migration
-**Rollback Plan**: Keep old combat proximity as backup during Phase 2
+**Rejected because**: adds complexity without eliminating duplication.
 
-### Risk: Grenade System Disruption  
-**Mitigation**: Extensive testing of grenade mechanics during migration
-**Rollback Plan**: Keep old universal proximity as backup during Phase 3
+### Option D: Context-based single system
+Use one system with context flags to distinguish relationship types: `proximity_relationships = [(entity, context), ...]`.
 
-### Risk: Performance Degradation
-**Mitigation**: Profile proximity operations before and after migration
-**Optimization**: Implement proximity caching if needed
-
-### Risk: Data Loss During Migration
-**Mitigation**: Compatibility layer maintains both systems during transition
-**Safety**: Migration can be paused at any phase if issues arise
-
-## Testing Strategy
-
-### Unit Tests
-- **Proximity utilities**: Test all unified proximity functions
-- **Bidirectional consistency**: Ensure proximity relationships are always mutual
-- **Edge cases**: Null entities, invalid relationships, circular references
-
-### Integration Tests
-- **Combat actions**: All special actions work with unified proximity
-- **Grenade mechanics**: Blast zones and defuse work correctly
-- **Movement cleanup**: Room transitions clear all proximity properly
-
-### Regression Tests
-- **Combat scenarios**: All existing combat functionality preserved
-- **Grenade scenarios**: All existing grenade mechanics preserved
-- **Mixed scenarios**: Characters in combat near live grenades
-
-### Performance Tests
-- **Proximity operations**: Measure performance impact of unified system
-- **Memory usage**: Ensure unified system reduces memory overhead
-- **Cleanup efficiency**: Verify movement cleanup is faster with single system
-
-## Success Metrics
-
-### Code Quality Metrics
-- **Lines of code reduction**: Expect 20-30% reduction in proximity-related code
-- **Complexity reduction**: Cyclomatic complexity improvement in proximity functions
-- **Duplication elimination**: Zero duplicate proximity logic patterns
-
-### Performance Metrics
-- **Memory usage**: Reduced NDB storage for proximity data
-- **Operation speed**: Faster proximity lookups and modifications
-- **Cleanup speed**: Faster room transition processing
-
-### Maintainability Metrics
-- **Development velocity**: Faster implementation of new proximity features
-- **Bug reduction**: Fewer proximity-related edge case bugs
-- **Documentation clarity**: Single proximity system easier to document
-
-## Conclusion
-
-The unification of our dual proximity systems represents a significant architectural improvement that will:
-
-1. **Simplify the codebase** by eliminating redundant systems
-2. **Improve maintainability** by providing a single proximity paradigm
-3. **Enhance performance** by reducing duplicate operations
-4. **Enable richer gameplay** through unified entity relationships
-
-The proposed Option A migration strategy provides a safe, phased approach that minimizes risk while delivering substantial benefits. The unified system will serve as a solid foundation for future proximity-based features and game mechanics.
-
-## Next Steps
-
-1. **Review and approval**: Stakeholder review of this specification
-2. **Create implementation timeline**: Estimate effort for each migration phase
-3. **Set up testing framework**: Prepare comprehensive test suite for migration
-4. **Begin Phase 1**: Implement unified proximity utilities and compatibility layer
-
----
-
-*This specification serves as the architectural blueprint for proximity system unification. All implementation decisions should reference this document to ensure consistency with the overall strategy.*
+**Rejected because**: over-engineered for current needs.

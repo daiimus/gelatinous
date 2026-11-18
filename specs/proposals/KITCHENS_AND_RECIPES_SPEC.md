@@ -1,37 +1,33 @@
 # Kitchens & Recipes Spec — the food half of the consumable economy
 
-> **Status:** 📋 **Proposal — design only (2026-08-25, owner-prompted).**
-> *(Date note, 2026-09-11: this file has one commit — cf326879, 2026-08-10
-> (PR #1952, closing #1951) — and has not been revised since, so
-> "2026-08-25" describes no version of this document. Two present-tense
-> claims below went stale in the gap and are annotated in place: §4's
-> "`{time}` system's first venue" and §6's "Hunger/need mechanics: none
-> exist". The build status — design only, nothing here built — still
-> holds: there is no kitchen station, no extracted crafting-station
-> framework, and no `derive_kitchen_stock` in the code.)*
-> **This spec ELABORATES promises two shipped specs already made; it
-> supersedes neither.** Parents: (1)
-> [`GIG_PROTOTYPE_BUTCHER_SPEC`](../GIG_PROTOTYPE_BUTCHER_SPEC.md) **§7 —
-> the three-tier food roadmap** (tier 1 cuts + tier 2 cook/menu SHIPPED
-> in `world/food.py` for Ottilie's cart; tier 2's own words: "a menu
-> item is a recipe… `make_drink_from_recipe`, generalized to food… a
-> **cook/kitchen** (or the bar)"; tier 3 provenance/tainted cuts
-> deferred). (2) [`BARS_AND_RECIPES_SPEC`](../BARS_AND_RECIPES_SPEC.md)
-> §2.1 — the promised reusable **crafting-station framework** (the bar
-> was named its on-ramp), plus §10's snack scoping. The owner's brief —
-> street-food diversity powered by "a recipe system akin to
-> bartending" — is exactly those promises, cashed: one engine, the
-> kitchen as station #2, and the venue-diversity program neither parent
-> scoped. Butcher §7's tier language is adopted wholesale below.
-
-## 0 · Purpose
-
 Kitchens are where raw ingredients become dishes, the way bars are where
 they become drinks. One recipe engine, two station families. The design
 goal beyond mechanics is **diversity**: the colony's manifest is
 many-heritage (Bhavani, Tsiolkovsky, Pessoa, Lin, Escallier, Krug…) and
 its tables should read like it — heritage kitchens, a ladder of protein
 sources, and venue *types* that shape social play, not just menus.
+
+This is a design proposal; nothing it describes is built (📋 UNBUILT,
+no issue): there is no kitchen station, no extracted crafting-station
+framework, and no `derive_kitchen_stock`.
+
+**This spec ELABORATES promises two other specs already made; it
+supersedes neither.** Parents:
+
+1. [`GIG_PROTOTYPE_BUTCHER_SPEC`](../GIG_PROTOTYPE_BUTCHER_SPEC.md) **§7 —
+   the three-tier food roadmap.** Tier 1 (cuts) and tier 2 (cook/menu)
+   are in `world/food.py` for Ottilie's cart. Tier 2's own words: "a menu
+   item is a recipe… `make_drink_from_recipe`, generalized to food… a
+   **cook/kitchen** (or the bar)". Tier 3 (provenance/tainted cuts) is
+   deferred.
+2. [`BARS_AND_RECIPES_SPEC`](../BARS_AND_RECIPES_SPEC.md) §2.1 — the
+   promised reusable **crafting-station framework** (the bar was named its
+   on-ramp), plus §10's snack scoping.
+
+The owner's brief — street-food diversity powered by "a recipe system
+akin to bartending" — is exactly those promises, cashed: one engine, the
+kitchen as station #2, and the venue-diversity program neither parent
+scoped. Butcher §7's tier language is adopted wholesale below.
 
 ## 1 · Architecture (mirroring the bar's locked decisions)
 
@@ -88,13 +84,13 @@ ingredient flavour notes, derived effects. Prep-method *mechanics*
 (ferment, cure, smoke) defer exactly as the bar deferred them — but the
 fermentory venue is designed against that future.
 
-What exists today: a `BarCounter` menu entry that names a `proto` is
-plated, not mixed — the real dish is spawned onto the counter
-(`world/bar.py` `plate_or_mix`, Bars §7.2, #2342). The Snailery serves its
-food this way. Bars §7.2's rule, that a venue answers to exactly one of
-served / sold / grazed, applies to kitchen venues too. What this spec adds
-is cooking: a dish composed from ingredients at a station, not spawned
-from a fixed prototype.
+Today a `BarCounter` menu entry that names a `proto` is plated, not
+mixed — the real dish is spawned onto the counter (`world/bar.py`
+`plate_or_mix`, Bars §7.2, #2342). The Snailery serves its food this
+way. Bars §7.2's rule, that a venue answers to exactly one of served /
+sold / grazed, applies to kitchen venues too. What this spec adds is
+cooking: a dish composed from ingredients at a station, not spawned from
+a fixed prototype.
 
 ## 4 · The venues (the diversity this exists to serve)
 
@@ -102,29 +98,69 @@ Heritage kitchens, each a different table: a **dosa/chaat counter** off
 Bhavani; a **dumpling window** (a hatch in a prefab wall, three seats);
 a **zakuski cellar** near Tsiolkovsky (samovar, black bread, pickles);
 a **bakery** on the Heat Works' steam line when it exists; a
-**third-shift congee window** open when everything else is dark (the
-`{time}` system's first venue — *stale 2026-09-11: clock-driven venue
-hours already ship. a counter bound to a post sells only while a keeper is standing the
-running shift (day 06–14, swing 14–22, night 22–06; `world/souls/engine.py`
-`SCHEDULES`, `world/souls/posts.py` `current_shift` and `keeper_on_duty`),
-and otherwise refuses with its authored `post_closed_msg`
-(`typeclasses/shopkeeper.py`). Lin's cart and the Snailery have a keeper
-on all three shifts (#2325). The congee window would be a good venue for it, not the first*). Venue *types* beyond menus: **tea
-house** (lingering, the anti-shift-food), **fermentory** (crocks and
-jars; supplies every kitchen above), **spice stall** (one cell, huge
-sense radius), and the **vat-protein counter** — Greenhaus or Longhaul
-branded, six flavors of slab, the soulless counterpoint that gives every
-artisan NPC an opinion. Branding per the world rule; handmade operations
-may stand unbranded (the Escallier precedent).
+**third-shift congee window** open when everything else is dark.
 
-## 5 · Build phases
+Venue hours are clock-driven. A counter bound to a post sells only while
+a keeper is standing the running shift (day 06–14, swing 14–22, night
+22–06; `world/souls/engine.py` `SCHEDULES`, `world/souls/posts.py`
+`current_shift` and `keeper_on_duty`), and otherwise refuses with its
+authored `post_closed_msg` (`typeclasses/shopkeeper.py`). Lin's cart and
+the Snailery have a keeper on all three shifts (#2325). The congee window
+would be a good venue for this rule, not the first.
+
+Venue *types* beyond menus: **tea house** (lingering, the
+anti-shift-food), **fermentory** (crocks and jars; supplies every kitchen
+above), **spice stall** (one cell, huge sense radius), and the
+**vat-protein counter** — Greenhaus or Longhaul branded, six flavors of
+slab, the soulless counterpoint that gives every artisan NPC an opinion.
+Branding per the world rule; handmade operations may stand unbranded
+(the Escallier precedent).
+
+## 5 · Dish quality
+
+A food carries a `food_quality` number. Souls weigh it against the walk
+and feel it in the meal's mood lift (#3804). A soul counts a meal as
+worth its quality less 0.1 for every room it must walk to reach it
+(`FOOD_WALK_COST_PER_ROOM`). The default is 5, an ordinary hot meal
+(`world/souls/constants.py` `FOOD_QUALITY_DEFAULT`), on a scale open at
+both ends. Every dish sits on the default until something sets its
+number. The one food that declares its own is the ration, the Longhaul
+MRE, at 2 (#3806).
+
+Owner, 2026-11-13, on whether dish quality is graded: "A number is
+probably best for graded quality so we can expand/grow as we develop the
+system." What sets a dish's number is not decided (see Not decided, 1).
+
+## 6 · Integration & conventions
+
+- **`world/prototypes.py` registers prototypes as UPPERCASE module
+  variables** — never insert bare dict literals (the snailery lesson,
+  #1950). Spawn-test new AND neighboring prototypes.
+- Archetype system makes cooks cheap content: entry + palette + seed.
+- Time system: opening hours as venue character (the congee window; §4).
+- **Hunger.** Food remains flavor + substance-effects; this spec adds
+  depth, not chores. There is no PLAYER hunger, and this spec proposes
+  none: `nourish` no-ops on a consumer with no meter (`_apply_nourish`
+  returns 0 for anything without a soul tag, "players, for now").
+  NPCs do have hunger: `world/souls/needs.py` `PROFILES` carries a
+  `hunger` need (0→1 in 8h human, 16h synth/recluse; the planner shapes
+  `buy_consume`/`graze`). Eating is pharmacology (#2074): the `nutrition`
+  substance (`world/substances/registry.py`, effect kind `nourish`,
+  applied by `_apply_nourish`) eases that meter, and food prototypes
+  declare `drink_effects {"nutrition": N}` (raw cuts, the butcher's
+  dishes, the snail skewer). NPC needs are proposed in
+  [`NPC_NEEDS_AND_GOALS_SPEC`](NPC_NEEDS_AND_GOALS_SPEC.md).
+
+## 7 · Build phases
+
+The proposed order of work:
 
 1. **Engine lift** — build the station framework Bars §2.1 promised:
    extract the bar's station/menu/recognition core; bar and kitchen both
-   consume it. `FOOD_RECIPES` in `world/food.py` (Butcher §7 tier 2 as
-   shipped) migrates to engine data — Ottilie unaffected at her cart;
-   her cooking step (`typeclasses/butcher.py` `stock_cuts` →
-   `world/food.py` `cook_yields`) becomes the framework's first food client. Butcher §7
+   consume it. `FOOD_RECIPES` in `world/food.py` (Butcher §7 tier 2)
+   migrates to engine data — Ottilie unaffected at her cart; her cooking
+   step (`typeclasses/butcher.py` `stock_cuts` → `world/food.py`
+   `cook_yields`) becomes the framework's first food client. Butcher §7
    tier 3 (provenance/tainted contributions) rides this engine when it
    lands.
 2. **Pilot venue** — one heritage kitchen end-to-end on the Lin vendor
@@ -136,46 +172,12 @@ may stand unbranded (the Escallier precedent).
 5. **Supplier chains** — stock derives from live world sources;
    delivery gigs close the loop.
 
-## 6 · Integration & conventions
-
-- **`world/prototypes.py` registers prototypes as UPPERCASE module
-  variables** — never insert bare dict literals (the snailery lesson,
-  #1950). Spawn-test new AND neighboring prototypes.
-- Archetype system makes cooks cheap content: entry + palette + seed.
-- Time system: opening hours as venue character (the congee window).
-- Hunger/need mechanics: **none exist and none are proposed** — food
-  remains flavor + substance-effects; this spec adds depth, not chores.
-  *(Stale 2026-09-11 — true at this file's commit (2026-08-10), false
-  within a week. NPC hunger shipped 2026-08-17: `world/souls/needs.py`
-  `PROFILES` carries a live `hunger` need (0→1 in 8h human, 16h
-  synth/recluse, planner shapes `buy_consume`/`graze`), and #2074
-  (closed 2026-08-20) made eating pharmacology — the `nutrition`
-  substance (`world/substances/registry.py`, effect kind `nourish`, applied
-by `_apply_nourish`) eases that meter via
-  `nourish`, and food prototypes already declare
-  `drink_effects {"nutrition": N}` (raw cuts, the butcher's dishes, the
-  snail skewer). Needs are also **proposed**, in
-  `specs/proposals/NPC_NEEDS_AND_GOALS_SPEC.md` (P1–P3 shipped). What
-  genuinely does not exist is PLAYER hunger — `nourish` no-ops on a
-  consumer with no meter (`_apply_nourish` returns 0 for anything without
-a soul tag, "players, for now") — so the
-  no-chores stance survives; only the absolute wording fails.)*
-
-## 7 · Open questions (owner)
+## Not decided (owner)
 
 1. Dish quality tiers (cook skill?) or flat like the bar's v1? (G.R.I.M.
    stats exist; a Motorics/Intellect dab is possible but unproposed.)
-   > **Answered in outline, 2026-11-13:** "A number is probably best for
-   > graded quality so we can expand/grow as we develop the system." The
-   > eater's side is built (#3804): a food carries `food_quality`, souls
-   > weigh it against the walk and feel it in the meal's mood lift. What
-   > SETS a dish's number (cook skill, ingredients) is still open, and
-   > every dish sits on the default until something does. The one
-   > food that declares its own is the ration, the Longhaul MRE, at 2
-   > (#3806). The default is 5, an ordinary hot meal
-   > (`world/souls/constants.py` `FOOD_QUALITY_DEFAULT`), on a scale open
-   > at both ends. A soul counts a meal as worth its quality less 0.1 for
-   > every room it must walk to reach it (`FOOD_WALK_COST_PER_ROOM`).
+   Answered in outline, 2026-11-13: a number (§5). What SETS a dish's
+   number (cook skill, ingredients) is still open.
 2. Should saved dish recipes be *teachable* NPC→player (Nonna teaches a
    snail dish as a favor reward)?
 3. Which pilot venue — dumpling window, or push diversity westward with
@@ -183,3 +185,9 @@ a soul tag, "players, for now") — so the
 4. Does the vat-protein counter belong to Greenhaus (empire-completing)
    or Longhaul (logistics-flavored)? Context: the colony's ration is
    already Longhaul-branded (the Longhaul MRE, #3806). Still open.
+
+## Related
+
+- [`GIG_PROTOTYPE_BUTCHER_SPEC`](../GIG_PROTOTYPE_BUTCHER_SPEC.md) §7
+- [`BARS_AND_RECIPES_SPEC`](../BARS_AND_RECIPES_SPEC.md) §2.1, §7.2, §10
+- [`NPC_NEEDS_AND_GOALS_SPEC`](NPC_NEEDS_AND_GOALS_SPEC.md)
