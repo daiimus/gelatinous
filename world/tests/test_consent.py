@@ -1,4 +1,4 @@
-"""Trust & consent gate (world/consent.py) — TRUST_AND_CONSENT_SPEC Phase 1.
+"""Trust & consent gate (world/consent.py) — TRUST_AND_CONSENT_SPEC §1 and §3.
 
 Predicates, grant storage, the gate, and the command surface, on MagicMock
 stand-ins (the LLM-test pattern) so no Evennia boot is needed for the pure

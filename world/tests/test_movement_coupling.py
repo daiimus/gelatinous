@@ -1,5 +1,5 @@
 """Movement coupling (world/movement_coupling.py + commands/CmdFollow.py) —
-TRUST_AND_CONSENT_SPEC §9 Phase 3.
+TRUST_AND_CONSENT_SPEC §3 (Movement).
 
 MagicMock stand-ins throughout: the contract under test is that every
 coupled move goes through the REAL exit command (execute_cmd) and that the

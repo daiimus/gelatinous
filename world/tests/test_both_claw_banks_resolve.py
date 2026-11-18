@@ -1,4 +1,4 @@
-"""Both Nailz banks resolve every phase (MULTI_WEAPON_COMBAT_SPEC §7, §13) and
+"""Both Nailz banks resolve every phase (MULTI_WEAPON_COMBAT_SPEC §7) and
 name no other weapon (owner ruling §14 #10).
 
 `nailz` is one hand, `nailz_akimbo` the designed pair; the

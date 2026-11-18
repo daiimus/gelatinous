@@ -215,7 +215,7 @@ is their <hand>.").
 
 ### 3.4 · natural_weapon precedence
 
-> **Note 2026-10-05 (MULTI_WEAPON_COMBAT_SPEC slice 1):** this shipped,
+> **Note 2026-10-05 (MULTI_WEAPON_COMBAT_SPEC §4):** this shipped,
 > and the selectors it named are gone. One door, `choose_weapon` in
 > `world/combat/weapon_choice.py`, lists `get_active_natural_weapons`
 > (every deployed host, its own object) as candidates, applies the range

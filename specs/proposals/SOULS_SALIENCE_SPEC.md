@@ -1,23 +1,20 @@
 # Souls Salience — letting the world interrupt a soul
 
-**Status:** ✅ SHIPPED 2026-08-22 (#2228). The inbox, the LOD bypass,
-the one-wake-per-burst guard and the dispatch consumer are all live.
-**Arbitration (§3.3) remains deliberately unwired** — see the note there.
-**Depends on:** `world/souls/engine.py` (band tree, LOD), `world/souls/jobs.py`
-**Since shipping:** role work moved into `salience.ROLE_WORK` /
-`do_post_work` (#2236), so the medic's restock is a registry entry
-rather than the one hard-coded `if` in the work step. The dispatch
-consumer now also carries the caller's description to the desk
-(#2249) and opens a call record (#2246).
+Salience is the souls engine's sensory inbox (#2228). The world hands a
+soul a **stimulus**; the soul gets one prompt wake that does its post's
+inbox work and lets it think, whatever its LOD cadence. Stimuli take no
+part in goal arbitration: that is designed and deliberately not wired
+(§3.3). The first consumer is dispatch (§4).
 
----
+The code is `world/souls/salience.py`, built on `world/souls/engine.py`
+(band tree, LOD) and `world/souls/jobs.py`.
 
 ## 1. The gap
 
 Every goal a soul can form is derived from its own internal state:
 needs pressure, the clock, whether it holds a post. `_desired_goal` is
-a pure function of the soul. **Nothing in the world can put something
-in front of a soul.**
+a pure function of the soul. Without the inbox, **nothing in the world
+can put something in front of a soul.**
 
 Second, thinking is LOD-gated for cost: hot souls (a player in the
 room) think every 30s beat, warm every other, cold every sixth — about
@@ -27,21 +24,20 @@ Those two combine badly for any work whose trigger arrives from
 *elsewhere*. Dispatch is the clean example: a distress call reaches the
 operator by radio from someone who is, by definition, not standing next
 to her. Being alone at her desk is exactly what makes her cold. Routed
-through the ordinary beat, a shots-fired call is judged somewhere
-between 30 seconds and 3 minutes later, and the units roll that late.
+through the ordinary beat, a shots-fired call would be judged somewhere
+between 30 seconds and 3 minutes later, and the units would roll that
+late.
 
 There is a third edge: the band tree is `survive > critical needs >
 schedule duty > elevated needs > idle`, and a running job is only
 interrupted by a strictly lower band number. (Exception, #3796: a soul
 standing at a pickup for something it ordered collects it first, unless
-the interrupt is survival.) Duty sits *below* critical
-needs, so a hungry dispatcher mid-meal lets the emergency band ring.
-(NOTE 2026-09-12: the band ordering is unchanged and arbitration is
-still unwired, so nothing about this edge was closed by the tree. What
-changed is that the wake drains the inbox outside the job — so a
-dispatcher who eats *in the chair* judges the call anyway. One whose
-meal takes her out of the chair senses nothing at all, which is the §4
-ruling rather than this edge. See the note in §3.4.)
+the interrupt is survival.) Duty sits *below* critical needs, and with
+arbitration unwired (§3.3) the inbox does not change that ordering. What
+the inbox does is drain outside the job (§3.4): a hungry dispatcher who
+eats *in the chair* judges the call anyway. One whose meal takes her out
+of the chair senses nothing at all — that is the §4 ruling, not this
+edge.
 
 This is not a dispatch problem. It is the same shape as a scream
 through a wall, a fire alarm, a shot fired in the next room, a customer
@@ -86,7 +82,7 @@ A **stimulus** is something the world hands a soul. Three properties:
 
 ### 3.1 The inbox
 
-`world/souls/salience.py`:
+In `world/souls/salience.py`:
 
 - `notice(soul, kind, band=WORK_BAND, payload=None)` (`WORK_BAND` = 2,
   the band of `duty`) — append to the inbox and schedule one wake on the
@@ -119,11 +115,11 @@ Two paths, deliberately:
    player the wake is the only path.
 
 LOD keeps doing its job: it governs how often a soul thinks *about
-itself*. It no longer governs how fast the world can reach it.
+itself*. It does not govern how fast the world can reach it.
 
 ### 3.3 Arbitration — designed, deliberately NOT wired
 
-The intent: the tree computes its normal `(band, goal)`, the inbox
+The design: the tree computes its normal `(band, goal)`, the inbox
 offers `(band, goal)`, the lower band wins, ties to the stimulus — the
 world is more urgent than a slowly-rising need at the same band. Every
 stimulus carries its band for exactly this, because only the raiser
@@ -132,17 +128,17 @@ knows whether it was gunfire or gossip.
 **It is not connected**, and shipping it half-connected would be a bug.
 Preempting a running job means `plan_for` must know how to satisfy the
 stimulus's goal, and no stimulus has one yet: the first consumer's work
-is done on the wake itself and needs no goal (§3.4). A first draft of this
-synthesised `"duty"` whenever the inbox outranked an idle tree, which
-would have marched an off-shift soul to work at three in the morning
-because somebody keyed a mic.
+is done on the wake itself and needs no goal (§3.4). Synthesising
+`"duty"` whenever the inbox outranked an idle tree would march an
+off-shift soul to work at three in the morning because somebody keyed a
+mic.
 
-So today a stimulus takes no part in goal arbitration. Its one power is
+So a stimulus takes no part in goal arbitration. Its one power is
 **defeating LOD**: the seated occupant's inbox work is done now, and a
-soul thinks now, instead of on the LOD cadence. That is
-the whole of the reported gap. Preemption lands with the sensor that
-needs it — a scream while you are eating — and that sensor brings its
-goal and its plan with it.
+soul thinks now, instead of on the LOD cadence. That is the whole of the
+reported gap. Preemption lands with the sensor that needs it — a scream
+while you are eating — and that sensor brings its goal and its plan
+with it.
 
 ### 3.4 Doing the work
 
@@ -156,11 +152,12 @@ a dispatcher's duty, not an interruption of it. So the default path is:
 > backstop.
 
 The `work` step runs `salience.do_post_work`, which does two things.
-First the role's standing upkeep from `ROLE_WORK`, keyed by
+First the role's standing upkeep from `ROLE_WORK` (#2236), keyed by
 `db.soul_role`: the medic's restock, the courier's runs, the mechanic's
-bench service. These run every work beat, stimulus or not. Then
-`work_stimuli`, which drains the inbox. Only `radio_traffic` is handled
-there, by `_work_radio_traffic`, whatever the occupant's role.
+bench service. Each role's upkeep is a registry entry, not a hard-coded
+branch in the work step. These run every work beat, stimulus or not.
+Then `work_stimuli`, which drains the inbox. Only `radio_traffic` is
+handled there, by `_work_radio_traffic`, whatever the occupant's role.
 
 A stimulus that must genuinely preempt (a scream while you are eating)
 declares a band low enough to interrupt, and `plan_for` gives it a job.
@@ -195,14 +192,14 @@ The dispatch work handler judges the call deterministic first:
 `classify_report` reads the words in plain code, and only when it
 recognises nothing, and the civic model lane is up (`civic_enabled`),
 does the model classify the call. Either verdict goes through
-`apply_verdict`, which opens a call record, raises the event and rolls
-units. The outcome (the verdict, how many units went, the units
-available, the caller's description of the suspect) is stashed on the
-occupant as `ndb.dispatch_verdict`, and only then does a soul's voice
-(`answer_traffic`) reply. A player has no `answer_traffic` and replies
-by speaking. The two-brain law holds: **the souls layer decides what
-rolls; the model may read a call the plain reader missed, and otherwise
-only says.**
+`apply_verdict`, which opens a call record (#2246), raises the event and
+rolls units. The outcome (the verdict, how many units went, the units
+available, the caller's description of the suspect (#2249)) is stashed
+on the occupant as `ndb.dispatch_verdict`, and only then does a soul's
+voice (`answer_traffic`) reply. A player has no `answer_traffic` and
+replies by speaking. The two-brain law holds: **the souls layer decides
+what rolls; the model may read a call the plain reader missed, and
+otherwise only says.**
 
 Nobody in the chair means nothing is noticed, nothing is judged, and
 nothing rolls. That is the ruling (2026-08-22) made structural rather
@@ -217,8 +214,17 @@ not on the NPC brain.
 
 ## 5. Deliberately out of scope
 
+- **Goal arbitration** — designed, deliberately not wired (§3.3).
 - **Sensory stimuli** (a scream heard through a wall, a body seen).
   The inbox is the substrate for these; the sensors are separate work.
 - **Player-facing salience.** The inbox serves whoever holds the post, a
   player included, but only to get the post's work done; it never prompts
   a player.
+
+## Related
+
+- `world/souls/engine.py` — band tree, LOD, `_beat_soul`.
+- `world/souls/jobs.py` — jobs.
+- `world/souls/actions.py` — `plan_for`.
+- `world/souls/salience.py` — the inbox, `sense_radio`, `do_post_work`,
+  `ROLE_WORK`, `work_stimuli`, `filter_for_duty`.
