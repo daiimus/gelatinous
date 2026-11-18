@@ -329,7 +329,10 @@ class TheGatesAgree(_EdgeDrag):
         there, there_again = _Room(2), _Room(2)
         door = SimpleNamespace(key="out", destination=there)
         here.contents.append(door)
-        leader = SimpleNamespace(location=there, get_display_name=lambda viewer: "Lead")
+        # `bring_followers` asks whether the leader is hidden (#3774), so
+        # the stand-in needs a `db` to answer from.
+        leader = SimpleNamespace(location=there, db=SimpleNamespace(hidden=None),
+                                 get_display_name=lambda viewer: "Lead")
         told = []
         follower = SimpleNamespace(pk=9, location=here, db=SimpleNamespace(following=leader),
                                    msg=lambda text=None, **kw: told.append(str(text)))

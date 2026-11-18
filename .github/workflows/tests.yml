@@ -40,9 +40,15 @@ jobs:
       - name: Install Evennia and what the game imports
         run: pip install "evennia==6.1.0" "inflect==7.5.0" "requests==2.34.2"
 
-      - name: Run this part of the suite
+      # The site's templates ask the static-file storage for hashed names,
+      # which it can only give once the files have been collected.
+      - name: Collect static files
         run: |
           mkdir -p server/logs
+          evennia collectstatic --noinput > /dev/null
+
+      - name: Run this part of the suite
+        run: |
           mods=$(ls world/tests/test_*.py | sort \
             | awk -v part=${{ matrix.part }} '(NR - 1) % 4 == part - 1' \
             | sed 's#/#.#g; s#\.py$##' | tr '\n' ' ')
