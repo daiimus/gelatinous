@@ -495,6 +495,17 @@ Coup de grâce (§10), to decide before building:
   `world/director/civilians.py` reaction hooks).
 - **Which organs can be picked, and with what weighting** (§10.3).
 
+Sleeves and records:
+
+- **Should shelving a living sleeve from the web raise its death count and
+  Roman numeral**, as `archive_character` does today?
+- **When a cleanup gig removes a corpse, should it null the tombstone's
+  `corpse_dbref`**, or is a stale dbref the intended state, as the
+  `world/death_records.py` docstrings say?
+- **Should a flash clone, which inherits its predecessor's `sleeve_uid`, keep
+  opening the dead sleeve's cube door** until `_prune_dead_tenancy` next runs,
+  or should the clone lose that residence at death too?
+
 ---
 
 ## 11 · Cross-references

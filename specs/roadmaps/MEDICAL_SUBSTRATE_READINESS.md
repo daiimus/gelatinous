@@ -108,6 +108,8 @@ As the audit's Phases 4–13 are done, prune rows here and remove the flag-debt 
 
 - Whether `fatal_threshold` is wired into `is_dead` or deleted: decide at the Phase 7 audit.
 - The social interaction substrate (`talking` total-loss effects) has no audit phase: open design.
+- For each unread flag with no audit phase (`anosmia` on `smell`, `unconscious_flag` on `consciousness`, `source` on `blood_loss`, `jaw_primary`, `causes_pain_when_damaged`, `backup_available`): is it vestigial and due for Phase 4 deletion, or waiting for a substrate?
+- The dodge curve copies the 0.15 `incapacitation_threshold` by hand: should it be built now from one source (the constant or the species flag), or stay as written until Phase 7 wires the flag?
 
 ---
 

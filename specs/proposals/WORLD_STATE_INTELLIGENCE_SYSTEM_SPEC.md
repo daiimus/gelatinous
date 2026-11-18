@@ -952,6 +952,10 @@ These are future phases or separate specs:
 - **Colony-wide emergency protocols** (martial law gameplay, curfew
   enforcement)
 
+## Not decided
+
+- Is the WSIS zone unit the corridor (as this spec reads `BUILDING_PLAYBOOK` §1.5), or the hand-authored named districts that #303 records as an owner ruling?
+
 ---
 
 ## Related documents

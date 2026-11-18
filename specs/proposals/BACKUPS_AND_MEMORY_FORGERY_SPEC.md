@@ -323,6 +323,11 @@ much larger story engine of its own and probably its own spec. *(Open.)*
 **8.5 — Does the world know backups exist?** Common knowledge or a
 Thawn-Harrison secret. Changes every conversation about it. *(Open.)*
 
+**8.6 — What does autopsy find?** A restore, tampered or not, and a stolen
+sleeve both show the same apparent UID as the corpse, and nothing compares a
+corpse with a living person. What disagreement is autopsy meant to find (§5)?
+*(Open.)*
+
 ---
 
 ## 9 · What must not be built yet

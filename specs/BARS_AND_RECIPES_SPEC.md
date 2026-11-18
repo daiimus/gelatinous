@@ -627,3 +627,7 @@ Wanted, not built. Items marked in place above are repeated here.
 
 1. **Effect/balance tuning** — `MIX_EFFECT_CAP` and per-sip dose scaling (esp.
    `chug` stacking) are first-pass; "drunk is just a condition," tune in play.
+2. **The Queen of Cups lobby bar** — is it still wanted, and does it stay in
+   the plan (§14) and among the §12 reference venues?
+3. **A `deposit` verb** — is it still wanted, now that the serve path credits
+   the register itself?

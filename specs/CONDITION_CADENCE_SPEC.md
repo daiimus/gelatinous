@@ -302,6 +302,15 @@ although the module docstring of `test_condition_cadence.py` advertises
 it. The round-trip code is correct where it lives; the missing coverage
 is a test gap.
 
+## 13 · Not decided
+
+* With a single global `medical_heartbeat` (#3076), does decision 5 (tick
+  frequency may vary per script) still stand, or does it become a per-body
+  cadence inside the heartbeat?
+* Does §6.2 (every script declares its lifecycle in its docstring) apply to
+  every script, global ones such as `SoulsHeartbeat` and
+  `DirectorRoutineScript` included, or only to per-object scripts?
+
 ## Related
 
 * CAPACITY_CONSUMERS spec §7.1 — blood filtration and the infection

@@ -790,6 +790,10 @@ tools.
   cue.
 - Is "`examine <target>` — deep examination with interaction hints" still a
   plan, or should it join the `listen` / `smell` / `feel` ruling (#1510)?
+- Is the Ambient Message System (periodic room messages) still wanted, and
+  under which issue?
+- Are health status and proximity in the room's character listing still
+  wanted?
 
 ## Related documents
 

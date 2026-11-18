@@ -250,6 +250,9 @@ A module for the defensive attribute-access patterns now written inline in many 
 ## Not decided
 
 - Whether same-room checks (inline `a.location == b.location` comparisons) get a shared helper.
+- Whether the rest of this refactor (`contest_system.py`, `state_manager.py`, signature standardization, the size targets) is still wanted, and in what order.
+- Whether the state and combatant-entry module is one file (`state_manager.py`) or two (with `combat_entry_manager.py`).
+- Whether the 300-line limit per combat module is a rule, a target, or dropped.
 
 ## Related documents
 

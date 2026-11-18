@@ -302,6 +302,10 @@ What comes after the Butcher, in order:
   `("butcher", "cook")`. An earlier design named `["butcher", "meatpacker",
   "grinder"]`; "meatpacker" and "grinder" address nobody, and "cook" was added.
   Whether the registry list is the intended one is an owner call.
+- **The unpaid cuts:** when the till cannot cover the whole yield, where do the
+  cuts she does not pay for go? Kept as off-screen flavour and gone with the
+  corpse (today), or made real, spawned loose or handed back to the supplier?
+  (Today her closing line also names the whole yield as going to the pot.)
 
 ---
 

@@ -361,6 +361,13 @@ Open questions:
   all — future content, owner's call.
 - Department factions/pay/privileges (§8) — WSIS-adjacent,
   owner-pending.
+- A synthetic spawned with `@spawnmob` is rolled a designation and
+  skills (#3506), though a synthetic never held a berth (#2670, §1):
+  should a spawned synthetic get a designation, or should `roll_person`
+  skip it for anyone who never travelled as crew?
+- `rank_of` and `department_of` have no caller yet: keep them as hooks
+  for style from department (CLOTHING_TYPES_AND_STYLE_SPEC), or delete
+  them until a consumer exists?
 
 ## 12. Related documents
 

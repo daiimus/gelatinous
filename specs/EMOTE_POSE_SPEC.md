@@ -521,6 +521,7 @@ No explicit length limit is imposed by the emote system. Server-side limits (Eve
 ## Not decided
 
 - Should traditional `emote` get the dot-pose capitalization and auto-punctuation rules (§Capitalization and Punctuation)? Today it gets neither.
+- Who counts as staff for seeing a `think` (§Think): should the display gates keep reading the permission on the character, or should every staff gate read the account's permission and honour `quell`, as the real-name doors do (#3818)?
 
 ---
 

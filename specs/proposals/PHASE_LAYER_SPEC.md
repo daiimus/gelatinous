@@ -390,6 +390,12 @@ gates the five choke points (§3.1), everything else is incremental.
   who authors that — a curated list, not a general "effects leak" rule.
 * **Spectator/ghost defaults.** Is the ghost→living window always-on, skill-
   gated, or item-gated? Tie to the death system.
+* **Where the proximity guard goes (§3.1).** Inside `establish_proximity` in
+  `world/combat/proximity.py`, reversing its docstring rule that co-location
+  guards live at the call sites, or at each call site as that docstring says?
+* **`can_perceive` and sense (§3).** Should the phase layer add a `sense`
+  argument to `can_perceive` so it joins the sense-capacity check, or keep
+  presence and sense capacity as separate gates?
 
 ---
 

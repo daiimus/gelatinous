@@ -1846,7 +1846,7 @@ Either works. ChromaDB has a larger community and more documentation; LanceDB pe
 
 ## Not decided
 
-**Not ruled yet:** whether naming somebody in person may overwrite a name already given to that voice (recorded on closed #3825; no open issue); whether a forced memory wipe earns a fresh see-through roll (recorded on closed #3825; no open issue); whether what an AI NPC filed under a look or a voice goes with a forgotten name in two leftover cases, where it stays today: the look or voice has only a blank entry, or the see-through or voice recognition was stored for a body object that no longer exists (#3863); whether a voice the AI NPC holds an entry of its own for is reported to it as forgotten when the name goes (#3861: not reported, as built by analogy with a look; the owner was not asked).
+**Not ruled yet:** whether naming somebody in person may overwrite a name already given to that voice (recorded on closed #3825; no open issue); whether a forced memory wipe earns a fresh see-through roll (recorded on closed #3825; no open issue); whether what an AI NPC filed under a look or a voice goes with a forgotten name in two leftover cases, where it stays today: the look or voice has only a blank entry, or the see-through or voice recognition was stored for a body object that no longer exists (#3863); whether a voice the AI NPC holds an entry of its own for is reported to it as forgotten when the name goes (#3861: not reported, as built by analogy with a look; the owner was not asked); whether a staff command that strips a disguise from another character is wanted (none exists; asked during the documentation check, #3865).
 
 ---
 

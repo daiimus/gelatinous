@@ -546,6 +546,13 @@ Dependencies: Phases 6, 7, 8, 9, 10.
 - **Social-interaction substrate.** `talking` total-loss effects
   (`cannot_negotiate`, …) have no phase: open design, depending on a
   trade/negotiation system that does not exist.
+- **Condition-based senses plans.** Now that sight and hearing are gated
+  by capacity reads, are the condition-based plans (Phase 8 tasks 1-3 with
+  `BlindCondition` / `DeafCondition`, and Phase 10 tasks 3-4) withdrawn or
+  still wanted?
+- **Phase 6.** With kidney death declined (#3402), is Phase 6 (a lethal
+  chronic-condition framework) still a phase, or is it parked until a
+  liver or respiratory failure is wanted?
 
 ## Out of scope
 

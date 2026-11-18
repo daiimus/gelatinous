@@ -294,3 +294,8 @@ costs a data entry rather than a redesign.
   probably correct, and is the owner's call when it lands.
 * **Billing at the bench.** The clinic bills (triage free, healing
   costs); for the bench it is open.
+* **The bench keeper's kit.** Should `MECHANIC_PAR` hold only carried
+  consumables, as the clinic's par list does, or should the keeper also
+  get the tool roll and hydraulic charge (or a clinic-style draw on
+  demand) so it can operate on a chassis or restore its fluid? This
+  matters only once a keeper can operate (see the first item).
