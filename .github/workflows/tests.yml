@@ -1,0 +1,50 @@
+# Runs the game's tests on every pull request and on every push to master.
+#
+# The suite runs on the code in the pull request, on a fresh install of the
+# same Evennia version the game runs, with an in-memory test database
+# (server/conf/test_runner.py). Nothing here touches the live game.
+#
+# The suite is split into four parts that run side by side, so a pull
+# request waits for the slowest part, not for the sum.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Game tests (part ${{ matrix.part }} of 4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # The versions the running game uses. Evennia brings Django and Twisted.
+      - name: Install Evennia and what the game imports
+        run: pip install "evennia==6.1.0" "inflect==7.5.0" "requests==2.34.2"
+
+      - name: Run this part of the suite
+        run: |
+          mkdir -p server/logs
+          mods=$(ls world/tests/test_*.py | sort \
+            | awk -v part=${{ matrix.part }} '(NR - 1) % 4 == part - 1' \
+            | sed 's#/#.#g; s#\.py$##' | tr '\n' ' ')
+          echo "$(echo $mods | wc -w) test modules in this part"
+          evennia test --settings settings.py $mods
