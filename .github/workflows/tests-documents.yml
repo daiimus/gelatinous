@@ -1,0 +1,53 @@
+# Runs the tests that read documents, on a pull request and on a push to
+# master, whenever a document changes.
+#
+# Some tests open a spec and check its text (they are the test modules
+# that name the "specs" folder). A change to documents only does not need
+# the whole suite, but it does need these.
+#
+# See DEVELOPMENT_GUIDE.md, "Tests on a pull request".
+name: Tests that read documents
+
+on:
+  pull_request:
+    paths: ["**/*.md"]
+  push:
+    branches: [master]
+    paths: ["**/*.md"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-documents-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  documents:
+    name: Tests that read documents
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # Keep these versions the same as in tests.yml.
+      - name: Install Evennia and what the game imports
+        run: pip install "evennia==6.1.0" "inflect==7.5.0" "requests==2.34.2"
+
+      - name: Collect static files
+        run: |
+          mkdir -p server/logs
+          evennia collectstatic --noinput > /dev/null
+
+      - name: Run the tests that read documents
+        run: |
+          mods=$(grep -l '"specs"' world/tests/test_*.py | sort \
+            | sed 's#/#.#g; s#\.py$##' | tr '\n' ' ')
+          echo "test modules that read documents: $mods"
+          # An empty list would run everything (DEVELOPMENT_GUIDE.md).
+          test -n "$mods"
+          evennia test --settings settings.py $mods

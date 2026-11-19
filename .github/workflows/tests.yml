@@ -1,0 +1,66 @@
+# Runs the game's whole test suite on a pull request, and on a push to
+# master, whenever anything but a document changes.
+#
+# The suite runs on the code in the pull request, on a clean install: the
+# Evennia version the game runs, default settings, an in-memory test
+# database (server/conf/test_runner.py). No live data, no model server, no
+# secret_settings.py. Nothing here touches the live game.
+#
+# The suite is split into eight parts that run side by side, so a pull
+# request waits for the slowest part, not for the sum.
+#
+# A change to documents only runs tests-documents.yml instead.
+# See DEVELOPMENT_GUIDE.md, "Tests on a pull request".
+name: Tests
+
+on:
+  pull_request:
+    paths-ignore: ["**/*.md"]
+  push:
+    branches: [master]
+    paths-ignore: ["**/*.md"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Game tests (part ${{ matrix.part }} of 8)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # The versions the running game uses. Evennia brings Django and
+      # Twisted. When the game moves to a new version, change it here too.
+      - name: Install Evennia and what the game imports
+        run: pip install "evennia==6.1.0" "inflect==7.5.0" "requests==2.34.2"
+
+      # The site's templates ask the static-file storage for hashed names,
+      # which it can only give once the files have been collected.
+      - name: Collect static files
+        run: |
+          mkdir -p server/logs
+          evennia collectstatic --noinput > /dev/null
+
+      - name: Run this part of the suite
+        run: |
+          mods=$(ls world/tests/test_*.py | sort \
+            | awk -v part=${{ matrix.part }} '(NR - 1) % 8 == part - 1' \
+            | sed 's#/#.#g; s#\.py$##' | tr '\n' ' ')
+          echo "$(echo $mods | wc -w) test modules in this part"
+          # An empty list would run everything (DEVELOPMENT_GUIDE.md).
+          test -n "$mods"
+          evennia test --settings settings.py $mods

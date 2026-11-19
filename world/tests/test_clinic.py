@@ -430,7 +430,12 @@ class TestHoldingTheClinicPostIsTheQualification(BaseEvenniaTest):
         self.patient.location = self.room1
 
     def _ask(self, line):
+        # These tests are about a keeper WITH a voice: what the post does
+        # not claim falls through to it. Without one the keeper answers
+        # with a scripted line and claims the turn (#2350), so the switch
+        # is stated here instead of being left to the machine's settings.
         with patch("world.souls.posts.current_shift", return_value="day"), \
+                patch("typeclasses.llm_npc.llm_enabled", return_value=True), \
                 patch.object(worldclinic, "delay") as dl:
             handled = self.keeper._handle_directed_speech(
                 line, self.patient, {"addressed": True})
