@@ -302,6 +302,41 @@ Each of these makes a test pass, or fail, for a reason that has nothing to do wi
 
 The rule behind all of them: when a test shows that something does *not* happen, make sure the matching test that it *does* happen can fail.
 
+### Tests on a pull request
+
+Every pull request runs the game's tests on GitHub, and merges only when
+they pass. Owner, 2026-11-19 (#3940), shown the two cases below with the
+recommendation that both wait: "I agree with your recommendation."
+
+- **Anything but a document changed:** the whole suite
+  (`.github/workflows/tests.yml`), split into eight parts that run side by
+  side.
+- **Only documents changed:** the tests that read documents
+  (`.github/workflows/tests-documents.yml`): the test modules that name the
+  `"specs"` folder.
+
+They run on a **clean install**: the Evennia version the game runs, default
+settings, an in-memory test database, no live data, no model server and no
+`secret_settings.py`. So a test must pass there, not only in the game's
+container:
+
+- **Do not lean on `secret_settings.py`.** On a clean install the model is
+  switched off. A test about a keeper with a voice states the switch
+  (`patch("typeclasses.llm_npc.llm_enabled", return_value=True)`); left to
+  the machine's settings it passes in the container and fails everywhere
+  else.
+- **A test that renders a site page needs the static files collected.** The
+  workflow runs `evennia collectstatic` before the suite.
+- **The versions are written in the two workflow files.** When the game moves
+  to a new Evennia version, or starts importing a new package, change them
+  there in the same pull request.
+
+The container is still where a change is tried before it is pushed (see
+`AGENTS.md`, Project Layout & Deployment). The checks are the net under
+that, not a replacement for it: the first run of the whole suite on GitHub
+found a test that had been failing on master for 24 days because nothing
+ran it.
+
 ### Manual Testing
 
 **Test Scenarios**

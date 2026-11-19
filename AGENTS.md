@@ -121,7 +121,10 @@ published the moment they are written:
 **Before merging:**
 
 - Every check on the pull request has passed. Wait for them; do not merge
-  while one is pending.
+  while one is pending. The checks include the game's tests, run on a clean
+  install: the whole suite when anything but a document changes, and the
+  tests that read documents when a document changes (see
+  `DEVELOPMENT_GUIDE.md`, Tests on a pull request).
 - A change to how the game behaves has been read by an independent reviewer
   whose job is to refute it, not to approve it, and what they found is fixed
   or answered. For a docs-only or test-only change this may be skipped by

@@ -46,10 +46,11 @@ leave the gap, do not reuse its number, and change the lines that cited it in
 the same pull request (`git grep` the spec's name finds them). A rewrite that
 renumbers sections breaks these pointers without any error.
 
-Three tests read spec text directly: `BUG_COMMAND_SPEC.md`,
-`MODULAR_ARMOR_SYSTEM_SPEC.md` and `roadmaps/BALANCE_LEDGER.md`. The checks
-on a pull request do not run the game's tests, so run those tests when one of
-the three changes (`git grep -n '"specs"' world/tests` lists them).
+Some tests read spec text directly: today `BUG_COMMAND_SPEC.md`,
+`MODULAR_ARMOR_SYSTEM_SPEC.md` and `roadmaps/BALANCE_LEDGER.md`
+(`git grep -n '"specs"' world/tests` lists them). A pull request that changes
+a document runs those tests as one of its checks (see `DEVELOPMENT_GUIDE.md`,
+Tests on a pull request).
 
 `specs/roadmaps/MEDICAL_SUBSTRATE_ROADMAP.md` is the model for a roadmap in
 what it sequences: a phase list in order, a readiness ledger mapping
