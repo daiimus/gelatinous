@@ -537,6 +537,20 @@ The connective tissue, so individual builds sum to a city:
   pending owner review.
 - **The candidates** (§4): market hall, port, gate-anchor site — each
   awaits an owner verdict.
+- **Diagonal edges** (§2, the vertical doctrine): should plates wire
+  diagonal edges by hand, or should the doctrine drop diagonals to match
+  `@airfill` and its audit, which work north, south, east and west only?
+- **One-shot build scripts** (§3): should the ritual state that a world
+  change is a numbered one-shot script in `scripts/builds/` (dry run
+  first, rooms named by dbref and checked against their current key,
+  idempotent, run once, then a reload)?
+- **Clinic completions** (§4): is the live Maxwell Operating Room the
+  cyberware-install room this entry asks for, so that the entry shrinks
+  to the remaining sense layers?
+- **Diagonals in the air audit** (§2): should `@airfill/audit` count a
+  surface that touches air only diagonally as a finding, so that "Clean."
+  matches the vertical doctrine, or keep it as an advisory tally beside
+  the findings, as #3582 designed it?
 
 ## Related documents
 

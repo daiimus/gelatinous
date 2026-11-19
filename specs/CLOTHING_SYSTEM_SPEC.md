@@ -406,6 +406,7 @@ Sketch, not a decision — the cheapest shape is likely a per-garment `sheer` fl
 
 - **Style change on a layer conflict.** Should a style change whose `coverage_mod` adds a location refuse on a layer conflict, as `wear` does, or keep re-seating silently? Today it re-seats (§Style commands).
 - **Sheer / partial coverage** (§Coverage is binary): whether sheer is a property of the garment or of a style state (a coat can be open without being sheer); whether armour and combat targeting should see through it at all; and how two sheer layers stack.
+- **The leftover layer-2 default** (§Layers): an unnamed garment is layer 1, but older code still falls back to layer 2 where a garment has no layer (a fallback no worn garment reaches today). Should those fallbacks be left alone, or all be made to read the layer-1 default?
 
 ## Related documents
 

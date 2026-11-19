@@ -233,6 +233,9 @@ consequence stack, cheapest first — each independently shippable:
   bridge too respectable? (Lean: yes, as flavor first — Marta's AutoDoc
   doesn't ask where the kidney came from.)
 - **Name & face:** owner's call, or I draft on build approval.
+- **Provenance of sold parts:** should a part sold by the Ripper still
+  trace back to its source corpse, or does the cold room scrub that
+  provenance?
 
 ## 8 · Phasing
 

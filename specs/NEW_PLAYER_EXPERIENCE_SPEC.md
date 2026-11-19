@@ -241,6 +241,12 @@ All open on #3320 unless noted.
   §Notes (2026-09-11, #2449), not on #3320.
 - **Testing method.** Is the raw-socket telnet probe (§6) still the
   end-to-end method?
+- **Narrator lines at respawn.** The closing lines of the template and
+  flash-clone respawns state the player's condition ("they're yours
+  now", "at least you're still you"). Does "Informing, not telling"
+  (§3) cover interior flavour like this, so the lines are cut or recast
+  as a readout, or only meta assertions such as "You are real", so they
+  stay? Not on #3320.
 
 ## Related
 

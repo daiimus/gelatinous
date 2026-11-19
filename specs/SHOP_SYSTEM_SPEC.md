@@ -471,6 +471,9 @@ No `CmdSell`, `CmdHaggle` or `MarketplaceRoom` exists.
 
 - **Typed `buy` at a board-styled counter** (open). `CmdBuy`'s keeper branch passes no style, so an item with **no** `serve_line`, bought with the typed command at a **board-styled** counter, would be handed over with the SHELF gesture, while the same keeper serving the same dish by spoken order uses the BOARD gesture. Nothing masks it: every dish on the only board-styled counter is line-less, and Lin's four lines sit on a shelf-styled counter, where the command's default and the post's style are the same anyway. It stays latent only because the only board-styled role is `butcher`, whose counter is a `FoodCart` with `TAKES_BUY = False`, so the typed door is refused there before any coin moves (#3375). It becomes reachable the moment a board-styled keeper stands a plain `ShopContainer`. The fix, when it is wanted, is for `CmdBuy` to read the keeper's post style rather than defaulting.
 - Whether to build a slot-code vending machine, and the error-handling limits, are also not decided; see "Vending machine" and "Error handling and limits" under Unbuilt.
+- **"Ticks."** What does the slang word "ticks" mean in the lore? "Tabs" and "Kennys" each have a bullet under "Currency lore"; "ticks" has none.
+- **The reach of "not ready for a pawn economy."** Does the 2026-07-25 ruling (#1293–#1298) reject selling everywhere, marketplace vendors included, or only pawning at fixed shops?
+- **`db.shop_name`.** Should it drive the `{shop}` token and a browse header, or should the attribute be retired? Today it is read by nothing.
 
 ## Related documents
 

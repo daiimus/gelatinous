@@ -781,6 +781,10 @@ job** — then `pin()`. There is no `/blank`; `/rat` and `/robot` are bodies;
 `/secbot` is the production factory door. Every spawner writes species
 through one helper, `world.anatomy.apply_species`.
 
+## 16 · Not decided
+
+- Which events should raise a soul's `safety` need, and by how much, so that the Survive band's flee can ever be chosen?
+
 ## Related documents
 
 - [`NPC_DISPATCH_AND_SIMULATION_SPEC`](NPC_DISPATCH_AND_SIMULATION_SPEC.md) §4 — Roles & routines, which this spec elaborates.

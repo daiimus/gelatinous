@@ -128,3 +128,9 @@ axes for every `low` match; #2253 relaxed that to rule 3 above. The bare
   database is its own build.
 * **Investigation** (canvassing, asking witnesses, following up). Noted
   by the owner as later work.
+
+## 8. Not decided
+
+* Should a description with clothing but no height or build ("a guy in a
+  black trenchcoat") give a `low` match, and should clothing narrow a match
+  when the BOLO also has both height and build?

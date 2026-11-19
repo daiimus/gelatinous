@@ -560,3 +560,7 @@ theft (§6.2).
   dispatch director's materialization state).
 * **Search-pattern smartness.** How thorough the Dijkstra hunt is before give-up
   (radius, room budget) — tune for fun, not omniscience.
+* **Lighter tuning for `pickpocket`.** Is it still wanted, given that
+  `pickpocket` uses the same contest and consequences as `steal` (§6.2)?
+* **The hider and the stash.** Should a stashed item stay hidden from the
+  character who hid it, who cannot see or name it until a search finds it (§3)?

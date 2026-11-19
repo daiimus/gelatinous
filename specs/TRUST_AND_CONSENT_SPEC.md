@@ -339,8 +339,14 @@ like anyone, but **NPCs do not grant trust in practice**. The decided stance:
 
 ## 11 · Not decided
 
-No open questions. The resolutions in §1 (consciousness, restraint helper),
+The resolutions in §1 (consciousness, restraint helper),
 §2 (duress, per-command gate) and §4 (presence-asymmetric grant and revoke)
 were presented in the 2026-07-02 deep-dig as recommendations, were not
 contested, and were built as written; the owner has not ruled on them
 separately.
+
+* Should a flash clone keep the trust grants its dead body had made,
+  instead of starting with none?
+* Should `distrust <person> to all` be accepted as the same as
+  `distrust <person>`, matching `trust <person> to all`, or stay refused
+  (perhaps with an error that points to `distrust <person>`)?

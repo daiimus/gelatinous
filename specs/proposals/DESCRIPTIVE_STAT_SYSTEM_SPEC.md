@@ -262,6 +262,10 @@ Besides the two items under "Who sees what" (descriptors in character creation; 
 - Theme-specific vocabulary variations 📋 UNBUILT (no issue, not decided)
 - Player preference for numeric vs. descriptive display 📋 UNBUILT (no issue, not decided)
 
+## Not decided
+
+- Are the range-style admin view and the help-file per-stat range table still wanted, or should they be dropped from the proposed display formats?
+
 ## Related documents
 
 - [`SKILLS_AND_DESIGNATION_SPEC.md`](SKILLS_AND_DESIGNATION_SPEC.md) — the skill ratings that share the A–Z scale (#2082).

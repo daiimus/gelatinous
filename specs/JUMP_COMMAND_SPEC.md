@@ -972,6 +972,10 @@ recommendation is not a ruling.
    holding someone drags them over the edge with you; `jump across` lets
    go of them.
 3. Throwing: do elevated positions affect throw range or accuracy?
+4. Rigged edges on a jump off: should stepping off an edge rigged with a
+   grenade into the air spring the trap (as walking the edge does, and as a
+   direct drop does), or should jumping into the air pass an edge trap by?
+   Today it passes it by.
 
 ## Related documents
 

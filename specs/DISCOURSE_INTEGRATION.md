@@ -570,6 +570,9 @@ version-matched between the pages (see "Bootstrap versions").
 - **Mobile header height.** The CSS in this document uses 80px in the mobile
   media query; the live component uses 60px (measured 2026-09-11). Which is
   right needs a real device. Do not "fix" either side from this document.
+- **`primary-medium`.** Should it be `#8f8d82` (the live value, the site's
+  `--terminal-text-muted`) both in this document's palette table and in
+  `web/discourse-theme/about.json`, instead of `#a9a49a`?
 
 ---
 

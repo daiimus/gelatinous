@@ -226,3 +226,7 @@ formula, a tell, and the two callbacks.
    (`stop spraying`). Proposal: bare `stop` with no channel falls through
    to existing stop-verbs; with one, aborts it.
 3. **Rates as balance levers** — 3s + 1s/char are constants; tune in play.
+4. **Hands-on verbs while channeling** — should `grapple`, `wrest`, `frisk`,
+   `steal`, `rig`, `pull` and `catch` refuse while the actor is channeling,
+   like `attack` does, or is it acceptable that starting one ends the
+   actor's own act?

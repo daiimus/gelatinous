@@ -173,6 +173,7 @@ A character made on the web (first-time or respawn) must not stand in the world 
 ## Not decided
 
 - **No `last_character`, but every character on the account is archived.** The web view treats this as a first character. Telnet login instead points `last_character` at the most recently archived sleeve and offers the respawn menu (`Account.at_post_login`). The two doors differ here; which is wanted is not decided.
+- **Superusers and the sleeve limit.** Should `Account.check_available_slots` keep letting superusers and Developers past the active-sleeve limit, now that the menu and the web view hold everyone to it?
 
 ## Related documents
 

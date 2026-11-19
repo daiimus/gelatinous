@@ -215,3 +215,8 @@ Create a base proximity system with specialized subclasses: BaseProximity → Co
 Use one system with context flags to distinguish relationship types: `proximity_relationships = [(entity, context), ...]`.
 
 **Rejected because**: over-engineered for current needs.
+
+## Not decided
+
+- Should the phased migration plan be kept at all, given that its compatibility layer conflicts with the no-wrappers rule in `DEVELOPMENT_GUIDE.md`?
+- Should the two proximity stores be unified (Option A, another option), or both kept and merged when read, as the code does today? Also open on #3335.

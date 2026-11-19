@@ -433,6 +433,16 @@ Each item is described where it stands above; this is the list.
 
 - Sealed / opened state for bottles: the tag is TBD when bottles
   arrive (§2).
+- Roll-your-own: is a `roll` command that makes a cigarette or joint
+  from raw substance, paper and filter still wanted, and if so which
+  issue should its UNBUILT marker point at?
+- Organ damage from substances (such as lung damage from smoking): is
+  it still wanted, and is there an issue for it?
+- Loadable pipes: are they still wanted, and is there an issue for
+  them?
+- Substances through the skin: should a substance applied with
+  `apply` ever deliver its pharmacology, or is `apply` meant to stay
+  treatment-only?
 
 ## Related documents
 

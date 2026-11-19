@@ -530,6 +530,9 @@ augments spec); the coordinate expression of falling (§0).
   mugging ≈ one-to-three nights the intended economy scale?
 * **B&E scope** — decided PvE-directed for v1 (§3.2), user on the fence
   long-term; revisit after tenancy plays.
+* **Diagonal edges** — should diagonal neighbours of an air cell get wired
+  edges, as the 2026-07-25 vertical doctrine says, or does the lattice stay
+  north/south/east/west only, as `@airfill` and its audit build it?
 
 ---
 
